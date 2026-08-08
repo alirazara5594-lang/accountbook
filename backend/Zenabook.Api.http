@@ -1,0 +1,6 @@
+@Zenabook.Api_HostAddress = http://localhost:5124
+
+GET {{Zenabook.Api_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###
