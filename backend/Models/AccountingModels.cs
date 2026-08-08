@@ -110,3 +110,48 @@ public class IntercompanyAllocation
     public List<IntercompanyRecipientRequest> Recipients { get; set; } = [];
     public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
 }
+
+public enum CustomerStatus { Active, Inactive, Blocked }
+
+public class Customer
+{
+    public Guid Id { get; init; } = Guid.NewGuid();
+    public required string CustomerNumber { get; set; }
+    public required string Name { get; set; }
+    public string? Email { get; set; }
+    public string? Phone { get; set; }
+    public string? TaxId { get; set; }
+    public string? AddressLine1 { get; set; }
+    public string? AddressLine2 { get; set; }
+    public string? City { get; set; }
+    public string? State { get; set; }
+    public string? PostalCode { get; set; }
+    public string? Country { get; set; } = "United States";
+    public string CurrencyCode { get; set; } = "USD";
+    public decimal CreditLimit { get; set; } = 0m;
+    public int PaymentTermsDays { get; set; } = 30;
+    public Guid? CompanyId { get; set; }
+    public CustomerStatus Status { get; set; } = CustomerStatus.Active;
+    public DateTime CreatedAt { get; init; } = DateTime.UtcNow;
+    public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
+}
+
+public record CustomerRequest(
+    string? CustomerNumber,
+    string Name,
+    string? Email,
+    string? Phone,
+    string? TaxId,
+    string? AddressLine1,
+    string? AddressLine2,
+    string? City,
+    string? State,
+    string? PostalCode,
+    string? Country,
+    string? CurrencyCode,
+    decimal CreditLimit,
+    int PaymentTermsDays,
+    Guid? CompanyId);
+
+public record CustomerStatusRequest(CustomerStatus Status, string? Reason);
+

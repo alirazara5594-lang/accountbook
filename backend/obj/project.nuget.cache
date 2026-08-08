@@ -1,8 +1,8 @@
 {
   "version": 2,
-  "dgSpecHash": "2nfXs/v2/IU=",
+  "dgSpecHash": "LVEyCD7UWs8=",
   "success": true,
-  "projectFilePath": "D:\\Project\\zenabook\\backend\\Zenabook.Api.csproj",
+  "projectFilePath": "D:\\Project\\accountbook\\backend\\Zenabook.Api.csproj",
   "expectedPackageFiles": [
     "C:\\Users\\Muhammad Ali\\.nuget\\packages\\azure.core\\1.47.1\\azure.core.1.47.1.nupkg.sha512",
     "C:\\Users\\Muhammad Ali\\.nuget\\packages\\azure.identity\\1.14.2\\azure.identity.1.14.2.nupkg.sha512",

@@ -1,17 +1,17 @@
 {
   "format": 1,
   "restore": {
-    "D:\\Project\\zenabook\\backend\\Zenabook.Api.csproj": {}
+    "D:\\Project\\accountbook\\backend\\Zenabook.Api.csproj": {}
   },
   "projects": {
-    "D:\\Project\\zenabook\\backend\\Zenabook.Api.csproj": {
+    "D:\\Project\\accountbook\\backend\\Zenabook.Api.csproj": {
       "version": "1.0.0",
       "restore": {
-        "projectUniqueName": "D:\\Project\\zenabook\\backend\\Zenabook.Api.csproj",
+        "projectUniqueName": "D:\\Project\\accountbook\\backend\\Zenabook.Api.csproj",
         "projectName": "Accountbook.Api",
-        "projectPath": "D:\\Project\\zenabook\\backend\\Zenabook.Api.csproj",
+        "projectPath": "D:\\Project\\accountbook\\backend\\Zenabook.Api.csproj",
         "packagesPath": "C:\\Users\\Muhammad Ali\\.nuget\\packages\\",
-        "outputPath": "D:\\Project\\zenabook\\backend\\obj\\",
+        "outputPath": "D:\\Project\\accountbook\\backend\\obj\\",
         "projectStyle": "PackageReference",
         "configFilePaths": [
           "C:\\Users\\Muhammad Ali\\AppData\\Roaming\\NuGet\\NuGet.Config"

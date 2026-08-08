@@ -3,6 +3,7 @@ import type { FormEvent } from 'react'
 import './App.css'
 import Intercompany from './Intercompany'
 import EntitySettings, { type Entity } from './EntitySettings'
+import CustomerManagement from './CustomerManagement'
 
 type AccountType = 'Asset' | 'Liability' | 'Equity' | 'Revenue' | 'Expense' | 'ContraAsset' | 'ContraLiability' | 'ContraEquity' | 'ContraRevenue' | 'ContraExpense'
 type Account = { id: string; code: string; name: string; type: AccountType; parentId?: string; status: 'Active' | 'Inactive'; openingBalance: number; reconciliationEnabled: boolean; ifrsTag?: string; updatedAt: string }
@@ -15,7 +16,8 @@ const blank = { code: '', name: '', type: 'Asset' as AccountType, parentId: '', 
 function money(value: number) { return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(value) }
 
 export default function App() {
-  const [page, setPage] = useState<'dashboard' | 'accounts' | 'journal' | 'intercompany' | 'settings'>('dashboard')
+  const [page, setPage] = useState<'dashboard' | 'accounts' | 'journal' | 'intercompany' | 'customers' | 'settings'>('dashboard')
+  const [salesGroupOpen, setSalesGroupOpen] = useState(true)
   const [settingsView, setSettingsView] = useState<'home' | 'entities'>('home')
   const [entities, setEntities] = useState<Entity[]>([])
   const [activeEntityId, setActiveEntityId] = useState('')
@@ -41,8 +43,28 @@ export default function App() {
   const postJournal = async (e: FormEvent) => { e.preventDefault(); const lines = journal.lines.map(x => ({ accountId: x.accountId, debit: Number(x.debit || 0), credit: Number(x.credit || 0), memo: null })); const response = await fetch(`${api}/journal-entries`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ...journal, lines }) }); if (!response.ok) { notify((await response.json()).message); return } notify('Balanced journal draft created'); setJournal({ date: new Date().toISOString().slice(0, 10), reference: '', description: '', lines: [{ accountId: '', debit: '', credit: '' }, { accountId: '', debit: '', credit: '' }] }); load() }
   const nav = (key: typeof page, label: string, icon: string) => <button className={page === key ? 'nav active' : 'nav'} onClick={() => { setPage(key); if (key === 'settings') setSettingsView('home') }}><span>{icon}</span>{label}</button>
   const activeEntity = entities.find(x => x.id === activeEntityId)
-  return <div className="app"><aside><div className="brand"><b>account</b><span>book</span></div><div className="company"><div className="avatar">AC</div><div><strong>{activeEntity?.name || 'Select entity'}</strong><small>Active accounting books</small></div></div><nav>{nav('dashboard','Overview','▦')}{nav('accounts','Chart of accounts','⌘')}{nav('journal','Journal entries','⇄')}{nav('intercompany','Intercompany','↔')}{nav('settings','Settings','⚙')}</nav><div className="bottom"><div className="user"><div className="avatar small">MA</div><div><strong>Muhammad Ali</strong><small>Finance admin</small></div></div></div></aside><main><header><div><p className="eyebrow">{page === 'dashboard' ? 'FINANCE OVERVIEW' : page === 'accounts' ? 'ACCOUNTING STRUCTURE' : page === 'journal' ? 'GENERAL LEDGER' : page === 'intercompany' ? 'GROUP ACCOUNTING' : 'SETTINGS'}</p><h1>{page === 'dashboard' ? 'Good morning, Muhammad' : page === 'accounts' ? 'Chart of accounts' : page === 'journal' ? 'Journal entries' : page === 'intercompany' ? 'Intercompany allocations' : settingsView === 'entities' ? 'Entity management' : 'Settings'}</h1></div><label className="entity-picker">Working in<select value={activeEntityId} onChange={e => setActiveEntityId(e.target.value)}>{entities.map(x => <option key={x.id} value={x.id}>{x.name}{x.code ? ` · ${x.code}` : ''}</option>)}</select></label>{page === 'accounts' && <button className="primary" onClick={openCreate}>＋ New account</button>}{page === 'journal' && <button className="primary" onClick={() => document.getElementById('journal-form')?.scrollIntoView({ behavior: 'smooth' })}>＋ New entry</button>}</header>
+  return <div className="app"><aside><div className="brand"><b>account</b><span>book</span></div><div className="company"><div className="avatar">AC</div><div><strong>{activeEntity?.name || 'Select entity'}</strong><small>Active accounting books</small></div></div><nav>
+    {nav('dashboard','Overview','▦')}
+    <div className="nav-group">
+      <button className={'nav nav-group-toggle ' + (page === 'customers' ? 'active' : '')} onClick={() => setSalesGroupOpen(!salesGroupOpen)}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 13 }}><span>☖</span>Sales & Customers</div>
+        <span className="chevron">{salesGroupOpen ? '▾' : '▸'}</span>
+      </button>
+      {salesGroupOpen && (
+        <div className="nav-sub-list">
+          <button className={'nav nav-sub ' + (page === 'customers' ? 'active' : '')} onClick={() => setPage('customers')}>
+            <span className="sub-bullet">•</span>Customer Management
+          </button>
+        </div>
+      )}
+    </div>
+    {nav('accounts','Chart of accounts','⌘')}
+    {nav('journal','Journal entries','⇄')}
+    {nav('intercompany','Intercompany','↔')}
+    {nav('settings','Settings','⚙')}
+  </nav><div className="bottom"><div className="user"><div className="avatar small">MA</div><div><strong>Muhammad Ali</strong><small>Finance admin</small></div></div></div></aside><main><header><div><p className="eyebrow">{page === 'dashboard' ? 'FINANCE OVERVIEW' : page === 'customers' ? 'SALES & CUSTOMERS' : page === 'accounts' ? 'ACCOUNTING STRUCTURE' : page === 'journal' ? 'GENERAL LEDGER' : page === 'intercompany' ? 'GROUP ACCOUNTING' : 'SETTINGS'}</p><h1>{page === 'dashboard' ? 'Good morning, Muhammad' : page === 'customers' ? 'Customer Management' : page === 'accounts' ? 'Chart of accounts' : page === 'journal' ? 'Journal entries' : page === 'intercompany' ? 'Intercompany allocations' : settingsView === 'entities' ? 'Entity management' : 'Settings'}</h1></div><label className="entity-picker">Working in<select value={activeEntityId} onChange={e => setActiveEntityId(e.target.value)}>{entities.map(x => <option key={x.id} value={x.id}>{x.name}{x.code ? ` · ${x.code}` : ''}</option>)}</select></label>{page === 'accounts' && <button className="primary" onClick={openCreate}>＋ New account</button>}{page === 'journal' && <button className="primary" onClick={() => document.getElementById('journal-form')?.scrollIntoView({ behavior: 'smooth' })}>＋ New entry</button>}</header>
   {page === 'dashboard' && <Dashboard stats={stats} entries={entries} accounts={accounts} setPage={setPage} />}
+  {page === 'customers' && <CustomerManagement entities={entities} activeEntityId={activeEntityId} notify={notify} />}
   {page === 'accounts' && <Accounts accounts={accounts} filtered={filtered} children={children} query={query} setQuery={setQuery} edit={openEdit} status={toggleStatus} />}
   {page === 'journal' && <Journals journal={journal} setJournal={setJournal} accounts={accounts.filter(a => a.status === 'Active')} entries={entries} post={postJournal} />}
   {page === 'intercompany' && <Intercompany allocations={allocations} reload={load} notify={notify} />}

@@ -14,11 +14,12 @@ public class AccountingStore
     private readonly List<JournalEvent> _journalEvents = [];
     private readonly List<IntercompanyAllocation> _intercompanyAllocations = [];
     private readonly List<Company> _companies = [];
+    private readonly List<Customer> _customers = [];
     private readonly Dictionary<Guid, List<AuditItem>> _history = [];
     private readonly object _lock = new();
 
     private readonly IDbContextFactory<AccountingDbContext>? _dbFactory;
-    private sealed record StoredState(List<Account> Accounts, List<JournalEntry> Entries, Dictionary<Guid, List<AuditItem>> History, List<JournalTemplate> Templates, List<RecurringJournalEntry> RecurringEntries, List<JournalEvent> Events, List<IntercompanyAllocation>? IntercompanyAllocations = null, List<Company>? Companies = null);
+    private sealed record StoredState(List<Account> Accounts, List<JournalEntry> Entries, Dictionary<Guid, List<AuditItem>> History, List<JournalTemplate> Templates, List<RecurringJournalEntry> RecurringEntries, List<JournalEvent> Events, List<IntercompanyAllocation>? IntercompanyAllocations = null, List<Company>? Companies = null, List<Customer>? Customers = null);
 
     public AccountingStore(IDbContextFactory<AccountingDbContext>? dbFactory = null)
     {
@@ -26,7 +27,12 @@ public class AccountingStore
         if (LoadState()) return;
         var parentEntity = new Company { Name = "Acme Holdings", Code = "ACME", Type = EntityType.Parent };
         _companies.AddRange([parentEntity, new Company { Name = "Acme Services", Code = "ASV", ParentId = parentEntity.Id }, new Company { Name = "Acme Trading", Code = "ATD", ParentId = parentEntity.Id }]);
+        _customers.AddRange([
+            new Customer { CustomerNumber = "CUST-0001", Name = "Global Tech Ltd", Email = "billing@globaltech.com", Phone = "+1 (555) 234-5678", TaxId = "US-987654321", AddressLine1 = "100 Innovation Way", City = "San Francisco", State = "CA", PostalCode = "94105", Country = "United States", CurrencyCode = "USD", CreditLimit = 50000m, PaymentTermsDays = 30, CompanyId = parentEntity.Id },
+            new Customer { CustomerNumber = "CUST-0002", Name = "Apex Retail Solutions", Email = "accounts@apexretail.com", Phone = "+1 (555) 876-5432", TaxId = "US-123456789", AddressLine1 = "450 Market Street", City = "New York", State = "NY", PostalCode = "10001", Country = "United States", CurrencyCode = "USD", CreditLimit = 25000m, PaymentTermsDays = 15 }
+        ]);
         Seed("1000", "Assets", AccountType.Asset, null);
+
         var cash = Seed("1100", "Cash & Bank", AccountType.Asset, _accounts[0].Id, true);
         Seed("1110", "Main Bank Account", AccountType.Asset, cash.Id, true, 28450m);
         Seed("1200", "Accounts Receivable", AccountType.Asset, _accounts[0].Id, true);
@@ -51,6 +57,117 @@ public class AccountingStore
     public IReadOnlyList<RecurringJournalEntry> RecurringEntries => _recurringEntries;
     public IReadOnlyList<IntercompanyAllocation> IntercompanyAllocations => _intercompanyAllocations;
     public IReadOnlyList<Company> Companies => _companies;
+    public IReadOnlyList<Customer> Customers => _customers;
+
+    public Customer? FindCustomer(Guid id) => _customers.FirstOrDefault(x => x.Id == id);
+
+    public string NextCustomerNumber()
+    {
+        var numbers = _customers
+            .Select(c => c.CustomerNumber)
+            .Where(n => n.StartsWith("CUST-") && int.TryParse(n[5..], out _))
+            .Select(n => int.Parse(n[5..]))
+            .DefaultIfEmpty(0);
+        return $"CUST-{(numbers.Max() + 1):D4}";
+    }
+
+    public bool CreateCustomer(CustomerRequest request, out Customer? customer, out string? error)
+    {
+        customer = null; error = null;
+        if (string.IsNullOrWhiteSpace(request.Name)) { error = "Customer name is required."; return false; }
+        if (!string.IsNullOrWhiteSpace(request.CustomerNumber) && _customers.Any(x => x.CustomerNumber.Equals(request.CustomerNumber.Trim(), StringComparison.OrdinalIgnoreCase)))
+        { error = "A customer with this number already exists."; return false; }
+        if (request.CompanyId is { } companyId && !_companies.Any(x => x.Id == companyId && x.Active))
+        { error = "Associated company entity must be active."; return false; }
+
+        lock (_lock)
+        {
+            customer = new Customer
+            {
+                CustomerNumber = string.IsNullOrWhiteSpace(request.CustomerNumber) ? NextCustomerNumber() : request.CustomerNumber.Trim(),
+                Name = request.Name.Trim(),
+                Email = request.Email?.Trim(),
+                Phone = request.Phone?.Trim(),
+                TaxId = request.TaxId?.Trim(),
+                AddressLine1 = request.AddressLine1?.Trim(),
+                AddressLine2 = request.AddressLine2?.Trim(),
+                City = request.City?.Trim(),
+                State = request.State?.Trim(),
+                PostalCode = request.PostalCode?.Trim(),
+                Country = string.IsNullOrWhiteSpace(request.Country) ? "United States" : request.Country.Trim(),
+                CurrencyCode = string.IsNullOrWhiteSpace(request.CurrencyCode) ? "USD" : request.CurrencyCode.Trim().ToUpperInvariant(),
+                CreditLimit = request.CreditLimit < 0 ? 0m : request.CreditLimit,
+                PaymentTermsDays = request.PaymentTermsDays <= 0 ? 30 : request.PaymentTermsDays,
+                CompanyId = request.CompanyId
+            };
+            _customers.Add(customer);
+            Persist();
+            return true;
+        }
+    }
+
+    public bool UpdateCustomer(Guid id, CustomerRequest request, out Customer? customer, out string? error)
+    {
+        customer = null; error = null;
+        if (string.IsNullOrWhiteSpace(request.Name)) { error = "Customer name is required."; return false; }
+
+        lock (_lock)
+        {
+            customer = FindCustomer(id);
+            if (customer is null) { error = "Customer not found."; return false; }
+            if (!string.IsNullOrWhiteSpace(request.CustomerNumber) && _customers.Any(x => x.Id != id && x.CustomerNumber.Equals(request.CustomerNumber.Trim(), StringComparison.OrdinalIgnoreCase)))
+            { error = "Another customer with this number already exists."; return false; }
+            if (request.CompanyId is { } companyId && !_companies.Any(x => x.Id == companyId && x.Active))
+            { error = "Associated company entity must be active."; return false; }
+
+            customer.CustomerNumber = string.IsNullOrWhiteSpace(request.CustomerNumber) ? customer.CustomerNumber : request.CustomerNumber.Trim();
+            customer.Name = request.Name.Trim();
+            customer.Email = request.Email?.Trim();
+            customer.Phone = request.Phone?.Trim();
+            customer.TaxId = request.TaxId?.Trim();
+            customer.AddressLine1 = request.AddressLine1?.Trim();
+            customer.AddressLine2 = request.AddressLine2?.Trim();
+            customer.City = request.City?.Trim();
+            customer.State = request.State?.Trim();
+            customer.PostalCode = request.PostalCode?.Trim();
+            customer.Country = string.IsNullOrWhiteSpace(request.Country) ? "United States" : request.Country.Trim();
+            customer.CurrencyCode = string.IsNullOrWhiteSpace(request.CurrencyCode) ? "USD" : request.CurrencyCode.Trim().ToUpperInvariant();
+            customer.CreditLimit = request.CreditLimit < 0 ? 0m : request.CreditLimit;
+            customer.PaymentTermsDays = request.PaymentTermsDays <= 0 ? 30 : request.PaymentTermsDays;
+            customer.CompanyId = request.CompanyId;
+            customer.UpdatedAt = DateTime.UtcNow;
+            Persist();
+            return true;
+        }
+    }
+
+    public bool SetCustomerStatus(Guid id, CustomerStatus status, out string? error)
+    {
+        error = null;
+        lock (_lock)
+        {
+            var customer = FindCustomer(id);
+            if (customer is null) { error = "Customer not found."; return false; }
+            customer.Status = status;
+            customer.UpdatedAt = DateTime.UtcNow;
+            Persist();
+            return true;
+        }
+    }
+
+    public bool DeleteCustomer(Guid id, out string? error)
+    {
+        error = null;
+        lock (_lock)
+        {
+            var customer = FindCustomer(id);
+            if (customer is null) { error = "Customer not found."; return false; }
+            _customers.Remove(customer);
+            Persist();
+            return true;
+        }
+    }
+
     public bool CreateCompany(CompanyRequest request, out Company? company, out string? error)
     {
         company = null; error = null;
@@ -211,7 +328,7 @@ public class AccountingStore
         if (snapshot is null) return false;
         var state = JsonSerializer.Deserialize<StoredState>(snapshot.Json);
         if (state is null) return false;
-        _accounts.AddRange(state.Accounts); _entries.AddRange(state.Entries); _templates.AddRange(state.Templates); _recurringEntries.AddRange(state.RecurringEntries); _journalEvents.AddRange(state.Events); _intercompanyAllocations.AddRange(state.IntercompanyAllocations ?? []); _companies.AddRange(state.Companies ?? [new Company { Name = "Acme Holdings", Code = "ACME", Type = EntityType.Parent }, new Company { Name = "Acme Services", Code = "ASV" }, new Company { Name = "Acme Trading", Code = "ATD" }]);
+        _accounts.AddRange(state.Accounts); _entries.AddRange(state.Entries); _templates.AddRange(state.Templates); _recurringEntries.AddRange(state.RecurringEntries); _journalEvents.AddRange(state.Events); _intercompanyAllocations.AddRange(state.IntercompanyAllocations ?? []); _companies.AddRange(state.Companies ?? [new Company { Name = "Acme Holdings", Code = "ACME", Type = EntityType.Parent }, new Company { Name = "Acme Services", Code = "ASV" }, new Company { Name = "Acme Trading", Code = "ATD" }]); _customers.AddRange(state.Customers ?? []);
         foreach (var (id, history) in state.History) _history[id] = history;
         return true;
     }
@@ -219,7 +336,7 @@ public class AccountingStore
     {
         if (_dbFactory is null) return;
         using var db = _dbFactory.CreateDbContext();
-        var json = JsonSerializer.Serialize(new StoredState(_accounts, _entries, _history, _templates, _recurringEntries, _journalEvents, _intercompanyAllocations, _companies));
+        var json = JsonSerializer.Serialize(new StoredState(_accounts, _entries, _history, _templates, _recurringEntries, _journalEvents, _intercompanyAllocations, _companies, _customers));
         var snapshot = db.AccountingStateSnapshots.Find(1);
         if (snapshot is null) db.AccountingStateSnapshots.Add(new AccountingStateSnapshot { Id = 1, Json = json, UpdatedAt = DateTime.UtcNow });
         else { snapshot.Json = json; snapshot.UpdatedAt = DateTime.UtcNow; }
