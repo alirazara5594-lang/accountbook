@@ -14,7 +14,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("Accountbook.Api")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Debug")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+95656148907073230909f74fe684f72bf6945a0d")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+23f06d28bbfe62b3f4e1f6c50cc8a27e7dfe75d7")]
 [assembly: System.Reflection.AssemblyProductAttribute("Accountbook.Api")]
 [assembly: System.Reflection.AssemblyTitleAttribute("Accountbook.Api")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]

@@ -90,7 +90,7 @@ export default function App() {
   const toggleStatus = async (a: Account) => { const response = await fetch(`${api}/chart-of-accounts/${a.id}/status`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ status: a.status === 'Active' ? 'Inactive' : 'Active', reason: 'Updated from workspace' }) }); if (!response.ok) notify((await response.json()).message); else { notify(`Account ${a.status === 'Active' ? 'deactivated' : 'activated'}`); load() } }
   const postJournal = async (e: FormEvent) => { e.preventDefault(); const lines = journal.lines.map(x => ({ accountId: x.accountId, debit: Number(x.debit || 0), credit: Number(x.credit || 0), memo: null })); const response = await fetch(`${api}/journal-entries`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ...journal, lines }) }); if (!response.ok) { notify((await response.json()).message); return } notify('Balanced journal draft created'); setJournal({ date: new Date().toISOString().slice(0, 10), reference: '', description: '', lines: [{ accountId: '', debit: '', credit: '' }, { accountId: '', debit: '', credit: '' }] }); load() }
   const handleGroupClick = (groupName: string) => {
-    setOpenGroups(curr => curr.includes(groupName) ? curr.filter(x => x !== groupName) : [...curr, groupName]);
+    setOpenGroups(curr => curr.includes(groupName) ? [] : [groupName]);
     setPage(`${groupName}.Summary`);
   }
   const activeEntity = entities.find(x => x.id === activeEntityId)
