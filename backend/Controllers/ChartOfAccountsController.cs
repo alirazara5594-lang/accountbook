@@ -15,5 +15,6 @@ public class ChartOfAccountsController(AccountingStore store) : ControllerBase
     [HttpPost] public IActionResult Create(AccountRequest request) { try { var a = store.Create(request); return CreatedAtAction(nameof(GetOne), new { id = a.Id }, a); } catch (Exception e) { return BadRequest(new { message = e.Message }); } }
     [HttpPut("{id:guid}")] public IActionResult Update(Guid id, AccountRequest request) => store.Update(id, request, out var error) ? Ok(store.Find(id)) : BadRequest(new { message = error });
     [HttpPatch("{id:guid}/status")] public IActionResult Status(Guid id, StatusRequest request) => store.SetStatus(id, request, out var error) ? Ok(store.Find(id)) : BadRequest(new { message = error });
+    [HttpDelete("clear-all")] public IActionResult ClearAll() => store.ClearAllAccounts(out var error) ? Ok(new { message = "All accounts cleared successfully." }) : BadRequest(new { message = error });
     [HttpDelete("{id:guid}")] public IActionResult Delete(Guid id) => store.Delete(id, out var error) ? NoContent() : BadRequest(new { message = error });
 }

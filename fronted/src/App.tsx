@@ -154,7 +154,16 @@ export default function App() {
   {activeView === 'dashboard' && <Dashboard stats={stats} entries={entries} accounts={accounts} setPage={setPage} />}
   {activeView === 'module-summary' && <ModuleSummary moduleName={group} accounts={accounts} entries={entries} setPage={setPage} openCreateAccount={openCreate} />}
   {activeView === 'customers' && <CustomerManagement entities={entities} activeEntityId={activeEntityId} notify={notify} />}
-  {activeView === 'accounts' && <ChartOfAccounts accounts={accounts} edit={openEdit} status={toggleStatus} openCreate={openCreate} setParentIdForNew={(parentId) => setForm(f => ({ ...f, parentId }))} />}
+  {activeView === 'accounts' && (
+    <div>
+      <div style={{ padding: '28px 32px', background: '#fffbeb', border: '1px solid #fef3c7', borderRadius: '14px', marginBottom: '24px', textAlign: 'center', boxShadow: '0 1px 3px rgba(0,0,0,0.05)' }}>
+        <span style={{ fontSize: 40, display: 'block', marginBottom: 8 }}>🏗</span>
+        <h3 style={{ fontSize: 20, fontWeight: 700, color: '#92400e', margin: '0 0 6px 0' }}>Chart of Accounts — Under Construction</h3>
+        <p style={{ fontSize: 13, color: '#b45309', margin: 0, maxWidth: 540, marginLeft: 'auto', marginRight: 'auto' }}>All previous pre-seeded accounts have been cleared. This module is under construction and ready to be re-developed later on according to your specifications.</p>
+      </div>
+      <ChartOfAccounts accounts={accounts} edit={openEdit} status={toggleStatus} openCreate={openCreate} setParentIdForNew={(parentId) => setForm(f => ({ ...f, parentId }))} reloadAccounts={load} />
+    </div>
+  )}
   {activeView === 'journal' && <Journals journal={journal} setJournal={setJournal} accounts={accounts.filter(a => a.status === 'Active')} entries={entries} post={postJournal} />}
   {activeView === 'intercompany' && <Intercompany allocations={allocations} reload={load} notify={notify} />}
   {activeView === 'settings' && settingsView === 'home' && <SettingsHome openEntities={() => setSettingsView('entities')} />}
