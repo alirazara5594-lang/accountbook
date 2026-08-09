@@ -15,6 +15,15 @@ import { EstimatesAndQuotes } from './EstimatesAndQuotes'
 import { ChartOfAccounts } from './ChartOfAccounts'
 import { FinancialReports } from './FinancialReports'
 import { ModuleSummary } from './ModuleSummary'
+import { BankAccountsView } from './BankAccountsView'
+import { CashAccountsView } from './CashAccountsView'
+import { BankConnectionView } from './BankConnectionView'
+import { BankImportView } from './BankImportView'
+import { BankTransactionsView } from './BankTransactionsView'
+import { BankReconciliationView } from './BankReconciliationView'
+import { FundTransfersView } from './FundTransfersView'
+import { CashFlowView } from './CashFlowView'
+import { VoucherManagement } from './VoucherManagement'
 
 type AccountType = 'Asset' | 'Liability' | 'Equity' | 'Revenue' | 'Expense' | 'ContraAsset' | 'ContraLiability' | 'ContraEquity' | 'ContraRevenue' | 'ContraExpense'
 type Account = { id: string; code: string; name: string; type: AccountType; parentId?: string; status: 'Active' | 'Inactive'; openingBalance: number; reconciliationEnabled: boolean; ifrsTag?: string; gaapTag?: string; updatedAt: string }
@@ -30,7 +39,7 @@ const NAVIGATION = [
   { name: 'Overview', icon: '▦', items: ['Dashboard'] },
   { name: 'Sales & Customers', icon: '☖', items: ['Customers', 'Products & Services', 'Sales Workspace', 'Estimates & Quotes', 'Sales Orders', 'Credit Notes', 'Customer Payments', 'Customer Statements', 'Sales Reports'] },
   { name: 'Procurement', icon: '⇡', items: ['Vendors', 'Procurement Workspace', 'Bills', 'Debit Notes', 'Expense Claims', 'Vendor Payments', 'Vendor Statements', 'Payables Aging', 'Purchase Reports'] },
-  { name: 'Banking & Payments', icon: '🏛', items: ['Bank Accounts', 'Cash Accounts', 'Transactions', 'Bank Reconciliation', 'Payments', 'Receipts', 'Transfers', 'Cash Flow'] },
+  { name: 'Banking & Payments', icon: '🏛', items: ['Bank Accounts', 'Cash Accounts', 'Bank Connection', 'Bank Import', 'Transactions', 'Bank Reconciliation', 'Voucher Management', 'Fund Transfers', 'Cash Flow Statements'] },
   { name: 'Accounting', icon: '⌘', items: ['Chart of Accounts', 'Journal Entries', 'Fixed Assets', 'General Ledger', 'Accounts Receivable', 'Accounts Payable', 'Tax Accounting', 'Budgets', 'Financial Reports', 'Period Closing', 'Audit Trail'] },
   { name: 'Assets & Inventory', icon: '📦', items: ['Assets & Inventory Workspace', 'Depreciation Schedule', 'Valuation Reports'] },
   { name: 'Payroll & HR', icon: '👥', items: ['Employees', 'Attendance', 'Leave', 'Payroll', 'Salary', 'Loans & Advances', 'HR Reports'] },
@@ -106,6 +115,15 @@ export default function App() {
     'Procurement.Vendors': 'vendors',
     'Procurement.Procurement Workspace': 'procurement-workspace',
     'Banking & Payments.Summary': 'module-summary',
+    'Banking & Payments.Bank Accounts': 'bank-accounts',
+    'Banking & Payments.Cash Accounts': 'cash-accounts',
+    'Banking & Payments.Bank Connection': 'bank-connection',
+    'Banking & Payments.Bank Import': 'bank-import',
+    'Banking & Payments.Transactions': 'bank-transactions',
+    'Banking & Payments.Bank Reconciliation': 'bank-reconciliation',
+    'Banking & Payments.Voucher Management': 'vouchers-workspace',
+    'Banking & Payments.Fund Transfers': 'fund-transfers',
+    'Banking & Payments.Cash Flow Statements': 'cash-flow-statements',
     'Accounting.Summary': 'module-summary',
     'Accounting.Chart of Accounts': 'accounts',
     'Accounting.Journal Entries': 'journal',
@@ -155,15 +173,24 @@ export default function App() {
   {activeView === 'module-summary' && <ModuleSummary moduleName={group} accounts={accounts} entries={entries} setPage={setPage} openCreateAccount={openCreate} />}
   {activeView === 'customers' && <CustomerManagement entities={entities} activeEntityId={activeEntityId} notify={notify} />}
   {activeView === 'accounts' && (
-    <div>
-      <div style={{ padding: '28px 32px', background: '#fffbeb', border: '1px solid #fef3c7', borderRadius: '14px', marginBottom: '24px', textAlign: 'center', boxShadow: '0 1px 3px rgba(0,0,0,0.05)' }}>
-        <span style={{ fontSize: 40, display: 'block', marginBottom: 8 }}>🏗</span>
-        <h3 style={{ fontSize: 20, fontWeight: 700, color: '#92400e', margin: '0 0 6px 0' }}>Chart of Accounts — Under Construction</h3>
-        <p style={{ fontSize: 13, color: '#b45309', margin: 0, maxWidth: 540, marginLeft: 'auto', marginRight: 'auto' }}>All previous pre-seeded accounts have been cleared. This module is under construction and ready to be re-developed later on according to your specifications.</p>
-      </div>
-      <ChartOfAccounts accounts={accounts} edit={openEdit} status={toggleStatus} openCreate={openCreate} setParentIdForNew={(parentId) => setForm(f => ({ ...f, parentId }))} reloadAccounts={load} />
+    <div style={{ padding: '80px 20px', textAlign: 'center', color: '#475569', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
+      <span style={{ fontSize: 72, display: 'block', marginBottom: 20 }}>🏗</span>
+      <h2 style={{ fontSize: 24, fontWeight: 700, color: '#1e293b', marginBottom: 12 }}>Chart of Accounts — Under Construction</h2>
+      <p style={{ fontSize: 14, color: '#64748b', maxWidth: 500, margin: '0 auto', lineHeight: 1.6 }}>
+        This page has been completely cleared. We will re-develop the Chart of Accounts module later on according to your exact specifications.
+      </p>
+      {false && <ChartOfAccounts accounts={accounts} edit={openEdit} status={toggleStatus} openCreate={openCreate} setParentIdForNew={(parentId) => setForm(f => ({ ...f, parentId }))} reloadAccounts={load} />}
     </div>
   )}
+  {activeView.startsWith('vouchers') && <VoucherManagement subView={module} activeEntityId={activeEntityId} entities={entities} />}
+  {activeView === 'bank-accounts' && <BankAccountsView activeEntityId={activeEntityId} entities={entities} />}
+  {activeView === 'cash-accounts' && <CashAccountsView activeEntityId={activeEntityId} entities={entities} />}
+  {activeView === 'bank-connection' && <BankConnectionView activeEntityId={activeEntityId} entities={entities} />}
+  {activeView === 'bank-import' && <BankImportView activeEntityId={activeEntityId} entities={entities} />}
+  {activeView === 'bank-transactions' && <BankTransactionsView activeEntityId={activeEntityId} entities={entities} />}
+  {activeView === 'bank-reconciliation' && <BankReconciliationView activeEntityId={activeEntityId} entities={entities} />}
+  {activeView === 'fund-transfers' && <FundTransfersView activeEntityId={activeEntityId} entities={entities} />}
+  {activeView === 'cash-flow-statements' && <CashFlowView activeEntityId={activeEntityId} entities={entities} />}
   {activeView === 'journal' && <Journals journal={journal} setJournal={setJournal} accounts={accounts.filter(a => a.status === 'Active')} entries={entries} post={postJournal} />}
   {activeView === 'intercompany' && <Intercompany allocations={allocations} reload={load} notify={notify} />}
   {activeView === 'settings' && settingsView === 'home' && <SettingsHome openEntities={() => setSettingsView('entities')} />}

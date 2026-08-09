@@ -1,0 +1,262 @@
+import React, { useState, useMemo } from 'react';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { ArrowDownLeft, Search, Plus } from 'lucide-react';
+import type { Entity } from './EntitySettings';
+
+type PaymentMode = 'ACH' | 'Wire Transfer' | 'Cheque / Pay Order' | 'Credit Card' | 'Payment Gateway' | 'Direct Deposit';
+
+export interface CustomerReceiptRecord {
+  id: string;
+  date: string;
+  reference: string;
+  customerName: string;
+  bankAccount: string;
+  paymentMode: PaymentMode;
+  amount: number;
+  currency: string;
+  status: 'Completed' | 'Pending Clearance';
+}
+
+interface CustomerReceiptsViewProps {
+  activeEntityId: string;
+  entities: Entity[];
+}
+
+const initialCustomerReceipts: CustomerReceiptRecord[] = [
+  {
+    id: 'cr-1',
+    date: '2026-08-08',
+    reference: 'REC-1092',
+    customerName: 'Apex Global Logistics USA',
+    bankAccount: 'Standard Chartered (USD)',
+    paymentMode: 'ACH',
+    amount: 14800,
+    currency: 'USD',
+    status: 'Completed'
+  },
+  {
+    id: 'cr-2',
+    date: '2026-08-07',
+    reference: 'REC-1093',
+    customerName: 'Crescent Textile Mills Pakistan',
+    bankAccount: 'Habib Bank Limited (HBL)',
+    paymentMode: 'Wire Transfer',
+    amount: 1250000,
+    currency: 'PKR',
+    status: 'Completed'
+  }
+];
+
+export const CustomerReceiptsView: React.FC<CustomerReceiptsViewProps> = ({ activeEntityId, entities }) => {
+  const currentEntity = entities.find(e => e.id === activeEntityId);
+  const [receipts, setReceipts] = useState<CustomerReceiptRecord[]>(initialCustomerReceipts);
+  const [customers, setCustomers] = useState<any[]>([]);
+  const [query, setQuery] = useState('');
+  const [isModalOpen, setIsModalOpen] = useState(false);
+
+  const defaultCustomerName = 'Apex Global Logistics USA';
+
+  const [form, setForm] = useState({
+    customerName: defaultCustomerName,
+    bankAccount: 'Habib Bank Limited (HBL)',
+    paymentMode: 'Wire Transfer' as PaymentMode,
+    amount: '',
+    currency: 'PKR',
+    reference: `REC-${Math.floor(1000 + Math.random() * 9000)}`
+  });
+
+  React.useEffect(() => {
+    fetch('http://localhost:5124/api/v1/customers')
+      .then(res => res.ok ? res.json() : [])
+      .then(data => {
+        if (Array.isArray(data) && data.length > 0) {
+          setCustomers(data);
+          setForm(f => ({ ...f, customerName: data[0].name }));
+        }
+      })
+      .catch(() => {});
+  }, [activeEntityId]);
+
+  const formatCurrency = (val: number, currency: string) => {
+    return new Intl.NumberFormat('en-US', { style: 'currency', currency, maximumFractionDigits: 2 }).format(val);
+  };
+
+  const filtered = useMemo(() => {
+    return receipts.filter(r => {
+      if (query.trim()) {
+        const lower = query.toLowerCase();
+        const matchesCustomer = r.customerName.toLowerCase().includes(lower);
+        const matchesRef = r.reference.toLowerCase().includes(lower);
+        if (!matchesCustomer && !matchesRef) return false;
+      }
+      return true;
+    });
+  }, [receipts, query]);
+
+  const handleCreateReceipt = (e: React.FormEvent) => {
+    e.preventDefault();
+    const amt = parseFloat(form.amount);
+    if (isNaN(amt) || amt <= 0 || !form.customerName) return;
+
+    setReceipts(prev => [{
+      id: `cr-${Date.now()}`,
+      date: new Date().toISOString().slice(0, 10),
+      reference: form.reference,
+      customerName: form.customerName,
+      bankAccount: form.bankAccount,
+      paymentMode: form.paymentMode,
+      amount: amt,
+      currency: form.currency,
+      status: 'Completed'
+    }, ...prev]);
+
+    setIsModalOpen(false);
+  };
+
+  return (
+    <div className="space-y-6 font-sans text-slate-800 p-2 md:p-6">
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 border-b border-slate-200 pb-4">
+        <div>
+          <div className="flex items-center gap-2 text-xs text-slate-500 uppercase tracking-wider font-semibold">
+            <ArrowDownLeft className="w-4 h-4 text-emerald-600" /> Banking & Payments
+          </div>
+          <h1 className="text-2xl font-bold text-slate-900 tracking-tight mt-1">Customer Receipts</h1>
+          <p className="text-xs text-slate-500">
+            Incoming customer collections via ACH, Wire Transfer, Cheque, and Payment Gateway for {currentEntity?.name || 'Active Entity'}.
+          </p>
+        </div>
+
+        <Button
+          size="sm"
+          onClick={() => setIsModalOpen(true)}
+          className="h-9 px-4 gap-1.5 text-xs font-semibold text-white bg-[#143e2b] hover:bg-[#0f3222] shadow-xs"
+        >
+          <Plus className="w-4 h-4" /> Record Customer Receipt
+        </Button>
+      </div>
+
+      <div className="flex items-center justify-between p-3 bg-slate-50 border border-slate-200 rounded-xl">
+        <div className="relative w-72">
+          <Search className="absolute left-3 top-2.5 h-4 w-4 text-slate-400" />
+          <Input
+            placeholder="Search customer name, reference..."
+            value={query}
+            onChange={e => setQuery(e.target.value)}
+            className="pl-9 h-9 bg-white border border-slate-200 rounded-lg text-xs"
+          />
+        </div>
+      </div>
+
+      <div className="bg-white border border-slate-200 rounded-xl overflow-hidden shadow-xs">
+        <Table>
+          <TableHeader className="bg-slate-50 border-b border-slate-200">
+            <TableRow>
+              <TableHead className="w-28 text-[11px] font-bold text-slate-500 uppercase tracking-wider pl-4">DATE</TableHead>
+              <TableHead className="w-32 text-[11px] font-bold text-slate-500 uppercase tracking-wider">REFERENCE</TableHead>
+              <TableHead className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">CUSTOMER NAME</TableHead>
+              <TableHead className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">MODE OF PAYMENT</TableHead>
+              <TableHead className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">DEPOSITED INTO</TableHead>
+              <TableHead className="w-36 text-right text-[11px] font-bold text-slate-500 uppercase tracking-wider pr-4">AMOUNT</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody className="divide-y divide-slate-100">
+            {filtered.map(r => (
+              <TableRow key={r.id} className="hover:bg-slate-50/80">
+                <TableCell className="py-3.5 pl-4 font-mono text-xs text-slate-600">{r.date}</TableCell>
+                <TableCell className="py-3.5 font-mono text-xs font-bold text-slate-800">{r.reference}</TableCell>
+                <TableCell className="py-3.5 font-bold text-xs text-slate-800">{r.customerName}</TableCell>
+                <TableCell className="py-3.5">
+                  <span className="inline-flex items-center px-2.5 py-0.5 rounded-md text-[11px] font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200">
+                    {r.paymentMode}
+                  </span>
+                </TableCell>
+                <TableCell className="py-3.5 text-xs text-slate-600 font-medium">{r.bankAccount}</TableCell>
+                <TableCell className="py-3.5 text-right font-mono text-xs font-bold text-emerald-600 pr-4">
+                  + {formatCurrency(r.amount, r.currency)}
+                </TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
+      </div>
+
+      {isModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 backdrop-blur-xs p-4">
+          <div className="bg-white rounded-2xl border border-slate-200 p-6 w-full max-w-lg shadow-xl space-y-4">
+            <div className="flex justify-between items-center border-b border-slate-200 pb-3">
+              <h3 className="text-base font-bold text-slate-900">Record Customer Receipt</h3>
+              <button onClick={() => setIsModalOpen(false)} className="text-slate-400 hover:text-slate-600 text-lg font-bold">×</button>
+            </div>
+            <form onSubmit={handleCreateReceipt} className="space-y-4">
+              <div>
+                <label className="text-xs font-semibold text-slate-700 block mb-1">Select Customer (from Customer Management)</label>
+                <select
+                  required
+                  value={form.customerName}
+                  onChange={e => setForm({ ...form, customerName: e.target.value })}
+                  className="w-full h-9 px-3 bg-white border border-slate-200 rounded-lg text-xs font-semibold text-slate-800 outline-none"
+                >
+                  {customers.length > 0 ? (
+                    customers.map(c => (
+                      <option key={c.id} value={c.name}>
+                        {c.customerNumber ? `${c.customerNumber} — ${c.name}` : c.name}
+                      </option>
+                    ))
+                  ) : (
+                    <>
+                      <option value="Apex Global Logistics USA">C-1001 — Apex Global Logistics USA</option>
+                      <option value="Crescent Textile Mills Pakistan">C-1002 — Crescent Textile Mills Pakistan</option>
+                      <option value="Gul Ahmed Energy Limited">C-1003 — Gul Ahmed Energy Limited</option>
+                      <option value="Indus Motor Company">C-1004 — Indus Motor Company</option>
+                    </>
+                  )}
+                </select>
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="text-xs font-semibold text-slate-700 block mb-1">Mode of Payment</label>
+                  <select value={form.paymentMode} onChange={e => setForm({ ...form, paymentMode: e.target.value as PaymentMode })} className="w-full h-9 px-3 bg-white border border-slate-200 rounded-lg text-xs font-semibold">
+                    <option value="Wire Transfer">Wire Transfer</option>
+                    <option value="ACH">ACH Electronic</option>
+                    <option value="Cheque / Pay Order">Cheque / Pay Order</option>
+                    <option value="Credit Card">Credit Card</option>
+                    <option value="Payment Gateway">Payment Gateway</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="text-xs font-semibold text-slate-700 block mb-1">Deposited Into Account</label>
+                  <select value={form.bankAccount} onChange={e => setForm({ ...form, bankAccount: e.target.value })} className="w-full h-9 px-3 bg-white border border-slate-200 rounded-lg text-xs">
+                    <option value="Habib Bank Limited (HBL)">Habib Bank Limited (HBL)</option>
+                    <option value="Standard Chartered (USD)">Standard Chartered (USD)</option>
+                    <option value="Meezan Bank Limited">Meezan Bank Limited</option>
+                  </select>
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="text-xs font-semibold text-slate-700 block mb-1">Amount Received</label>
+                  <Input required type="number" placeholder="0.00" value={form.amount} onChange={e => setForm({ ...form, amount: e.target.value })} className="h-9 text-xs font-mono" />
+                </div>
+                <div>
+                  <label className="text-xs font-semibold text-slate-700 block mb-1">Currency</label>
+                  <select value={form.currency} onChange={e => setForm({ ...form, currency: e.target.value })} className="w-full h-9 px-3 bg-white border border-slate-200 rounded-lg text-xs font-mono">
+                    <option value="PKR">PKR</option>
+                    <option value="USD">USD</option>
+                    <option value="EUR">EUR</option>
+                    <option value="GBP">GBP</option>
+                  </select>
+                </div>
+              </div>
+              <div className="flex justify-end gap-2 pt-2">
+                <Button type="button" variant="outline" size="sm" onClick={() => setIsModalOpen(false)}>Cancel</Button>
+                <Button type="submit" size="sm" className="bg-[#143e2b] text-white">Record Receipt</Button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+};
