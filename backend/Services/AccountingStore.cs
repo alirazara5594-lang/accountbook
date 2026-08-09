@@ -15,11 +15,12 @@ public class AccountingStore
     private readonly List<IntercompanyAllocation> _intercompanyAllocations = [];
     private readonly List<Company> _companies = [];
     private readonly List<Customer> _customers = [];
+    private readonly List<Quotation> _quotations = [];
     private readonly Dictionary<Guid, List<AuditItem>> _history = [];
     private readonly object _lock = new();
 
     private readonly IDbContextFactory<AccountingDbContext>? _dbFactory;
-    private sealed record StoredState(List<Account> Accounts, List<JournalEntry> Entries, Dictionary<Guid, List<AuditItem>> History, List<JournalTemplate> Templates, List<RecurringJournalEntry> RecurringEntries, List<JournalEvent> Events, List<IntercompanyAllocation>? IntercompanyAllocations = null, List<Company>? Companies = null, List<Customer>? Customers = null);
+    private sealed record StoredState(List<Account> Accounts, List<JournalEntry> Entries, Dictionary<Guid, List<AuditItem>> History, List<JournalTemplate> Templates, List<RecurringJournalEntry> RecurringEntries, List<JournalEvent> Events, List<IntercompanyAllocation>? IntercompanyAllocations = null, List<Company>? Companies = null, List<Customer>? Customers = null, List<Quotation>? Quotations = null);
 
     public AccountingStore(IDbContextFactory<AccountingDbContext>? dbFactory = null)
     {
@@ -27,11 +28,33 @@ public class AccountingStore
         if (LoadState()) return;
         var parentEntity = new Company { Name = "Acme Holdings", Code = "ACME", Type = EntityType.Parent };
         _companies.AddRange([parentEntity, new Company { Name = "Acme Services", Code = "ASV", ParentId = parentEntity.Id }, new Company { Name = "Acme Trading", Code = "ATD", ParentId = parentEntity.Id }]);
+        var seedCustomer = new Customer { CustomerNumber = "CUST-0001", Name = "Global Tech Ltd", Email = "billing@globaltech.com", Phone = "+1 (555) 234-5678", TaxId = "US-987654321", AddressLine1 = "100 Innovation Way", City = "San Francisco", State = "CA", PostalCode = "94105", Country = "United States", CurrencyCode = "USD", CreditLimit = 50000m, PaymentTermsDays = 30, CompanyId = parentEntity.Id };
         _customers.AddRange([
-            new Customer { CustomerNumber = "CUST-0001", Name = "Global Tech Ltd", Email = "billing@globaltech.com", Phone = "+1 (555) 234-5678", TaxId = "US-987654321", AddressLine1 = "100 Innovation Way", City = "San Francisco", State = "CA", PostalCode = "94105", Country = "United States", CurrencyCode = "USD", CreditLimit = 50000m, PaymentTermsDays = 30, CompanyId = parentEntity.Id },
+            seedCustomer,
             new Customer { CustomerNumber = "CUST-0002", Name = "Apex Retail Solutions", Email = "accounts@apexretail.com", Phone = "+1 (555) 876-5432", TaxId = "US-123456789", AddressLine1 = "450 Market Street", City = "New York", State = "NY", PostalCode = "10001", Country = "United States", CurrencyCode = "USD", CreditLimit = 25000m, PaymentTermsDays = 15 }
         ]);
+        _quotations.Add(new Quotation
+        {
+            QuoteNumber = "EST-0001",
+            CustomerId = seedCustomer.Id,
+            CustomerName = seedCustomer.Name,
+            CompanyId = parentEntity.Id,
+            Date = DateOnly.FromDateTime(DateTime.Today),
+            ExpiryDate = DateOnly.FromDateTime(DateTime.Today.AddDays(30)),
+            CurrencyCode = "USD",
+            DiscountType = DiscountType.Percentage,
+            DiscountValue = 10m,
+            TaxRatePercent = 15m,
+            Notes = "Thank you for your business. Quote is valid for 30 days.",
+            TermsAndConditions = "50% upfront deposit required upon acceptance.",
+            Status = QuotationStatus.Sent,
+            Items = [
+                new QuotationItem { Description = "Cloud ERP Accounting Suite Implementation", Quantity = 1m, UnitPrice = 5000m },
+                new QuotationItem { Description = "Custom Multi-Company Reporting Module", Quantity = 2m, UnitPrice = 1200m }
+            ]
+        });
         Seed("1000", "Assets", AccountType.Asset, null);
+
 
         var cash = Seed("1100", "Cash & Bank", AccountType.Asset, _accounts[0].Id, true);
         Seed("1110", "Main Bank Account", AccountType.Asset, cash.Id, true, 28450m);
@@ -58,8 +81,124 @@ public class AccountingStore
     public IReadOnlyList<IntercompanyAllocation> IntercompanyAllocations => _intercompanyAllocations;
     public IReadOnlyList<Company> Companies => _companies;
     public IReadOnlyList<Customer> Customers => _customers;
+    public IReadOnlyList<Quotation> Quotations => _quotations;
 
     public Customer? FindCustomer(Guid id) => _customers.FirstOrDefault(x => x.Id == id);
+    public Quotation? FindQuotation(Guid id) => _quotations.FirstOrDefault(x => x.Id == id);
+
+    public string NextQuotationNumber()
+    {
+        var numbers = _quotations
+            .Select(q => q.QuoteNumber)
+            .Where(n => n.StartsWith("EST-") && int.TryParse(n[4..], out _))
+            .Select(n => int.Parse(n[4..]))
+            .DefaultIfEmpty(0);
+        return $"EST-{(numbers.Max() + 1):D4}";
+    }
+
+    public bool CreateQuotation(QuotationRequest request, out Quotation? quotation, out string? error)
+    {
+        quotation = null; error = null;
+        var customer = FindCustomer(request.CustomerId);
+        if (customer is null) { error = "Customer not found."; return false; }
+        if (request.Items.Count == 0 || request.Items.Any(x => string.IsNullOrWhiteSpace(x.Description) || x.Quantity <= 0 || x.UnitPrice < 0))
+        { error = "Quotation must have valid items with description, quantity > 0, and non-negative unit price."; return false; }
+
+        lock (_lock)
+        {
+            quotation = new Quotation
+            {
+                QuoteNumber = string.IsNullOrWhiteSpace(request.QuoteNumber) ? NextQuotationNumber() : request.QuoteNumber.Trim(),
+                CustomerId = request.CustomerId,
+                CustomerName = customer.Name,
+                CompanyId = request.CompanyId ?? customer.CompanyId,
+                Date = request.Date,
+                ExpiryDate = request.ExpiryDate,
+                CurrencyCode = string.IsNullOrWhiteSpace(request.CurrencyCode) ? customer.CurrencyCode : request.CurrencyCode.Trim().ToUpperInvariant(),
+                DiscountType = request.DiscountType,
+                DiscountValue = request.DiscountValue < 0 ? 0m : request.DiscountValue,
+                TaxRatePercent = request.TaxRatePercent < 0 ? 0m : request.TaxRatePercent,
+                Notes = request.Notes?.Trim(),
+                TermsAndConditions = request.TermsAndConditions?.Trim(),
+                Status = QuotationStatus.Draft,
+                Items = request.Items.Select(i => new QuotationItem
+                {
+                    Description = i.Description.Trim(),
+                    Quantity = i.Quantity,
+                    UnitPrice = i.UnitPrice
+                }).ToList()
+            };
+            _quotations.Add(quotation);
+            Persist();
+            return true;
+        }
+    }
+
+    public bool UpdateQuotation(Guid id, QuotationRequest request, out Quotation? quotation, out string? error)
+    {
+        quotation = null; error = null;
+        var customer = FindCustomer(request.CustomerId);
+        if (customer is null) { error = "Customer not found."; return false; }
+        if (request.Items.Count == 0 || request.Items.Any(x => string.IsNullOrWhiteSpace(x.Description) || x.Quantity <= 0 || x.UnitPrice < 0))
+        { error = "Quotation must have valid items with description, quantity > 0, and non-negative unit price."; return false; }
+
+        lock (_lock)
+        {
+            quotation = FindQuotation(id);
+            if (quotation is null) { error = "Quotation not found."; return false; }
+            if (quotation.Status == QuotationStatus.Converted) { error = "Converted quotations cannot be edited."; return false; }
+
+            quotation.QuoteNumber = string.IsNullOrWhiteSpace(request.QuoteNumber) ? quotation.QuoteNumber : request.QuoteNumber.Trim();
+            quotation.CustomerId = request.CustomerId;
+            quotation.CustomerName = customer.Name;
+            quotation.CompanyId = request.CompanyId ?? customer.CompanyId;
+            quotation.Date = request.Date;
+            quotation.ExpiryDate = request.ExpiryDate;
+            quotation.CurrencyCode = string.IsNullOrWhiteSpace(request.CurrencyCode) ? customer.CurrencyCode : request.CurrencyCode.Trim().ToUpperInvariant();
+            quotation.DiscountType = request.DiscountType;
+            quotation.DiscountValue = request.DiscountValue < 0 ? 0m : request.DiscountValue;
+            quotation.TaxRatePercent = request.TaxRatePercent < 0 ? 0m : request.TaxRatePercent;
+            quotation.Notes = request.Notes?.Trim();
+            quotation.TermsAndConditions = request.TermsAndConditions?.Trim();
+            quotation.Items = request.Items.Select(i => new QuotationItem
+            {
+                Description = i.Description.Trim(),
+                Quantity = i.Quantity,
+                UnitPrice = i.UnitPrice
+            }).ToList();
+            quotation.UpdatedAt = DateTime.UtcNow;
+            Persist();
+            return true;
+        }
+    }
+
+    public bool SetQuotationStatus(Guid id, QuotationStatus status, out string? error)
+    {
+        error = null;
+        lock (_lock)
+        {
+            var quotation = FindQuotation(id);
+            if (quotation is null) { error = "Quotation not found."; return false; }
+            quotation.Status = status;
+            quotation.UpdatedAt = DateTime.UtcNow;
+            Persist();
+            return true;
+        }
+    }
+
+    public bool DeleteQuotation(Guid id, out string? error)
+    {
+        error = null;
+        lock (_lock)
+        {
+            var quotation = FindQuotation(id);
+            if (quotation is null) { error = "Quotation not found."; return false; }
+            _quotations.Remove(quotation);
+            Persist();
+            return true;
+        }
+    }
+
 
     public string NextCustomerNumber()
     {
@@ -328,7 +467,7 @@ public class AccountingStore
         if (snapshot is null) return false;
         var state = JsonSerializer.Deserialize<StoredState>(snapshot.Json);
         if (state is null) return false;
-        _accounts.AddRange(state.Accounts); _entries.AddRange(state.Entries); _templates.AddRange(state.Templates); _recurringEntries.AddRange(state.RecurringEntries); _journalEvents.AddRange(state.Events); _intercompanyAllocations.AddRange(state.IntercompanyAllocations ?? []); _companies.AddRange(state.Companies ?? [new Company { Name = "Acme Holdings", Code = "ACME", Type = EntityType.Parent }, new Company { Name = "Acme Services", Code = "ASV" }, new Company { Name = "Acme Trading", Code = "ATD" }]); _customers.AddRange(state.Customers ?? []);
+        _accounts.AddRange(state.Accounts); _entries.AddRange(state.Entries); _templates.AddRange(state.Templates); _recurringEntries.AddRange(state.RecurringEntries); _journalEvents.AddRange(state.Events); _intercompanyAllocations.AddRange(state.IntercompanyAllocations ?? []); _companies.AddRange(state.Companies ?? [new Company { Name = "Acme Holdings", Code = "ACME", Type = EntityType.Parent }, new Company { Name = "Acme Services", Code = "ASV" }, new Company { Name = "Acme Trading", Code = "ATD" }]); _customers.AddRange(state.Customers ?? []); _quotations.AddRange(state.Quotations ?? []);
         foreach (var (id, history) in state.History) _history[id] = history;
         return true;
     }
@@ -336,7 +475,7 @@ public class AccountingStore
     {
         if (_dbFactory is null) return;
         using var db = _dbFactory.CreateDbContext();
-        var json = JsonSerializer.Serialize(new StoredState(_accounts, _entries, _history, _templates, _recurringEntries, _journalEvents, _intercompanyAllocations, _companies, _customers));
+        var json = JsonSerializer.Serialize(new StoredState(_accounts, _entries, _history, _templates, _recurringEntries, _journalEvents, _intercompanyAllocations, _companies, _customers, _quotations));
         var snapshot = db.AccountingStateSnapshots.Find(1);
         if (snapshot is null) db.AccountingStateSnapshots.Add(new AccountingStateSnapshot { Id = 1, Json = json, UpdatedAt = DateTime.UtcNow });
         else { snapshot.Json = json; snapshot.UpdatedAt = DateTime.UtcNow; }

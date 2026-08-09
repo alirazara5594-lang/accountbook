@@ -4,6 +4,7 @@ import './App.css'
 import Intercompany from './Intercompany'
 import EntitySettings, { type Entity } from './EntitySettings'
 import CustomerManagement from './CustomerManagement'
+import EstimatesQuotations from './EstimatesQuotations'
 
 type AccountType = 'Asset' | 'Liability' | 'Equity' | 'Revenue' | 'Expense' | 'ContraAsset' | 'ContraLiability' | 'ContraEquity' | 'ContraRevenue' | 'ContraExpense'
 type Account = { id: string; code: string; name: string; type: AccountType; parentId?: string; status: 'Active' | 'Inactive'; openingBalance: number; reconciliationEnabled: boolean; ifrsTag?: string; updatedAt: string }
@@ -16,7 +17,7 @@ const blank = { code: '', name: '', type: 'Asset' as AccountType, parentId: '', 
 function money(value: number) { return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(value) }
 
 export default function App() {
-  const [page, setPage] = useState<'dashboard' | 'accounts' | 'journal' | 'intercompany' | 'customers' | 'settings'>('dashboard')
+  const [page, setPage] = useState<'dashboard' | 'accounts' | 'journal' | 'intercompany' | 'customers' | 'quotations' | 'settings'>('dashboard')
   const [salesGroupOpen, setSalesGroupOpen] = useState(true)
   const [settingsView, setSettingsView] = useState<'home' | 'entities'>('home')
   const [entities, setEntities] = useState<Entity[]>([])
@@ -46,7 +47,7 @@ export default function App() {
   return <div className="app"><aside><div className="brand"><b>account</b><span>book</span></div><div className="company"><div className="avatar">AC</div><div><strong>{activeEntity?.name || 'Select entity'}</strong><small>Active accounting books</small></div></div><nav>
     {nav('dashboard','Overview','▦')}
     <div className="nav-group">
-      <button className={'nav nav-group-toggle ' + (page === 'customers' ? 'active' : '')} onClick={() => setSalesGroupOpen(!salesGroupOpen)}>
+      <button className={'nav nav-group-toggle ' + (page === 'customers' || page === 'quotations' ? 'active' : '')} onClick={() => setSalesGroupOpen(!salesGroupOpen)}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 13 }}><span>☖</span>Sales & Customers</div>
         <span className="chevron">{salesGroupOpen ? '▾' : '▸'}</span>
       </button>
@@ -55,6 +56,9 @@ export default function App() {
           <button className={'nav nav-sub ' + (page === 'customers' ? 'active' : '')} onClick={() => setPage('customers')}>
             <span className="sub-bullet">•</span>Customer Management
           </button>
+          <button className={'nav nav-sub ' + (page === 'quotations' ? 'active' : '')} onClick={() => setPage('quotations')}>
+            <span className="sub-bullet">•</span>Estimates & Quotations
+          </button>
         </div>
       )}
     </div>
@@ -62,9 +66,10 @@ export default function App() {
     {nav('journal','Journal entries','⇄')}
     {nav('intercompany','Intercompany','↔')}
     {nav('settings','Settings','⚙')}
-  </nav><div className="bottom"><div className="user"><div className="avatar small">MA</div><div><strong>Muhammad Ali</strong><small>Finance admin</small></div></div></div></aside><main><header><div><p className="eyebrow">{page === 'dashboard' ? 'FINANCE OVERVIEW' : page === 'customers' ? 'SALES & CUSTOMERS' : page === 'accounts' ? 'ACCOUNTING STRUCTURE' : page === 'journal' ? 'GENERAL LEDGER' : page === 'intercompany' ? 'GROUP ACCOUNTING' : 'SETTINGS'}</p><h1>{page === 'dashboard' ? 'Good morning, Muhammad' : page === 'customers' ? 'Customer Management' : page === 'accounts' ? 'Chart of accounts' : page === 'journal' ? 'Journal entries' : page === 'intercompany' ? 'Intercompany allocations' : settingsView === 'entities' ? 'Entity management' : 'Settings'}</h1></div><label className="entity-picker">Working in<select value={activeEntityId} onChange={e => setActiveEntityId(e.target.value)}>{entities.map(x => <option key={x.id} value={x.id}>{x.name}{x.code ? ` · ${x.code}` : ''}</option>)}</select></label>{page === 'accounts' && <button className="primary" onClick={openCreate}>＋ New account</button>}{page === 'journal' && <button className="primary" onClick={() => document.getElementById('journal-form')?.scrollIntoView({ behavior: 'smooth' })}>＋ New entry</button>}</header>
+  </nav><div className="bottom"><div className="user"><div className="avatar small">MA</div><div><strong>Muhammad Ali</strong><small>Finance admin</small></div></div></div></aside><main><header><div><p className="eyebrow">{page === 'dashboard' ? 'FINANCE OVERVIEW' : (page === 'customers' || page === 'quotations') ? 'SALES & CUSTOMERS' : page === 'accounts' ? 'ACCOUNTING STRUCTURE' : page === 'journal' ? 'GENERAL LEDGER' : page === 'intercompany' ? 'GROUP ACCOUNTING' : 'SETTINGS'}</p><h1>{page === 'dashboard' ? 'Good morning, Muhammad' : page === 'customers' ? 'Customer Management' : page === 'quotations' ? 'Estimates & Quotations' : page === 'accounts' ? 'Chart of accounts' : page === 'journal' ? 'Journal entries' : page === 'intercompany' ? 'Intercompany allocations' : settingsView === 'entities' ? 'Entity management' : 'Settings'}</h1></div><label className="entity-picker">Working in<select value={activeEntityId} onChange={e => setActiveEntityId(e.target.value)}>{entities.map(x => <option key={x.id} value={x.id}>{x.name}{x.code ? ` · ${x.code}` : ''}</option>)}</select></label>{page === 'accounts' && <button className="primary" onClick={openCreate}>＋ New account</button>}{page === 'journal' && <button className="primary" onClick={() => document.getElementById('journal-form')?.scrollIntoView({ behavior: 'smooth' })}>＋ New entry</button>}</header>
   {page === 'dashboard' && <Dashboard stats={stats} entries={entries} accounts={accounts} setPage={setPage} />}
   {page === 'customers' && <CustomerManagement entities={entities} activeEntityId={activeEntityId} notify={notify} />}
+  {page === 'quotations' && <EstimatesQuotations entities={entities} activeEntityId={activeEntityId} notify={notify} />}
   {page === 'accounts' && <Accounts accounts={accounts} filtered={filtered} children={children} query={query} setQuery={setQuery} edit={openEdit} status={toggleStatus} />}
   {page === 'journal' && <Journals journal={journal} setJournal={setJournal} accounts={accounts.filter(a => a.status === 'Active')} entries={entries} post={postJournal} />}
   {page === 'intercompany' && <Intercompany allocations={allocations} reload={load} notify={notify} />}
@@ -72,6 +77,7 @@ export default function App() {
   {page === 'settings' && settingsView === 'entities' && <EntitySettings entities={entities} selectedId={activeEntityId} select={setActiveEntityId} reload={load} notify={notify} />}
   </main>{modal && <AccountModal form={form} setForm={setForm} accounts={accounts} editing={editing} close={() => setModal(false)} save={saveAccount} />}{toast && <div className="toast">✓ {toast}</div>}</div>
 }
+
 
 function SettingsHome({ openEntities }: { openEntities: () => void }) { return <section className="settings-grid"><button className="settings-card" onClick={openEntities}><span>▦</span><div><strong>Entity management</strong><small>Create entities, manage the hierarchy, and select each entity's books.</small></div><b>→</b></button><button className="settings-card" disabled><span>⌘</span><div><strong>Chart of accounts</strong><small>Account structure and financial reporting settings.</small></div><b>→</b></button></section> }
 

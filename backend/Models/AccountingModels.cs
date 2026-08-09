@@ -155,3 +155,61 @@ public record CustomerRequest(
 
 public record CustomerStatusRequest(CustomerStatus Status, string? Reason);
 
+public enum DiscountType { FixedAmount, Percentage }
+public enum QuotationStatus { Draft, Sent, Accepted, Declined, Expired, Converted }
+
+public class QuotationItem
+{
+    public required string Description { get; set; }
+    public decimal Quantity { get; set; } = 1m;
+    public decimal UnitPrice { get; set; } = 0m;
+    public decimal Amount => Quantity * UnitPrice;
+}
+
+public class Quotation
+{
+    public Guid Id { get; init; } = Guid.NewGuid();
+    public required string QuoteNumber { get; set; }
+    public Guid CustomerId { get; set; }
+    public required string CustomerName { get; set; }
+    public Guid? CompanyId { get; set; }
+    public DateOnly Date { get; set; } = DateOnly.FromDateTime(DateTime.Today);
+    public DateOnly ExpiryDate { get; set; } = DateOnly.FromDateTime(DateTime.Today.AddDays(30));
+    public string CurrencyCode { get; set; } = "USD";
+    public List<QuotationItem> Items { get; set; } = [];
+    public DiscountType DiscountType { get; set; } = DiscountType.FixedAmount;
+    public decimal DiscountValue { get; set; } = 0m;
+    public decimal TaxRatePercent { get; set; } = 0m;
+    public string? Notes { get; set; }
+    public string? TermsAndConditions { get; set; }
+    public QuotationStatus Status { get; set; } = QuotationStatus.Draft;
+
+    public decimal Subtotal => Items.Sum(x => x.Quantity * x.UnitPrice);
+    public decimal DiscountAmount => DiscountType == DiscountType.Percentage ? Subtotal * (DiscountValue / 100m) : Math.Min(DiscountValue, Subtotal);
+    public decimal TaxableAmount => Math.Max(0m, Subtotal - DiscountAmount);
+    public decimal TaxAmount => TaxableAmount * (TaxRatePercent / 100m);
+    public decimal Total => TaxableAmount + TaxAmount;
+
+    public DateTime CreatedAt { get; init; } = DateTime.UtcNow;
+    public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
+}
+
+public record QuotationItemRequest(string Description, decimal Quantity, decimal UnitPrice);
+
+public record QuotationRequest(
+    string? QuoteNumber,
+    Guid CustomerId,
+    Guid? CompanyId,
+    DateOnly Date,
+    DateOnly ExpiryDate,
+    string? CurrencyCode,
+    List<QuotationItemRequest> Items,
+    DiscountType DiscountType,
+    decimal DiscountValue,
+    decimal TaxRatePercent,
+    string? Notes,
+    string? TermsAndConditions);
+
+public record QuotationStatusRequest(QuotationStatus Status, string? Reason);
+
+
