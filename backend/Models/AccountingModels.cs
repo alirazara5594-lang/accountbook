@@ -71,12 +71,13 @@ public class Company
     public Guid? ParentId { get; set; }
     public string Country { get; set; } = "United States";
     public string CurrencyCode { get; set; } = "USD";
+    public Guid? TaxAuthorityId { get; set; }
     public bool Active { get; set; } = true;
     public DateTime CreatedAt { get; init; } = DateTime.UtcNow;
     public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
 }
 public enum EntityType { Parent, Subsidiary, Branch, JointVenture, Associate }
-public record CompanyRequest(string Name, string? Code, string? LegalName, EntityType Type, Guid? ParentId, string Country, string CurrencyCode);
+public record CompanyRequest(string Name, string? Code, string? LegalName, EntityType Type, Guid? ParentId, string Country, string CurrencyCode, Guid? TaxAuthorityId);
 public record CompanyStatusRequest(bool Active);
 
 public enum IntercompanyChargeFrequency { OneTime, Hourly, Weekly, Monthly, Quarterly, Yearly }
@@ -155,61 +156,450 @@ public record CustomerRequest(
 
 public record CustomerStatusRequest(CustomerStatus Status, string? Reason);
 
-public enum DiscountType { FixedAmount, Percentage }
-public enum QuotationStatus { Draft, Sent, Accepted, Declined, Expired, Converted }
+public enum ProductType { Physical, Service, NonInventory, Bundle }
+public enum ProductStatus { Active, Inactive, Discontinued }
 
-public class QuotationItem
-{
-    public required string Description { get; set; }
-    public decimal Quantity { get; set; } = 1m;
-    public decimal UnitPrice { get; set; } = 0m;
-    public decimal Amount => Quantity * UnitPrice;
-}
-
-public class Quotation
+public class Product
 {
     public Guid Id { get; init; } = Guid.NewGuid();
-    public required string QuoteNumber { get; set; }
-    public Guid CustomerId { get; set; }
-    public required string CustomerName { get; set; }
-    public Guid? CompanyId { get; set; }
-    public DateOnly Date { get; set; } = DateOnly.FromDateTime(DateTime.Today);
-    public DateOnly ExpiryDate { get; set; } = DateOnly.FromDateTime(DateTime.Today.AddDays(30));
-    public string CurrencyCode { get; set; } = "USD";
-    public List<QuotationItem> Items { get; set; } = [];
-    public DiscountType DiscountType { get; set; } = DiscountType.FixedAmount;
-    public decimal DiscountValue { get; set; } = 0m;
-    public decimal TaxRatePercent { get; set; } = 0m;
-    public string? Notes { get; set; }
-    public string? TermsAndConditions { get; set; }
-    public QuotationStatus Status { get; set; } = QuotationStatus.Draft;
+    public required string Code { get; set; }
+    public required string Name { get; set; }
+    public string? Description { get; set; }
+    public ProductType Type { get; set; } = ProductType.Physical;
+    public string? Category { get; set; }
+    public string Unit { get; set; } = "Each";
+    public decimal QuantityOnHand { get; set; } = 0m;
+    public decimal UnitPrice { get; set; } = 0m;
+    public decimal CostPrice { get; set; } = 0m;
+    public Guid? TaxCodeId { get; set; }
 
-    public decimal Subtotal => Items.Sum(x => x.Quantity * x.UnitPrice);
-    public decimal DiscountAmount => DiscountType == DiscountType.Percentage ? Subtotal * (DiscountValue / 100m) : Math.Min(DiscountValue, Subtotal);
-    public decimal TaxableAmount => Math.Max(0m, Subtotal - DiscountAmount);
-    public decimal TaxAmount => TaxableAmount * (TaxRatePercent / 100m);
-    public decimal Total => TaxableAmount + TaxAmount;
+    public Guid? IncomeAccountId { get; set; }
+    public Guid? ExpenseAccountId { get; set; }
+    public Guid? AssetAccountId { get; set; }
 
+    public ProductStatus Status { get; set; } = ProductStatus.Active;
     public DateTime CreatedAt { get; init; } = DateTime.UtcNow;
     public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
 }
 
-public record QuotationItemRequest(string Description, decimal Quantity, decimal UnitPrice);
+public record ProductRequest(
+    string? Code,
+    string Name,
+    string? Description,
+    ProductType Type,
+    string? Category,
+    string Unit,
+    decimal UnitPrice,
+    decimal CostPrice,
+    Guid? TaxCodeId,
+    Guid? IncomeAccountId,
+    Guid? ExpenseAccountId,
+    Guid? AssetAccountId);
 
-public record QuotationRequest(
-    string? QuoteNumber,
-    Guid CustomerId,
-    Guid? CompanyId,
-    DateOnly Date,
-    DateOnly ExpiryDate,
+public record ProductStatusRequest(ProductStatus Status, string? Reason);
+
+public enum VendorStatus { Active, Inactive, Blocked }
+
+public class Vendor
+{
+    public Guid Id { get; init; } = Guid.NewGuid();
+    public required string VendorNumber { get; set; }
+    public required string Name { get; set; }
+    public string? Email { get; set; }
+    public string? Phone { get; set; }
+    public string? TaxId { get; set; }
+    public string? AddressLine1 { get; set; }
+    public string? AddressLine2 { get; set; }
+    public string? City { get; set; }
+    public string? State { get; set; }
+    public string? PostalCode { get; set; }
+    public string? Country { get; set; } = "United States";
+    public string CurrencyCode { get; set; } = "USD";
+    public int PaymentTermsDays { get; set; } = 30;
+    public Guid? DefaultExpenseAccountId { get; set; }
+    public Guid? CompanyId { get; set; }
+    public VendorStatus Status { get; set; } = VendorStatus.Active;
+    public DateTime CreatedAt { get; init; } = DateTime.UtcNow;
+    public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
+}
+
+public record VendorRequest(
+    string? VendorNumber,
+    string Name,
+    string? Email,
+    string? Phone,
+    string? TaxId,
+    string? AddressLine1,
+    string? AddressLine2,
+    string? City,
+    string? State,
+    string? PostalCode,
+    string? Country,
     string? CurrencyCode,
-    List<QuotationItemRequest> Items,
-    DiscountType DiscountType,
-    decimal DiscountValue,
-    decimal TaxRatePercent,
-    string? Notes,
-    string? TermsAndConditions);
+    int PaymentTermsDays,
+    Guid? DefaultExpenseAccountId,
+    Guid? CompanyId);
 
-public record QuotationStatusRequest(QuotationStatus Status, string? Reason);
+public record VendorStatusRequest(VendorStatus Status, string? Reason);
 
+public enum LineDestination { Inventory, FixedAsset, Expense }
+public enum PurchaseRequestStatus { Draft, Submitted, Approved, Rejected, Ordered }
+public record PurchaseRequestLineRequest(Guid ProductId, string Description, decimal Quantity);
+public record PurchaseRequestRequest(string RequestNumber, string RequesterName, DateOnly Date, List<PurchaseRequestLineRequest> Lines);
 
+public class PurchaseRequestLine
+{
+    public Guid Id { get; init; } = Guid.NewGuid();
+    public Guid ProductId { get; set; }
+    public required string Description { get; set; }
+    public decimal Quantity { get; set; }
+}
+
+public class PurchaseRequest
+{
+    public Guid Id { get; init; } = Guid.NewGuid();
+    public required string RequestNumber { get; set; }
+    public required string RequesterName { get; set; }
+    public DateOnly Date { get; set; }
+    public PurchaseRequestStatus Status { get; set; } = PurchaseRequestStatus.Draft;
+    public List<PurchaseRequestLine> Lines { get; set; } = [];
+    public Guid CompanyId { get; set; }
+}
+
+public enum RfqStatus { Open, Closed, Awarded, Canceled }
+
+public class RequestForQuotationLine
+{
+    public Guid Id { get; init; } = Guid.NewGuid();
+    public Guid ProductId { get; set; }
+    public required string Description { get; set; }
+    public decimal Quantity { get; set; }
+}
+
+public class RequestForQuotation
+{
+    public Guid Id { get; init; } = Guid.NewGuid();
+    public required string RfqNumber { get; set; }
+    public Guid? PurchaseRequestId { get; set; }
+    public DateOnly Date { get; set; }
+    public DateOnly Deadline { get; set; }
+    public RfqStatus Status { get; set; } = RfqStatus.Open;
+    public List<RequestForQuotationLine> Lines { get; set; } = [];
+    public Guid CompanyId { get; set; }
+}
+
+public class VendorQuoteLine
+{
+    public Guid Id { get; init; } = Guid.NewGuid();
+    public Guid ProductId { get; set; }
+    public decimal UnitPrice { get; set; }
+    public Guid? TaxCodeId { get; set; }
+    public decimal TaxAmount { get; set; }
+}
+
+public class VendorQuote
+{
+    public Guid Id { get; init; } = Guid.NewGuid();
+    public Guid RequestForQuotationId { get; set; }
+    public Guid VendorId { get; set; }
+    public DateOnly Date { get; set; }
+    public bool IsWinningQuote { get; set; } = false;
+    public List<VendorQuoteLine> Lines { get; set; } = [];
+}
+
+public record RfqRequest(string RfqNumber, Guid? PurchaseRequestId, DateOnly Date, DateOnly Deadline, List<RequestForQuotationLine> Lines);
+public record VendorQuoteRequest(Guid RequestForQuotationId, Guid VendorId, DateOnly Date, List<VendorQuoteLine> Lines);
+
+public enum VendorBillStatus { Draft, Open, PartiallyPaid, Paid, Void }
+
+public class VendorBillLine
+{
+    public Guid Id { get; init; } = Guid.NewGuid();
+    public Guid ProductId { get; set; }
+    public string Description { get; set; } = "";
+    public decimal Quantity { get; set; }
+    public decimal UnitPrice { get; set; }
+    public Guid? TaxCodeId { get; set; }
+    public decimal TaxAmount { get; set; }
+    public decimal TotalAmount => (Quantity * UnitPrice) + TaxAmount;
+    public LineDestination Destination { get; set; } = LineDestination.Expense;
+}
+
+public class VendorBill
+{
+    public Guid Id { get; init; } = Guid.NewGuid();
+    public required string BillNumber { get; set; }
+    public required string VendorInvoiceNumber { get; set; }
+    public Guid VendorId { get; set; }
+    public Guid? PurchaseOrderId { get; set; }
+    public Guid? GoodsReceiptNoteId { get; set; }
+    public DateOnly Date { get; set; }
+    public DateOnly DueDate { get; set; }
+    public VendorBillStatus Status { get; set; } = VendorBillStatus.Draft;
+    public List<VendorBillLine> Lines { get; set; } = [];
+    public Guid CompanyId { get; set; }
+    public DateTime CreatedAt { get; init; } = DateTime.UtcNow;
+    public bool HasVarianceWarning { get; set; } = false;
+}
+
+public record VendorBillLineRequest(Guid ProductId, string Description, decimal Quantity, decimal UnitPrice, Guid? TaxCodeId, decimal TaxAmount, LineDestination Destination);
+public record VendorBillRequest(string BillNumber, string VendorInvoiceNumber, Guid VendorId, Guid? PurchaseOrderId, Guid? GoodsReceiptNoteId, DateOnly Date, DateOnly DueDate, List<VendorBillLineRequest> Lines, Guid CompanyId, bool HasVarianceWarning);
+
+public enum PurchaseOrderStatus { Draft, Issued, PartiallyReceived, Fulfilled, Canceled }
+
+public class PurchaseOrderLine
+{
+    public Guid Id { get; init; } = Guid.NewGuid();
+    public Guid ProductId { get; set; }
+    public string Description { get; set; } = "";
+    public decimal Quantity { get; set; }
+    public decimal UnitPrice { get; set; }
+    public Guid? TaxCodeId { get; set; }
+    public decimal TaxAmount { get; set; }
+    public decimal TotalAmount => (Quantity * UnitPrice) + TaxAmount;
+    public LineDestination Destination { get; set; } = LineDestination.Expense;
+    public decimal ReceivedQuantity { get; set; } = 0m;
+}
+
+public class PurchaseOrder
+{
+    public Guid Id { get; init; } = Guid.NewGuid();
+    public required string PoNumber { get; set; }
+    public Guid VendorId { get; set; }
+    public Guid? VendorQuoteId { get; set; }
+    public DateOnly Date { get; set; }
+    public DateOnly? ExpectedDeliveryDate { get; set; }
+    public PurchaseOrderStatus Status { get; set; } = PurchaseOrderStatus.Draft;
+    public List<PurchaseOrderLine> Lines { get; set; } = [];
+    public Guid? CompanyId { get; set; }
+    public DateTime CreatedAt { get; init; } = DateTime.UtcNow;
+    public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
+}
+
+public record PurchaseOrderLineRequest(Guid ProductId, string Description, decimal Quantity, decimal UnitPrice, Guid? TaxCodeId, decimal TaxAmount, LineDestination Destination);
+public record PurchaseOrderRequest(string? PoNumber, Guid VendorId, Guid? VendorQuoteId, DateOnly Date, DateOnly? ExpectedDeliveryDate, List<PurchaseOrderLineRequest> Lines, Guid? CompanyId);
+public record PurchaseOrderStatusRequest(PurchaseOrderStatus Status);
+
+public class GoodsReceiptNoteLine
+{
+    public Guid Id { get; init; } = Guid.NewGuid();
+    public Guid PurchaseOrderLineId { get; set; }
+    public decimal QuantityReceived { get; set; }
+}
+
+public class GoodsReceiptNote
+{
+    public Guid Id { get; init; } = Guid.NewGuid();
+    public required string GrnNumber { get; set; }
+    public Guid PurchaseOrderId { get; set; }
+    public DateOnly DateReceived { get; set; }
+    public List<GoodsReceiptNoteLine> Lines { get; set; } = [];
+    public string? Notes { get; set; }
+    public bool IsProcessed { get; set; } = false; // True if it has updated inventory/assets and created accrual journals
+    public DateTime CreatedAt { get; init; } = DateTime.UtcNow;
+}
+
+public record GoodsReceiptNoteLineRequest(Guid PurchaseOrderLineId, decimal QuantityReceived);
+public record GoodsReceiptNoteRequest(string? GrnNumber, Guid PurchaseOrderId, DateOnly DateReceived, List<GoodsReceiptNoteLineRequest> Lines, string? Notes);
+public record GoodsReceiptProcessRequest();
+
+public enum AssetStatus { Active, Disposed, Depreciated }
+public enum DepreciationMethod { StraightLine, DecliningBalance }
+
+public class FixedAsset
+{
+    public Guid Id { get; init; } = Guid.NewGuid();
+    public required string AssetTag { get; set; }
+    public required string Name { get; set; }
+    public string? Description { get; set; }
+    public DateOnly PurchaseDate { get; set; }
+    public decimal PurchasePrice { get; set; }
+    public decimal SalvageValue { get; set; } = 0m;
+    public int UsefulLifeYears { get; set; } = 3;
+    public DepreciationMethod DepreciationMethod { get; set; } = DepreciationMethod.StraightLine;
+    public decimal AccumulatedDepreciation { get; set; } = 0m;
+    public decimal NetBookValue => PurchasePrice - AccumulatedDepreciation;
+    public AssetStatus Status { get; set; } = AssetStatus.Active;
+    public Guid? AssetAccountId { get; set; }
+    public Guid? AccumulatedDepreciationAccountId { get; set; }
+    public Guid? DepreciationExpenseAccountId { get; set; }
+    public Guid? CompanyId { get; set; }
+    public DateTime CreatedAt { get; init; } = DateTime.UtcNow;
+    public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
+}
+
+public class Warehouse
+{
+    public Guid Id { get; init; } = Guid.NewGuid();
+    public required string Name { get; set; }
+    public string? Location { get; set; }
+    public Guid? CompanyId { get; set; }
+}
+
+public class StockLevel
+{
+    public Guid Id { get; init; } = Guid.NewGuid();
+    public Guid ProductId { get; set; }
+    public Guid WarehouseId { get; set; }
+    public decimal QuantityOnHand { get; set; }
+    public decimal MovingAverageCost { get; set; }
+    public Guid? CompanyId { get; set; }
+}
+
+public enum StockTransactionType { In, Out, Adjustment, Transfer }
+
+public class StockTransaction
+{
+    public Guid Id { get; init; } = Guid.NewGuid();
+    public DateOnly Date { get; set; }
+    public Guid ProductId { get; set; }
+    public Guid WarehouseId { get; set; }
+    public decimal Quantity { get; set; }
+    public decimal UnitCost { get; set; }
+    public StockTransactionType Type { get; set; }
+    public string? Reference { get; set; }
+    public Guid? CompanyId { get; set; }
+    public DateTime CreatedAt { get; init; } = DateTime.UtcNow;
+}
+
+public class TaxAuthority
+{
+    public Guid Id { get; init; } = Guid.NewGuid();
+    public required string Name { get; set; } // e.g. HMRC, IRS, ZATCA
+    public string? Country { get; set; }
+    public string? State { get; set; }
+    public string? RegistrationNumber { get; set; }
+    public Guid? LiabilityAccountId { get; set; }
+}
+
+public class TaxCode
+{
+    public Guid Id { get; init; } = Guid.NewGuid();
+    public required string Code { get; set; } // e.g. VAT-20, SR, Z
+    public required string Name { get; set; } // e.g. Standard Rate 20%
+    public string? Description { get; set; }
+    public Guid TaxAuthorityId { get; set; }
+    public List<TaxRate> Rates { get; set; } = []; // Allows rate history (e.g. rate changes from 15% to 20%)
+    public bool IsActive { get; set; } = true;
+}
+
+public class TaxRate
+{
+    public Guid Id { get; init; } = Guid.NewGuid();
+    public Guid TaxCodeId { get; set; }
+    public decimal Percentage { get; set; } // e.g. 20.00
+    public DateOnly EffectiveFrom { get; set; }
+    public DateOnly? EffectiveTo { get; set; }
+}
+
+public record TaxAuthorityRequest(string Name, string? Country, string? State, string? RegistrationNumber, Guid? LiabilityAccountId);
+public record TaxRateRequest(decimal Percentage, DateOnly EffectiveFrom, DateOnly? EffectiveTo);
+public record TaxCodeRequest(string Code, string Name, string? Description, Guid TaxAuthorityId, List<TaxRateRequest> Rates, bool IsActive);
+
+// ─── Sales Invoice ────────────────────────────────────────────────────────────
+public enum SalesInvoiceStatus { Draft, Sent, Paid, Void, PartiallyPaid, Overdue }
+
+public class SalesInvoiceLine
+{
+    public Guid Id { get; init; } = Guid.NewGuid();
+    public Guid? ProductId { get; set; }
+    public string Description { get; set; } = string.Empty;
+    public decimal Quantity { get; set; } = 1;
+    public decimal UnitPrice { get; set; }
+    public decimal DiscountAmount { get; set; } = 0;
+    public Guid? TaxCodeId { get; set; }
+    public decimal TaxAmount { get; set; }
+    public decimal LineTotal => Quantity * UnitPrice;
+    public decimal LineTotalAfterDiscount => LineTotal - DiscountAmount;
+    public decimal LineTotalWithTax => LineTotalAfterDiscount + TaxAmount;
+}
+
+public class SalesInvoice
+{
+    public Guid Id { get; init; } = Guid.NewGuid();
+    public required string InvoiceNumber { get; set; }
+    public Guid CustomerId { get; set; }
+    public DateOnly InvoiceDate { get; set; }
+    public DateOnly DueDate { get; set; }
+    public string? Reference { get; set; }
+    public string? Notes { get; set; }
+    public SalesInvoiceStatus Status { get; set; } = SalesInvoiceStatus.Draft;
+    public List<SalesInvoiceLine> Lines { get; set; } = [];
+    public decimal SubTotal => Lines.Sum(l => l.LineTotal);
+    public decimal DiscountTotal => Lines.Sum(l => l.DiscountAmount);
+    public decimal TaxTotal => Lines.Sum(l => l.TaxAmount);
+    public decimal TotalAmount => Lines.Sum(l => l.LineTotalWithTax);
+    public decimal AmountPaid { get; set; } = 0;
+    public decimal AmountDue => TotalAmount - AmountPaid;
+    public bool StockReduced { get; set; } = false; // prevents double stock-out
+    public Guid? CompanyId { get; set; }
+    public DateTime CreatedAt { get; init; } = DateTime.UtcNow;
+    public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
+}
+
+public record SalesInvoiceLineRequest(Guid? ProductId, string Description, decimal Quantity, decimal UnitPrice, decimal DiscountAmount, Guid? TaxCodeId, decimal TaxAmount);
+
+public record SalesInvoiceRequest(string? InvoiceNumber, Guid CustomerId, DateOnly InvoiceDate, DateOnly DueDate, string? Reference, string? Notes, List<SalesInvoiceLineRequest> Lines, Guid? CompanyId);
+public record SalesInvoiceStatusRequest(SalesInvoiceStatus Status);
+
+// ─── Estimates & Quotes ───────────────────────────────────────────────────────
+public enum EstimateStatus { Draft, Sent, Accepted, Rejected, Expired, Invoiced }
+public enum DiscountType { Percentage, FixedAmount }
+
+public class EstimateLine
+{
+    public Guid Id { get; init; } = Guid.NewGuid();
+    public Guid? ProductId { get; set; }
+    public string Description { get; set; } = string.Empty;
+    public decimal Quantity { get; set; } = 1;
+    public decimal UnitPrice { get; set; }
+    public DiscountType DiscountType { get; set; } = DiscountType.Percentage;
+    public decimal DiscountValue { get; set; } = 0; // % or fixed amount depending on DiscountType
+    public Guid? TaxCodeId { get; set; }
+    public decimal TaxPercent { get; set; } = 0;
+
+    // Computed
+    public decimal LineSubTotal => Quantity * UnitPrice;
+    public decimal DiscountAmount => DiscountType == DiscountType.Percentage
+        ? Math.Round(LineSubTotal * DiscountValue / 100, 2)
+        : DiscountValue;
+    public decimal LineAfterDiscount => LineSubTotal - DiscountAmount;
+    public decimal TaxAmount => Math.Round(LineAfterDiscount * TaxPercent / 100, 2);
+    public decimal LineTotal => LineAfterDiscount + TaxAmount;
+}
+
+public class Estimate
+{
+    public Guid Id { get; init; } = Guid.NewGuid();
+    public required string EstimateNumber { get; set; }
+    public Guid CustomerId { get; set; }
+    public DateOnly EstimateDate { get; set; }
+    public DateOnly? ExpiryDate { get; set; }
+    public string? Reference { get; set; }
+    public string? Notes { get; set; }
+    public string? Terms { get; set; }
+    public EstimateStatus Status { get; set; } = EstimateStatus.Draft;
+    public List<EstimateLine> Lines { get; set; } = [];
+
+    // Computed totals
+    public decimal SubTotal => Lines.Sum(l => l.LineSubTotal);
+    public decimal TotalDiscount => Lines.Sum(l => l.DiscountAmount);
+    public decimal TotalTax => Lines.Sum(l => l.TaxAmount);
+    public decimal TotalAmount => Lines.Sum(l => l.LineTotal);
+
+    public Guid? ConvertedToInvoiceId { get; set; }
+    public Guid? CompanyId { get; set; }
+    public DateTime CreatedAt { get; init; } = DateTime.UtcNow;
+    public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
+}
+
+public record EstimateLineRequest(
+    Guid? ProductId, string Description, decimal Quantity, decimal UnitPrice,
+    DiscountType DiscountType, decimal DiscountValue, Guid? TaxCodeId, decimal TaxPercent);
+
+public record EstimateRequest(
+    string? EstimateNumber, Guid CustomerId, DateOnly EstimateDate, DateOnly? ExpiryDate,
+    string? Reference, string? Notes, string? Terms,
+    List<EstimateLineRequest> Lines, Guid? CompanyId);
+
+public record EstimateStatusRequest(EstimateStatus Status);

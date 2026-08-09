@@ -458,7 +458,7 @@ export default function CustomerManagement({
       {/* Modal Form */}
       {modalOpen && (
         <div className="overlay">
-          <form className="modal max-w-2xl" onSubmit={handleSave}>
+          <form className="modal" onSubmit={handleSave}>
             <div className="modal-head">
               <div>
                 <p className="eyebrow">SALES & CUSTOMERS</p>
@@ -470,7 +470,7 @@ export default function CustomerManagement({
             </div>
 
             <div className="form-grid">
-              <label>
+              <label style={{ gridColumn: '1 / -1' }}>
                 Customer Name *
                 <input
                   required
@@ -570,7 +570,7 @@ export default function CustomerManagement({
                 />
               </label>
 
-              <label className="col-span-2">
+              <label style={{ gridColumn: '1 / -1' }}>
                 Address Line 1
                 <input
                   placeholder="100 Main Street, Suite 400"
