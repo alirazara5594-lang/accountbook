@@ -5,7 +5,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { FolderTree, Search, Edit3, ShieldAlert, CheckCircle2, FileSpreadsheet, PlusCircle } from 'lucide-react';
+import { FolderTree, Search, Edit3, FileSpreadsheet, PlusCircle } from 'lucide-react';
 
 type AccountType =
   | 'Asset'
@@ -100,34 +100,39 @@ export const ChartOfAccounts: React.FC<ChartOfAccountsProps> = ({
     openCreate();
   };
 
-  // Helper to get IFRS Class grouping description
-  const getIfrsClass = (type: AccountType) => {
-    switch (type) {
-      case 'Asset':
-      case 'ContraAsset':
-        return 'Non-Current / Current Assets';
-      case 'Liability':
-      case 'ContraLiability':
-        return 'Non-Current / Current Liabilities';
-      case 'Equity':
-      case 'ContraEquity':
-        return 'Equity Attributable to Owners';
-      case 'Revenue':
-      case 'ContraRevenue':
-        return 'Revenue from Contracts with Customers';
-      default:
-        return 'Operating / Administrative Expenses';
+  const getSubtype = (code: string, type: string) => {
+    const num = parseInt(code, 10);
+    if (!isNaN(num)) {
+      if (num >= 10000 && num <= 14999) return 'Current Asset';
+      if (num >= 15000 && num <= 19999) return 'Fixed Asset';
+      if (num >= 20000 && num <= 24999) return 'Current Liability';
+      if (num >= 25000 && num <= 29999) return 'Long-Term Liability';
+      if (num >= 30000 && num <= 39999) return 'Equity';
+      if (num >= 40000 && num <= 49999) return 'Operating Revenue';
+      if (num >= 50000 && num <= 59999) return 'Cost of Sales';
+      if (num >= 60000 && num <= 79999) return 'Operating Expense';
+      if (num >= 80000 && num <= 89999) return 'Other Income/Expense';
     }
+    if (type === 'Asset') return 'Current Asset';
+    if (type === 'Liability') return 'Current Liability';
+    if (type === 'Equity') return 'Equity';
+    if (type === 'Revenue') return 'Operating Revenue';
+    return 'Operating Expense';
   };
 
-  // Tree render loop
+  const getParentName = (account: Account, allAccounts: Account[]) => {
+    if (!account.parentId) return '— Top-Level Group —';
+    const p = allAccounts.find(x => x.id === account.parentId);
+    return p ? `${p.code} ${p.name}` : '— Top-Level Group —';
+  };
+
   const renderRow = (a: Account, level = 0): React.ReactNode => {
     const children = getChildren(a.id);
     const hasChildren = children.length > 0;
     const isCollapsed = !!collapsedIds[a.id];
-
-    // Indentation padding
     const paddingLeft = `${level * 24 + 12}px`;
+    const subTypeLabel = getSubtype(a.code, a.type);
+    const parentLineLabel = getParentName(a, accounts);
 
     return (
       <React.Fragment key={a.id}>
@@ -144,13 +149,13 @@ export const ChartOfAccounts: React.FC<ChartOfAccountsProps> = ({
               ) : (
                 <span className="w-4 text-center text-gray-300">•</span>
               )}
-              <span className="font-semibold text-gray-800">{a.code}</span>
+              <span className="font-semibold text-gray-800 font-mono tracking-wider">{a.code}</span>
             </div>
           </TableCell>
           <TableCell className="py-3">
             <div className="flex flex-col">
               <span className="font-medium text-gray-900">{a.name}</span>
-              <span className="text-[10px] text-gray-400">{getIfrsClass(a.type)}</span>
+              {a.ifrsTag && <span className="text-[10px] text-blue-600 font-mono">{a.ifrsTag}</span>}
             </div>
           </TableCell>
           <TableCell className="py-3">
@@ -158,29 +163,18 @@ export const ChartOfAccounts: React.FC<ChartOfAccountsProps> = ({
               {a.type.replace('Contra', 'Contra ')}
             </Badge>
           </TableCell>
+          <TableCell className="py-3">
+            <span className="text-xs text-gray-700 bg-gray-100 px-2 py-0.5 rounded-md font-medium">
+              {subTypeLabel}
+            </span>
+          </TableCell>
+          <TableCell className="py-3">
+            <span className="text-xs text-gray-600 font-medium">
+              {parentLineLabel}
+            </span>
+          </TableCell>
           <TableCell className="py-3 text-right font-mono text-xs font-medium">
             {formatCurrency(a.openingBalance)}
-          </TableCell>
-          <TableCell className="py-3">
-            {a.ifrsTag ? (
-              <Badge variant="outline" className="border-blue-200 bg-blue-50/20 text-blue-700 text-[10px] font-normal">
-                {a.ifrsTag}
-              </Badge>
-            ) : (
-              <span className="text-xs text-gray-300 italic">—</span>
-            )}
-          </TableCell>
-          <TableCell className="py-3">
-            <div className="flex items-center gap-1.5">
-              {a.status === 'Active' ? (
-                <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
-              ) : (
-                <ShieldAlert className="w-3.5 h-3.5 text-amber-600" />
-              )}
-              <span className={`text-xs ${a.status === 'Active' ? 'text-emerald-700 font-medium' : 'text-amber-700'}`}>
-                {a.status}
-              </span>
-            </div>
           </TableCell>
           <TableCell className="py-3 text-right">
             <div className="flex justify-end gap-1.5">
@@ -201,14 +195,12 @@ export const ChartOfAccounts: React.FC<ChartOfAccountsProps> = ({
     );
   };
 
-  // Compute stat summaries
   const totalAssets = accounts.filter(a => a.type === 'Asset').reduce((s, a) => s + a.openingBalance, 0);
   const totalLiabilities = accounts.filter(a => a.type === 'Liability').reduce((s, a) => s + a.openingBalance, 0);
   const totalEquity = accounts.filter(a => a.type === 'Equity').reduce((s, a) => s + a.openingBalance, 0);
 
   return (
     <div className="space-y-6">
-      {/* IAS / GAAP compliance banner cards */}
       <div className="grid grid-cols-3 gap-4">
         <Card className="shadow-sm border-blue-100">
           <CardHeader className="p-4 pb-2">
@@ -219,27 +211,26 @@ export const ChartOfAccounts: React.FC<ChartOfAccountsProps> = ({
             <CardDescription className="text-[10px] mt-1 text-gray-400">IAS 16 Property, Plant & Equipment & Cash Assets</CardDescription>
           </CardContent>
         </Card>
-        <Card className="shadow-sm border-orange-100">
+        <Card className="shadow-sm border-purple-100">
           <CardHeader className="p-4 pb-2">
             <CardTitle className="text-xs font-medium text-gray-400 uppercase tracking-wider">Liability Accounts</CardTitle>
           </CardHeader>
           <CardContent className="p-4 pt-0">
-            <div className="text-2xl font-bold text-orange-600 font-mono">{formatCurrency(totalLiabilities)}</div>
-            <CardDescription className="text-[10px] mt-1 text-gray-400">Trade Payables, Accruals & Taxes</CardDescription>
+            <div className="text-2xl font-bold text-purple-700 font-mono">{formatCurrency(totalLiabilities)}</div>
+            <CardDescription className="text-[10px] mt-1 text-gray-400">Trade Payables & Provisions</CardDescription>
           </CardContent>
         </Card>
         <Card className="shadow-sm border-emerald-100">
           <CardHeader className="p-4 pb-2">
-            <CardTitle className="text-xs font-medium text-gray-400 uppercase tracking-wider">Equity Accounts</CardTitle>
+            <CardTitle className="text-xs font-medium text-gray-400 uppercase tracking-wider">Total Equity</CardTitle>
           </CardHeader>
           <CardContent className="p-4 pt-0">
-            <div className="text-2xl font-bold text-emerald-600 font-mono">{formatCurrency(totalEquity)}</div>
-            <CardDescription className="text-[10px] mt-1 text-gray-400">Share Capital & Retained Earnings</CardDescription>
+            <div className="text-2xl font-bold text-emerald-700 font-mono">{formatCurrency(totalEquity)}</div>
+            <CardDescription className="text-[10px] mt-1 text-gray-400">Capital & Reserves</CardDescription>
           </CardContent>
         </Card>
       </div>
 
-      {/* Main workspace toolbar */}
       <div className="bg-white border border-gray-200 rounded-2xl p-4 shadow-sm space-y-4">
         <div className="flex flex-col md:flex-row justify-between md:items-center gap-4">
           <Tabs value={activeTab} onValueChange={(val: any) => setActiveTab(val)} className="w-fit">
@@ -260,7 +251,7 @@ export const ChartOfAccounts: React.FC<ChartOfAccountsProps> = ({
             <div className="relative w-72">
               <Search className="absolute left-3 top-2.5 h-4 w-4 text-gray-400" />
               <Input
-                placeholder="Search by code, name, IFRS tag..."
+                placeholder="Search by 5-digit code, name, type..."
                 value={query}
                 onChange={e => setQuery(e.target.value)}
                 className="pl-9 h-9 border border-gray-200 rounded-xl text-xs"
@@ -275,18 +266,17 @@ export const ChartOfAccounts: React.FC<ChartOfAccountsProps> = ({
           </div>
         </div>
 
-        {/* Tree Table */}
         <div className="border border-gray-200 rounded-xl overflow-hidden bg-white shadow-inner">
           <Table>
             <TableHeader className="bg-gray-50 text-gray-500 text-xs uppercase tracking-wide">
               <TableRow>
-                <TableHead className="w-44 pl-6">Account Code</TableHead>
+                <TableHead className="w-36 pl-6">5-Digit Code</TableHead>
                 <TableHead>Account Name</TableHead>
-                <TableHead className="w-36">Type</TableHead>
-                <TableHead className="w-44 text-right">Opening Balance</TableHead>
-                <TableHead className="w-52">IFRS Reporting Line</TableHead>
-                <TableHead className="w-32">Status</TableHead>
-                <TableHead className="w-48 text-right pr-6">Actions</TableHead>
+                <TableHead className="w-28">Major Type</TableHead>
+                <TableHead className="w-40">Sub-Type</TableHead>
+                <TableHead className="w-56">Parent Account (Financial Line)</TableHead>
+                <TableHead className="w-36 text-right">Opening Balance</TableHead>
+                <TableHead className="w-36 text-right pr-6">Actions</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>

@@ -149,43 +149,96 @@ public class AccountingStore
         _accounts.Clear();
         // 1. Assets
         var assets = Seed("10000", "Assets", AccountType.Asset, null);
-        var currentAssets = Seed("11000", "Current Assets", AccountType.Asset, assets.Id);
-        var cashBank = Seed("11100", "Cash & Bank", AccountType.Asset, currentAssets.Id, true);
-        Seed("11110", "Main Bank Account", AccountType.Asset, cashBank.Id, true, 0m);
-        Seed("12000", "Accounts Receivable", AccountType.Asset, currentAssets.Id, true);
-        Seed("13000", "Inventory Asset", AccountType.Asset, currentAssets.Id, true);
         
+        // Current Assets (11000)
+        var currentAssets = Seed("11000", "Current Assets", AccountType.Asset, assets.Id);
+        var cashBank = Seed("11100", "Cash & Cash Equivalents", AccountType.Asset, currentAssets.Id, true);
+        Seed("11101", "Main Bank Account (HBL)", AccountType.Asset, cashBank.Id, true, 0m);
+        Seed("11102", "Petty Cash Fund", AccountType.Asset, cashBank.Id, true, 0m);
+        
+        var receivables = Seed("12000", "Customer Receivables", AccountType.Asset, currentAssets.Id, true);
+        Seed("12001", "Trade Accounts Receivable", AccountType.Asset, receivables.Id, true, 0m);
+        
+        var advances = Seed("12500", "Advances, Deposits & Prepayments", AccountType.Asset, currentAssets.Id, true);
+        Seed("12501", "Prepaid Rent & Expenses", AccountType.Asset, advances.Id, true, 0m);
+        
+        var inventory = Seed("13000", "Inventories", AccountType.Asset, currentAssets.Id, true);
+        Seed("13001", "Finished Goods Stock", AccountType.Asset, inventory.Id, true, 0m);
+        
+        Seed("13500", "Short-Term Investments", AccountType.Asset, currentAssets.Id, true);
+        Seed("14000", "Current Tax & Sales Tax Recoverable", AccountType.Asset, currentAssets.Id, true);
+
+        // Non-Current Assets (15000)
         var nonCurrentAssets = Seed("15000", "Non-Current Assets", AccountType.Asset, assets.Id);
-        Seed("15100", "Fixed Assets", AccountType.Asset, nonCurrentAssets.Id, true);
+        var ppe = Seed("15100", "Property, Plant & Equipment (PPE)", AccountType.Asset, nonCurrentAssets.Id, true);
+        Seed("15101", "Office Equipment & Machinery", AccountType.Asset, ppe.Id, true, 0m);
+        
         Seed("15200", "Accumulated Depreciation", AccountType.ContraAsset, nonCurrentAssets.Id, true);
+        Seed("15300", "Capital Work-in-Progress (CWIP)", AccountType.Asset, nonCurrentAssets.Id, true);
+        Seed("15400", "Right-of-Use (ROU) Assets", AccountType.Asset, nonCurrentAssets.Id, true);
+        Seed("15500", "Intangible Assets", AccountType.Asset, nonCurrentAssets.Id, true);
+        Seed("16000", "Long-Term Deposits & Investments", AccountType.Asset, nonCurrentAssets.Id, true);
 
         // 2. Liabilities
         var liabilities = Seed("20000", "Liabilities", AccountType.Liability, null);
-        var currentLiabilities = Seed("21000", "Current Liabilities", AccountType.Liability, liabilities.Id);
-        Seed("21100", "Accounts Payable", AccountType.Liability, currentLiabilities.Id, true);
-        Seed("21200", "GRNI Accrual", AccountType.Liability, currentLiabilities.Id, true);
         
+        // Current Liabilities (21000)
+        var currentLiabilities = Seed("21000", "Current Liabilities", AccountType.Liability, liabilities.Id);
+        var vendorPayables = Seed("21100", "Vendor Payables", AccountType.Liability, currentLiabilities.Id, true);
+        Seed("21101", "Trade Accounts Payable", AccountType.Liability, vendorPayables.Id, true, 0m);
+        Seed("21102", "GRNI Accrual Account", AccountType.Liability, vendorPayables.Id, true, 0m);
+        
+        Seed("21200", "Short-Term Borrowings", AccountType.Liability, currentLiabilities.Id, true);
+        Seed("21300", "Unearned / Deferred Revenue", AccountType.Liability, currentLiabilities.Id, true);
+        Seed("21400", "Statutory & Tax Liabilities", AccountType.Liability, currentLiabilities.Id, true);
+        Seed("21500", "Current Portion of Lease Liabilities", AccountType.Liability, currentLiabilities.Id, true);
+
+        // Non-Current Liabilities (25000)
         var nonCurrentLiabilities = Seed("25000", "Non-Current Liabilities", AccountType.Liability, liabilities.Id);
+        Seed("25100", "Long-Term Debt & Loans", AccountType.Liability, nonCurrentLiabilities.Id, true);
+        Seed("25200", "Non-Current Lease Liabilities", AccountType.Liability, nonCurrentLiabilities.Id, true);
+        Seed("25300", "Deferred Tax Liabilities & Provisions", AccountType.Liability, nonCurrentLiabilities.Id, true);
 
         // 3. Equity
         var equity = Seed("30000", "Equity", AccountType.Equity, null);
-        Seed("31000", "Share Capital", AccountType.Equity, equity.Id);
-        Seed("32000", "Retained Earnings", AccountType.Equity, equity.Id);
+        Seed("31000", "Share Capital / Owner's Equity", AccountType.Equity, equity.Id, true);
+        Seed("32000", "Reserves & Surplus", AccountType.Equity, equity.Id, true);
+        Seed("33000", "Retained Earnings", AccountType.Equity, equity.Id, true);
+        Seed("34000", "Current Year Profit / Loss", AccountType.Equity, equity.Id, true);
 
         // 4. Revenue
         var revenue = Seed("40000", "Revenue", AccountType.Revenue, null);
         var operatingRevenue = Seed("41000", "Operating Revenue", AccountType.Revenue, revenue.Id);
-        Seed("41100", "Sales Revenue", AccountType.Revenue, operatingRevenue.Id, true);
-        var nonOperatingRevenue = Seed("42000", "Non-Operating Revenue", AccountType.Revenue, revenue.Id);
+        var grossSales = Seed("41100", "Gross Sales / Revenue", AccountType.Revenue, operatingRevenue.Id, true);
+        Seed("41101", "Product Sales Revenue", AccountType.Revenue, grossSales.Id, true, 0m);
+        Seed("41102", "Services Income Revenue", AccountType.Revenue, grossSales.Id, true, 0m);
+        Seed("41200", "Sales Deductions & Allowances", AccountType.ContraRevenue, operatingRevenue.Id, true);
 
         // 5. Cost of Goods Sold
-        var cogs = Seed("50000", "Cost of Goods Sold", AccountType.Expense, null);
-        Seed("51000", "Cost of Sales", AccountType.Expense, cogs.Id);
+        var cogs = Seed("50000", "Cost of Goods Sold / Direct Costs", AccountType.Expense, null);
+        var directCosts = Seed("51000", "Direct Costs / Cost of Sales", AccountType.Expense, cogs.Id);
+        Seed("51100", "Cost of Materials & Goods Sold", AccountType.Expense, directCosts.Id, true);
+        Seed("51200", "Direct Labor & Personnel Costs", AccountType.Expense, directCosts.Id, true);
+        Seed("51300", "Direct Operational Expenses", AccountType.Expense, directCosts.Id, true);
 
         // 6. Expenses
-        var expenses = Seed("60000", "Expenses", AccountType.Expense, null);
-        var operatingExpenses = Seed("61000", "Operating Expenses", AccountType.Expense, expenses.Id);
-        Seed("61100", "Office Expenses", AccountType.Expense, operatingExpenses.Id, true);
+        var expenses = Seed("60000", "Operating Expenses (OPEX)", AccountType.Expense, null);
+        var opex = Seed("61000", "Operating Expenses", AccountType.Expense, expenses.Id);
+        var staffCosts = Seed("61100", "Personnel & Staff Costs", AccountType.Expense, opex.Id, true);
+        Seed("61101", "Salaries & Wages Expense", AccountType.Expense, staffCosts.Id, true, 0m);
+        var adminExpenses = Seed("61200", "Administrative & General Expenses", AccountType.Expense, opex.Id, true);
+        Seed("61201", "Office Supplies & Utility Expense", AccountType.Expense, adminExpenses.Id, true, 0m);
+        Seed("61300", "Repair & Maintenance Expenses", AccountType.Expense, opex.Id, true);
+        Seed("61400", "Selling & Marketing Expenses", AccountType.Expense, opex.Id, true);
+        Seed("61500", "Legal & Professional Fees", AccountType.Expense, opex.Id, true);
+        Seed("61600", "Depreciation & Amortization Expense", AccountType.Expense, opex.Id, true);
+
+        // 7. Other Income & Expenses
+        var otherItems = Seed("80000", "Other Income & Non-Operating Items", AccountType.Revenue, null);
+        Seed("81100", "Other Operating / Non-Operating Income", AccountType.Revenue, otherItems.Id, true);
+        Seed("81200", "Finance Income", AccountType.Revenue, otherItems.Id, true);
+        Seed("82100", "Finance Costs & Bank Charges", AccountType.Expense, otherItems.Id, true);
+        Seed("83100", "Taxation Expense", AccountType.Expense, otherItems.Id, true);
     }
 
     public IReadOnlyList<Account> Accounts => _accounts;
