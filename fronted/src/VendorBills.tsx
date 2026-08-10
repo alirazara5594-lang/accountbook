@@ -31,7 +31,7 @@ export const VendorBills = ({ activeEntityId }: { activeEntityId: string }) => {
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-50">
-            {bills.map(bill => (
+            {(bills as any[]).map((bill: any) => (
               <tr key={bill.id} className="hover:bg-gray-50/50 transition-colors">
                 <td className="py-3 px-4 font-medium text-gray-900">{bill.billNumber}</td>
                 <td className="py-3 px-4 text-gray-500">{bill.vendorBillNumber || (bill as any).vendorInvoiceNumber}</td>

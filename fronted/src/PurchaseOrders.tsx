@@ -53,7 +53,7 @@ interface GoodsReceiptNoteLine {
   quantityReceived: number;
 }
 
-interface GoodsReceiptNote {
+export interface GoodsReceiptNote {
   id: string;
   grnNumber: string;
   purchaseOrderId: string;
@@ -66,7 +66,7 @@ export const PurchaseOrders: React.FC<{activeEntityId?: string, entities?: any[]
   const [activeTab, setActiveTab] = useState<'pos' | 'grns'>('pos');
 
   const pos = useProcurementStore((s) => s.orders as PurchaseOrder[]);
-  const grns = useProcurementStore((s) => s.receipts as GoodsReceiptNote[]);
+  const grns = useProcurementStore((s) => s.receipts as any[]);
   const fetchOrders = useProcurementStore((s) => s.fetchOrders);
   const fetchReceipts = useProcurementStore((s) => s.fetchReceipts);
   const createPOStore = useProcurementStore((s) => s.createPurchaseOrder);

@@ -12,6 +12,7 @@ import { AssetsInventoryWorkspace } from './AssetsInventoryWorkspace'
 import { TaxConfiguration } from './TaxConfiguration'
 import { SalesWorkspace } from './SalesWorkspace'
 import { EstimatesAndQuotes } from './EstimatesAndQuotes'
+import { ManufacturingWorkspace } from './ManufacturingWorkspace'
 import { ChartOfAccounts } from './ChartOfAccounts'
 import { FinancialReports } from './FinancialReports'
 import { ModuleSummary } from './ModuleSummary'
@@ -43,6 +44,7 @@ const NAVIGATION = [
   { name: 'Banking & Payments', icon: '🏛', items: ['Bank Accounts', 'Cash Accounts', 'Bank Connection', 'Bank Import', 'Transactions', 'Bank Reconciliation', 'Voucher Management', 'Fund Transfers', 'Cash Flow Statements'] },
   { name: 'Accounting', icon: '⌘', items: ['Chart of Accounts', 'Journal Entries', 'Fixed Assets', 'General Ledger', 'Accounts Receivable', 'Accounts Payable', 'Tax Accounting', 'Budgets', 'Financial Reports', 'Period Closing', 'Audit Trail'] },
   { name: 'Assets & Inventory', icon: '📦', items: ['Assets & Inventory Workspace', 'Depreciation Schedule', 'Valuation Reports'] },
+  { name: 'Manufacturing & Production', icon: '⚙️', items: ['Manufacturing Workspace', 'Bill of Materials', 'Work Orders', 'Job Costing'] },
   { name: 'Payroll & HR', icon: '👥', items: ['Employees', 'Attendance', 'Leave', 'Payroll', 'Salary', 'Loans & Advances', 'HR Reports'] },
   { name: 'Survey & Field Operations', icon: '📍', items: ['Surveys', 'Field Visits', 'Inspections', 'Work Orders', 'Field Expenses', 'Field Reports'] },
   { name: 'Government Compliance', icon: '⚖', items: ['Tax Management', 'VAT / Sales Tax', 'Withholding Tax', 'Tax Returns', 'E-Invoicing', 'Compliance Reports'] },
@@ -180,6 +182,11 @@ export default function App() {
     'Accounting.Financial Reports': 'financial-reports',
     'Assets & Inventory.Summary': 'module-summary',
     'Assets & Inventory.Assets & Inventory Workspace': 'assets-inventory',
+    'Manufacturing & Production.Summary': 'manufacturing',
+    'Manufacturing & Production.Manufacturing Workspace': 'manufacturing',
+    'Manufacturing & Production.Bill of Materials': 'manufacturing',
+    'Manufacturing & Production.Work Orders': 'manufacturing',
+    'Manufacturing & Production.Job Costing': 'manufacturing',
     'Payroll & HR.Summary': 'module-summary',
     'Survey & Field Operations.Summary': 'module-summary',
     'Government Compliance.Summary': 'module-summary',
@@ -252,6 +259,7 @@ export default function App() {
   {activeView === 'taxes' && <TaxConfiguration />}
   {activeView === 'fixed-assets' && <FixedAssets activeEntityId={activeEntityId} />}
   {activeView === 'assets-inventory' && <AssetsInventoryWorkspace activeEntityId={activeEntityId} entities={entities} />}
+  {activeView === 'manufacturing' && <ManufacturingWorkspace activeEntityId={activeEntityId} entities={entities} />}
   {activeView === 'financial-reports' && <FinancialReports accounts={accounts} entries={entries} activeEntityId={activeEntityId} />}
   {activeView === 'placeholder' && <div style={{ padding: 40, textAlign: 'center', color: '#666' }}><span style={{ fontSize: 48, opacity: 0.2, display: 'block', marginBottom: 20 }}>🏗</span><h3>Under Construction</h3><p>This module ({module}) is part of the layout but not yet developed.</p></div>}
   </main>{modal && <AccountModal form={form} setForm={setForm} accounts={accounts} editing={editing} close={() => setModal(false)} save={saveAccount} />}{toast && <div className="toast">✓ {toast}</div>}</div>

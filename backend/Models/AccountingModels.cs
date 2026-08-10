@@ -242,7 +242,7 @@ public record VendorRequest(
 
 public record VendorStatusRequest(VendorStatus Status, string? Reason);
 
-public enum LineDestination { Inventory, FixedAsset, Expense }
+public enum LineDestination { Inventory, ManufacturingMaterial, FixedAsset, Expense }
 public enum PurchaseRequestStatus { Draft, Submitted, Approved, Rejected, Ordered }
 public record PurchaseRequestLineRequest(Guid ProductId, string Description, decimal Quantity);
 public record PurchaseRequestRequest(string RequestNumber, string RequesterName, DateOnly Date, List<PurchaseRequestLineRequest> Lines);
@@ -250,9 +250,14 @@ public record PurchaseRequestRequest(string RequestNumber, string RequesterName,
 public class PurchaseRequestLine
 {
     public Guid Id { get; init; } = Guid.NewGuid();
-    public Guid ProductId { get; set; }
+    public Guid? ProductId { get; set; }
     public required string Description { get; set; }
-    public decimal Quantity { get; set; }
+    public decimal Quantity { get; set; } = 1;
+    public decimal EstimatedUnitPrice { get; set; } = 0;
+    public decimal EstimatedTotal => Quantity * EstimatedUnitPrice;
+    public LineDestination Destination { get; set; } = LineDestination.Inventory;
+    public Guid? TargetWarehouseId { get; set; }
+    public Guid? ExpenseAccountId { get; set; }
 }
 
 public class PurchaseRequest
@@ -260,8 +265,12 @@ public class PurchaseRequest
     public Guid Id { get; init; } = Guid.NewGuid();
     public required string RequestNumber { get; set; }
     public required string RequesterName { get; set; }
+    public string Department { get; set; } = "General";
+    public string Priority { get; set; } = "Medium";
     public DateOnly Date { get; set; }
+    public DateOnly? RequiredByDate { get; set; }
     public PurchaseRequestStatus Status { get; set; } = PurchaseRequestStatus.Draft;
+    public decimal TotalEstimatedAmount => Lines.Sum(l => l.EstimatedTotal);
     public List<PurchaseRequestLine> Lines { get; set; } = [];
     public Guid CompanyId { get; set; }
 }
@@ -271,15 +280,17 @@ public enum RfqStatus { Open, Closed, Awarded, Canceled }
 public class RequestForQuotationLine
 {
     public Guid Id { get; init; } = Guid.NewGuid();
-    public Guid ProductId { get; set; }
+    public Guid? ProductId { get; set; }
     public required string Description { get; set; }
-    public decimal Quantity { get; set; }
+    public decimal Quantity { get; set; } = 1;
+    public LineDestination Destination { get; set; } = LineDestination.Inventory;
 }
 
 public class RequestForQuotation
 {
     public Guid Id { get; init; } = Guid.NewGuid();
     public required string RfqNumber { get; set; }
+    public string Title { get; set; } = string.Empty;
     public Guid? PurchaseRequestId { get; set; }
     public DateOnly Date { get; set; }
     public DateOnly Deadline { get; set; }
@@ -291,20 +302,28 @@ public class RequestForQuotation
 public class VendorQuoteLine
 {
     public Guid Id { get; init; } = Guid.NewGuid();
-    public Guid ProductId { get; set; }
-    public decimal UnitPrice { get; set; }
+    public Guid? ProductId { get; set; }
+    public string Description { get; set; } = string.Empty;
+    public decimal Quantity { get; set; } = 1;
+    public decimal UnitPrice { get; set; } = 0;
+    public decimal QuotedTotal => Quantity * UnitPrice;
     public Guid? TaxCodeId { get; set; }
-    public decimal TaxAmount { get; set; }
+    public decimal TaxAmount { get; set; } = 0;
+    public LineDestination Destination { get; set; } = LineDestination.Inventory;
 }
 
 public class VendorQuote
 {
     public Guid Id { get; init; } = Guid.NewGuid();
+    public string QuoteNumber { get; set; } = string.Empty;
     public Guid RequestForQuotationId { get; set; }
     public Guid VendorId { get; set; }
     public DateOnly Date { get; set; }
+    public int DeliveryLeadTimeDays { get; set; } = 7;
+    public decimal TotalAmount => Lines.Sum(l => l.QuotedTotal);
     public bool IsWinningQuote { get; set; } = false;
     public List<VendorQuoteLine> Lines { get; set; } = [];
+    public Guid CompanyId { get; set; }
 }
 
 public record RfqRequest(string RfqNumber, Guid? PurchaseRequestId, DateOnly Date, DateOnly Deadline, List<RequestForQuotationLine> Lines);
@@ -603,3 +622,70 @@ public record EstimateRequest(
     List<EstimateLineRequest> Lines, Guid? CompanyId);
 
 public record EstimateStatusRequest(EstimateStatus Status);
+
+public class GoodsReceiptLine
+{
+    public string Id { get; set; } = Guid.NewGuid().ToString();
+    public string GrnId { get; set; } = string.Empty;
+    public string Description { get; set; } = string.Empty;
+    public string? ProductId { get; set; }
+    public decimal OrderedQuantity { get; set; } = 1;
+    public decimal ReceivedQuantity { get; set; } = 1;
+    public decimal RejectedQuantity { get; set; } = 0;
+    public decimal UnitCost { get; set; } = 0;
+    public LineDestination Destination { get; set; } = LineDestination.Inventory;
+    public string TargetWarehouseId { get; set; } = string.Empty;
+    public string? ExpenseAccountId { get; set; }
+    public string? RejectionReason { get; set; }
+}
+
+public class GoodsReceiptNoteModel
+{
+    public string Id { get; set; } = Guid.NewGuid().ToString();
+    public string GrnNumber { get; set; } = string.Empty;
+    public string PurchaseOrderId { get; set; } = string.Empty;
+    public string PurchaseOrderNumber { get; set; } = string.Empty;
+    public string VendorId { get; set; } = string.Empty;
+    public string VendorName { get; set; } = string.Empty;
+    public string ReceivedDate { get; set; } = DateTime.UtcNow.ToString("yyyy-MM-dd");
+    public string DeliveryChallanNumber { get; set; } = string.Empty;
+    public string ReceivedBy { get; set; } = "Warehouse Inspector";
+    public string TargetWarehouseId { get; set; } = string.Empty;
+    public string? CompanyId { get; set; }
+
+    public List<GoodsReceiptLine> Lines { get; set; } = new();
+}
+
+public class ThreeWayMatchCheck
+{
+    public string PurchaseOrderId { get; set; } = string.Empty;
+    public string PurchaseOrderNumber { get; set; } = string.Empty;
+    public string GrnId { get; set; } = string.Empty;
+    public string GrnNumber { get; set; } = string.Empty;
+    public string VendorBillNumber { get; set; } = string.Empty;
+
+    public decimal OrderedAmount { get; set; } = 0;
+    public decimal ReceivedAmount { get; set; } = 0;
+    public decimal BilledAmount { get; set; } = 0;
+
+    public decimal QuantityVariance { get; set; } = 0;
+    public decimal PriceVariance { get; set; } = 0;
+    public bool IsMatched { get; set; } = true;
+    public string Status { get; set; } = "Passed";
+    public string Details { get; set; } = "3-Way Match Passed cleanly.";
+}
+
+public class StockTransfer
+{
+    public string Id { get; set; } = Guid.NewGuid().ToString();
+    public string TransferNumber { get; set; } = string.Empty;
+    public string Date { get; set; } = DateTime.UtcNow.ToString("yyyy-MM-dd");
+    public string SourceWarehouseId { get; set; } = string.Empty;
+    public string DestinationWarehouseId { get; set; } = string.Empty;
+    public string ProductId { get; set; } = string.Empty;
+    public string ProductName { get; set; } = string.Empty;
+    public decimal Quantity { get; set; } = 1;
+    public string Reason { get; set; } = "Transfer to Manufacturing Raw Materials Warehouse";
+    public string Status { get; set; } = "Completed";
+    public string? CompanyId { get; set; }
+}

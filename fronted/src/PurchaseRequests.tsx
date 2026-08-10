@@ -8,7 +8,7 @@ interface PurchaseRequestLine {
   quantity: number;
 }
 
-interface PurchaseRequest {
+export interface PurchaseRequest {
   id: string;
   requestNumber: string;
   requesterName: string;
@@ -18,7 +18,7 @@ interface PurchaseRequest {
 }
 
 export const PurchaseRequests: React.FC<{activeEntityId: string, entities: any[], goToPo: () => void, goToRfq: () => void}> = ({activeEntityId, goToPo, goToRfq}) => {
-  const requests = useProcurementStore((s) => s.requests as PurchaseRequest[]);
+  const requests = useProcurementStore((s) => s.requests as any[]);
   const fetchRequests = useProcurementStore((s) => s.fetchRequests);
   const createPurchaseRequestStore = useProcurementStore((s) => s.createPurchaseRequest);
 

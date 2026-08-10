@@ -48,14 +48,14 @@ export const Rfqs = ({ activeEntityId }: { activeEntityId: string }) => {
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-50">
-            {rfqs.map(rfq => (
+            {(rfqs as any[]).map(rfq => (
               <tr key={rfq.id} className="hover:bg-gray-50/50 transition-colors">
                 <td className="py-3 px-4 font-medium text-gray-900">{rfq.rfqNumber}</td>
-                <td className="py-3 px-4 text-gray-500">{rfq.date}</td>
-                <td className="py-3 px-4 text-gray-500">{rfq.deadline}</td>
+                <td className="py-3 px-4 text-gray-500">{rfq.issueDate || rfq.date || '-'}</td>
+                <td className="py-3 px-4 text-gray-500">{rfq.dueDate || rfq.deadline || '-'}</td>
                 <td className="py-3 px-4">
-                  <span className={`px-2 py-1 rounded text-xs font-medium ${rfq.status === 2 ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-700'}`}>
-                    {['Open', 'Closed', 'Awarded', 'Canceled'][rfq.status || 0]}
+                  <span className="px-2 py-1 rounded text-xs font-medium bg-purple-100 text-purple-700">
+                    {String(rfq.status || 'Open')}
                   </span>
                 </td>
               </tr>

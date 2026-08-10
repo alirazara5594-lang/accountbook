@@ -15,15 +15,35 @@ builder.Services.AddControllers().AddJsonOptions(options =>
     options.JsonSerializerOptions.Converters.Add(new JsonStringEnumConverter()));
 builder.Services.AddOpenApi();
 
-var rawConnection = builder.Configuration.GetConnectionString("Postgres");
+// Evaluate connection string from Configuration, Environment Variable, or DATABASE_URL (Render format)
+var rawConnection = builder.Configuration.GetConnectionString("Postgres")
+    ?? Environment.GetEnvironmentVariable("ConnectionStrings__Postgres")
+    ?? Environment.GetEnvironmentVariable("DATABASE_URL");
+
 var postgresConnection = NormalizePostgresConnectionString(rawConnection);
 
 if (!string.IsNullOrWhiteSpace(postgresConnection))
     builder.Services.AddDbContextFactory<AccountingDbContext>(options => options.UseNpgsql(postgresConnection));
 
 builder.Services.AddSingleton<AccountingStore>();
-builder.Services.AddCors(options => options.AddDefaultPolicy(policy => policy
-    .AllowAnyOrigin().AllowAnyHeader().AllowAnyMethod()));
+
+// Environment-aware CORS configuration
+var allowedOrigins = Environment.GetEnvironmentVariable("ALLOWED_ORIGINS");
+builder.Services.AddCors(options =>
+{
+    options.AddDefaultPolicy(policy =>
+    {
+        if (!string.IsNullOrWhiteSpace(allowedOrigins))
+        {
+            var origins = allowedOrigins.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+            policy.WithOrigins(origins).AllowAnyHeader().AllowAnyMethod().AllowCredentials();
+        }
+        else
+        {
+            policy.AllowAnyOrigin().AllowAnyHeader().AllowAnyMethod();
+        }
+    });
+});
 
 var app = builder.Build();
 
@@ -34,18 +54,25 @@ if (!string.IsNullOrWhiteSpace(postgresConnection))
     var store = scope.ServiceProvider.GetRequiredService<AccountingStore>();
 }
 
-if (app.Environment.IsDevelopment()) app.MapOpenApi();
+if (app.Environment.IsDevelopment())
+{
+    app.MapOpenApi();
+}
 
 app.UseCors();
 app.UseAuthorization();
+
 app.MapGet("/", () => Results.Ok(new
 {
     name = "Accountbook Accounting API",
+    environment = app.Environment.EnvironmentName,
     status = "running",
+    databaseConnected = !string.IsNullOrWhiteSpace(postgresConnection),
     chartOfAccounts = "/api/v1/chart-of-accounts",
     journalEntries = "/api/v1/journal-entries",
     dashboard = "/api/v1/dashboard"
 }));
+
 app.MapControllers();
 app.Run();
 

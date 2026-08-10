@@ -1,113 +1,189 @@
 import { apiClient } from '../client';
 
+export type LineDestination = 'Inventory' | 'ManufacturingMaterial' | 'FixedAsset' | 'DirectExpense';
+export type ProcurementStatus = 'Draft' | 'Submitted' | 'Approved' | 'Sent' | 'PartiallyReceived' | 'FullyReceived' | 'Billed' | 'Closed' | 'Rejected' | 'Cancelled';
+
+export interface PurchaseRequestLine {
+  id?: string;
+  requestId?: string;
+  description: string;
+  productId?: string;
+  category?: string;
+  quantity: number;
+  estimatedUnitPrice: number;
+  destination: LineDestination;
+  targetWarehouseId?: string;
+  expenseAccountId?: string;
+}
+
 export interface PurchaseRequest {
   id: string;
   requestNumber: string;
-  requester?: string;
-  requesterName?: string;
-  department?: string;
+  requestorName: string;
+  department: string;
   date: string;
-  requiredDate?: string;
-  status: any;
-  itemsCount?: number;
-  totalAmount?: number;
-  lines?: any[];
+  requiredByDate: string;
+  priority: string;
+  status: ProcurementStatus;
+  purpose?: string;
+  totalEstimatedAmount: number;
+  companyId?: string;
+  lines: PurchaseRequestLine[];
 }
 
-export interface PurchaseOrder {
+export interface RequestForQuotation {
   id: string;
-  poNumber: string;
-  vendorId: string;
-  vendorName?: string;
-  date: string;
-  deliveryDate?: string;
-  status: any;
-  totalAmount?: number;
-  lines?: any[];
-}
-
-export interface GoodsReceipt {
-  id: string;
-  grnNumber?: string;
-  poNumber?: string;
-  vendorName?: string;
-  receivedDate?: string;
-  dateReceived?: string;
-  status?: any;
-  lines?: any[];
-  isProcessed?: boolean;
-}
-
-export interface VendorBill {
-  id: string;
-  billNumber: string;
-  vendorBillNumber?: string;
-  vendorInvoiceNumber?: string;
-  vendorName?: string;
-  date: string;
+  rfqNumber: string;
+  purchaseRequestId?: string;
+  issueDate: string;
   dueDate: string;
-  amount?: number;
-  status: any;
-  hasVarianceWarning?: boolean;
+  title: string;
+  status: ProcurementStatus;
+  companyId?: string;
+  invitedVendorIds: string[];
+  lines: PurchaseRequestLine[];
 }
 
-export interface VendorPayment {
+export interface VendorQuoteLine {
+  id?: string;
+  vendorQuoteId?: string;
+  description: string;
+  productId?: string;
+  quantity: number;
+  quotedUnitPrice: number;
+  destination: LineDestination;
+}
+
+export interface VendorQuote {
   id: string;
-  paymentNumber?: string;
-  vendorName?: string;
+  quoteNumber: string;
+  rfqId: string;
+  vendorId: string;
+  vendorName: string;
+  quoteDate: string;
+  validUntil: string;
+  deliveryLeadTimeDays: number;
+  totalAmount: number;
+  isSelected?: boolean;
+  selectionNotes?: string;
+  companyId?: string;
+  lines: VendorQuoteLine[];
+}
+
+export interface GoodsReceiptLine {
+  id?: string;
+  grnId?: string;
+  description: string;
+  productId?: string;
+  orderedQuantity: number;
+  receivedQuantity: number;
+  rejectedQuantity: number;
+  unitCost: number;
+  destination: LineDestination;
+  targetWarehouseId: string;
+  expenseAccountId?: string;
+  rejectionReason?: string;
+}
+
+export interface GoodsReceiptNote {
+  id: string;
+  grnNumber: string;
+  purchaseOrderId: string;
+  purchaseOrderNumber: string;
+  vendorId: string;
+  vendorName: string;
+  receivedDate: string;
+  deliveryChallanNumber: string;
+  receivedBy: string;
+  targetWarehouseId: string;
+  companyId?: string;
+  lines: GoodsReceiptLine[];
+}
+
+export interface ThreeWayMatchResult {
+  purchaseOrderId: string;
+  purchaseOrderNumber: string;
+  grnId: string;
+  grnNumber: string;
+  vendorBillNumber: string;
+  orderedAmount: number;
+  receivedAmount: number;
+  billedAmount: number;
+  quantityVariance: number;
+  priceVariance: number;
+  isMatched: boolean;
+  status: string;
+  details: string;
+}
+
+export interface StockTransfer {
+  id: string;
+  transferNumber: string;
   date: string;
-  amount: number;
-  paymentMethod?: string;
-  paymentMode?: string;
-  status: any;
+  sourceWarehouseId: string;
+  destinationWarehouseId: string;
+  productId: string;
+  productName: string;
+  quantity: number;
+  reason: string;
+  status: string;
+  companyId?: string;
 }
 
 export const procurementApi = {
-  getPurchaseRequests: async (companyId?: string): Promise<PurchaseRequest[]> => {
-    return apiClient<PurchaseRequest[]>('/purchaserequests', { params: { companyId } });
+  getRequests: async (companyId?: string): Promise<PurchaseRequest[]> => {
+    return apiClient<PurchaseRequest[]>('/procurement/requests', { params: { companyId } });
   },
 
-  getRfqs: async (companyId?: string): Promise<any[]> => {
-    return apiClient<any[]>('/rfqs', { params: { companyId } });
+  createRequest: async (data: any): Promise<PurchaseRequest> => {
+    return apiClient<PurchaseRequest>('/procurement/requests', { method: 'POST', body: data });
   },
 
-  getPurchaseOrders: async (companyId?: string): Promise<PurchaseOrder[]> => {
-    return apiClient<PurchaseOrder[]>('/purchaseorders', { params: { companyId } });
+  getRfqs: async (companyId?: string): Promise<RequestForQuotation[]> => {
+    return apiClient<RequestForQuotation[]>('/procurement/rfqs', { params: { companyId } });
   },
 
-  getGoodsReceipts: async (companyId?: string): Promise<GoodsReceipt[]> => {
-    return apiClient<GoodsReceipt[]>('/goodsreceipts', { params: { companyId } });
+  createRfq: async (data: any): Promise<RequestForQuotation> => {
+    return apiClient<RequestForQuotation>('/procurement/rfqs', { method: 'POST', body: data });
   },
 
-  getVendorBills: async (companyId?: string): Promise<VendorBill[]> => {
-    return apiClient<VendorBill[]>('/vendorbills', { params: { companyId } });
+  getVendorQuotes: async (rfqId?: string, companyId?: string): Promise<VendorQuote[]> => {
+    return apiClient<VendorQuote[]>('/procurement/vendor-quotes', { params: { rfqId, companyId } });
   },
 
-  getVendorPayments: async (companyId?: string): Promise<VendorPayment[]> => {
-    return apiClient<VendorPayment[]>('/vendorpayments', { params: { companyId } });
+  submitVendorQuote: async (data: any): Promise<VendorQuote> => {
+    return apiClient<VendorQuote>('/procurement/vendor-quotes', { method: 'POST', body: data });
   },
 
-  createPurchaseRequest: async (data: any): Promise<PurchaseRequest> => {
-    return apiClient<PurchaseRequest>('/purchaserequests', { method: 'POST', body: data });
+  selectVendorQuote: async (id: string): Promise<void> => {
+    return apiClient(`/procurement/vendor-quotes/${id}/select`, { method: 'POST' });
   },
 
-  createPurchaseOrder: async (data: any): Promise<PurchaseOrder> => {
-    return apiClient<PurchaseOrder>('/purchaseorders', { method: 'POST', body: data });
+  getOrders: async (companyId?: string): Promise<any[]> => {
+    return apiClient<any[]>('/procurement/orders', { params: { companyId } });
   },
 
-  updatePOStatus: async (id: string, status: string): Promise<void> => {
-    return apiClient(`/purchaseorders/${id}/status`, { method: 'PATCH', body: { status } });
+  createOrder: async (data: any): Promise<any> => {
+    return apiClient<any>('/procurement/orders', { method: 'POST', body: data });
   },
 
-  createGoodsReceipt: async (data: any): Promise<GoodsReceipt> => {
-    return apiClient<GoodsReceipt>('/goodsreceipts', { method: 'POST', body: data });
+  getGrns: async (companyId?: string): Promise<GoodsReceiptNote[]> => {
+    return apiClient<GoodsReceiptNote[]>('/procurement/grn', { params: { companyId } });
   },
 
-  createVendorBill: async (data: any): Promise<VendorBill> => {
-    return apiClient<VendorBill>('/vendorbills', { method: 'POST', body: data });
+  receiveGrn: async (data: any): Promise<void> => {
+    return apiClient('/procurement/grn', { method: 'POST', body: data });
   },
 
-  createVendorPayment: async (data: any): Promise<VendorPayment> => {
-    return apiClient<VendorPayment>('/vendorpayments', { method: 'POST', body: data });
+  validateThreeWayMatch: async (poId: string): Promise<ThreeWayMatchResult> => {
+    return apiClient<ThreeWayMatchResult>(`/procurement/three-way-match/${poId}`);
+  },
+
+  getTransfers: async (companyId?: string): Promise<StockTransfer[]> => {
+    return apiClient<StockTransfer[]>('/procurement/transfers', { params: { companyId } });
+  },
+
+  createTransfer: async (data: any): Promise<void> => {
+    return apiClient('/procurement/transfers', { method: 'POST', body: data });
   },
 };

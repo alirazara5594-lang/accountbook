@@ -32,6 +32,8 @@ public class AccountingStore
     private readonly List<TaxRate> _taxRates = [];
     private readonly List<SalesInvoice> _salesInvoices = [];
     private readonly List<Estimate> _estimates = [];
+    private readonly List<BillOfMaterials> _boms = [];
+    private readonly List<WorkOrder> _workOrders = [];
     private readonly Dictionary<Guid, List<AuditItem>> _history = [];
     private readonly object _lock = new();
 
@@ -58,7 +60,9 @@ public class AccountingStore
         List<StockLevel>? StockLevels = null,
         List<StockTransaction>? StockTransactions = null,
         List<SalesInvoice>? SalesInvoices = null,
-        List<Estimate>? Estimates = null);
+        List<Estimate>? Estimates = null,
+        List<BillOfMaterials>? Boms = null,
+        List<WorkOrder>? WorkOrders = null);
 
     public AccountingStore(IDbContextFactory<AccountingDbContext>? dbFactory = null)
     {
@@ -173,6 +177,412 @@ public class AccountingStore
     public IReadOnlyList<SalesInvoice> SalesInvoices => _salesInvoices;
     public IReadOnlyList<Estimate> Estimates => _estimates;
     public IReadOnlyList<TaxRate> TaxRates => _taxRates;
+    public IReadOnlyList<BillOfMaterials> BillOfMaterials => _boms;
+    public IReadOnlyList<WorkOrder> WorkOrders => _workOrders;
+
+    public string NextBomNumber()
+    {
+        var numbers = _boms.Select(b => b.BomNumber).Where(n => n.StartsWith("BOM-") && int.TryParse(n[4..], out _)).Select(n => int.Parse(n[4..])).DefaultIfEmpty(0);
+        return $"BOM-{(numbers.Max() + 1):D4}";
+    }
+
+    public string NextWorkOrderNumber()
+    {
+        var numbers = _workOrders.Select(w => w.WorkOrderNumber).Where(n => n.StartsWith("WO-") && int.TryParse(n[3..], out _)).Select(n => int.Parse(n[3..])).DefaultIfEmpty(0);
+        return $"WO-{(numbers.Max() + 1):D4}";
+    }
+
+    public BillOfMaterials CreateBom(BillOfMaterials bom)
+    {
+        lock (_lock)
+        {
+            if (string.IsNullOrWhiteSpace(bom.BomNumber)) bom.BomNumber = NextBomNumber();
+            _boms.Add(bom);
+            Persist();
+            return bom;
+        }
+    }
+
+    public WorkOrder CreateWorkOrder(WorkOrder order)
+    {
+        lock (_lock)
+        {
+            if (string.IsNullOrWhiteSpace(order.WorkOrderNumber)) order.WorkOrderNumber = NextWorkOrderNumber();
+            _workOrders.Add(order);
+            Persist();
+            return order;
+        }
+    }
+
+    public bool StartWorkOrder(string id, out string? error)
+    {
+        error = null;
+        lock (_lock)
+        {
+            var wo = _workOrders.FirstOrDefault(x => x.Id == id);
+            if (wo is null) { error = "Work Order not found."; return false; }
+            if (wo.Status != WorkOrderStatus.Draft && wo.Status != WorkOrderStatus.Released) { error = "Work Order is already in progress or completed."; return false; }
+
+            // Deduct Raw Materials from Warehouse (Stock Out)
+            decimal totalMatCost = 0;
+            foreach (var line in wo.Lines)
+            {
+                Guid.TryParse(line.RawMaterialProductId, out var prodId);
+                Guid.TryParse(wo.RawMaterialWarehouseId, out var whId);
+                Guid.TryParse(wo.CompanyId, out var compId);
+
+                var product = _products.FirstOrDefault(p => p.Id == prodId);
+                var unitCost = product?.CostPrice ?? 10m;
+                var reqQty = line.QuantityRequired * wo.QuantityToProduce;
+                line.QuantityIssued = reqQty;
+                line.UnitCost = unitCost;
+                line.TotalCost = reqQty * unitCost;
+                totalMatCost += line.TotalCost;
+
+                // Record Stock Outbound
+                var txn = new StockTransaction
+                {
+                    Date = DateOnly.FromDateTime(DateTime.Today),
+                    Type = StockTransactionType.Out,
+                    ProductId = prodId,
+                    WarehouseId = whId,
+                    Quantity = reqQty,
+                    UnitCost = unitCost,
+                    Reference = $"WO Issue: {wo.WorkOrderNumber}",
+                    CompanyId = compId != Guid.Empty ? compId : null
+                };
+                _stockTransactions.Add(txn);
+
+                // Update Stock Level
+                var level = _stockLevels.FirstOrDefault(sl => sl.ProductId == prodId && sl.WarehouseId == whId);
+                if (level is not null)
+                {
+                    level.QuantityOnHand = Math.Max(0, level.QuantityOnHand - reqQty);
+                }
+            }
+
+            wo.TotalMaterialCost = totalMatCost;
+            wo.Status = WorkOrderStatus.InProgress;
+            Persist();
+            return true;
+        }
+    }
+
+    public bool CompleteWorkOrder(string id, decimal actualProducedQty, decimal directLabor, decimal overhead, out string? error)
+    {
+        error = null;
+        lock (_lock)
+        {
+            var wo = _workOrders.FirstOrDefault(x => x.Id == id);
+            if (wo is null) { error = "Work Order not found."; return false; }
+            if (wo.Status != WorkOrderStatus.InProgress && wo.Status != WorkOrderStatus.Released) { error = "Work Order must be in progress to complete."; return false; }
+
+            var produceQty = actualProducedQty > 0 ? actualProducedQty : wo.QuantityToProduce;
+            wo.DirectLaborCost = directLabor;
+            wo.OverheadCost = overhead;
+            wo.TotalCost = wo.TotalMaterialCost + directLabor + overhead;
+            wo.UnitCost = produceQty > 0 ? Math.Round(wo.TotalCost / produceQty, 2) : 0;
+            wo.QuantityProduced = produceQty;
+
+            Guid.TryParse(wo.FinishedProductId, out var finishedProdId);
+            Guid.TryParse(wo.FinishedGoodsWarehouseId, out var finishedWhId);
+            Guid.TryParse(wo.CompanyId, out var compId);
+
+            // Add Finished Goods into Warehouse (Stock In)
+            var txn = new StockTransaction
+            {
+                Date = DateOnly.FromDateTime(DateTime.Today),
+                Type = StockTransactionType.In,
+                ProductId = finishedProdId,
+                WarehouseId = finishedWhId,
+                Quantity = produceQty,
+                UnitCost = wo.UnitCost,
+                Reference = $"WO Completion: {wo.WorkOrderNumber}",
+                CompanyId = compId != Guid.Empty ? compId : null
+            };
+            _stockTransactions.Add(txn);
+
+            // Update Stock Level for Finished Goods
+            var level = _stockLevels.FirstOrDefault(sl => sl.ProductId == finishedProdId && sl.WarehouseId == finishedWhId);
+            if (level is null)
+            {
+                level = new StockLevel
+                {
+                    ProductId = finishedProdId,
+                    WarehouseId = finishedWhId,
+                    QuantityOnHand = produceQty,
+                    MovingAverageCost = wo.UnitCost,
+                    CompanyId = compId != Guid.Empty ? compId : null
+                };
+                _stockLevels.Add(level);
+            }
+            else
+            {
+                var totalVal = (level.QuantityOnHand * level.MovingAverageCost) + wo.TotalCost;
+                level.QuantityOnHand += produceQty;
+                level.MovingAverageCost = level.QuantityOnHand > 0 ? Math.Round(totalVal / level.QuantityOnHand, 2) : wo.UnitCost;
+            }
+
+            // Update Finished Product Cost & Unit Price
+            var finishedProduct = _products.FirstOrDefault(p => p.Id == finishedProdId);
+            if (finishedProduct is not null)
+            {
+                finishedProduct.CostPrice = wo.UnitCost;
+            }
+
+            wo.Status = WorkOrderStatus.Completed;
+            wo.CompletionDate = DateTime.UtcNow.ToString("yyyy-MM-dd");
+            Persist();
+            return true;
+        }
+    }
+
+    private readonly List<GoodsReceiptNoteModel> _grnModels = [];
+    private readonly List<StockTransfer> _stockTransfers = [];
+
+    public IReadOnlyList<GoodsReceiptNoteModel> GoodsReceiptNoteLogs => _grnModels;
+    public IReadOnlyList<StockTransfer> StockTransfers => _stockTransfers;
+
+    public PurchaseRequest CreatePurchaseRequest(PurchaseRequest pr)
+    {
+        lock (_lock)
+        {
+            if (string.IsNullOrWhiteSpace(pr.RequestNumber))
+            {
+                var max = _prs.Select(p => p.RequestNumber).Where(n => n.StartsWith("PR-") && int.TryParse(n[3..], out _)).Select(n => int.Parse(n[3..])).DefaultIfEmpty(0).Max();
+                pr.RequestNumber = $"PR-{(max + 1):D4}";
+            }
+            _prs.Add(pr);
+            Persist();
+            return pr;
+        }
+    }
+
+    public RequestForQuotation CreateRfq(RequestForQuotation rfq)
+    {
+        lock (_lock)
+        {
+            if (string.IsNullOrWhiteSpace(rfq.RfqNumber))
+            {
+                var max = _rfqs.Select(r => r.RfqNumber).Where(n => n.StartsWith("RFQ-") && int.TryParse(n[4..], out _)).Select(n => int.Parse(n[4..])).DefaultIfEmpty(0).Max();
+                rfq.RfqNumber = $"RFQ-{(max + 1):D4}";
+            }
+            _rfqs.Add(rfq);
+            Persist();
+            return rfq;
+        }
+    }
+
+    public VendorQuote CreateVendorQuote(VendorQuote quote)
+    {
+        lock (_lock)
+        {
+            if (string.IsNullOrWhiteSpace(quote.QuoteNumber))
+            {
+                var max = _vendorQuotes.Select(q => q.QuoteNumber).Where(n => n.StartsWith("VQ-") && int.TryParse(n[3..], out _)).Select(n => int.Parse(n[3..])).DefaultIfEmpty(0).Max();
+                quote.QuoteNumber = $"VQ-{(max + 1):D4}";
+            }
+            _vendorQuotes.Add(quote);
+            Persist();
+            return quote;
+        }
+    }
+
+    public bool SelectVendorQuote(string quoteId, out string? error)
+    {
+        error = null;
+        lock (_lock)
+        {
+            Guid.TryParse(quoteId, out var targetQuoteId);
+            var quote = _vendorQuotes.FirstOrDefault(q => q.Id == targetQuoteId);
+            if (quote is null) { error = "Vendor Quote not found."; return false; }
+
+            foreach (var q in _vendorQuotes.Where(x => x.RequestForQuotationId == quote.RequestForQuotationId))
+            {
+                q.IsWinningQuote = (q.Id == targetQuoteId);
+            }
+
+            var maxPo = _purchaseOrders.Select(p => p.PoNumber).Where(n => n.StartsWith("PO-") && int.TryParse(n[3..], out _)).Select(n => int.Parse(n[3..])).DefaultIfEmpty(0).Max();
+            var po = new PurchaseOrder
+            {
+                PoNumber = $"PO-{(maxPo + 1):D4}",
+                VendorId = quote.VendorId,
+                VendorQuoteId = quote.Id,
+                Date = DateOnly.FromDateTime(DateTime.Today),
+                ExpectedDeliveryDate = DateOnly.FromDateTime(DateTime.Today.AddDays(quote.DeliveryLeadTimeDays)),
+                Status = PurchaseOrderStatus.Issued,
+                CompanyId = quote.CompanyId,
+                Lines = quote.Lines.Select(l => new PurchaseOrderLine
+                {
+                    Description = l.Description,
+                    ProductId = l.ProductId ?? Guid.Empty,
+                    Quantity = l.Quantity,
+                    UnitPrice = l.UnitPrice,
+                    TaxAmount = 0,
+                    Destination = l.Destination
+                }).ToList()
+            };
+            _purchaseOrders.Add(po);
+            Persist();
+            return true;
+        }
+    }
+
+    public bool ProcessGrnReceiving(GoodsReceiptNoteModel grn, out string? error)
+    {
+        error = null;
+        lock (_lock)
+        {
+            if (string.IsNullOrWhiteSpace(grn.GrnNumber))
+            {
+                var max = _grnModels.Select(g => g.GrnNumber).Where(n => n.StartsWith("GRN-") && int.TryParse(n[4..], out _)).Select(n => int.Parse(n[4..])).DefaultIfEmpty(0).Max();
+                grn.GrnNumber = $"GRN-{(max + 1):D4}";
+            }
+
+            foreach (var line in grn.Lines)
+            {
+                Guid.TryParse(line.ProductId, out var prodId);
+                Guid.TryParse(grn.TargetWarehouseId, out var whId);
+                Guid.TryParse(grn.CompanyId, out var compId);
+
+                if (line.Destination == LineDestination.Inventory || line.Destination == LineDestination.ManufacturingMaterial)
+                {
+                    var txn = new StockTransaction
+                    {
+                        Date = DateOnly.FromDateTime(DateTime.Today),
+                        Type = StockTransactionType.In,
+                        ProductId = prodId != Guid.Empty ? prodId : Guid.NewGuid(),
+                        WarehouseId = whId,
+                        Quantity = line.ReceivedQuantity,
+                        UnitCost = line.UnitCost,
+                        Reference = $"GRN: {grn.GrnNumber}",
+                        CompanyId = compId != Guid.Empty ? compId : null
+                    };
+                    _stockTransactions.Add(txn);
+
+                    var level = _stockLevels.FirstOrDefault(sl => sl.ProductId == prodId && sl.WarehouseId == whId);
+                    if (level is null && prodId != Guid.Empty)
+                    {
+                        level = new StockLevel
+                        {
+                            ProductId = prodId,
+                            WarehouseId = whId,
+                            QuantityOnHand = line.ReceivedQuantity,
+                            MovingAverageCost = line.UnitCost,
+                            CompanyId = compId != Guid.Empty ? compId : null
+                        };
+                        _stockLevels.Add(level);
+                    }
+                    else if (level is not null)
+                    {
+                        var totVal = (level.QuantityOnHand * level.MovingAverageCost) + (line.ReceivedQuantity * line.UnitCost);
+                        level.QuantityOnHand += line.ReceivedQuantity;
+                        level.MovingAverageCost = level.QuantityOnHand > 0 ? Math.Round(totVal / level.QuantityOnHand, 2) : line.UnitCost;
+                    }
+                }
+                else if (line.Destination == LineDestination.FixedAsset)
+                {
+                    var asset = new FixedAsset
+                    {
+                        AssetTag = $"FA-{(_fixedAssets.Count + 1):D4}",
+                        Name = line.Description,
+                        PurchaseDate = DateOnly.FromDateTime(DateTime.Today),
+                        PurchasePrice = line.ReceivedQuantity * line.UnitCost,
+                        UsefulLifeYears = 3,
+                        SalvageValue = 0,
+                        Status = AssetStatus.Active,
+                        CompanyId = compId != Guid.Empty ? compId : null
+                    };
+                    _fixedAssets.Add(asset);
+                }
+            }
+
+            _grnModels.Add(grn);
+            Persist();
+            return true;
+        }
+    }
+
+    public ThreeWayMatchCheck ValidateThreeWayMatch(string poId)
+    {
+        var po = _purchaseOrders.FirstOrDefault(p => p.Id.ToString() == poId || p.PoNumber == poId);
+        if (po is null) return new ThreeWayMatchCheck { Status = "NotFound", Details = "PO not found." };
+
+        var grns = _grnModels.Where(g => g.PurchaseOrderId == po.Id.ToString() || g.PurchaseOrderNumber == po.PoNumber).ToList();
+        var bill = _vendorBills.FirstOrDefault(b => b.PurchaseOrderId == po.Id);
+
+        var orderedAmt = po.Lines.Sum(l => l.TotalAmount);
+        var receivedAmt = grns.SelectMany(g => g.Lines).Sum(l => l.ReceivedQuantity * l.UnitCost);
+        var billedAmt = bill?.Lines?.Sum(l => l.TotalAmount) ?? receivedAmt;
+
+        var qtyVariance = po.Lines.Sum(l => l.Quantity) - grns.SelectMany(g => g.Lines).Sum(l => l.ReceivedQuantity);
+        var priceVariance = Math.Abs(orderedAmt - billedAmt);
+
+        bool matched = Math.Abs(qtyVariance) < 0.01m && priceVariance < 0.01m;
+
+        return new ThreeWayMatchCheck
+        {
+            PurchaseOrderId = po.Id.ToString(),
+            PurchaseOrderNumber = po.PoNumber,
+            GrnId = grns.FirstOrDefault()?.Id ?? "",
+            GrnNumber = grns.FirstOrDefault()?.GrnNumber ?? "Pending",
+            VendorBillNumber = bill?.BillNumber ?? "Pending",
+            OrderedAmount = orderedAmt,
+            ReceivedAmount = receivedAmt,
+            BilledAmount = billedAmt,
+            QuantityVariance = qtyVariance,
+            PriceVariance = priceVariance,
+            IsMatched = matched,
+            Status = matched ? "Passed" : (priceVariance > 0.01m ? "OverBilled" : "UnderDelivery"),
+            Details = matched ? "3-Way Match Passed cleanly." : $"Discrepancy detected: Qty Var: {qtyVariance}, Price Var: ${priceVariance:F2}"
+        };
+    }
+
+    public bool ProcessStockTransfer(StockTransfer transfer, out string? error)
+    {
+        error = null;
+        lock (_lock)
+        {
+            if (string.IsNullOrWhiteSpace(transfer.TransferNumber))
+            {
+                var max = _stockTransfers.Select(t => t.TransferNumber).Where(n => n.StartsWith("ST-") && int.TryParse(n[3..], out _)).Select(n => int.Parse(n[3..])).DefaultIfEmpty(0).Max();
+                transfer.TransferNumber = $"ST-{(max + 1):D4}";
+            }
+
+            Guid.TryParse(transfer.SourceWarehouseId, out var srcWhId);
+            Guid.TryParse(transfer.DestinationWarehouseId, out var dstWhId);
+            Guid.TryParse(transfer.ProductId, out var prodId);
+            Guid.TryParse(transfer.CompanyId, out var compId);
+
+            var srcLevel = _stockLevels.FirstOrDefault(sl => sl.ProductId == prodId && sl.WarehouseId == srcWhId);
+            if (srcLevel is not null)
+            {
+                srcLevel.QuantityOnHand = Math.Max(0, srcLevel.QuantityOnHand - transfer.Quantity);
+            }
+
+            var dstLevel = _stockLevels.FirstOrDefault(sl => sl.ProductId == prodId && sl.WarehouseId == dstWhId);
+            if (dstLevel is null)
+            {
+                dstLevel = new StockLevel
+                {
+                    ProductId = prodId,
+                    WarehouseId = dstWhId,
+                    QuantityOnHand = transfer.Quantity,
+                    MovingAverageCost = srcLevel?.MovingAverageCost ?? 10m,
+                    CompanyId = compId != Guid.Empty ? compId : null
+                };
+                _stockLevels.Add(dstLevel);
+            }
+            else
+            {
+                dstLevel.QuantityOnHand += transfer.Quantity;
+            }
+
+            _stockTransfers.Add(transfer);
+            Persist();
+            return true;
+        }
+    }
 
     public Customer? FindCustomer(Guid id) => _customers.FirstOrDefault(x => x.Id == id);
     public string NextCustomerNumber()
@@ -1246,6 +1656,8 @@ public class AccountingStore
         _stockTransactions.Clear(); _stockTransactions.AddRange(state.StockTransactions ?? []);
         _salesInvoices.Clear(); _salesInvoices.AddRange(state.SalesInvoices ?? []);
         _estimates.Clear(); _estimates.AddRange(state.Estimates ?? []);
+        _boms.Clear(); _boms.AddRange(state.Boms ?? []);
+        _workOrders.Clear(); _workOrders.AddRange(state.WorkOrders ?? []);
         foreach (var (id, history) in state.History) _history[id] = history;
         Persist();
         return true;
@@ -1254,7 +1666,7 @@ public class AccountingStore
     {
         if (_dbFactory is null) return;
         using var db = _dbFactory.CreateDbContext();
-        var json = JsonSerializer.Serialize(new StoredState(_accounts, _entries, _history, _templates, _recurringEntries, _journalEvents, _intercompanyAllocations, _companies, _customers, _products, _vendors, _purchaseOrders, _grns, _fixedAssets, _taxAuthorities, _taxCodes, _taxRates, _warehouses, _stockLevels, _stockTransactions, _salesInvoices, _estimates));
+        var json = JsonSerializer.Serialize(new StoredState(_accounts, _entries, _history, _templates, _recurringEntries, _journalEvents, _intercompanyAllocations, _companies, _customers, _products, _vendors, _purchaseOrders, _grns, _fixedAssets, _taxAuthorities, _taxCodes, _taxRates, _warehouses, _stockLevels, _stockTransactions, _salesInvoices, _estimates, _boms, _workOrders));
         var snapshot = db.AccountingStateSnapshots.Find(1);
         if (snapshot is null) db.AccountingStateSnapshots.Add(new AccountingStateSnapshot { Id = 1, Json = json, UpdatedAt = DateTime.UtcNow });
         else { snapshot.Json = json; snapshot.UpdatedAt = DateTime.UtcNow; }

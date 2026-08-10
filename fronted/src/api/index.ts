@@ -13,3 +13,4 @@ export * from './modules/tax.api';
 export * from './modules/intercompany.api';
 export * from './modules/vouchers.api';
 export * from './modules/reports.api';
+export * from './modules/manufacturing.api';
