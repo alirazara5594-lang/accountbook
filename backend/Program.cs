@@ -17,6 +17,13 @@ builder.Services.AddCors(options => options.AddDefaultPolicy(policy => policy
 
 var app = builder.Build();
 
+// Eagerly warm up AccountingStore and initialize PostgreSQL database tables on app startup
+if (!string.IsNullOrWhiteSpace(postgresConnection))
+{
+    using var scope = app.Services.CreateScope();
+    var store = scope.ServiceProvider.GetRequiredService<AccountingStore>();
+}
+
 if (app.Environment.IsDevelopment()) app.MapOpenApi();
 
 app.UseCors();

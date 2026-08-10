@@ -1200,3 +1200,4 @@ D:\Project\accountbook\backend\obj\Debug\net10.0\refint\Accountbook.Api.dll
 D:\Project\accountbook\backend\obj\Debug\net10.0\Accountbook.Api.pdb
 D:\Project\accountbook\backend\obj\Debug\net10.0\Zenabook.Api.genruntimeconfig.cache
 D:\Project\accountbook\backend\obj\Debug\net10.0\ref\Accountbook.Api.dll
+D:\Project\accountbook\backend\bin\Debug\net10.0\appsettings.Production.json
