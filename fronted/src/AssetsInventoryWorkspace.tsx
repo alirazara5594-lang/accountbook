@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
 
-const api = 'http://localhost:5124/api/v1';
+import { API_BASE_URL as api } from './config/api';
 function money(v: number) { return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(v); }
 
 // ─── Shared Select ───────────────────────────────────────────────────────────

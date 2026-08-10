@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { API_BASE_URL } from './config/api';
 
 interface TaxAuthority {
   id: string;
@@ -38,8 +39,8 @@ export const TaxConfiguration: React.FC = () => {
     setLoading(true);
     try {
       const [authRes, codesRes] = await Promise.all([
-        fetch('http://localhost:5124/api/taxes/authorities'),
-        fetch('http://localhost:5124/api/taxes/codes')
+        fetch(`${API_BASE_URL.replace(/\/v1$/, '')}/taxes/authorities`),
+        fetch(`${API_BASE_URL.replace(/\/v1$/, '')}/taxes/codes`)
       ]);
       setAuthorities(await authRes.json());
       setCodes(await codesRes.json());

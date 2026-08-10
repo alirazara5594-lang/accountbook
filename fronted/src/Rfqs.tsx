@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { API_BASE_URL } from './config/api'
 
 export const Rfqs = ({ activeEntityId }: { activeEntityId: string }) => {
   const [rfqs, setRfqs] = useState<any[]>([]);
@@ -7,7 +8,7 @@ export const Rfqs = ({ activeEntityId }: { activeEntityId: string }) => {
   const fetchRfqs = async () => {
     setLoading(true);
     try {
-      const res = await fetch(`http://localhost:5124/api/v1/rfqs?companyId=${activeEntityId}`);
+      const res = await fetch(`${API_BASE_URL}/rfqs?companyId=${activeEntityId}`);
       if (res.ok) setRfqs(await res.json());
     } catch (e) {
       console.error(e);
@@ -29,7 +30,7 @@ export const Rfqs = ({ activeEntityId }: { activeEntityId: string }) => {
   const handleCreateRfqFromPr = async (prId: string) => {
     try {
       // First fetch the PR to get lines
-      const prRes = await fetch(`http://localhost:5124/api/v1/purchaserequests?companyId=${activeEntityId}`);
+      const prRes = await fetch(`${API_BASE_URL}/purchaserequests?companyId=${activeEntityId}`);
       if (!prRes.ok) return;
       const prs = await prRes.json();
       const pr = prs.find((x: any) => x.id === prId);
@@ -47,7 +48,7 @@ export const Rfqs = ({ activeEntityId }: { activeEntityId: string }) => {
         }))
       };
 
-      const res = await fetch(`http://localhost:5124/api/v1/rfqs?companyId=${activeEntityId}`, {
+      const res = await fetch(`${API_BASE_URL}/rfqs?companyId=${activeEntityId}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(rfqRequest)

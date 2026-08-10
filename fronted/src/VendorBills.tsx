@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { API_BASE_URL } from './config/api'
 
 export const VendorBills = ({ activeEntityId }: { activeEntityId: string }) => {
   const [bills, setBills] = useState<any[]>([]);
@@ -7,7 +8,7 @@ export const VendorBills = ({ activeEntityId }: { activeEntityId: string }) => {
   const fetchBills = async () => {
     setLoading(true);
     try {
-      const res = await fetch(`http://localhost:5124/api/v1/vendorbills?companyId=${activeEntityId}`);
+      const res = await fetch(`${API_BASE_URL}/vendorbills?companyId=${activeEntityId}`);
       if (res.ok) setBills(await res.json());
     } catch (e) {
       console.error(e);

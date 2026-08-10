@@ -1,4 +1,5 @@
 import React, { useState, useMemo } from 'react';
+import { API_BASE_URL } from './config/api';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -68,7 +69,7 @@ export const CustomerReceiptsView: React.FC<CustomerReceiptsViewProps> = ({ acti
   });
 
   React.useEffect(() => {
-    fetch('http://localhost:5124/api/v1/customers')
+    fetch(`${API_BASE_URL}/customers`)
       .then(res => res.ok ? res.json() : [])
       .then(data => {
         if (Array.isArray(data) && data.length > 0) {

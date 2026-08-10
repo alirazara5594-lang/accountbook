@@ -4,7 +4,7 @@ import { Building2, CircleOff, Pencil, Plus, Settings2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 
-const api = 'http://localhost:5124/api/v1'
+import { API_BASE_URL as api } from './config/api'
 export type EntityType = 'Parent' | 'Subsidiary' | 'Branch' | 'JointVenture' | 'Associate'
 export type Entity = { id: string; name: string; code?: string; legalName?: string; type: EntityType; parentId?: string; country: string; currencyCode: string; taxAuthorityId?: string; active: boolean }
 type Form = { name: string; code: string; legalName: string; type: EntityType; parentId: string; country: string; currencyCode: string; taxAuthorityId: string; state: string }

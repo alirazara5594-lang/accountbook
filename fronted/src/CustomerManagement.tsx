@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import type { Entity } from './EntitySettings'
 
-const api = 'http://localhost:5124/api/v1'
+import { API_BASE_URL as api } from './config/api'
 
 export type CustomerStatus = 'Active' | 'Inactive' | 'Blocked'
 

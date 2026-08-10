@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { API_BASE_URL } from './config/api';
 import './App.css';
 
 interface TaxRate {
@@ -96,7 +97,7 @@ export const PurchaseOrders: React.FC<{activeEntityId?: string, entities?: any[]
 
   const loadDraftPr = async (id: string) => {
     try {
-      const res = await fetch(`http://localhost:5124/api/v1/purchaserequests?companyId=${activeEntityId}`);
+      const res = await fetch(`${API_BASE_URL}/purchaserequests?companyId=${activeEntityId}`);
       if (res.ok) {
         const prs = await res.json();
         const pr = prs.find((x: any) => x.id === id);
@@ -123,11 +124,11 @@ export const PurchaseOrders: React.FC<{activeEntityId?: string, entities?: any[]
     setLoading(true);
     try {
       const [poRes, grnRes, vendorRes, prodRes, taxRes] = await Promise.all([
-        fetch('http://localhost:5124/api/v1/purchaseorders'),
-        fetch('http://localhost:5124/api/v1/goodsreceipts'),
-        fetch('http://localhost:5124/api/v1/vendors'),
-        fetch('http://localhost:5124/api/v1/products'),
-        fetch('http://localhost:5124/api/v1/taxes/codes')
+        fetch(`${API_BASE_URL}/purchaseorders`),
+        fetch(`${API_BASE_URL}/goodsreceipts`),
+        fetch(`${API_BASE_URL}/vendors`),
+        fetch(`${API_BASE_URL}/products`),
+        fetch(`${API_BASE_URL}/taxes/codes`)
       ]);
       setPos(await poRes.json());
       setGrns(await grnRes.json());
@@ -209,7 +210,7 @@ export const PurchaseOrders: React.FC<{activeEntityId?: string, entities?: any[]
   const submitPo = async () => {
     if (!poVendorId || poLines.length === 0) return alert('Vendor and at least one line required.');
     try {
-      const res = await fetch('http://localhost:5124/api/v1/purchaseorders', {
+      const res = await fetch(`${API_BASE_URL}/purchaseorders`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -253,7 +254,7 @@ export const PurchaseOrders: React.FC<{activeEntityId?: string, entities?: any[]
   const submitGrn = async () => {
     if (!grnPoId || grnLines.length === 0) return alert('PO and at least one line required.');
     try {
-      const res = await fetch('http://localhost:5124/api/v1/goodsreceipts', {
+      const res = await fetch(`${API_BASE_URL}/goodsreceipts`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -264,7 +265,7 @@ export const PurchaseOrders: React.FC<{activeEntityId?: string, entities?: any[]
       });
       if (res.ok) {
         const grn = await res.json();
-        await fetch(`http://localhost:5124/api/v1/goodsreceipts/${grn.id}/process`, { method: 'POST' });
+        await fetch(`${API_BASE_URL}/goodsreceipts/${grn.id}/process`, { method: 'POST' });
         setIsGrnModalOpen(false);
         setGrnPoId('');
         setGrnLines([]);

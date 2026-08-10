@@ -29,7 +29,7 @@ type AccountType = 'Asset' | 'Liability' | 'Equity' | 'Revenue' | 'Expense' | 'C
 type Account = { id: string; code: string; name: string; type: AccountType; parentId?: string; status: 'Active' | 'Inactive'; openingBalance: number; reconciliationEnabled: boolean; ifrsTag?: string; gaapTag?: string; updatedAt: string }
 type Journal = { id: string; date: string; reference: string; description: string; lines: { accountId: string; debit: number; credit: number }[] }
 type Allocation = { id: string; name: string; sourceCompanyId: string; category: string; frequency: string; rate: number; quantity: number; status: string; recipients: { companyId: string; sharePercent: number }[] }
-const api = 'http://localhost:5124/api/v1'
+import { API_BASE_URL as api } from './config/api'
 const accountTypes: AccountType[] = ['Asset', 'Liability', 'Equity', 'Revenue', 'Expense', 'ContraAsset', 'ContraLiability', 'ContraEquity', 'ContraRevenue', 'ContraExpense']
 const blank = { code: '', name: '', type: 'Asset' as AccountType, parentId: '', openingBalance: '0', reconciliationEnabled: false, ifrsTag: '', gaapTag: '' }
 

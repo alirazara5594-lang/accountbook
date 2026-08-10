@@ -1,4 +1,5 @@
 import React, { useState, useMemo, useEffect } from 'react';
+import { API_BASE_URL } from './config/api';
 import type { FormEvent } from 'react';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
@@ -131,12 +132,12 @@ export const VoucherManagement: React.FC<VoucherManagementProps> = ({ activeEnti
 
   // Load Vendors & Customers dynamically
   useEffect(() => {
-    fetch('http://localhost:5124/api/v1/vendors')
+    fetch(`${API_BASE_URL}/vendors`)
       .then(r => r.ok ? r.json() : [])
       .then(data => { if (Array.isArray(data)) setVendors(data); })
       .catch(() => {});
 
-    fetch('http://localhost:5124/api/v1/customers')
+    fetch(`${API_BASE_URL}/customers`)
       .then(r => r.ok ? r.json() : [])
       .then(data => { if (Array.isArray(data)) setCustomers(data); })
       .catch(() => {});

@@ -5,7 +5,7 @@ import { Building2, Search, Plus, Pencil, Trash2, Mail, Phone, Users, Wallet, Ca
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 
-const api = 'http://localhost:5124/api/v1'
+import { API_BASE_URL as api } from './config/api'
 
 export type VendorStatus = 'Active' | 'Inactive' | 'Blocked'
 

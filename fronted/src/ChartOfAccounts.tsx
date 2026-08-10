@@ -1,4 +1,5 @@
 import React, { useState, useMemo, useRef } from 'react';
+import { API_BASE_URL } from './config/api';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -179,7 +180,7 @@ export const ChartOfAccounts: React.FC<ChartOfAccountsProps> = ({
           const openingBalance = parseFloat(parts[5]) || 0;
 
           try {
-            await fetch('http://localhost:5124/api/v1/chart-of-accounts', {
+            await fetch(`${API_BASE_URL}/chart-of-accounts`, {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify({
@@ -207,7 +208,7 @@ export const ChartOfAccounts: React.FC<ChartOfAccountsProps> = ({
   const handleClearAll = async () => {
     if (window.confirm('Are you sure you want to clear all accounts? You will be able to manually add your accounts one by one.')) {
       try {
-        const response = await fetch('http://localhost:5124/api/v1/chart-of-accounts/clear-all', { method: 'DELETE' });
+        const response = await fetch(`${API_BASE_URL}/chart-of-accounts/clear-all`, { method: 'DELETE' });
         if (response.ok) {
           if (reloadAccounts) reloadAccounts();
           else window.location.reload();

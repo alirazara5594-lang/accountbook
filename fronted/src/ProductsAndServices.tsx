@@ -5,7 +5,7 @@ import { Wrench, Search, Plus, Pencil, Trash2, Package, Tag, Archive } from 'luc
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 
-const api = 'http://localhost:5124/api/v1'
+import { API_BASE_URL as api } from './config/api'
 
 export type ProductType = 'Physical' | 'Service' | 'NonInventory' | 'Bundle'
 export type ProductStatus = 'Active' | 'Inactive' | 'Discontinued'

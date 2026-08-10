@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { API_BASE_URL } from './config/api';
 
 interface PurchaseRequestLine {
   id?: string;
@@ -33,8 +34,8 @@ export const PurchaseRequests: React.FC<{activeEntityId: string, entities: any[]
     setLoading(true);
     try {
       const [prRes, prodRes] = await Promise.all([
-        fetch(`http://localhost:5124/api/v1/purchaserequests?companyId=${activeEntityId}`),
-        fetch('http://localhost:5124/api/v1/products')
+        fetch(`${API_BASE_URL}/purchaserequests?companyId=${activeEntityId}`),
+        fetch(`${API_BASE_URL}/products`)
       ]);
       if (prRes.ok) setRequests(await prRes.json());
       if (prodRes.ok) setProducts(await prodRes.json());
@@ -59,7 +60,7 @@ export const PurchaseRequests: React.FC<{activeEntityId: string, entities: any[]
   const submitPr = async () => {
     if (!requesterName || lines.length === 0) return alert('Requester Name and at least one line required.');
     try {
-      const res = await fetch(`http://localhost:5124/api/v1/purchaserequests?companyId=${activeEntityId}`, {
+      const res = await fetch(`${API_BASE_URL}/purchaserequests?companyId=${activeEntityId}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -82,7 +83,7 @@ export const PurchaseRequests: React.FC<{activeEntityId: string, entities: any[]
 
   const approvePr = async (id: string) => {
     try {
-      await fetch(`http://localhost:5124/api/v1/purchaserequests/${id}/status`, {
+      await fetch(`${API_BASE_URL}/purchaserequests/${id}/status`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(2) // Approved

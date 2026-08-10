@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { API_BASE_URL } from './config/api';
 
 interface FixedAsset {
   id: string;
@@ -25,7 +26,7 @@ export const FixedAssets: React.FC<{activeEntityId: string}> = ({activeEntityId}
   const fetchData = async () => {
     setLoading(true);
     try {
-      const res = await fetch(`http://localhost:5124/api/v1/fixedassets?companyId=${activeEntityId}`);
+      const res = await fetch(`${API_BASE_URL}/fixedassets?companyId=${activeEntityId}`);
       if (res.ok) setAssets(await res.json());
     } catch (e) {
       console.error(e);
