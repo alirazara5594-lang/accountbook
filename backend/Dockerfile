@@ -17,7 +17,8 @@ FROM mcr.microsoft.com/dotnet/aspnet:10.0-preview AS final
 WORKDIR /app
 EXPOSE 8080
 ENV ASPNETCORE_URLS=http://+:8080
+ENV DOTNET_HOSTBUILDER__RELOADCONFIGONCHANGE=false
+ENV DOTNET_USE_POLLING_FILE_WATCHER=false
 
 COPY --from=build /app/publish .
 ENTRYPOINT ["dotnet", "Accountbook.Api.dll"]
-

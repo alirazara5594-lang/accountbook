@@ -5,6 +5,12 @@ using Zenabook.Api.Data;
 
 var builder = WebApplication.CreateBuilder(args);
 
+// Disable reloadOnChange FileSystemWatcher to prevent inotify limit (128) crash on Linux container environments
+builder.Configuration.Sources.Clear();
+builder.Configuration.AddJsonFile("appsettings.json", optional: true, reloadOnChange: false)
+                     .AddJsonFile($"appsettings.{builder.Environment.EnvironmentName}.json", optional: true, reloadOnChange: false)
+                     .AddEnvironmentVariables();
+
 builder.Services.AddControllers().AddJsonOptions(options =>
     options.JsonSerializerOptions.Converters.Add(new JsonStringEnumConverter()));
 builder.Services.AddOpenApi();
