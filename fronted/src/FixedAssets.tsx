@@ -1,13 +1,14 @@
-import React, { useState, useEffect } from 'react';
-import { API_BASE_URL } from './config/api';
+import React, { useEffect } from 'react';
+import { useAssetsInventoryStore } from './stores';
 
 interface FixedAsset {
   id: string;
-  assetTag: string;
+  assetTag?: string;
   name: string;
-  description: string;
-  purchaseDate: string;
-  purchasePrice: number;
+  description?: string;
+  purchaseDate?: string;
+  purchasePrice?: number;
+  cost?: number;
   status: number; // 0=Active, 1=Disposed
 }
 
@@ -16,27 +17,17 @@ function money(amount: number) {
 }
 
 export const FixedAssets: React.FC<{activeEntityId: string}> = ({activeEntityId}) => {
-  const [assets, setAssets] = useState<FixedAsset[]>([]);
-  const [loading, setLoading] = useState(true);
+  const assets = useAssetsInventoryStore((s) => s.assets as unknown as FixedAsset[]);
+  const loading = useAssetsInventoryStore((s) => s.loading);
+  const fetchFixedAssets = useAssetsInventoryStore((s) => s.fetchFixedAssets);
 
   useEffect(() => {
-    fetchData();
+    fetchFixedAssets(activeEntityId);
   }, [activeEntityId]);
-
-  const fetchData = async () => {
-    setLoading(true);
-    try {
-      const res = await fetch(`${API_BASE_URL}/fixedassets?companyId=${activeEntityId}`);
-      if (res.ok) setAssets(await res.json());
-    } catch (e) {
-      console.error(e);
-    }
-    setLoading(false);
-  };
 
   if (loading) return <div className="p-8 text-center text-gray-500">Loading asset register...</div>;
 
-  const totalValue = assets.filter(a => a.status === 0).reduce((sum, a) => sum + a.purchasePrice, 0);
+  const totalValue = assets.filter(a => a.status === 0 || (a.status as any) === 'Active').reduce((sum, a) => sum + (a.purchasePrice || a.cost || 0), 0);
 
   return (
     <div className="p-8 max-w-6xl mx-auto space-y-6">
@@ -66,14 +57,14 @@ export const FixedAssets: React.FC<{activeEntityId: string}> = ({activeEntityId}
           <tbody className="divide-y divide-gray-50">
             {assets.map(asset => (
               <tr key={asset.id} className="hover:bg-gray-50/50 transition-colors">
-                <td className="py-3 px-4 font-mono text-xs font-semibold text-gray-900">{asset.assetTag}</td>
+                <td className="py-3 px-4 font-mono text-xs font-semibold text-gray-900">{asset.assetTag || asset.id.slice(0, 8)}</td>
                 <td className="py-3 px-4 font-medium text-gray-900">{asset.name}</td>
-                <td className="py-3 px-4 text-gray-500 text-xs">{asset.description}</td>
-                <td className="py-3 px-4 text-gray-500">{asset.purchaseDate}</td>
-                <td className="py-3 px-4 text-right font-medium text-gray-900">{money(asset.purchasePrice)}</td>
+                <td className="py-3 px-4 text-gray-500 text-xs">{asset.description || '—'}</td>
+                <td className="py-3 px-4 text-gray-500">{asset.purchaseDate || '—'}</td>
+                <td className="py-3 px-4 text-right font-medium text-gray-900">{money(asset.purchasePrice || asset.cost || 0)}</td>
                 <td className="py-3 px-4 text-center">
-                  <span className={`px-2 py-1 rounded text-xs font-medium ${asset.status === 0 ? 'bg-emerald-100 text-emerald-700' : 'bg-gray-100 text-gray-700'}`}>
-                    {asset.status === 0 ? 'Active' : 'Disposed'}
+                  <span className={`px-2 py-1 rounded text-xs font-medium ${asset.status === 0 || (asset.status as any) === 'Active' ? 'bg-emerald-100 text-emerald-700' : 'bg-gray-100 text-gray-700'}`}>
+                    {asset.status === 0 || (asset.status as any) === 'Active' ? 'Active' : 'Disposed'}
                   </span>
                 </td>
               </tr>

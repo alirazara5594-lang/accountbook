@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useEffect } from 'react';
-import { API_BASE_URL } from './config/api';
+import { useVendorsStore, useCustomersStore } from './stores';
 import type { FormEvent } from 'react';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
@@ -130,17 +130,17 @@ export const VoucherManagement: React.FC<VoucherManagementProps> = ({ activeEnti
     narration: ''
   });
 
-  // Load Vendors & Customers dynamically
-  useEffect(() => {
-    fetch(`${API_BASE_URL}/vendors`)
-      .then(r => r.ok ? r.json() : [])
-      .then(data => { if (Array.isArray(data)) setVendors(data); })
-      .catch(() => {});
+  const fetchVendors = useVendorsStore((s) => s.fetchVendors);
+  const fetchCustomers = useCustomersStore((s) => s.fetchCustomers);
 
-    fetch(`${API_BASE_URL}/customers`)
-      .then(r => r.ok ? r.json() : [])
-      .then(data => { if (Array.isArray(data)) setCustomers(data); })
-      .catch(() => {});
+  useEffect(() => {
+    fetchVendors(activeEntityId).then((data) => {
+      if (Array.isArray(data)) setVendors(data as any[]);
+    });
+
+    fetchCustomers(activeEntityId).then((data) => {
+      if (Array.isArray(data)) setCustomers(data as any[]);
+    });
   }, [activeEntityId]);
 
   // Open Modal ONLY for the clicked voucher type (Exact Customer Management style)

@@ -1,23 +1,13 @@
-import { useEffect, useState } from 'react'
-import { API_BASE_URL } from './config/api'
+import { useEffect } from 'react'
+import { useProcurementStore } from './stores'
 
 export const Rfqs = ({ activeEntityId }: { activeEntityId: string }) => {
-  const [rfqs, setRfqs] = useState<any[]>([]);
-  const [loading, setLoading] = useState(false);
-
-  const fetchRfqs = async () => {
-    setLoading(true);
-    try {
-      const res = await fetch(`${API_BASE_URL}/rfqs?companyId=${activeEntityId}`);
-      if (res.ok) setRfqs(await res.json());
-    } catch (e) {
-      console.error(e);
-    }
-    setLoading(false);
-  };
+  const rfqs = useProcurementStore((s) => s.rfqs);
+  const loading = useProcurementStore((s) => s.loading);
+  const fetchRfqs = useProcurementStore((s) => s.fetchRfqs);
 
   useEffect(() => {
-    fetchRfqs();
+    fetchRfqs(activeEntityId);
     
     // Check if we came from PR to create RFQ
     const prId = localStorage.getItem('draftPrIdForRfq');
@@ -29,31 +19,11 @@ export const Rfqs = ({ activeEntityId }: { activeEntityId: string }) => {
 
   const handleCreateRfqFromPr = async (prId: string) => {
     try {
-      // First fetch the PR to get lines
-      const prRes = await fetch(`${API_BASE_URL}/purchaserequests?companyId=${activeEntityId}`);
-      if (!prRes.ok) return;
-      const prs = await prRes.json();
+      const prs = await useProcurementStore.getState().fetchRequests(activeEntityId);
       const pr = prs.find((x: any) => x.id === prId);
       if (!pr) return;
 
-      const rfqRequest = {
-        rfqNumber: `RFQ-${Date.now()}`,
-        purchaseRequestId: prId,
-        date: new Date().toISOString().slice(0, 10),
-        deadline: new Date(Date.now() + 7 * 86400000).toISOString().slice(0, 10), // +7 days
-        lines: pr.lines.map((l: any) => ({
-          productId: l.productId,
-          description: l.description,
-          quantity: l.quantity
-        }))
-      };
-
-      const res = await fetch(`${API_BASE_URL}/rfqs?companyId=${activeEntityId}`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(rfqRequest)
-      });
-      if (res.ok) fetchRfqs();
+      await useProcurementStore.getState().fetchRfqs(activeEntityId);
     } catch (e) {
       console.error(e);
     }
@@ -85,7 +55,7 @@ export const Rfqs = ({ activeEntityId }: { activeEntityId: string }) => {
                 <td className="py-3 px-4 text-gray-500">{rfq.deadline}</td>
                 <td className="py-3 px-4">
                   <span className={`px-2 py-1 rounded text-xs font-medium ${rfq.status === 2 ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-700'}`}>
-                    {['Open', 'Closed', 'Awarded', 'Canceled'][rfq.status]}
+                    {['Open', 'Closed', 'Awarded', 'Canceled'][rfq.status || 0]}
                   </span>
                 </td>
               </tr>

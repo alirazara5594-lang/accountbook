@@ -5499,7 +5499,7 @@
     ]
   },
   "packageFolders": {
-    "C:\\Users\\Muhammad Ali\\AppData\\Local\\Temp\\cursor-sandbox-cache\\60c064e0bcbe1075fa443c1881019959\\nuget": {}
+    "C:\\Users\\Muhammad Ali\\.nuget\\packages\\": {}
   },
   "project": {
     "version": "1.0.0",
@@ -5507,7 +5507,7 @@
       "projectUniqueName": "D:\\Project\\accountbook\\backend\\tests\\Accountbook.Api.Tests\\Accountbook.Api.Tests.csproj",
       "projectName": "Accountbook.Api.Tests",
       "projectPath": "D:\\Project\\accountbook\\backend\\tests\\Accountbook.Api.Tests\\Accountbook.Api.Tests.csproj",
-      "packagesPath": "C:\\Users\\Muhammad Ali\\AppData\\Local\\Temp\\cursor-sandbox-cache\\60c064e0bcbe1075fa443c1881019959\\nuget",
+      "packagesPath": "C:\\Users\\Muhammad Ali\\.nuget\\packages\\",
       "outputPath": "D:\\Project\\accountbook\\backend\\tests\\Accountbook.Api.Tests\\obj\\",
       "projectStyle": "PackageReference",
       "configFilePaths": [

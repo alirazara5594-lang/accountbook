@@ -1,23 +1,13 @@
-import { useEffect, useState } from 'react'
-import { API_BASE_URL } from './config/api'
+import { useEffect } from 'react'
+import { useProcurementStore } from './stores'
 
 export const VendorBills = ({ activeEntityId }: { activeEntityId: string }) => {
-  const [bills, setBills] = useState<any[]>([]);
-  const [loading, setLoading] = useState(false);
-
-  const fetchBills = async () => {
-    setLoading(true);
-    try {
-      const res = await fetch(`${API_BASE_URL}/vendorbills?companyId=${activeEntityId}`);
-      if (res.ok) setBills(await res.json());
-    } catch (e) {
-      console.error(e);
-    }
-    setLoading(false);
-  };
+  const bills = useProcurementStore((s) => s.bills);
+  const loading = useProcurementStore((s) => s.loading);
+  const fetchBills = useProcurementStore((s) => s.fetchBills);
 
   useEffect(() => {
-    fetchBills();
+    fetchBills(activeEntityId);
   }, [activeEntityId]);
 
   if (loading) return <div className="p-8 text-center text-gray-500">Loading Bills...</div>;
@@ -44,16 +34,16 @@ export const VendorBills = ({ activeEntityId }: { activeEntityId: string }) => {
             {bills.map(bill => (
               <tr key={bill.id} className="hover:bg-gray-50/50 transition-colors">
                 <td className="py-3 px-4 font-medium text-gray-900">{bill.billNumber}</td>
-                <td className="py-3 px-4 text-gray-500">{bill.vendorInvoiceNumber}</td>
+                <td className="py-3 px-4 text-gray-500">{bill.vendorBillNumber || (bill as any).vendorInvoiceNumber}</td>
                 <td className="py-3 px-4 text-gray-500">{bill.date}</td>
                 <td className="py-3 px-4 text-gray-500">{bill.dueDate}</td>
                 <td className="py-3 px-4">
-                  <span className={`px-2 py-1 rounded text-xs font-medium ${bill.status === 3 ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-700'}`}>
-                    {['Draft', 'Open', 'Partially Paid', 'Paid', 'Void'][bill.status]}
+                  <span className={`px-2 py-1 rounded text-xs font-medium ${bill.status === 'Paid' || (bill as any).status === 3 ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-700'}`}>
+                    {bill.status}
                   </span>
                 </td>
                 <td className="py-3 px-4">
-                  {bill.hasVarianceWarning ? (
+                  {(bill as any).hasVarianceWarning ? (
                     <span className="px-2 py-1 bg-yellow-100 text-yellow-800 rounded text-xs font-medium">Variance Detected</span>
                   ) : (
                     <span className="px-2 py-1 bg-green-100 text-green-800 rounded text-xs font-medium">Matched</span>

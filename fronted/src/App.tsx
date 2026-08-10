@@ -2,7 +2,7 @@ import { useEffect, useState, useMemo } from 'react'
 import type { FormEvent } from 'react'
 import './App.css'
 import Intercompany from './Intercompany'
-import EntitySettings, { type Entity } from './EntitySettings'
+import EntitySettings from './EntitySettings'
 import CustomerManagement from './CustomerManagement'
 import ProductsAndServices from './ProductsAndServices'
 import VendorManagement from './VendorManagement'
@@ -22,14 +22,15 @@ import { BankImportView } from './BankImportView'
 import { BankTransactionsView } from './BankTransactionsView'
 import { BankReconciliationView } from './BankReconciliationView'
 import { FundTransfersView } from './FundTransfersView'
-import { CashFlowView } from './CashFlowView'
 import { VoucherManagement } from './VoucherManagement'
+import { CashFlowView } from './CashFlowView'
+import { useCoaStore, useJournalsStore, useCompanyStore, useIntercompanyStore } from './stores'
 
 type AccountType = 'Asset' | 'Liability' | 'Equity' | 'Revenue' | 'Expense' | 'ContraAsset' | 'ContraLiability' | 'ContraEquity' | 'ContraRevenue' | 'ContraExpense'
 type Account = { id: string; code: string; name: string; type: AccountType; parentId?: string; status: 'Active' | 'Inactive'; openingBalance: number; reconciliationEnabled: boolean; ifrsTag?: string; gaapTag?: string; updatedAt: string }
 type Journal = { id: string; date: string; reference: string; description: string; lines: { accountId: string; debit: number; credit: number }[] }
 type Allocation = { id: string; name: string; sourceCompanyId: string; category: string; frequency: string; rate: number; quantity: number; status: string; recipients: { companyId: string; sharePercent: number }[] }
-import { API_BASE_URL as api } from './config/api'
+
 const accountTypes: AccountType[] = ['Asset', 'Liability', 'Equity', 'Revenue', 'Expense', 'ContraAsset', 'ContraLiability', 'ContraEquity', 'ContraRevenue', 'ContraExpense']
 const blank = { code: '', name: '', type: 'Asset' as AccountType, parentId: '', openingBalance: '0', reconciliationEnabled: false, ifrsTag: '', gaapTag: '' }
 
@@ -63,10 +64,23 @@ export default function App() {
     }
   });
   const [settingsView, setSettingsView] = useState<'home' | 'entities'>('home')
-  const [entities, setEntities] = useState<Entity[]>([])
-  const [activeEntityId, setActiveEntityId] = useState(() => {
-    return localStorage.getItem('active_entity_id') || '';
-  });
+
+  const accounts = useCoaStore((s) => s.accounts as Account[])
+  const fetchAccounts = useCoaStore((s) => s.fetchAccounts)
+  const saveAccountStore = useCoaStore((s) => s.saveAccount)
+  const toggleAccountStatusStore = useCoaStore((s) => s.toggleAccountStatus)
+
+  const entries = useJournalsStore((s) => s.entries as Journal[])
+  const fetchJournalEntries = useJournalsStore((s) => s.fetchJournalEntries)
+  const postJournalEntryStore = useJournalsStore((s) => s.postJournalEntry)
+
+  const allocations = useIntercompanyStore((s) => s.allocations as Allocation[])
+  const fetchAllocations = useIntercompanyStore((s) => s.fetchAllocations)
+
+  const entities = useCompanyStore((s) => s.entities)
+  const activeEntityId = useCompanyStore((s) => s.activeEntityId)
+  const fetchCompanies = useCompanyStore((s) => s.fetchCompanies)
+  const setActiveEntityId = useCompanyStore((s) => s.setActiveEntityId)
 
   useEffect(() => {
     localStorage.setItem('last_active_page', page);
@@ -76,28 +90,63 @@ export default function App() {
     localStorage.setItem('open_groups', JSON.stringify(openGroups));
   }, [openGroups]);
 
-  useEffect(() => {
-    if (activeEntityId) {
-      localStorage.setItem('active_entity_id', activeEntityId);
-    }
-  }, [activeEntityId]);
-  const [accounts, setAccounts] = useState<Account[]>([])
-  const [entries, setEntries] = useState<Journal[]>([])
-  const [allocations, setAllocations] = useState<Allocation[]>([])
   const [modal, setModal] = useState(false)
   const [editing, setEditing] = useState<Account | null>(null)
   const [form, setForm] = useState(blank)
   const [toast, setToast] = useState('')
   const [journal, setJournal] = useState({ date: new Date().toISOString().slice(0, 10), reference: '', description: '', lines: [{ accountId: '', debit: '', credit: '' }, { accountId: '', debit: '', credit: '' }] })
   const notify = (message: string) => { setToast(message); setTimeout(() => setToast(''), 3500) }
-  const load = async () => { try { const [a, e, i, c] = await Promise.all([fetch(`${api}/chart-of-accounts`).then(r => r.json()), fetch(`${api}/journal-entries`).then(r => r.json()), fetch(`${api}/intercompany-allocations`).then(r => r.json()), fetch(`${api}/companies`).then(r => r.json())]); setAccounts(a); setEntries(e); setAllocations(i); setEntities(c); setActiveEntityId(current => current || c[0]?.id || '') } catch { notify('API unavailable. Start the backend on port 5124.') } }
+
+  const load = async () => {
+    try {
+      await Promise.all([
+        fetchAccounts(),
+        fetchJournalEntries(),
+        fetchAllocations(),
+        fetchCompanies(),
+      ]);
+    } catch {
+      notify('API unavailable. Start the backend on port 5124.');
+    }
+  }
+
   useEffect(() => { load() }, [])
   const stats = { bank: accounts.filter(a => a.reconciliationEnabled).reduce((sum, a) => sum + a.openingBalance, 0), active: accounts.filter(a => a.status === 'Active').length, entries: entries.length }
   const openCreate = async () => { setEditing(null); setForm(blank); setModal(true) }
   const openEdit = (a: Account) => { setEditing(a); setForm({ code: a.code, name: a.name, type: a.type, parentId: a.parentId || '', openingBalance: String(a.openingBalance), reconciliationEnabled: a.reconciliationEnabled, ifrsTag: a.ifrsTag || '', gaapTag: a.gaapTag || '' }); setModal(true) }
-  const saveAccount = async (e: FormEvent) => { e.preventDefault(); const body = { ...form, parentId: form.parentId || null, openingBalance: Number(form.openingBalance), openingBalanceDate: Number(form.openingBalance) ? new Date().toISOString().slice(0, 10) : null, gaapTag: form.gaapTag || null, customFields: {} }; const url = editing ? `${api}/chart-of-accounts/${editing.id}` : `${api}/chart-of-accounts`; const response = await fetch(url, { method: editing ? 'PUT' : 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) }); if (!response.ok) { notify((await response.json()).message || 'Could not save account'); return } setModal(false); notify(editing ? 'Account updated' : 'Account created'); load() }
-  const toggleStatus = async (a: Account) => { const response = await fetch(`${api}/chart-of-accounts/${a.id}/status`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ status: a.status === 'Active' ? 'Inactive' : 'Active', reason: 'Updated from workspace' }) }); if (!response.ok) notify((await response.json()).message); else { notify(`Account ${a.status === 'Active' ? 'deactivated' : 'activated'}`); load() } }
-  const postJournal = async (e: FormEvent) => { e.preventDefault(); const lines = journal.lines.map(x => ({ accountId: x.accountId, debit: Number(x.debit || 0), credit: Number(x.credit || 0), memo: null })); const response = await fetch(`${api}/journal-entries`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ...journal, lines }) }); if (!response.ok) { notify((await response.json()).message); return } notify('Balanced journal draft created'); setJournal({ date: new Date().toISOString().slice(0, 10), reference: '', description: '', lines: [{ accountId: '', debit: '', credit: '' }, { accountId: '', debit: '', credit: '' }] }); load() }
+
+  const saveAccount = async (e: FormEvent) => {
+    e.preventDefault();
+    const body = { ...form, parentId: form.parentId || null, openingBalance: Number(form.openingBalance), openingBalanceDate: Number(form.openingBalance) ? new Date().toISOString().slice(0, 10) : null, gaapTag: form.gaapTag || null, customFields: {} };
+    try {
+      await saveAccountStore(body, editing ? editing.id : undefined);
+      setModal(false);
+      notify(editing ? 'Account updated' : 'Account created');
+    } catch (err: any) {
+      notify(err.message || 'Could not save account');
+    }
+  }
+
+  const toggleStatus = async (a: Account) => {
+    try {
+      await toggleAccountStatusStore(a);
+      notify(`Account ${a.status === 'Active' ? 'deactivated' : 'activated'}`);
+    } catch (err: any) {
+      notify(err.message || 'Failed to update status');
+    }
+  }
+
+  const postJournal = async (e: FormEvent) => {
+    e.preventDefault();
+    const lines = journal.lines.map(x => ({ accountId: x.accountId, debit: Number(x.debit || 0), credit: Number(x.credit || 0), memo: null }));
+    try {
+      await postJournalEntryStore({ ...journal, lines });
+      notify('Balanced journal draft created');
+      setJournal({ date: new Date().toISOString().slice(0, 10), reference: '', description: '', lines: [{ accountId: '', debit: '', credit: '' }, { accountId: '', debit: '', credit: '' }] });
+    } catch (err: any) {
+      notify(err.message || 'Could not post journal');
+    }
+  }
   const handleGroupClick = (groupName: string) => {
     setOpenGroups(curr => curr.includes(groupName) ? [] : [groupName]);
     setPage(`${groupName}.Summary`);
@@ -171,7 +220,7 @@ export default function App() {
   </nav><div className="bottom"><div className="user"><div className="avatar small">MA</div><div><strong>Muhammad Ali</strong><small>Finance admin</small></div></div></div></aside><main><header><div><p className="eyebrow">{group.toUpperCase()}</p><h1>{module}</h1></div><label className="entity-picker">Working in<select value={activeEntityId} onChange={e => setActiveEntityId(e.target.value)}>{entities.map(x => <option key={x.id} value={x.id}>{x.name}{x.code ? ` · ${x.code}` : ''}</option>)}</select></label>{activeView === 'journal' && <button className="primary" onClick={() => document.getElementById('journal-form')?.scrollIntoView({ behavior: 'smooth' })}>＋ New entry</button>}</header>
   {activeView === 'dashboard' && <Dashboard stats={stats} entries={entries} accounts={accounts} setPage={setPage} />}
   {activeView === 'module-summary' && <ModuleSummary moduleName={group} accounts={accounts} entries={entries} setPage={setPage} openCreateAccount={openCreate} />}
-  {activeView === 'customers' && <CustomerManagement entities={entities} activeEntityId={activeEntityId} notify={notify} />}
+  {activeView === 'customers' && <CustomerManagement entities={entities as any} activeEntityId={activeEntityId} notify={notify} />}
   {activeView === 'accounts' && (
     <div style={{ padding: '80px 20px', textAlign: 'center', color: '#475569', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
       <span style={{ fontSize: 72, display: 'block', marginBottom: 20 }}>🏗</span>
@@ -182,24 +231,24 @@ export default function App() {
       {false && <ChartOfAccounts accounts={accounts} edit={openEdit} status={toggleStatus} openCreate={openCreate} setParentIdForNew={(parentId) => setForm(f => ({ ...f, parentId }))} reloadAccounts={load} />}
     </div>
   )}
-  {activeView.startsWith('vouchers') && <VoucherManagement subView={module} activeEntityId={activeEntityId} entities={entities} />}
-  {activeView === 'bank-accounts' && <BankAccountsView activeEntityId={activeEntityId} entities={entities} />}
-  {activeView === 'cash-accounts' && <CashAccountsView activeEntityId={activeEntityId} entities={entities} />}
-  {activeView === 'bank-connection' && <BankConnectionView activeEntityId={activeEntityId} entities={entities} />}
-  {activeView === 'bank-import' && <BankImportView activeEntityId={activeEntityId} entities={entities} />}
-  {activeView === 'bank-transactions' && <BankTransactionsView activeEntityId={activeEntityId} entities={entities} />}
-  {activeView === 'bank-reconciliation' && <BankReconciliationView activeEntityId={activeEntityId} entities={entities} />}
-  {activeView === 'fund-transfers' && <FundTransfersView activeEntityId={activeEntityId} entities={entities} />}
-  {activeView === 'cash-flow-statements' && <CashFlowView activeEntityId={activeEntityId} entities={entities} />}
+  {activeView.startsWith('vouchers') && <VoucherManagement subView={module} activeEntityId={activeEntityId} entities={entities as any} />}
+  {activeView === 'bank-accounts' && <BankAccountsView activeEntityId={activeEntityId} entities={entities as any} />}
+  {activeView === 'cash-accounts' && <CashAccountsView activeEntityId={activeEntityId} entities={entities as any} />}
+  {activeView === 'bank-connection' && <BankConnectionView activeEntityId={activeEntityId} entities={entities as any} />}
+  {activeView === 'bank-import' && <BankImportView activeEntityId={activeEntityId} entities={entities as any} />}
+  {activeView === 'bank-transactions' && <BankTransactionsView activeEntityId={activeEntityId} entities={entities as any} />}
+  {activeView === 'bank-reconciliation' && <BankReconciliationView activeEntityId={activeEntityId} entities={entities as any} />}
+  {activeView === 'fund-transfers' && <FundTransfersView activeEntityId={activeEntityId} entities={entities as any} />}
+  {activeView === 'cash-flow-statements' && <CashFlowView activeEntityId={activeEntityId} entities={entities as any} />}
   {activeView === 'journal' && <Journals journal={journal} setJournal={setJournal} accounts={accounts.filter(a => a.status === 'Active')} entries={entries} post={postJournal} />}
   {activeView === 'intercompany' && <Intercompany allocations={allocations} reload={load} notify={notify} />}
   {activeView === 'settings' && settingsView === 'home' && <SettingsHome openEntities={() => setSettingsView('entities')} />}
-  {activeView === 'settings' && settingsView === 'entities' && <EntitySettings entities={entities} selectedId={activeEntityId} select={setActiveEntityId} reload={load} notify={notify} />}
-  {activeView === 'products' && <ProductsAndServices notify={notify} activeEntityId={activeEntityId} entities={entities} />}
-  {activeView === 'vendors' && <VendorManagement entities={entities} activeEntityId={activeEntityId} notify={notify} />}
-  {activeView === 'sales-workspace' && <SalesWorkspace activeEntityId={activeEntityId} entities={entities} />}
+  {activeView === 'settings' && settingsView === 'entities' && <EntitySettings entities={entities as any} selectedId={activeEntityId} select={setActiveEntityId} reload={load} notify={notify} />}
+  {activeView === 'products' && <ProductsAndServices notify={notify} activeEntityId={activeEntityId} entities={entities as any} />}
+  {activeView === 'vendors' && <VendorManagement entities={entities as any} activeEntityId={activeEntityId} notify={notify} />}
+  {activeView === 'sales-workspace' && <SalesWorkspace activeEntityId={activeEntityId} entities={entities as any} />}
   {activeView === 'estimates-quotes' && <EstimatesAndQuotes activeEntityId={activeEntityId} />}
-  {activeView === 'procurement-workspace' && <ProcurementWorkspace activeEntityId={activeEntityId} entities={entities} />}
+  {activeView === 'procurement-workspace' && <ProcurementWorkspace activeEntityId={activeEntityId} entities={entities as any} />}
   {activeView === 'taxes' && <TaxConfiguration />}
   {activeView === 'fixed-assets' && <FixedAssets activeEntityId={activeEntityId} />}
   {activeView === 'assets-inventory' && <AssetsInventoryWorkspace activeEntityId={activeEntityId} entities={entities} />}
@@ -257,16 +306,14 @@ function AccountModal({ form, setForm, accounts, editing, close, save }: { form:
     return subtypesMap[initialType]?.[0] || '';
   });
 
-  const fetchNextCode = (type: string, parentId?: string) => {
+  const fetchNextCode = async (type: string, parentId?: string) => {
     if (editing) return;
-    fetch(`${api}/chart-of-accounts/next-code?type=${type}&parentId=${parentId || ''}`)
-      .then(r => r.ok ? r.json() : null)
-      .then(data => {
-        if (data && data.code) {
-          setForm((f: any) => ({ ...f, code: data.code }));
-        }
-      })
-      .catch(() => {});
+    try {
+      const code = await useCoaStore.getState().getNextCode(type, parentId);
+      if (code) {
+        setForm((f: any) => ({ ...f, code }));
+      }
+    } catch {}
   };
 
   const handleNameChange = (val: string) => {

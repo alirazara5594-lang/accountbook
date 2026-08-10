@@ -1,6 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
-
-import { API_BASE_URL as api } from './config/api';
+import { useAssetsInventoryStore, useCoaStore, useProductsStore } from './stores';
 function money(v: number) { return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(v); }
 
 // ─── Shared Select ───────────────────────────────────────────────────────────
@@ -24,22 +23,33 @@ const AssetRegister: React.FC<{ activeEntityId: string; accounts: any[] }> = ({ 
   const [dispForm, setDispForm] = useState({ date: new Date().toISOString().slice(0,10), proceeds: '0', assetAccId: '', accumAccId: '', gainLossAccId: '', cashAccId: '' });
   const [toast, setToast] = useState('');
 
-  const [assets, setAssets] = useState<any[]>([]);
-  const fetchData = async () => { try { const r = await fetch(`${api}/fixedassets?companyId=${activeEntityId}`); if (r.ok) setAssets(await r.json()); } catch {} };
-  useEffect(() => { fetchData(); }, [activeEntityId]);
+  const assets = useAssetsInventoryStore((s) => s.assets as any[]);
+  const fetchFixedAssets = useAssetsInventoryStore((s) => s.fetchFixedAssets);
+  const runDepreciationStore = useAssetsInventoryStore((s) => s.runDepreciation);
+  const disposeAssetStore = useAssetsInventoryStore((s) => s.disposeAsset);
+
+  useEffect(() => { fetchFixedAssets(activeEntityId); }, [activeEntityId]);
 
   const notify = (m: string) => { setToast(m); setTimeout(() => setToast(''), 3500); };
 
   const runDepreciation = async () => {
-    const r = await fetch(`${api}/fixed-assets/${deprModal.id}/run-depreciation`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ depreciationExpenseAccountId: deprForm.expenseAccId, accumulatedDepreciationAccountId: deprForm.accumAccId }) });
-    if (r.ok) { notify('✓ Depreciation journal posted!'); setDeprModal(null); fetchData(); }
-    else { const e = await r.json(); notify(e.error || 'Error'); }
+    try {
+      await runDepreciationStore(deprModal.id, deprForm.expenseAccId, deprForm.accumAccId);
+      notify('✓ Depreciation journal posted!');
+      setDeprModal(null);
+    } catch (e: any) {
+      notify(e.message || 'Error');
+    }
   };
 
   const disposeAsset = async () => {
-    const r = await fetch(`${api}/fixedassets/${disposeModal.id}/dispose`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ disposalDate: dispForm.date, proceeds: parseFloat(dispForm.proceeds), assetAccountId: dispForm.assetAccId, accumDeprAccountId: dispForm.accumAccId, gainLossAccountId: dispForm.gainLossAccId, cashAccountId: dispForm.cashAccId || null }) });
-    if (r.ok) { notify('✓ Asset disposed and journal posted!'); setDisposeModal(null); fetchData(); }
-    else { const e = await r.json(); notify(e.error || 'Error'); }
+    try {
+      await disposeAssetStore(disposeModal.id, { disposalDate: dispForm.date, proceeds: parseFloat(dispForm.proceeds), assetAccountId: dispForm.assetAccId, accumDeprAccountId: dispForm.accumAccId, gainLossAccountId: dispForm.gainLossAccId, cashAccountId: dispForm.cashAccId || null });
+      notify('✓ Asset disposed and journal posted!');
+      setDisposeModal(null);
+    } catch (e: any) {
+      notify(e.message || 'Error');
+    }
   };
 
   const totalNBV = assets.filter(a => a.status === 0).reduce((s, a) => s + (a.purchasePrice - (a.accumulatedDepreciation || 0)), 0);
@@ -155,18 +165,22 @@ const AssetRegister: React.FC<{ activeEntityId: string; accounts: any[] }> = ({ 
 
 // ─── 2. Warehouses ───────────────────────────────────────────────────────────
 const Warehouses: React.FC<{ activeEntityId: string }> = ({ activeEntityId }) => {
-  const [warehouses, setWarehouses] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
+  const warehouses = useAssetsInventoryStore((s) => s.warehouses);
+  const loading = useAssetsInventoryStore((s) => s.loading);
+  const fetchWarehouses = useAssetsInventoryStore((s) => s.fetchWarehouses);
+  const createWarehouseStore = useAssetsInventoryStore((s) => s.createWarehouse);
+
   const [showForm, setShowForm] = useState(false);
   const [name, setName] = useState('');
   const [location, setLocation] = useState('');
 
-  const fetchData = async () => { setLoading(true); try { const r = await fetch(`${api}/warehouses?companyId=${activeEntityId}`); if (r.ok) setWarehouses(await r.json()); } catch {} setLoading(false); };
-  useEffect(() => { fetchData(); }, [activeEntityId]);
+  useEffect(() => { fetchWarehouses(activeEntityId); }, [activeEntityId]);
 
   const save = async () => {
-    await fetch(`${api}/warehouses`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name, location, companyId: activeEntityId || null }) });
-    setShowForm(false); setName(''); setLocation(''); fetchData();
+    try {
+      await createWarehouseStore({ name, location, companyId: activeEntityId || null });
+      setShowForm(false); setName(''); setLocation('');
+    } catch {}
   };
 
   return (
@@ -217,10 +231,11 @@ const Warehouses: React.FC<{ activeEntityId: string }> = ({ activeEntityId }) =>
 
 // ─── 3. Stock Levels ─────────────────────────────────────────────────────────
 const StockLevels: React.FC<{ activeEntityId: string }> = ({ activeEntityId }) => {
-  const [levels, setLevels] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
+  const levels = useAssetsInventoryStore((s) => s.stockLevels as any[]);
+  const loading = useAssetsInventoryStore((s) => s.loading);
+  const fetchStockLevels = useAssetsInventoryStore((s) => s.fetchStockLevels);
 
-  useEffect(() => { setLoading(true); fetch(`${api}/stock-levels?companyId=${activeEntityId}`).then(r => r.ok ? r.json() : []).then(setLevels).catch(() => {}).finally(() => setLoading(false)); }, [activeEntityId]);
+  useEffect(() => { fetchStockLevels(activeEntityId); }, [activeEntityId]);
 
   const totalValue = levels.reduce((s, l) => s + (l.totalValue || 0), 0);
 
@@ -254,19 +269,26 @@ const StockLevels: React.FC<{ activeEntityId: string }> = ({ activeEntityId }) =
 
 // ─── 4. Stock Transactions ───────────────────────────────────────────────────
 const StockTransactionsView: React.FC<{ activeEntityId: string; warehouses: any[]; products: any[] }> = ({ activeEntityId, warehouses, products }) => {
-  const [txns, setTxns] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
+  const txns = useAssetsInventoryStore((s) => s.stockTransactions as any[]);
+  const loading = useAssetsInventoryStore((s) => s.loading);
+  const fetchStockTransactions = useAssetsInventoryStore((s) => s.fetchStockTransactions);
+  const createStockTransactionStore = useAssetsInventoryStore((s) => s.createStockTransaction);
+
   const [showForm, setShowForm] = useState(false);
   const [form, setForm] = useState({ productId: '', warehouseId: '', quantity: '1', unitCost: '0', type: 'Adjustment', reference: '', date: new Date().toISOString().slice(0,10) });
   const [toast, setToast] = useState('');
 
-  const fetchData = () => { setLoading(true); fetch(`${api}/stock-transactions?companyId=${activeEntityId}`).then(r => r.ok ? r.json() : []).then(setTxns).catch(() => {}).finally(() => setLoading(false)); };
-  useEffect(() => { fetchData(); }, [activeEntityId]);
+  useEffect(() => { fetchStockTransactions(activeEntityId); }, [activeEntityId]);
 
   const save = async () => {
-    const r = await fetch(`${api}/stock-transactions`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ...form, quantity: parseFloat(form.quantity), unitCost: parseFloat(form.unitCost), companyId: activeEntityId || null }) });
-    if (r.ok) { setToast('✓ Transaction recorded!'); setShowForm(false); fetchData(); setTimeout(() => setToast(''), 3000); }
-    else { const e = await r.json(); setToast(e.error || 'Error'); }
+    try {
+      await createStockTransactionStore({ ...form, quantity: parseFloat(form.quantity), unitCost: parseFloat(form.unitCost), companyId: activeEntityId || null });
+      setToast('✓ Transaction recorded!');
+      setShowForm(false);
+      setTimeout(() => setToast(''), 3000);
+    } catch (e: any) {
+      setToast(e.message || 'Error');
+    }
   };
 
   return (
@@ -342,13 +364,13 @@ const StockTransactionsView: React.FC<{ activeEntityId: string; warehouses: any[
           </thead>
           <tbody className="divide-y divide-gray-50">
             {txns.map(t => (<tr key={t.id} className="hover:bg-gray-50/60">
-              <td className="py-3 px-4 text-gray-500">{t.date}</td>
-              <td className="py-3 px-4"><span className={`px-2 py-1 rounded-full text-xs font-medium ${t.type === 'In' ? 'bg-green-100 text-green-700' : t.type === 'Out' ? 'bg-red-100 text-red-700' : 'bg-yellow-100 text-yellow-700'}`}>{t.type}</span></td>
-              <td className="py-3 px-4 font-medium text-gray-900">{t.productName}</td>
-              <td className="py-3 px-4 text-gray-500">{t.warehouseName}</td>
+              <td className="py-3 px-4 text-gray-500">{t.date || t.transactionDate || '—'}</td>
+              <td className="py-3 px-4"><span className={`px-2 py-1 rounded-full text-xs font-medium ${String(t.type) === 'In' || String(t.type) === 'Inbound' ? 'bg-green-100 text-green-700' : String(t.type) === 'Out' || String(t.type) === 'Outbound' ? 'bg-red-100 text-red-700' : 'bg-yellow-100 text-yellow-700'}`}>{t.type}</span></td>
+              <td className="py-3 px-4 font-medium text-gray-900">{t.productName || t.productId || '—'}</td>
+              <td className="py-3 px-4 text-gray-500">{t.warehouseName || t.warehouseId || '—'}</td>
               <td className="py-3 px-4 text-right font-semibold">{t.quantity}</td>
-              <td className="py-3 px-4 text-right text-gray-500">{money(t.unitCost)}</td>
-              <td className="py-3 px-4 text-right font-semibold">{money(t.totalValue)}</td>
+              <td className="py-3 px-4 text-right text-gray-500">{money(t.unitCost || 0)}</td>
+              <td className="py-3 px-4 text-right font-semibold">{money(t.totalValue || (t.quantity * (t.unitCost || 0)))}</td>
               <td className="py-3 px-4 text-gray-400 text-xs">{t.reference || '—'}</td>
             </tr>))}
             {!loading && txns.length === 0 && <tr><td colSpan={8} className="py-8 text-center text-gray-400">No stock movements yet.</td></tr>}
@@ -361,14 +383,16 @@ const StockTransactionsView: React.FC<{ activeEntityId: string; warehouses: any[
 
 // ─── 5. Depreciation Schedule ─────────────────────────────────────────────────
 const DepreciationSchedule: React.FC<{ activeEntityId: string }> = ({ activeEntityId }) => {
-  const [assets, setAssets] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
+  const assets = useAssetsInventoryStore((s) => s.assets as any[]);
+  const loading = useAssetsInventoryStore((s) => s.loading);
+  const fetchFixedAssets = useAssetsInventoryStore((s) => s.fetchFixedAssets);
+
   const months = useMemo(() => Array.from({ length: 12 }, (_, i) => { const d = new Date(); d.setMonth(d.getMonth() + i); return d.toLocaleDateString('en-US', { month: 'short', year: '2-digit' }); }), []);
 
-  useEffect(() => { setLoading(true); fetch(`${api}/fixedassets?companyId=${activeEntityId}`).then(r => r.ok ? r.json() : []).then(setAssets).catch(() => {}).finally(() => setLoading(false)); }, [activeEntityId]);
+  useEffect(() => { fetchFixedAssets(activeEntityId); }, [activeEntityId]);
 
-  const activeAssets = assets.filter(a => a.status === 0);
-  const monthlyDepr = (a: any) => Math.round(((a.purchasePrice - (a.salvageValue || 0)) / (a.usefulLifeYears || 3)) / 12 * 100) / 100;
+  const activeAssets = assets.filter(a => a.status === 0 || a.status === 'Active');
+  const monthlyDepr = (a: any) => Math.round((((a.purchasePrice || a.cost || 0) - (a.salvageValue || 0)) / (a.usefulLifeYears || 3)) / 12 * 100) / 100;
 
   return (
     <div className="space-y-4">
@@ -386,11 +410,12 @@ const DepreciationSchedule: React.FC<{ activeEntityId: string }> = ({ activeEnti
           <tbody className="divide-y divide-gray-50">
             {activeAssets.map(a => {
               const monthly = monthlyDepr(a);
-              const remaining = (a.purchasePrice - (a.salvageValue||0)) - (a.accumulatedDepreciation||0);
+              const cost = a.purchasePrice || a.cost || 0;
+              const remaining = (cost - (a.salvageValue||0)) - (a.accumulatedDepreciation||0);
               return (
                 <tr key={a.id} className="hover:bg-gray-50/60">
                   <td className="py-3 px-4 font-medium text-gray-900 sticky left-0 bg-white">{a.name}</td>
-                  <td className="py-3 px-4 text-right font-semibold text-emerald-700">{money(a.purchasePrice - (a.accumulatedDepreciation||0))}</td>
+                  <td className="py-3 px-4 text-right font-semibold text-emerald-700">{money(cost - (a.accumulatedDepreciation||0))}</td>
                   {months.map((m, i) => {
                     const used = monthly * i;
                     const amt = Math.min(monthly, Math.max(0, remaining - used));
@@ -404,9 +429,9 @@ const DepreciationSchedule: React.FC<{ activeEntityId: string }> = ({ activeEnti
             {activeAssets.length > 0 && (
               <tr className="bg-gray-50 font-semibold">
                 <td className="py-3 px-4">Total</td>
-                <td className="py-3 px-4 text-right text-emerald-700">{money(activeAssets.reduce((s, a) => s + a.purchasePrice - (a.accumulatedDepreciation||0), 0))}</td>
-                {months.map((m, i) => { const total = activeAssets.reduce((s, a) => { const rem = (a.purchasePrice-(a.salvageValue||0))-(a.accumulatedDepreciation||0); const used = monthlyDepr(a)*i; return s + Math.min(monthlyDepr(a), Math.max(0, rem-used)); }, 0); return <td key={m} className="py-3 px-3 text-right text-xs text-orange-700">{total > 0 ? money(total) : '—'}</td>; })}
-                <td className="py-3 px-4 text-right">{money(activeAssets.reduce((s,a) => s + Math.min(monthlyDepr(a)*12, (a.purchasePrice-(a.salvageValue||0))-(a.accumulatedDepreciation||0)), 0))}</td>
+                <td className="py-3 px-4 text-right text-emerald-700">{money(activeAssets.reduce((s, a) => s + (a.purchasePrice || a.cost || 0) - (a.accumulatedDepreciation||0), 0))}</td>
+                {months.map((m, i) => { const total = activeAssets.reduce((s, a) => { const rem = ((a.purchasePrice || a.cost || 0)-(a.salvageValue||0))-(a.accumulatedDepreciation||0); const used = monthlyDepr(a)*i; return s + Math.min(monthlyDepr(a), Math.max(0, rem-used)); }, 0); return <td key={m} className="py-3 px-3 text-right text-xs text-orange-700">{total > 0 ? money(total) : '—'}</td>; })}
+                <td className="py-3 px-4 text-right">{money(activeAssets.reduce((s,a) => s + Math.min(monthlyDepr(a)*12, ((a.purchasePrice || a.cost || 0)-(a.salvageValue||0))-(a.accumulatedDepreciation||0)), 0))}</td>
               </tr>
             )}
           </tbody>
@@ -418,21 +443,24 @@ const DepreciationSchedule: React.FC<{ activeEntityId: string }> = ({ activeEnti
 
 // ─── 6. Stock Valuation Report ────────────────────────────────────────────────
 const StockValuationReport: React.FC<{ activeEntityId: string }> = ({ activeEntityId }) => {
-  const [levels, setLevels] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
-  useEffect(() => { setLoading(true); fetch(`${api}/stock-levels?companyId=${activeEntityId}`).then(r => r.ok ? r.json() : []).then(setLevels).catch(() => {}).finally(() => setLoading(false)); }, [activeEntityId]);
+  const levels = useAssetsInventoryStore((s) => s.stockLevels as any[]);
+  const loading = useAssetsInventoryStore((s) => s.loading);
+  const fetchStockLevels = useAssetsInventoryStore((s) => s.fetchStockLevels);
+
+  useEffect(() => { fetchStockLevels(activeEntityId); }, [activeEntityId]);
 
   const byWarehouse = useMemo(() => {
     const map: Record<string, { name: string; items: any[]; total: number }> = {};
     levels.forEach(l => {
-      if (!map[l.warehouseId]) map[l.warehouseId] = { name: l.warehouseName, items: [], total: 0 };
-      map[l.warehouseId].items.push(l);
-      map[l.warehouseId].total += l.totalValue;
+      const key = l.warehouseId || 'default';
+      if (!map[key]) map[key] = { name: l.warehouseName || 'Warehouse', items: [], total: 0 };
+      map[key].items.push(l);
+      map[key].total += l.totalValue || 0;
     });
     return Object.values(map);
   }, [levels]);
 
-  const grandTotal = levels.reduce((s, l) => s + l.totalValue, 0);
+  const grandTotal = levels.reduce((s, l) => s + (l.totalValue || 0), 0);
 
   return (
     <div className="space-y-6">
@@ -472,16 +500,19 @@ type Tab = 'assets' | 'warehouses' | 'stock' | 'transactions' | 'schedule' | 'va
 
 export const AssetsInventoryWorkspace: React.FC<{ activeEntityId: string; entities: any[] }> = ({ activeEntityId }) => {
   const [activeTab, setActiveTab] = useState<Tab>('assets');
-  const [accounts, setAccounts] = useState<any[]>([]);
-  const [warehouses, setWarehouses] = useState<any[]>([]);
-  const [products, setProducts] = useState<any[]>([]);
+  const accounts = useCoaStore((s) => s.accounts);
+  const fetchAccounts = useCoaStore((s) => s.fetchAccounts);
+
+  const warehouses = useAssetsInventoryStore((s) => s.warehouses);
+  const fetchWarehouses = useAssetsInventoryStore((s) => s.fetchWarehouses);
+
+  const products = useProductsStore((s) => s.products);
+  const fetchProducts = useProductsStore((s) => s.fetchProducts);
 
   useEffect(() => {
-    Promise.all([
-      fetch(`${api}/chart-of-accounts`).then(r => r.ok ? r.json() : []),
-      fetch(`${api}/warehouses?companyId=${activeEntityId}`).then(r => r.ok ? r.json() : []),
-      fetch(`${api}/products`).then(r => r.ok ? r.json() : []),
-    ]).then(([acc, wh, pr]) => { setAccounts(acc); setWarehouses(wh); setProducts(pr); }).catch(() => {});
+    fetchAccounts();
+    fetchWarehouses(activeEntityId);
+    fetchProducts();
   }, [activeEntityId]);
 
   const tabs: { id: Tab; label: string; icon: string }[] = [

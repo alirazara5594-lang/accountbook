@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from 'react';
-
-import { API_BASE_URL as api } from './config/api';
+import { useSalesStore, useCustomersStore, useProductsStore } from './stores';
 const money = (v: number) => new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(v);
 
 const statusColors: Record<number, string> = {
@@ -280,9 +279,18 @@ const ConvertModal = ({ estimate, onConfirm, onClose }: { estimate: any; onConfi
 
 // ─── Main Component ───────────────────────────────────────────────────────────
 export const EstimatesAndQuotes: React.FC<{ activeEntityId: string }> = ({ activeEntityId }) => {
-  const [estimates, setEstimates] = useState<any[]>([]);
-  const [customers, setCustomers] = useState<any[]>([]);
-  const [products, setProducts] = useState<any[]>([]);
+  const estimates = useSalesStore((s) => s.estimates);
+  const fetchEstimates = useSalesStore((s) => s.fetchEstimates);
+  const createEstimateStore = useSalesStore((s) => s.createEstimate);
+  const updateEstimateStatusStore = useSalesStore((s) => s.updateEstimateStatus);
+  const convertToInvoiceStore = useSalesStore((s) => s.convertToInvoice);
+
+  const customers = useCustomersStore((s) => s.customers);
+  const fetchCustomers = useCustomersStore((s) => s.fetchCustomers);
+
+  const products = useProductsStore((s) => s.products);
+  const fetchProducts = useProductsStore((s) => s.fetchProducts);
+
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
   const [convertModal, setConvertModal] = useState<any>(null);
@@ -291,12 +299,11 @@ export const EstimatesAndQuotes: React.FC<{ activeEntityId: string }> = ({ activ
   const fetchData = async () => {
     setLoading(true);
     try {
-      const [est, cust, prod] = await Promise.all([
-        fetch(`${api}/estimates?companyId=${activeEntityId}`).then(r => r.ok ? r.json() : []),
-        fetch(`${api}/customers?companyId=${activeEntityId}`).then(r => r.ok ? r.json() : []),
-        fetch(`${api}/products`).then(r => r.ok ? r.json() : []),
+      await Promise.all([
+        fetchEstimates(activeEntityId),
+        fetchCustomers(activeEntityId),
+        fetchProducts(),
       ]);
-      setEstimates(est); setCustomers(cust); setProducts(prod);
     } catch { }
     setLoading(false);
   };
@@ -305,32 +312,35 @@ export const EstimatesAndQuotes: React.FC<{ activeEntityId: string }> = ({ activ
   const notify = (m: string) => { setToast(m); setTimeout(() => setToast(''), 3500); };
 
   const saveEstimate = async (body: any) => {
-    const r = await fetch(`${api}/estimates`, {
-      method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ ...body, companyId: activeEntityId || null })
-    });
-    if (r.ok) { notify('✓ Estimate saved as Draft!'); setShowForm(false); fetchData(); }
-    else { const e = await r.json(); notify(e.error || 'Error'); }
+    try {
+      await createEstimateStore({ ...body, companyId: activeEntityId || null });
+      notify('✓ Estimate saved as Draft!');
+      setShowForm(false);
+    } catch (e: any) {
+      notify(e.message || 'Error');
+    }
   };
 
   const updateStatus = async (id: string, status: number) => {
-    await fetch(`${api}/estimates/${id}/status`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ status }) });
-    fetchData();
+    try {
+      await updateEstimateStatusStore(id, String(status));
+    } catch {}
   };
 
   const convertToInvoice = async (invDate: string, dueDate: string) => {
-    const r = await fetch(`${api}/estimates/${convertModal.id}/convert-to-invoice`, {
-      method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ invoiceDate: invDate, dueDate })
-    });
-    if (r.ok) { notify('✓ Invoice created! Go to Sales Workspace → Sales Invoices to post it.'); setConvertModal(null); fetchData(); }
-    else { const e = await r.json(); notify(e.error || 'Error'); }
+    try {
+      await convertToInvoiceStore(convertModal.id, { invoiceDate: invDate, dueDate });
+      notify('✓ Invoice created! Go to Sales Workspace → Sales Invoices to post it.');
+      setConvertModal(null);
+    } catch (e: any) {
+      notify(e.message || 'Error');
+    }
   };
 
   // Summary stats
-  const totalValue = estimates.filter(e => e.status !== 3 && e.status !== 4).reduce((s: number, e: any) => s + e.totalAmount, 0);
-  const accepted = estimates.filter((e: any) => e.status === 2).length;
-  const pending = estimates.filter((e: any) => e.status <= 1).length;
+  const totalValue = estimates.filter((e: any) => String(e.status) !== '3' && String(e.status) !== '4').reduce((s: number, e: any) => s + (e.totalAmount || 0), 0);
+  const accepted = estimates.filter((e: any) => String(e.status) === '2').length;
+  const pending = estimates.filter((e: any) => Number(e.status) <= 1).length;
 
   return (
     <div className="p-8 max-w-7xl mx-auto space-y-6">

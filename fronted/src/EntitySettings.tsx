@@ -1,10 +1,10 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import type { FormEvent } from 'react'
 import { Building2, CircleOff, Pencil, Plus, Settings2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { useCompanyStore, useTaxStore } from './stores'
 
-import { API_BASE_URL as api } from './config/api'
 export type EntityType = 'Parent' | 'Subsidiary' | 'Branch' | 'JointVenture' | 'Associate'
 export type Entity = { id: string; name: string; code?: string; legalName?: string; type: EntityType; parentId?: string; country: string; currencyCode: string; taxAuthorityId?: string; active: boolean }
 type Form = { name: string; code: string; legalName: string; type: EntityType; parentId: string; country: string; currencyCode: string; taxAuthorityId: string; state: string }
@@ -12,28 +12,52 @@ const blank = (): Form => ({ name: '', code: '', legalName: '', type: 'Subsidiar
 
 export default function EntitySettings({ entities, selectedId, select, reload, notify }: { entities: Entity[]; selectedId: string; select: (id: string) => void; reload: () => void; notify: (message: string) => void }) {
   const [form, setForm] = useState<Form>(blank)
-  const [authorities, setAuthorities] = useState<any[]>([])
-  
-  useMemo(() => {
-    fetch(`${api}/taxes/authorities`).then(r => r.json()).then(setAuthorities).catch(console.error)
+  const authorities = useTaxStore((s) => s.authorities)
+  const fetchAuthorities = useTaxStore((s) => s.fetchAuthorities)
+  const saveCompanyStore = useCompanyStore((s) => s.saveCompany)
+  const toggleCompanyStatusStore = useCompanyStore((s) => s.toggleCompanyStatus)
+
+  useEffect(() => {
+    fetchAuthorities()
   }, [])
+
   const [editingId, setEditingId] = useState<string | null>(null)
   const active = entities.filter(entity => entity.active)
   const children = (parentId?: string) => entities.filter(entity => entity.parentId === parentId)
   const roots = useMemo(() => entities.filter(entity => !entity.parentId), [entities])
+
   const save = async (event: FormEvent) => {
     event.preventDefault()
-    const response = await fetch(editingId ? `${api}/companies/${editingId}` : `${api}/companies`, { method: editingId ? 'PUT' : 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ...form, parentId: form.parentId || null, taxAuthorityId: form.taxAuthorityId || null }) })
-    if (!response.ok) { notify((await response.json()).message || 'Could not save entity'); return }
-    const entity = await response.json(); setForm(blank()); setEditingId(null); select(entity.id); reload(); notify(editingId ? 'Entity updated' : 'Entity created and selected')
+    try {
+      const entity = await saveCompanyStore({ ...form, parentId: form.parentId || null, taxAuthorityId: form.taxAuthorityId || null }, editingId || undefined)
+      setForm(blank())
+      setEditingId(null)
+      select(entity.id)
+      reload()
+      notify(editingId ? 'Entity updated' : 'Entity created and selected')
+    } catch (err: any) {
+      notify(err.message || 'Could not save entity')
+    }
   }
+
   const edit = (entity: Entity) => { 
     const auth = authorities.find(a => a.id === entity.taxAuthorityId)
-    setEditingId(entity.id); 
-    setForm({ name: entity.name, code: entity.code || '', legalName: entity.legalName || '', type: entity.type || 'Subsidiary', parentId: entity.parentId || '', country: entity.country || 'United States', currencyCode: entity.currencyCode || 'USD', taxAuthorityId: entity.taxAuthorityId || '', state: auth?.state || '' }); 
+    setEditingId(entity.id) 
+    setForm({ name: entity.name, code: entity.code || '', legalName: entity.legalName || '', type: entity.type || 'Subsidiary', parentId: entity.parentId || '', country: entity.country || 'United States', currencyCode: entity.currencyCode || 'USD', taxAuthorityId: entity.taxAuthorityId || '', state: auth?.state || '' }) 
     document.getElementById('entity-form')?.scrollIntoView({ behavior: 'smooth', block: 'start' }) 
   }
-  const setStatus = async (entity: Entity) => { const response = await fetch(`${api}/companies/${entity.id}/status`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ active: !entity.active }) }); if (!response.ok) { notify((await response.json()).message || 'Could not update entity'); return }; if (!entity.active) select(entity.id); reload(); notify(`${entity.name} ${entity.active ? 'deactivated' : 'activated'}`) }
+
+  const setStatus = async (entity: Entity) => {
+    try {
+      await toggleCompanyStatusStore(entity.id, !entity.active)
+      if (!entity.active) select(entity.id)
+      reload()
+      notify(`${entity.name} ${entity.active ? 'deactivated' : 'activated'}`)
+    } catch (err: any) {
+      notify(err.message || 'Could not update entity')
+    }
+  }
+
   const EntityCard = ({ entity, depth = 0 }: { entity: Entity; depth?: number }) => <div className="entity-node" style={{ marginLeft: depth * 22 }}><Card className={entity.id === selectedId ? 'ring-2 ring-primary' : entity.active ? '' : 'opacity-60'}><CardHeader className="pb-1"><div className="flex items-start justify-between gap-3"><div><CardTitle>{entity.name}</CardTitle><CardDescription>{entity.code || 'No code'} · {entity.country} · {entity.currencyCode}</CardDescription></div><span className={entity.active ? 'entity-status active' : 'entity-status'}>{entity.active ? 'Active' : 'Inactive'}</span></div></CardHeader><CardContent className="flex flex-wrap items-center gap-2"><span className="entity-type">{entity.type}</span>{entity.id === selectedId && <span className="entity-current">Current books</span>}<div className="ml-auto flex gap-2"><Button type="button" variant="ghost" size="sm" onClick={() => { select(entity.id); notify(`${entity.name} is now the active entity`) }}>Use</Button><Button type="button" variant="outline" size="sm" onClick={() => edit(entity)}><Pencil /> Edit</Button><Button type="button" variant="ghost" size="sm" onClick={() => setStatus(entity)}>{entity.active ? <><CircleOff /> Deactivate</> : 'Activate'}</Button></div></CardContent></Card>{children(entity.id).map(child => <EntityCard key={child.id} entity={child} depth={depth + 1} />)}</div>
   const countries = Array.from(new Set(authorities.map(a => a.country).filter(Boolean)))
   const statesForCountry = Array.from(new Set(authorities.filter(a => a.country === form.country).map(a => a.state).filter(Boolean)))

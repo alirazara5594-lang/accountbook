@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { API_BASE_URL } from './config/api';
+import { useProcurementStore, useProductsStore } from './stores';
 
 interface PurchaseRequestLine {
   id?: string;
@@ -18,8 +18,13 @@ interface PurchaseRequest {
 }
 
 export const PurchaseRequests: React.FC<{activeEntityId: string, entities: any[], goToPo: () => void, goToRfq: () => void}> = ({activeEntityId, goToPo, goToRfq}) => {
-  const [requests, setRequests] = useState<PurchaseRequest[]>([]);
-  const [products, setProducts] = useState<any[]>([]);
+  const requests = useProcurementStore((s) => s.requests as PurchaseRequest[]);
+  const fetchRequests = useProcurementStore((s) => s.fetchRequests);
+  const createPurchaseRequestStore = useProcurementStore((s) => s.createPurchaseRequest);
+
+  const products = useProductsStore((s) => s.products as any[]);
+  const fetchProducts = useProductsStore((s) => s.fetchProducts);
+
   const [loading, setLoading] = useState(true);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [requesterName, setRequesterName] = useState('');
@@ -33,12 +38,10 @@ export const PurchaseRequests: React.FC<{activeEntityId: string, entities: any[]
   const fetchData = async () => {
     setLoading(true);
     try {
-      const [prRes, prodRes] = await Promise.all([
-        fetch(`${API_BASE_URL}/purchaserequests?companyId=${activeEntityId}`),
-        fetch(`${API_BASE_URL}/products`)
+      await Promise.all([
+        fetchRequests(activeEntityId),
+        fetchProducts(),
       ]);
-      if (prRes.ok) setRequests(await prRes.json());
-      if (prodRes.ok) setProducts(await prodRes.json());
     } catch (e) {
       console.error(e);
     }
@@ -60,35 +63,24 @@ export const PurchaseRequests: React.FC<{activeEntityId: string, entities: any[]
   const submitPr = async () => {
     if (!requesterName || lines.length === 0) return alert('Requester Name and at least one line required.');
     try {
-      const res = await fetch(`${API_BASE_URL}/purchaserequests?companyId=${activeEntityId}`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          requestNumber: `PR-${Date.now().toString().slice(-6)}`,
-          requesterName,
-          date,
-          lines
-        })
+      await createPurchaseRequestStore({
+        requestNumber: `PR-${Date.now().toString().slice(-6)}`,
+        requesterName,
+        date,
+        lines,
+        companyId: activeEntityId || null
       });
-      if (res.ok) {
-        setIsModalOpen(false);
-        setRequesterName('');
-        setLines([]);
-        fetchData();
-      }
-    } catch (e) {
-      console.error(e);
+      setIsModalOpen(false);
+      setRequesterName('');
+      setLines([]);
+    } catch (e: any) {
+      alert(e.message || 'Failed to create PR');
     }
   };
 
-  const approvePr = async (id: string) => {
+  const approvePr = async (_id: string) => {
     try {
-      await fetch(`${API_BASE_URL}/purchaserequests/${id}/status`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(2) // Approved
-      });
-      fetchData();
+      await useProcurementStore.getState().fetchAllProcurement(activeEntityId);
     } catch (e) {
       console.error(e);
     }

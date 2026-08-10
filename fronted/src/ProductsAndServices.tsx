@@ -5,7 +5,7 @@ import { Wrench, Search, Plus, Pencil, Trash2, Package, Tag, Archive } from 'luc
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 
-import { API_BASE_URL as api } from './config/api'
+import { useProductsStore, useCoaStore, useTaxStore } from './stores'
 
 export type ProductType = 'Physical' | 'Service' | 'NonInventory' | 'Bundle'
 export type ProductStatus = 'Active' | 'Inactive' | 'Discontinued'
@@ -24,7 +24,7 @@ export type Product = {
   incomeAccountId?: string
   expenseAccountId?: string
   assetAccountId?: string
-  status: ProductStatus
+  status: 'Active' | 'Inactive'
   createdAt: string
   updatedAt: string
 }
@@ -36,15 +36,12 @@ type Account = {
   type: string
 }
 
-type TaxRate = {
-  percentage: number;
-}
 type TaxCode = {
-  id: string;
-  code: string;
-  name: string;
-  taxAuthorityId?: string;
-  rates: TaxRate[];
+  id: string
+  code: string
+  name: string
+  rate: number
+  taxAuthorityId?: string
 }
 
 type ProductForm = {
@@ -67,10 +64,10 @@ const blankForm = (): ProductForm => ({
   name: '',
   description: '',
   type: 'Physical',
-  category: '',
+  category: 'General',
   unit: 'Each',
-  unitPrice: '0.00',
-  costPrice: '0.00',
+  unitPrice: '0',
+  costPrice: '0',
   taxCodeId: '',
   incomeAccountId: '',
   expenseAccountId: '',
@@ -81,35 +78,31 @@ function money(amount: number) {
   return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(amount)
 }
 
-export default function ProductsAndServices({ notify, activeEntityId, entities }: { notify: (msg: string) => void, activeEntityId: string, entities: any[] }) {
-  const [products, setProducts] = useState<Product[]>([])
-  const [accounts, setAccounts] = useState<Account[]>([])
-  const [taxCodes, setTaxCodes] = useState<TaxCode[]>([])
-  const [loading, setLoading] = useState(true)
+export default function ProductsAndServices({ entities, activeEntityId, notify }: { entities?: any[], activeEntityId?: string, notify: (msg: string) => void }) {
+  const products = useProductsStore((s: any) => s.products as Product[])
+  const loading = useProductsStore((s: any) => s.loading)
+  const fetchProducts = useProductsStore((s: any) => s.fetchProducts)
+  const fetchNextCode = useProductsStore((s: any) => s.fetchNextCode)
+  const saveProductStore = useProductsStore((s: any) => s.saveProduct)
+  const deleteProductStore = useProductsStore((s: any) => s.deleteProduct)
+
+  const accounts = useCoaStore((s: any) => s.accounts as Account[])
+  const fetchAccounts = useCoaStore((s: any) => s.fetchAccounts)
+
+  const taxCodes = useTaxStore((s: any) => s.taxCodes as TaxCode[])
+  const fetchTaxCodes = useTaxStore((s: any) => s.fetchTaxCodes)
+
   const [search, setSearch] = useState('')
   const [typeFilter, setTypeFilter] = useState<string>('all')
   const [modalOpen, setModalOpen] = useState(false)
   const [editingProduct, setEditingProduct] = useState<Product | null>(null)
   const [form, setForm] = useState<ProductForm>(blankForm())
 
-  const loadData = async () => {
-    try {
-      setLoading(true)
-      const [prodRes, accRes, taxRes] = await Promise.all([
-        fetch(`${api}/products`),
-        fetch(`${api}/accounts`),
-        fetch(`${api}/taxes/codes`)
-      ])
-      
-      if (prodRes.ok) setProducts(await prodRes.json())
-      if (accRes.ok) setAccounts(await accRes.json())
-      if (taxRes.ok) setTaxCodes(await taxRes.json())
-    } catch {
-      notify('Failed to load data from API.')
-    } finally {
-      setLoading(false)
-    }
-  }
+  useEffect(() => {
+    fetchProducts()
+    fetchAccounts()
+    fetchTaxCodes()
+  }, [])
 
   const defaultTaxAuthorityId = useMemo(() => {
     return entities?.find((e: any) => e.id === activeEntityId)?.taxAuthorityId || '';
@@ -117,17 +110,13 @@ export default function ProductsAndServices({ notify, activeEntityId, entities }
 
   const groupedTaxCodes = useMemo(() => {
     return {
-      default: taxCodes.filter(t => t.taxAuthorityId === defaultTaxAuthorityId),
-      other: taxCodes.filter(t => t.taxAuthorityId !== defaultTaxAuthorityId)
+      default: taxCodes.filter((t: any) => t.taxAuthorityId === defaultTaxAuthorityId),
+      other: taxCodes.filter((t: any) => t.taxAuthorityId !== defaultTaxAuthorityId)
     };
   }, [taxCodes, defaultTaxAuthorityId]);
 
-  useEffect(() => {
-    loadData()
-  }, [])
-
   const filteredProducts = useMemo(() => {
-    return products.filter(p => {
+    return products.filter((p: any) => {
       const matchesSearch = `${p.code} ${p.name} ${p.category || ''}`
         .toLowerCase()
         .includes(search.toLowerCase())
@@ -138,23 +127,16 @@ export default function ProductsAndServices({ notify, activeEntityId, entities }
 
   const stats = useMemo(() => {
     const total = products.length
-    const physical = products.filter(p => p.type === 'Physical').length
-    const services = products.filter(p => p.type === 'Service').length
+    const physical = products.filter((p: any) => p.type === 'Physical').length
+    const services = products.filter((p: any) => p.type === 'Service').length
     return { total, physical, services }
   }, [products])
 
   const openCreateModal = async () => {
     setEditingProduct(null)
     const newForm = blankForm()
-    try {
-      const res = await fetch(`${api}/products/next-code`)
-      if (res.ok) {
-        const data = await res.json()
-        newForm.code = data.code
-      }
-    } catch {
-      // fallback
-    }
+    const code = await fetchNextCode()
+    if (code) newForm.code = code
     setForm(newForm)
     setModalOpen(true)
   }
@@ -200,41 +182,28 @@ export default function ProductsAndServices({ notify, activeEntityId, entities }
       assetAccountId: form.assetAccountId || null
     }
 
-    const url = editingProduct ? `${api}/products/${editingProduct.id}` : `${api}/products`
-    const method = editingProduct ? 'PUT' : 'POST'
-
-    const res = await fetch(url, {
-      method,
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(payload)
-    })
-
-    if (!res.ok) {
-      const err = await res.json()
+    try {
+      await saveProductStore(payload, editingProduct ? editingProduct.id : undefined)
+      notify(editingProduct ? 'Product updated successfully.' : 'Product created successfully.')
+      setModalOpen(false)
+    } catch (err: any) {
       notify(err.message || 'Error saving product.')
-      return
     }
-
-    notify(editingProduct ? 'Product updated successfully.' : 'Product created successfully.')
-    setModalOpen(false)
-    loadData()
   }
 
   const handleDelete = async (p: Product) => {
     if (!window.confirm(`Are you sure you want to delete "${p.name}"?`)) return
-    const res = await fetch(`${api}/products/${p.id}`, { method: 'DELETE' })
-    if (!res.ok) {
-      const err = await res.json()
+    try {
+      await deleteProductStore(p.id)
+      notify('Product deleted.')
+    } catch (err: any) {
       notify(err.message || 'Could not delete product.')
-      return
     }
-    notify('Product deleted.')
-    loadData()
   }
 
   const getAccountName = (id?: string) => {
     if (!id) return 'Not mapped'
-    const acc = accounts.find(a => a.id === id)
+    const acc = accounts.find((a: any) => a.id === id)
     return acc ? `${acc.code} ${acc.name}` : 'Unknown'
   }
 
@@ -358,7 +327,7 @@ export default function ProductsAndServices({ notify, activeEntityId, entities }
                   <div className="flex justify-between text-muted-foreground">
                     <span>Default Tax Code:</span>
                     <span className="font-medium text-foreground">
-                      {taxCodes.find(t => t.id === p.taxCodeId)?.code || 'None'}
+                      {taxCodes.find((t: any) => t.id === p.taxCodeId)?.code || 'None'}
                     </span>
                   </div>
                 </div>
@@ -441,15 +410,15 @@ export default function ProductsAndServices({ notify, activeEntityId, entities }
                   <option value="">None (0%)</option>
                   {groupedTaxCodes.default.length > 0 && (
                     <optgroup label="Default Tax Authority">
-                      {groupedTaxCodes.default.map(t => (
-                        <option key={t.id} value={t.id}>{t.code} ({t.rates.length > 0 ? t.rates[t.rates.length - 1].percentage : 0}%)</option>
+                      {groupedTaxCodes.default.map((t: any) => (
+                        <option key={t.id} value={t.id}>{t.code} ({t.rates && t.rates.length > 0 ? t.rates[t.rates.length - 1].percentage : 0}%)</option>
                       ))}
                     </optgroup>
                   )}
                   {groupedTaxCodes.other.length > 0 && (
                     <optgroup label="Other Tax Authorities">
-                      {groupedTaxCodes.other.map(t => (
-                        <option key={t.id} value={t.id}>{t.code} ({t.rates.length > 0 ? t.rates[t.rates.length - 1].percentage : 0}%)</option>
+                      {groupedTaxCodes.other.map((t: any) => (
+                        <option key={t.id} value={t.id}>{t.code} ({t.rates && t.rates.length > 0 ? t.rates[t.rates.length - 1].percentage : 0}%)</option>
                       ))}
                     </optgroup>
                   )}
@@ -467,7 +436,7 @@ export default function ProductsAndServices({ notify, activeEntityId, entities }
                     Income Account (Revenue) *
                     <select required value={form.incomeAccountId} onChange={e => setForm({ ...form, incomeAccountId: e.target.value })}>
                       <option value="">Select an account...</option>
-                      {accounts.filter(a => a.type === 'Revenue').map(a => (
+                      {accounts.filter((a: any) => a.type === 'Revenue').map((a: any) => (
                         <option key={a.id} value={a.id}>{a.code} - {a.name}</option>
                       ))}
                     </select>
@@ -478,7 +447,7 @@ export default function ProductsAndServices({ notify, activeEntityId, entities }
                       COGS / Expense Account
                       <select value={form.expenseAccountId} onChange={e => setForm({ ...form, expenseAccountId: e.target.value })}>
                         <option value="">Select an account...</option>
-                        {accounts.filter(a => a.type === 'Expense').map(a => (
+                        {accounts.filter((a: any) => a.type === 'Expense').map((a: any) => (
                           <option key={a.id} value={a.id}>{a.code} - {a.name}</option>
                         ))}
                       </select>
@@ -490,7 +459,7 @@ export default function ProductsAndServices({ notify, activeEntityId, entities }
                       Inventory Asset Account
                       <select value={form.assetAccountId} onChange={e => setForm({ ...form, assetAccountId: e.target.value })}>
                         <option value="">Select an account...</option>
-                        {accounts.filter(a => a.type === 'Asset').map(a => (
+                        {accounts.filter((a: any) => a.type === 'Asset').map((a: any) => (
                           <option key={a.id} value={a.id}>{a.code} - {a.name}</option>
                         ))}
                       </select>

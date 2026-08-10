@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { API_BASE_URL } from './config/api';
+import { useProcurementStore, useVendorsStore, useProductsStore, useTaxStore } from './stores';
 import './App.css';
 
 interface TaxRate {
@@ -64,11 +64,23 @@ interface GoodsReceiptNote {
 
 export const PurchaseOrders: React.FC<{activeEntityId?: string, entities?: any[]}> = ({activeEntityId, entities}) => {
   const [activeTab, setActiveTab] = useState<'pos' | 'grns'>('pos');
-  const [pos, setPos] = useState<PurchaseOrder[]>([]);
-  const [grns, setGrns] = useState<GoodsReceiptNote[]>([]);
-  const [vendors, setVendors] = useState<Vendor[]>([]);
-  const [products, setProducts] = useState<Product[]>([]);
-  const [taxCodes, setTaxCodes] = useState<TaxCode[]>([]);
+
+  const pos = useProcurementStore((s) => s.orders as PurchaseOrder[]);
+  const grns = useProcurementStore((s) => s.receipts as GoodsReceiptNote[]);
+  const fetchOrders = useProcurementStore((s) => s.fetchOrders);
+  const fetchReceipts = useProcurementStore((s) => s.fetchReceipts);
+  const createPOStore = useProcurementStore((s) => s.createPurchaseOrder);
+  const createGRNStore = useProcurementStore((s) => s.createGoodsReceipt);
+
+  const vendors = useVendorsStore((s) => s.vendors as Vendor[]);
+  const fetchVendors = useVendorsStore((s) => s.fetchVendors);
+
+  const products = useProductsStore((s) => s.products as Product[]);
+  const fetchProducts = useProductsStore((s) => s.fetchProducts);
+
+  const taxCodes = useTaxStore((s) => s.taxCodes as TaxCode[]);
+  const fetchTaxCodes = useTaxStore((s) => s.fetchTaxCodes);
+
   const [loading, setLoading] = useState(true);
   
   const [isPoModalOpen, setIsPoModalOpen] = useState(false);
@@ -89,31 +101,27 @@ export const PurchaseOrders: React.FC<{activeEntityId?: string, entities?: any[]
     fetchData().then(() => {
       const draftPrId = localStorage.getItem('draftPrId');
       if (draftPrId) {
-        localStorage.removeItem('draftPrId');
         loadDraftPr(draftPrId);
+        localStorage.removeItem('draftPrId');
       }
     });
   }, []);
 
   const loadDraftPr = async (id: string) => {
     try {
-      const res = await fetch(`${API_BASE_URL}/purchaserequests?companyId=${activeEntityId}`);
-      if (res.ok) {
-        const prs = await res.json();
-        const pr = prs.find((x: any) => x.id === id);
-        if (pr) {
-          setIsPoModalOpen(true);
-          // Wait for products to load before mapping (we await fetchData above)
-          setPoLines(pr.lines.map((l: any) => ({
-            productId: l.productId,
-            description: l.description,
-            quantity: l.quantity,
-            unitPrice: 0,
-            taxCodeId: undefined,
-            taxAmount: 0,
-            destination: 2
-          })));
-        }
+      const prs = await useProcurementStore.getState().fetchRequests(activeEntityId);
+      const pr = prs.find((x: any) => x.id === id);
+      if (pr && pr.lines) {
+        setIsPoModalOpen(true);
+        setPoLines(pr.lines.map((l: any) => ({
+          productId: l.productId,
+          description: l.description,
+          quantity: l.quantity,
+          unitPrice: 0,
+          taxCodeId: undefined,
+          taxAmount: 0,
+          destination: 2
+        })));
       }
     } catch (e) {
       console.error(e);
@@ -123,18 +131,13 @@ export const PurchaseOrders: React.FC<{activeEntityId?: string, entities?: any[]
   const fetchData = async () => {
     setLoading(true);
     try {
-      const [poRes, grnRes, vendorRes, prodRes, taxRes] = await Promise.all([
-        fetch(`${API_BASE_URL}/purchaseorders`),
-        fetch(`${API_BASE_URL}/goodsreceipts`),
-        fetch(`${API_BASE_URL}/vendors`),
-        fetch(`${API_BASE_URL}/products`),
-        fetch(`${API_BASE_URL}/taxes/codes`)
+      await Promise.all([
+        fetchOrders(activeEntityId),
+        fetchReceipts(activeEntityId),
+        fetchVendors(activeEntityId),
+        fetchProducts(),
+        fetchTaxCodes(),
       ]);
-      setPos(await poRes.json());
-      setGrns(await grnRes.json());
-      setVendors(await vendorRes.json());
-      setProducts(await prodRes.json());
-      setTaxCodes(await taxRes.json());
     } catch (e) {
       console.error(e);
     }
@@ -210,26 +213,17 @@ export const PurchaseOrders: React.FC<{activeEntityId?: string, entities?: any[]
   const submitPo = async () => {
     if (!poVendorId || poLines.length === 0) return alert('Vendor and at least one line required.');
     try {
-      const res = await fetch(`${API_BASE_URL}/purchaseorders`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          vendorId: poVendorId,
-          date: poDate,
-          lines: poLines
-        })
+      await createPOStore({
+        vendorId: poVendorId,
+        date: poDate,
+        lines: poLines,
+        companyId: activeEntityId || null
       });
-      if (res.ok) {
-        setIsPoModalOpen(false);
-        setPoVendorId('');
-        setPoLines([]);
-        fetchData();
-      } else {
-        const err = await res.json();
-        alert(err.error || 'Failed to create PO');
-      }
-    } catch (e) {
-      console.error(e);
+      setIsPoModalOpen(false);
+      setPoVendorId('');
+      setPoLines([]);
+    } catch (e: any) {
+      alert(e.message || 'Failed to create PO');
     }
   };
 
@@ -254,28 +248,17 @@ export const PurchaseOrders: React.FC<{activeEntityId?: string, entities?: any[]
   const submitGrn = async () => {
     if (!grnPoId || grnLines.length === 0) return alert('PO and at least one line required.');
     try {
-      const res = await fetch(`${API_BASE_URL}/goodsreceipts`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          purchaseOrderId: grnPoId,
-          dateReceived: grnDate,
-          lines: grnLines
-        })
+      await createGRNStore({
+        purchaseOrderId: grnPoId,
+        dateReceived: grnDate,
+        lines: grnLines,
+        companyId: activeEntityId || null
       });
-      if (res.ok) {
-        const grn = await res.json();
-        await fetch(`${API_BASE_URL}/goodsreceipts/${grn.id}/process`, { method: 'POST' });
-        setIsGrnModalOpen(false);
-        setGrnPoId('');
-        setGrnLines([]);
-        fetchData();
-      } else {
-        const err = await res.json();
-        alert(err.error || 'Failed to create GRN');
-      }
-    } catch (e) {
-      console.error(e);
+      setIsGrnModalOpen(false);
+      setGrnPoId('');
+      setGrnLines([]);
+    } catch (e: any) {
+      alert(e.message || 'Failed to create Goods Receipt');
     }
   };
 

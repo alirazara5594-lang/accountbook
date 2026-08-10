@@ -5,8 +5,7 @@ import { Building2, Mail, Phone, Search, ShieldAlert, UserCheck, UserX, Users, C
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import type { Entity } from './EntitySettings'
-
-import { API_BASE_URL as api } from './config/api'
+import { useCustomersStore } from './stores'
 
 export type CustomerStatus = 'Active' | 'Inactive' | 'Blocked'
 
@@ -81,8 +80,14 @@ export default function CustomerManagement({
   activeEntityId: string
   notify: (msg: string) => void
 }) {
-  const [customers, setCustomers] = useState<Customer[]>([])
-  const [loading, setLoading] = useState(true)
+  const customers = useCustomersStore((s) => s.customers as Customer[])
+  const loading = useCustomersStore((s) => s.loading)
+  const fetchCustomers = useCustomersStore((s) => s.fetchCustomers)
+  const fetchNextNumber = useCustomersStore((s) => s.fetchNextNumber)
+  const saveCustomerStore = useCustomersStore((s) => s.saveCustomer)
+  const toggleCustomerStatusStore = useCustomersStore((s) => s.toggleCustomerStatus)
+  const deleteCustomerStore = useCustomersStore((s) => s.deleteCustomer)
+
   const [search, setSearch] = useState('')
   const [companyFilter, setCompanyFilter] = useState<string>('all')
   const [statusFilter, setStatusFilter] = useState<string>('all')
@@ -90,23 +95,8 @@ export default function CustomerManagement({
   const [editingCustomer, setEditingCustomer] = useState<Customer | null>(null)
   const [form, setForm] = useState<CustomerForm>(blankForm())
 
-  const loadCustomers = async () => {
-    try {
-      setLoading(true)
-      const res = await fetch(`${api}/customers`)
-      if (res.ok) {
-        const data = await res.json()
-        setCustomers(data)
-      }
-    } catch {
-      notify('Failed to load customers from API.')
-    } finally {
-      setLoading(false)
-    }
-  }
-
   useEffect(() => {
-    loadCustomers()
+    fetchCustomers()
   }, [])
 
   const filteredCustomers = useMemo(() => {
@@ -141,15 +131,8 @@ export default function CustomerManagement({
     setEditingCustomer(null)
     const newForm = blankForm()
     if (activeEntityId) newForm.companyId = activeEntityId
-    try {
-      const res = await fetch(`${api}/customers/next-number`)
-      if (res.ok) {
-        const data = await res.json()
-        newForm.customerNumber = data.customerNumber
-      }
-    } catch {
-      // fallback
-    }
+    const num = await fetchNextNumber()
+    if (num) newForm.customerNumber = num
     setForm(newForm)
     setModalOpen(true)
   }
@@ -201,55 +184,32 @@ export default function CustomerManagement({
       companyId: form.companyId || null
     }
 
-    const url = editingCustomer ? `${api}/customers/${editingCustomer.id}` : `${api}/customers`
-    const method = editingCustomer ? 'PUT' : 'POST'
-
-    const res = await fetch(url, {
-      method,
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(payload)
-    })
-
-    if (!res.ok) {
-      const err = await res.json()
+    try {
+      await saveCustomerStore(payload, editingCustomer ? editingCustomer.id : undefined)
+      notify(editingCustomer ? 'Customer updated successfully.' : 'Customer created successfully.')
+      setModalOpen(false)
+    } catch (err: any) {
       notify(err.message || 'Error saving customer.')
-      return
     }
-
-    notify(editingCustomer ? 'Customer updated successfully.' : 'Customer created successfully.')
-    setModalOpen(false)
-    loadCustomers()
   }
 
-  const handleStatusChange = async (customer: Customer, newStatus: CustomerStatus) => {
-    const res = await fetch(`${api}/customers/${customer.id}/status`, {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ status: newStatus })
-    })
-
-    if (!res.ok) {
-      const err = await res.json()
+  const handleStatusChange = async (customer: Customer, _newStatus: CustomerStatus) => {
+    try {
+      await toggleCustomerStatusStore(customer)
+      notify(`Customer ${customer.name} status updated.`)
+    } catch (err: any) {
       notify(err.message || 'Status change failed.')
-      return
     }
-
-    notify(`Customer ${customer.name} is now ${newStatus}.`)
-    loadCustomers()
   }
 
   const handleDelete = async (customer: Customer) => {
     if (!window.confirm(`Are you sure you want to delete customer "${customer.name}"?`)) return
-
-    const res = await fetch(`${api}/customers/${customer.id}`, { method: 'DELETE' })
-    if (!res.ok) {
-      const err = await res.json()
+    try {
+      await deleteCustomerStore(customer.id)
+      notify(`Customer ${customer.name} deleted.`)
+    } catch (err: any) {
       notify(err.message || 'Could not delete customer.')
-      return
     }
-
-    notify('Customer deleted.')
-    loadCustomers()
   }
 
   const companyMap = useMemo(() => {

@@ -5,7 +5,7 @@ import { Building2, Search, Plus, Pencil, Trash2, Mail, Phone, Users, Wallet, Ca
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 
-import { API_BASE_URL as api } from './config/api'
+import { useVendorsStore, useCoaStore } from './stores'
 
 export type VendorStatus = 'Active' | 'Inactive' | 'Blocked'
 
@@ -78,35 +78,25 @@ const blankForm = (): VendorForm => ({
 })
 
 export default function VendorManagement({ activeEntityId, notify }: { entities: Entity[], activeEntityId: string, notify: (msg: string) => void }) {
-  const [vendors, setVendors] = useState<Vendor[]>([])
-  const [accounts, setAccounts] = useState<Account[]>([])
-  const [loading, setLoading] = useState(true)
+  const vendors = useVendorsStore((s) => s.vendors as unknown as Vendor[])
+  const loading = useVendorsStore((s) => s.loading)
+  const fetchVendors = useVendorsStore((s) => s.fetchVendors)
+  const fetchNextNumber = useVendorsStore((s) => s.fetchNextNumber)
+  const saveVendorStore = useVendorsStore((s) => s.saveVendor)
+  const deleteVendorStore = useVendorsStore((s) => s.deleteVendor)
+
+  const accounts = useCoaStore((s) => s.accounts as unknown as Account[])
+  const fetchAccounts = useCoaStore((s) => s.fetchAccounts)
+
   const [search, setSearch] = useState('')
   const [statusFilter, setStatusFilter] = useState<string>('all')
   const [modalOpen, setModalOpen] = useState(false)
   const [editingVendor, setEditingVendor] = useState<Vendor | null>(null)
   const [form, setForm] = useState<VendorForm>(blankForm())
 
-  const loadData = async () => {
-    try {
-      setLoading(true)
-      const url = activeEntityId ? `${api}/vendors?companyId=${activeEntityId}` : `${api}/vendors`
-      const [vendRes, accRes] = await Promise.all([
-        fetch(url),
-        fetch(`${api}/accounts`)
-      ])
-      
-      if (vendRes.ok) setVendors(await vendRes.json())
-      if (accRes.ok) setAccounts(await accRes.json())
-    } catch {
-      notify('Failed to load vendors from API.')
-    } finally {
-      setLoading(false)
-    }
-  }
-
   useEffect(() => {
-    loadData()
+    fetchVendors(activeEntityId)
+    fetchAccounts()
   }, [activeEntityId])
 
   const filteredVendors = useMemo(() => {
@@ -129,15 +119,8 @@ export default function VendorManagement({ activeEntityId, notify }: { entities:
   const openCreateModal = async () => {
     setEditingVendor(null)
     const newForm = blankForm()
-    try {
-      const res = await fetch(`${api}/vendors/next-number`)
-      if (res.ok) {
-        const data = await res.json()
-        newForm.vendorNumber = data.vendorNumber
-      }
-    } catch {
-      // fallback
-    }
+    const num = await fetchNextNumber()
+    if (num) newForm.vendorNumber = num
     setForm(newForm)
     setModalOpen(true)
   }
@@ -188,36 +171,23 @@ export default function VendorManagement({ activeEntityId, notify }: { entities:
       companyId: activeEntityId || null
     }
 
-    const url = editingVendor ? `${api}/vendors/${editingVendor.id}` : `${api}/vendors`
-    const method = editingVendor ? 'PUT' : 'POST'
-
-    const res = await fetch(url, {
-      method,
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(payload)
-    })
-
-    if (!res.ok) {
-      const err = await res.json()
+    try {
+      await saveVendorStore(payload, editingVendor ? editingVendor.id : undefined)
+      notify(editingVendor ? 'Vendor updated successfully.' : 'Vendor created successfully.')
+      setModalOpen(false)
+    } catch (err: any) {
       notify(err.message || 'Error saving vendor.')
-      return
     }
-
-    notify(editingVendor ? 'Vendor updated successfully.' : 'Vendor created successfully.')
-    setModalOpen(false)
-    loadData()
   }
 
   const handleDelete = async (v: Vendor) => {
     if (!window.confirm(`Are you sure you want to delete vendor "${v.name}"?`)) return
-    const res = await fetch(`${api}/vendors/${v.id}`, { method: 'DELETE' })
-    if (!res.ok) {
-      const err = await res.json()
+    try {
+      await deleteVendorStore(v.id)
+      notify('Vendor deleted.')
+    } catch (err: any) {
       notify(err.message || 'Could not delete vendor.')
-      return
     }
-    notify('Vendor deleted.')
-    loadData()
   }
 
   const getAccountName = (id?: string) => {

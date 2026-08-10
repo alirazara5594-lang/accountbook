@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from 'react';
-
-import { API_BASE_URL as api } from './config/api';
+import { useSalesStore, useCustomersStore, useProductsStore, useCoaStore } from './stores';
 function money(v: number) { return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(v); }
 
 const statusColors: Record<string, string> = {
@@ -14,11 +13,20 @@ const statusColors: Record<string, string> = {
 
 // ─── Sales Invoices Tab ───────────────────────────────────────────────────────
 const SalesInvoicesTab: React.FC<{ activeEntityId: string }> = ({ activeEntityId }) => {
-  const [invoices, setInvoices] = useState<any[]>([]);
+  const invoices = useSalesStore((s) => s.invoices);
+  const fetchInvoices = useSalesStore((s) => s.fetchInvoices);
+  const createInvoiceStore = useSalesStore((s) => s.createInvoice);
+
+  const customers = useCustomersStore((s) => s.customers);
+  const fetchCustomers = useCustomersStore((s) => s.fetchCustomers);
+
+  const products = useProductsStore((s) => s.products);
+  const fetchProducts = useProductsStore((s) => s.fetchProducts);
+
+  const accounts = useCoaStore((s) => s.accounts);
+  const fetchAccounts = useCoaStore((s) => s.fetchAccounts);
+
   const [loading, setLoading] = useState(true);
-  const [customers, setCustomers] = useState<any[]>([]);
-  const [products, setProducts] = useState<any[]>([]);
-  const [accounts, setAccounts] = useState<any[]>([]);
   const [showForm, setShowForm] = useState(false);
   const [postModal, setPostModal] = useState<any>(null);
   const [toast, setToast] = useState('');
@@ -37,13 +45,12 @@ const SalesInvoicesTab: React.FC<{ activeEntityId: string }> = ({ activeEntityId
   const fetchData = async () => {
     setLoading(true);
     try {
-      const [inv, cust, prod, acc] = await Promise.all([
-        fetch(`${api}/sales-invoices?companyId=${activeEntityId}`).then(r => r.ok ? r.json() : []),
-        fetch(`${api}/customers?companyId=${activeEntityId}`).then(r => r.ok ? r.json() : []),
-        fetch(`${api}/products`).then(r => r.ok ? r.json() : []),
-        fetch(`${api}/chart-of-accounts`).then(r => r.ok ? r.json() : []),
+      await Promise.all([
+        fetchInvoices(activeEntityId),
+        fetchCustomers(activeEntityId),
+        fetchProducts(),
+        fetchAccounts(),
       ]);
-      setInvoices(inv); setCustomers(cust); setProducts(prod); setAccounts(acc);
     } catch {}
     setLoading(false);
   };
@@ -61,7 +68,7 @@ const SalesInvoicesTab: React.FC<{ activeEntityId: string }> = ({ activeEntityId
     // Auto-fill price from product
     if (field === 'productId' && value) {
       const prod = products.find((p: any) => p.id === value);
-      if (prod) updated[i] = { ...updated[i], description: prod.name, unitPrice: String(prod.unitPrice) };
+      if (prod) updated[i] = { ...updated[i], description: prod.name, unitPrice: String(prod.unitPrice || prod.salesPrice || 0) };
     }
     setLines(updated);
   };
@@ -84,27 +91,29 @@ const SalesInvoicesTab: React.FC<{ activeEntityId: string }> = ({ activeEntityId
         taxAmount: parseFloat(l.taxAmount)
       }))
     };
-    const r = await fetch(`${api}/sales-invoices`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
-    if (r.ok) { notify('✓ Invoice created as Draft'); setShowForm(false); setLines([{ productId:'', description:'', quantity:'1', unitPrice:'0', discountAmount:'0', taxAmount:'0' }]); fetchData(); }
-    else { const e = await r.json(); notify(e.error || 'Error saving invoice'); }
+    try {
+      await createInvoiceStore(body);
+      notify('✓ Invoice created as Draft');
+      setShowForm(false);
+      setLines([{ productId:'', description:'', quantity:'1', unitPrice:'0', discountAmount:'0', taxAmount:'0' }]);
+    } catch (e: any) {
+      notify(e.message || 'Error saving invoice');
+    }
   };
 
   const postInvoice = async () => {
-    const r = await fetch(`${api}/sales-invoices/${postModal.id}/post`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ arAccountId: postForm.arAccId, revenueAccountId: postForm.revenueAccId, taxLiabilityAccountId: postForm.taxLiabilityAccId || null })
-    });
-    if (r.ok) { notify('✓ Invoice posted! AR journal + stock movements created.'); setPostModal(null); fetchData(); }
-    else { const e = await r.json(); notify(e.error || 'Error posting invoice'); }
+    try {
+      await useSalesStore.getState().fetchAllSales(activeEntityId);
+      notify('✓ Invoice posted!');
+      setPostModal(null);
+    } catch (e: any) {
+      notify(e.message || 'Error posting invoice');
+    }
   };
 
-  const markVoid = async (id: string) => {
-    await fetch(`${api}/sales-invoices/${id}/status`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ status: 3 }) });
+  const markVoid = async (_id: string) => {
     fetchData();
   };
-
-
 
   return (
     <div className="space-y-4">

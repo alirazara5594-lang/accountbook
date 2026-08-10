@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from 'react';
-import { API_BASE_URL } from './config/api';
+import { useVendorsStore } from './stores';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -64,7 +64,7 @@ const initialVendorPayments: VendorPaymentRecord[] = [
 export const VendorPaymentsView: React.FC<VendorPaymentsViewProps> = ({ activeEntityId, entities }) => {
   const currentEntity = entities.find(e => e.id === activeEntityId);
   const [payments, setPayments] = useState<VendorPaymentRecord[]>(initialVendorPayments);
-  const [vendors, setVendors] = useState<any[]>([]);
+  const vendors = useVendorsStore((s) => s.vendors);
   const [query, setQuery] = useState('');
   const [selectedMode, setSelectedMode] = useState('All');
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -81,16 +81,14 @@ export const VendorPaymentsView: React.FC<VendorPaymentsViewProps> = ({ activeEn
     description: ''
   });
 
+  const fetchVendors = useVendorsStore((s) => s.fetchVendors);
+
   React.useEffect(() => {
-    fetch(`${API_BASE_URL}/vendors`)
-      .then(res => res.ok ? res.json() : [])
-      .then(data => {
-        if (Array.isArray(data) && data.length > 0) {
-          setVendors(data);
-          setForm(f => ({ ...f, vendorName: data[0].name }));
-        }
-      })
-      .catch(() => {});
+    fetchVendors(activeEntityId).then((data) => {
+      if (Array.isArray(data) && data.length > 0) {
+        setForm(f => ({ ...f, vendorName: data[0].name }));
+      }
+    });
   }, [activeEntityId]);
 
   const formatCurrency = (val: number, currency: string) => {

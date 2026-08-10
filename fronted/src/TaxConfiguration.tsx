@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { API_BASE_URL } from './config/api';
+import React, { useEffect } from 'react';
+import { useTaxStore } from './stores';
 
 interface TaxAuthority {
   id: string;
@@ -27,28 +27,14 @@ interface TaxCode {
 }
 
 export const TaxConfiguration: React.FC = () => {
-  const [authorities, setAuthorities] = useState<TaxAuthority[]>([]);
-  const [codes, setCodes] = useState<TaxCode[]>([]);
-  const [loading, setLoading] = useState(true);
+  const authorities = useTaxStore((s) => s.authorities as unknown as TaxAuthority[]);
+  const codes = useTaxStore((s) => s.taxCodes as unknown as TaxCode[]);
+  const loading = useTaxStore((s) => s.loading);
+  const fetchAllTaxData = useTaxStore((s) => s.fetchAllTaxData);
 
   useEffect(() => {
-    fetchData();
+    fetchAllTaxData();
   }, []);
-
-  const fetchData = async () => {
-    setLoading(true);
-    try {
-      const [authRes, codesRes] = await Promise.all([
-        fetch(`${API_BASE_URL.replace(/\/v1$/, '')}/taxes/authorities`),
-        fetch(`${API_BASE_URL.replace(/\/v1$/, '')}/taxes/codes`)
-      ]);
-      setAuthorities(await authRes.json());
-      setCodes(await codesRes.json());
-    } catch (e) {
-      console.error("Error fetching taxes", e);
-    }
-    setLoading(false);
-  };
 
   if (loading) return <div className="p-8 text-center text-gray-500">Loading global tax configurations...</div>;
 

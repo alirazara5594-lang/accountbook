@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from 'react';
-import { API_BASE_URL } from './config/api';
+import { useCustomersStore } from './stores';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -53,7 +53,7 @@ const initialCustomerReceipts: CustomerReceiptRecord[] = [
 export const CustomerReceiptsView: React.FC<CustomerReceiptsViewProps> = ({ activeEntityId, entities }) => {
   const currentEntity = entities.find(e => e.id === activeEntityId);
   const [receipts, setReceipts] = useState<CustomerReceiptRecord[]>(initialCustomerReceipts);
-  const [customers, setCustomers] = useState<any[]>([]);
+  const customers = useCustomersStore((s) => s.customers);
   const [query, setQuery] = useState('');
   const [isModalOpen, setIsModalOpen] = useState(false);
 
@@ -68,16 +68,14 @@ export const CustomerReceiptsView: React.FC<CustomerReceiptsViewProps> = ({ acti
     reference: `REC-${Math.floor(1000 + Math.random() * 9000)}`
   });
 
+  const fetchCustomers = useCustomersStore((s) => s.fetchCustomers);
+
   React.useEffect(() => {
-    fetch(`${API_BASE_URL}/customers`)
-      .then(res => res.ok ? res.json() : [])
-      .then(data => {
-        if (Array.isArray(data) && data.length > 0) {
-          setCustomers(data);
-          setForm(f => ({ ...f, customerName: data[0].name }));
-        }
-      })
-      .catch(() => {});
+    fetchCustomers(activeEntityId).then((data) => {
+      if (Array.isArray(data) && data.length > 0) {
+        setForm(f => ({ ...f, customerName: data[0].name }));
+      }
+    });
   }, [activeEntityId]);
 
   const formatCurrency = (val: number, currency: string) => {
