@@ -6,6 +6,7 @@ namespace Zenabook.Api.Controllers;
 
 [ApiController]
 [Route("api/v1/chart-of-accounts")]
+[Route("api/v1/accounts")]
 public class ChartOfAccountsController(AccountingStore store) : ControllerBase
 {
     [HttpGet] public IActionResult Get([FromQuery] string? search, [FromQuery] AccountStatus? status) => Ok(store.Accounts.Where(a => (status is null || a.Status == status) && (string.IsNullOrWhiteSpace(search) || a.Name.Contains(search, StringComparison.OrdinalIgnoreCase) || a.Code.Contains(search, StringComparison.OrdinalIgnoreCase))).OrderBy(a => a.Code));
