@@ -14,9 +14,13 @@ builder.Configuration.AddJsonFile("appsettings.json", optional: true, reloadOnCh
 builder.Services.AddControllers().AddJsonOptions(options =>
     options.JsonSerializerOptions.Converters.Add(new JsonStringEnumConverter()));
 builder.Services.AddOpenApi();
-var postgresConnection = builder.Configuration.GetConnectionString("Postgres");
+
+var rawConnection = builder.Configuration.GetConnectionString("Postgres");
+var postgresConnection = NormalizePostgresConnectionString(rawConnection);
+
 if (!string.IsNullOrWhiteSpace(postgresConnection))
     builder.Services.AddDbContextFactory<AccountingDbContext>(options => options.UseNpgsql(postgresConnection));
+
 builder.Services.AddSingleton<AccountingStore>();
 builder.Services.AddCors(options => options.AddDefaultPolicy(policy => policy
     .AllowAnyOrigin().AllowAnyHeader().AllowAnyMethod()));
@@ -44,3 +48,27 @@ app.MapGet("/", () => Results.Ok(new
 }));
 app.MapControllers();
 app.Run();
+
+static string? NormalizePostgresConnectionString(string? connStr)
+{
+    if (string.IsNullOrWhiteSpace(connStr)) return connStr;
+    if (connStr.StartsWith("postgresql://", StringComparison.OrdinalIgnoreCase) ||
+        connStr.StartsWith("postgres://", StringComparison.OrdinalIgnoreCase))
+    {
+        try
+        {
+            var uri = new Uri(connStr);
+            var userInfo = uri.UserInfo.Split(':');
+            var username = userInfo.Length > 0 ? Uri.UnescapeDataString(userInfo[0]) : "";
+            var password = userInfo.Length > 1 ? Uri.UnescapeDataString(userInfo[1]) : "";
+            var dbName = uri.AbsolutePath.TrimStart('/');
+            var port = uri.Port > 0 ? uri.Port : 5432;
+            return $"Host={uri.Host};Port={port};Database={dbName};Username={username};Password={password};SSL Mode=Require;Trust Server Certificate=true;";
+        }
+        catch
+        {
+            return connStr;
+        }
+    }
+    return connStr;
+}
