@@ -37,6 +37,7 @@ interface ProcurementState {
   receiveGrn: (data: any, companyId?: string) => Promise<void>;
   createGoodsReceipt: (data: any, companyId?: string) => Promise<void>;
   fetchBills: (companyId?: string) => Promise<any[]>;
+  createVendorBill: (data: any, companyId?: string) => Promise<any>;
   validateThreeWayMatch: (poId: string) => Promise<ThreeWayMatchResult | null>;
   fetchTransfers: (companyId?: string) => Promise<StockTransfer[]>;
   createTransfer: (data: any, companyId?: string) => Promise<void>;
@@ -210,8 +211,29 @@ export const useProcurementStore = create<ProcurementState>((set, get) => ({
     return get().receiveGrn(data, companyId);
   },
 
-  fetchBills: async (_companyId?: string) => {
-    return [];
+  fetchBills: async (companyId?: string) => {
+    set({ loading: true, error: null });
+    try {
+      const bills = await procurementApi.getBills(companyId);
+      set({ bills, loading: false });
+      return bills;
+    } catch (err: any) {
+      set({ error: err.message || 'Failed to fetch Vendor Bills', loading: false });
+      return [];
+    }
+  },
+
+  createVendorBill: async (data: any, companyId?: string) => {
+    set({ loading: true, error: null });
+    try {
+      const created = await procurementApi.createBill(data);
+      await get().fetchBills(companyId);
+      set({ loading: false });
+      return created;
+    } catch (err: any) {
+      set({ error: err.message || 'Failed to create Vendor Bill', loading: false });
+      throw err;
+    }
   },
 
   validateThreeWayMatch: async (poId: string) => {

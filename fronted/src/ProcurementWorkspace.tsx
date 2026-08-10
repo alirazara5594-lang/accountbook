@@ -14,7 +14,7 @@ function money(amount: number) {
   return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(amount || 0);
 }
 
-type Tab = 'pr' | 'rfq' | 'compare' | 'po' | 'grn' | 'matching' | 'transfers';
+type Tab = 'pr' | 'rfq' | 'compare' | 'po' | 'grn' | 'bills' | 'matching' | 'transfers';
 
 const destinationBadge: Record<string, { label: string; color: string }> = {
   Inventory: { label: 'Inventory Stock', color: 'bg-blue-100 text-blue-800 border-blue-200' },
@@ -32,6 +32,7 @@ export const ProcurementWorkspace: React.FC<{ activeEntityId: string; entities?:
   const vendorQuotes = useProcurementStore((s) => s.vendorQuotes);
   const orders = useProcurementStore((s) => s.orders);
   const grns = useProcurementStore((s) => s.grns);
+  const bills = useProcurementStore((s) => s.bills);
   const transfers = useProcurementStore((s) => s.transfers);
   const loading = useProcurementStore((s) => s.loading);
 
@@ -40,6 +41,7 @@ export const ProcurementWorkspace: React.FC<{ activeEntityId: string; entities?:
   const submitVendorQuoteStore = useProcurementStore((s) => s.submitVendorQuote);
   const selectVendorQuoteStore = useProcurementStore((s) => s.selectVendorQuote);
   const receiveGrnStore = useProcurementStore((s) => s.receiveGrn);
+  const createVendorBillStore = useProcurementStore((s) => s.createVendorBill);
   const validateThreeWayMatchStore = useProcurementStore((s) => s.validateThreeWayMatch);
   const createTransferStore = useProcurementStore((s) => s.createTransfer);
 
@@ -199,6 +201,58 @@ export const ProcurementWorkspace: React.FC<{ activeEntityId: string; entities?:
     }
   };
 
+  const [showBillModal, setShowBillModal] = useState(false);
+  const [billForm, setBillForm] = useState({ purchaseOrderId: '', vendorId: '', billNumber: '', vendorInvoiceNumber: '', date: new Date().toISOString().split('T')[0], dueDate: new Date(Date.now() + 30 * 86400000).toISOString().split('T')[0] });
+  const [billLines, setBillLines] = useState<any[]>([]);
+
+  const handleOpenBillModal = (po: any) => {
+    const vId = po.vendorId || vendors[0]?.id || '';
+    setBillForm({
+      purchaseOrderId: po.id,
+      vendorId: vId,
+      billNumber: `BILL-${Math.floor(1000 + Math.random() * 9000)}`,
+      vendorInvoiceNumber: `INV-SUPP-${Math.floor(10000 + Math.random() * 90000)}`,
+      date: new Date().toISOString().split('T')[0],
+      dueDate: new Date(Date.now() + 30 * 86400000).toISOString().split('T')[0]
+    });
+    setBillLines((po.lines || []).map((l: any) => ({
+      description: l.description,
+      productId: l.productId,
+      quantity: l.quantity,
+      unitPrice: l.unitPrice,
+      destination: l.destination || 'Inventory'
+    })));
+    setShowBillModal(true);
+  };
+
+  const saveBill = async () => {
+    if (!billForm.vendorInvoiceNumber) return alert('Please enter Supplier Invoice Number.');
+    const body = {
+      purchaseOrderId: billForm.purchaseOrderId,
+      vendorId: billForm.vendorId,
+      billNumber: billForm.billNumber,
+      vendorInvoiceNumber: billForm.vendorInvoiceNumber,
+      date: billForm.date,
+      dueDate: billForm.dueDate,
+      companyId: activeEntityId || null,
+      lines: billLines.map(l => ({
+        description: l.description,
+        productId: l.productId || null,
+        quantity: parseFloat(l.quantity),
+        unitPrice: parseFloat(l.unitPrice),
+        destination: l.destination || 'Expense'
+      }))
+    };
+    try {
+      await createVendorBillStore(body, activeEntityId);
+      notify('✓ Vendor Bill / Invoice created! 3-Way match updated.');
+      setShowBillModal(false);
+      if (billForm.purchaseOrderId) runMatchCheck(billForm.purchaseOrderId);
+    } catch (e: any) {
+      notify(e.message || 'Error creating Vendor Bill');
+    }
+  };
+
   const runMatchCheck = async (poId: string) => {
     const res = await validateThreeWayMatchStore(poId);
     setMatchResult(res);
@@ -225,9 +279,10 @@ export const ProcurementWorkspace: React.FC<{ activeEntityId: string; entities?:
   const tabsList: { id: Tab; label: string; icon: string }[] = [
     { id: 'pr', label: 'Purchase Requests', icon: '📋' },
     { id: 'rfq', label: 'RFQs & Quotes', icon: '📩' },
-    { id: 'compare', label: 'Quote Comparison', icon: '⚖️' },
+    { id: 'compare', label: 'Quotation Comparison', icon: '⚖️' },
     { id: 'po', label: 'Purchase Orders', icon: '📜' },
     { id: 'grn', label: 'GRN Receiving', icon: '📦' },
+    { id: 'bills', label: 'Vendor Bills & Invoices', icon: '💳' },
     { id: 'matching', label: '3-Way Match', icon: '🔍' },
     { id: 'transfers', label: 'Stock Transfers', icon: '🔄' },
   ];
@@ -395,10 +450,13 @@ export const ProcurementWorkspace: React.FC<{ activeEntityId: string; entities?:
                   <td className="py-3 px-4 text-center"><span className="px-2.5 py-1 rounded-full text-xs font-semibold bg-emerald-100 text-emerald-800">{po.status}</span></td>
                   <td className="py-3 px-4 text-right space-x-2">
                     <Button size="sm" variant="outline" className="text-purple-600 border-purple-200 hover:bg-purple-50" onClick={() => handleOpenGrnModal(po)}>
-                      Process GRN Receiving
+                      Process GRN
+                    </Button>
+                    <Button size="sm" variant="outline" className="text-emerald-600 border-emerald-200 hover:bg-emerald-50" onClick={() => handleOpenBillModal(po)}>
+                      + Create Vendor Bill
                     </Button>
                     <Button size="sm" variant="outline" className="text-blue-600 border-blue-200" onClick={() => runMatchCheck(po.id)}>
-                      Validate 3-Way Match
+                      3-Way Match
                     </Button>
                   </td>
                 </tr>
@@ -446,6 +504,41 @@ export const ProcurementWorkspace: React.FC<{ activeEntityId: string; entities?:
               </tbody>
             </table>
           </div>
+        </div>
+      )}
+
+      {/* ─── TAB 6: Vendor Bills & Invoices ──────────────────────────────────── */}
+      {activeTab === 'bills' && (
+        <div className="bg-white border border-gray-200 rounded-2xl shadow-sm overflow-hidden space-y-4">
+          <div className="px-4 py-3 bg-gray-50 border-b border-gray-100 flex justify-between items-center font-bold text-gray-800 text-sm">
+            <span>Supplier Invoices & Vendor Bills History</span>
+            <Button size="sm" className="bg-emerald-600 hover:bg-emerald-700 text-white" onClick={() => handleOpenBillModal(orders[0] || {})}>+ Create Vendor Bill</Button>
+          </div>
+          <table className="w-full text-left text-sm">
+            <thead className="bg-gray-50 text-gray-500 text-xs uppercase">
+              <tr><th className="py-3 px-4">Bill Number</th><th className="py-3 px-4">Supplier Invoice #</th><th className="py-3 px-4">Vendor</th><th className="py-3 px-4">Bill Date</th><th className="py-3 px-4">Due Date</th><th className="py-3 px-4 text-right">Total Amount</th><th className="py-3 px-4 text-center">3-Way Match</th></tr>
+            </thead>
+            <tbody className="divide-y divide-gray-50">
+              {bills.map((b: any) => (
+                <tr key={b.id} className="hover:bg-gray-50/50">
+                  <td className="py-3 px-4 font-mono font-bold text-gray-900">{b.billNumber}</td>
+                  <td className="py-3 px-4 font-mono text-xs text-purple-700 bg-purple-50 px-2 py-0.5 rounded w-fit">{b.vendorInvoiceNumber || b.vendorBillNumber}</td>
+                  <td className="py-3 px-4 font-medium">{vendors.find(v => v.id === b.vendorId)?.name || 'Vendor'}</td>
+                  <td className="py-3 px-4 text-gray-500">{b.date}</td>
+                  <td className="py-3 px-4 text-gray-500">{b.dueDate}</td>
+                  <td className="py-3 px-4 text-right font-bold text-emerald-700">{money(b.lines?.reduce((acc: number, l: any) => acc + ((l.quantity || 1) * (l.unitPrice || 0)), 0))}</td>
+                  <td className="py-3 px-4 text-center">
+                    <Button size="sm" variant="outline" className="text-blue-600 border-blue-200" onClick={() => runMatchCheck(b.purchaseOrderId || b.id)}>
+                      Inspect Match
+                    </Button>
+                  </td>
+                </tr>
+              ))}
+              {!loading && bills.length === 0 && (
+                <tr><td colSpan={7} className="py-12 text-center text-gray-400">No Vendor Bills created. Click "+ Create Vendor Bill" to post supplier invoice.</td></tr>
+              )}
+            </tbody>
+          </table>
         </div>
       )}
 
@@ -665,6 +758,78 @@ export const ProcurementWorkspace: React.FC<{ activeEntityId: string; entities?:
               <Button className="bg-purple-600 hover:bg-purple-700 text-white" onClick={saveGrn}>Process GRN & Route Items</Button>
             </div>
           </div>
+        </div>
+      )}
+
+      {/* ─── MODAL 3.5: Create Vendor Bill / Invoice ──────────────────────────── */}
+      {showBillModal && (
+        <div className="overlay">
+          <form className="modal" onSubmit={e => { e.preventDefault(); saveBill(); }}>
+            <div className="modal-head">
+              <div>
+                <p className="eyebrow">PROCUREMENT & PAYABLES</p>
+                <h2>Create New Vendor Bill / Supplier Invoice</h2>
+              </div>
+              <button type="button" className="close" onClick={() => setShowBillModal(false)}>
+                ×
+              </button>
+            </div>
+
+            <div className="form-grid">
+              <label>
+                Select Vendor *
+                <select required value={billForm.vendorId} onChange={e => setBillForm({ ...billForm, vendorId: e.target.value })}>
+                  <option value="">-- Select Vendor --</option>
+                  {vendors.map(v => <option key={v.id} value={v.id}>{v.name}</option>)}
+                </select>
+              </label>
+
+              <label>
+                Supplier Invoice Number *
+                <input required placeholder="e.g. INV-2026-991" value={billForm.vendorInvoiceNumber} onChange={e => setBillForm({ ...billForm, vendorInvoiceNumber: e.target.value })} />
+              </label>
+
+              <label>
+                Linked Purchase Order
+                <select value={billForm.purchaseOrderId} onChange={e => setBillForm({ ...billForm, purchaseOrderId: e.target.value })}>
+                  <option value="">-- Direct Bill (No PO) --</option>
+                  {orders.map(p => <option key={p.id} value={p.id}>{p.orderNumber || p.poNumber}</option>)}
+                </select>
+              </label>
+
+              <label>
+                Bill Date *
+                <input type="date" required value={billForm.date} onChange={e => setBillForm({ ...billForm, date: e.target.value })} />
+              </label>
+
+              <label>
+                Due Date *
+                <input type="date" required value={billForm.dueDate} onChange={e => setBillForm({ ...billForm, dueDate: e.target.value })} />
+              </label>
+
+              <div style={{ gridColumn: '1 / -1', marginTop: 15 }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
+                  <strong style={{ fontSize: 13, textTransform: 'uppercase', color: '#475569' }}>Billed Line Items & Unit Costs</strong>
+                  <button type="button" className="btn-secondary" style={{ fontSize: 12, padding: '4px 10px' }} onClick={() => setBillLines([...billLines, { description: '', quantity: 1, unitPrice: 0, destination: 'Expense' }])}>
+                    + Add Line Item
+                  </button>
+                </div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                  {billLines.map((l, i) => (
+                    <div key={i} style={{ display: 'flex', gap: 8, alignItems: 'center', background: '#f8fafc', padding: 8, borderRadius: 8, border: '1px solid #e2e8f0' }}>
+                      <input style={{ flex: 1 }} placeholder="Item description" value={l.description} onChange={e => { const u = [...billLines]; u[i].description = e.target.value; setBillLines(u); }} />
+                      <input style={{ width: 80 }} type="number" placeholder="Qty" value={l.quantity} onChange={e => { const u = [...billLines]; u[i].quantity = e.target.value; setBillLines(u); }} />
+                      <input style={{ width: 110 }} type="number" placeholder="Billed Unit Price" value={l.unitPrice} onChange={e => { const u = [...billLines]; u[i].unitPrice = e.target.value; setBillLines(u); }} />
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+            <div className="modal-footer">
+              <button type="button" className="secondary" onClick={() => setShowBillModal(false)}>Cancel</button>
+              <button type="submit" className="primary">Create Vendor Bill & Validate Match</button>
+            </div>
+          </form>
         </div>
       )}
 

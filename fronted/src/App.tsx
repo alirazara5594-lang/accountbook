@@ -7,6 +7,7 @@ import CustomerManagement from './CustomerManagement'
 import ProductsAndServices from './ProductsAndServices'
 import VendorManagement from './VendorManagement'
 import { ProcurementWorkspace } from './ProcurementWorkspace'
+import { VendorBills } from './VendorBills'
 import { FixedAssets } from './FixedAssets'
 import { AssetsInventoryWorkspace } from './AssetsInventoryWorkspace'
 import { TaxConfiguration } from './TaxConfiguration'
@@ -164,6 +165,7 @@ export default function App() {
     'Sales & Customers.Estimates & Quotes': 'estimates-quotes',
     'Procurement.Summary': 'module-summary',
     'Procurement.Vendors': 'vendors',
+    'Procurement.Bills': 'bills',
     'Procurement.Procurement Workspace': 'procurement-workspace',
     'Banking & Payments.Summary': 'module-summary',
     'Banking & Payments.Bank Accounts': 'bank-accounts',
@@ -256,6 +258,7 @@ export default function App() {
   {activeView === 'sales-workspace' && <SalesWorkspace activeEntityId={activeEntityId} entities={entities as any} />}
   {activeView === 'estimates-quotes' && <EstimatesAndQuotes activeEntityId={activeEntityId} />}
   {activeView === 'procurement-workspace' && <ProcurementWorkspace activeEntityId={activeEntityId} entities={entities as any} />}
+  {activeView === 'bills' && <VendorBills activeEntityId={activeEntityId} />}
   {activeView === 'taxes' && <TaxConfiguration />}
   {activeView === 'fixed-assets' && <FixedAssets activeEntityId={activeEntityId} />}
   {activeView === 'assets-inventory' && <AssetsInventoryWorkspace activeEntityId={activeEntityId} entities={entities} />}

@@ -175,6 +175,14 @@ export const procurementApi = {
     return apiClient('/procurement/grn', { method: 'POST', body: data });
   },
 
+  getBills: async (companyId?: string): Promise<any[]> => {
+    return apiClient<any[]>('/procurement/bills', { params: { companyId } });
+  },
+
+  createBill: async (data: any): Promise<any> => {
+    return apiClient<any>('/procurement/bills', { method: 'POST', body: data });
+  },
+
   validateThreeWayMatch: async (poId: string): Promise<ThreeWayMatchResult> => {
     return apiClient<ThreeWayMatchResult>(`/procurement/three-way-match/${poId}`);
   },

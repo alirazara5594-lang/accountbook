@@ -117,7 +117,26 @@ namespace Zenabook.Api.Controllers
             return Ok(new { message = "GRN processed successfully. Destination routing completed (Inventory, Assets, Expense, Mfg)." });
         }
 
-        // ─── 5. 3-Way Matching Engine ───────────────────────────────────────────────
+        // ─── 5. Vendor Bills / Invoices ─────────────────────────────────────────────
+        [HttpGet("bills")]
+        public IActionResult GetVendorBills([FromQuery] string? companyId)
+        {
+            var bills = _store.VendorBills;
+            if (!string.IsNullOrWhiteSpace(companyId) && Guid.TryParse(companyId, out var cId))
+            {
+                bills = bills.Where(b => b.CompanyId == Guid.Empty || b.CompanyId == cId).ToList();
+            }
+            return Ok(bills);
+        }
+
+        [HttpPost("bills")]
+        public IActionResult CreateVendorBill([FromBody] VendorBill bill)
+        {
+            var created = _store.CreateVendorBill(bill);
+            return Ok(created);
+        }
+
+        // ─── 6. 3-Way Matching Engine ───────────────────────────────────────────────
         [HttpGet("three-way-match/{poId}")]
         public IActionResult ValidateThreeWayMatch(string poId)
         {

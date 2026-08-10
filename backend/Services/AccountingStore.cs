@@ -503,6 +503,21 @@ public class AccountingStore
         }
     }
 
+    public VendorBill CreateVendorBill(VendorBill bill)
+    {
+        lock (_lock)
+        {
+            if (string.IsNullOrWhiteSpace(bill.BillNumber))
+            {
+                var max = _vendorBills.Select(b => b.BillNumber).Where(n => n.StartsWith("BILL-") && int.TryParse(n[5..], out _)).Select(n => int.Parse(n[5..])).DefaultIfEmpty(0).Max();
+                bill.BillNumber = $"BILL-{(max + 1):D4}";
+            }
+            _vendorBills.Add(bill);
+            Persist();
+            return bill;
+        }
+    }
+
     public ThreeWayMatchCheck ValidateThreeWayMatch(string poId)
     {
         var po = _purchaseOrders.FirstOrDefault(p => p.Id.ToString() == poId || p.PoNumber == poId);
