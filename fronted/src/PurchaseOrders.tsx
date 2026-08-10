@@ -450,6 +450,30 @@ export const PurchaseOrders: React.FC<{activeEntityId?: string, entities?: any[]
                 </tbody>
               </table>
 
+                {poLines.length > 0 && (() => {
+                  const subtotal = poLines.reduce((sum, l) => sum + ((l.quantity || 0) * (l.unitPrice || 0)), 0);
+                  const taxTotal = poLines.reduce((sum, l) => sum + (l.taxAmount || 0), 0);
+                  const grandTotal = subtotal + taxTotal;
+                  return (
+                    <div style={{ marginTop: 16, padding: '12px 16px', background: '#f1f5f9', borderRadius: 10, border: '1px solid #e2e8f0' }}>
+                      <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 40 }}>
+                        <div style={{ textAlign: 'right' as const }}>
+                          <span style={{ fontSize: 11, textTransform: 'uppercase' as const, color: '#64748b', fontWeight: 600, letterSpacing: '0.05em' }}>Subtotal</span>
+                          <p style={{ fontSize: 14, fontWeight: 700, color: '#334155', fontFamily: 'monospace', margin: '2px 0 0' }}>${subtotal.toFixed(2)}</p>
+                        </div>
+                        <div style={{ textAlign: 'right' as const }}>
+                          <span style={{ fontSize: 11, textTransform: 'uppercase' as const, color: '#dc2626', fontWeight: 600, letterSpacing: '0.05em' }}>Tax (VAT/GST/Sales Tax)</span>
+                          <p style={{ fontSize: 14, fontWeight: 700, color: '#dc2626', fontFamily: 'monospace', margin: '2px 0 0' }}>${taxTotal.toFixed(2)}</p>
+                        </div>
+                        <div style={{ textAlign: 'right' as const, borderLeft: '2px solid #cbd5e1', paddingLeft: 20 }}>
+                          <span style={{ fontSize: 11, textTransform: 'uppercase' as const, color: '#047857', fontWeight: 700, letterSpacing: '0.05em' }}>Grand Total</span>
+                          <p style={{ fontSize: 18, fontWeight: 800, color: '#047857', fontFamily: 'monospace', margin: '2px 0 0' }}>${grandTotal.toFixed(2)}</p>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })()}
+
             </div>
             <div className="p-6 border-t border-gray-100 bg-gray-50/50 flex justify-end gap-3">
               <button onClick={() => setIsPoModalOpen(false)} className="px-5 py-2.5 text-gray-600 font-medium hover:bg-gray-100 rounded-xl transition-colors">Cancel</button>

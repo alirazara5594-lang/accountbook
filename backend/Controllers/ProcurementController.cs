@@ -136,6 +136,36 @@ namespace Zenabook.Api.Controllers
             return Ok(created);
         }
 
+        [HttpPut("bills/{id}")]
+        public IActionResult UpdateVendorBill(Guid id, [FromBody] VendorBill updated)
+        {
+            if (_store.UpdateVendorBill(id, updated, out var error))
+            {
+                return Ok(new { message = "Vendor Bill updated." });
+            }
+            return BadRequest(new { error });
+        }
+
+        [HttpPost("bills/{id}/post")]
+        public IActionResult PostVendorBill(Guid id)
+        {
+            if (_store.PostVendorBill(id, out var error))
+            {
+                return Ok(new { message = "Vendor Bill posted to Accounts Payable." });
+            }
+            return BadRequest(new { error });
+        }
+
+        [HttpPost("orders/{id}/issue")]
+        public IActionResult IssuePurchaseOrder(Guid id)
+        {
+            if (_store.UpdatePurchaseOrderStatus(id, PurchaseOrderStatus.Issued, out var error))
+            {
+                return Ok(new { message = "Purchase Order issued." });
+            }
+            return BadRequest(new { error });
+        }
+
         // ─── 6. 3-Way Matching Engine ───────────────────────────────────────────────
         [HttpGet("three-way-match/{poId}")]
         public IActionResult ValidateThreeWayMatch(string poId)

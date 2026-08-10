@@ -240,6 +240,7 @@ export const ProcurementWorkspace: React.FC<{ activeEntityId: string; entities?:
         productId: l.productId || null,
         quantity: parseFloat(l.quantity),
         unitPrice: parseFloat(l.unitPrice),
+        taxAmount: parseFloat(l.taxAmount || '0'),
         destination: l.destination || 'Expense'
       }))
     };
@@ -660,6 +661,19 @@ export const ProcurementWorkspace: React.FC<{ activeEntityId: string; entities?:
                     </div>
                   </div>
                 ))}
+                {prLines.length > 0 && (() => {
+                  const estimatedTotal = prLines.reduce((sum, l) => sum + ((parseFloat(l.quantity) || 0) * (parseFloat(l.estimatedUnitPrice) || 0)), 0);
+                  return (
+                    <div style={{ marginTop: 12, padding: '12px 16px', background: '#f1f5f9', borderRadius: 10, border: '1px solid #e2e8f0' }}>
+                      <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 40 }}>
+                        <div style={{ textAlign: 'right' as const, borderLeft: '2px solid #cbd5e1', paddingLeft: 20 }}>
+                          <span style={{ fontSize: 11, textTransform: 'uppercase' as const, color: '#047857', fontWeight: 700, letterSpacing: '0.05em' }}>Estimated Total</span>
+                          <p style={{ fontSize: 18, fontWeight: 800, color: '#047857', fontFamily: 'monospace', margin: '2px 0 0' }}>${estimatedTotal.toFixed(2)}</p>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })()}
               </div>
             </div>
             <div className="flex justify-end gap-2 border-t pt-4">
@@ -809,20 +823,68 @@ export const ProcurementWorkspace: React.FC<{ activeEntityId: string; entities?:
 
               <div style={{ gridColumn: '1 / -1', marginTop: 15 }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
-                  <strong style={{ fontSize: 13, textTransform: 'uppercase', color: '#475569' }}>Billed Line Items & Unit Costs</strong>
-                  <button type="button" className="btn-secondary" style={{ fontSize: 12, padding: '4px 10px' }} onClick={() => setBillLines([...billLines, { description: '', quantity: 1, unitPrice: 0, destination: 'Expense' }])}>
+                  <strong style={{ fontSize: 13, textTransform: 'uppercase', color: '#475569', letterSpacing: '0.05em' }}>Billed Line Items & Unit Costs</strong>
+                  <button type="button" className="btn-secondary" style={{ fontSize: 12, padding: '4px 10px' }} onClick={() => setBillLines([...billLines, { description: '', quantity: 1, unitPrice: 0, taxAmount: 0, destination: 'Expense' }])}>
                     + Add Line Item
                   </button>
                 </div>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                  {billLines.map((l, i) => (
-                    <div key={i} style={{ display: 'flex', gap: 8, alignItems: 'center', background: '#f8fafc', padding: 8, borderRadius: 8, border: '1px solid #e2e8f0' }}>
-                      <input style={{ flex: 1 }} placeholder="Item description" value={l.description} onChange={e => { const u = [...billLines]; u[i].description = e.target.value; setBillLines(u); }} />
-                      <input style={{ width: 80 }} type="number" placeholder="Qty" value={l.quantity} onChange={e => { const u = [...billLines]; u[i].quantity = e.target.value; setBillLines(u); }} />
-                      <input style={{ width: 110 }} type="number" placeholder="Billed Unit Price" value={l.unitPrice} onChange={e => { const u = [...billLines]; u[i].unitPrice = e.target.value; setBillLines(u); }} />
-                    </div>
-                  ))}
+
+                {/* Column Headers */}
+                <div style={{ display: 'flex', gap: 8, alignItems: 'center', padding: '6px 10px', marginBottom: 4 }}>
+                  <span style={{ flex: 1, fontSize: 11, fontWeight: 700, textTransform: 'uppercase' as const, color: '#94a3b8', letterSpacing: '0.05em' }}>Description</span>
+                  <span style={{ width: 80, fontSize: 11, fontWeight: 700, textTransform: 'uppercase' as const, color: '#94a3b8', letterSpacing: '0.05em', textAlign: 'center' as const }}>Qty</span>
+                  <span style={{ width: 110, fontSize: 11, fontWeight: 700, textTransform: 'uppercase' as const, color: '#94a3b8', letterSpacing: '0.05em', textAlign: 'center' as const }}>Unit Price</span>
+                  <span style={{ width: 90, fontSize: 11, fontWeight: 700, textTransform: 'uppercase' as const, color: '#94a3b8', letterSpacing: '0.05em', textAlign: 'center' as const }}>Tax</span>
+                  <span style={{ width: 100, fontSize: 11, fontWeight: 700, textTransform: 'uppercase' as const, color: '#94a3b8', letterSpacing: '0.05em', textAlign: 'right' as const }}>Amount</span>
+                  <span style={{ width: 24 }}></span>
                 </div>
+
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                  {billLines.map((l, i) => {
+                    const lineSubtotal = (parseFloat(l.quantity) || 0) * (parseFloat(l.unitPrice) || 0);
+                    const lineTax = parseFloat(l.taxAmount) || 0;
+                    const lineTotal = lineSubtotal + lineTax;
+                    return (
+                      <div key={i} style={{ display: 'flex', gap: 8, alignItems: 'center', background: '#f8fafc', padding: 8, borderRadius: 8, border: '1px solid #e2e8f0' }}>
+                        <input style={{ flex: 1 }} placeholder="Item description" value={l.description} onChange={e => { const u = [...billLines]; u[i].description = e.target.value; setBillLines(u); }} />
+                        <input style={{ width: 80, textAlign: 'center' }} type="number" placeholder="Qty" value={l.quantity} onChange={e => { const u = [...billLines]; u[i].quantity = e.target.value; setBillLines(u); }} />
+                        <input style={{ width: 110, textAlign: 'center' }} type="number" placeholder="Billed Unit Price" value={l.unitPrice} onChange={e => { const u = [...billLines]; u[i].unitPrice = e.target.value; setBillLines(u); }} />
+                        <input style={{ width: 90, textAlign: 'center' }} type="number" step="0.01" placeholder="Tax Amt" value={l.taxAmount || 0} onChange={e => { const u = [...billLines]; u[i].taxAmount = e.target.value; setBillLines(u); }} />
+                        <span style={{ width: 100, textAlign: 'right', fontWeight: 700, fontSize: 13, color: '#0f172a', fontFamily: 'monospace' }}>
+                          ${lineTotal.toFixed(2)}
+                        </span>
+                        <button type="button" style={{ color: '#ef4444', background: 'none', border: 'none', cursor: 'pointer', fontWeight: 'bold', fontSize: 16, width: 24 }} onClick={() => setBillLines(billLines.filter((_, idx) => idx !== i))}>
+                          ×
+                        </button>
+                      </div>
+                    );
+                  })}
+                </div>
+
+                {/* Bill Totals Summary */}
+                {billLines.length > 0 && (() => {
+                  const subtotal = billLines.reduce((sum, l) => sum + ((parseFloat(l.quantity) || 0) * (parseFloat(l.unitPrice) || 0)), 0);
+                  const taxTotal = billLines.reduce((sum, l) => sum + (parseFloat(l.taxAmount) || 0), 0);
+                  const grandTotal = subtotal + taxTotal;
+                  return (
+                    <div style={{ marginTop: 12, padding: '12px 16px', background: '#f1f5f9', borderRadius: 10, border: '1px solid #e2e8f0' }}>
+                      <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 40 }}>
+                        <div style={{ textAlign: 'right' as const }}>
+                          <span style={{ fontSize: 11, textTransform: 'uppercase' as const, color: '#64748b', fontWeight: 600, letterSpacing: '0.05em' }}>Subtotal</span>
+                          <p style={{ fontSize: 14, fontWeight: 700, color: '#334155', fontFamily: 'monospace', margin: '2px 0 0' }}>${subtotal.toFixed(2)}</p>
+                        </div>
+                        <div style={{ textAlign: 'right' as const }}>
+                          <span style={{ fontSize: 11, textTransform: 'uppercase' as const, color: '#dc2626', fontWeight: 600, letterSpacing: '0.05em' }}>Tax (VAT/GST/Sales Tax)</span>
+                          <p style={{ fontSize: 14, fontWeight: 700, color: '#dc2626', fontFamily: 'monospace', margin: '2px 0 0' }}>${taxTotal.toFixed(2)}</p>
+                        </div>
+                        <div style={{ textAlign: 'right' as const, borderLeft: '2px solid #cbd5e1', paddingLeft: 20 }}>
+                          <span style={{ fontSize: 11, textTransform: 'uppercase' as const, color: '#047857', fontWeight: 700, letterSpacing: '0.05em' }}>Grand Total</span>
+                          <p style={{ fontSize: 18, fontWeight: 800, color: '#047857', fontFamily: 'monospace', margin: '2px 0 0' }}>${grandTotal.toFixed(2)}</p>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })()}
               </div>
             </div>
             <div className="modal-footer">

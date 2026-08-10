@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useProcurementStore, useVendorsStore, useProductsStore } from './stores';
+import { useProcurementStore, useVendorsStore, useProductsStore, useCoaStore } from './stores';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 
@@ -20,9 +20,14 @@ export const VendorBills: React.FC<{ activeEntityId: string }> = ({ activeEntity
   const fetchVendors = useVendorsStore((s) => s.fetchVendors);
 
   const fetchProducts = useProductsStore((s) => s.fetchProducts);
+  const accounts = useCoaStore((s) => s.accounts);
+  const fetchAccounts = useCoaStore((s) => s.fetchAccounts);
 
   const [toast, setToast] = useState('');
   const [showBillModal, setShowBillModal] = useState(false);
+  const [entryMode, setEntryMode] = useState<'direct' | 'procurement'>('direct');
+  const [forcedMode, setForcedMode] = useState<'direct' | 'procurement' | null>(null);
+  
   const [billForm, setBillForm] = useState({
     purchaseOrderId: '',
     vendorId: '',
@@ -44,11 +49,15 @@ export const VendorBills: React.FC<{ activeEntityId: string }> = ({ activeEntity
     fetchOrders(activeEntityId);
     fetchVendors(activeEntityId);
     fetchProducts();
+    fetchAccounts();
   }, [activeEntityId]);
 
   const notify = (msg: string) => { setToast(msg); setTimeout(() => setToast(''), 3500); };
 
-  const handleOpenModal = (po?: any) => {
+  const handleOpenModal = (po?: any, mode: 'direct' | 'procurement' = 'direct') => {
+    const resolvedMode = po ? 'procurement' : mode;
+    setEntryMode(resolvedMode);
+    setForcedMode(resolvedMode);
     const vId = po?.vendorId || vendors[0]?.id || '';
     setBillForm({
       purchaseOrderId: po?.id || '',
@@ -62,11 +71,12 @@ export const VendorBills: React.FC<{ activeEntityId: string }> = ({ activeEntity
       notes: '',
       taxAmount: '0'
     });
-    setBillLines((po?.lines || [{ description: '', quantity: 1, unitPrice: 0, taxAmount: 0 }]).map((l: any) => ({
+    setBillLines((po?.lines || [{ description: '', quantity: 1, unitPrice: 0, accountId: '', destination: 'Expense' }]).map((l: any) => ({
       description: l.description || '',
       productId: l.productId || null,
       quantity: l.quantity || 1,
       unitPrice: l.unitPrice || 0,
+      accountId: l.expenseAccountId || accounts[0]?.id || '',
       destination: l.destination || 'Expense',
       taxAmount: l.taxAmount || 0
     })));
@@ -78,7 +88,7 @@ export const VendorBills: React.FC<{ activeEntityId: string }> = ({ activeEntity
     if (!billForm.vendorId) return alert('Please select Vendor.');
     if (!billForm.vendorInvoiceNumber) return alert('Please enter Supplier Invoice Number.');
     const body = {
-      purchaseOrderId: billForm.purchaseOrderId || null,
+      purchaseOrderId: entryMode === 'procurement' ? (billForm.purchaseOrderId || null) : null,
       vendorId: billForm.vendorId,
       billNumber: billForm.billNumber,
       vendorInvoiceNumber: billForm.vendorInvoiceNumber,
@@ -94,12 +104,13 @@ export const VendorBills: React.FC<{ activeEntityId: string }> = ({ activeEntity
         quantity: parseFloat(l.quantity),
         unitPrice: parseFloat(l.unitPrice),
         taxAmount: parseFloat(l.taxAmount || '0'),
-        destination: l.destination || 'Expense'
+        destination: l.destination || 'Expense',
+        accountId: l.accountId || null
       }))
     };
     try {
       await createVendorBillStore(body, activeEntityId);
-      notify('✓ Vendor Bill / Supplier Invoice saved successfully!');
+      notify(entryMode === 'direct' ? '✓ Direct Vendor Bill & Accounts Payable Liability posted!' : '✓ Procurement Vendor Bill saved & 3-Way Match updated!');
       setShowBillModal(false);
     } catch (err: any) {
       notify(err.message || 'Error saving Vendor Bill');
@@ -107,7 +118,7 @@ export const VendorBills: React.FC<{ activeEntityId: string }> = ({ activeEntity
   };
 
   const inspectMatch = async (poId: string) => {
-    if (!poId) return alert('No Purchase Order linked to inspect.');
+    if (!poId) return alert('Direct Bill has no PO reference.');
     const res = await validateThreeWayMatchStore(poId);
     setMatchModal(res);
   };
@@ -123,11 +134,16 @@ export const VendorBills: React.FC<{ activeEntityId: string }> = ({ activeEntity
           <h1 className="text-xl font-bold text-gray-900 tracking-tight flex items-center gap-2">
             <span>💳</span> Vendor Bills & Supplier Invoices
           </h1>
-          <p className="text-gray-500 text-xs mt-1">Manage accounts payable supplier bills, incoming invoices, and 3-way match audit validation.</p>
+          <p className="text-gray-500 text-xs mt-1">Direct supplier liability creation or procurement-linked 3-way match invoices.</p>
         </div>
-        <Button className="bg-emerald-600 hover:bg-emerald-700 text-white font-medium" onClick={() => handleOpenModal()}>
-          + Create Vendor Bill
-        </Button>
+        <div className="flex gap-2">
+          <Button variant="outline" className="text-blue-600 border-blue-200 hover:bg-blue-50" onClick={() => handleOpenModal(null, 'direct')}>
+            ⚡ Direct Bill Entry
+          </Button>
+          <Button className="bg-emerald-600 hover:bg-emerald-700 text-white font-medium" onClick={() => handleOpenModal(null, 'procurement')}>
+            📜 Procurement PO Bill
+          </Button>
+        </div>
       </div>
 
       {/* Summary KPI Cards */}
@@ -153,6 +169,7 @@ export const VendorBills: React.FC<{ activeEntityId: string }> = ({ activeEntity
             <tr>
               <th className="py-3 px-4">Bill Number</th>
               <th className="py-3 px-4">Supplier Invoice #</th>
+              <th className="py-3 px-4">Entry Type</th>
               <th className="py-3 px-4">Vendor Name</th>
               <th className="py-3 px-4">Bill Date</th>
               <th className="py-3 px-4">Due Date</th>
@@ -164,42 +181,96 @@ export const VendorBills: React.FC<{ activeEntityId: string }> = ({ activeEntity
             {(bills as any[]).map((bill: any) => {
               const vendor = vendors.find(v => v.id === bill.vendorId);
               const total = bill.lines?.reduce((acc: number, l: any) => acc + ((l.quantity || 1) * (l.unitPrice || 0)), 0) || 0;
+              const isDirect = !bill.purchaseOrderId;
               return (
                 <tr key={bill.id} className="hover:bg-gray-50/60 transition-colors">
                   <td className="py-3 px-4 font-mono font-bold text-gray-900">{bill.billNumber}</td>
                   <td className="py-3 px-4 font-mono text-xs text-purple-700 bg-purple-50 px-2.5 py-1 rounded w-fit font-bold">{bill.vendorInvoiceNumber || bill.vendorBillNumber}</td>
+                  <td className="py-3 px-4">
+                    {isDirect ? (
+                      <span className="px-2 py-0.5 bg-blue-100 text-blue-800 text-[10px] font-bold rounded-full border border-blue-200">⚡ Direct Bill</span>
+                    ) : (
+                      <span className="px-2 py-0.5 bg-emerald-100 text-emerald-800 text-[10px] font-bold rounded-full border border-emerald-200">📜 Procurement PO</span>
+                    )}
+                  </td>
                   <td className="py-3 px-4 font-medium text-gray-900">{vendor?.name || bill.vendorName || 'Vendor'}</td>
                   <td className="py-3 px-4 text-gray-500">{bill.date}</td>
                   <td className="py-3 px-4 text-gray-500">{bill.dueDate}</td>
                   <td className="py-3 px-4 text-right font-bold text-emerald-700 text-base">{money(total, bill.currencyCode || 'USD')}</td>
                   <td className="py-3 px-4 text-center">
-                    <Button size="sm" variant="outline" className="text-blue-600 border-blue-200 hover:bg-blue-50" onClick={() => inspectMatch(bill.purchaseOrderId)}>
-                      Inspect Match
-                    </Button>
+                    {bill.purchaseOrderId ? (
+                      <Button size="sm" variant="outline" className="text-blue-600 border-blue-200 hover:bg-blue-50" onClick={() => inspectMatch(bill.purchaseOrderId)}>
+                        Inspect Match
+                      </Button>
+                    ) : (
+                      <span className="text-xs text-gray-400">Direct AP Posted</span>
+                    )}
                   </td>
                 </tr>
               );
             })}
             {!loading && bills.length === 0 && (
-              <tr><td colSpan={7} className="py-12 text-center text-gray-400">No Vendor Bills found. Click "+ Create Vendor Bill" to record a supplier invoice.</td></tr>
+              <tr><td colSpan={8} className="py-12 text-center text-gray-400">No Vendor Bills found. Click "+ Direct Bill Entry" or "+ Procurement PO Bill" to record a supplier invoice.</td></tr>
             )}
           </tbody>
         </table>
       </div>
 
-      {/* Modal: Create Vendor Bill (Form Grid matching Customer Creation) */}
+      {/* Modal: Dual Workflow Vendor Bill Creation Form */}
       {showBillModal && (
         <div className="overlay">
           <form className="modal" onSubmit={saveBill}>
             <div className="modal-head">
               <div>
                 <p className="eyebrow">PROCUREMENT & PAYABLES</p>
-                <h2>Create New Vendor Bill / Supplier Invoice</h2>
+                <h2>{entryMode === 'direct' ? '⚡ Enter Direct Vendor Bill (Direct AP Liability)' : '📜 Enter Procurement Vendor Bill (PO & GRN Linked)'}</h2>
               </div>
               <button type="button" className="close" onClick={() => setShowBillModal(false)}>
                 ×
               </button>
             </div>
+
+            {/* Entry Mode Toggle Selector — only shown when not forced to a specific mode */}
+            {!forcedMode && (
+              <div style={{ display: 'flex', gap: 10, marginBottom: 20, background: '#f1f5f9', padding: 4, borderRadius: 10 }}>
+                <button
+                  type="button"
+                  style={{
+                    flex: 1,
+                    padding: '8px 12px',
+                    borderRadius: 8,
+                    fontSize: 13,
+                    fontWeight: 700,
+                    border: 'none',
+                    cursor: 'pointer',
+                    background: entryMode === 'direct' ? '#fff' : 'transparent',
+                    color: entryMode === 'direct' ? '#1d4ed8' : '#64748b',
+                    boxShadow: entryMode === 'direct' ? '0 1px 3px rgba(0,0,0,0.1)' : 'none'
+                  }}
+                  onClick={() => setEntryMode('direct')}
+                >
+                  ⚡ Direct Vendor Bill (Direct GL Liability)
+                </button>
+                <button
+                  type="button"
+                  style={{
+                    flex: 1,
+                    padding: '8px 12px',
+                    borderRadius: 8,
+                    fontSize: 13,
+                    fontWeight: 700,
+                    border: 'none',
+                    cursor: 'pointer',
+                    background: entryMode === 'procurement' ? '#fff' : 'transparent',
+                    color: entryMode === 'procurement' ? '#047857' : '#64748b',
+                    boxShadow: entryMode === 'procurement' ? '0 1px 3px rgba(0,0,0,0.1)' : 'none'
+                  }}
+                  onClick={() => setEntryMode('procurement')}
+                >
+                  📜 Procurement Procedure Bill (PO & GRN Linked)
+                </button>
+              </div>
+            )}
 
             <div className="form-grid">
               <label>
@@ -233,17 +304,24 @@ export const VendorBills: React.FC<{ activeEntityId: string }> = ({ activeEntity
                 />
               </label>
 
-              <label>
-                Linked Purchase Order
-                <select value={billForm.purchaseOrderId} onChange={e => setBillForm({ ...billForm, purchaseOrderId: e.target.value })}>
-                  <option value="">-- Direct Bill (No Linked PO) --</option>
-                  {orders.map(p => (
-                    <option key={p.id} value={p.id}>
-                      {p.orderNumber || p.poNumber}
-                    </option>
-                  ))}
-                </select>
-              </label>
+              {entryMode === 'procurement' ? (
+                <label>
+                  Linked Purchase Order *
+                  <select value={billForm.purchaseOrderId} onChange={e => setBillForm({ ...billForm, purchaseOrderId: e.target.value })}>
+                    <option value="">-- Select Purchase Order --</option>
+                    {orders.map(p => (
+                      <option key={p.id} value={p.id}>
+                        {p.orderNumber || p.poNumber}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+              ) : (
+                <label>
+                  Direct AP Ledger Posting
+                  <input disabled value="Direct Accounts Payable Liability (Posting to GL)" style={{ background: '#f8fafc', color: '#0284c7', fontWeight: 'bold' }} />
+                </label>
+              )}
 
               <label>
                 Invoice / Bill Date *
@@ -298,57 +376,133 @@ export const VendorBills: React.FC<{ activeEntityId: string }> = ({ activeEntity
               {/* Line Items Section */}
               <div style={{ gridColumn: '1 / -1', marginTop: 15 }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
-                  <strong style={{ fontSize: 13, textTransform: 'uppercase', color: '#475569', letterSpacing: '0.05em' }}>Billed Line Items & Unit Prices</strong>
-                  <button type="button" className="btn-secondary" style={{ fontSize: 12, padding: '4px 10px' }} onClick={() => setBillLines([...billLines, { description: '', quantity: 1, unitPrice: 0, taxAmount: 0 }])}>
+                  <strong style={{ fontSize: 13, textTransform: 'uppercase', color: '#475569', letterSpacing: '0.05em' }}>Billed Line Items & GL Account Distributions</strong>
+                  <button type="button" className="btn-secondary" style={{ fontSize: 12, padding: '4px 10px' }} onClick={() => setBillLines([...billLines, { description: '', quantity: 1, unitPrice: 0, accountId: '', destination: 'Expense', taxAmount: 0 }])}>
                     + Add Line Item
                   </button>
                 </div>
 
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                  {billLines.map((l, i) => (
-                    <div key={i} style={{ display: 'flex', gap: 8, alignItems: 'center', background: '#f8fafc', padding: 8, borderRadius: 8, border: '1px solid #e2e8f0' }}>
-                      <input
-                        style={{ flex: 1 }}
-                        placeholder="Item Description *"
-                        value={l.description}
-                        onChange={e => {
-                          const u = [...billLines];
-                          u[i].description = e.target.value;
-                          setBillLines(u);
-                        }}
-                      />
-                      <input
-                        style={{ width: 80 }}
-                        type="number"
-                        placeholder="Qty"
-                        value={l.quantity}
-                        onChange={e => {
-                          const u = [...billLines];
-                          u[i].quantity = e.target.value;
-                          setBillLines(u);
-                        }}
-                      />
-                      <input
-                        style={{ width: 110 }}
-                        type="number"
-                        placeholder="Unit Price"
-                        value={l.unitPrice}
-                        onChange={e => {
-                          const u = [...billLines];
-                          u[i].unitPrice = e.target.value;
-                          setBillLines(u);
-                        }}
-                      />
-                      <button
-                        type="button"
-                        style={{ color: '#ef4444', background: 'none', border: 'none', cursor: 'pointer', fontWeight: 'bold', fontSize: 16 }}
-                        onClick={() => setBillLines(billLines.filter((_, idx) => idx !== i))}
-                      >
-                        ×
-                      </button>
-                    </div>
-                  ))}
+                {/* Column Headers */}
+                <div style={{ display: 'flex', gap: 8, alignItems: 'center', padding: '6px 10px', marginBottom: 4 }}>
+                  <span style={{ flex: 1, fontSize: 11, fontWeight: 700, textTransform: 'uppercase', color: '#94a3b8', letterSpacing: '0.05em' }}>Description</span>
+                  {entryMode === 'direct' && (
+                    <span style={{ flex: 1, fontSize: 11, fontWeight: 700, textTransform: 'uppercase', color: '#94a3b8', letterSpacing: '0.05em' }}>GL Account</span>
+                  )}
+                  <span style={{ width: 70, fontSize: 11, fontWeight: 700, textTransform: 'uppercase', color: '#94a3b8', letterSpacing: '0.05em', textAlign: 'center' }}>Qty</span>
+                  <span style={{ width: 100, fontSize: 11, fontWeight: 700, textTransform: 'uppercase', color: '#94a3b8', letterSpacing: '0.05em', textAlign: 'center' }}>Unit Price</span>
+                  <span style={{ width: 90, fontSize: 11, fontWeight: 700, textTransform: 'uppercase', color: '#94a3b8', letterSpacing: '0.05em', textAlign: 'center' }}>Tax</span>
+                  <span style={{ width: 100, fontSize: 11, fontWeight: 700, textTransform: 'uppercase', color: '#94a3b8', letterSpacing: '0.05em', textAlign: 'right' }}>Amount</span>
+                  <span style={{ width: 24 }}></span>
                 </div>
+
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                  {billLines.map((l, i) => {
+                    const lineSubtotal = (parseFloat(l.quantity) || 0) * (parseFloat(l.unitPrice) || 0);
+                    const lineTax = parseFloat(l.taxAmount) || 0;
+                    const lineTotal = lineSubtotal + lineTax;
+                    return (
+                      <div key={i} style={{ display: 'flex', gap: 8, alignItems: 'center', background: '#f8fafc', padding: 10, borderRadius: 8, border: '1px solid #e2e8f0' }}>
+                        <input
+                          style={{ flex: 1 }}
+                          placeholder="Item Description *"
+                          value={l.description}
+                          onChange={e => {
+                            const u = [...billLines];
+                            u[i].description = e.target.value;
+                            setBillLines(u);
+                          }}
+                        />
+                        {entryMode === 'direct' && (
+                          <select
+                            style={{ flex: 1 }}
+                            value={l.accountId}
+                            onChange={e => {
+                              const u = [...billLines];
+                              u[i].accountId = e.target.value;
+                              setBillLines(u);
+                            }}
+                          >
+                            <option value="">-- Select GL Account --</option>
+                            {accounts.map(a => (
+                              <option key={a.id} value={a.id}>
+                                {a.code} - {a.name} ({a.type})
+                              </option>
+                            ))}
+                          </select>
+                        )}
+                        <input
+                          style={{ width: 70, textAlign: 'center' }}
+                          type="number"
+                          placeholder="Qty"
+                          value={l.quantity}
+                          onChange={e => {
+                            const u = [...billLines];
+                            u[i].quantity = e.target.value;
+                            setBillLines(u);
+                          }}
+                        />
+                        <input
+                          style={{ width: 100, textAlign: 'center' }}
+                          type="number"
+                          placeholder="Unit Price"
+                          value={l.unitPrice}
+                          onChange={e => {
+                            const u = [...billLines];
+                            u[i].unitPrice = e.target.value;
+                            setBillLines(u);
+                          }}
+                        />
+                        <input
+                          style={{ width: 90, textAlign: 'center' }}
+                          type="number"
+                          step="0.01"
+                          placeholder="Tax Amt"
+                          value={l.taxAmount}
+                          onChange={e => {
+                            const u = [...billLines];
+                            u[i].taxAmount = e.target.value;
+                            setBillLines(u);
+                          }}
+                        />
+                        <span style={{ width: 100, textAlign: 'right', fontWeight: 700, fontSize: 13, color: '#0f172a', fontFamily: 'monospace' }}>
+                          {money(lineTotal, billForm.currencyCode)}
+                        </span>
+                        <button
+                          type="button"
+                          style={{ color: '#ef4444', background: 'none', border: 'none', cursor: 'pointer', fontWeight: 'bold', fontSize: 16, width: 24 }}
+                          onClick={() => setBillLines(billLines.filter((_, idx) => idx !== i))}
+                        >
+                          ×
+                        </button>
+                      </div>
+                    );
+                  })}
+                </div>
+
+                {/* Bill Totals Summary */}
+                {billLines.length > 0 && (() => {
+                  const subtotal = billLines.reduce((sum, l) => sum + ((parseFloat(l.quantity) || 0) * (parseFloat(l.unitPrice) || 0)), 0);
+                  const taxTotal = billLines.reduce((sum, l) => sum + (parseFloat(l.taxAmount) || 0), 0);
+                  const grandTotal = subtotal + taxTotal;
+                  return (
+                    <div style={{ marginTop: 12, padding: '12px 16px', background: '#f1f5f9', borderRadius: 10, border: '1px solid #e2e8f0' }}>
+                      <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 40 }}>
+                        <div style={{ textAlign: 'right' }}>
+                          <span style={{ fontSize: 11, textTransform: 'uppercase', color: '#64748b', fontWeight: 600, letterSpacing: '0.05em' }}>Subtotal</span>
+                          <p style={{ fontSize: 14, fontWeight: 700, color: '#334155', fontFamily: 'monospace', margin: '2px 0 0' }}>{money(subtotal, billForm.currencyCode)}</p>
+                        </div>
+                        <div style={{ textAlign: 'right' }}>
+                          <span style={{ fontSize: 11, textTransform: 'uppercase', color: '#dc2626', fontWeight: 600, letterSpacing: '0.05em' }}>Tax (VAT/GST/Sales Tax)</span>
+                          <p style={{ fontSize: 14, fontWeight: 700, color: '#dc2626', fontFamily: 'monospace', margin: '2px 0 0' }}>{money(taxTotal, billForm.currencyCode)}</p>
+                        </div>
+                        <div style={{ textAlign: 'right', borderLeft: '2px solid #cbd5e1', paddingLeft: 20 }}>
+                          <span style={{ fontSize: 11, textTransform: 'uppercase', color: '#047857', fontWeight: 700, letterSpacing: '0.05em' }}>Grand Total</span>
+                          <p style={{ fontSize: 18, fontWeight: 800, color: '#047857', fontFamily: 'monospace', margin: '2px 0 0' }}>{money(grandTotal, billForm.currencyCode)}</p>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })()}
               </div>
             </div>
 
@@ -357,7 +511,7 @@ export const VendorBills: React.FC<{ activeEntityId: string }> = ({ activeEntity
                 Cancel
               </button>
               <button type="submit" className="primary">
-                Save Vendor Bill & Validate Match
+                {entryMode === 'direct' ? 'Post Direct Accounts Payable Liability' : 'Save Vendor Bill & Validate Match'}
               </button>
             </div>
           </form>

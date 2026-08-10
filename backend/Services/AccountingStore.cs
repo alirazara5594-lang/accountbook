@@ -512,9 +512,50 @@ public class AccountingStore
                 var max = _vendorBills.Select(b => b.BillNumber).Where(n => n.StartsWith("BILL-") && int.TryParse(n[5..], out _)).Select(n => int.Parse(n[5..])).DefaultIfEmpty(0).Max();
                 bill.BillNumber = $"BILL-{(max + 1):D4}";
             }
+            bill.Status = VendorBillStatus.Draft;
             _vendorBills.Add(bill);
             Persist();
             return bill;
+        }
+    }
+
+    public bool UpdateVendorBill(Guid id, VendorBill updated, out string? error)
+    {
+        error = null;
+        lock (_lock)
+        {
+            var bill = _vendorBills.FirstOrDefault(b => b.Id == id);
+            if (bill == null) { error = "Vendor Bill not found."; return false; }
+            if (bill.Status != VendorBillStatus.Draft) { error = "Only Draft bills can be edited."; return false; }
+
+            bill.VendorInvoiceNumber = updated.VendorInvoiceNumber ?? bill.VendorInvoiceNumber;
+            bill.VendorId = updated.VendorId != Guid.Empty ? updated.VendorId : bill.VendorId;
+            bill.PurchaseOrderId = updated.PurchaseOrderId ?? bill.PurchaseOrderId;
+            bill.Date = updated.Date ?? bill.Date;
+            bill.DueDate = updated.DueDate ?? bill.DueDate;
+            bill.PaymentTermsDays = updated.PaymentTermsDays > 0 ? updated.PaymentTermsDays : bill.PaymentTermsDays;
+            bill.CurrencyCode = updated.CurrencyCode ?? bill.CurrencyCode;
+            bill.Notes = updated.Notes ?? bill.Notes;
+            if (updated.Lines != null && updated.Lines.Count > 0)
+            {
+                bill.Lines = updated.Lines;
+            }
+            Persist();
+            return true;
+        }
+    }
+
+    public bool PostVendorBill(Guid id, out string? error)
+    {
+        error = null;
+        lock (_lock)
+        {
+            var bill = _vendorBills.FirstOrDefault(b => b.Id == id);
+            if (bill == null) { error = "Vendor Bill not found."; return false; }
+            if (bill.Status != VendorBillStatus.Draft) { error = "Only Draft bills can be posted."; return false; }
+            bill.Status = VendorBillStatus.Open;
+            Persist();
+            return true;
         }
     }
 

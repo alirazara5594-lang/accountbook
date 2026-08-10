@@ -25,4 +25,24 @@ public class VendorBillsController(AccountingStore store) : ControllerBase
         }
         return BadRequest(new { Error = error });
     }
+
+    [HttpPut("{id}")]
+    public IActionResult UpdateBill(Guid id, [FromBody] VendorBill updated)
+    {
+        if (store.UpdateVendorBill(id, updated, out var error))
+        {
+            return Ok(new { message = "Vendor Bill updated." });
+        }
+        return BadRequest(new { Error = error });
+    }
+
+    [HttpPost("{id}/post")]
+    public IActionResult PostBill(Guid id)
+    {
+        if (store.PostVendorBill(id, out var error))
+        {
+            return Ok(new { message = "Vendor Bill posted to Accounts Payable." });
+        }
+        return BadRequest(new { Error = error });
+    }
 }

@@ -183,6 +183,18 @@ export const procurementApi = {
     return apiClient<any>('/procurement/bills', { method: 'POST', body: data });
   },
 
+  updateBill: async (id: string, data: any): Promise<any> => {
+    return apiClient<any>(`/procurement/bills/${id}`, { method: 'PUT', body: data });
+  },
+
+  postBill: async (id: string): Promise<any> => {
+    return apiClient<any>(`/procurement/bills/${id}/post`, { method: 'POST' });
+  },
+
+  issuePurchaseOrder: async (id: string): Promise<any> => {
+    return apiClient<any>(`/procurement/orders/${id}/issue`, { method: 'POST' });
+  },
+
   validateThreeWayMatch: async (poId: string): Promise<ThreeWayMatchResult> => {
     return apiClient<ThreeWayMatchResult>(`/procurement/three-way-match/${poId}`);
   },
