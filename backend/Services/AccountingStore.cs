@@ -32,6 +32,8 @@ public class AccountingStore
     private readonly List<TaxRate> _taxRates = [];
     private readonly List<SalesInvoice> _salesInvoices = [];
     private readonly List<Estimate> _estimates = [];
+    private readonly List<SalesOrder> _salesOrders = [];
+    private readonly List<CreditNote> _creditNotes = [];
     private readonly List<BillOfMaterials> _boms = [];
     private readonly List<WorkOrder> _workOrders = [];
     private readonly List<AccountMapping> _mappings = [];
@@ -64,7 +66,9 @@ public class AccountingStore
         List<Estimate>? Estimates = null,
         List<BillOfMaterials>? Boms = null,
         List<WorkOrder>? WorkOrders = null,
-        List<AccountMapping>? Mappings = null);
+        List<AccountMapping>? Mappings = null,
+        List<SalesOrder>? SalesOrders = null,
+        List<CreditNote>? CreditNotes = null);
 
     public AccountingStore(IDbContextFactory<AccountingDbContext>? dbFactory = null)
     {
@@ -72,20 +76,6 @@ public class AccountingStore
         if (LoadState()) return;
         var parentEntity = new Company { Name = "Acme Holdings", Code = "ACME", Type = EntityType.Parent };
         _companies.AddRange([parentEntity, new Company { Name = "Acme Services", Code = "ASV", ParentId = parentEntity.Id }, new Company { Name = "Acme Trading", Code = "ATD", ParentId = parentEntity.Id }]);
-        _customers.AddRange([
-            new Customer { CustomerNumber = "CUST-0001", Name = "Global Tech Ltd", Email = "billing@globaltech.com", Phone = "+1 (555) 234-5678", TaxId = "US-987654321", AddressLine1 = "100 Innovation Way", City = "San Francisco", State = "CA", PostalCode = "94105", Country = "United States", CurrencyCode = "USD", CreditLimit = 50000m, PaymentTermsDays = 30, CompanyId = parentEntity.Id },
-            new Customer { CustomerNumber = "CUST-0002", Name = "Apex Retail Solutions", Email = "accounts@apexretail.com", Phone = "+1 (555) 876-5432", TaxId = "US-123456789", AddressLine1 = "450 Market Street", City = "New York", State = "NY", PostalCode = "10001", Country = "United States", CurrencyCode = "USD", CreditLimit = 25000m, PaymentTermsDays = 15 }
-        ]);
-        
-        _products.AddRange([
-            new Product { Code = "ITEM-0001", Name = "Consulting Hour", Description = "Senior IT Consulting", Type = ProductType.Service, Category = "Professional Services", Unit = "Hour", UnitPrice = 150m, CostPrice = 50m, TaxCodeId = null },
-            new Product { Code = "ITEM-0002", Name = "Office Laptop", Description = "High performance laptop", Type = ProductType.Physical, Category = "Hardware", Unit = "Each", UnitPrice = 1200m, CostPrice = 900m, TaxCodeId = null }
-        ]);
-
-        _vendors.AddRange([
-            new Vendor { VendorNumber = "VEND-0001", Name = "Office Supplies Co", Email = "orders@officesupplies.com", Phone = "+1 (555) 111-2222", TaxId = "US-111111111", City = "Chicago", State = "IL", Country = "United States", CurrencyCode = "USD", PaymentTermsDays = 30 },
-            new Vendor { VendorNumber = "VEND-0002", Name = "Cloud Services Inc", Email = "billing@cloudservices.com", Phone = "+1 (555) 333-4444", TaxId = "US-222222222", City = "Seattle", State = "WA", Country = "United States", CurrencyCode = "USD", PaymentTermsDays = 15 }
-        ]);
 
         SeedAccounts();
 
@@ -217,6 +207,8 @@ public class AccountingStore
     public IReadOnlyList<StockTransaction> StockTransactions => _stockTransactions;
     public IReadOnlyList<SalesInvoice> SalesInvoices => _salesInvoices;
     public IReadOnlyList<Estimate> Estimates => _estimates;
+    public IReadOnlyList<SalesOrder> SalesOrders => _salesOrders;
+    public IReadOnlyList<CreditNote> CreditNotes => _creditNotes;
     public IReadOnlyList<TaxRate> TaxRates => _taxRates;
     public IReadOnlyList<BillOfMaterials> BillOfMaterials => _boms;
     public IReadOnlyList<WorkOrder> WorkOrders => _workOrders;
@@ -1342,6 +1334,113 @@ public class AccountingStore
         }
     }
 
+    // ─── Sales Orders ─────────────────────────────────────────────────────────
+    public string NextSalesOrderNumber()
+    {
+        var numbers = _salesOrders.Select(so => so.OrderNumber).Where(n => n.StartsWith("SO-") && int.TryParse(n[3..], out _)).Select(n => int.Parse(n[3..])).DefaultIfEmpty(0);
+        return $"SO-{(numbers.Max() + 1):D4}";
+    }
+
+    public bool CreateSalesOrder(SalesOrderRequest request, out SalesOrder order, out string? error)
+    {
+        error = null;
+        lock (_lock)
+        {
+            var customer = _customers.FirstOrDefault(c => c.Id == request.CustomerId);
+            if (customer == null) { error = "Customer not found."; order = null!; return false; }
+
+            order = new SalesOrder
+            {
+                OrderNumber = string.IsNullOrWhiteSpace(request.OrderNumber) ? NextSalesOrderNumber() : request.OrderNumber.Trim(),
+                CustomerId = request.CustomerId,
+                OrderDate = request.OrderDate,
+                ExpectedDeliveryDate = request.ExpectedDeliveryDate,
+                Reference = request.Reference,
+                Notes = request.Notes,
+                Terms = request.Terms,
+                Lines = request.Lines.Select(l => new SalesOrderLine
+                {
+                    ProductId = l.ProductId,
+                    Description = l.Description,
+                    Quantity = l.Quantity,
+                    UnitPrice = l.UnitPrice,
+                    DiscountAmount = l.DiscountAmount,
+                    TaxCodeId = l.TaxCodeId,
+                    TaxAmount = l.TaxAmount
+                }).ToList(),
+                CompanyId = request.CompanyId,
+                Status = SalesOrderStatus.Draft
+            };
+
+            _salesOrders.Add(order);
+            Persist();
+            return true;
+        }
+    }
+
+    public bool UpdateSalesOrderStatus(Guid orderId, SalesOrderStatus status, out string? error)
+    {
+        error = null;
+        lock (_lock)
+        {
+            var order = _salesOrders.FirstOrDefault(so => so.Id == orderId);
+            if (order == null) { error = "Sales Order not found."; return false; }
+            order.Status = status;
+            order.UpdatedAt = DateTime.UtcNow;
+            Persist();
+            return true;
+        }
+    }
+
+    public bool ConvertSalesOrderToInvoice(Guid orderId, out SalesInvoice? invoice, out string? error)
+    {
+        error = null;
+        invoice = null;
+        lock (_lock)
+        {
+            var order = _salesOrders.FirstOrDefault(so => so.Id == orderId);
+            if (order == null) { error = "Sales Order not found."; return false; }
+            if (order.Status == SalesOrderStatus.Cancelled) { error = "Cannot convert a cancelled order to an invoice."; return false; }
+            if (order.ConvertedToInvoiceId.HasValue) { error = "Sales Order has already been converted to an invoice."; return false; }
+
+            // Generate next invoice number
+            var invoiceNumbers = _salesInvoices.Select(i => i.InvoiceNumber).Where(n => n.StartsWith("INV-") && int.TryParse(n[4..], out _)).Select(n => int.Parse(n[4..])).DefaultIfEmpty(0);
+            string invoiceNum = $"INV-{(invoiceNumbers.Max() + 1):D4}";
+
+            invoice = new SalesInvoice
+            {
+                InvoiceNumber = invoiceNum,
+                CustomerId = order.CustomerId,
+                InvoiceDate = DateOnly.FromDateTime(DateTime.Today),
+                DueDate = DateOnly.FromDateTime(DateTime.Today.AddDays(30)),
+                Reference = order.OrderNumber,
+                Notes = order.Notes,
+                Status = SalesInvoiceStatus.Draft,
+                Lines = order.Lines.Select(l => new SalesInvoiceLine
+                {
+                    ProductId = l.ProductId,
+                    Description = l.Description,
+                    Quantity = l.Quantity,
+                    UnitPrice = l.UnitPrice,
+                    DiscountAmount = l.DiscountAmount,
+                    TaxCodeId = l.TaxCodeId,
+                    TaxAmount = l.TaxAmount
+                }).ToList(),
+                CompanyId = order.CompanyId
+            };
+
+            _salesInvoices.Add(invoice);
+            
+            // Mark Sales Order as Invoiced and link
+            order.Status = SalesOrderStatus.Invoiced;
+            order.ConvertedToInvoiceId = invoice.Id;
+            order.UpdatedAt = DateTime.UtcNow;
+
+            Persist();
+            return true;
+        }
+    }
+
     // ─── Sales Invoices ───────────────────────────────────────────────────────
     public bool CreateSalesInvoice(SalesInvoiceRequest request, out SalesInvoice? invoice, out string? error)
     {
@@ -1374,6 +1473,197 @@ public class AccountingStore
                 }).ToList()
             };
             _salesInvoices.Add(invoice);
+            Persist();
+            return true;
+        }
+    }
+
+    // ─── Credit Notes ────────────────────────────────────────────────────────
+    public string NextCreditNoteNumber()
+    {
+        var numbers = _creditNotes.Select(cn => cn.CreditNoteNumber).Where(n => n.StartsWith("CN-") && int.TryParse(n[3..], out _)).Select(n => int.Parse(n[3..])).DefaultIfEmpty(0);
+        return $"CN-{(numbers.Max() + 1):D4}";
+    }
+
+    public bool CreateCreditNote(CreditNoteRequest request, out CreditNote creditNote, out string? error)
+    {
+        error = null;
+        lock (_lock)
+        {
+            var customer = _customers.FirstOrDefault(c => c.Id == request.CustomerId);
+            if (customer == null) { error = "Customer not found."; creditNote = null!; return false; }
+
+            if (request.OriginalInvoiceId.HasValue)
+            {
+                var invoice = _salesInvoices.FirstOrDefault(i => i.Id == request.OriginalInvoiceId.Value);
+                if (invoice == null) { error = "Original invoice not found."; creditNote = null!; return false; }
+                if (invoice.CustomerId != request.CustomerId) { error = "Customer mismatch with original invoice."; creditNote = null!; return false; }
+            }
+
+            creditNote = new CreditNote
+            {
+                CreditNoteNumber = string.IsNullOrWhiteSpace(request.CreditNoteNumber) ? NextCreditNoteNumber() : request.CreditNoteNumber.Trim(),
+                CustomerId = request.CustomerId,
+                OriginalInvoiceId = request.OriginalInvoiceId,
+                CreditNoteDate = request.CreditNoteDate,
+                Reference = request.Reference,
+                Notes = request.Notes,
+                Lines = request.Lines.Select(l => new CreditNoteLine
+                {
+                    ProductId = l.ProductId,
+                    Description = l.Description,
+                    Quantity = l.Quantity,
+                    UnitPrice = l.UnitPrice,
+                    DiscountAmount = l.DiscountAmount,
+                    TaxCodeId = l.TaxCodeId,
+                    TaxAmount = l.TaxAmount
+                }).ToList(),
+                CompanyId = request.CompanyId,
+                Status = CreditNoteStatus.Draft
+            };
+
+            _creditNotes.Add(creditNote);
+            Persist();
+            return true;
+        }
+    }
+
+    public bool PostCreditNote(Guid creditNoteId, Guid? arAccountId, Guid? revenueAccountId, Guid? taxLiabilityAccountId, out string? error)
+    {
+        error = null;
+        lock (_lock)
+        {
+            var creditNote = _creditNotes.FirstOrDefault(cn => cn.Id == creditNoteId);
+            if (creditNote == null) { error = "Credit Note not found."; return false; }
+            if (creditNote.Status != CreditNoteStatus.Draft) { error = "Only draft credit notes can be posted."; return false; }
+
+            // Centralized Posting Engine resolution
+            Guid resolvedAr = arAccountId ?? GetMappedAccount("Customer Receivables");
+            Guid resolvedRev = revenueAccountId ?? GetMappedAccount("Sales");
+            Guid? resolvedTax = taxLiabilityAccountId;
+            if (!resolvedTax.HasValue && creditNote.TaxTotal > 0)
+            {
+                var taxId = GetMappedAccount("Taxes");
+                if (taxId != Guid.Empty) resolvedTax = taxId;
+            }
+
+            // Validate Resolved Accounts are Leaf Posting and Active
+            var arAcc = Find(resolvedAr);
+            if (arAcc == null) { error = "Customer Receivables account is not mapped or invalid."; return false; }
+            if (!arAcc.IsPosting || arAcc.Status == AccountStatus.Inactive)
+            {
+                error = $"Customer Receivables account {arAcc.Code} - {arAcc.Name} is not a valid posting account or is inactive.";
+                return false;
+            }
+
+            var revAcc = Find(resolvedRev);
+            if (revAcc == null) { error = "Sales Revenue account is not mapped or invalid."; return false; }
+            if (!revAcc.IsPosting || revAcc.Status == AccountStatus.Inactive)
+            {
+                error = $"Sales Revenue account {revAcc.Code} - {revAcc.Name} is not a valid posting account or is inactive.";
+                return false;
+            }
+
+            if (resolvedTax.HasValue)
+            {
+                var taxAcc = Find(resolvedTax.Value);
+                if (taxAcc == null) { error = "Tax Payable account is invalid."; return false; }
+                if (!taxAcc.IsPosting || taxAcc.Status == AccountStatus.Inactive)
+                {
+                    error = $"Tax Payable account {taxAcc.Code} - {taxAcc.Name} is not a valid posting account or is inactive.";
+                    return false;
+                }
+            }
+
+            // 1. Post Credit Note Journal:
+            // Debit Sales Revenue (resolvedRev) with SubTotal - DiscountTotal
+            // Debit Taxes Payable (resolvedTax) with TaxTotal (if tax > 0)
+            // Credit Customer Receivables (resolvedAr) with TotalAmount
+            var journalLines = new List<JournalLine>();
+
+            var revenueTotal = creditNote.SubTotal - creditNote.DiscountTotal;
+            journalLines.Add(new JournalLine(resolvedRev, revenueTotal, 0, $"Revenue Return: {creditNote.CreditNoteNumber}", null, null, 1, creditNote.CompanyId));
+
+            if (creditNote.TaxTotal > 0 && resolvedTax.HasValue)
+                journalLines.Add(new JournalLine(resolvedTax.Value, creditNote.TaxTotal, 0, $"Tax Return: {creditNote.CreditNoteNumber}", null, null, 1, creditNote.CompanyId));
+
+            journalLines.Add(new JournalLine(resolvedAr, 0, creditNote.TotalAmount, $"Customer Credit: {creditNote.CreditNoteNumber}", null, null, 1, creditNote.CompanyId));
+
+            var journal = new JournalEntry
+            {
+                Date = creditNote.CreditNoteDate,
+                Reference = creditNote.CreditNoteNumber,
+                Description = $"Credit note to customer {_customers.FirstOrDefault(c => c.Id == creditNote.CustomerId)?.Name ?? creditNote.CustomerId.ToString()}",
+                TransactionType = TransactionType.Sales,
+                CompanyId = creditNote.CompanyId,
+                Lines = journalLines,
+                Status = JournalStatus.Posted
+            };
+
+            _entries.Add(journal);
+
+            // 2. Reduce the original invoice balance if linked
+            if (creditNote.OriginalInvoiceId.HasValue)
+            {
+                var invoice = _salesInvoices.FirstOrDefault(i => i.Id == creditNote.OriginalInvoiceId.Value);
+                if (invoice != null)
+                {
+                    invoice.AmountPaid += creditNote.TotalAmount;
+                    if (invoice.AmountDue <= 0)
+                    {
+                        invoice.Status = SalesInvoiceStatus.Paid;
+                    }
+                    else
+                    {
+                        invoice.Status = SalesInvoiceStatus.PartiallyPaid;
+                    }
+                }
+            }
+
+            creditNote.Status = CreditNoteStatus.Posted;
+            creditNote.UpdatedAt = DateTime.UtcNow;
+            Persist();
+            return true;
+        }
+    }
+
+    public bool VoidCreditNote(Guid creditNoteId, out string? error)
+    {
+        error = null;
+        lock (_lock)
+        {
+            var creditNote = _creditNotes.FirstOrDefault(cn => cn.Id == creditNoteId);
+            if (creditNote == null) { error = "Credit Note not found."; return false; }
+            if (creditNote.Status != CreditNoteStatus.Posted) { error = "Only posted credit notes can be voided."; return false; }
+
+            // 1. Revert ledger entry
+            var entry = _entries.FirstOrDefault(e => e.Reference == creditNote.CreditNoteNumber && e.Status == JournalStatus.Posted);
+            if (entry != null)
+            {
+                entry.Status = JournalStatus.Reversed;
+            }
+
+            // 2. Restore invoice balance if originally linked
+            if (creditNote.OriginalInvoiceId.HasValue)
+            {
+                var invoice = _salesInvoices.FirstOrDefault(i => i.Id == creditNote.OriginalInvoiceId.Value);
+                if (invoice != null)
+                {
+                    invoice.AmountPaid -= creditNote.TotalAmount;
+                    if (invoice.AmountPaid <= 0)
+                    {
+                        invoice.AmountPaid = 0;
+                        invoice.Status = SalesInvoiceStatus.Draft;
+                    }
+                    else
+                    {
+                        invoice.Status = SalesInvoiceStatus.PartiallyPaid;
+                    }
+                }
+            }
+
+            creditNote.Status = CreditNoteStatus.Void;
+            creditNote.UpdatedAt = DateTime.UtcNow;
             Persist();
             return true;
         }
@@ -1893,6 +2183,8 @@ public class AccountingStore
         _stockTransactions.Clear(); _stockTransactions.AddRange(state.StockTransactions ?? []);
         _salesInvoices.Clear(); _salesInvoices.AddRange(state.SalesInvoices ?? []);
         _estimates.Clear(); _estimates.AddRange(state.Estimates ?? []);
+        _salesOrders.Clear(); _salesOrders.AddRange(state.SalesOrders ?? []);
+        _creditNotes.Clear(); _creditNotes.AddRange(state.CreditNotes ?? []);
         _boms.Clear(); _boms.AddRange(state.Boms ?? []);
         _workOrders.Clear(); _workOrders.AddRange(state.WorkOrders ?? []);
         _mappings.Clear(); _mappings.AddRange(state.Mappings ?? []);
@@ -1908,7 +2200,7 @@ public class AccountingStore
     {
         if (_dbFactory is null) return;
         using var db = _dbFactory.CreateDbContext();
-        var json = JsonSerializer.Serialize(new StoredState(_accounts, _entries, _history, _templates, _recurringEntries, _journalEvents, _intercompanyAllocations, _companies, _customers, _products, _vendors, _purchaseOrders, _grns, _fixedAssets, _taxAuthorities, _taxCodes, _taxRates, _warehouses, _stockLevels, _stockTransactions, _salesInvoices, _estimates, _boms, _workOrders, _mappings));
+        var json = JsonSerializer.Serialize(new StoredState(_accounts, _entries, _history, _templates, _recurringEntries, _journalEvents, _intercompanyAllocations, _companies, _customers, _products, _vendors, _purchaseOrders, _grns, _fixedAssets, _taxAuthorities, _taxCodes, _taxRates, _warehouses, _stockLevels, _stockTransactions, _salesInvoices, _estimates, _boms, _workOrders, _mappings, _salesOrders, _creditNotes));
         var snapshot = db.AccountingStateSnapshots.Find(1);
         if (snapshot is null) db.AccountingStateSnapshots.Add(new AccountingStateSnapshot { Id = 1, Json = json, UpdatedAt = DateTime.UtcNow });
         else { snapshot.Json = json; snapshot.UpdatedAt = DateTime.UtcNow; }
@@ -2033,6 +2325,89 @@ public class AccountingStore
 
             // Last resort fallback
             return _accounts.FirstOrDefault(a => a.IsPosting && a.Status == AccountStatus.Active)?.Id ?? Guid.Empty;
+        }
+    }
+
+    public void ResetDatabase()
+    {
+        lock (_lock)
+        {
+            _accounts.Clear();
+            _entries.Clear();
+            _history.Clear();
+            _templates.Clear();
+            _recurringEntries.Clear();
+            _journalEvents.Clear();
+            _intercompanyAllocations.Clear();
+            _companies.Clear();
+            _customers.Clear();
+            _products.Clear();
+            _vendors.Clear();
+            _purchaseOrders.Clear();
+            _grns.Clear();
+            _fixedAssets.Clear();
+            _taxAuthorities.Clear();
+            _taxCodes.Clear();
+            _taxRates.Clear();
+            _warehouses.Clear();
+            _stockLevels.Clear();
+            _stockTransactions.Clear();
+            _salesInvoices.Clear();
+            _estimates.Clear();
+            _salesOrders.Clear();
+            _creditNotes.Clear();
+            _boms.Clear();
+            _workOrders.Clear();
+            _mappings.Clear();
+
+            // Re-seed Companies
+            var parentEntity = new Company { Name = "Acme Holdings", Code = "ACME", Type = EntityType.Parent };
+            _companies.AddRange([
+                parentEntity, 
+                new Company { Name = "Acme Services", Code = "ASV", ParentId = parentEntity.Id }, 
+                new Company { Name = "Acme Trading", Code = "ATD", ParentId = parentEntity.Id }
+            ]);
+
+            // Re-seed structural chart of accounts
+            SeedAccounts();
+
+            // Re-seed Tax Authorities & VAT codes
+            var hmrc = new TaxAuthority { Name = "HMRC", Country = "United Kingdom" };
+            var irs = new TaxAuthority { Name = "IRS", Country = "United States" };
+            var cdtfa = new TaxAuthority { Name = "CDTFA", Country = "United States", State = "California" };
+            var fta = new TaxAuthority { Name = "FTA", Country = "United Arab Emirates" };
+            var zatca = new TaxAuthority { Name = "ZATCA", Country = "Saudi Arabia" };
+            var fbr = new TaxAuthority { Name = "FBR", Country = "Pakistan" };
+            var pra = new TaxAuthority { Name = "PRA", Country = "Pakistan", State = "Punjab" };
+            var cra = new TaxAuthority { Name = "CRA", Country = "Canada" };
+            _taxAuthorities.AddRange([hmrc, irs, cdtfa, fta, zatca, fbr, pra, cra]);
+
+            var today = DateOnly.FromDateTime(DateTime.Today);
+            var ukVat = new TaxCode { Code = "VAT-UK-20", Name = "UK Standard VAT 20%", TaxAuthorityId = hmrc.Id };
+            ukVat.Rates.Add(new TaxRate { TaxCodeId = ukVat.Id, Percentage = 20m, EffectiveFrom = today });
+            
+            var usSales = new TaxCode { Code = "ST-US-CA", Name = "California Sales Tax 8.25%", TaxAuthorityId = cdtfa.Id };
+            usSales.Rates.Add(new TaxRate { TaxCodeId = usSales.Id, Percentage = 8.25m, EffectiveFrom = today });
+
+            var uaeVat = new TaxCode { Code = "VAT-UAE-5", Name = "UAE Standard VAT 5%", TaxAuthorityId = fta.Id };
+            uaeVat.Rates.Add(new TaxRate { TaxCodeId = uaeVat.Id, Percentage = 5m, EffectiveFrom = today });
+
+            var ksaVat = new TaxCode { Code = "VAT-KSA-15", Name = "KSA Standard VAT 15%", TaxAuthorityId = zatca.Id };
+            ksaVat.Rates.Add(new TaxRate { TaxCodeId = ksaVat.Id, Percentage = 15m, EffectiveFrom = today });
+
+            var pkVat = new TaxCode { Code = "VAT-PK-16", Name = "Pakistan Sales Tax 16%", TaxAuthorityId = fbr.Id };
+            pkVat.Rates.Add(new TaxRate { TaxCodeId = pkVat.Id, Percentage = 16m, EffectiveFrom = today });
+
+            var caHst = new TaxCode { Code = "HST-CA-13", Name = "Canada HST 13%", TaxAuthorityId = cra.Id };
+            caHst.Rates.Add(new TaxRate { TaxCodeId = caHst.Id, Percentage = 13m, EffectiveFrom = today });
+
+            _taxCodes.AddRange([ukVat, usSales, uaeVat, ksaVat, pkVat, caHst]);
+            _taxRates.AddRange(_taxCodes.SelectMany(c => c.Rates));
+
+            var defaultWarehouse = new Warehouse { Name = "Main Warehouse", Location = "Headquarters", CompanyId = parentEntity.Id };
+            _warehouses.Add(defaultWarehouse);
+
+            Persist();
         }
     }
 

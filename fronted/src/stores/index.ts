@@ -13,3 +13,4 @@ export * from './useIntercompanyStore';
 export * from './useVouchersStore';
 export * from './useReportsStore';
 export * from './useManufacturingStore';
+export * from './useSalesOrdersStore';

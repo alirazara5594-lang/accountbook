@@ -1,0 +1,192 @@
+/* CreditNotes.module.css */
+
+:root {
+  --glass-bg: rgba(255, 255, 255, 0.12);
+  --glass-border: rgba(255, 255, 255, 0.2);
+  --accent-primary: hsl(200, 80%, 55%); /* teal-ish */
+  --accent-secondary: hsl(280, 70%, 60%); /* violet for hover */
+  --text-primary: #e5e7eb; /* light gray for dark mode */
+  --bg-dark: #111827; /* dark background */
+}
+
+/* Dark mode support */
+@media (prefers-color-scheme: dark) {
+  :root {
+    --text-primary: #e5e7eb;
+    --bg-dark: #111827;
+  }
+}
+
+.credit-notes-workspace {
+  backdrop-filter: blur(12px) saturate(180%);
+  background: var(--glass-bg);
+  border: 1px solid var(--glass-border);
+  border-radius: 12px;
+  padding: 1.5rem;
+  margin: 2rem;
+  color: var(--text-primary);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
+  animation: fadeIn 0.4s ease-out;
+}
+
+.workspace-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1rem;
+}
+
+.workspace-header h2 {
+  margin: 0;
+  font-size: 1.75rem;
+  font-weight: 600;
+}
+
+.primary {
+  background: var(--accent-primary);
+  color: #fff;
+  border: none;
+  padding: 0.5rem 1rem;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: background 0.2s ease, transform 0.1s ease;
+}
+
+.primary:hover {
+  background: hsl(200, 80%, 50%);
+  transform: translateY(-1px);
+}
+
+.credit-notes-table {
+  width: 100%;
+  border-collapse: separate;
+  border-spacing: 0 0.5rem;
+}
+
+.credit-notes-table th,
+.credit-notes-table td {
+  padding: 0.75rem 1rem;
+  text-align: left;
+}
+
+.credit-notes-table th {
+  background: hsla(0, 0%, 100%, 0.08);
+  color: var(--text-primary);
+  font-weight: 500;
+  border-top-left-radius: 8px;
+  border-top-right-radius: 8px;
+}
+
+.credit-notes-table tr {
+  background: hsla(0, 0%, 100%, 0.04);
+  transition: background 0.2s ease, transform 0.1s ease;
+}
+
+.credit-notes-table tr:hover {
+  background: hsla(0, 0%, 100%, 0.08);
+  transform: translateY(-2px);
+}
+
+.credit-notes-table tr.posted {
+  background: hsla(120, 70%, 30%, 0.12);
+}
+
+.credit-notes-table tr.voided {
+  background: hsla(0, 70%, 30%, 0.12);
+  text-decoration: line-through;
+  opacity: 0.7;
+}
+
+.action {
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  font-size: 1.2rem;
+  margin-right: 0.5rem;
+  color: var(--accent-primary);
+  transition: color 0.2s ease, transform 0.1s ease;
+}
+
+.action:hover {
+  color: var(--accent-secondary);
+  transform: scale(1.1);
+}
+
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.5);
+  backdrop-filter: blur(4px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  animation: fadeIn 0.3s ease-out;
+}
+
+.modal {
+  background: var(--glass-bg);
+  border: 1px solid var(--glass-border);
+  border-radius: 12px;
+  padding: 2rem;
+  width: min(500px, 90%);
+  backdrop-filter: blur(12px);
+  animation: slideUp 0.3s ease-out;
+}
+
+.modal h3 {
+  margin-top: 0;
+  margin-bottom: 1rem;
+  font-size: 1.5rem;
+}
+
+.modal-form label {
+  display: block;
+  margin-bottom: 0.75rem;
+  font-size: 0.9rem;
+}
+
+.modal-form input,
+.modal-form textarea {
+  width: 100%;
+  padding: 0.4rem 0.6rem;
+  border: 1px solid var(--glass-border);
+  border-radius: 4px;
+  background: rgba(255, 255, 255, 0.05);
+  color: var(--text-primary);
+}
+
+.modal-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.5rem;
+  margin-top: 1rem;
+}
+
+.secondary {
+  background: rgba(255, 255, 255, 0.12);
+  color: var(--text-primary);
+  border: none;
+  padding: 0.5rem 1rem;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: background 0.2s ease;
+}
+
+.secondary:hover {
+  background: rgba(255, 255, 255, 0.2);
+}
+
+.error {
+  color: #f87171; /* red-400 */
+  margin-bottom: 0.5rem;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes slideUp {
+  from { transform: translateY(20px); opacity: 0; }
+  to { transform: translateY(0); opacity: 1; }
+}

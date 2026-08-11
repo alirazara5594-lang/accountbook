@@ -16,9 +16,11 @@ import { AssetsInventoryWorkspace } from './AssetsInventoryWorkspace'
 import { TaxConfiguration } from './TaxConfiguration'
 import { SalesWorkspace } from './SalesWorkspace'
 import { EstimatesAndQuotes } from './EstimatesAndQuotes'
+import { SalesOrdersWorkspace } from './SalesOrdersWorkspace'
 import { ManufacturingWorkspace } from './ManufacturingWorkspace'
 import { ChartOfAccounts } from './ChartOfAccounts'
-import { FinancialReports } from './FinancialReports'
+import { FinancialReports } from './FinancialReports';
+import CreditNotesWorkspace from './CreditNotesWorkspace';
 import { SystemAccountMapping } from './components/SystemAccountMapping'
 import { ModuleSummary } from './ModuleSummary'
 import { BankAccountsView } from './BankAccountsView'
@@ -76,6 +78,7 @@ export default function App() {
   const fetchAccounts = useCoaStore((s) => s.fetchAccounts)
   const saveAccountStore = useCoaStore((s) => s.saveAccount)
   const toggleAccountStatusStore = useCoaStore((s) => s.toggleAccountStatus)
+  const resetDatabaseStore = useCoaStore((s) => s.resetDatabase)
 
   const entries = useJournalsStore((s) => s.entries as Journal[])
   const fetchJournalEntries = useJournalsStore((s) => s.fetchJournalEntries)
@@ -202,6 +205,8 @@ export default function App() {
     'Sales & Customers.Products & Services': 'products',
     'Sales & Customers.Sales Workspace': 'sales-workspace',
     'Sales & Customers.Estimates & Quotes': 'estimates-quotes',
+    'Sales & Customers.Sales Orders': 'sales-orders',
+    'Sales & Customers.Credit Notes': 'credit-notes',
     'Procurement.Summary': 'module-summary',
     'Procurement.Vendors': 'vendors',
     'Procurement.Bills': 'bills',
@@ -287,13 +292,31 @@ export default function App() {
   {activeView === 'cash-flow-statements' && <CashFlowView activeEntityId={activeEntityId} entities={entities as any} />}
   {activeView === 'journal' && <Journals journal={journal} setJournal={setJournal} accounts={accounts.filter(a => a.status === 'Active')} entries={entries} post={postJournal} />}
   {activeView === 'intercompany' && <Intercompany allocations={allocations} reload={load} notify={notify} />}
-  {activeView === 'settings' && settingsView === 'home' && <SettingsHome openEntities={() => setSettingsView('entities')} openMappings={() => setSettingsView('mappings')} />}
+  {activeView === 'settings' && settingsView === 'home' && (
+    <SettingsHome 
+      openEntities={() => setSettingsView('entities')} 
+      openMappings={() => setSettingsView('mappings')} 
+      onReset={async () => {
+        if (window.confirm("⚠️ WARNING: This will permanently delete all transactions, journals, customers, products, vendors, and custom configurations to start completely clean. Standard chart templates and tax rates will be reseeded. Are you sure you want to proceed?")) {
+          try {
+            await resetDatabaseStore();
+            notify("✓ Database reset successfully. System cleared.");
+            window.location.reload();
+          } catch (err: any) {
+            notify(err.message || "Failed to reset database");
+          }
+        }
+      }}
+    />
+  )}
   {activeView === 'settings' && settingsView === 'mappings' && <SystemAccountMapping accounts={accounts} close={() => setSettingsView('home')} notify={notify} />}
   {activeView === 'settings' && settingsView === 'entities' && <EntitySettings entities={entities as any} selectedId={activeEntityId} select={setActiveEntityId} reload={load} notify={notify} />}
   {activeView === 'products' && <ProductsAndServices notify={notify} activeEntityId={activeEntityId} entities={entities as any} />}
   {activeView === 'vendors' && <VendorManagement entities={entities as any} activeEntityId={activeEntityId} notify={notify} />}
   {activeView === 'sales-workspace' && <SalesWorkspace activeEntityId={activeEntityId} entities={entities as any} />}
   {activeView === 'estimates-quotes' && <EstimatesAndQuotes activeEntityId={activeEntityId} />}
+  {activeView === 'sales-orders' && <SalesOrdersWorkspace activeEntityId={activeEntityId} />}
+        {activeView === 'credit-notes' && <CreditNotesWorkspace />}
   {activeView === 'procurement-workspace' && <ProcurementWorkspace activeEntityId={activeEntityId} entities={entities as any} />}
   {activeView === 'bills' && <VendorBills activeEntityId={activeEntityId} />}
   {activeView === 'taxes' && <TaxConfiguration />}
@@ -305,7 +328,47 @@ export default function App() {
   </main>{modal && <AccountModal form={form} setForm={setForm} accounts={accounts} editing={editing} close={() => setModal(false)} save={saveAccount} />}{toast && <div className="toast">✓ {toast}</div>}</div>
 }
 
-function SettingsHome({ openEntities, openMappings }: { openEntities: () => void; openMappings: () => void }) { return <section className="settings-grid"><button className="settings-card" onClick={openEntities}><span>▦</span><div><strong>Entity management</strong><small>Create entities, manage the hierarchy, and select each entity's books.</small></div><b>→</b></button><button className="settings-card" onClick={openMappings}><span>⚙️</span><div><strong>System Account Mapping</strong><small>Map default operational accounts (Accounts Receivable, Accounts Payable, Taxes) for posting.</small></div><b>→</b></button><button className="settings-card" disabled><span>⌘</span><div><strong>Chart of accounts</strong><small>Account structure and financial reporting settings.</small></div><b>→</b></button></section> }
+function SettingsHome({ openEntities, openMappings, onReset }: { openEntities: () => void; openMappings: () => void; onReset: () => void }) { 
+  return (
+    <section className="settings-grid">
+      <button className="settings-card font-sans" onClick={openEntities}>
+        <span>▦</span>
+        <div>
+          <strong>Entity management</strong>
+          <small>Create entities, manage the hierarchy, and select each entity's books.</small>
+        </div>
+        <b>→</b>
+      </button>
+      <button className="settings-card font-sans" onClick={openMappings}>
+        <span>⚙️</span>
+        <div>
+          <strong>System Account Mapping</strong>
+          <small>Map default operational accounts (Accounts Receivable, Accounts Payable, Taxes) for posting.</small>
+        </div>
+        <b>→</b>
+      </button>
+      <button className="settings-card font-sans" disabled>
+        <span>⌘</span>
+        <div>
+          <strong>Chart of accounts</strong>
+          <small>Account structure and financial reporting settings.</small>
+        </div>
+        <b>→</b>
+      </button>
+      <button 
+        className="settings-card border border-red-200/50 hover:bg-rose-50/40 font-sans group cursor-pointer" 
+        onClick={onReset}
+      >
+        <span className="text-red-500 scale-105">⚠️</span>
+        <div>
+          <strong className="text-red-700">Danger Zone: Reset Database</strong>
+          <small className="text-red-500">Wipe all posted transactions, journals, customers, vendors, and products to start clean.</small>
+        </div>
+        <b className="text-red-500">→</b>
+      </button>
+    </section>
+  ); 
+}
 
 function Dashboard({ stats, entries, accounts, setPage }: { stats: { bank: number; active: number; entries: number }; entries: Journal[]; accounts: Account[]; setPage: (page: string) => void }) { return <><section className="stats"><article><span className="stat-icon teal">⌁</span><div><small>BANK & CASH</small><h2>{money(stats.bank)}</h2><p>Across reconciled accounts</p></div></article><article><span className="stat-icon blue">⌘</span><div><small>ACTIVE ACCOUNTS</small><h2>{stats.active}</h2><p>In your chart of accounts</p></div></article><article><span className="stat-icon violet">⇄</span><div><small>POSTED ENTRIES</small><h2>{stats.entries}</h2><p>Current accounting period</p></div></article></section><section className="grid"><article className="panel large"><div className="panel-head"><div><h3>Financial position</h3><p>Opening balances by account type</p></div><button className="text-button" onClick={() => setPage('Accounting.Chart of Accounts')}>View accounts →</button></div><div className="bars">{(['Asset','Liability','Equity','Revenue','Expense'] as AccountType[]).map(type => { const balance = accounts.filter(a => a.type === type).reduce((s,a) => s + Math.abs(a.openingBalance), 0); const max = Math.max(...accounts.map(a => Math.abs(a.openingBalance)), 1); return <div className="bar-row" key={type}><span>{type}</span><div className="track"><i style={{ width: `${Math.max(5, balance/max*100)}%` }} /></div><b>{money(balance)}</b></div> })}</div></article><article className="panel"><div className="panel-head"><div><h3>Recent activity</h3><p>Latest journal entries</p></div></div>{entries.length ? entries.slice(0,4).map(e => <div className="activity" key={e.id}><span className="activity-icon">⇄</span><div><strong>{e.description}</strong><small>{e.reference} · {e.date}</small></div></div>) : <div className="empty">No posted entries yet.<button className="link" onClick={() => setPage('Accounting.Journal Entries')}>Create one</button></div>}</article></section></> }
 

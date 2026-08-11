@@ -77,4 +77,10 @@ export const coaApi = {
       body: { mappingKey, accountId },
     });
   },
+
+  resetDatabase: async (): Promise<void> => {
+    return apiClient('/system/reset', {
+      method: 'POST',
+    });
+  },
 };

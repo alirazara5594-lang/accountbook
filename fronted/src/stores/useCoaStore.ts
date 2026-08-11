@@ -14,6 +14,7 @@ interface CoaState {
   clearAllAccounts: () => Promise<void>;
   fetchMappings: () => Promise<AccountMapping[]>;
   saveMapping: (mappingKey: string, accountId: string) => Promise<void>;
+  resetDatabase: () => Promise<void>;
 }
 
 export const useCoaStore = create<CoaState>((set, get) => ({
@@ -97,6 +98,18 @@ export const useCoaStore = create<CoaState>((set, get) => ({
       set({ loading: false });
     } catch (err: any) {
       set({ error: err.message || 'Failed to save mapping', loading: false });
+      throw err;
+    }
+  },
+
+  resetDatabase: async () => {
+    set({ loading: true, error: null });
+    try {
+      await coaApi.resetDatabase();
+      await get().fetchAccounts();
+      set({ loading: false });
+    } catch (err: any) {
+      set({ error: err.message || 'Failed to reset database', loading: false });
       throw err;
     }
   },

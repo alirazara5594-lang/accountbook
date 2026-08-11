@@ -745,3 +745,112 @@ public class StockTransfer
     public string Status { get; set; } = "Completed";
     public string? CompanyId { get; set; }
 }
+
+// ─── Sales Order Submodule ───────────────────────────────────────────────────
+public enum SalesOrderStatus { Draft, Confirmed, Invoiced, Cancelled }
+
+public class SalesOrderLine
+{
+    public Guid Id { get; init; } = Guid.NewGuid();
+    public Guid? ProductId { get; set; }
+    public string Description { get; set; } = string.Empty;
+    public decimal Quantity { get; set; } = 1;
+    public decimal UnitPrice { get; set; }
+    public decimal DiscountAmount { get; set; } = 0;
+    public Guid? TaxCodeId { get; set; }
+    public decimal TaxAmount { get; set; }
+    public decimal LineTotal => Quantity * UnitPrice;
+    public decimal LineTotalAfterDiscount => LineTotal - DiscountAmount;
+    public decimal LineTotalWithTax => LineTotalAfterDiscount + TaxAmount;
+}
+
+public class SalesOrder
+{
+    public Guid Id { get; init; } = Guid.NewGuid();
+    public required string OrderNumber { get; set; }
+    public Guid CustomerId { get; set; }
+    public DateOnly OrderDate { get; set; }
+    public DateOnly? ExpectedDeliveryDate { get; set; }
+    public string? Reference { get; set; }
+    public string? Notes { get; set; }
+    public string? Terms { get; set; }
+    public SalesOrderStatus Status { get; set; } = SalesOrderStatus.Draft;
+    public List<SalesOrderLine> Lines { get; set; } = [];
+    public decimal SubTotal => Lines.Sum(l => l.LineTotal);
+    public decimal DiscountTotal => Lines.Sum(l => l.DiscountAmount);
+    public decimal TaxTotal => Lines.Sum(l => l.TaxAmount);
+    public decimal TotalAmount => Lines.Sum(l => l.LineTotalWithTax);
+    public Guid? ConvertedToInvoiceId { get; set; }
+    public Guid? CompanyId { get; set; }
+    public DateTime CreatedAt { get; init; } = DateTime.UtcNow;
+    public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
+}
+
+public record SalesOrderLineRequest(Guid? ProductId, string Description, decimal Quantity, decimal UnitPrice, decimal DiscountAmount, Guid? TaxCodeId, decimal TaxAmount);
+
+public record SalesOrderRequest(
+    string? OrderNumber,
+    Guid CustomerId,
+    DateOnly OrderDate,
+    DateOnly? ExpectedDeliveryDate,
+    string? Reference,
+    string? Notes,
+    string? Terms,
+    List<SalesOrderLineRequest> Lines,
+    Guid? CompanyId
+);
+
+public record SalesOrderStatusRequest(SalesOrderStatus Status);
+
+// ─── Credit Notes Submodule ──────────────────────────────────────────────────
+public enum CreditNoteStatus { Draft, Posted, Void }
+
+public class CreditNoteLine
+{
+    public Guid Id { get; init; } = Guid.NewGuid();
+    public Guid? ProductId { get; set; }
+    public string Description { get; set; } = string.Empty;
+    public decimal Quantity { get; set; } = 1;
+    public decimal UnitPrice { get; set; }
+    public decimal DiscountAmount { get; set; } = 0;
+    public Guid? TaxCodeId { get; set; }
+    public decimal TaxAmount { get; set; }
+    public decimal LineTotal => Quantity * UnitPrice;
+    public decimal LineTotalAfterDiscount => LineTotal - DiscountAmount;
+    public decimal LineTotalWithTax => LineTotalAfterDiscount + TaxAmount;
+}
+
+public class CreditNote
+{
+    public Guid Id { get; init; } = Guid.NewGuid();
+    public required string CreditNoteNumber { get; set; }
+    public Guid CustomerId { get; set; }
+    public Guid? OriginalInvoiceId { get; set; }
+    public DateOnly CreditNoteDate { get; set; }
+    public string? Reference { get; set; }
+    public string? Notes { get; set; }
+    public CreditNoteStatus Status { get; set; } = CreditNoteStatus.Draft;
+    public List<CreditNoteLine> Lines { get; set; } = [];
+    public decimal SubTotal => Lines.Sum(l => l.LineTotal);
+    public decimal DiscountTotal => Lines.Sum(l => l.DiscountAmount);
+    public decimal TaxTotal => Lines.Sum(l => l.TaxAmount);
+    public decimal TotalAmount => Lines.Sum(l => l.LineTotalWithTax);
+    public Guid? CompanyId { get; set; }
+    public DateTime CreatedAt { get; init; } = DateTime.UtcNow;
+    public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
+}
+
+public record CreditNoteLineRequest(Guid? ProductId, string Description, decimal Quantity, decimal UnitPrice, decimal DiscountAmount, Guid? TaxCodeId, decimal TaxAmount);
+
+public record CreditNoteRequest(
+    string? CreditNoteNumber,
+    Guid CustomerId,
+    Guid? OriginalInvoiceId,
+    DateOnly CreditNoteDate,
+    string? Reference,
+    string? Notes,
+    List<CreditNoteLineRequest> Lines,
+    Guid? CompanyId
+);
+
+public record CreditNoteStatusRequest(CreditNoteStatus Status);
