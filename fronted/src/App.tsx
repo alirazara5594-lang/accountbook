@@ -245,8 +245,9 @@ export default function App() {
     'Administration.Summary': 'module-summary',
     'Administration.System Settings': 'settings',
     'Administration.Tax Configuration': 'taxes',
-  'Sales & Customers.Customer Statements': 'customer-statements',
-  'Sales & Customers.Sales Reports': 'sales-reports'
+    'Sales & Customers.Customer Payments': 'customer-payments',
+    'Sales & Customers.Customer Statements': 'customer-statements',
+    'Sales & Customers.Sales Reports': 'sales-reports'
   }
   const activeView = activeViewMap[page] || 'placeholder'
   const [group, module] = page.split('.')
@@ -330,6 +331,7 @@ export default function App() {
   {activeView === 'assets-inventory' && <AssetsInventoryWorkspace activeEntityId={activeEntityId} entities={entities} />}
   {activeView === 'manufacturing' && <ManufacturingWorkspace activeEntityId={activeEntityId} entities={entities} />}
   {activeView === 'financial-reports' && <FinancialReports accounts={accounts} entries={entries} activeEntityId={activeEntityId} />}
+  {activeView === 'customer-payments' && <CustomerPaymentsWorkspace activeEntityId={activeEntityId} />}
   {activeView === 'customer-statements' && <CustomerStatementsWorkspace activeEntityId={activeEntityId} />}
   {activeView === 'sales-reports' && <SalesReportsWorkspace activeEntityId={activeEntityId} />}
   {activeView === 'placeholder' && <div style={{ padding: 40, textAlign: 'center', color: '#666' }}><span style={{ fontSize: 48, opacity: 0.2, display: 'block', marginBottom: 20 }}>🏗</span><h3>Under Construction</h3><p>This module ({module}) is part of the layout but not yet developed.</p></div>}

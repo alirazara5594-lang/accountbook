@@ -21,6 +21,7 @@ export interface Invoice {
   dueDate: string;
   totalAmount: number;
   paidAmount: number;
+  amountDue: number;
   status: string;
 }
 
@@ -32,6 +33,11 @@ export interface CustomerReceipt {
   date: string;
   amount: number;
   paymentMethod: string;
+  bankAccountName?: string;
+  invoiceId?: string;
+  invoiceNumber?: string;
+  reference?: string;
+  memo?: string;
   status: string;
 }
 
@@ -56,18 +62,18 @@ export const salesApi = {
   },
 
   getInvoices: async (companyId?: string): Promise<Invoice[]> => {
-    return apiClient<Invoice[]>('/invoices', { params: { companyId } });
+    return apiClient<Invoice[]>('/sales-invoices', { params: { companyId } });
   },
 
   createInvoice: async (data: any): Promise<Invoice> => {
-    return apiClient<Invoice>('/invoices', { method: 'POST', body: data });
+    return apiClient<Invoice>('/sales-invoices', { method: 'POST', body: data });
   },
 
   getCustomerReceipts: async (companyId?: string): Promise<CustomerReceipt[]> => {
-    return apiClient<CustomerReceipt[]>('/customerreceipts', { params: { companyId } });
+    return apiClient<CustomerReceipt[]>('/customer-payments', { params: { companyId } });
   },
 
   createCustomerReceipt: async (data: any): Promise<CustomerReceipt> => {
-    return apiClient<CustomerReceipt>('/customerreceipts', { method: 'POST', body: data });
+    return apiClient<CustomerReceipt>('/customer-payments', { method: 'POST', body: data });
   },
 };

@@ -36,6 +36,7 @@ public class AccountingStore
     private readonly List<CreditNote> _creditNotes = [];
     private readonly List<BillOfMaterials> _boms = [];
     private readonly List<WorkOrder> _workOrders = [];
+    private readonly List<CustomerPayment> _customerPayments = [];
     private readonly List<AccountMapping> _mappings = [];
     private readonly Dictionary<Guid, List<AuditItem>> _history = [];
     private readonly object _lock = new();
@@ -68,7 +69,8 @@ public class AccountingStore
         List<WorkOrder>? WorkOrders = null,
         List<AccountMapping>? Mappings = null,
         List<SalesOrder>? SalesOrders = null,
-        List<CreditNote>? CreditNotes = null);
+        List<CreditNote>? CreditNotes = null,
+        List<CustomerPayment>? CustomerPayments = null);
 
     public AccountingStore(IDbContextFactory<AccountingDbContext>? dbFactory = null)
     {
@@ -146,8 +148,9 @@ public class AccountingStore
         // 1. Assets
         var assets = Seed("10000", "Assets", AccountType.Asset, null);
         var currentAssets = Seed("11000", "Current Assets", AccountType.Asset, assets.Id);
-        var cashBank = Seed("11100", "Cash & Bank", AccountType.Asset, currentAssets.Id, true);
-        Seed("11110", "Main Bank Account", AccountType.Asset, cashBank.Id, true, 0m);
+        var cashBank = Seed("11100", "Cash & Bank", AccountType.Asset, currentAssets.Id);
+        Seed("11110", "Cash", AccountType.Asset, cashBank.Id);          // parent for Cash in Hand, Petty Cash, etc.
+        Seed("11120", "Bank Accounts", AccountType.Asset, cashBank.Id); // parent for user's bank accounts
         Seed("12000", "Accounts Receivable", AccountType.Asset, currentAssets.Id, true);
         Seed("13000", "Inventory Asset", AccountType.Asset, currentAssets.Id, true);
         
@@ -212,6 +215,55 @@ public class AccountingStore
     public IReadOnlyList<TaxRate> TaxRates => _taxRates;
     public IReadOnlyList<BillOfMaterials> BillOfMaterials => _boms;
     public IReadOnlyList<WorkOrder> WorkOrders => _workOrders;
+    public IReadOnlyList<CustomerPayment> CustomerPayments => _customerPayments;
+
+    public string NextReceiptNumber()
+    {
+        var numbers = _customerPayments.Select(p => p.ReceiptNumber).Where(n => n.StartsWith("REC-") && int.TryParse(n[4..], out _)).Select(n => int.Parse(n[4..])).DefaultIfEmpty(0);
+        return $"REC-{(numbers.Max() + 1):D4}";
+    }
+
+    public bool CreateCustomerPayment(CustomerPaymentRequest request, out CustomerPayment? payment, out string? error)
+    {
+        lock (_lock)
+        {
+            payment = null; error = null;
+            if (request.Amount <= 0) { error = "Payment amount must be positive."; return false; }
+            var customer = _customers.FirstOrDefault(c => c.Id == request.CustomerId);
+            if (customer == null) { error = "Customer not found."; return false; }
+            if (request.InvoiceId.HasValue)
+            {
+                var invoice = _salesInvoices.FirstOrDefault(i => i.Id == request.InvoiceId.Value);
+                if (invoice == null) { error = "Invoice not found."; return false; }
+                if (request.Amount > invoice.AmountDue) { error = $"Payment amount ({request.Amount}) exceeds invoice amount due ({invoice.AmountDue})."; return false; }
+            }
+            payment = new CustomerPayment
+            {
+                ReceiptNumber = NextReceiptNumber(),
+                CustomerId = request.CustomerId,
+                InvoiceId = request.InvoiceId,
+                PaymentDate = request.PaymentDate,
+                Amount = request.Amount,
+                PaymentMethod = request.PaymentMethod,
+                BankAccountName = request.BankAccountName,
+                DepositToAccountId = request.DepositToAccountId,
+                Reference = request.Reference,
+                Memo = request.Memo,
+                CompanyId = request.CompanyId,
+            };
+            _customerPayments.Add(payment);
+            // If posted against an invoice, update invoice AmountPaid
+            if (request.InvoiceId.HasValue)
+            {
+                var invoice = _salesInvoices.First(i => i.Id == request.InvoiceId.Value);
+                invoice.AmountPaid += request.Amount;
+                if (invoice.AmountDue <= 0) invoice.Status = SalesInvoiceStatus.Paid;
+                else invoice.Status = SalesInvoiceStatus.PartiallyPaid;
+            }
+            Persist();
+            return true;
+        }
+    }
 
     public string NextBomNumber()
     {
@@ -1914,6 +1966,7 @@ public class AccountingStore
             if (parent.Code.EndsWith("0000")) step = 1000;
             else if (parent.Code.EndsWith("000")) step = 100;
             else if (parent.Code.EndsWith("00")) step = 10;
+            else if (parent.Code.EndsWith("0")) step = 1;
 
             var children = _accounts.Where(x => x.ParentId == parent.Id).ToList();
             if (children.Count > 0)
@@ -2187,6 +2240,7 @@ public class AccountingStore
         _creditNotes.Clear(); _creditNotes.AddRange(state.CreditNotes ?? []);
         _boms.Clear(); _boms.AddRange(state.Boms ?? []);
         _workOrders.Clear(); _workOrders.AddRange(state.WorkOrders ?? []);
+        _customerPayments.Clear(); _customerPayments.AddRange(state.CustomerPayments ?? []);
         _mappings.Clear(); _mappings.AddRange(state.Mappings ?? []);
         if (state.History != null)
         {
@@ -2200,7 +2254,7 @@ public class AccountingStore
     {
         if (_dbFactory is null) return;
         using var db = _dbFactory.CreateDbContext();
-        var json = JsonSerializer.Serialize(new StoredState(_accounts, _entries, _history, _templates, _recurringEntries, _journalEvents, _intercompanyAllocations, _companies, _customers, _products, _vendors, _purchaseOrders, _grns, _fixedAssets, _taxAuthorities, _taxCodes, _taxRates, _warehouses, _stockLevels, _stockTransactions, _salesInvoices, _estimates, _boms, _workOrders, _mappings, _salesOrders, _creditNotes));
+        var json = JsonSerializer.Serialize(new StoredState(_accounts, _entries, _history, _templates, _recurringEntries, _journalEvents, _intercompanyAllocations, _companies, _customers, _products, _vendors, _purchaseOrders, _grns, _fixedAssets, _taxAuthorities, _taxCodes, _taxRates, _warehouses, _stockLevels, _stockTransactions, _salesInvoices, _estimates, _boms, _workOrders, _mappings, _salesOrders, _creditNotes, _customerPayments));
         var snapshot = db.AccountingStateSnapshots.Find(1);
         if (snapshot is null) db.AccountingStateSnapshots.Add(new AccountingStateSnapshot { Id = 1, Json = json, UpdatedAt = DateTime.UtcNow });
         else { snapshot.Json = json; snapshot.UpdatedAt = DateTime.UtcNow; }

@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useCreditNotesStore } from './stores/useCreditNotesStore';
-import { CreditNote } from './api/modules/creditNotes.api';
+
 import './CreditNotes.module.css';
 
 function CreditNotesWorkspace() {

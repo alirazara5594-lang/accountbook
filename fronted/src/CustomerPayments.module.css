@@ -1,4 +1,4 @@
-/* Customer Payments workspace styling */
+/* Customer Payments workspace styling — premium glassmorphism */
 
 .workspace-card {
   backdrop-filter: blur(12px) saturate(150%);
@@ -16,6 +16,7 @@
   margin-bottom: 16px;
 }
 
+/* ─── Table ─────────────────────────────────────────────── */
 .glass-table {
   width: 100%;
   border-collapse: collapse;
@@ -29,17 +30,210 @@
   padding: 12px 16px;
   text-align: left;
   color: #e0e0e0;
+  white-space: nowrap;
 }
 
 .glass-table th {
   background: rgba(255, 255, 255, 0.12);
   font-weight: 600;
+  font-size: 0.82rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: #a0a0b8;
 }
 
 .glass-table tbody tr:nth-child(even) {
   background: rgba(255, 255, 255, 0.04);
 }
 
+.glass-table tbody tr:hover {
+  background: rgba(100, 149, 237, 0.08);
+}
+
 .error {
   color: #ff6b6b;
+  margin-bottom: 8px;
+  font-size: 0.88rem;
+}
+
+/* ─── Status badges ─────────────────────────────────────── */
+.status-badge {
+  display: inline-block;
+  padding: 3px 10px;
+  border-radius: 20px;
+  font-size: 0.78rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+}
+.status-draft { background: rgba(255, 193, 7, 0.18); color: #ffc107; }
+.status-posted { background: rgba(76, 175, 80, 0.18); color: #66bb6a; }
+.status-void { background: rgba(244, 67, 54, 0.18); color: #ef5350; }
+
+/* ─── Modal overlay ─────────────────────────────────────── */
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.55);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  backdrop-filter: blur(4px);
+}
+
+.modal.receive-payment-modal {
+  backdrop-filter: blur(18px) saturate(160%);
+  background: rgba(24, 24, 40, 0.94);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 16px;
+  padding: 30px 36px;
+  width: 600px;
+  max-width: 96vw;
+  max-height: 90vh;
+  overflow-y: auto;
+  color: #e0e0e0;
+  box-shadow: 0 20px 80px rgba(0, 0, 0, 0.5);
+}
+
+.modal h3 {
+  margin-top: 0;
+  margin-bottom: 20px;
+  font-size: 1.3rem;
+  font-weight: 700;
+  background: linear-gradient(135deg, #6495ed, #a78bfa);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+/* ─── Form layout ───────────────────────────────────────── */
+.form-row {
+  display: flex;
+  gap: 16px;
+  margin-bottom: 4px;
+}
+
+.form-field {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+}
+
+.form-field.full {
+  flex: 1 1 100%;
+}
+
+.form-field label {
+  margin-top: 10px;
+  margin-bottom: 5px;
+  font-size: 0.8rem;
+  color: #9a9ab8;
+  font-weight: 500;
+  letter-spacing: 0.03em;
+}
+
+.form-field label .hint {
+  font-weight: 400;
+  font-style: italic;
+  color: #6b6b88;
+  font-size: 0.75rem;
+}
+
+.form-field input,
+.form-field select {
+  padding: 9px 12px;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 8px;
+  color: #e0e0e0;
+  font-size: 0.9rem;
+  transition: border-color 0.2s, box-shadow 0.2s;
+  box-sizing: border-box;
+}
+
+.form-field input:focus,
+.form-field select:focus {
+  outline: none;
+  border-color: rgba(100, 149, 237, 0.5);
+  box-shadow: 0 0 0 3px rgba(100, 149, 237, 0.12);
+}
+
+.form-field select option {
+  background: #1e1e2e;
+  color: #e0e0e0;
+}
+
+/* ─── Journal preview ───────────────────────────────────── */
+.journal-preview {
+  margin-top: 16px;
+  padding: 14px;
+  background: rgba(100, 149, 237, 0.06);
+  border: 1px solid rgba(100, 149, 237, 0.15);
+  border-radius: 10px;
+}
+
+.journal-title {
+  margin: 0 0 8px;
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: #6495ed;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.journal-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.85rem;
+}
+
+.journal-table th {
+  text-align: left;
+  padding: 4px 8px;
+  color: #8888a8;
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.journal-table td {
+  padding: 5px 8px;
+  color: #c8c8e0;
+}
+
+/* ─── Modal actions ─────────────────────────────────────── */
+.modal-actions {
+  display: flex;
+  gap: 12px;
+  margin-top: 22px;
+  justify-content: flex-end;
+}
+
+.modal-actions button {
+  padding: 9px 22px;
+  border-radius: 8px;
+  border: none;
+  cursor: pointer;
+  font-size: 0.9rem;
+  font-weight: 500;
+  transition: all 0.2s;
+}
+
+.modal-actions button.primary {
+  background: linear-gradient(135deg, #6495ed, #4169e1);
+  color: #fff;
+}
+
+.modal-actions button.primary:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 6px 20px rgba(65, 105, 225, 0.4);
+}
+
+.modal-actions button:not(.primary) {
+  background: rgba(255, 255, 255, 0.06);
+  color: #aaa;
+}
+
+.modal-actions button:not(.primary):hover {
+  background: rgba(255, 255, 255, 0.12);
 }

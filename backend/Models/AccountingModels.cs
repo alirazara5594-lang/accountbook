@@ -854,3 +854,40 @@ public record CreditNoteRequest(
 );
 
 public record CreditNoteStatusRequest(CreditNoteStatus Status);
+
+// ─── Customer Payments (Receipts) ──────────────────────────────────────────────
+public enum CustomerPaymentStatus { Draft, Posted, Void }
+public enum PaymentMethodType { Cash, Cheque, BankTransfer, ACH, WireTransfer, BACS, FasterPayments, SEPA, CreditCard, DebitCard, OnlineBanking, MobilePayment, PayPal, DirectDebit, Other }
+
+public class CustomerPayment
+{
+    public Guid Id { get; init; } = Guid.NewGuid();
+    public required string ReceiptNumber { get; set; }
+    public Guid CustomerId { get; set; }
+    public Guid? InvoiceId { get; set; }           // optional: payment against specific invoice
+    public DateOnly PaymentDate { get; set; }
+    public decimal Amount { get; set; }
+    public PaymentMethodType PaymentMethod { get; set; } = PaymentMethodType.Cash;
+    public string? BankAccountName { get; set; }   // bank account name when method = Bank
+    public Guid? DepositToAccountId { get; set; }  // Chart-of-Account: Cash or Bank account receiving money
+    public string? Reference { get; set; }         // cheque #, transaction ref, etc.
+    public string? Memo { get; set; }
+    public CustomerPaymentStatus Status { get; set; } = CustomerPaymentStatus.Draft;
+    public Guid? JournalEntryId { get; set; }      // linked double-entry journal
+    public Guid? CompanyId { get; set; }
+    public DateTime CreatedAt { get; init; } = DateTime.UtcNow;
+    public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
+}
+
+public record CustomerPaymentRequest(
+    Guid CustomerId,
+    Guid? InvoiceId,
+    DateOnly PaymentDate,
+    decimal Amount,
+    PaymentMethodType PaymentMethod = PaymentMethodType.Cash,
+    string? BankAccountName = null,
+    Guid? DepositToAccountId = null,
+    string? Reference = null,
+    string? Memo = null,
+    Guid? CompanyId = null
+);
