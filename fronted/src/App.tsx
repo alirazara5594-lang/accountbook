@@ -19,6 +19,7 @@ import { EstimatesAndQuotes } from './EstimatesAndQuotes'
 import { ManufacturingWorkspace } from './ManufacturingWorkspace'
 import { ChartOfAccounts } from './ChartOfAccounts'
 import { FinancialReports } from './FinancialReports'
+import { SystemAccountMapping } from './components/SystemAccountMapping'
 import { ModuleSummary } from './ModuleSummary'
 import { BankAccountsView } from './BankAccountsView'
 import { CashAccountsView } from './CashAccountsView'
@@ -31,13 +32,13 @@ import { VoucherManagement } from './VoucherManagement'
 import { CashFlowView } from './CashFlowView'
 import { useCoaStore, useJournalsStore, useCompanyStore, useIntercompanyStore } from './stores'
 
+import type { Account } from './api/modules/coa.api'
 type AccountType = 'Asset' | 'Liability' | 'Equity' | 'Revenue' | 'Expense' | 'ContraAsset' | 'ContraLiability' | 'ContraEquity' | 'ContraRevenue' | 'ContraExpense'
-type Account = { id: string; code: string; name: string; type: AccountType; parentId?: string; status: 'Active' | 'Inactive'; openingBalance: number; reconciliationEnabled: boolean; ifrsTag?: string; gaapTag?: string; isSystem: boolean; updatedAt: string }
 type Journal = { id: string; date: string; reference: string; description: string; lines: { accountId: string; debit: number; credit: number }[] }
 type Allocation = { id: string; name: string; sourceCompanyId: string; category: string; frequency: string; rate: number; quantity: number; status: string; recipients: { companyId: string; sharePercent: number }[] }
 
 const accountTypes: AccountType[] = ['Asset', 'Liability', 'Equity', 'Revenue', 'Expense', 'ContraAsset', 'ContraLiability', 'ContraEquity', 'ContraRevenue', 'ContraExpense']
-const blank = { code: '', name: '', type: 'Asset' as AccountType, parentId: '', openingBalance: '0', reconciliationEnabled: false, ifrsTag: '', gaapTag: '', isSystem: false }
+const blank = { code: '', name: '', type: 'Asset' as AccountType, parentId: '', openingBalance: '0', reconciliationEnabled: false, ifrsTag: '', gaapTag: '', isSystem: false, subtype: '', currency: 'USD', taxCategory: '', allowManualJournal: true, description: '', status: 'Active' }
 
 function money(value: number) { return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(value) }
 
@@ -69,7 +70,7 @@ export default function App() {
       return [];
     }
   });
-  const [settingsView, setSettingsView] = useState<'home' | 'entities'>('home')
+  const [settingsView, setSettingsView] = useState<'home' | 'entities' | 'mappings'>('home')
 
   const accounts = useCoaStore((s) => s.accounts as Account[])
   const fetchAccounts = useCoaStore((s) => s.fetchAccounts)
@@ -140,11 +141,25 @@ export default function App() {
   useEffect(() => { load() }, [])
   const stats = { bank: accounts.filter(a => a.reconciliationEnabled).reduce((sum, a) => sum + a.openingBalance, 0), active: accounts.filter(a => a.status === 'Active').length, entries: entries.length }
   const openCreate = async () => { setEditing(null); setForm(blank); setModal(true) }
-  const openEdit = (a: Account) => { setEditing(a); setForm({ code: a.code, name: a.name, type: a.type, parentId: a.parentId || '', openingBalance: String(a.openingBalance), reconciliationEnabled: a.reconciliationEnabled, ifrsTag: a.ifrsTag || '', gaapTag: a.gaapTag || '', isSystem: a.isSystem }); setModal(true) }
+  const openEdit = (a: Account) => { setEditing(a); setForm({ code: a.code, name: a.name, type: a.type as AccountType, parentId: a.parentId || '', openingBalance: String(a.openingBalance), reconciliationEnabled: a.reconciliationEnabled, ifrsTag: a.ifrsTag || '', gaapTag: a.gaapTag || '', isSystem: a.isSystem, subtype: a.subtype || '', currency: a.currency || 'USD', taxCategory: a.taxCategory || '', allowManualJournal: a.allowManualJournal !== false, description: a.description || '', status: a.status || 'Active' }); setModal(true) }
 
   const saveAccount = async (e: FormEvent) => {
     e.preventDefault();
-    const body = { ...form, parentId: form.parentId || null, openingBalance: Number(form.openingBalance), openingBalanceDate: Number(form.openingBalance) ? new Date().toISOString().slice(0, 10) : null, gaapTag: form.gaapTag || null, customFields: {}, isSystem: form.isSystem };
+    const body = { 
+      ...form, 
+      parentId: form.parentId || null, 
+      openingBalance: Number(form.openingBalance), 
+      openingBalanceDate: Number(form.openingBalance) ? new Date().toISOString().slice(0, 10) : null, 
+      gaapTag: form.gaapTag || null, 
+      customFields: {}, 
+      isSystem: form.isSystem,
+      subtype: form.subtype || "",
+      currency: form.currency || 'USD',
+      taxCategory: form.taxCategory || null,
+      allowManualJournal: form.allowManualJournal,
+      description: form.description || null,
+      status: form.status || 'Active'
+    };
     try {
       await saveAccountStore(body, editing ? editing.id : undefined);
       setModal(false);
@@ -259,14 +274,7 @@ export default function App() {
   {activeView === 'module-summary' && <ModuleSummary moduleName={group} accounts={accounts} entries={entries} setPage={setPage} openCreateAccount={openCreate} />}
   {activeView === 'customers' && <CustomerManagement entities={entities as any} activeEntityId={activeEntityId} notify={notify} />}
   {activeView === 'accounts' && (
-    <div style={{ padding: '80px 20px', textAlign: 'center', color: '#475569', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
-      <span style={{ fontSize: 72, display: 'block', marginBottom: 20 }}>🏗</span>
-      <h2 style={{ fontSize: 24, fontWeight: 700, color: '#1e293b', marginBottom: 12 }}>Chart of Accounts — Under Construction</h2>
-      <p style={{ fontSize: 14, color: '#64748b', maxWidth: 500, margin: '0 auto', lineHeight: 1.6 }}>
-        This page has been completely cleared. We will re-develop the Chart of Accounts module later on according to your exact specifications.
-      </p>
-      {false && <ChartOfAccounts accounts={accounts} edit={openEdit} status={toggleStatus} openCreate={openCreate} setParentIdForNew={(parentId) => setForm(f => ({ ...f, parentId }))} reloadAccounts={load} />}
-    </div>
+    <ChartOfAccounts accounts={accounts} edit={openEdit} status={toggleStatus} openCreate={openCreate} setParentIdForNew={(parentId) => setForm(f => ({ ...f, parentId }))} reloadAccounts={load} />
   )}
   {activeView.startsWith('vouchers') && <VoucherManagement subView={module} activeEntityId={activeEntityId} entities={entities as any} />}
   {activeView === 'bank-accounts' && <BankAccountsView activeEntityId={activeEntityId} entities={entities as any} />}
@@ -279,7 +287,8 @@ export default function App() {
   {activeView === 'cash-flow-statements' && <CashFlowView activeEntityId={activeEntityId} entities={entities as any} />}
   {activeView === 'journal' && <Journals journal={journal} setJournal={setJournal} accounts={accounts.filter(a => a.status === 'Active')} entries={entries} post={postJournal} />}
   {activeView === 'intercompany' && <Intercompany allocations={allocations} reload={load} notify={notify} />}
-  {activeView === 'settings' && settingsView === 'home' && <SettingsHome openEntities={() => setSettingsView('entities')} />}
+  {activeView === 'settings' && settingsView === 'home' && <SettingsHome openEntities={() => setSettingsView('entities')} openMappings={() => setSettingsView('mappings')} />}
+  {activeView === 'settings' && settingsView === 'mappings' && <SystemAccountMapping accounts={accounts} close={() => setSettingsView('home')} notify={notify} />}
   {activeView === 'settings' && settingsView === 'entities' && <EntitySettings entities={entities as any} selectedId={activeEntityId} select={setActiveEntityId} reload={load} notify={notify} />}
   {activeView === 'products' && <ProductsAndServices notify={notify} activeEntityId={activeEntityId} entities={entities as any} />}
   {activeView === 'vendors' && <VendorManagement entities={entities as any} activeEntityId={activeEntityId} notify={notify} />}
@@ -296,7 +305,7 @@ export default function App() {
   </main>{modal && <AccountModal form={form} setForm={setForm} accounts={accounts} editing={editing} close={() => setModal(false)} save={saveAccount} />}{toast && <div className="toast">✓ {toast}</div>}</div>
 }
 
-function SettingsHome({ openEntities }: { openEntities: () => void }) { return <section className="settings-grid"><button className="settings-card" onClick={openEntities}><span>▦</span><div><strong>Entity management</strong><small>Create entities, manage the hierarchy, and select each entity's books.</small></div><b>→</b></button><button className="settings-card" disabled><span>⌘</span><div><strong>Chart of accounts</strong><small>Account structure and financial reporting settings.</small></div><b>→</b></button></section> }
+function SettingsHome({ openEntities, openMappings }: { openEntities: () => void; openMappings: () => void }) { return <section className="settings-grid"><button className="settings-card" onClick={openEntities}><span>▦</span><div><strong>Entity management</strong><small>Create entities, manage the hierarchy, and select each entity's books.</small></div><b>→</b></button><button className="settings-card" onClick={openMappings}><span>⚙️</span><div><strong>System Account Mapping</strong><small>Map default operational accounts (Accounts Receivable, Accounts Payable, Taxes) for posting.</small></div><b>→</b></button><button className="settings-card" disabled><span>⌘</span><div><strong>Chart of accounts</strong><small>Account structure and financial reporting settings.</small></div><b>→</b></button></section> }
 
 function Dashboard({ stats, entries, accounts, setPage }: { stats: { bank: number; active: number; entries: number }; entries: Journal[]; accounts: Account[]; setPage: (page: string) => void }) { return <><section className="stats"><article><span className="stat-icon teal">⌁</span><div><small>BANK & CASH</small><h2>{money(stats.bank)}</h2><p>Across reconciled accounts</p></div></article><article><span className="stat-icon blue">⌘</span><div><small>ACTIVE ACCOUNTS</small><h2>{stats.active}</h2><p>In your chart of accounts</p></div></article><article><span className="stat-icon violet">⇄</span><div><small>POSTED ENTRIES</small><h2>{stats.entries}</h2><p>Current accounting period</p></div></article></section><section className="grid"><article className="panel large"><div className="panel-head"><div><h3>Financial position</h3><p>Opening balances by account type</p></div><button className="text-button" onClick={() => setPage('Accounting.Chart of Accounts')}>View accounts →</button></div><div className="bars">{(['Asset','Liability','Equity','Revenue','Expense'] as AccountType[]).map(type => { const balance = accounts.filter(a => a.type === type).reduce((s,a) => s + Math.abs(a.openingBalance), 0); const max = Math.max(...accounts.map(a => Math.abs(a.openingBalance)), 1); return <div className="bar-row" key={type}><span>{type}</span><div className="track"><i style={{ width: `${Math.max(5, balance/max*100)}%` }} /></div><b>{money(balance)}</b></div> })}</div></article><article className="panel"><div className="panel-head"><div><h3>Recent activity</h3><p>Latest journal entries</p></div></div>{entries.length ? entries.slice(0,4).map(e => <div className="activity" key={e.id}><span className="activity-icon">⇄</span><div><strong>{e.description}</strong><small>{e.reference} · {e.date}</small></div></div>) : <div className="empty">No posted entries yet.<button className="link" onClick={() => setPage('Accounting.Journal Entries')}>Create one</button></div>}</article></section></> }
 
@@ -364,6 +373,7 @@ function AccountModal({ form, setForm, accounts, editing, close, save }: { form:
 
   const handleSubtypeChange = (newSubtype: string) => {
     setSubtype(newSubtype);
+    field('subtype', newSubtype);
     
     // Suggest standard parent account based on selected subtype
     let suggestedParentCode = '';
@@ -395,6 +405,7 @@ function AccountModal({ form, setForm, accounts, editing, close, save }: { form:
     const newSubtypes = subtypesMap[val] || [];
     const firstSubtype = newSubtypes[0] || '';
     setSubtype(firstSubtype);
+    field('subtype', firstSubtype);
 
     // Auto-select standard parent based on subtype
     let suggestedParentCode = '';
@@ -453,8 +464,24 @@ function AccountModal({ form, setForm, accounts, editing, close, save }: { form:
     });
   }, [accounts, subtype, editing]);
 
+  const calculatedLevel = useMemo(() => {
+    if (!form.parentId) return 'Main Head';
+    const parent = accounts.find(a => a.id === form.parentId);
+    if (!parent) return 'Main Head';
+    if (!parent.parentId) return 'Sub Head';
+    return 'Detail Account';
+  }, [form.parentId, accounts]);
+
+  const calculatedNormalBalance = useMemo(() => {
+    const type = form.type;
+    if (type === 'Asset' || type === 'Expense' || type === 'ContraLiability' || type === 'ContraEquity' || type === 'ContraRevenue') {
+      return 'Debit';
+    }
+    return 'Credit';
+  }, [form.type]);
+
   const activeSubtypes = subtypesMap[form.type] || [];
   const isCodeValid = /^\d{5}$/.test(form.code);
 
-  return <div className="overlay"><form className="modal" onSubmit={save}><div className="modal-head"><div><p className="eyebrow">CHART OF ACCOUNTS</p><h2>{editing ? 'Edit Account' : 'Create 5-Digit Account'}</h2></div><button type="button" className="close" onClick={close}>×</button></div><div className="form-grid">{editing?.isSystem && <div style={{ background: '#fffbeb', color: '#b45309', border: '1px solid #fef3c7', padding: '10px 14px', borderRadius: 8, fontSize: 12, marginBottom: 8, gridColumn: 'span 2', display: 'flex', alignItems: 'center', gap: 8 }}><span>🔒</span><strong>Protected System Account:</strong> Critical settings (Code, Type, Sub-type, Parent) are locked for operational integrity.</div>}<label>1. 5-Digit Account Code<input required disabled={editing?.isSystem} value={form.code} onChange={e => field('code', e.target.value.replace(/\D/g, '').slice(0, 5))} placeholder="e.g. 11101" className={!isCodeValid && form.code ? 'border-red-500 font-mono font-bold' : 'font-mono font-bold'} /></label><label>2. Account Name<input required value={form.name} onChange={e => handleNameChange(e.target.value)} placeholder="e.g. HBL Current Account" /></label><label>3. Major Type<select disabled={editing?.isSystem} value={form.type} onChange={e => handleTypeChange(e.target.value)}>{accountTypes.map(x => <option key={x}>{x}</option>)}</select></label><label>4. Sub-Type<select disabled={editing?.isSystem} value={subtype} onChange={e => handleSubtypeChange(e.target.value)}>{activeSubtypes.map(x => <option key={x} value={x}>{x}</option>)}</select></label><label>5. Parent Account (Financial Reporting Line)<select disabled={editing?.isSystem} value={form.parentId} onChange={e => { field('parentId', e.target.value); if (!editing) fetchNextCode(form.type, e.target.value); }}><option value="">No Parent (Top-Level Group Line)</option>{filteredParents.map(a => <option value={a.id} key={a.id}>{a.code} — {a.name}</option>)}</select></label><label>Opening Balance ($)<input type="number" step="0.01" value={form.openingBalance} onChange={e => field('openingBalance', e.target.value)} /></label><label>IFRS Tag<input value={form.ifrsTag} onChange={e => field('ifrsTag', e.target.value)} placeholder="e.g. Cash & Cash Equivalents" /></label><label>GAAP Tag<input value={form.gaapTag} onChange={e => field('gaapTag', e.target.value)} placeholder="e.g. Current Asset" /></label></div><label className="check"><input type="checkbox" checked={form.reconciliationEnabled} onChange={e => field('reconciliationEnabled', e.target.checked)} /> Enable Bank & Ledger Account Reconciliation</label><div className="modal-footer"><button type="button" className="secondary" onClick={close}>Cancel</button><button className="primary" disabled={!isCodeValid || !form.name.trim()}>{editing ? 'Save Changes' : 'Create Account'}</button></div></form></div>
+  return <div className="overlay"><form className="modal" onSubmit={save} style={{ width: 'min(700px, 100%)' }}><div className="modal-head"><div><p className="eyebrow">CHART OF ACCOUNTS</p><h2>{editing ? 'Edit Account properties' : 'Create 5-Digit Account'}</h2></div><button type="button" className="close" onClick={close}>×</button></div><div className="form-grid">{editing?.isSystem && <div style={{ background: '#fffbeb', color: '#b45309', border: '1px solid #fef3c7', padding: '10px 14px', borderRadius: 8, fontSize: 12, marginBottom: 8, gridColumn: 'span 2', display: 'flex', alignItems: 'center', gap: 8 }}><span>🔒</span><strong>Protected System Account:</strong> Critical settings (Code, Type, Sub-type, Parent) are locked for operational integrity.</div>}<label>1. 5-Digit Account Code<input required disabled={editing?.isSystem} value={form.code} onChange={e => field('code', e.target.value.replace(/\D/g, '').slice(0, 5))} placeholder="e.g. 11101" className={!isCodeValid && form.code ? 'border-red-500 font-mono font-bold' : 'font-mono font-bold'} /></label><label>2. Account Name<input required value={form.name} onChange={e => handleNameChange(e.target.value)} placeholder="e.g. HBL Current Account" /></label><label>3. Major Type<select disabled={editing?.isSystem} value={form.type} onChange={e => handleTypeChange(e.target.value)}>{accountTypes.map(x => <option key={x}>{x}</option>)}</select></label><label>4. Sub-Type<select disabled={editing?.isSystem} value={subtype} onChange={e => handleSubtypeChange(e.target.value)}>{activeSubtypes.map(x => <option key={x} value={x}>{x}</option>)}</select></label><label>5. Parent Account (Financial Reporting Line)<select disabled={editing?.isSystem} value={form.parentId} onChange={e => { field('parentId', e.target.value); if (!editing) fetchNextCode(form.type, e.target.value); }}><option value="">No Parent (Top-Level Group Line)</option>{filteredParents.map(a => <option value={a.id} key={a.id}>{a.code} — {a.name}</option>)}</select></label><label>Opening Balance ($)<input type="number" step="0.01" value={form.openingBalance} onChange={e => field('openingBalance', e.target.value)} /></label><label>Account Level (Derived)<input disabled value={calculatedLevel} style={{ background: '#f8fafc', color: '#1e293b', fontWeight: 'bold' }} /></label><label>Normal Balance (Derived)<input disabled value={calculatedNormalBalance} style={{ background: '#f8fafc', color: '#1e293b', fontWeight: 'bold' }} /></label><label>Posting Account Status (Derived)<input disabled value={editing ? (editing.isPosting ? 'Posting Account (Leaf)' : 'Non-Posting (Header)') : 'Posting Account (Leaf)'} style={{ background: '#f8fafc', color: '#16a34a', fontWeight: 'bold' }} /></label><label>Currency<select value={form.currency} onChange={e => field('currency', e.target.value)}><option value="USD">USD</option><option value="GBP">GBP</option><option value="EUR">EUR</option><option value="AED">AED</option><option value="SAR">SAR</option><option value="PKR">PKR</option><option value="CAD">CAD</option></select></label><label>Tax Category<select value={form.taxCategory || ''} onChange={e => field('taxCategory', e.target.value)}><option value="">None / Exempt</option><option value="Standard VAT">Standard VAT</option><option value="Zero Rated">Zero Rated</option><option value="Sales Tax">US Sales Tax</option><option value="GST">GST / HST (Canada)</option></select></label><label>Status<select value={form.status} onChange={e => field('status', e.target.value)}><option value="Active">Active</option><option value="Inactive">Inactive</option></select></label><label style={{ gridColumn: 'span 2' }}>Description / Remarks<textarea value={form.description || ''} onChange={e => field('description', e.target.value)} placeholder="Describe the purpose of this ledger register..." style={{ width: '100%', minHeight: 70, border: '1px solid #dce3eb', borderRadius: 7, padding: 8, fontSize: 13, resize: 'none' }} /></label></div><div className="flex flex-col gap-2 mt-4"><label className="check"><input type="checkbox" checked={form.allowManualJournal} onChange={e => field('allowManualJournal', e.target.checked)} /> Allow Manual General Journal Adjustments</label><label className="check"><input type="checkbox" checked={form.reconciliationEnabled} onChange={e => field('reconciliationEnabled', e.target.checked)} /> Enable Bank & Ledger Account Reconciliation</label></div><div className="modal-footer"><button type="button" className="secondary" onClick={close}>Cancel</button><button className="primary" disabled={!isCodeValid || !form.name.trim()}>{editing ? 'Save Changes' : 'Create Account'}</button></div></form></div>;
 }

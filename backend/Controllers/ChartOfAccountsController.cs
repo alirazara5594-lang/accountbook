@@ -18,4 +18,10 @@ public class ChartOfAccountsController(AccountingStore store) : ControllerBase
     [HttpPatch("{id:guid}/status")] public IActionResult Status(Guid id, StatusRequest request) => store.SetStatus(id, request, out var error) ? Ok(store.Find(id)) : BadRequest(new { message = error });
     [HttpDelete("clear-all")] public IActionResult ClearAll() => store.ClearAllAccounts(out var error) ? Ok(new { message = "All accounts cleared successfully." }) : BadRequest(new { message = error });
     [HttpDelete("{id:guid}")] public IActionResult Delete(Guid id) => store.Delete(id, out var error) ? NoContent() : BadRequest(new { message = error });
+
+    [HttpGet("mappings")]
+    public IActionResult GetMappings() => Ok(store.Mappings);
+
+    [HttpPost("mappings")]
+    public IActionResult SetMapping([FromBody] AccountMappingRequest request) => store.SetMapping(request.MappingKey, request.AccountId, out var error) ? Ok(new { message = "Mapping saved successfully." }) : BadRequest(new { message = error });
 }

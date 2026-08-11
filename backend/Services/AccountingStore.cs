@@ -34,6 +34,7 @@ public class AccountingStore
     private readonly List<Estimate> _estimates = [];
     private readonly List<BillOfMaterials> _boms = [];
     private readonly List<WorkOrder> _workOrders = [];
+    private readonly List<AccountMapping> _mappings = [];
     private readonly Dictionary<Guid, List<AuditItem>> _history = [];
     private readonly object _lock = new();
 
@@ -62,7 +63,8 @@ public class AccountingStore
         List<SalesInvoice>? SalesInvoices = null,
         List<Estimate>? Estimates = null,
         List<BillOfMaterials>? Boms = null,
-        List<WorkOrder>? WorkOrders = null);
+        List<WorkOrder>? WorkOrders = null,
+        List<AccountMapping>? Mappings = null);
 
     public AccountingStore(IDbContextFactory<AccountingDbContext>? dbFactory = null)
     {
@@ -192,6 +194,7 @@ public class AccountingStore
     }
 
     public IReadOnlyList<Account> Accounts => _accounts;
+    public IReadOnlyList<AccountMapping> Mappings => _mappings;
     public IReadOnlyList<JournalEntry> Entries => _entries;
     public IReadOnlyList<JournalTemplate> Templates => _templates;
     public IReadOnlyList<RecurringJournalEntry> RecurringEntries => _recurringEntries;
@@ -1376,7 +1379,7 @@ public class AccountingStore
         }
     }
 
-    public bool PostSalesInvoice(Guid invoiceId, Guid arAccountId, Guid revenueAccountId, Guid? taxLiabilityAccountId, out string? error)
+    public bool PostSalesInvoice(Guid invoiceId, Guid? arAccountId, Guid? revenueAccountId, Guid? taxLiabilityAccountId, out string? error)
     {
         error = null;
         lock (_lock)
@@ -1385,17 +1388,55 @@ public class AccountingStore
             if (invoice == null) { error = "Invoice not found."; return false; }
             if (invoice.Status != SalesInvoiceStatus.Draft) { error = "Only draft invoices can be posted."; return false; }
 
+            // Centralized Posting Engine resolution
+            Guid resolvedAr = arAccountId ?? GetMappedAccount("Customer Receivables");
+            Guid resolvedRev = revenueAccountId ?? GetMappedAccount("Sales");
+            Guid? resolvedTax = taxLiabilityAccountId;
+            if (!resolvedTax.HasValue && invoice.TaxTotal > 0)
+            {
+                var taxId = GetMappedAccount("Taxes");
+                if (taxId != Guid.Empty) resolvedTax = taxId;
+            }
+
+            // Validate Resolved Accounts are Leaf Posting and Active
+            var arAcc = Find(resolvedAr);
+            if (arAcc == null) { error = "Customer Receivables account is not mapped or invalid."; return false; }
+            if (!arAcc.IsPosting || arAcc.Status == AccountStatus.Inactive)
+            {
+                error = $"Customer Receivables account {arAcc.Code} - {arAcc.Name} is not a valid posting account or is inactive.";
+                return false;
+            }
+
+            var revAcc = Find(resolvedRev);
+            if (revAcc == null) { error = "Sales Revenue account is not mapped or invalid."; return false; }
+            if (!revAcc.IsPosting || revAcc.Status == AccountStatus.Inactive)
+            {
+                error = $"Sales Revenue account {revAcc.Code} - {revAcc.Name} is not a valid posting account or is inactive.";
+                return false;
+            }
+
+            if (resolvedTax.HasValue)
+            {
+                var taxAcc = Find(resolvedTax.Value);
+                if (taxAcc == null) { error = "Tax Payable account is invalid."; return false; }
+                if (!taxAcc.IsPosting || taxAcc.Status == AccountStatus.Inactive)
+                {
+                    error = $"Tax Payable account {taxAcc.Code} - {taxAcc.Name} is not a valid posting account or is inactive.";
+                    return false;
+                }
+            }
+
             // 1. Post AR Journal: Dr AR / Cr Revenue (+ Cr Tax Liability if applicable)
             var journalLines = new List<JournalLine>
             {
-                new JournalLine(arAccountId, invoice.TotalAmount, 0, $"AR: {invoice.InvoiceNumber}", null, null, 1, invoice.CompanyId)
+                new JournalLine(resolvedAr, invoice.TotalAmount, 0, $"AR: {invoice.InvoiceNumber}", null, null, 1, invoice.CompanyId)
             };
 
             var revenueTotal = invoice.SubTotal - invoice.DiscountTotal;
-            journalLines.Add(new JournalLine(revenueAccountId, 0, revenueTotal, $"Revenue: {invoice.InvoiceNumber}", null, null, 1, invoice.CompanyId));
+            journalLines.Add(new JournalLine(resolvedRev, 0, revenueTotal, $"Revenue: {invoice.InvoiceNumber}", null, null, 1, invoice.CompanyId));
 
-            if (invoice.TaxTotal > 0 && taxLiabilityAccountId.HasValue)
-                journalLines.Add(new JournalLine(taxLiabilityAccountId.Value, 0, invoice.TaxTotal, $"Tax: {invoice.InvoiceNumber}", null, null, 1, invoice.CompanyId));
+            if (invoice.TaxTotal > 0 && resolvedTax.HasValue)
+                journalLines.Add(new JournalLine(resolvedTax.Value, 0, invoice.TaxTotal, $"Tax: {invoice.InvoiceNumber}", null, null, 1, invoice.CompanyId));
 
             var journal = new JournalEntry
             {
@@ -1579,6 +1620,11 @@ public class AccountingStore
             var parent = Find(parentId.Value);
             if (parent == null) return NextCode(type);
 
+            int step = 1;
+            if (parent.Code.EndsWith("0000")) step = 1000;
+            else if (parent.Code.EndsWith("000")) step = 100;
+            else if (parent.Code.EndsWith("00")) step = 10;
+
             var children = _accounts.Where(x => x.ParentId == parent.Id).ToList();
             if (children.Count > 0)
             {
@@ -1588,30 +1634,13 @@ public class AccountingStore
                     .Max();
                 if (highestChild > 0)
                 {
-                    return (highestChild + 1).ToString();
+                    return (highestChild + step).ToString();
                 }
             }
 
             if (int.TryParse(parent.Code, out var pCode))
             {
-                int suggestion;
-                if (parent.Code.EndsWith("0000"))
-                {
-                    suggestion = pCode + 1000;
-                }
-                else if (parent.Code.EndsWith("000"))
-                {
-                    suggestion = pCode + 100;
-                }
-                else if (parent.Code.EndsWith("00"))
-                {
-                    suggestion = pCode + 1;
-                }
-                else
-                {
-                    suggestion = pCode + 1;
-                }
-                return suggestion.ToString();
+                return (pCode + step).ToString();
             }
 
             return NextCode(type);
@@ -1635,10 +1664,16 @@ public class AccountingStore
                 IfrsTag = r.IfrsTag,
                 GaapTag = r.GaapTag,
                 CustomFields = r.CustomFields ?? [],
-                IsSystem = r.IsSystem
+                IsSystem = r.IsSystem,
+                Subtype = r.Subtype ?? "",
+                Currency = r.Currency ?? "USD",
+                TaxCategory = r.TaxCategory,
+                AllowManualJournal = r.AllowManualJournal,
+                Description = r.Description
             };
             _accounts.Add(account);
             _history[account.Id] = [new(DateTime.UtcNow, "Created", "Account created")];
+            RecalculateHierarchy();
             Persist();
             return account;
         }
@@ -1675,8 +1710,14 @@ public class AccountingStore
             a.GaapTag = r.GaapTag;
             a.CustomFields = r.CustomFields ?? [];
             a.IsSystem = r.IsSystem;
+            a.Subtype = r.Subtype ?? "";
+            a.Currency = r.Currency ?? "USD";
+            a.TaxCategory = r.TaxCategory;
+            a.AllowManualJournal = r.AllowManualJournal;
+            a.Description = r.Description;
             a.UpdatedAt = DateTime.UtcNow;
             _history[id].Add(new(DateTime.UtcNow, "Updated", "Account details changed"));
+            RecalculateHierarchy();
             Persist();
             error = null;
             return true;
@@ -1695,6 +1736,7 @@ public class AccountingStore
         a.Status = status.Status;
         a.UpdatedAt = DateTime.UtcNow;
         _history[id].Add(new(DateTime.UtcNow, status.Status.ToString(), status.Reason ?? "Status changed"));
+        RecalculateHierarchy();
         Persist();
         error = null;
         return true;
@@ -1716,6 +1758,7 @@ public class AccountingStore
         }
         _accounts.Remove(a);
         _history.Remove(id);
+        RecalculateHierarchy();
         Persist();
         error = null;
         return true;
@@ -1728,6 +1771,7 @@ public class AccountingStore
         {
             _accounts.Clear();
             _history.Clear();
+            _mappings.Clear();
             Persist();
             return true;
         }
@@ -1744,7 +1788,50 @@ public class AccountingStore
     public bool CreateIntercompanyAllocation(IntercompanyAllocationRequest request, out IntercompanyAllocation? allocation, out string? error) { allocation = new IntercompanyAllocation { Name = request.Name.Trim(), SourceCompanyId = request.SourceCompanyId, Category = request.Category.Trim(), Description = request.Description?.Trim(), Frequency = request.Frequency, Rate = request.Rate, Quantity = request.Quantity, StartDate = request.StartDate, EndDate = request.EndDate, Recipients = request.Recipients }; _intercompanyAllocations.Add(allocation); Persist(); error = null; return true; }
     public bool SetIntercompanyStatus(Guid id, IntercompanyAllocationStatus status, out string? error) { var allocation = _intercompanyAllocations.FirstOrDefault(x => x.Id == id); if (allocation is null) { error = "Intercompany allocation not found."; return false; } allocation.Status = status; allocation.UpdatedAt = DateTime.UtcNow; Persist(); error = null; return true; }
     
-    private bool ValidateJournal(JournalEntryRequest request, out string? error) { error = null; if (request.Lines.Count < 2) { error = "A journal entry requires at least two lines."; return false; } return true; }
+    private bool ValidateJournal(JournalEntryRequest request, out string? error)
+    {
+        error = null;
+        if (request.Lines.Count < 2)
+        {
+            error = "A journal entry requires at least two lines.";
+            return false;
+        }
+
+        // Validate double-entry debits/credits balance
+        decimal debitSum = request.Lines.Sum(l => l.Debit);
+        decimal creditSum = request.Lines.Sum(l => l.Credit);
+        if (Math.Abs(debitSum - creditSum) > 0.001m)
+        {
+            error = $"Journal entry is out of balance. Debits ({debitSum}) must equal Credits ({creditSum}).";
+            return false;
+        }
+
+        foreach (var line in request.Lines)
+        {
+            var acc = Find(line.AccountId);
+            if (acc == null)
+            {
+                error = $"Account with ID {line.AccountId} does not exist.";
+                return false;
+            }
+            if (acc.Status == AccountStatus.Inactive)
+            {
+                error = $"Account {acc.Code} - {acc.Name} is Inactive and cannot receive new postings.";
+                return false;
+            }
+            if (!acc.IsPosting)
+            {
+                error = $"Account {acc.Code} - {acc.Name} is a Non-Posting/Header account and cannot receive transactions.";
+                return false;
+            }
+            if (!acc.AllowManualJournal && request.TransactionType == TransactionType.Other)
+            {
+                error = $"Account {acc.Code} - {acc.Name} is not configured for manual journal entry adjustments.";
+                return false;
+            }
+        }
+        return true;
+    }
     private void AddEvent(JournalEntry entry, string eventType, string actor, string detail) => _journalEvents.Add(new JournalEvent(Guid.NewGuid(), entry.Id, eventType, DateTime.UtcNow, actor, detail, entry.Version));
     
     private bool LoadState()
@@ -1808,10 +1895,12 @@ public class AccountingStore
         _estimates.Clear(); _estimates.AddRange(state.Estimates ?? []);
         _boms.Clear(); _boms.AddRange(state.Boms ?? []);
         _workOrders.Clear(); _workOrders.AddRange(state.WorkOrders ?? []);
+        _mappings.Clear(); _mappings.AddRange(state.Mappings ?? []);
         if (state.History != null)
         {
             foreach (var (id, history) in state.History) _history[id] = history;
         }
+        RecalculateHierarchy();
         Persist();
         return true;
     }
@@ -1819,7 +1908,7 @@ public class AccountingStore
     {
         if (_dbFactory is null) return;
         using var db = _dbFactory.CreateDbContext();
-        var json = JsonSerializer.Serialize(new StoredState(_accounts, _entries, _history, _templates, _recurringEntries, _journalEvents, _intercompanyAllocations, _companies, _customers, _products, _vendors, _purchaseOrders, _grns, _fixedAssets, _taxAuthorities, _taxCodes, _taxRates, _warehouses, _stockLevels, _stockTransactions, _salesInvoices, _estimates, _boms, _workOrders));
+        var json = JsonSerializer.Serialize(new StoredState(_accounts, _entries, _history, _templates, _recurringEntries, _journalEvents, _intercompanyAllocations, _companies, _customers, _products, _vendors, _purchaseOrders, _grns, _fixedAssets, _taxAuthorities, _taxCodes, _taxRates, _warehouses, _stockLevels, _stockTransactions, _salesInvoices, _estimates, _boms, _workOrders, _mappings));
         var snapshot = db.AccountingStateSnapshots.Find(1);
         if (snapshot is null) db.AccountingStateSnapshots.Add(new AccountingStateSnapshot { Id = 1, Json = json, UpdatedAt = DateTime.UtcNow });
         else { snapshot.Json = json; snapshot.UpdatedAt = DateTime.UtcNow; }
@@ -1839,5 +1928,136 @@ public class AccountingStore
             
         if (_accounts.Any(a => a.Id != editing && a.Code.Equals(code, StringComparison.OrdinalIgnoreCase))) 
             throw new InvalidOperationException($"Account code '{code}' already exists. Account codes must be unique.");
+
+        if (r.ParentId.HasValue)
+        {
+            if (editing.HasValue && r.ParentId.Value == editing.Value)
+                throw new InvalidOperationException("An account cannot be its own parent.");
+
+            if (editing.HasValue && CheckCircularReference(editing.Value, r.ParentId.Value))
+                throw new InvalidOperationException("Circular reference detected. An account cannot be a child of its own descendants.");
+
+            var parent = Find(r.ParentId.Value);
+            if (parent == null)
+                throw new InvalidOperationException("Selected parent account is invalid.");
+        }
+    }
+
+    private bool CheckCircularReference(Guid accountId, Guid? parentId)
+    {
+        var current = parentId;
+        while (current.HasValue)
+        {
+            if (current.Value == accountId) return true;
+            var parent = _accounts.FirstOrDefault(x => x.Id == current.Value);
+            current = parent?.ParentId;
+        }
+        return false;
+    }
+
+    public void RecalculateHierarchy()
+    {
+        lock (_lock)
+        {
+            foreach (var a in _accounts)
+            {
+                // 1. Determine Level
+                if (a.ParentId == null)
+                {
+                    a.Level = AccountLevel.MainHead;
+                }
+                else
+                {
+                    var parent = _accounts.FirstOrDefault(x => x.Id == a.ParentId);
+                    if (parent == null || parent.ParentId == null)
+                    {
+                        a.Level = AccountLevel.SubHead;
+                    }
+                    else
+                    {
+                        a.Level = AccountLevel.DetailAccount;
+                    }
+                }
+
+                // 2. Determine Normal Balance
+                a.NormalBalance = GetNormalBalance(a.Type);
+
+                // 3. Determine if it is a Posting Account (leaf node)
+                bool hasChildren = _accounts.Any(x => x.ParentId == a.Id);
+                a.IsPosting = !hasChildren;
+            }
+        }
+    }
+
+    private NormalBalanceType GetNormalBalance(AccountType type)
+    {
+        return type switch
+        {
+            AccountType.Asset or AccountType.Expense or AccountType.ContraLiability or AccountType.ContraEquity or AccountType.ContraRevenue => NormalBalanceType.Debit,
+            _ => NormalBalanceType.Credit
+        };
+    }
+
+    public Guid GetMappedAccount(string mappingKey)
+    {
+        lock (_lock)
+        {
+            var mapping = _mappings.FirstOrDefault(m => m.MappingKey.Equals(mappingKey, StringComparison.OrdinalIgnoreCase));
+            if (mapping != null)
+            {
+                var acc = _accounts.FirstOrDefault(a => a.Id == mapping.AccountId);
+                if (acc != null && acc.IsPosting && acc.Status == AccountStatus.Active)
+                {
+                    return acc.Id;
+                }
+            }
+
+            // Fallback default seeded codes if mapping not customized
+            var fallbackCode = mappingKey switch
+            {
+                "Customer Receivables" => "12000",
+                "Vendor Payables" => "21100",
+                "Sales" => "41100",
+                "Purchases" => "61100",
+                "Inventory" => "13000",
+                "Taxes" => "22000",
+                "Cost of Goods Sold" => "51000",
+                _ => null
+            };
+
+            if (fallbackCode != null)
+            {
+                var fallbackAcc = _accounts.FirstOrDefault(a => a.Code == fallbackCode);
+                if (fallbackAcc != null) return fallbackAcc.Id;
+            }
+
+            // Last resort fallback
+            return _accounts.FirstOrDefault(a => a.IsPosting && a.Status == AccountStatus.Active)?.Id ?? Guid.Empty;
+        }
+    }
+
+    public bool SetMapping(string mappingKey, Guid accountId, out string? error)
+    {
+        lock (_lock)
+        {
+            var acc = Find(accountId);
+            if (acc == null) { error = "Account not found."; return false; }
+            if (!acc.IsPosting) { error = "Only leaf/posting accounts can be mapped to operations."; return false; }
+            if (acc.Status == AccountStatus.Inactive) { error = "Cannot map to an inactive account."; return false; }
+
+            var existing = _mappings.FirstOrDefault(m => m.MappingKey.Equals(mappingKey, StringComparison.OrdinalIgnoreCase));
+            if (existing != null)
+            {
+                existing.AccountId = accountId;
+            }
+            else
+            {
+                _mappings.Add(new AccountMapping { MappingKey = mappingKey, AccountId = accountId });
+            }
+
+            Persist();
+            error = null;
+            return true;
+        }
     }
 }

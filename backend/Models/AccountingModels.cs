@@ -2,6 +2,8 @@ namespace Zenabook.Api.Models;
 
 public enum AccountType { Asset, Liability, Equity, Revenue, Expense, ContraAsset, ContraLiability, ContraEquity, ContraRevenue, ContraExpense }
 public enum AccountStatus { Active, Inactive }
+public enum AccountLevel { MainHead, SubHead, DetailAccount }
+public enum NormalBalanceType { Debit, Credit }
 
 public class Account
 {
@@ -18,10 +20,46 @@ public class Account
     public string? GaapTag { get; set; }
     public Dictionary<string, string> CustomFields { get; set; } = [];
     public bool IsSystem { get; set; } = false;
+    
+    // GAAP-compliant structural and rules properties
+    public string Subtype { get; set; } = "";
+    public AccountLevel Level { get; set; } = AccountLevel.DetailAccount;
+    public bool IsPosting { get; set; } = true;
+    public NormalBalanceType NormalBalance { get; set; } = NormalBalanceType.Debit;
+    public string Currency { get; set; } = "USD";
+    public string? TaxCategory { get; set; }
+    public bool AllowManualJournal { get; set; } = true;
+    public string? Description { get; set; }
+    
     public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
 }
 
-public record AccountRequest(string? Code, string Name, AccountType Type, Guid? ParentId, decimal OpeningBalance, DateOnly? OpeningBalanceDate, bool ReconciliationEnabled, string? IfrsTag, string? GaapTag, Dictionary<string,string>? CustomFields, bool IsSystem = false);
+public record AccountRequest(
+    string? Code, 
+    string Name, 
+    AccountType Type, 
+    Guid? ParentId, 
+    decimal OpeningBalance, 
+    DateOnly? OpeningBalanceDate, 
+    bool ReconciliationEnabled, 
+    string? IfrsTag, 
+    string? GaapTag, 
+    Dictionary<string,string>? CustomFields, 
+    bool IsSystem = false,
+    string? Subtype = null,
+    string? Currency = "USD",
+    string? TaxCategory = null,
+    bool AllowManualJournal = true,
+    string? Description = null
+);
+
+public class AccountMapping
+{
+    public required string MappingKey { get; set; }
+    public Guid AccountId { get; set; }
+}
+
+public record AccountMappingRequest(string MappingKey, Guid AccountId);
 public record StatusRequest(AccountStatus Status, string? Reason);
 public enum JournalStatus { Draft, Submitted, Approved, Posted, Reversed, Rejected }
 public enum TransactionType { Sales, Purchase, Payment, Receipt, Adjustment, Transfer, Payroll, Depreciation, Accrual, Prepayment, Tax, Loan, Inventory, WriteOff, InterCompany, Other }

@@ -56,4 +56,4 @@ public class SalesInvoicesController : ControllerBase
     }
 }
 
-public record PostInvoiceRequest(Guid ArAccountId, Guid RevenueAccountId, Guid? TaxLiabilityAccountId);
+public record PostInvoiceRequest(Guid? ArAccountId, Guid? RevenueAccountId, Guid? TaxLiabilityAccountId);

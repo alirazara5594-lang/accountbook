@@ -293,7 +293,26 @@ const SalesInvoicesTab: React.FC<{ activeEntityId: string }> = ({ activeEntityId
                 </td>
                 <td className="py-3 px-4 space-x-2">
                   {inv.status === 0 && (
-                    <button onClick={() => { setPostModal(inv); setPostForm({ arAccId:'', revenueAccId:'', taxLiabilityAccId:'' }); }}
+                    <button onClick={() => {
+                      const mappingsStr = localStorage.getItem('system_account_mappings');
+                      let mappings: any = {};
+                      if (mappingsStr) {
+                        try {
+                          mappings = JSON.parse(mappingsStr);
+                        } catch {}
+                      }
+                      
+                      const arAccount = accounts.find((a: any) => a.id === mappings.arAccountId || a.code === '12000');
+                      const revAccount = accounts.find((a: any) => a.id === mappings.revenueAccountId || a.code === '41100');
+                      const taxAccount = accounts.find((a: any) => a.id === mappings.taxAccountId || a.code === '22000');
+
+                      setPostModal(inv); 
+                      setPostForm({ 
+                        arAccId: arAccount?.id || '', 
+                        revenueAccId: revAccount?.id || '', 
+                        taxLiabilityAccId: taxAccount?.id || '' 
+                      }); 
+                    }}
                       className="text-blue-600 hover:text-blue-800 text-xs font-medium">Post Invoice</button>
                   )}
                   {(inv.status === 0 || inv.status === 1) && (

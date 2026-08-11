@@ -6,31 +6,8 @@ import { Button } from '@/components/ui/button';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { Printer, CheckCircle, AlertTriangle, Calendar } from 'lucide-react';
 
-type AccountType =
-  | 'Asset'
-  | 'Liability'
-  | 'Equity'
-  | 'Revenue'
-  | 'Expense'
-  | 'ContraAsset'
-  | 'ContraLiability'
-  | 'ContraEquity'
-  | 'ContraRevenue'
-  | 'ContraExpense';
-
-interface Account {
-  id: string;
-  code: string;
-  name: string;
-  type: AccountType;
-  parentId?: string;
-  status: 'Active' | 'Inactive';
-  openingBalance: number;
-  reconciliationEnabled: boolean;
-  ifrsTag?: string;
-  gaapTag?: string;
-  updatedAt: string;
-}
+import { type Account } from './api/modules/coa.api';
+type AccountType = string;
 
 interface JournalLine {
   accountId: string;
