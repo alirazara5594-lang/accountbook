@@ -1,6 +1,9 @@
 import { useEffect, useState, useMemo } from 'react'
 import type { FormEvent } from 'react'
 import './App.css'
+import { Login } from './Login'
+import type { UserData } from './Login'
+import { LogOut } from 'lucide-react'
 import Intercompany from './Intercompany'
 import EntitySettings from './EntitySettings'
 import CustomerManagement from './CustomerManagement'
@@ -29,12 +32,12 @@ import { CashFlowView } from './CashFlowView'
 import { useCoaStore, useJournalsStore, useCompanyStore, useIntercompanyStore } from './stores'
 
 type AccountType = 'Asset' | 'Liability' | 'Equity' | 'Revenue' | 'Expense' | 'ContraAsset' | 'ContraLiability' | 'ContraEquity' | 'ContraRevenue' | 'ContraExpense'
-type Account = { id: string; code: string; name: string; type: AccountType; parentId?: string; status: 'Active' | 'Inactive'; openingBalance: number; reconciliationEnabled: boolean; ifrsTag?: string; gaapTag?: string; updatedAt: string }
+type Account = { id: string; code: string; name: string; type: AccountType; parentId?: string; status: 'Active' | 'Inactive'; openingBalance: number; reconciliationEnabled: boolean; ifrsTag?: string; gaapTag?: string; isSystem: boolean; updatedAt: string }
 type Journal = { id: string; date: string; reference: string; description: string; lines: { accountId: string; debit: number; credit: number }[] }
 type Allocation = { id: string; name: string; sourceCompanyId: string; category: string; frequency: string; rate: number; quantity: number; status: string; recipients: { companyId: string; sharePercent: number }[] }
 
 const accountTypes: AccountType[] = ['Asset', 'Liability', 'Equity', 'Revenue', 'Expense', 'ContraAsset', 'ContraLiability', 'ContraEquity', 'ContraRevenue', 'ContraExpense']
-const blank = { code: '', name: '', type: 'Asset' as AccountType, parentId: '', openingBalance: '0', reconciliationEnabled: false, ifrsTag: '', gaapTag: '' }
+const blank = { code: '', name: '', type: 'Asset' as AccountType, parentId: '', openingBalance: '0', reconciliationEnabled: false, ifrsTag: '', gaapTag: '', isSystem: false }
 
 function money(value: number) { return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(value) }
 
@@ -85,6 +88,27 @@ export default function App() {
   const fetchCompanies = useCompanyStore((s) => s.fetchCompanies)
   const setActiveEntityId = useCompanyStore((s) => s.setActiveEntityId)
 
+  const [currentUser, setCurrentUser] = useState<UserData | null>(() => {
+    try {
+      const stored = localStorage.getItem('auth_user');
+      return stored ? JSON.parse(stored) : null;
+    } catch {
+      return null;
+    }
+  });
+
+  const handleLogin = (userData: UserData) => {
+    setCurrentUser(userData);
+    localStorage.setItem('auth_user', JSON.stringify(userData));
+    notify(`Logged in as ${userData.fullName}`);
+  };
+
+  const handleLogout = () => {
+    setCurrentUser(null);
+    localStorage.removeItem('auth_user');
+    notify('Logged out successfully');
+  };
+
   useEffect(() => {
     localStorage.setItem('last_active_page', page);
   }, [page]);
@@ -116,11 +140,11 @@ export default function App() {
   useEffect(() => { load() }, [])
   const stats = { bank: accounts.filter(a => a.reconciliationEnabled).reduce((sum, a) => sum + a.openingBalance, 0), active: accounts.filter(a => a.status === 'Active').length, entries: entries.length }
   const openCreate = async () => { setEditing(null); setForm(blank); setModal(true) }
-  const openEdit = (a: Account) => { setEditing(a); setForm({ code: a.code, name: a.name, type: a.type, parentId: a.parentId || '', openingBalance: String(a.openingBalance), reconciliationEnabled: a.reconciliationEnabled, ifrsTag: a.ifrsTag || '', gaapTag: a.gaapTag || '' }); setModal(true) }
+  const openEdit = (a: Account) => { setEditing(a); setForm({ code: a.code, name: a.name, type: a.type, parentId: a.parentId || '', openingBalance: String(a.openingBalance), reconciliationEnabled: a.reconciliationEnabled, ifrsTag: a.ifrsTag || '', gaapTag: a.gaapTag || '', isSystem: a.isSystem }); setModal(true) }
 
   const saveAccount = async (e: FormEvent) => {
     e.preventDefault();
-    const body = { ...form, parentId: form.parentId || null, openingBalance: Number(form.openingBalance), openingBalanceDate: Number(form.openingBalance) ? new Date().toISOString().slice(0, 10) : null, gaapTag: form.gaapTag || null, customFields: {} };
+    const body = { ...form, parentId: form.parentId || null, openingBalance: Number(form.openingBalance), openingBalanceDate: Number(form.openingBalance) ? new Date().toISOString().slice(0, 10) : null, gaapTag: form.gaapTag || null, customFields: {}, isSystem: form.isSystem };
     try {
       await saveAccountStore(body, editing ? editing.id : undefined);
       setModal(false);
@@ -201,6 +225,10 @@ export default function App() {
   const activeView = activeViewMap[page] || 'placeholder'
   const [group, module] = page.split('.')
 
+  if (!currentUser) {
+    return <Login onLogin={handleLogin} />;
+  }
+
   return <div className="app"><aside><div className="brand"><b>account</b><span>book</span></div><div className="company"><div className="avatar">AC</div><div><strong>{activeEntity?.name || 'Select entity'}</strong><small>Active accounting books</small></div></div>
   <nav>
     {NAVIGATION.map(group => {
@@ -226,7 +254,7 @@ export default function App() {
         </div>
       );
     })}
-  </nav><div className="bottom"><div className="user"><div className="avatar small">MA</div><div><strong>Muhammad Ali</strong><small>Finance admin</small></div></div></div></aside><main><header><div><p className="eyebrow">{group.toUpperCase()}</p><h1>{module}</h1></div><label className="entity-picker">Working in<select value={activeEntityId} onChange={e => setActiveEntityId(e.target.value)}>{entities.map(x => <option key={x.id} value={x.id}>{x.name}{x.code ? ` · ${x.code}` : ''}</option>)}</select></label>{activeView === 'journal' && <button className="primary" onClick={() => document.getElementById('journal-form')?.scrollIntoView({ behavior: 'smooth' })}>＋ New entry</button>}</header>
+  </nav><div className="bottom"><div className="user"><div className="avatar small">{currentUser?.avatar}</div><div style={{ flex: 1, minWidth: 0 }}><strong style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{currentUser?.fullName}</strong><small style={{ display: 'block', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{currentUser?.role}</small></div><button onClick={handleLogout} title="Sign Out" style={{ background: 'transparent', border: 'none', color: '#aebed0', cursor: 'pointer', padding: '6px', display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'color 0.2s ease', flexShrink: 0 }} onMouseEnter={(e) => (e.currentTarget.style.color = '#fca5a5')} onMouseLeave={(e) => (e.currentTarget.style.color = '#aebed0')}><LogOut size={16} /></button></div></div></aside><main><header><div><p className="eyebrow">{group.toUpperCase()}</p><h1>{module}</h1></div><label className="entity-picker">Working in<select value={activeEntityId} onChange={e => setActiveEntityId(e.target.value)}>{entities.map(x => <option key={x.id} value={x.id}>{x.name}{x.code ? ` · ${x.code}` : ''}</option>)}</select></label>{activeView === 'journal' && <button className="primary" onClick={() => document.getElementById('journal-form')?.scrollIntoView({ behavior: 'smooth' })}>＋ New entry</button>}</header>
   {activeView === 'dashboard' && <Dashboard stats={stats} entries={entries} accounts={accounts} setPage={setPage} />}
   {activeView === 'module-summary' && <ModuleSummary moduleName={group} accounts={accounts} entries={entries} setPage={setPage} openCreateAccount={openCreate} />}
   {activeView === 'customers' && <CustomerManagement entities={entities as any} activeEntityId={activeEntityId} notify={notify} />}
@@ -428,5 +456,5 @@ function AccountModal({ form, setForm, accounts, editing, close, save }: { form:
   const activeSubtypes = subtypesMap[form.type] || [];
   const isCodeValid = /^\d{5}$/.test(form.code);
 
-  return <div className="overlay"><form className="modal" onSubmit={save}><div className="modal-head"><div><p className="eyebrow">CHART OF ACCOUNTS</p><h2>{editing ? 'Edit Account' : 'Create 5-Digit Account'}</h2></div><button type="button" className="close" onClick={close}>×</button></div><div className="form-grid"><label>1. 5-Digit Account Code<input required value={form.code} onChange={e => field('code', e.target.value.replace(/\D/g, '').slice(0, 5))} placeholder="e.g. 11101" className={!isCodeValid && form.code ? 'border-red-500 font-mono font-bold' : 'font-mono font-bold'} /></label><label>2. Account Name<input required value={form.name} onChange={e => handleNameChange(e.target.value)} placeholder="e.g. HBL Current Account" /></label><label>3. Major Type<select value={form.type} onChange={e => handleTypeChange(e.target.value)}>{accountTypes.map(x => <option key={x}>{x}</option>)}</select></label><label>4. Sub-Type<select value={subtype} onChange={e => handleSubtypeChange(e.target.value)}>{activeSubtypes.map(x => <option key={x} value={x}>{x}</option>)}</select></label><label>5. Parent Account (Financial Reporting Line)<select value={form.parentId} onChange={e => { field('parentId', e.target.value); if (!editing) fetchNextCode(form.type, e.target.value); }}><option value="">No Parent (Top-Level Group Line)</option>{filteredParents.map(a => <option value={a.id} key={a.id}>{a.code} — {a.name}</option>)}</select></label><label>Opening Balance ($)<input type="number" step="0.01" value={form.openingBalance} onChange={e => field('openingBalance', e.target.value)} /></label><label>IFRS Tag<input value={form.ifrsTag} onChange={e => field('ifrsTag', e.target.value)} placeholder="e.g. Cash & Cash Equivalents" /></label><label>GAAP Tag<input value={form.gaapTag} onChange={e => field('gaapTag', e.target.value)} placeholder="e.g. Current Asset" /></label></div><label className="check"><input type="checkbox" checked={form.reconciliationEnabled} onChange={e => field('reconciliationEnabled', e.target.checked)} /> Enable Bank & Ledger Account Reconciliation</label><div className="modal-footer"><button type="button" className="secondary" onClick={close}>Cancel</button><button className="primary" disabled={!isCodeValid || !form.name.trim()}>{editing ? 'Save Changes' : 'Create Account'}</button></div></form></div>
+  return <div className="overlay"><form className="modal" onSubmit={save}><div className="modal-head"><div><p className="eyebrow">CHART OF ACCOUNTS</p><h2>{editing ? 'Edit Account' : 'Create 5-Digit Account'}</h2></div><button type="button" className="close" onClick={close}>×</button></div><div className="form-grid">{editing?.isSystem && <div style={{ background: '#fffbeb', color: '#b45309', border: '1px solid #fef3c7', padding: '10px 14px', borderRadius: 8, fontSize: 12, marginBottom: 8, gridColumn: 'span 2', display: 'flex', alignItems: 'center', gap: 8 }}><span>🔒</span><strong>Protected System Account:</strong> Critical settings (Code, Type, Sub-type, Parent) are locked for operational integrity.</div>}<label>1. 5-Digit Account Code<input required disabled={editing?.isSystem} value={form.code} onChange={e => field('code', e.target.value.replace(/\D/g, '').slice(0, 5))} placeholder="e.g. 11101" className={!isCodeValid && form.code ? 'border-red-500 font-mono font-bold' : 'font-mono font-bold'} /></label><label>2. Account Name<input required value={form.name} onChange={e => handleNameChange(e.target.value)} placeholder="e.g. HBL Current Account" /></label><label>3. Major Type<select disabled={editing?.isSystem} value={form.type} onChange={e => handleTypeChange(e.target.value)}>{accountTypes.map(x => <option key={x}>{x}</option>)}</select></label><label>4. Sub-Type<select disabled={editing?.isSystem} value={subtype} onChange={e => handleSubtypeChange(e.target.value)}>{activeSubtypes.map(x => <option key={x} value={x}>{x}</option>)}</select></label><label>5. Parent Account (Financial Reporting Line)<select disabled={editing?.isSystem} value={form.parentId} onChange={e => { field('parentId', e.target.value); if (!editing) fetchNextCode(form.type, e.target.value); }}><option value="">No Parent (Top-Level Group Line)</option>{filteredParents.map(a => <option value={a.id} key={a.id}>{a.code} — {a.name}</option>)}</select></label><label>Opening Balance ($)<input type="number" step="0.01" value={form.openingBalance} onChange={e => field('openingBalance', e.target.value)} /></label><label>IFRS Tag<input value={form.ifrsTag} onChange={e => field('ifrsTag', e.target.value)} placeholder="e.g. Cash & Cash Equivalents" /></label><label>GAAP Tag<input value={form.gaapTag} onChange={e => field('gaapTag', e.target.value)} placeholder="e.g. Current Asset" /></label></div><label className="check"><input type="checkbox" checked={form.reconciliationEnabled} onChange={e => field('reconciliationEnabled', e.target.checked)} /> Enable Bank & Ledger Account Reconciliation</label><div className="modal-footer"><button type="button" className="secondary" onClick={close}>Cancel</button><button className="primary" disabled={!isCodeValid || !form.name.trim()}>{editing ? 'Save Changes' : 'Create Account'}</button></div></form></div>
 }

@@ -142,15 +142,53 @@ public class AccountingStore
         Persist();
     }
 
-    private Account Seed(string code, string name, AccountType type, Guid? parent, bool reconciliation = false, decimal opening = 0)
+    private Account Seed(string code, string name, AccountType type, Guid? parent, bool reconciliation = false, decimal opening = 0, bool isSystem = true)
     {
-        var a = new Account { Code = code, Name = name, Type = type, ParentId = parent, ReconciliationEnabled = reconciliation, OpeningBalance = opening, OpeningBalanceDate = opening != 0 ? DateOnly.FromDateTime(DateTime.Today) : null };
+        var a = new Account { Code = code, Name = name, Type = type, ParentId = parent, ReconciliationEnabled = reconciliation, OpeningBalance = opening, OpeningBalanceDate = opening != 0 ? DateOnly.FromDateTime(DateTime.Today) : null, IsSystem = isSystem };
         _accounts.Add(a); _history[a.Id] = [new(DateTime.UtcNow, "Created", "Starter account")]; return a;
     }
 
     private void SeedAccounts()
     {
         _accounts.Clear();
+        // 1. Assets
+        var assets = Seed("10000", "Assets", AccountType.Asset, null);
+        var currentAssets = Seed("11000", "Current Assets", AccountType.Asset, assets.Id);
+        var cashBank = Seed("11100", "Cash & Bank", AccountType.Asset, currentAssets.Id, true);
+        Seed("11110", "Main Bank Account", AccountType.Asset, cashBank.Id, true, 0m);
+        Seed("12000", "Accounts Receivable", AccountType.Asset, currentAssets.Id, true);
+        Seed("13000", "Inventory Asset", AccountType.Asset, currentAssets.Id, true);
+        
+        var nonCurrentAssets = Seed("15000", "Non-Current Assets", AccountType.Asset, assets.Id);
+        Seed("15100", "Fixed Assets", AccountType.Asset, nonCurrentAssets.Id, true);
+        Seed("15200", "Accumulated Depreciation", AccountType.ContraAsset, nonCurrentAssets.Id, true);
+
+        // 2. Liabilities
+        var liabilities = Seed("20000", "Liabilities", AccountType.Liability, null);
+        var currentLiabilities = Seed("21000", "Current Liabilities", AccountType.Liability, liabilities.Id);
+        Seed("21100", "Accounts Payable", AccountType.Liability, currentLiabilities.Id, true);
+        Seed("21200", "GRNI Accrual", AccountType.Liability, currentLiabilities.Id, true);
+        Seed("22000", "Tax Payable", AccountType.Liability, currentLiabilities.Id, true);
+
+        // 3. Equity
+        var equity = Seed("30000", "Equity", AccountType.Equity, null);
+        Seed("31000", "Share Capital", AccountType.Equity, equity.Id);
+        Seed("32000", "Retained Earnings", AccountType.Equity, equity.Id);
+
+        // 4. Revenue
+        var revenue = Seed("40000", "Revenue", AccountType.Revenue, null);
+        var operatingRevenue = Seed("41000", "Operating Revenue", AccountType.Revenue, revenue.Id);
+        Seed("41100", "Sales Revenue", AccountType.Revenue, operatingRevenue.Id, true);
+        Seed("42000", "Non-Operating Revenue", AccountType.Revenue, revenue.Id);
+
+        // 5. Cost of Goods Sold
+        var cogs = Seed("50000", "Cost of Goods Sold", AccountType.Expense, null);
+        Seed("51000", "Cost of Sales", AccountType.Expense, cogs.Id);
+
+        // 6. Expenses
+        var expenses = Seed("60000", "Expenses", AccountType.Expense, null);
+        var operatingExpenses = Seed("61000", "Operating Expenses", AccountType.Expense, expenses.Id);
+        Seed("61100", "Office Expenses", AccountType.Expense, operatingExpenses.Id, true);
     }
 
     public IReadOnlyList<Account> Accounts => _accounts;
@@ -531,8 +569,8 @@ public class AccountingStore
             bill.VendorInvoiceNumber = updated.VendorInvoiceNumber ?? bill.VendorInvoiceNumber;
             bill.VendorId = updated.VendorId != Guid.Empty ? updated.VendorId : bill.VendorId;
             bill.PurchaseOrderId = updated.PurchaseOrderId ?? bill.PurchaseOrderId;
-            bill.Date = updated.Date ?? bill.Date;
-            bill.DueDate = updated.DueDate ?? bill.DueDate;
+            bill.Date = updated.Date != default ? updated.Date : bill.Date;
+            bill.DueDate = updated.DueDate != default ? updated.DueDate : bill.DueDate;
             bill.PaymentTermsDays = updated.PaymentTermsDays > 0 ? updated.PaymentTermsDays : bill.PaymentTermsDays;
             bill.CurrencyCode = updated.CurrencyCode ?? bill.CurrencyCode;
             bill.Notes = updated.Notes ?? bill.Notes;
@@ -961,6 +999,9 @@ public class AccountingStore
                 DueDate = request.DueDate,
                 CompanyId = request.CompanyId,
                 HasVarianceWarning = request.HasVarianceWarning,
+                PaymentTermsDays = request.PaymentTermsDays,
+                CurrencyCode = request.CurrencyCode,
+                Notes = request.Notes,
                 Lines = request.Lines.Select(l => new VendorBillLine
                 {
                     ProductId = l.ProductId,
@@ -1593,7 +1634,8 @@ public class AccountingStore
                 ReconciliationEnabled = r.ReconciliationEnabled,
                 IfrsTag = r.IfrsTag,
                 GaapTag = r.GaapTag,
-                CustomFields = r.CustomFields ?? []
+                CustomFields = r.CustomFields ?? [],
+                IsSystem = r.IsSystem
             };
             _accounts.Add(account);
             _history[account.Id] = [new(DateTime.UtcNow, "Created", "Account created")];
@@ -1608,6 +1650,11 @@ public class AccountingStore
         {
             var a = Find(id);
             if (a is null) { error = "Account not found."; return false; }
+            if (a.IsSystem && (a.Code != r.Code?.Trim() || a.Type != r.Type))
+            {
+                error = "Critical system account attributes (Code, Type) cannot be modified.";
+                return false;
+            }
             try
             {
                 Validate(r, id);
@@ -1627,6 +1674,7 @@ public class AccountingStore
             a.IfrsTag = r.IfrsTag;
             a.GaapTag = r.GaapTag;
             a.CustomFields = r.CustomFields ?? [];
+            a.IsSystem = r.IsSystem;
             a.UpdatedAt = DateTime.UtcNow;
             _history[id].Add(new(DateTime.UtcNow, "Updated", "Account details changed"));
             Persist();
@@ -1635,9 +1683,55 @@ public class AccountingStore
         }
     }
 
-    public bool SetStatus(Guid id, StatusRequest status, out string? error) { var a = Find(id); if (a is null) { error = "Account not found."; return false; } a.Status = status.Status; a.UpdatedAt = DateTime.UtcNow; _history[id].Add(new(DateTime.UtcNow, status.Status.ToString(), status.Reason ?? "Status changed")); Persist(); error = null; return true; }
-    public bool Delete(Guid id, out string? error) { var a = Find(id); if (a is null) { error = "Account not found."; return false; } if (_accounts.Any(x => x.ParentId == id) || _entries.Any(e => e.Lines.Any(l => l.AccountId == id))) { error = "Accounts with children or transactions cannot be deleted. Deactivate instead."; return false; } _accounts.Remove(a); _history.Remove(id); Persist(); error = null; return true; }
-    public bool ClearAllAccounts(out string? error) { error = null; lock (_lock) { _accounts.Clear(); _history.Clear(); Persist(); return true; } }
+    public bool SetStatus(Guid id, StatusRequest status, out string? error)
+    {
+        var a = Find(id);
+        if (a is null) { error = "Account not found."; return false; }
+        if (a.IsSystem && status.Status == AccountStatus.Inactive)
+        {
+            error = "System accounts are protected and cannot be deactivated.";
+            return false;
+        }
+        a.Status = status.Status;
+        a.UpdatedAt = DateTime.UtcNow;
+        _history[id].Add(new(DateTime.UtcNow, status.Status.ToString(), status.Reason ?? "Status changed"));
+        Persist();
+        error = null;
+        return true;
+    }
+
+    public bool Delete(Guid id, out string? error)
+    {
+        var a = Find(id);
+        if (a is null) { error = "Account not found."; return false; }
+        if (a.IsSystem)
+        {
+            error = "System accounts are protected and cannot be deleted.";
+            return false;
+        }
+        if (_accounts.Any(x => x.ParentId == id) || _entries.Any(e => e.Lines.Any(l => l.AccountId == id)))
+        {
+            error = "Accounts with children or transactions cannot be deleted. Deactivate instead.";
+            return false;
+        }
+        _accounts.Remove(a);
+        _history.Remove(id);
+        Persist();
+        error = null;
+        return true;
+    }
+
+    public bool ClearAllAccounts(out string? error)
+    {
+        error = null;
+        lock (_lock)
+        {
+            _accounts.Clear();
+            _history.Clear();
+            Persist();
+            return true;
+        }
+    }
     
     public bool CreateJournal(JournalEntryRequest request, out JournalEntry? entry, out string? error) { entry = null; error = null; if (!ValidateJournal(request, out error)) return false; lock (_lock) { entry = new JournalEntry { Date = request.Date, Reference = request.Reference, Description = request.Description, Lines = request.Lines.Select(l => new JournalLine(l.AccountId, l.Debit, l.Credit, l.Memo, l.Comment, l.CurrencyCode, l.ExchangeRate, l.CompanyId)).ToList(), TransactionType = request.TransactionType, CurrencyCode = request.CurrencyCode, ExchangeRate = request.ExchangeRate, CompanyId = request.CompanyId, CounterpartyCompanyId = request.CounterpartyCompanyId, ReversalDate = request.ReversalDate, AutoReverse = request.AutoReverse }; _entries.Add(entry); AddEvent(entry, "on_create", "system", "Journal entry created as draft"); Persist(); return true; } }
     public bool Transition(Guid id, JournalStatus target, TransitionRequest request, out JournalEntry? entry, out string? error) { lock (_lock) { entry = FindEntry(id); error = null; if (entry is null) { error = "Journal entry not found."; return false; } entry.Status = target; entry.Version++; AddEvent(entry, "on_status_change", "system", request.Note ?? $"Journal entry {target.ToString().ToLowerInvariant()}"); Persist(); return true; } }
@@ -1691,11 +1785,11 @@ public class AccountingStore
             state.Accounts.AddRange(_accounts);
         }
 
-        _accounts.Clear(); _accounts.AddRange(state.Accounts);
-        _entries.Clear(); _entries.AddRange(state.Entries);
-        _templates.Clear(); _templates.AddRange(state.Templates);
-        _recurringEntries.Clear(); _recurringEntries.AddRange(state.RecurringEntries);
-        _journalEvents.Clear(); _journalEvents.AddRange(state.Events);
+        _accounts.Clear(); _accounts.AddRange(state.Accounts ?? []);
+        _entries.Clear(); _entries.AddRange(state.Entries ?? []);
+        _templates.Clear(); _templates.AddRange(state.Templates ?? []);
+        _recurringEntries.Clear(); _recurringEntries.AddRange(state.RecurringEntries ?? []);
+        _journalEvents.Clear(); _journalEvents.AddRange(state.Events ?? []);
         _intercompanyAllocations.Clear(); _intercompanyAllocations.AddRange(state.IntercompanyAllocations ?? []);
         _companies.Clear(); _companies.AddRange(state.Companies ?? [new Company { Name = "Acme Holdings", Code = "ACME", Type = EntityType.Parent }, new Company { Name = "Acme Services", Code = "ASV" }, new Company { Name = "Acme Trading", Code = "ATD" }]);
         _customers.Clear(); _customers.AddRange(state.Customers ?? []);
@@ -1714,7 +1808,10 @@ public class AccountingStore
         _estimates.Clear(); _estimates.AddRange(state.Estimates ?? []);
         _boms.Clear(); _boms.AddRange(state.Boms ?? []);
         _workOrders.Clear(); _workOrders.AddRange(state.WorkOrders ?? []);
-        foreach (var (id, history) in state.History) _history[id] = history;
+        if (state.History != null)
+        {
+            foreach (var (id, history) in state.History) _history[id] = history;
+        }
         Persist();
         return true;
     }

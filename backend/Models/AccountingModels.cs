@@ -17,10 +17,11 @@ public class Account
     public string? IfrsTag { get; set; }
     public string? GaapTag { get; set; }
     public Dictionary<string, string> CustomFields { get; set; } = [];
+    public bool IsSystem { get; set; } = false;
     public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
 }
 
-public record AccountRequest(string? Code, string Name, AccountType Type, Guid? ParentId, decimal OpeningBalance, DateOnly? OpeningBalanceDate, bool ReconciliationEnabled, string? IfrsTag, string? GaapTag, Dictionary<string,string>? CustomFields);
+public record AccountRequest(string? Code, string Name, AccountType Type, Guid? ParentId, decimal OpeningBalance, DateOnly? OpeningBalanceDate, bool ReconciliationEnabled, string? IfrsTag, string? GaapTag, Dictionary<string,string>? CustomFields, bool IsSystem = false);
 public record StatusRequest(AccountStatus Status, string? Reason);
 public enum JournalStatus { Draft, Submitted, Approved, Posted, Reversed, Rejected }
 public enum TransactionType { Sales, Purchase, Payment, Receipt, Adjustment, Transfer, Payroll, Depreciation, Accrual, Prepayment, Tax, Loan, Inventory, WriteOff, InterCompany, Other }
@@ -359,10 +360,27 @@ public class VendorBill
     public Guid CompanyId { get; set; }
     public DateTime CreatedAt { get; init; } = DateTime.UtcNow;
     public bool HasVarianceWarning { get; set; } = false;
+    public int PaymentTermsDays { get; set; } = 30;
+    public string CurrencyCode { get; set; } = "USD";
+    public string? Notes { get; set; }
 }
 
 public record VendorBillLineRequest(Guid ProductId, string Description, decimal Quantity, decimal UnitPrice, Guid? TaxCodeId, decimal TaxAmount, LineDestination Destination);
-public record VendorBillRequest(string BillNumber, string VendorInvoiceNumber, Guid VendorId, Guid? PurchaseOrderId, Guid? GoodsReceiptNoteId, DateOnly Date, DateOnly DueDate, List<VendorBillLineRequest> Lines, Guid CompanyId, bool HasVarianceWarning);
+public record VendorBillRequest(
+    string BillNumber,
+    string VendorInvoiceNumber,
+    Guid VendorId,
+    Guid? PurchaseOrderId,
+    Guid? GoodsReceiptNoteId,
+    DateOnly Date,
+    DateOnly DueDate,
+    List<VendorBillLineRequest> Lines,
+    Guid CompanyId,
+    bool HasVarianceWarning,
+    int PaymentTermsDays = 30,
+    string CurrencyCode = "USD",
+    string? Notes = null
+);
 
 public enum PurchaseOrderStatus { Draft, Issued, PartiallyReceived, Fulfilled, Canceled }
 

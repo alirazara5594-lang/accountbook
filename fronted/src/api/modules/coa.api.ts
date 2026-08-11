@@ -11,6 +11,7 @@ export interface Account {
   reconciliationEnabled: boolean;
   ifrsTag?: string;
   gaapTag?: string;
+  isSystem: boolean;
   updatedAt?: string;
 }
 

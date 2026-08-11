@@ -3,7 +3,7 @@ import { useCoaStore } from './stores';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Search, Edit3, Download, Upload, Plus, Trash2 } from 'lucide-react';
+import { Search, Edit3, Download, Upload, Plus, Trash2, ChevronDown, ChevronRight, Lock } from 'lucide-react';
 
 type AccountType =
   | 'Asset'
@@ -28,6 +28,7 @@ interface Account {
   reconciliationEnabled: boolean;
   ifrsTag?: string;
   gaapTag?: string;
+  isSystem: boolean;
   updatedAt: string;
 }
 
@@ -56,6 +57,7 @@ export const ChartOfAccounts: React.FC<ChartOfAccountsProps> = ({
   const [query, setQuery] = useState('');
   const [selectedType, setSelectedType] = useState<string>('All');
   const [showDeactivated, setShowDeactivated] = useState<boolean>(true);
+  const [collapsedIds, setCollapsedIds] = useState<Record<string, boolean>>({});
   const fileInputRef = useRef<HTMLInputElement | null>(null);
 
   const getSubtype = (code: string, type: string) => {
@@ -78,7 +80,19 @@ export const ChartOfAccounts: React.FC<ChartOfAccountsProps> = ({
     return 'Operating Expense';
   };
 
-  // Filter accounts based on query, selected major type, and showDeactivated toggle
+  // Helper to calculate roll-up balances recursively
+  const getRollupBalance = (account: Account): number => {
+    let sum = account.openingBalance;
+    const children = accounts.filter(a => a.parentId === account.id);
+    for (const child of children) {
+      sum += getRollupBalance(child);
+    }
+    return sum;
+  };
+
+  const isFiltering = !!query.trim() || selectedType !== 'All';
+
+  // Process list in case filtering is active (flat view)
   const filteredAccounts = useMemo(() => {
     return accounts.filter(a => {
       // Deactivated filter
@@ -100,47 +114,69 @@ export const ChartOfAccounts: React.FC<ChartOfAccountsProps> = ({
       }
 
       return true;
-    });
+    }).sort((a, b) => a.code.localeCompare(b.code));
   }, [accounts, query, selectedType, showDeactivated]);
 
-  // Group accounts by Major Category for section header banners (Assets, Liabilities, Equity, Revenue, Expense)
-  const groupedCategories = useMemo(() => {
-    const categories: { name: string; typeKey: string; items: Account[] }[] = [
-      { name: 'Assets', typeKey: 'Asset', items: [] },
-      { name: 'Liabilities', typeKey: 'Liability', items: [] },
-      { name: 'Equity', typeKey: 'Equity', items: [] },
-      { name: 'Revenue', typeKey: 'Revenue', items: [] },
-      { name: 'Expenses', typeKey: 'Expense', items: [] }
+  // Construct tree structures per category when NOT filtering
+  const treeCategories = useMemo(() => {
+    if (isFiltering) return [];
+
+    const categories = [
+      { name: 'Assets', typeKeys: ['Asset', 'ContraAsset'] },
+      { name: 'Liabilities', typeKeys: ['Liability', 'ContraLiability'] },
+      { name: 'Equity', typeKeys: ['Equity', 'ContraEquity'] },
+      { name: 'Revenue', typeKeys: ['Revenue', 'ContraRevenue'] },
+      { name: 'Expenses', typeKeys: ['Expense', 'ContraExpense'] }
     ];
 
-    filteredAccounts.forEach(acc => {
-      if (acc.type === 'Asset' || acc.type === 'ContraAsset') {
-        categories[0].items.push(acc);
-      } else if (acc.type === 'Liability' || acc.type === 'ContraLiability') {
-        categories[1].items.push(acc);
-      } else if (acc.type === 'Equity' || acc.type === 'ContraEquity') {
-        categories[2].items.push(acc);
-      } else if (acc.type === 'Revenue' || acc.type === 'ContraRevenue') {
-        categories[3].items.push(acc);
-      } else {
-        categories[4].items.push(acc);
-      }
-    });
+    return categories.map(cat => {
+      // Filter top level accounts for this category
+      const topLevel = accounts.filter(a => 
+        cat.typeKeys.includes(a.type) && 
+        (!a.parentId || !accounts.some(parent => parent.id === a.parentId)) &&
+        (showDeactivated || a.status === 'Active')
+      ).sort((a, b) => a.code.localeCompare(b.code));
 
-    return categories.filter(c => c.items.length > 0 || (selectedType === 'All' && !query));
-  }, [filteredAccounts, selectedType, query]);
+      // Flatten tree helper in preorder traversal
+      const flattened: { account: Account; depth: number; hasChildren: boolean }[] = [];
+      const traverse = (nodeList: Account[], depth: number) => {
+        for (const node of nodeList) {
+          const children = accounts.filter(a => a.parentId === node.id && (showDeactivated || a.status === 'Active'));
+          flattened.push({
+            account: node,
+            depth,
+            hasChildren: children.length > 0
+          });
+
+          if (!collapsedIds[node.id]) {
+            const sortedChildren = [...children].sort((a, b) => a.code.localeCompare(b.code));
+            traverse(sortedChildren, depth + 1);
+          }
+        }
+      };
+
+      traverse(topLevel, 0);
+
+      return {
+        name: cat.name,
+        items: flattened
+      };
+    }).filter(c => c.items.length > 0);
+  }, [accounts, collapsedIds, showDeactivated, isFiltering]);
 
   // CSV Export Handler
   const handleExportCSV = () => {
-    const headers = ['ACCOUNT NUMBER', 'ACCOUNT NAME', 'TYPE', 'SUB TYPE', 'CURRENCY', 'BALANCE', 'STATUS'];
-    const rows = filteredAccounts.map(a => [
+    const listToExport = isFiltering ? filteredAccounts : accounts;
+    const headers = ['ACCOUNT NUMBER', 'ACCOUNT NAME', 'TYPE', 'SUB TYPE', 'CURRENCY', 'BALANCE', 'STATUS', 'SYSTEM_PROTECTED'];
+    const rows = listToExport.map(a => [
       `"${a.code}"`,
       `"${a.name}"`,
       `"${a.type}"`,
       `"${getSubtype(a.code, a.type)}"`,
       '"USD"',
       a.openingBalance,
-      `"${a.status}"`
+      `"${a.status}"`,
+      a.isSystem ? '"YES"' : '"NO"'
     ]);
 
     const csvContent = 'data:text/csv;charset=utf-8,' + [headers.join(','), ...rows.map(r => r.join(','))].join('\n');
@@ -178,6 +214,7 @@ export const ChartOfAccounts: React.FC<ChartOfAccountsProps> = ({
           const name = parts[1];
           const type = (parts[2] || 'Asset') as AccountType;
           const openingBalance = parseFloat(parts[5]) || 0;
+          const isSystem = parts[7] === 'YES';
 
           try {
             await useCoaStore.getState().saveAccount({
@@ -186,7 +223,8 @@ export const ChartOfAccounts: React.FC<ChartOfAccountsProps> = ({
               type,
               openingBalance,
               parentId: null,
-              reconciliationEnabled: false
+              reconciliationEnabled: false,
+              isSystem
             });
             createdCount++;
           } catch (err) {
@@ -202,7 +240,7 @@ export const ChartOfAccounts: React.FC<ChartOfAccountsProps> = ({
   };
 
   const handleClearAll = async () => {
-    if (window.confirm('Are you sure you want to clear all accounts? You will be able to manually add your accounts one by one.')) {
+    if (window.confirm('Warning: Clearing all accounts will reset the system state. Only non-system accounts should normally be cleaned. Do you want to proceed?')) {
       try {
         await useCoaStore.getState().clearAllAccounts();
         if (reloadAccounts) reloadAccounts();
@@ -210,6 +248,117 @@ export const ChartOfAccounts: React.FC<ChartOfAccountsProps> = ({
         alert('Could not clear accounts.');
       }
     }
+  };
+
+  const toggleCollapse = (id: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    setCollapsedIds(prev => ({ ...prev, [id]: !prev[id] }));
+  };
+
+  const renderRow = (acc: Account, depth = 0, hasChildren = false) => {
+    const isDeactivated = acc.status === 'Inactive';
+    const subType = getSubtype(acc.code, acc.type);
+    const parentAccount = accounts.find(x => x.id === acc.parentId);
+    const accountGroup = parentAccount ? `${parentAccount.code} ${parentAccount.name}` : '— Top-Level Group —';
+    const balance = isFiltering ? acc.openingBalance : getRollupBalance(acc);
+
+    return (
+      <TableRow
+        key={acc.id}
+        className={`hover:bg-slate-50/80 transition-colors ${isDeactivated ? 'bg-slate-50/30' : ''}`}
+      >
+        {/* Account Number */}
+        <TableCell className="py-3 pl-4 font-mono text-xs font-medium text-slate-600">
+          <div style={{ display: 'flex', alignItems: 'center', paddingLeft: depth * 20 }}>
+            {hasChildren && !isFiltering ? (
+              <button 
+                onClick={(e) => toggleCollapse(acc.id, e)} 
+                className="p-0.5 mr-1 hover:bg-slate-200 rounded text-slate-500 cursor-pointer"
+              >
+                {collapsedIds[acc.id] ? <ChevronRight size={14} /> : <ChevronDown size={14} />}
+              </button>
+            ) : (
+              !isFiltering && <span style={{ width: 20, display: 'inline-block' }} />
+            )}
+            <span>{acc.code}</span>
+          </div>
+        </TableCell>
+
+        {/* Account Name */}
+        <TableCell className="py-3 font-semibold text-xs text-slate-700">
+          <div className="flex items-center gap-1.5">
+            <span>{acc.name}</span>
+            {acc.isSystem && (
+              <span className="inline-flex items-center" title="Protected System Account">
+                <Lock className="w-3 h-3 text-amber-500" />
+              </span>
+            )}
+          </div>
+        </TableCell>
+
+        {/* Sub Type */}
+        <TableCell className="py-3 text-xs text-slate-500">
+          {subType}
+        </TableCell>
+
+        {/* Account Group */}
+        <TableCell className="py-3 text-xs text-slate-600 font-medium">
+          {accountGroup}
+        </TableCell>
+
+        {/* Currency */}
+        <TableCell className="py-3 text-xs font-mono text-slate-500">
+          USD
+        </TableCell>
+
+        {/* Balance */}
+        <TableCell className="py-3 text-right font-mono text-xs font-medium text-slate-700">
+          {formatCurrency(balance, 'USD')}
+          {hasChildren && !isFiltering && (
+            <span style={{ fontSize: 9, display: 'block', color: '#94a3b8' }}>(rollup)</span>
+          )}
+        </TableCell>
+
+        {/* Status matching soft pill badges */}
+        <TableCell className="py-3">
+          {isDeactivated ? (
+            <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-medium bg-rose-100/80 text-rose-700 border border-rose-200/60">
+              Deactivated
+            </span>
+          ) : (
+            <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-medium bg-emerald-100/80 text-emerald-800 border border-emerald-200/60">
+              Active
+            </span>
+          )}
+        </TableCell>
+
+        {/* Row Actions */}
+        <TableCell className="py-3 text-right pr-4">
+          <div className="flex items-center justify-end gap-1.5">
+            <button
+              onClick={() => edit(acc)}
+              className="p-1 text-slate-400 hover:text-slate-700 rounded-md hover:bg-slate-100 transition-colors"
+              title={acc.isSystem ? "Edit (Critical fields locked)" : "Edit Account"}
+            >
+              <Edit3 className="w-3.5 h-3.5" />
+            </button>
+            
+            {acc.isSystem ? (
+              <span className="text-[10px] font-semibold text-amber-600 px-2 py-0.5 bg-amber-50 rounded border border-amber-200/40 select-none">
+                System Lock
+              </span>
+            ) : (
+              <button
+                onClick={() => status(acc)}
+                className="text-[11px] font-medium text-slate-500 hover:text-slate-800 px-2 py-0.5 rounded-md hover:bg-slate-100 transition-colors"
+              >
+                {isDeactivated ? 'Activate' : 'Deactivate'}
+              </button>
+            )}
+          </div>
+        </TableCell>
+      </TableRow>
+    );
   };
 
   return (
@@ -303,12 +452,12 @@ export const ChartOfAccounts: React.FC<ChartOfAccountsProps> = ({
         </div>
       </div>
 
-      {/* Main Accounts Table Layout matching picture */}
+      {/* Main Accounts Table Layout */}
       <div className="bg-white border border-slate-200 rounded-xl overflow-hidden shadow-xs">
         <Table>
           <TableHeader className="bg-slate-50/80 border-b border-slate-200">
             <TableRow className="hover:bg-transparent">
-              <TableHead className="w-40 text-[11px] font-bold text-slate-500 uppercase tracking-wider pl-4">ACCOUNT NUMBER</TableHead>
+              <TableHead className="w-48 text-[11px] font-bold text-slate-500 uppercase tracking-wider pl-4">ACCOUNT NUMBER</TableHead>
               <TableHead className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">ACCOUNT NAME</TableHead>
               <TableHead className="w-36 text-[11px] font-bold text-slate-500 uppercase tracking-wider">SUB TYPE</TableHead>
               <TableHead className="w-48 text-[11px] font-bold text-slate-500 uppercase tracking-wider">ACCOUNT GROUP</TableHead>
@@ -319,104 +468,33 @@ export const ChartOfAccounts: React.FC<ChartOfAccountsProps> = ({
             </TableRow>
           </TableHeader>
           <TableBody className="divide-y divide-slate-100">
-            {groupedCategories.map(cat => {
-              if (cat.items.length === 0) return null;
-              return (
+            {isFiltering ? (
+              // Flat View when filtering or searching
+              filteredAccounts.map(acc => renderRow(acc, 0, false))
+            ) : (
+              // Collapsible Tree View per Major Category when no filters active
+              treeCategories.map(cat => (
                 <React.Fragment key={cat.name}>
-                  {/* Category Group Header Banner matching screenshot (e.g. Assets (22 accounts)) */}
+                  {/* Category Header Banner */}
                   <TableRow className="bg-slate-50/60 hover:bg-slate-50/60 font-semibold border-t border-b border-slate-200/80">
                     <TableCell colSpan={8} className="py-2.5 pl-4 text-xs font-bold text-slate-800">
                       {cat.name} <span className="font-normal text-slate-400 text-[11px]">({cat.items.length} {cat.items.length === 1 ? 'account' : 'accounts'})</span>
                     </TableCell>
                   </TableRow>
 
-                  {/* Individual Account Rows */}
-                  {cat.items.map(acc => {
-                    const isDeactivated = acc.status === 'Inactive';
-                    const subType = getSubtype(acc.code, acc.type);
-                    const parentAccount = accounts.find(x => x.id === acc.parentId);
-                    const accountGroup = parentAccount ? `${parentAccount.code} ${parentAccount.name}` : '— Top-Level Group —';
-
-                    return (
-                      <TableRow
-                        key={acc.id}
-                        className={`hover:bg-slate-50/80 transition-colors ${isDeactivated ? 'bg-slate-50/30' : ''}`}
-                      >
-                        {/* Account Number */}
-                        <TableCell className="py-3 pl-4 font-mono text-xs font-medium text-slate-600">
-                          {acc.code}
-                        </TableCell>
-
-                        {/* Account Name */}
-                        <TableCell className="py-3 font-semibold text-xs text-slate-700">
-                          {acc.name}
-                        </TableCell>
-
-                        {/* Sub Type */}
-                        <TableCell className="py-3 text-xs text-slate-500">
-                          {subType}
-                        </TableCell>
-
-                        {/* Account Group */}
-                        <TableCell className="py-3 text-xs text-slate-600 font-medium">
-                          {accountGroup}
-                        </TableCell>
-
-                        {/* Currency */}
-                        <TableCell className="py-3 text-xs font-mono text-slate-500">
-                          USD
-                        </TableCell>
-
-                        {/* Balance */}
-                        <TableCell className="py-3 text-right font-mono text-xs font-medium text-slate-700">
-                          {formatCurrency(acc.openingBalance, 'USD')}
-                        </TableCell>
-
-                        {/* Status matching soft pill badges from picture */}
-                        <TableCell className="py-3">
-                          {isDeactivated ? (
-                            <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-medium bg-rose-100/80 text-rose-700 border border-rose-200/60">
-                              Deactivated
-                            </span>
-                          ) : (
-                            <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-medium bg-emerald-100/80 text-emerald-800 border border-emerald-200/60">
-                              Active
-                            </span>
-                          )}
-                        </TableCell>
-
-                        {/* Row Actions */}
-                        <TableCell className="py-3 text-right pr-4">
-                          <div className="flex items-center justify-end gap-1.5">
-                            <button
-                              onClick={() => edit(acc)}
-                              className="p-1 text-slate-400 hover:text-slate-700 rounded-md hover:bg-slate-100 transition-colors"
-                              title="Edit Account"
-                            >
-                              <Edit3 className="w-3.5 h-3.5" />
-                            </button>
-                            <button
-                              onClick={() => status(acc)}
-                              className="text-[11px] font-medium text-slate-500 hover:text-slate-800 px-2 py-0.5 rounded-md hover:bg-slate-100 transition-colors"
-                            >
-                              {isDeactivated ? 'Activate' : 'Deactivate'}
-                            </button>
-                          </div>
-                        </TableCell>
-                      </TableRow>
-                    );
-                  })}
+                  {/* Collapsible tree rows */}
+                  {cat.items.map(item => renderRow(item.account, item.depth, item.hasChildren))}
                 </React.Fragment>
-              );
-            })}
+              ))
+            )}
 
             {/* Empty State when no accounts match */}
-            {filteredAccounts.length === 0 && (
+            {((isFiltering && filteredAccounts.length === 0) || (!isFiltering && treeCategories.length === 0)) && (
               <TableRow>
                 <TableCell colSpan={8} className="py-16 text-center text-slate-400">
                   <div className="max-w-xs mx-auto space-y-2">
-                    <p className="text-sm font-medium text-slate-600">No accounts in Chart of Accounts</p>
-                    <p className="text-xs text-slate-400">Click "+ Add Account" to manually add your first parent or child account.</p>
+                    <p className="text-sm font-medium text-slate-600">No accounts found</p>
+                    <p className="text-xs text-slate-400">Adjust your search query or click "+ Add Account" to manually add an account.</p>
                     <Button
                       size="sm"
                       onClick={() => { setParentIdForNew(''); openCreate(); }}
