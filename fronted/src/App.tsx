@@ -21,6 +21,10 @@ import { ManufacturingWorkspace } from './ManufacturingWorkspace'
 import { ChartOfAccounts } from './ChartOfAccounts'
 import { FinancialReports } from './FinancialReports';
 import CreditNotesWorkspace from './CreditNotesWorkspace';
+import CustomerPaymentsWorkspace from './CustomerPaymentsWorkspace';
+import CustomerStatementsWorkspace from './CustomerStatementsWorkspace';
+import SalesReportsWorkspace from './SalesReportsWorkspace';
+
 import { SystemAccountMapping } from './components/SystemAccountMapping'
 import { ModuleSummary } from './ModuleSummary'
 import { BankAccountsView } from './BankAccountsView'
@@ -240,7 +244,9 @@ export default function App() {
     'AI & Analytics.Summary': 'module-summary',
     'Administration.Summary': 'module-summary',
     'Administration.System Settings': 'settings',
-    'Administration.Tax Configuration': 'taxes'
+    'Administration.Tax Configuration': 'taxes',
+  'Sales & Customers.Customer Statements': 'customer-statements',
+  'Sales & Customers.Sales Reports': 'sales-reports'
   }
   const activeView = activeViewMap[page] || 'placeholder'
   const [group, module] = page.split('.')
@@ -324,6 +330,8 @@ export default function App() {
   {activeView === 'assets-inventory' && <AssetsInventoryWorkspace activeEntityId={activeEntityId} entities={entities} />}
   {activeView === 'manufacturing' && <ManufacturingWorkspace activeEntityId={activeEntityId} entities={entities} />}
   {activeView === 'financial-reports' && <FinancialReports accounts={accounts} entries={entries} activeEntityId={activeEntityId} />}
+  {activeView === 'customer-statements' && <CustomerStatementsWorkspace activeEntityId={activeEntityId} />}
+  {activeView === 'sales-reports' && <SalesReportsWorkspace activeEntityId={activeEntityId} />}
   {activeView === 'placeholder' && <div style={{ padding: 40, textAlign: 'center', color: '#666' }}><span style={{ fontSize: 48, opacity: 0.2, display: 'block', marginBottom: 20 }}>🏗</span><h3>Under Construction</h3><p>This module ({module}) is part of the layout but not yet developed.</p></div>}
   </main>{modal && <AccountModal form={form} setForm={setForm} accounts={accounts} editing={editing} close={() => setModal(false)} save={saveAccount} />}{toast && <div className="toast">✓ {toast}</div>}</div>
 }
