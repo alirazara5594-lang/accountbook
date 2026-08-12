@@ -10,6 +10,7 @@ interface SalesOrdersState {
   createOrder: (request: SalesOrderRequest) => Promise<SalesOrder>;
   updateOrderStatus: (id: string, status: SalesOrderStatus) => Promise<void>;
   convertToInvoice: (id: string) => Promise<{ invoiceId: string; invoiceNumber: string }>;
+  fetchNextNumber: () => Promise<string>;
 }
 
 export const useSalesOrdersStore = create<SalesOrdersState>((set, get) => ({
@@ -38,6 +39,24 @@ export const useSalesOrdersStore = create<SalesOrdersState>((set, get) => ({
     } catch (err: any) {
       set({ error: err.message || 'Failed to create sales order', loading: false });
       throw err;
+    }
+  },
+
+  fetchNextNumber: async () => {
+    try {
+      // Check localStorage for last order number
+      const last = localStorage.getItem('last_sales_order_number');
+      if (last) {
+        const lastNum = parseInt(last.replace(/[^\d]/g, '') || '0');
+        const nextNum = lastNum + 1;
+        localStorage.setItem('last_sales_order_number', nextNum.toString().padStart(5, '0'));
+        return 'SO-' + nextNum.toString().padStart(5, '0');
+      } else {
+        localStorage.setItem('last_sales_order_number', '10001');
+        return 'SO-10001';
+      }
+    } catch {
+      return 'SO-10001';
     }
   },
 

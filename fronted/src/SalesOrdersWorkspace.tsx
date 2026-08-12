@@ -25,6 +25,7 @@ export const SalesOrdersWorkspace: React.FC<SalesOrdersWorkspaceProps> = ({ acti
   const createOrder = useSalesOrdersStore(s => s.createOrder);
   const updateOrderStatus = useSalesOrdersStore(s => s.updateOrderStatus);
   const convertToInvoice = useSalesOrdersStore(s => s.convertToInvoice);
+  const fetchNextNumber = useSalesOrdersStore(s => s.fetchNextNumber);
 
   const customers = useCustomersStore(s => s.customers);
   const fetchCustomers = useCustomersStore(s => s.fetchCustomers);
@@ -47,6 +48,13 @@ export const SalesOrdersWorkspace: React.FC<SalesOrdersWorkspaceProps> = ({ acti
     notes: '',
     terms: '',
   });
+
+  // Auto-generate reference number when form opens
+  useEffect(() => {
+    if (!form.reference) {
+      fetchNextNumber().then(n => setForm(f => ({ ...f, reference: f.reference || n })));
+    }
+  }, [form.reference, fetchNextNumber]);
 
   const [lines, setLines] = useState<any[]>([
     { productId: '', description: '', quantity: '1', unitPrice: '0', discountAmount: '0', taxAmount: '0' }

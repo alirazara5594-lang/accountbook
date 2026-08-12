@@ -104,6 +104,14 @@ const EstimateForm = ({ customers, products, onSave, onCancel }: {
   });
   const [lines, setLines] = useState<Line[]>([defaultLine()]);
 
+  // Auto-generate estimate number when form opens
+  useEffect(() => {
+    if (!form.reference) {
+      const salesStore = useSalesStore.getState();
+      salesStore.fetchNextNumber('estimate').then(n => setForm(f => ({ ...f, reference: f.reference || n })));
+    }
+  }, [form.reference]);
+
   const updateLine = (i: number, f: string, v: any) => setLines(ls => ls.map((l, idx) => idx === i ? { ...l, [f]: v } : l));
 
   const calcs = lines.map(l => {

@@ -557,10 +557,26 @@ export const ProcurementWorkspace: React.FC<{ activeEntityId: string; entities?:
                   <span className={`px-3 py-1 rounded-full text-xs font-bold ${matchResult.isMatched ? 'bg-emerald-600 text-white' : 'bg-red-600 text-white'}`}>{matchResult.status}</span>
                 </div>
                 <p className="text-xs font-medium text-gray-700">{matchResult.details}</p>
-                <div className="grid grid-cols-3 gap-4 mt-3 pt-3 border-t text-xs">
-                  <div><span className="text-gray-500">PO Ordered Amount:</span> <p className="font-bold">{money(matchResult.orderedAmount)}</p></div>
-                  <div><span className="text-gray-500">GRN Received Value:</span> <p className="font-bold">{money(matchResult.receivedAmount)}</p></div>
-                  <div><span className="text-gray-500">Vendor Billed Amount:</span> <p className="font-bold">{money(matchResult.billedAmount)}</p></div>
+                <div className="grid grid-cols-2 gap-4 mt-3 pt-3 border-t text-xs">
+                  <div>
+                    <span className="text-gray-500 font-bold">PO Ordered:</span>
+                    <p className="font-bold text-sm">{money(matchResult.orderedAmount)}</p>
+                    <p className="text-xs text-gray-500">Qty: {matchResult.orderedQuantity?.toFixed(2) || '0'}</p>
+                  </div>
+                  <div>
+                    <span className="text-gray-500 font-bold">GRN Received:</span>
+                    <p className="font-bold text-sm">{money(matchResult.receivedAmount)}</p>
+                    <p className="text-xs text-gray-500">Qty: {matchResult.receivedQuantity?.toFixed(2) || '0'}</p>
+                  </div>
+                  <div>
+                    <span className="text-gray-500 font-bold">Bill Billed:</span>
+                    <p className="font-bold text-sm">{money(matchResult.billedAmount)}</p>
+                    <p className="text-xs text-gray-500">Qty: {matchResult.billedQuantity?.toFixed(2) || '0'}</p>
+                  </div>
+                </div>
+                <div className="mt-3 p-3 bg-gray-50 rounded">
+                  <p className="text-xs font-bold text-gray-700">Discrepancy Details:</p>
+                  <p className="text-xs text-gray-600">{matchResult.details || 'No details available'}</p>
                 </div>
               </div>
             ) : (

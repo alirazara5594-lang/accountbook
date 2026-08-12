@@ -17,6 +17,7 @@ interface SalesState {
   fetchInvoices: (companyId?: string) => Promise<Invoice[]>;
   fetchReceipts: (companyId?: string) => Promise<CustomerReceipt[]>;
   fetchAllSales: (companyId?: string) => Promise<void>;
+  fetchNextNumber: (type: 'invoice' | 'estimate') => Promise<string>;
 
   createEstimate: (data: any) => Promise<Estimate>;
   updateEstimateStatus: (id: string, status: string) => Promise<void>;
@@ -80,6 +81,26 @@ export const useSalesStore = create<SalesState>((set, get) => ({
     const res = await salesApi.createEstimate(data);
     await get().fetchEstimates();
     return res;
+  },
+
+  fetchNextNumber: async (type: 'invoice' | 'estimate') => {
+    try {
+      // Check localStorage for last number
+      const prefix = type === 'invoice' ? 'INV' : 'EST';
+      const last = localStorage.getItem(`last_${type}_number`);
+      if (last) {
+        const lastNum = parseInt(last.replace(/[^\d]/g, '') || '0');
+        const nextNum = lastNum + 1;
+        localStorage.setItem(`last_${type}_number`, nextNum.toString());
+        return prefix + '-' + nextNum.toString().padStart(5, '0');
+      } else {
+        const startNum = type === 'invoice' ? 1001 : 1001;
+        localStorage.setItem(`last_${type}_number`, startNum.toString());
+        return prefix + '-' + startNum.toString().padStart(5, '0');
+      }
+    } catch {
+      return type === 'invoice' ? 'INV-1001' : 'EST-1001';
+    }
   },
 
   updateEstimateStatus: async (id: string, status: string) => {

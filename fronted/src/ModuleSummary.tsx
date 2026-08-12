@@ -48,7 +48,7 @@ export const ModuleSummary: React.FC<ModuleSummaryProps> = ({
           .filter(a => a.type === 'Revenue')
           .reduce((s, a) => s + a.openingBalance, 0);
         const activeCustomers = accounts
-          .filter(a => a.type === 'Asset' && a.code.starts('12'))
+          .filter(a => a.type === 'Asset' && a.code.startsWith('12'))
           .length;
         return {
           card1: { title: 'RECEIVABLES LEDGER', val: formatCurrency(receivables), desc: 'Outstanding balances from customers', icon: '⌁', color: 'teal' },

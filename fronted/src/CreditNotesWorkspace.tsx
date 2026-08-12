@@ -1,11 +1,11 @@
 import React, { useEffect, useState } from 'react';
 import { useCreditNotesStore } from './stores/useCreditNotesStore';
 import { useCustomersStore, useCoaStore } from './stores';
-import { useToastManager } from '@/components/ui/toast';
 
 function CreditNotesWorkspace() {
   const { creditNotes, fetchAll, create, post, void: voidNote, loading, error } = useCreditNotesStore();
-  const { toast } = useToastManager();
+
+  const notify = (m: string) => alert(m);
   const customers = useCustomersStore((s) => s.customers as any[]);
   const companies = useCoaStore((s) => s.accounts as any[]);
 
@@ -35,9 +35,9 @@ function CreditNotesWorkspace() {
         memo: form.memo
       });
       setShowCreate(false);
-      toast({ title: '✓ Credit Note created successfully!' });
+      notify('✓ Credit Note created successfully!');
     } catch (err) {
-      toast({ title: 'Error creating Credit Note', variant: 'destructive' });
+      notify('Error creating Credit Note');
     }
   };
 

@@ -37,6 +37,14 @@ const SalesInvoicesTab: React.FC<{ activeEntityId: string }> = ({ activeEntityId
     dueDate: new Date(Date.now() + 30*86400000).toISOString().slice(0,10),
     reference: '', notes: ''
   });
+
+  // Auto-generate invoice number when form opens
+  useEffect(() => {
+    if (!form.reference) {
+      const salesStore = useSalesStore.getState();
+      salesStore.fetchNextNumber('invoice').then(n => setForm(f => ({ ...f, reference: f.reference || n })));
+    }
+  }, [form.reference]);
   const [lines, setLines] = useState([{ productId: '', description: '', quantity: '1', unitPrice: '0', discountAmount: '0', taxAmount: '0' }]);
 
   // Post form

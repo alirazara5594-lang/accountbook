@@ -37,6 +37,7 @@ import { FundTransfersView } from './FundTransfersView'
 import { VoucherManagement } from './VoucherManagement'
 import { CashFlowView } from './CashFlowView'
 import { useCoaStore, useJournalsStore, useCompanyStore, useIntercompanyStore } from './stores'
+import { Toaster } from '@/components/ui/toast'
 
 import type { Account } from './api/modules/coa.api'
 type AccountType = 'Asset' | 'Liability' | 'Equity' | 'Revenue' | 'Expense' | 'ContraAsset' | 'ContraLiability' | 'ContraEquity' | 'ContraRevenue' | 'ContraExpense'
@@ -329,6 +330,8 @@ export default function App() {
         {activeView === 'credit-notes' && <CreditNotesWorkspace />}
   {activeView === 'procurement-workspace' && <ProcurementWorkspace activeEntityId={activeEntityId} entities={entities as any} />}
   {activeView === 'bills' && <VendorBills activeEntityId={activeEntityId} />}
+  {activeView === 'vendor-statements' && <VendorStatementsWorkspace activeEntityId={activeEntityId} entities={entities as any} />}
+  {activeView === 'payables-aging' && <PayablesAgingWorkspace activeEntityId={activeEntityId} entities={entities as any} />}
   {activeView === 'debit-notes' && <DebitNotes activeEntityId={activeEntityId} entities={entities as any} />}
   {activeView === 'taxes' && <TaxConfiguration />}
   {activeView === 'fixed-assets' && <FixedAssets activeEntityId={activeEntityId} />}
