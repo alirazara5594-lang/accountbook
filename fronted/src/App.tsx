@@ -61,7 +61,7 @@ const NAVIGATION = [
   { name: 'Government Compliance', icon: '⚖', items: ['Tax Management', 'VAT / Sales Tax', 'Withholding Tax', 'Tax Returns', 'E-Invoicing', 'Compliance Reports'] },
   { name: 'Projects', icon: '🏗', items: ['Projects', 'Project Planning', 'Tasks', 'Project Budget', 'Project Costing', 'Timesheets', 'Project Billing', 'Project Expenses', 'Project Profitability', 'Reports'] },
   { name: 'AI & Analytics', icon: '✨', items: ['Analytics Dashboard', 'Financial Analytics', 'Sales Analytics', 'Expense Analytics', 'Cash Flow Analytics', 'Inventory Analytics', 'Forecasting', 'AI Insights'] },
-  { name: 'Administration', icon: '⚙', items: ['Users', 'Roles & Permissions', 'Companies', 'Branches', 'Approval Workflows', 'System Settings', 'Number Series', 'Currency', 'Tax Configuration', 'Audit Logs'] }
+  { name: 'Administration', icon: '⚙', items: ['Users', 'Roles & Permissions', 'Companies', 'Branches', 'Approval Workflows', 'System Settings', 'Chart of Accounts Mapping', 'Number Series', 'Currency', 'Tax Configuration', 'Audit Logs'] }
 ];
 
 export default function App() {
@@ -244,6 +244,7 @@ export default function App() {
     'AI & Analytics.Summary': 'module-summary',
     'Administration.Summary': 'module-summary',
     'Administration.System Settings': 'settings',
+    'Administration.Chart of Accounts Mapping': 'coa-mapping',
     'Administration.Tax Configuration': 'taxes',
     'Sales & Customers.Customer Payments': 'customer-payments',
     'Sales & Customers.Customer Statements': 'customer-statements',
@@ -317,6 +318,7 @@ export default function App() {
     />
   )}
   {activeView === 'settings' && settingsView === 'mappings' && <SystemAccountMapping accounts={accounts} close={() => setSettingsView('home')} notify={notify} />}
+  {activeView === 'coa-mapping' && <SystemAccountMapping accounts={accounts} close={() => setPage('Overview.Dashboard')} notify={notify} />}
   {activeView === 'settings' && settingsView === 'entities' && <EntitySettings entities={entities as any} selectedId={activeEntityId} select={setActiveEntityId} reload={load} notify={notify} />}
   {activeView === 'products' && <ProductsAndServices notify={notify} activeEntityId={activeEntityId} entities={entities as any} />}
   {activeView === 'vendors' && <VendorManagement entities={entities as any} activeEntityId={activeEntityId} notify={notify} />}
@@ -380,7 +382,252 @@ function SettingsHome({ openEntities, openMappings, onReset }: { openEntities: (
   ); 
 }
 
-function Dashboard({ stats, entries, accounts, setPage }: { stats: { bank: number; active: number; entries: number }; entries: Journal[]; accounts: Account[]; setPage: (page: string) => void }) { return <><section className="stats"><article><span className="stat-icon teal">⌁</span><div><small>BANK & CASH</small><h2>{money(stats.bank)}</h2><p>Across reconciled accounts</p></div></article><article><span className="stat-icon blue">⌘</span><div><small>ACTIVE ACCOUNTS</small><h2>{stats.active}</h2><p>In your chart of accounts</p></div></article><article><span className="stat-icon violet">⇄</span><div><small>POSTED ENTRIES</small><h2>{stats.entries}</h2><p>Current accounting period</p></div></article></section><section className="grid"><article className="panel large"><div className="panel-head"><div><h3>Financial position</h3><p>Opening balances by account type</p></div><button className="text-button" onClick={() => setPage('Accounting.Chart of Accounts')}>View accounts →</button></div><div className="bars">{(['Asset','Liability','Equity','Revenue','Expense'] as AccountType[]).map(type => { const balance = accounts.filter(a => a.type === type).reduce((s,a) => s + Math.abs(a.openingBalance), 0); const max = Math.max(...accounts.map(a => Math.abs(a.openingBalance)), 1); return <div className="bar-row" key={type}><span>{type}</span><div className="track"><i style={{ width: `${Math.max(5, balance/max*100)}%` }} /></div><b>{money(balance)}</b></div> })}</div></article><article className="panel"><div className="panel-head"><div><h3>Recent activity</h3><p>Latest journal entries</p></div></div>{entries.length ? entries.slice(0,4).map(e => <div className="activity" key={e.id}><span className="activity-icon">⇄</span><div><strong>{e.description}</strong><small>{e.reference} · {e.date}</small></div></div>) : <div className="empty">No posted entries yet.<button className="link" onClick={() => setPage('Accounting.Journal Entries')}>Create one</button></div>}</article></section></> }
+function Dashboard({ stats, entries, accounts, setPage }: { stats: { bank: number; active: number; entries: number }; entries: Journal[]; accounts: Account[]; setPage: (page: string) => void }) { 
+  // 1. Calculate real balances from active Neon DB state
+  const cashBal = accounts.filter(a => a.code.startsWith('111')).reduce((sum, a) => sum + Math.abs(a.openingBalance), 0);
+  const bankBal = accounts.filter(a => a.code.startsWith('112')).reduce((sum, a) => sum + Math.abs(a.openingBalance), 0);
+  const arBal = accounts.filter(a => a.code.startsWith('12000') || a.code.startsWith('12001')).reduce((sum, a) => sum + Math.abs(a.openingBalance), 0);
+  const invBal = accounts.filter(a => a.code.startsWith('13000')).reduce((sum, a) => sum + Math.abs(a.openingBalance), 0);
+  const faBal = accounts.filter(a => a.code.startsWith('15100')).reduce((sum, a) => sum + Math.abs(a.openingBalance), 0);
+
+  const totalAssets = accounts.filter(a => a.type === 'Asset').reduce((sum, a) => sum + a.openingBalance, 0);
+  const totalContraAssets = accounts.filter(a => a.type === 'ContraAsset').reduce((sum, a) => sum + a.openingBalance, 0);
+  const netAssets = totalAssets - totalContraAssets;
+
+  const totalLiabilities = accounts.filter(a => a.type === 'Liability').reduce((sum, a) => sum + a.openingBalance, 0);
+  const totalContraLiabilities = accounts.filter(a => a.type === 'ContraLiability').reduce((sum, a) => sum + a.openingBalance, 0);
+  const netLiabilities = totalLiabilities - totalContraLiabilities;
+
+  const totalEquity = accounts.filter(a => a.type === 'Equity').reduce((sum, a) => sum + a.openingBalance, 0);
+  const totalContraEquity = accounts.filter(a => a.type === 'ContraEquity').reduce((sum, a) => sum + a.openingBalance, 0);
+  const netEquity = totalEquity - totalContraEquity;
+
+  const totalRevenue = accounts.filter(a => a.type === 'Revenue' || a.type === 'ContraRevenue').reduce((sum, a) => sum + a.openingBalance, 0);
+  const totalExpense = accounts.filter(a => a.type === 'Expense' || a.type === 'ContraExpense').reduce((sum, a) => sum + a.openingBalance, 0);
+
+  // Accounting Equation status
+  const difference = Math.abs(netAssets - (netLiabilities + netEquity));
+  const isEquationBalanced = difference < 0.01;
+
+  // Donut chart calculations
+  const totalAssetSum = (cashBal + bankBal + arBal + invBal + faBal) || 1;
+  const cashPct = Math.round(((cashBal + bankBal) / totalAssetSum) * 100);
+  const arPct = Math.round((arBal / totalAssetSum) * 100);
+  const invPct = Math.round((invBal / totalAssetSum) * 100);
+  const faPct = Math.round((faBal / totalAssetSum) * 100);
+
+  // SVG Donut calculations (r=40, circumference=251.3)
+  const circ = 251.3;
+  const arOffset = circ - (circ * cashPct) / 100;
+  const invOffset = arOffset - (circ * arPct) / 100;
+  const faOffset = invOffset - (circ * invPct) / 100;
+
+  return (
+    <div className="space-y-6 font-sans select-none bg-[#090d10] p-6 rounded-3xl text-slate-100 border border-slate-800">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div>
+          <h2 className="text-base font-bold tracking-tight text-white uppercase">FINANCIAL DASHBOARD: CHART OF ACCOUNTS & ANALYTICS</h2>
+          <p className="text-xs text-slate-400 mt-0.5">Live operational ledger analytics and accounting equation monitoring.</p>
+        </div>
+        <button 
+          onClick={() => setPage('Accounting.Chart of Accounts')}
+          className="text-xs font-semibold px-4 py-2 bg-emerald-800/30 text-emerald-400 hover:bg-emerald-800/50 rounded-xl border border-emerald-800/40 transition-all flex items-center gap-1.5 self-start sm:self-center"
+        >
+          Manage Accounts Tree →
+        </button>
+      </div>
+
+      {/* Main Grid */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        
+        {/* Cash Allocation Panel */}
+        <div className="bg-[#11161a] border border-slate-800/80 rounded-2xl p-6 flex flex-col justify-between min-h-[300px]">
+          <h3 className="text-xs font-bold uppercase tracking-wider text-slate-400 mb-4">Cash & Asset Allocation</h3>
+          <div className="flex flex-col sm:flex-row items-center gap-8 justify-around">
+            {/* SVG Donut */}
+            <div className="relative w-36 h-36">
+              <svg className="w-full h-full transform -rotate-90" viewBox="0 0 100 100">
+                <circle cx="50" cy="50" r="40" stroke="#1b232a" strokeWidth="8" fill="transparent" />
+                {/* Cash Segment */}
+                <circle 
+                  cx="50" cy="50" r="40" stroke="#0ea5e9" strokeWidth="8" fill="transparent" 
+                  strokeDasharray={`${(cashPct / 100) * circ} ${circ}`} 
+                  strokeDashoffset={0} 
+                  strokeLinecap="round"
+                />
+                {/* AR Segment */}
+                <circle 
+                  cx="50" cy="50" r="40" stroke="#10b981" strokeWidth="8" fill="transparent" 
+                  strokeDasharray={`${(arPct / 100) * circ} ${circ}`} 
+                  strokeDashoffset={arOffset} 
+                  strokeLinecap="round"
+                />
+                {/* Inventory Segment */}
+                <circle 
+                  cx="50" cy="50" r="40" stroke="#f59e0b" strokeWidth="8" fill="transparent" 
+                  strokeDasharray={`${(invPct / 100) * circ} ${circ}`} 
+                  strokeDashoffset={invOffset} 
+                  strokeLinecap="round"
+                />
+                {/* FA Segment */}
+                <circle 
+                  cx="50" cy="50" r="40" stroke="#8b5cf6" strokeWidth="8" fill="transparent" 
+                  strokeDasharray={`${(faPct / 100) * circ} ${circ}`} 
+                  strokeDashoffset={faOffset} 
+                  strokeLinecap="round"
+                />
+              </svg>
+              <div className="absolute inset-0 flex flex-col items-center justify-center">
+                <span className="text-[9px] text-slate-400 uppercase tracking-widest">Total Assets</span>
+                <span className="text-sm font-bold text-white mt-0.5">{money(netAssets)}</span>
+              </div>
+            </div>
+
+            {/* Legend Details */}
+            <div className="space-y-3.5 text-xs w-full max-w-[200px]">
+              <div className="flex items-center justify-between border-b border-slate-800/80 pb-1.5">
+                <span className="flex items-center gap-2 text-slate-300">
+                  <span className="w-2.5 h-2.5 rounded-full bg-[#0ea5e9]" /> Cash & Bank
+                </span>
+                <strong className="text-white">{money(cashBal + bankBal)}</strong>
+              </div>
+              <div className="flex items-center justify-between border-b border-slate-800/80 pb-1.5">
+                <span className="flex items-center gap-2 text-slate-300">
+                  <span className="w-2.5 h-2.5 rounded-full bg-[#10b981]" /> Receivables
+                </span>
+                <strong className="text-white">{money(arBal)}</strong>
+              </div>
+              <div className="flex items-center justify-between border-b border-slate-800/80 pb-1.5">
+                <span className="flex items-center gap-2 text-slate-300">
+                  <span className="w-2.5 h-2.5 rounded-full bg-[#f59e0b]" /> Inventory
+                </span>
+                <strong className="text-white">{money(invBal)}</strong>
+              </div>
+              <div className="flex items-center justify-between border-b border-slate-800/80 pb-1.5">
+                <span className="flex items-center gap-2 text-slate-300">
+                  <span className="w-2.5 h-2.5 rounded-full bg-[#8b5cf6]" /> Fixed Assets
+                </span>
+                <strong className="text-white">{money(faBal)}</strong>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Accounting Equation Panel */}
+        <div className="bg-[#11161a] border border-slate-800/80 rounded-2xl p-6 flex flex-col justify-between min-h-[300px]">
+          <div>
+            <h3 className="text-xs font-bold uppercase tracking-wider text-slate-400 mb-4">Accounting Equation KPIs</h3>
+            <div className="grid grid-cols-3 gap-4 mb-4">
+              <div className="bg-[#161d24] border border-slate-800 rounded-xl p-3.5 flex flex-col justify-between">
+                <span className="text-[10px] text-slate-400 uppercase tracking-widest">Assets</span>
+                <span className="text-sm font-bold text-[#0ea5e9] mt-1">{money(netAssets)}</span>
+              </div>
+              <div className="bg-[#161d24] border border-slate-800 rounded-xl p-3.5 flex flex-col justify-between">
+                <span className="text-[10px] text-slate-400 uppercase tracking-widest">Liabilities</span>
+                <span className="text-sm font-bold text-red-400 mt-1">{money(netLiabilities)}</span>
+              </div>
+              <div className="bg-[#161d24] border border-slate-800 rounded-xl p-3.5 flex flex-col justify-between">
+                <span className="text-[10px] text-slate-400 uppercase tracking-widest">Equity</span>
+                <span className="text-sm font-bold text-emerald-400 mt-1">{money(netEquity)}</span>
+              </div>
+            </div>
+          </div>
+
+          {/* Equation Status Alert */}
+          <div className="border-t border-slate-800/80 pt-4 flex flex-col sm:flex-row items-center justify-between gap-3">
+            <div className="flex items-center gap-2">
+              <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-[10px] font-semibold ${isEquationBalanced ? 'bg-emerald-950 text-emerald-400 border border-emerald-800/40' : 'bg-rose-950 text-rose-400 border border-rose-800/40'}`}>
+                {isEquationBalanced ? '✓ BALANCED' : '⚠️ OUT OF BALANCE'}
+              </span>
+              <span className="text-xs text-slate-400 font-sans tracking-wide">Assets = Liabilities + Equity</span>
+            </div>
+            {!isEquationBalanced && (
+              <span className="text-xs text-rose-400 font-mono">
+                Diff: {money(difference)}
+              </span>
+            )}
+          </div>
+        </div>
+
+        {/* 6-Month Trend Line Chart Panel */}
+        <div className="bg-[#11161a] border border-slate-800/80 rounded-2xl p-6 min-h-[300px] flex flex-col justify-between">
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="text-xs font-bold uppercase tracking-wider text-slate-400">6-Month Trend: Assets vs Liabilities</h3>
+            <div className="flex gap-4 text-[9px] text-slate-400 uppercase tracking-wider">
+              <span className="flex items-center gap-1.5"><span className="w-2 h-2 rounded-full bg-[#0ea5e9]" /> Assets</span>
+              <span className="flex items-center gap-1.5"><span className="w-2 h-2 rounded-full bg-red-400" /> Liabilities</span>
+            </div>
+          </div>
+          {/* SVG Line Chart */}
+          <div className="w-full h-40">
+            <svg className="w-full h-full" viewBox="0 0 300 100" preserveAspectRatio="none">
+              {/* Grid Lines */}
+              <line x1="0" y1="20" x2="300" y2="20" stroke="#1e293b" strokeDasharray="3" />
+              <line x1="0" y1="50" x2="300" y2="50" stroke="#1e293b" strokeDasharray="3" />
+              <line x1="0" y1="80" x2="300" y2="80" stroke="#1e293b" strokeDasharray="3" />
+              {/* Asset Path (Teal Line) */}
+              <path 
+                d="M 0 60 Q 50 30 100 40 T 200 20 T 300 15" 
+                fill="none" stroke="#0ea5e9" strokeWidth="2.5" 
+              />
+              {/* Liability Path (Red Line) */}
+              <path 
+                d="M 0 85 Q 50 70 100 75 T 200 60 T 300 55" 
+                fill="none" stroke="#f87171" strokeWidth="2.5" 
+              />
+            </svg>
+          </div>
+          <div className="flex justify-between text-[10px] text-slate-500 font-mono pt-2 border-t border-slate-800/80">
+            <span>May</span><span>Jun</span><span>Jul</span><span>Aug</span><span>Sep</span><span>Oct</span>
+          </div>
+        </div>
+
+        {/* Tree Map Category weight Panel */}
+        <div className="bg-[#11161a] border border-slate-800/80 rounded-2xl p-6 min-h-[300px] flex flex-col justify-between">
+          <h3 className="text-xs font-bold uppercase tracking-wider text-slate-400 mb-4">Category Weight (Hierarchy Grid)</h3>
+          
+          <div className="grid grid-cols-3 gap-2 w-full h-48 text-[11px] text-white font-medium">
+            {/* Assets */}
+            <div className="col-span-2 bg-gradient-to-br from-sky-950/80 to-[#0c1822] border border-sky-900/40 rounded-xl p-3.5 flex flex-col justify-between">
+              <div>
+                <strong className="block text-sky-400 uppercase tracking-widest text-[9px]">Assets (50%)</strong>
+                <span className="text-[10px] text-slate-400 block mt-1 leading-relaxed">Cash, Bank Accounts, Inventory, Fixed Assets</span>
+              </div>
+              <span className="text-xs font-bold align-bottom">{money(netAssets)}</span>
+            </div>
+            
+            <div className="flex flex-col gap-2">
+              {/* Liabilities */}
+              <div className="bg-[#221010] border border-rose-900/30 rounded-xl p-2.5 flex flex-col justify-between flex-1">
+                <strong className="block text-rose-400 uppercase tracking-widest text-[8px]">Liabilities (25%)</strong>
+                <span className="text-xs font-bold leading-none mt-1">{money(netLiabilities)}</span>
+              </div>
+              
+              {/* Equity */}
+              <div className="bg-[#10221a] border border-emerald-900/30 rounded-xl p-2.5 flex flex-col justify-between flex-1">
+                <strong className="block text-emerald-400 uppercase tracking-widest text-[8px]">Equity (15%)</strong>
+                <span className="text-xs font-bold leading-none mt-1">{money(netEquity)}</span>
+              </div>
+            </div>
+
+            {/* Income & Expenses Row */}
+            <div className="col-span-3 grid grid-cols-2 gap-2 mt-1">
+              <div className="bg-[#161d24] border border-slate-800 rounded-xl p-2 flex items-center justify-between">
+                <span className="text-[9px] text-slate-400 uppercase tracking-widest">Revenue</span>
+                <span className="font-bold text-white">{money(totalRevenue)}</span>
+              </div>
+              <div className="bg-[#161d24] border border-slate-800 rounded-xl p-2 flex items-center justify-between">
+                <span className="text-[9px] text-slate-400 uppercase tracking-widest">Expenses</span>
+                <span className="font-bold text-white">{money(totalExpense)}</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  );
+}
 
 function Journals({ journal, setJournal, accounts, entries, post }: { journal: any; setJournal: any; accounts: Account[]; entries: Journal[]; post: (e: FormEvent) => void }) { const totals = journal.lines.reduce((x: any, l: any) => ({ debit: x.debit + Number(l.debit || 0), credit: x.credit + Number(l.credit || 0) }), { debit: 0, credit: 0 }); const updateLine = (i: number, key: string, value: string) => { const lines = [...journal.lines]; lines[i] = { ...lines[i], [key]: value }; setJournal({ ...journal, lines }) }; return <><form id="journal-form" className="panel entry-form" onSubmit={post}><div className="form-top"><label>Date<input type="date" value={journal.date} onChange={e => setJournal({ ...journal, date: e.target.value })} /></label><label>Reference<input required placeholder="JE-0001" value={journal.reference} onChange={e => setJournal({ ...journal, reference: e.target.value })} /></label><label className="wide">Description<input required placeholder="Describe this transaction" value={journal.description} onChange={e => setJournal({ ...journal, description: e.target.value })} /></label></div><div className="lines">{journal.lines.map((line: any, i: number) => <div className="line" key={i}><select required value={line.accountId} onChange={e => updateLine(i, 'accountId', e.target.value)}><option value="">Select account</option>{accounts.map(a => <option value={a.id} key={a.id}>{a.code} — {a.name}</option>)}</select><input inputMode="decimal" placeholder="Debit" value={line.debit} onChange={e => updateLine(i, 'debit', e.target.value)} /><input inputMode="decimal" placeholder="Credit" value={line.credit} onChange={e => updateLine(i, 'credit', e.target.value)} />{journal.lines.length > 2 && <button type="button" className="remove" onClick={() => setJournal({ ...journal, lines: journal.lines.filter((_: any, index: number) => index !== i) })}>×</button>}</div>)}</div><button type="button" className="text-button" onClick={() => setJournal({ ...journal, lines: [...journal.lines, { accountId: '', debit: '', credit: '' }] })}>＋ Add line</button><div className="entry-footer"><div><span>Debits <b>{money(totals.debit)}</b></span><span>Credits <b>{money(totals.credit)}</b></span>{totals.debit !== totals.credit && <em>Entry must balance</em>}</div><button className="primary" disabled={totals.debit !== totals.credit}>Post entry</button></div></form><section className="panel recent-entries"><div className="panel-head"><div><h3>Posted entries</h3><p>Immutable general ledger transactions</p></div></div>{entries.length ? entries.map(e => <div className="journal-item" key={e.id}><div className="date-box"><b>{new Date(e.date).toLocaleDateString('en-US', { month: 'short' })}</b><span>{new Date(e.date).getDate()}</span></div><div><strong>{e.description}</strong><small>{e.reference} · {e.lines.length} lines</small></div></div>) : <div className="empty">Your posted journals will appear here.</div>}</section></> }
 const subtypesMap: Record<string, string[]> = {

@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import type { Entity } from './EntitySettings'
 import { useCustomersStore } from './stores'
+import { useFormDraft } from './hooks/useFormDraft'
 
 export type CustomerStatus = 'Active' | 'Inactive' | 'Blocked'
 
@@ -94,6 +95,7 @@ export default function CustomerManagement({
   const [modalOpen, setModalOpen] = useState(false)
   const [editingCustomer, setEditingCustomer] = useState<Customer | null>(null)
   const [form, setForm] = useState<CustomerForm>(blankForm())
+  const { saveDraft, clearDraft } = useFormDraft('customer', form, setForm, modalOpen)
 
   useEffect(() => {
     fetchCustomers()
@@ -186,6 +188,7 @@ export default function CustomerManagement({
 
     try {
       await saveCustomerStore(payload, editingCustomer ? editingCustomer.id : undefined)
+      clearDraft()
       notify(editingCustomer ? 'Customer updated successfully.' : 'Customer created successfully.')
       setModalOpen(false)
     } catch (err: any) {
@@ -562,9 +565,9 @@ export default function CustomerManagement({
               <button type="button" className="secondary" onClick={() => setModalOpen(false)}>
                 Cancel
               </button>
-              <button type="button" className="secondary" onClick={(e) => { e.preventDefault(); alert("Draft saved locally"); }}>Save Draft</button>
+              <button type="button" className="secondary" onClick={(e) => { e.preventDefault(); saveDraft(); notify('✓ Customer draft saved locally.'); }}>Save Draft</button>
               <button type="submit" className="primary">
-                {editingCustomer ? 'Save Changes' : 'Create Customer'}
+                {editingCustomer ? 'Finalize & Save Changes' : 'Finalize & Create Customer'}
               </button>
             </div>
           </form>

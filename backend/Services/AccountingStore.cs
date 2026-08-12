@@ -158,7 +158,10 @@ public class AccountingStore
         Seed("11202", "Standard Chartered USD", AccountType.Asset, bank.Id, true, 0, false);
 
         Seed("12000", "Accounts Receivable", AccountType.Asset, currentAssets.Id, true, 0, false);
+        Seed("12100", "Allowance for Doubtful Accounts", AccountType.ContraAsset, currentAssets.Id, true, 0, false);
+        Seed("12200", "Withholding Tax Receivable", AccountType.Asset, currentAssets.Id, true, 0, false);
         Seed("13000", "Inventory Asset", AccountType.Asset, currentAssets.Id, true, 0, false);
+        Seed("14000", "Prepaid Expenses", AccountType.Asset, currentAssets.Id, true, 0, false);
         
         var nonCurrentAssets = Seed("15000", "Non-Current Assets", AccountType.Asset, assets.Id);
         Seed("15100", "Fixed Assets", AccountType.Asset, nonCurrentAssets.Id, true, 0, false);
@@ -169,7 +172,12 @@ public class AccountingStore
         var currentLiabilities = Seed("21000", "Current Liabilities", AccountType.Liability, liabilities.Id);
         Seed("21100", "Accounts Payable", AccountType.Liability, currentLiabilities.Id, true, 0, false);
         Seed("21200", "GRNI Accrual", AccountType.Liability, currentLiabilities.Id, true, 0, false);
+        Seed("21300", "Accrued Salaries Payable", AccountType.Liability, currentLiabilities.Id, true, 0, false);
+        Seed("21400", "Payroll Tax Payable", AccountType.Liability, currentLiabilities.Id, true, 0, false);
+        Seed("21500", "Pension Fund Payable", AccountType.Liability, currentLiabilities.Id, true, 0, false);
         Seed("22000", "Tax Payable", AccountType.Liability, currentLiabilities.Id, true, 0, false);
+        Seed("22100", "Withholding Tax Payable", AccountType.Liability, currentLiabilities.Id, true, 0, false);
+        Seed("23000", "Deferred Revenue", AccountType.Liability, currentLiabilities.Id, true, 0, false);
 
         // 3. Equity (Structural Headers: System = True; Leaf Posting: System = False)
         var equity = Seed("30000", "Equity", AccountType.Equity, null);
@@ -180,19 +188,39 @@ public class AccountingStore
         var revenue = Seed("40000", "Revenue", AccountType.Revenue, null);
         var operatingRevenue = Seed("41000", "Operating Revenue", AccountType.Revenue, revenue.Id);
         Seed("41100", "Sales Revenue", AccountType.Revenue, operatingRevenue.Id, true, 0, false);
+        Seed("41200", "Sales Discounts", AccountType.Revenue, operatingRevenue.Id, true, 0, false);
+        Seed("41300", "Sales Returns & Allowances", AccountType.ContraRevenue, operatingRevenue.Id, true, 0, false);
         Seed("42000", "Non-Operating Revenue", AccountType.Revenue, revenue.Id, false, 0, false);
 
         // 5. Cost of Goods Sold (Structural Headers: System = True; Leaf Posting: System = False)
         var cogs = Seed("50000", "Cost of Goods Sold", AccountType.Expense, null);
         Seed("51000", "Cost of Sales", AccountType.Expense, cogs.Id, false, 0, false);
+        Seed("51100", "Purchase Discounts", AccountType.ContraExpense, cogs.Id, false, 0, false);
+        Seed("51200", "Purchase Returns & Allowances", AccountType.ContraExpense, cogs.Id, false, 0, false);
 
         // 6. Expenses (Structural Headers: System = True; Leaf Posting: System = False)
         var expenses = Seed("60000", "Expenses", AccountType.Expense, null);
         var operatingExpenses = Seed("61000", "Operating Expenses", AccountType.Expense, expenses.Id);
         Seed("61100", "Office Expenses", AccountType.Expense, operatingExpenses.Id, true, 0, false);
+        Seed("61200", "Salaries & Wages Expense", AccountType.Expense, operatingExpenses.Id, true, 0, false);
+        Seed("61300", "Depreciation Expense", AccountType.Expense, operatingExpenses.Id, true, 0, false);
+        Seed("61400", "Bad Debt Expense", AccountType.Expense, operatingExpenses.Id, true, 0, false);
     }
 
-    public IReadOnlyList<Account> Accounts => _accounts;
+    public IReadOnlyList<Account> Accounts
+    {
+        get
+        {
+            lock (_lock)
+            {
+                foreach (var a in _accounts)
+                {
+                    a.IsSystem = _mappings.Any(m => m.AccountId == a.Id);
+                }
+                return _accounts;
+            }
+        }
+    }
     public IReadOnlyList<AccountMapping> Mappings => _mappings;
     public IReadOnlyList<JournalEntry> Entries => _entries;
     public IReadOnlyList<JournalTemplate> Templates => _templates;
@@ -2034,7 +2062,7 @@ public class AccountingStore
         {
             var a = Find(id);
             if (a is null) { error = "Account not found."; return false; }
-            if (a.IsSystem && (a.Code != r.Code?.Trim() || a.Type != r.Type))
+            if (IsAccountMappedAsSystemControl(a.Id) && (a.Code != r.Code?.Trim() || a.Type != r.Type))
             {
                 error = "Critical system account attributes (Code, Type) cannot be modified.";
                 return false;
@@ -2077,7 +2105,7 @@ public class AccountingStore
     {
         var a = Find(id);
         if (a is null) { error = "Account not found."; return false; }
-        if (a.IsSystem && status.Status == AccountStatus.Inactive)
+        if (IsAccountMappedAsSystemControl(a.Id) && status.Status == AccountStatus.Inactive)
         {
             error = "System accounts are protected and cannot be deactivated.";
             return false;
@@ -2095,7 +2123,7 @@ public class AccountingStore
     {
         var a = Find(id);
         if (a is null) { error = "Account not found."; return false; }
-        if (a.IsSystem)
+        if (IsAccountMappedAsSystemControl(a.Id))
         {
             error = "System accounts are protected and cannot be deleted.";
             return false;
@@ -2494,5 +2522,10 @@ public class AccountingStore
             error = null;
             return true;
         }
+    }
+
+    private bool IsAccountMappedAsSystemControl(Guid accountId)
+    {
+        return _mappings.Any(m => m.AccountId == accountId);
     }
 }

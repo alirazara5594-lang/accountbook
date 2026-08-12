@@ -26,23 +26,71 @@ export const SystemAccountMapping: React.FC<SystemAccountMappingProps> = ({ acco
     taxAccountId: '',
     revenueAccountId: '',
     cogsAccountId: '',
+    discountAccountId: '',
+    whtReceivableAccountId: '',
+    whtPayableAccountId: '',
+    inventoryAccountId: '',
+    payrollExpenseAccountId: '',
+    payrollPayableAccountId: '',
+    payrollTaxPayableAccountId: '',
+    pensionPayableAccountId: '',
+    
+    // Contra and statutory mappings
+    allowanceAccountId: '',
+    prepaidAccountId: '',
+    deferredRevenueAccountId: '',
+    salesReturnsAccountId: '',
+    purchaseDiscountsAccountId: '',
+    purchaseReturnsAccountId: '',
   });
 
   // Load mappings from store, fallback to seed accounts by code
   useEffect(() => {
     const load = async () => {
       const activeMappings = await fetchMappings();
+      
       const arMap = activeMappings.find(m => m.mappingKey === 'Customer Receivables');
       const apMap = activeMappings.find(m => m.mappingKey === 'Vendor Payables');
       const taxMap = activeMappings.find(m => m.mappingKey === 'Taxes');
       const revMap = activeMappings.find(m => m.mappingKey === 'Sales');
       const cogsMap = activeMappings.find(m => m.mappingKey === 'Cost of Goods Sold');
+      const discMap = activeMappings.find(m => m.mappingKey === 'Sales Discount');
+      const whtRecMap = activeMappings.find(m => m.mappingKey === 'WHT Receivable');
+      const whtPayMap = activeMappings.find(m => m.mappingKey === 'WHT Payable');
+      const invMap = activeMappings.find(m => m.mappingKey === 'Inventory');
+      const payExpMap = activeMappings.find(m => m.mappingKey === 'Payroll Expense');
+      const payAccMap = activeMappings.find(m => m.mappingKey === 'Accrued Salaries');
+      const payTaxMap = activeMappings.find(m => m.mappingKey === 'Payroll Taxes Accrued');
+      const penAccMap = activeMappings.find(m => m.mappingKey === 'Pension Fund Accrued');
+      
+      // New mappings
+      const allowMap = activeMappings.find(m => m.mappingKey === 'Allowance for Doubtful Accounts');
+      const prepMap = activeMappings.find(m => m.mappingKey === 'Prepaid Expenses');
+      const defRevMap = activeMappings.find(m => m.mappingKey === 'Deferred Revenue');
+      const salesRetMap = activeMappings.find(m => m.mappingKey === 'Sales Returns');
+      const purDiscMap = activeMappings.find(m => m.mappingKey === 'Purchase Discounts');
+      const purRetMap = activeMappings.find(m => m.mappingKey === 'Purchase Returns');
 
       const arSeed = accounts.find(a => a.code === '12000');
       const apSeed = accounts.find(a => a.code === '21100');
       const taxSeed = accounts.find(a => a.code === '22000');
       const revSeed = accounts.find(a => a.code === '41100');
       const cogsSeed = accounts.find(a => a.code === '51000');
+      const discSeed = accounts.find(a => a.code === '41200');
+      const whtRecSeed = accounts.find(a => a.code === '12200');
+      const whtPaySeed = accounts.find(a => a.code === '22100');
+      const invSeed = accounts.find(a => a.code === '13000');
+      const payExpSeed = accounts.find(a => a.code === '61200');
+      const payAccSeed = accounts.find(a => a.code === '21300');
+      const payTaxSeed = accounts.find(a => a.code === '21400');
+      const penAccSeed = accounts.find(a => a.code === '21500');
+      
+      const allowSeed = accounts.find(a => a.code === '12100');
+      const prepSeed = accounts.find(a => a.code === '14000');
+      const defRevSeed = accounts.find(a => a.code === '23000');
+      const salesRetSeed = accounts.find(a => a.code === '41300');
+      const purDiscSeed = accounts.find(a => a.code === '51100');
+      const purRetSeed = accounts.find(a => a.code === '51200');
 
       setMappings({
         arAccountId: arMap?.accountId || arSeed?.id || '',
@@ -50,6 +98,21 @@ export const SystemAccountMapping: React.FC<SystemAccountMappingProps> = ({ acco
         taxAccountId: taxMap?.accountId || taxSeed?.id || '',
         revenueAccountId: revMap?.accountId || revSeed?.id || '',
         cogsAccountId: cogsMap?.accountId || cogsSeed?.id || '',
+        discountAccountId: discMap?.accountId || discSeed?.id || '',
+        whtReceivableAccountId: whtRecMap?.accountId || whtRecSeed?.id || '',
+        whtPayableAccountId: whtPayMap?.accountId || whtPaySeed?.id || '',
+        inventoryAccountId: invMap?.accountId || invSeed?.id || '',
+        payrollExpenseAccountId: payExpMap?.accountId || payExpSeed?.id || '',
+        payrollPayableAccountId: payAccMap?.accountId || payAccSeed?.id || '',
+        payrollTaxPayableAccountId: payTaxMap?.accountId || payTaxSeed?.id || '',
+        pensionPayableAccountId: penAccMap?.accountId || penAccSeed?.id || '',
+        
+        allowanceAccountId: allowMap?.accountId || allowSeed?.id || '',
+        prepaidAccountId: prepMap?.accountId || prepSeed?.id || '',
+        deferredRevenueAccountId: defRevMap?.accountId || defRevSeed?.id || '',
+        salesReturnsAccountId: salesRetMap?.accountId || salesRetSeed?.id || '',
+        purchaseDiscountsAccountId: purDiscMap?.accountId || purDiscSeed?.id || '',
+        purchaseReturnsAccountId: purRetMap?.accountId || purRetSeed?.id || '',
       });
     };
 
@@ -64,6 +127,21 @@ export const SystemAccountMapping: React.FC<SystemAccountMappingProps> = ({ acco
       if (mappings.taxAccountId) await saveMapping('Taxes', mappings.taxAccountId);
       if (mappings.revenueAccountId) await saveMapping('Sales', mappings.revenueAccountId);
       if (mappings.cogsAccountId) await saveMapping('Cost of Goods Sold', mappings.cogsAccountId);
+      if (mappings.discountAccountId) await saveMapping('Sales Discount', mappings.discountAccountId);
+      if (mappings.whtReceivableAccountId) await saveMapping('WHT Receivable', mappings.whtReceivableAccountId);
+      if (mappings.whtPayableAccountId) await saveMapping('WHT Payable', mappings.whtPayableAccountId);
+      if (mappings.inventoryAccountId) await saveMapping('Inventory', mappings.inventoryAccountId);
+      if (mappings.payrollExpenseAccountId) await saveMapping('Payroll Expense', mappings.payrollExpenseAccountId);
+      if (mappings.payrollPayableAccountId) await saveMapping('Accrued Salaries', mappings.payrollPayableAccountId);
+      if (mappings.payrollTaxPayableAccountId) await saveMapping('Payroll Taxes Accrued', mappings.payrollTaxPayableAccountId);
+      if (mappings.pensionPayableAccountId) await saveMapping('Pension Fund Accrued', mappings.pensionPayableAccountId);
+
+      if (mappings.allowanceAccountId) await saveMapping('Allowance for Doubtful Accounts', mappings.allowanceAccountId);
+      if (mappings.prepaidAccountId) await saveMapping('Prepaid Expenses', mappings.prepaidAccountId);
+      if (mappings.deferredRevenueAccountId) await saveMapping('Deferred Revenue', mappings.deferredRevenueAccountId);
+      if (mappings.salesReturnsAccountId) await saveMapping('Sales Returns', mappings.salesReturnsAccountId);
+      if (mappings.purchaseDiscountsAccountId) await saveMapping('Purchase Discounts', mappings.purchaseDiscountsAccountId);
+      if (mappings.purchaseReturnsAccountId) await saveMapping('Purchase Returns', mappings.purchaseReturnsAccountId);
       
       notify('✓ Centralized account mappings saved in the database!');
       close();
@@ -79,6 +157,21 @@ export const SystemAccountMapping: React.FC<SystemAccountMappingProps> = ({ acco
       const taxSeed = accounts.find(a => a.code === '22000');
       const revSeed = accounts.find(a => a.code === '41100');
       const cogsSeed = accounts.find(a => a.code === '51000');
+      const discSeed = accounts.find(a => a.code === '41200');
+      const whtRecSeed = accounts.find(a => a.code === '12200');
+      const whtPaySeed = accounts.find(a => a.code === '22100');
+      const invSeed = accounts.find(a => a.code === '13000');
+      const payExpSeed = accounts.find(a => a.code === '61200');
+      const payAccSeed = accounts.find(a => a.code === '21300');
+      const payTaxSeed = accounts.find(a => a.code === '21400');
+      const penAccSeed = accounts.find(a => a.code === '21500');
+
+      const allowSeed = accounts.find(a => a.code === '12100');
+      const prepSeed = accounts.find(a => a.code === '14000');
+      const defRevSeed = accounts.find(a => a.code === '23000');
+      const salesRetSeed = accounts.find(a => a.code === '41300');
+      const purDiscSeed = accounts.find(a => a.code === '51100');
+      const purRetSeed = accounts.find(a => a.code === '51200');
 
       setMappings({
         arAccountId: arSeed?.id || '',
@@ -86,6 +179,21 @@ export const SystemAccountMapping: React.FC<SystemAccountMappingProps> = ({ acco
         taxAccountId: taxSeed?.id || '',
         revenueAccountId: revSeed?.id || '',
         cogsAccountId: cogsSeed?.id || '',
+        discountAccountId: discSeed?.id || '',
+        whtReceivableAccountId: whtRecSeed?.id || '',
+        whtPayableAccountId: whtPaySeed?.id || '',
+        inventoryAccountId: invSeed?.id || '',
+        payrollExpenseAccountId: payExpSeed?.id || '',
+        payrollPayableAccountId: payAccSeed?.id || '',
+        payrollTaxPayableAccountId: payTaxSeed?.id || '',
+        pensionPayableAccountId: penAccSeed?.id || '',
+
+        allowanceAccountId: allowSeed?.id || '',
+        prepaidAccountId: prepSeed?.id || '',
+        deferredRevenueAccountId: defRevSeed?.id || '',
+        salesReturnsAccountId: salesRetSeed?.id || '',
+        purchaseDiscountsAccountId: purDiscSeed?.id || '',
+        purchaseReturnsAccountId: purRetSeed?.id || '',
       });
       notify('✓ Mappings reset to defaults.');
     }
@@ -95,7 +203,7 @@ export const SystemAccountMapping: React.FC<SystemAccountMappingProps> = ({ acco
   const arAccounts = accounts.filter(a => a.type === 'Asset' || a.type === 'ContraAsset');
   const apAccounts = accounts.filter(a => a.type === 'Liability' || a.type === 'ContraLiability');
   const taxAccounts = accounts.filter(a => a.type === 'Liability');
-  const revenueAccounts = accounts.filter(a => a.type === 'Revenue');
+  const revenueAccounts = accounts.filter(a => a.type === 'Revenue' || a.type === 'ContraRevenue');
   const expenseAccounts = accounts.filter(a => a.type === 'Expense' || a.type === 'ContraExpense');
 
   return (
@@ -114,7 +222,7 @@ export const SystemAccountMapping: React.FC<SystemAccountMappingProps> = ({ acco
               ⚙️ System Account Mapping Settings
             </h1>
             <p className="text-xs text-slate-500 mt-0.5">
-              Configure default accounts for automated posting flows (e.g. Sales Invoicing, Vendor Bills).
+              Configure default accounts for automated posting flows (e.g. Sales Invoicing, Payroll, Taxes, Inventory).
             </p>
           </div>
         </div>
@@ -144,9 +252,7 @@ export const SystemAccountMapping: React.FC<SystemAccountMappingProps> = ({ acco
         <div className="text-xs text-slate-600 leading-relaxed space-y-1">
           <strong className="text-slate-800 font-bold block">Flexible Accounting Mappings:</strong>
           <p>
-            By default, sales invoice posting debits the standard <strong>`12000 - Accounts Receivable`</strong> account. 
-            If your business requires invoices to debit a custom account (e.g., <strong>`12100 - Customer Receivables`</strong>), 
-            you can create it in the Chart of Accounts and select it below. The posting wizard will auto-fill your choice.
+            System default operations automap calculations to seeded posting accounts. For custom statutory policies, VAT brackets, or payroll benefits, you can create new ledgers in the Chart of Accounts and map them below.
           </p>
         </div>
       </div>
@@ -174,9 +280,22 @@ export const SystemAccountMapping: React.FC<SystemAccountMappingProps> = ({ acco
                   <option key={a.id} value={a.id}>{a.code} — {a.name}</option>
                 ))}
               </select>
-              <span className="text-[10px] text-slate-400 mt-1 block">
-                The account debited when posting invoices to track amount owed by customers.
-              </span>
+            </div>
+
+            <div>
+              <label className="block text-xs font-semibold text-slate-700 mb-1.5">
+                Allowance for Doubtful Accounts (Contra-Receivable)
+              </label>
+              <select
+                value={mappings.allowanceAccountId}
+                onChange={e => setMappings(prev => ({ ...prev, allowanceAccountId: e.target.value }))}
+                className="w-full h-10 border border-slate-200 rounded-lg px-3 py-2 text-sm bg-white focus:border-slate-400 outline-none transition-colors"
+              >
+                <option value="">-- Choose Allowance Account --</option>
+                {arAccounts.map(a => (
+                  <option key={a.id} value={a.id}>{a.code} — {a.name}</option>
+                ))}
+              </select>
             </div>
 
             <div>
@@ -193,9 +312,38 @@ export const SystemAccountMapping: React.FC<SystemAccountMappingProps> = ({ acco
                   <option key={a.id} value={a.id}>{a.code} — {a.name}</option>
                 ))}
               </select>
-              <span className="text-[10px] text-slate-400 mt-1 block">
-                The credit destination account for non-tax line totals of posted sales invoices.
-              </span>
+            </div>
+
+            <div>
+              <label className="block text-xs font-semibold text-slate-700 mb-1.5">
+                Default Sales Discount (Contra-Revenue)
+              </label>
+              <select
+                value={mappings.discountAccountId}
+                onChange={e => setMappings(prev => ({ ...prev, discountAccountId: e.target.value }))}
+                className="w-full h-10 border border-slate-200 rounded-lg px-3 py-2 text-sm bg-white focus:border-slate-400 outline-none transition-colors"
+              >
+                <option value="">-- Choose Discount Account --</option>
+                {revenueAccounts.map(a => (
+                  <option key={a.id} value={a.id}>{a.code} — {a.name}</option>
+                ))}
+              </select>
+            </div>
+
+            <div>
+              <label className="block text-xs font-semibold text-slate-700 mb-1.5">
+                Sales Returns & Allowances (Contra-Revenue)
+              </label>
+              <select
+                value={mappings.salesReturnsAccountId}
+                onChange={e => setMappings(prev => ({ ...prev, salesReturnsAccountId: e.target.value }))}
+                className="w-full h-10 border border-slate-200 rounded-lg px-3 py-2 text-sm bg-white focus:border-slate-400 outline-none transition-colors"
+              >
+                <option value="">-- Choose Returns Account --</option>
+                {revenueAccounts.map(a => (
+                  <option key={a.id} value={a.id}>{a.code} — {a.name}</option>
+                ))}
+              </select>
             </div>
           </div>
         </div>
@@ -221,9 +369,6 @@ export const SystemAccountMapping: React.FC<SystemAccountMappingProps> = ({ acco
                   <option key={a.id} value={a.id}>{a.code} — {a.name}</option>
                 ))}
               </select>
-              <span className="text-[10px] text-slate-400 mt-1 block">
-                The account credited when posting vendor bills to track supplier liabilities.
-              </span>
             </div>
 
             <div>
@@ -240,20 +385,90 @@ export const SystemAccountMapping: React.FC<SystemAccountMappingProps> = ({ acco
                   <option key={a.id} value={a.id}>{a.code} — {a.name}</option>
                 ))}
               </select>
-              <span className="text-[10px] text-slate-400 mt-1 block">
-                Default cost offset account when matching physical inventory stock outputs.
-              </span>
+            </div>
+
+            <div>
+              <label className="block text-xs font-semibold text-slate-700 mb-1.5">
+                Purchase Discounts (Contra-Expense)
+              </label>
+              <select
+                value={mappings.purchaseDiscountsAccountId}
+                onChange={e => setMappings(prev => ({ ...prev, purchaseDiscountsAccountId: e.target.value }))}
+                className="w-full h-10 border border-slate-200 rounded-lg px-3 py-2 text-sm bg-white focus:border-slate-400 outline-none transition-colors"
+              >
+                <option value="">-- Choose Purchase Discount --</option>
+                {expenseAccounts.map(a => (
+                  <option key={a.id} value={a.id}>{a.code} — {a.name}</option>
+                ))}
+              </select>
+            </div>
+
+            <div>
+              <label className="block text-xs font-semibold text-slate-700 mb-1.5">
+                Purchase Returns & Allowances (Contra-Expense)
+              </label>
+              <select
+                value={mappings.purchaseReturnsAccountId}
+                onChange={e => setMappings(prev => ({ ...prev, purchaseReturnsAccountId: e.target.value }))}
+                className="w-full h-10 border border-slate-200 rounded-lg px-3 py-2 text-sm bg-white focus:border-slate-400 outline-none transition-colors"
+              >
+                <option value="">-- Choose Purchase Returns --</option>
+                {expenseAccounts.map(a => (
+                  <option key={a.id} value={a.id}>{a.code} — {a.name}</option>
+                ))}
+              </select>
             </div>
           </div>
         </div>
 
-        {/* Global Taxes Configuration */}
-        <div className="bg-white border border-slate-200 rounded-2xl p-5 shadow-xs space-y-4 md:col-span-2">
+        {/* Inventory & Asset Configuration */}
+        <div className="bg-white border border-slate-200 rounded-2xl p-5 shadow-xs space-y-4">
           <h3 className="text-sm font-bold text-slate-800 border-b border-slate-100 pb-2 flex items-center gap-1.5">
-            <span>🏛️</span> Tax & Compliance Defaults
+            <span>📦</span> Inventory & Asset Control
           </h3>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="space-y-3.5">
+            <div>
+              <label className="block text-xs font-semibold text-slate-700 mb-1.5">
+                Default Inventory Asset Account
+              </label>
+              <select
+                value={mappings.inventoryAccountId}
+                onChange={e => setMappings(prev => ({ ...prev, inventoryAccountId: e.target.value }))}
+                className="w-full h-10 border border-slate-200 rounded-lg px-3 py-2 text-sm bg-white focus:border-slate-400 outline-none transition-colors"
+              >
+                <option value="">-- Choose Inventory Account --</option>
+                {arAccounts.map(a => (
+                  <option key={a.id} value={a.id}>{a.code} — {a.name}</option>
+                ))}
+              </select>
+            </div>
+
+            <div>
+              <label className="block text-xs font-semibold text-slate-700 mb-1.5">
+                Prepaid Expenses Account (Asset)
+              </label>
+              <select
+                value={mappings.prepaidAccountId}
+                onChange={e => setMappings(prev => ({ ...prev, prepaidAccountId: e.target.value }))}
+                className="w-full h-10 border border-slate-200 rounded-lg px-3 py-2 text-sm bg-white focus:border-slate-400 outline-none transition-colors"
+              >
+                <option value="">-- Choose Prepaid Account --</option>
+                {arAccounts.map(a => (
+                  <option key={a.id} value={a.id}>{a.code} — {a.name}</option>
+                ))}
+              </select>
+            </div>
+          </div>
+        </div>
+
+        {/* Global Taxes & Withholding Tax (WHT) Configuration */}
+        <div className="bg-white border border-slate-200 rounded-2xl p-5 shadow-xs space-y-4">
+          <h3 className="text-sm font-bold text-slate-800 border-b border-slate-100 pb-2 flex items-center gap-1.5">
+            <span>🏛️</span> Tax & Withholding (WHT) Defaults
+          </h3>
+
+          <div className="space-y-3.5">
             <div>
               <label className="block text-xs font-semibold text-slate-700 mb-1.5">
                 Default Tax Payable / VAT Account
@@ -268,19 +483,127 @@ export const SystemAccountMapping: React.FC<SystemAccountMappingProps> = ({ acco
                   <option key={a.id} value={a.id}>{a.code} — {a.name}</option>
                 ))}
               </select>
-              <span className="text-[10px] text-slate-400 mt-1 block">
-                The account used to record output taxes collected on customer sales or input tax credits.
-              </span>
             </div>
 
-            <div className="bg-slate-50 border border-slate-100 rounded-xl p-3 flex flex-col justify-center">
-              <span className="text-xs font-bold text-slate-700 flex items-center gap-1">
-                <Lock className="w-3.5 h-3.5 text-amber-500" />
-                Dual Mapping Active
-              </span>
-              <p className="text-[11px] text-slate-500 mt-1.5 leading-relaxed">
-                System accounts labeled with 🔒 are protected from structural change, but their mappings can be altered here to allow localization (e.g. VAT vs HST vs US Sales Tax Accounts).
-              </p>
+            <div>
+              <label className="block text-xs font-semibold text-slate-700 mb-1.5">
+                Withholding Tax (WHT) Receivable (Asset)
+              </label>
+              <select
+                value={mappings.whtReceivableAccountId}
+                onChange={e => setMappings(prev => ({ ...prev, whtReceivableAccountId: e.target.value }))}
+                className="w-full h-10 border border-slate-200 rounded-lg px-3 py-2 text-sm bg-white focus:border-slate-400 outline-none transition-colors"
+              >
+                <option value="">-- Choose WHT Asset Account --</option>
+                {arAccounts.map(a => (
+                  <option key={a.id} value={a.id}>{a.code} — {a.name}</option>
+                ))}
+              </select>
+            </div>
+
+            <div>
+              <label className="block text-xs font-semibold text-slate-700 mb-1.5">
+                Withholding Tax (WHT) Payable (Liability)
+              </label>
+              <select
+                value={mappings.whtPayableAccountId}
+                onChange={e => setMappings(prev => ({ ...prev, whtPayableAccountId: e.target.value }))}
+                className="w-full h-10 border border-slate-200 rounded-lg px-3 py-2 text-sm bg-white focus:border-slate-400 outline-none transition-colors"
+              >
+                <option value="">-- Choose WHT Liability Account --</option>
+                {apAccounts.map(a => (
+                  <option key={a.id} value={a.id}>{a.code} — {a.name}</option>
+                ))}
+              </select>
+            </div>
+
+            <div>
+              <label className="block text-xs font-semibold text-slate-700 mb-1.5">
+                Deferred Revenue Account (Liability)
+              </label>
+              <select
+                value={mappings.deferredRevenueAccountId}
+                onChange={e => setMappings(prev => ({ ...prev, deferredRevenueAccountId: e.target.value }))}
+                className="w-full h-10 border border-slate-200 rounded-lg px-3 py-2 text-sm bg-white focus:border-slate-400 outline-none transition-colors"
+              >
+                <option value="">-- Choose Deferred Revenue --</option>
+                {apAccounts.map(a => (
+                  <option key={a.id} value={a.id}>{a.code} — {a.name}</option>
+                ))}
+              </select>
+            </div>
+          </div>
+        </div>
+
+        {/* Payroll & Statutory Liability Configuration */}
+        <div className="bg-white border border-slate-200 rounded-2xl p-5 shadow-xs space-y-4 md:col-span-2">
+          <h3 className="text-sm font-bold text-slate-800 border-b border-slate-100 pb-2 flex items-center gap-1.5">
+            <span>👥</span> Payroll & Statutory Accruals
+          </h3>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <label className="block text-xs font-semibold text-slate-700 mb-1.5">
+                Default Salaries & Wages Expense
+              </label>
+              <select
+                value={mappings.payrollExpenseAccountId}
+                onChange={e => setMappings(prev => ({ ...prev, payrollExpenseAccountId: e.target.value }))}
+                className="w-full h-10 border border-slate-200 rounded-lg px-3 py-2 text-sm bg-white focus:border-slate-400 outline-none transition-colors"
+              >
+                <option value="">-- Choose Payroll Expense Account --</option>
+                {expenseAccounts.map(a => (
+                  <option key={a.id} value={a.id}>{a.code} — {a.name}</option>
+                ))}
+              </select>
+            </div>
+
+            <div>
+              <label className="block text-xs font-semibold text-slate-700 mb-1.5">
+                Accrued Salaries Payable (Liability)
+              </label>
+              <select
+                value={mappings.payrollPayableAccountId}
+                onChange={e => setMappings(prev => ({ ...prev, payrollPayableAccountId: e.target.value }))}
+                className="w-full h-10 border border-slate-200 rounded-lg px-3 py-2 text-sm bg-white focus:border-slate-400 outline-none transition-colors"
+              >
+                <option value="">-- Choose Salary Payable Account --</option>
+                {apAccounts.map(a => (
+                  <option key={a.id} value={a.id}>{a.code} — {a.name}</option>
+                ))}
+              </select>
+            </div>
+
+            <div>
+              <label className="block text-xs font-semibold text-slate-700 mb-1.5">
+                Payroll Tax Withholding Payable (Statutory)
+              </label>
+              <select
+                value={mappings.payrollTaxPayableAccountId}
+                onChange={e => setMappings(prev => ({ ...prev, payrollTaxPayableAccountId: e.target.value }))}
+                className="w-full h-10 border border-slate-200 rounded-lg px-3 py-2 text-sm bg-white focus:border-slate-400 outline-none transition-colors"
+              >
+                <option value="">-- Choose Payroll Tax Account --</option>
+                {apAccounts.map(a => (
+                  <option key={a.id} value={a.id}>{a.code} — {a.name}</option>
+                ))}
+              </select>
+            </div>
+
+            <div>
+              <label className="block text-xs font-semibold text-slate-700 mb-1.5">
+                Pension / Provident Fund Payable (Retirement Accruals)
+              </label>
+              <select
+                value={mappings.pensionPayableAccountId}
+                onChange={e => setMappings(prev => ({ ...prev, pensionPayableAccountId: e.target.value }))}
+                className="w-full h-10 border border-slate-200 rounded-lg px-3 py-2 text-sm bg-white focus:border-slate-400 outline-none transition-colors"
+              >
+                <option value="">-- Choose Pension Account --</option>
+                {apAccounts.map(a => (
+                  <option key={a.id} value={a.id}>{a.code} — {a.name}</option>
+                ))}
+              </select>
             </div>
           </div>
         </div>

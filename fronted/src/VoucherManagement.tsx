@@ -1,4 +1,5 @@
 import React, { useState, useMemo, useEffect } from 'react';
+import { useFormDraft } from './hooks/useFormDraft';
 import { useVendorsStore, useCustomersStore } from './stores';
 import type { FormEvent } from 'react';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -130,6 +131,8 @@ export const VoucherManagement: React.FC<VoucherManagementProps> = ({ activeEnti
     narration: ''
   });
 
+  const { saveDraft, clearDraft } = useFormDraft('voucher', form, setForm, isModalOpen);
+
   const fetchVendors = useVendorsStore((s) => s.fetchVendors);
   const fetchCustomers = useCustomersStore((s) => s.fetchCustomers);
 
@@ -223,6 +226,7 @@ export const VoucherManagement: React.FC<VoucherManagementProps> = ({ activeEnti
     };
 
     setVouchers(prev => [newV, ...prev]);
+    clearDraft();
     setIsModalOpen(false);
     alert(`Voucher ${vNum} posted successfully to General Ledger!`);
   };
@@ -644,9 +648,9 @@ export const VoucherManagement: React.FC<VoucherManagementProps> = ({ activeEnti
               <button type="button" className="secondary" onClick={() => setIsModalOpen(false)}>
                 Cancel
               </button>
-              <button type="button" className="secondary" onClick={(e) => { e.preventDefault(); alert("Draft saved locally"); }}>Save Draft</button>
+              <button type="button" className="secondary" onClick={(e) => { e.preventDefault(); saveDraft(); alert("✓ Voucher draft saved successfully!"); }}>Save Draft</button>
               <button type="submit" className="primary">
-                Save & Post {selectedVoucherType} Voucher
+                Finalize & Post {selectedVoucherType} Voucher
               </button>
             </div>
           </form>
