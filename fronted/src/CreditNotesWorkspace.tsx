@@ -1,11 +1,11 @@
 import React, { useEffect, useState } from 'react';
 import { useCreditNotesStore } from './stores/useCreditNotesStore';
 import { useCustomersStore, useCoaStore } from './stores';
-import { useToast } from '@/components/ui/use-toast';
+import { useToastManager } from '@/components/ui/toast';
 
 function CreditNotesWorkspace() {
   const { creditNotes, fetchAll, create, post, void: voidNote, loading, error } = useCreditNotesStore();
-  const { toast } = useToast();
+  const { toast } = useToastManager();
   const customers = useCustomersStore((s) => s.customers as any[]);
   const companies = useCoaStore((s) => s.accounts as any[]);
 

@@ -1,9 +1,13 @@
+import React, { useState, useEffect } from 'react';
+import { useDebitNotesStore, useVendorsStore } from './stores';
+import { Button } from '@/components/ui/button';
+import { useToastManager } from '@/components/ui/toast';
 
 type Tab = 'dn' | 'ec' | 'pn' | 'sr';
 
 export const DebitNotes: React.FC<{ activeEntityId: string; entities?: any[] }> = ({ activeEntityId }) => {
   const [activeTab, setActiveTab] = useState<Tab>('dn');
-  const { toast } = useToast();
+  const { toast } = useToastManager();
 
   const debitNotes = useDebitNotesStore((s) => s.debitNotes);
   const vendors = useVendorsStore((s) => s.vendors);
