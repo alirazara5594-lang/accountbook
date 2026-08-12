@@ -82,7 +82,7 @@ export const FundTransfersView: React.FC<{ activeEntityId: string; entities: Ent
 
       {isModalOpen && (
         <div className="overlay">
-          <form className="modal" onSubmit={handleCreateTransfer} style={{ width: 'min(700px, 100%)' }}>
+          <form className="modal" onSubmit={handleCreateTransfer} >
             <div className="modal-head">
               <div>
                 <p className="eyebrow">BANKING & PAYMENTS</p>

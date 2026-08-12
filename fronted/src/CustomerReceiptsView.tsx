@@ -183,7 +183,7 @@ export const CustomerReceiptsView: React.FC<CustomerReceiptsViewProps> = ({ acti
 
       {isModalOpen && (
         <div className="overlay">
-          <form className="modal" onSubmit={handleCreateReceipt} style={{ width: 'min(700px, 100%)' }}>
+          <form className="modal" onSubmit={handleCreateReceipt} >
             <div className="modal-head">
               <div>
                 <p className="eyebrow">SALES & CUSTOMERS</p>

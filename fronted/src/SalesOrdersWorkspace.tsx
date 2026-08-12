@@ -348,7 +348,7 @@ export const SalesOrdersWorkspace: React.FC<SalesOrdersWorkspaceProps> = ({ acti
       {/* NEW SALES ORDER FORM MODAL */}
       {showForm && (
         <div className="overlay">
-          <form className="modal" onSubmit={handleSave} style={{ width: 'min(800px, 100%)' }}>
+          <form className="modal" onSubmit={handleSave} >
             <div className="modal-head">
               <div>
                 <p className="eyebrow">Sales & Customers</p>
@@ -568,7 +568,7 @@ export const SalesOrdersWorkspace: React.FC<SalesOrdersWorkspaceProps> = ({ acti
       {/* DETAIL VIEW MODAL */}
       {activeOrderDetails && (
         <div className="overlay">
-          <div className="modal" style={{ width: 'min(700px, 100%)' }}>
+          <div className="modal" >
             <div className="modal-head">
               <div className="flex items-center gap-2">
                 <span className="p-2 bg-emerald-50 rounded-xl text-emerald-800">

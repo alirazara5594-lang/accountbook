@@ -216,7 +216,7 @@ export const VendorPaymentsView: React.FC<VendorPaymentsViewProps> = ({ activeEn
 
       {isModalOpen && (
         <div className="overlay">
-          <form className="modal" onSubmit={handleCreatePayment} style={{ width: 'min(700px, 100%)' }}>
+          <form className="modal" onSubmit={handleCreatePayment} >
             <div className="modal-head">
               <div>
                 <p className="eyebrow">PROCUREMENT</p>

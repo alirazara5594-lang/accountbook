@@ -1015,7 +1015,7 @@ export const BankingWorkspace: React.FC<BankingWorkspaceProps> = ({ subView, act
       {/* Modal 1: Inter-Bank Fund Transfer with Mode of Payment */}
       {isTransferModalOpen && (
         <div className="overlay">
-          <form className="modal" onSubmit={handleExecuteTransfer} style={{ width: 'min(700px, 100%)' }}>
+          <form className="modal" onSubmit={handleExecuteTransfer} >
             <div className="modal-head">
               <div>
                 <p className="eyebrow">BANKING & PAYMENTS</p>
@@ -1101,7 +1101,7 @@ export const BankingWorkspace: React.FC<BankingWorkspaceProps> = ({ subView, act
       {/* Modal 2: Create Vendor Payment / Customer Receipt with Mode of Payment */}
       {isNewPaymentModalOpen && (
         <div className="overlay">
-          <form className="modal" onSubmit={handleCreatePayment} style={{ width: 'min(700px, 100%)' }}>
+          <form className="modal" onSubmit={handleCreatePayment} >
             <div className="modal-head">
               <div>
                 <p className="eyebrow">BANKING & PAYMENTS</p>
@@ -1203,7 +1203,7 @@ export const BankingWorkspace: React.FC<BankingWorkspaceProps> = ({ subView, act
       {/* Modal 3: Add New Bank / Cash Account */}
       {isNewBankModalOpen && (
         <div className="overlay">
-          <form className="modal" onSubmit={handleCreateBankAccount} style={{ width: 'min(700px, 100%)' }}>
+          <form className="modal" onSubmit={handleCreateBankAccount} >
             <div className="modal-head">
               <div>
                 <p className="eyebrow">BANKING & PAYMENTS</p>

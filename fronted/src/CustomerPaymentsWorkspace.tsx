@@ -111,7 +111,8 @@ function CustomerPaymentsWorkspace() {
   };
 
   // Submit
-  const handleCreate = async () => {
+  const handleCreate = async (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
     setFormError('');
     const amt = parseFloat(formData.amount);
     if (!formData.customerId) { setFormError('Please select a customer.'); return; }
@@ -151,28 +152,31 @@ function CustomerPaymentsWorkspace() {
 
       {/* ═══════════════════ Receive Payment Modal ═══════════════════ */}
       {isModalOpen && (
-        <div className="modal-overlay">
-          <div className="modal receive-payment-modal">
-            <h3>Receive Payment</h3>
-            {formError && <p className="error">{formError}</p>}
+        <div className="overlay">
+          <form className="modal" onSubmit={handleCreate} >
+            <div className="modal-head">
+              <div>
+                <p className="eyebrow">SALES & CUSTOMERS</p>
+                <h2>Receive Payment</h2>
+              </div>
+              <button type="button" className="close" onClick={() => setIsModalOpen(false)}>×</button>
+            </div>
 
-            {/* ── Row 1: Customer ── */}
-            <div className="form-row">
-              <div className="form-field full">
-                <label>Customer *</label>
-                <select value={formData.customerId} onChange={e => onCustomerChange(e.target.value)}>
+            <div className="form-grid">
+              {formError && <p className="error" style={{ gridColumn: '1 / -1', color: '#c25c5c', fontSize: 13, marginBottom: 10 }}>{formError}</p>}
+
+              <label style={{ gridColumn: '1 / -1' }}>
+                Customer *
+                <select required value={formData.customerId} onChange={e => onCustomerChange(e.target.value)}>
                   <option value="">— Select Customer —</option>
                   {customers.map(c => (
                     <option key={c.id} value={c.id}>{c.name} ({c.customerNumber})</option>
                   ))}
                 </select>
-              </div>
-            </div>
+              </label>
 
-            {/* ── Row 2: Invoice & Date ── */}
-            <div className="form-row">
-              <div className="form-field">
-                <label>Against Invoice</label>
+              <label>
+                Against Invoice
                 <select value={formData.invoiceId} onChange={e => onInvoiceChange(e.target.value)}>
                   <option value="">— On Account (no invoice) —</option>
                   {filteredInvoices.map(inv => (
@@ -181,29 +185,30 @@ function CustomerPaymentsWorkspace() {
                     </option>
                   ))}
                 </select>
-              </div>
-              <div className="form-field">
-                <label>Payment Date *</label>
+              </label>
+
+              <label>
+                Payment Date *
                 <input
+                  required
                   type="date"
                   value={formData.paymentDate}
                   onChange={e => setFormData({ ...formData, paymentDate: e.target.value })}
                 />
-              </div>
-            </div>
+              </label>
 
-            {/* ── Row 3: Amount & Payment Method ── */}
-            <div className="form-row">
-              <div className="form-field">
-                <label>Amount Received *</label>
+              <label>
+                Amount Received *
                 <input
+                  required
                   type="number" step="0.01" min="0" placeholder="0.00"
                   value={formData.amount}
                   onChange={e => setFormData({ ...formData, amount: e.target.value })}
                 />
-              </div>
-              <div className="form-field">
-                <label>Payment Method *</label>
+              </label>
+
+              <label>
+                Payment Method *
                 <select value={formData.paymentMethod} onChange={e => onMethodChange(e.target.value)}>
                   {PAYMENT_METHODS.map(m => (
                     <option key={m.value} value={m.value}>
@@ -211,23 +216,19 @@ function CustomerPaymentsWorkspace() {
                     </option>
                   ))}
                 </select>
-              </div>
-            </div>
+              </label>
 
-            {/* ── Row 4: Deposit To Account ── */}
-            <div className="form-row">
-              <div className="form-field full">
-                <label>
-                  Deposit To *
-                  <span className="hint">
-                    {NEEDS_BANK_ACCOUNT.includes(formData.paymentMethod)
-                      ? ' — Select the bank account receiving funds'
-                      : formData.paymentMethod === 'Cash'
-                        ? ' — Select cash-in-hand or petty cash account'
-                        : ' — Select the account to debit'}
-                  </span>
-                </label>
+              <label style={{ gridColumn: '1 / -1' }}>
+                Deposit To *
+                <span className="hint" style={{ fontSize: 10, color: '#8d9aad', fontWeight: 'normal', marginLeft: 4 }}>
+                  {NEEDS_BANK_ACCOUNT.includes(formData.paymentMethod)
+                    ? ' (Select the bank account receiving funds)'
+                    : formData.paymentMethod === 'Cash'
+                      ? ' (Select cash-in-hand or petty cash account)'
+                      : ' (Select the account to debit)'}
+                </span>
                 <select
+                  required
                   value={formData.depositToAccountId}
                   onChange={e => setFormData({ ...formData, depositToAccountId: e.target.value })}
                 >
@@ -236,56 +237,60 @@ function CustomerPaymentsWorkspace() {
                     <option key={a.id} value={a.id}>{a.code} — {a.name}</option>
                   ))}
                 </select>
-              </div>
-            </div>
+              </label>
 
-            {/* ── Row 5: Reference & Memo ── */}
-            <div className="form-row">
-              <div className="form-field">
-                <label>Reference / Cheque # / Txn ID</label>
+              <label>
+                Reference / Cheque # / Txn ID
                 <input
                   placeholder="e.g. CHQ-001, ACH-REF-123"
                   value={formData.reference}
                   onChange={e => setFormData({ ...formData, reference: e.target.value })}
                 />
-              </div>
-              <div className="form-field">
-                <label>Memo</label>
+              </label>
+
+              <label>
+                Memo
                 <input
                   placeholder="Internal notes"
                   value={formData.memo}
                   onChange={e => setFormData({ ...formData, memo: e.target.value })}
                 />
-              </div>
+              </label>
+
+              {formData.amount && formData.depositToAccountId && (
+                <div className="journal-preview" style={{ gridColumn: '1 / -1', marginTop: 10, padding: 12, background: '#f8fafc', borderRadius: 8, border: '1px solid #edf2f7' }}>
+                  <p className="journal-title" style={{ fontSize: 11, fontWeight: 'bold', color: '#475569', marginBottom: 8 }}>Double-Entry Preview</p>
+                  <table className="journal-table" style={{ width: '100%', fontSize: 12 }}>
+                    <thead>
+                      <tr style={{ borderBottom: '1px solid #e2e8f0', color: '#64748b' }}>
+                        <th style={{ textAlign: 'left', paddingBottom: 4 }}>Account</th>
+                        <th style={{ textAlign: 'right', paddingBottom: 4 }}>Debit</th>
+                        <th style={{ textAlign: 'right', paddingBottom: 4 }}>Credit</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      <tr>
+                        <td style={{ paddingTop: 6, color: '#334155' }}>{depositAccounts.find(a => a.id === formData.depositToAccountId)?.name || 'Bank/Cash'}</td>
+                        <td style={{ paddingTop: 6, textAlign: 'right', fontWeight: 'bold', color: '#0f172a' }}>{parseFloat(formData.amount)?.toLocaleString(undefined, { minimumFractionDigits: 2 })}</td>
+                        <td style={{ paddingTop: 6, textAlign: 'right', color: '#94a3b8' }}>—</td>
+                      </tr>
+                      <tr>
+                        <td style={{ paddingTop: 6, color: '#334155' }}>Accounts Receivable</td>
+                        <td style={{ paddingTop: 6, textAlign: 'right', color: '#94a3b8' }}>—</td>
+                        <td style={{ paddingTop: 6, textAlign: 'right', fontWeight: 'bold', color: '#0f172a' }}>{parseFloat(formData.amount)?.toLocaleString(undefined, { minimumFractionDigits: 2 })}</td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+              )}
             </div>
 
-            {/* ── Accounting summary ── */}
-            {formData.amount && formData.depositToAccountId && (
-              <div className="journal-preview">
-                <p className="journal-title">Double-Entry Preview</p>
-                <table className="journal-table">
-                  <thead><tr><th>Account</th><th>Debit</th><th>Credit</th></tr></thead>
-                  <tbody>
-                    <tr>
-                      <td>{depositAccounts.find(a => a.id === formData.depositToAccountId)?.name || 'Bank/Cash'}</td>
-                      <td>{parseFloat(formData.amount)?.toLocaleString(undefined, { minimumFractionDigits: 2 })}</td>
-                      <td>—</td>
-                    </tr>
-                    <tr>
-                      <td>Accounts Receivable</td>
-                      <td>—</td>
-                      <td>{parseFloat(formData.amount)?.toLocaleString(undefined, { minimumFractionDigits: 2 })}</td>
-                    </tr>
-                  </tbody>
-                </table>
-              </div>
-            )}
-
-            <div className="modal-actions">
-              <button className="primary" onClick={handleCreate}>Save Payment</button>
-              <button onClick={() => setIsModalOpen(false)}>Cancel</button>
+            <div className="modal-footer">
+              <button type="button" className="secondary" onClick={() => setIsModalOpen(false)}>Cancel</button>
+              <button type="button" className="secondary" onClick={(e) => { e.preventDefault(); alert("Draft saved locally"); }}>Save Draft</button>
+              <button type="submit" className="primary">Save Payment</button>
             </div>
-          </div>
+          </form>
         </div>
       )}
 
