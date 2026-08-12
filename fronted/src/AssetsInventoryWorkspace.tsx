@@ -141,9 +141,9 @@ const AssetRegister: React.FC<{ activeEntityId: string; accounts: any[] }> = ({ 
                   Useful Life (years)
                   <input type="number" value={deprForm.usefulLifeYears} onChange={e => setDeprForm(f => ({...f, usefulLifeYears: parseInt(e.target.value) || 3}))} min="1" style={{ width: '100%' }} />
                 </label>
-                <label>
+<label>
                   Salvage Value
-                  <input type="number" value={deprForm.salvageValue} onChange={e => setDeprForm(f => ({...f, salvageValue: parseFloat(e.target.value) || 0))}} step="0.01" style={{ width: '100%' }} />
+                  <input type="number" value={deprForm.salvageValue} onChange={e => setDeprForm(f => ({...f, salvageValue: Number(e.target.value) || 0})} step={".01"} style={{ width: '100%' }} />
                 </label>
               </div>
             </div>
