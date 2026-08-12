@@ -143,7 +143,7 @@ const AssetRegister: React.FC<{ activeEntityId: string; accounts: any[] }> = ({ 
                 </label>
 <label>
                   Salvage Value
-                  <input type="number" value={deprForm.salvageValue} onChange={e => setDeprForm(f => ({...f, salvageValue: Number(e.target.value) || 0})} step={".01"} style={{ width: '100%' }} />
+                  <input type="number" value={deprForm.salvageValue} onChange={e => setDeprForm(f => ({...f, salvageValue: Number(e.target.value) || 0))}} step={".01"} style={{ width: '100%' }} />
                 </label>
               </div>
             </div>
