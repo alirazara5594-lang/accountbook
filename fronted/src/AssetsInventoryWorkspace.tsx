@@ -19,10 +19,11 @@ const AccSelect = ({ value, onChange, accounts, label, filter }: any) => (
 const AssetRegister: React.FC<{ activeEntityId: string; accounts: any[] }> = ({ activeEntityId, accounts }) => {
   const [deprModal, setDeprModal] = useState<any>(null);
   const [disposeModal, setDisposeModal] = useState<any>(null);
-  const [deprForm, setDeprForm] = useState({ expenseAccId: '', accumAccId: '' });
+  const [deprForm, setDeprForm] = useState({ expenseAccId: '', accumAccId: '', usefulLifeYears: 3, salvageValue: 0 });
   const [dispForm, setDispForm] = useState({ date: new Date().toISOString().slice(0,10), proceeds: '0', assetAccId: '', accumAccId: '', gainLossAccId: '', cashAccId: '' });
   const [toast, setToast] = useState('');
   const [searchTerm, setSearchTerm] = useState('');
+  const [userRole, setUserRole] = useState<'admin' | 'accountant' | 'asset-manager' | 'viewer'>('viewer');
 
   const assets = useAssetsInventoryStore((s) => s.assets as any[]);
   const fetchFixedAssets = useAssetsInventoryStore((s) => s.fetchFixedAssets);
@@ -31,11 +32,18 @@ const AssetRegister: React.FC<{ activeEntityId: string; accounts: any[] }> = ({ 
 
   useEffect(() => { fetchFixedAssets(activeEntityId); }, [activeEntityId]);
 
+  useEffect(() => {
+    const storedRole = localStorage.getItem('user_role');
+    if (storedRole) {
+      setUserRole(storedRole as 'admin' | 'accountant' | 'asset-manager' | 'viewer');
+    }
+  }, []);
+
   const notify = (m: string) => { setToast(m); setTimeout(() => setToast(''), 3500); };
 
   const runDepreciation = async () => {
     try {
-      await runDepreciationStore(deprModal.id, deprForm.expenseAccId, deprForm.accumAccId);
+      await runDepreciationStore(deprModal.id, deprForm.expenseAccId, deprForm.accumAccId, deprForm.usefulLifeYears, deprForm.salvageValue);
       notify('✓ Depreciation journal posted!');
       setDeprModal(null);
     } catch (e: any) {
@@ -99,7 +107,7 @@ const AssetRegister: React.FC<{ activeEntityId: string; accounts: any[] }> = ({ 
                   </span>
                 </td>
                 <td className="py-3 px-4 space-x-3">
-                  {a.status === 0 && <><button onClick={() => { setDeprModal(a); setDeprForm({ expenseAccId:'', accumAccId:'' }); }} className="text-blue-600 hover:text-blue-800 text-xs font-medium">Run Depr.</button>
+                  {a.status === 0 && <><button onClick={() => { setDeprModal(a); setDeprForm({ expenseAccId:'', accumAccId:'', usefulLifeYears: deprModal?.usefulLifeYears || a.usefulLifeYears || 3, salvageValue: deprModal?.salvageValue || a.salvageValue || 0 }); }} className="text-blue-600 hover:text-blue-800 text-xs font-medium">Run Depr.</button>
                   <button onClick={() => { setDisposeModal(a); setDispForm({ date: new Date().toISOString().slice(0,10), proceeds:'0', assetAccId:'', accumAccId:'', gainLossAccId:'', cashAccId:'' }); }} className="text-red-500 hover:text-red-700 text-xs font-medium">Dispose</button></>}
                 </td>
               </tr>
@@ -129,12 +137,20 @@ const AssetRegister: React.FC<{ activeEntityId: string; accounts: any[] }> = ({ 
               <div className="form-grid" style={{ gridTemplateColumns: '1fr' }}>
                 <AccSelect value={deprForm.expenseAccId} onChange={(v: string) => setDeprForm(f => ({...f, expenseAccId: v}))} accounts={accounts} label="Depreciation Expense Account *" filter={(a: any) => a.type === 'Expense'} />
                 <AccSelect value={deprForm.accumAccId} onChange={(v: string) => setDeprForm(f => ({...f, accumAccId: v}))} accounts={accounts} label="Accumulated Depreciation Account *" filter={(a: any) => a.type === 'ContraAsset' || a.name?.toLowerCase().includes('depreciation')} />
+                <label>
+                  Useful Life (years)
+                  <input type="number" value={deprForm.usefulLifeYears} onChange={e => setDeprForm(f => ({...f, usefulLifeYears: parseInt(e.target.value) || 3}))} min="1" style={{ width: '100%' }} />
+                </label>
+                <label>
+                  Salvage Value
+                  <input type="number" value={deprForm.salvageValue} onChange={e => setDeprForm(f => ({...f, salvageValue: parseFloat(e.target.value) || 0))}} step="0.01" style={{ width: '100%' }} />
+                </label>
               </div>
             </div>
             <div className="modal-footer">
               <button type="button" className="secondary" onClick={() => setDeprModal(null)}>Cancel</button>
               <button type="button" className="secondary" onClick={(e) => { e.preventDefault(); alert("Draft saved locally"); }}>Save Draft</button>
-<button onClick={runDepreciation} disabled={!deprForm.expenseAccId || !deprForm.accumAccId} className="primary">Post Journal Entry</button>
+<button onClick={runDepreciation} disabled={!deprForm.expenseAccId || !deprForm.accumAccId || (userRole !== 'admin' && userRole !== 'accountant' && userRole !== 'asset-manager')} className="primary">Post Journal Entry</button>
             </div>
           </div>
         </div>
@@ -172,7 +188,7 @@ const AssetRegister: React.FC<{ activeEntityId: string; accounts: any[] }> = ({ 
             <div className="modal-footer">
               <button type="button" className="secondary" onClick={() => setDisposeModal(null)}>Cancel</button>
               <button type="button" className="secondary" onClick={(e) => { e.preventDefault(); alert("Draft saved locally"); }}>Save Draft</button>
-<button onClick={disposeAsset} disabled={!dispForm.assetAccId || !dispForm.accumAccId || !dispForm.gainLossAccId} className="primary">Post Disposal Journal</button>
+<button onClick={disposeAsset} disabled={!dispForm.assetAccId || !dispForm.accumAccId || !dispForm.gainLossAccId || (userRole !== 'admin' && userRole !== 'accountant' && userRole !== 'asset-manager')} className="primary">Post Disposal Journal</button>
             </div>
           </div>
         </div>
@@ -533,6 +549,11 @@ export const AssetsInventoryWorkspace: React.FC<{ activeEntityId: string; entiti
     fetchAccounts();
     fetchWarehouses(activeEntityId);
     fetchProducts();
+    // Get user role from localStorage (set by auth system)
+    const storedRole = localStorage.getItem('user_role');
+    if (storedRole) {
+      setUserRole(storedRole as 'admin' | 'accountant' | 'asset-manager' | 'viewer');
+    }
   }, [activeEntityId]);
 
   const tabs: { id: Tab; label: string; icon: string }[] = [
