@@ -145,45 +145,51 @@ public class AccountingStore
     private void SeedAccounts()
     {
         _accounts.Clear();
-        // 1. Assets
+        // 1. Assets (Structural Headers: System = True; Leaf Posting: System = False)
         var assets = Seed("10000", "Assets", AccountType.Asset, null);
         var currentAssets = Seed("11000", "Current Assets", AccountType.Asset, assets.Id);
-        var cashBank = Seed("11100", "Cash & Bank", AccountType.Asset, currentAssets.Id);
-        Seed("11110", "Cash", AccountType.Asset, cashBank.Id);          // parent for Cash in Hand, Petty Cash, etc.
-        Seed("11120", "Bank Accounts", AccountType.Asset, cashBank.Id); // parent for user's bank accounts
-        Seed("12000", "Accounts Receivable", AccountType.Asset, currentAssets.Id, true);
-        Seed("13000", "Inventory Asset", AccountType.Asset, currentAssets.Id, true);
+        
+        var cash = Seed("11100", "Cash", AccountType.Asset, currentAssets.Id);
+        Seed("11101", "Cash on Hand", AccountType.Asset, cash.Id, true, 0, false);
+        Seed("11102", "Petty Cash", AccountType.Asset, cash.Id, true, 0, false);
+
+        var bank = Seed("11200", "Bank Accounts", AccountType.Asset, currentAssets.Id);
+        Seed("11201", "HBL Current Account", AccountType.Asset, bank.Id, true, 0, false);
+        Seed("11202", "Standard Chartered USD", AccountType.Asset, bank.Id, true, 0, false);
+
+        Seed("12000", "Accounts Receivable", AccountType.Asset, currentAssets.Id, true, 0, false);
+        Seed("13000", "Inventory Asset", AccountType.Asset, currentAssets.Id, true, 0, false);
         
         var nonCurrentAssets = Seed("15000", "Non-Current Assets", AccountType.Asset, assets.Id);
-        Seed("15100", "Fixed Assets", AccountType.Asset, nonCurrentAssets.Id, true);
-        Seed("15200", "Accumulated Depreciation", AccountType.ContraAsset, nonCurrentAssets.Id, true);
+        Seed("15100", "Fixed Assets", AccountType.Asset, nonCurrentAssets.Id, true, 0, false);
+        Seed("15200", "Accumulated Depreciation", AccountType.ContraAsset, nonCurrentAssets.Id, true, 0, false);
 
-        // 2. Liabilities
+        // 2. Liabilities (Structural Headers: System = True; Leaf Posting: System = False)
         var liabilities = Seed("20000", "Liabilities", AccountType.Liability, null);
         var currentLiabilities = Seed("21000", "Current Liabilities", AccountType.Liability, liabilities.Id);
-        Seed("21100", "Accounts Payable", AccountType.Liability, currentLiabilities.Id, true);
-        Seed("21200", "GRNI Accrual", AccountType.Liability, currentLiabilities.Id, true);
-        Seed("22000", "Tax Payable", AccountType.Liability, currentLiabilities.Id, true);
+        Seed("21100", "Accounts Payable", AccountType.Liability, currentLiabilities.Id, true, 0, false);
+        Seed("21200", "GRNI Accrual", AccountType.Liability, currentLiabilities.Id, true, 0, false);
+        Seed("22000", "Tax Payable", AccountType.Liability, currentLiabilities.Id, true, 0, false);
 
-        // 3. Equity
+        // 3. Equity (Structural Headers: System = True; Leaf Posting: System = False)
         var equity = Seed("30000", "Equity", AccountType.Equity, null);
-        Seed("31000", "Share Capital", AccountType.Equity, equity.Id);
-        Seed("32000", "Retained Earnings", AccountType.Equity, equity.Id);
+        Seed("31000", "Share Capital", AccountType.Equity, equity.Id, false, 0, false);
+        Seed("32000", "Retained Earnings", AccountType.Equity, equity.Id, false, 0, false);
 
-        // 4. Revenue
+        // 4. Revenue (Structural Headers: System = True; Leaf Posting: System = False)
         var revenue = Seed("40000", "Revenue", AccountType.Revenue, null);
         var operatingRevenue = Seed("41000", "Operating Revenue", AccountType.Revenue, revenue.Id);
-        Seed("41100", "Sales Revenue", AccountType.Revenue, operatingRevenue.Id, true);
-        Seed("42000", "Non-Operating Revenue", AccountType.Revenue, revenue.Id);
+        Seed("41100", "Sales Revenue", AccountType.Revenue, operatingRevenue.Id, true, 0, false);
+        Seed("42000", "Non-Operating Revenue", AccountType.Revenue, revenue.Id, false, 0, false);
 
-        // 5. Cost of Goods Sold
+        // 5. Cost of Goods Sold (Structural Headers: System = True; Leaf Posting: System = False)
         var cogs = Seed("50000", "Cost of Goods Sold", AccountType.Expense, null);
-        Seed("51000", "Cost of Sales", AccountType.Expense, cogs.Id);
+        Seed("51000", "Cost of Sales", AccountType.Expense, cogs.Id, false, 0, false);
 
-        // 6. Expenses
+        // 6. Expenses (Structural Headers: System = True; Leaf Posting: System = False)
         var expenses = Seed("60000", "Expenses", AccountType.Expense, null);
         var operatingExpenses = Seed("61000", "Operating Expenses", AccountType.Expense, expenses.Id);
-        Seed("61100", "Office Expenses", AccountType.Expense, operatingExpenses.Id, true);
+        Seed("61100", "Office Expenses", AccountType.Expense, operatingExpenses.Id, true, 0, false);
     }
 
     public IReadOnlyList<Account> Accounts => _accounts;

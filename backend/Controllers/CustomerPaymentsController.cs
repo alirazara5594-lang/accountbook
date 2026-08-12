@@ -55,13 +55,16 @@ public class CustomerPaymentsController : ControllerBase
     [HttpGet("deposit-accounts")]
     public IActionResult GetDepositAccounts()
     {
-        // Find the Cash & Bank parent (code 11100)
-        var cashBankParent = _store.Accounts.FirstOrDefault(a => a.Code == "11100");
-        var cashBankParentId = cashBankParent?.Id;
+        // Find the Cash parent (11100) and Bank parent (11200)
+        var cashParent = _store.Accounts.FirstOrDefault(a => a.Code == "11100");
+        var bankParent = _store.Accounts.FirstOrDefault(a => a.Code == "11200");
+        var cashParentId = cashParent?.Id;
+        var bankParentId = bankParent?.Id;
 
         var accounts = _store.Accounts
             .Where(a => a.Status == AccountStatus.Active && a.Type == AccountType.Asset &&
-                (a.ParentId == cashBankParentId ||
+                (a.ParentId == cashParentId ||
+                 a.ParentId == bankParentId ||
                  a.Name.Contains("Cash", StringComparison.OrdinalIgnoreCase) ||
                  a.Name.Contains("Bank", StringComparison.OrdinalIgnoreCase) ||
                  a.Name.Contains("Petty", StringComparison.OrdinalIgnoreCase)))

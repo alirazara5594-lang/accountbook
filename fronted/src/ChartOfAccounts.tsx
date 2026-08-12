@@ -123,28 +123,65 @@ export const ChartOfAccounts: React.FC<ChartOfAccountsProps> = ({
     return { opening, debits, credits, current };
   };
 
-  const isFiltering = !!query.trim() || selectedType !== 'All';
+  // New filter and pagination states matching mockup
+  const [selectedSubtype, setSelectedSubtype] = useState<string>('All');
+  const [selectedStatus, setSelectedStatus] = useState<string>('All');
+  const [selectedGroup, setSelectedGroup] = useState<string>('All');
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage, setItemsPerPage] = useState(10);
+
+  // Derive unique subtypes and header accounts for filter dropdowns
+  const allSubtypes = useMemo(() => {
+    const subs = accounts.map(a => a.subtype).filter(Boolean) as string[];
+    return Array.from(new Set(subs)).sort();
+  }, [accounts]);
+
+  const headerAccounts = useMemo(() => {
+    return accounts.filter(a => !a.isPosting).sort((a, b) => a.code.localeCompare(b.code));
+  }, [accounts]);
+
+  const isFiltering = !!query.trim() || selectedType !== 'All' || selectedSubtype !== 'All' || selectedStatus !== 'All' || selectedGroup !== 'All';
 
   // Flat account view for searching
   const filteredAccounts = useMemo(() => {
     return accounts.filter(a => {
-      if (!showDeactivated && a.status === 'Inactive') return false;
+      // 1. Status Filter
+      if (selectedStatus !== 'All') {
+        if (a.status !== selectedStatus) return false;
+      } else {
+        if (!showDeactivated && a.status === 'Inactive') return false;
+      }
+      
+      // 2. Type Filter
       if (selectedType !== 'All') {
         const baseType = a.type.replace('Contra', '');
         if (baseType !== selectedType) return false;
       }
+      
+      // 3. Subtype Filter
+      if (selectedSubtype !== 'All') {
+        const sub = a.subtype || 'General';
+        if (sub !== selectedSubtype) return false;
+      }
+
+      // 4. Group Filter (Parent Account ID)
+      if (selectedGroup !== 'All') {
+        if (a.parentId !== selectedGroup) return false;
+      }
+
+      // 5. Search query
       if (query.trim()) {
         const lower = query.toLowerCase();
         return (
           a.code.toLowerCase().includes(lower) ||
           a.name.toLowerCase().includes(lower) ||
-          a.subtype.toLowerCase().includes(lower) ||
+          (a.subtype || '').toLowerCase().includes(lower) ||
           a.type.toLowerCase().includes(lower)
         );
       }
       return true;
     }).sort((a, b) => a.code.localeCompare(b.code));
-  }, [accounts, query, selectedType, showDeactivated]);
+  }, [accounts, query, selectedType, selectedSubtype, selectedStatus, selectedGroup, showDeactivated]);
 
   // Pre-order traversal tree builder
   const treeCategories = useMemo(() => {
@@ -206,6 +243,43 @@ export const ChartOfAccounts: React.FC<ChartOfAccountsProps> = ({
       Expense: getCategoryTotal(['Expense', 'ContraExpense']),
     };
   }, [accounts, accountBalances]);
+
+  // Unified list of all tree items, in hierarchical preorder, for pagination support
+  const flattenedTreeList = useMemo(() => {
+    const list: { account: Account; depth: number; hasChildren: boolean }[] = [];
+    
+    // If user is searching or using advanced filters, show flat results
+    if (query.trim() || selectedType !== 'All' || selectedSubtype !== 'All' || selectedStatus !== 'All' || selectedGroup !== 'All') {
+      filteredAccounts.forEach(acc => {
+        list.push({
+          account: acc,
+          depth: 0,
+          hasChildren: false
+        });
+      });
+      return list;
+    }
+
+    // Otherwise, build structural list by stitching together flattened tree categories
+    treeCategories.forEach(cat => {
+      list.push(...cat.items);
+    });
+    return list;
+  }, [treeCategories, filteredAccounts, query, selectedType, selectedSubtype, selectedStatus, selectedGroup]);
+
+  // Paginated window
+  const paginatedItems = useMemo(() => {
+    const start = (currentPage - 1) * itemsPerPage;
+    return flattenedTreeList.slice(start, start + itemsPerPage);
+  }, [flattenedTreeList, currentPage, itemsPerPage]);
+
+  const totalEntries = flattenedTreeList.length;
+  const totalPages = Math.ceil(totalEntries / itemsPerPage) || 1;
+
+  // Reset pagination on filter change
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [query, selectedType, selectedSubtype, selectedStatus, selectedGroup, showDeactivated]);
 
   const maxAccountBalance = useMemo(() => {
     const balances = accounts.map(a => Math.abs(getAccountBalancesRecursive(a.id).current));
@@ -393,28 +467,27 @@ export const ChartOfAccounts: React.FC<ChartOfAccountsProps> = ({
   // Renders a visual row in the COA explorer list
   const renderRow = (acc: Account, depth = 0, hasChildren = false) => {
     const isDeactivated = acc.status === 'Inactive';
-    const balRec = getAccountBalancesRecursive(acc.id);
-    const balance = balRec.current;
+    const parentAccount = accounts.find(p => p.id === acc.parentId);
 
     const baseType = acc.type.replace('Contra', '');
-    const colorMap: Record<string, { bg: string; text: string; border: string; bar: string }> = {
-      Asset: { bg: 'bg-emerald-50/50', text: 'text-emerald-700', border: 'border-emerald-200/50', bar: 'bg-emerald-500' },
-      Liability: { bg: 'bg-amber-50/50', text: 'text-amber-700', border: 'border-amber-200/50', bar: 'bg-amber-500' },
-      Equity: { bg: 'bg-indigo-50/50', text: 'text-indigo-700', border: 'border-indigo-200/50', bar: 'bg-indigo-500' },
-      Revenue: { bg: 'bg-teal-50/50', text: 'text-teal-700', border: 'border-teal-200/50', bar: 'bg-teal-500' },
-      Expense: { bg: 'bg-rose-50/50', text: 'text-rose-700', border: 'border-rose-200/50', bar: 'bg-rose-500' }
+    const colorMap: Record<string, { bg: string; text: string; border: string }> = {
+      Asset: { bg: 'bg-blue-50 text-blue-700 border-blue-200/50', text: 'text-blue-700 border-blue-200/50', border: 'border-blue-200/50' },
+      Liability: { bg: 'bg-rose-50 text-rose-700 border-rose-200/50', text: 'text-rose-700 border-rose-200/50', border: 'border-rose-200/50' },
+      Equity: { bg: 'bg-emerald-50 text-emerald-700 border-emerald-200/50', text: 'text-emerald-700 border-emerald-200/50', border: 'border-emerald-200/50' },
+      Revenue: { bg: 'bg-purple-50 text-purple-700 border-purple-200/50', text: 'text-purple-700 border-purple-200/50', border: 'border-purple-200/50' },
+      Expense: { bg: 'bg-cyan-50 text-cyan-700 border-cyan-200/50', text: 'text-cyan-700 border-cyan-200/50', border: 'border-cyan-200/50' }
     };
     
-    const theme = colorMap[baseType] || { bg: 'bg-slate-50/50', text: 'text-slate-700', border: 'border-slate-200/50', bar: 'bg-slate-500' };
-    const relativePercent = Math.min(100, (Math.abs(balance) / maxAccountBalance) * 100);
+    const theme = colorMap[baseType] || { bg: 'bg-slate-50 text-slate-700 border-slate-200/50', text: 'text-slate-700 border-slate-200/50', border: 'border-slate-200/50' };
+    const displaySubtype = acc.isPosting ? (acc.subtype || 'General') : 'Header';
 
     return (
       <TableRow
         key={acc.id}
         className={`group transition-all hover:bg-slate-50/80 ${isDeactivated ? 'opacity-50 bg-slate-50/20' : ''}`}
       >
-        {/* Account Code & Guides */}
-        <TableCell className="py-3 pl-4 font-mono text-xs font-semibold">
+        {/* 1. Account Code */}
+        <TableCell className="py-2.5 pl-4 font-mono text-xs font-semibold">
           <div style={{ display: 'flex', alignItems: 'center', paddingLeft: depth * 16 }}>
             {depth > 0 && (
               <span className="text-slate-300 font-mono mr-2 select-none" style={{ fontSize: 13 }}>
@@ -442,14 +515,14 @@ export const ChartOfAccounts: React.FC<ChartOfAccountsProps> = ({
                 )}
               </span>
             )}
-            <span className="text-slate-700">{acc.code}</span>
+            <span className="text-slate-700 font-mono">{acc.code}</span>
           </div>
         </TableCell>
 
-        {/* Account Name */}
-        <TableCell className="py-3">
+        {/* 2. Account Name */}
+        <TableCell className="py-2.5">
           <div className="flex items-center gap-2">
-            <span className={`text-xs text-slate-800 tracking-tight group-hover:text-[#143e2b] transition-colors ${!acc.isPosting ? 'font-bold text-slate-900' : 'font-medium'}`}>
+            <span className={`text-xs text-blue-700 tracking-tight hover:underline cursor-pointer transition-colors ${!acc.isPosting ? 'font-bold text-blue-700' : 'font-medium'}`}>
               {acc.name}
             </span>
             {acc.isSystem && (
@@ -461,92 +534,62 @@ export const ChartOfAccounts: React.FC<ChartOfAccountsProps> = ({
           </div>
         </TableCell>
 
-        {/* Major Type */}
-        <TableCell className="py-3">
-          <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[9px] font-bold uppercase tracking-wider ${theme.text} ${theme.bg} border ${theme.border}`}>
+        {/* 3. Account Type */}
+        <TableCell className="py-2.5">
+          <span className={`inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider ${theme.bg} border ${theme.border}`}>
             {acc.type}
           </span>
         </TableCell>
 
-        {/* Subtype */}
-        <TableCell className="py-3">
-          <span className="text-[11px] font-medium text-slate-500 bg-slate-50 px-2 py-0.5 rounded border border-slate-200/35">
-            {acc.subtype || 'General'}
-          </span>
+        {/* 4. Account Sub Type */}
+        <TableCell className="py-2.5 text-xs text-slate-500 font-medium">
+          {displaySubtype}
         </TableCell>
 
-        {/* Account Level */}
-        <TableCell className="py-3 text-[11px] text-slate-500 font-semibold">
-          {acc.level === 'MainHead' ? 'Main Head' : acc.level === 'SubHead' ? 'Sub Head' : 'Detail'}
+        {/* 5. Parent Account */}
+        <TableCell className="py-2.5 text-xs text-slate-500 font-medium">
+          {parentAccount ? `${parentAccount.code} - ${parentAccount.name}` : '—'}
         </TableCell>
 
-        {/* Posting Account flag */}
-        <TableCell className="py-3">
-          {acc.isPosting ? (
-            <span className="text-emerald-700 text-xs font-bold flex items-center gap-1">
-              <CheckCircle className="w-3.5 h-3.5" /> Yes (Leaf)
-            </span>
-          ) : (
-            <span className="text-slate-400 text-xs font-medium">No (Group Header)</span>
-          )}
+        {/* 6. Currency */}
+        <TableCell className="py-2.5 text-xs text-slate-600 font-mono uppercase">
+          {acc.currency || 'USD'}
         </TableCell>
 
-        {/* Normal Balance */}
-        <TableCell className="py-3 text-xs font-semibold text-slate-600 font-mono">
-          {acc.normalBalance}
-        </TableCell>
-
-        {/* Current Balance */}
-        <TableCell className="py-3 text-right font-mono text-xs">
-          <div>
-            <span className={`font-bold ${!acc.isPosting ? 'text-slate-900 font-extrabold' : 'text-slate-800'}`}>
-              {formatCurrency(balance, acc.currency)}
-            </span>
-            {hasChildren && !isFiltering && (
-              <span className="text-[9px] block text-slate-400 font-sans mt-0.5">rollup total</span>
-            )}
-            {!isDeactivated && (
-              <div className="w-16 ml-auto bg-slate-100 rounded-full h-1 mt-1 overflow-hidden">
-                <div className={`h-full rounded-full ${theme.bar}`} style={{ width: `${relativePercent}%` }} />
-              </div>
-            )}
-          </div>
-        </TableCell>
-
-        {/* Status */}
-        <TableCell className="py-3">
-          <span className={`inline-flex px-1.5 py-0.5 rounded text-[10px] font-bold ${isDeactivated ? 'bg-rose-50 text-rose-700 border border-rose-100' : 'bg-emerald-50 text-emerald-700 border border-emerald-100'}`}>
+        {/* 7. Status */}
+        <TableCell className="py-2.5">
+          <span className={`inline-flex px-2 py-0.5 rounded text-[10px] font-bold ${isDeactivated ? 'bg-rose-50 text-rose-700 border border-rose-100' : 'bg-emerald-50 text-emerald-700 border border-emerald-100'}`}>
             {acc.status}
           </span>
         </TableCell>
 
-        {/* Controls */}
-        <TableCell className="py-3 text-right pr-4">
+        {/* 8. Action (View GL, Edit, Toggle status) */}
+        <TableCell className="py-2.5 text-right pr-4">
           <div className="flex items-center justify-end gap-1 opacity-80 group-hover:opacity-100 transition-opacity">
+            {acc.isPosting && (
+              <button
+                onClick={() => setSelectedGLAccountId(acc.id)}
+                className="p-1.5 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-lg transition-colors cursor-pointer"
+                title="View General Ledger"
+              >
+                <Eye size={14} />
+              </button>
+            )}
             <button 
               onClick={() => edit(acc)} 
-              className="p-1.5 text-slate-500 hover:text-[#143e2b] hover:bg-slate-100 rounded-lg transition-colors cursor-pointer"
-              title="Edit Account Properties"
+              className="p-1.5 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-lg transition-colors cursor-pointer"
+              title="Edit Account"
             >
-              <Edit3 size={13.5} />
+              <Edit3 size={14} />
             </button>
             <button 
               onClick={() => status(acc)} 
               disabled={acc.isSystem}
-              className={`p-1.5 text-slate-500 hover:text-amber-700 hover:bg-slate-100 rounded-lg transition-colors cursor-pointer ${acc.isSystem ? 'opacity-40 cursor-not-allowed' : ''}`}
-              title={acc.isSystem ? "Protected System Account" : "Toggle Active/Inactive"}
+              className={`p-1.5 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-lg transition-colors cursor-pointer ${acc.isSystem ? 'opacity-40 cursor-not-allowed' : ''}`}
+              title={acc.isSystem ? "Protected System Account" : "Toggle Status"}
             >
-              <Shield size={13.5} />
+              <Shield size={14} />
             </button>
-            {acc.isPosting && (
-              <button
-                onClick={() => setSelectedGLAccountId(acc.id)}
-                className="p-1.5 text-slate-500 hover:text-blue-600 hover:bg-slate-100 rounded-lg transition-colors cursor-pointer"
-                title="View General Ledger (GL) Register"
-              >
-                <Eye size={13.5} />
-              </button>
-            )}
           </div>
         </TableCell>
       </TableRow>
@@ -669,112 +712,41 @@ export const ChartOfAccounts: React.FC<ChartOfAccountsProps> = ({
 
     return [];
   }, [selectedMainHead, selectedSubHead, accounts, accountBalances]);
-
   return (
-    <div className="space-y-6 max-w-7xl mx-auto font-sans pb-12">
-      {/* Category Summary Cards */}
-      <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
-        {[
-          { name: 'Assets', type: 'Asset', total: categoryTotals.Asset, count: accounts.filter(a => ['Asset', 'ContraAsset'].includes(a.type) && a.isPosting).length },
-          { name: 'Liabilities', type: 'Liability', total: categoryTotals.Liability, count: accounts.filter(a => ['Liability', 'ContraLiability'].includes(a.type) && a.isPosting).length },
-          { name: 'Equity', type: 'Equity', total: categoryTotals.Equity, count: accounts.filter(a => ['Equity', 'ContraEquity'].includes(a.type) && a.isPosting).length },
-          { name: 'Revenue', type: 'Revenue', total: categoryTotals.Revenue, count: accounts.filter(a => ['Revenue', 'ContraRevenue'].includes(a.type) && a.isPosting).length },
-          { name: 'Expenses', type: 'Expense', total: categoryTotals.Expense, count: accounts.filter(a => ['Expense', 'ContraExpense'].includes(a.type) && a.isPosting).length },
-        ].map(({ name, type, total, count }) => {
-          const isSelected = selectedType === type;
-          return (
-            <button
-              key={name}
-              onClick={() => setSelectedType(isSelected ? 'All' : type)}
-              className={`p-4 rounded-2xl border text-left cursor-pointer transition-all ${
-                isSelected 
-                  ? 'bg-[#143e2b] text-white border-[#143e2b] shadow-md scale-102' 
-                  : 'bg-white text-slate-700 border-slate-200 hover:border-slate-300 shadow-xs'
-              }`}
-            >
-              <div className="flex items-center justify-between mb-2">
-                <span className="text-[10px] font-bold uppercase tracking-wider opacity-80">{name}</span>
-                <div className={`w-2.5 h-2.5 rounded-full ${
-                  type === 'Asset' ? 'bg-emerald-500' :
-                  type === 'Liability' ? 'bg-amber-500' :
-                  type === 'Equity' ? 'bg-indigo-500' :
-                  type === 'Revenue' ? 'bg-teal-500' : 'bg-rose-500'
-                }`} />
-              </div>
-              <h4 className="text-sm font-extrabold truncate">{formatCurrency(total, 'USD')}</h4>
-              <span className={`text-[10px] block mt-1.5 font-medium ${isSelected ? 'text-white/70' : 'text-slate-400'}`}>
-                {count} Posting Registers
-              </span>
-            </button>
-          );
-        })}
-      </div>
-
-      {/* Top Search & Actions Toolbar */}
-      <div className="flex flex-col md:flex-row items-center justify-between gap-3.5 p-3.5 bg-slate-50 border border-slate-200/80 rounded-2xl shadow-xs">
-        <div className="flex items-center gap-3 w-full md:w-auto">
-          <div className="relative w-80">
-            <Search className="absolute left-3.5 top-3 h-3.5 w-3.5 text-slate-400" />
-            <Input
-              placeholder="Search code, name, or subtypes..."
-              value={query}
-              onChange={e => setQuery(e.target.value)}
-              className="pl-9 h-10 bg-white border border-slate-200 rounded-xl text-xs placeholder:text-slate-400 focus-visible:ring-1 focus-visible:ring-slate-400"
-            />
-          </div>
-
-          <label className="flex items-center gap-2 text-xs font-semibold text-slate-600 cursor-pointer select-none">
-            <input
-              type="checkbox"
-              checked={showDeactivated}
-              onChange={e => setShowDeactivated(e.target.checked)}
-              className="w-4 h-4 rounded border-slate-300 text-emerald-700 accent-[#143e2b]"
-            />
-            Include Inactive Registers
-          </label>
+    <div className="space-y-6 max-w-7xl mx-auto font-sans pb-12 animate-fade-in">
+      {/* 1. Header with Page Title & Subtitle + Buttons */}
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <div>
+          <h1 className="text-xl font-bold text-slate-900 tracking-tight">Chart of Accounts Summary</h1>
+          <p className="text-xs text-slate-500 mt-1">View and manage all your chart of accounts</p>
         </div>
-
-        <div className="flex items-center gap-2 w-full md:w-auto justify-end">
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={handleExportCSV}
-            className="h-10 px-3.5 gap-1.5 text-xs font-semibold text-slate-700 bg-white border-slate-200 hover:bg-slate-50 rounded-xl"
-          >
-            <Download className="w-3.5 h-3.5 text-slate-400" />
-            Export CSV
-          </Button>
-
+        <div className="flex items-center gap-2">
           <Button
             variant="outline"
             size="sm"
             onClick={handleImportCSVClick}
-            className="h-10 px-3.5 gap-1.5 text-xs font-semibold text-slate-700 bg-white border-slate-200 hover:bg-slate-50 rounded-xl"
+            className="h-9 px-3.5 gap-1.5 text-xs font-semibold text-slate-700 bg-white border-slate-200 hover:bg-slate-50 rounded-xl"
           >
             <Upload className="w-3.5 h-3.5 text-slate-400" />
-            Import CSV
+            Import
           </Button>
-
           <Button
             variant="outline"
             size="sm"
-            onClick={handleClearAll}
-            className="h-10 px-3.5 gap-1.5 text-xs font-semibold text-rose-600 bg-white border-rose-100 hover:bg-rose-50 rounded-xl hover:text-rose-700"
-            title="Wipe state to reset accounts tree"
+            onClick={handleExportCSV}
+            className="h-9 px-3.5 gap-1.5 text-xs font-semibold text-slate-700 bg-white border-slate-200 hover:bg-slate-50 rounded-xl"
           >
-            <Trash2 className="w-3.5 h-3.5" />
-            Reset State
+            <Download className="w-3.5 h-3.5 text-slate-400" />
+            Export
           </Button>
-
           <Button
             size="sm"
             onClick={() => { setParentIdForNew(''); openCreate(); }}
-            className="h-10 px-4 gap-1.5 text-xs font-bold text-white bg-[#143e2b] hover:bg-[#0c2a1d] rounded-xl shadow-xs"
+            className="h-9 px-4 gap-1.5 text-xs font-bold text-white bg-[#143e2b] hover:bg-[#0c2a1d] rounded-xl shadow-xs"
           >
             <Plus className="w-4 h-4" />
             New Account
           </Button>
-          
           <input 
             type="file" 
             ref={fileInputRef} 
@@ -785,52 +757,188 @@ export const ChartOfAccounts: React.FC<ChartOfAccountsProps> = ({
         </div>
       </div>
 
-      {/* Explanatory Info Alert */}
-      {!isFiltering && (
-        <div className="bg-emerald-50/30 border border-emerald-100/50 rounded-2xl p-4 flex gap-3 items-start">
-          <Info className="w-4 h-4 text-emerald-700 mt-0.5 shrink-0" />
-          <p className="text-[11px] text-emerald-800 leading-relaxed">
-            <strong>Hierarchical Tree Explorer:</strong> Parents act as header folders and dynamically calculate aggregate balances. Postings are only permitted to Leaf detail accounts. System accounts (🔒) protect invoice and tax routing paths.
-          </p>
+      {/* 2. KPI Summary Cards */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
+        {/* Card 1: Total Accounts */}
+        <div className="bg-white border border-slate-200 rounded-2xl p-4 shadow-xs flex items-center gap-4">
+          <div className="p-3 bg-blue-50 text-blue-600 rounded-xl">
+            <FileText className="w-5 h-5" />
+          </div>
+          <div>
+            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Total Accounts</span>
+            <span className="text-xl font-bold text-slate-800 mt-1 block">{accounts.length}</span>
+            <span className="text-[10px] text-slate-500 font-medium block mt-0.5">All accounts</span>
+          </div>
         </div>
-      )}
 
-      {/* Main Accounts Table Layout */}
+        {/* Card 2: Active Accounts */}
+        <div className="bg-white border border-slate-200 rounded-2xl p-4 shadow-xs flex items-center gap-4">
+          <div className="p-3 bg-emerald-50 text-emerald-600 rounded-xl">
+            <CheckCircle className="w-5 h-5" />
+          </div>
+          <div>
+            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Active Accounts</span>
+            <span className="text-xl font-bold text-slate-800 mt-1 block">{accounts.filter(a => a.status === 'Active').length}</span>
+            <span className="text-[10px] text-emerald-600 font-bold block mt-0.5">
+              {accounts.length ? ((accounts.filter(a => a.status === 'Active').length / accounts.length) * 100).toFixed(2) : 0}% of total
+            </span>
+          </div>
+        </div>
+
+        {/* Card 3: Header Accounts */}
+        <div className="bg-white border border-slate-200 rounded-2xl p-4 shadow-xs flex items-center gap-4">
+          <div className="p-3 bg-indigo-50 text-indigo-600 rounded-xl">
+            <FolderOpen className="w-5 h-5" />
+          </div>
+          <div>
+            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Header Accounts</span>
+            <span className="text-xl font-bold text-slate-800 mt-1 block">{accounts.filter(a => !a.isPosting).length}</span>
+            <span className="text-[10px] text-slate-500 font-medium block mt-0.5">Top level accounts</span>
+          </div>
+        </div>
+
+        {/* Card 4: Detail Accounts */}
+        <div className="bg-white border border-slate-200 rounded-2xl p-4 shadow-xs flex items-center gap-4">
+          <div className="p-3 bg-amber-50 text-amber-600 rounded-xl">
+            <Folder className="w-5 h-5" />
+          </div>
+          <div>
+            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Detail Accounts</span>
+            <span className="text-xl font-bold text-slate-800 mt-1 block">{accounts.filter(a => a.isPosting).length}</span>
+            <span className="text-[10px] text-slate-500 font-medium block mt-0.5">Sub accounts</span>
+          </div>
+        </div>
+
+        {/* Card 5: Inactive Accounts */}
+        <div className="bg-white border border-slate-200 rounded-2xl p-4 shadow-xs flex items-center gap-4">
+          <div className="p-3 bg-rose-50 text-rose-600 rounded-xl">
+            <Lock className="w-5 h-5" />
+          </div>
+          <div>
+            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Inactive Accounts</span>
+            <span className="text-xl font-bold text-slate-800 mt-1 block">{accounts.filter(a => a.status === 'Inactive').length}</span>
+            <span className="text-[10px] text-rose-600 font-bold block mt-0.5">
+              {accounts.length ? ((accounts.filter(a => a.status === 'Inactive').length / accounts.length) * 100).toFixed(2) : 0}% of total
+            </span>
+          </div>
+        </div>
+      </div>
+
+      {/* 3. Filters Toolbar */}
+      <div className="flex flex-wrap items-center gap-3 p-4 bg-slate-50 border border-slate-200/80 rounded-2xl shadow-xs">
+        {/* Search */}
+        <div className="relative flex-1 min-w-[200px]">
+          <Search className="absolute left-3.5 top-3.5 h-3.5 w-3.5 text-slate-400" />
+          <Input
+            placeholder="Search accounts..."
+            value={query}
+            onChange={e => setQuery(e.target.value)}
+            className="pl-9 h-10 bg-white border border-slate-200 rounded-xl text-xs placeholder:text-slate-400 focus-visible:ring-1 focus-visible:ring-slate-400"
+          />
+        </div>
+
+        {/* Account Type */}
+        <div className="flex flex-col gap-1 min-w-[140px]">
+          <select
+            value={selectedType}
+            onChange={e => setSelectedType(e.target.value)}
+            className="h-10 text-xs px-3 bg-white border border-slate-200 rounded-xl focus:outline-none focus:ring-1 focus:ring-[#143e2b]"
+          >
+            <option value="All">Account Type: All</option>
+            {['Asset', 'Liability', 'Equity', 'Revenue', 'Expense'].map(t => (
+              <option key={t} value={t}>{t}</option>
+            ))}
+          </select>
+        </div>
+
+        {/* Account Sub Type */}
+        <div className="flex flex-col gap-1 min-w-[170px]">
+          <select
+            value={selectedSubtype}
+            onChange={e => setSelectedSubtype(e.target.value)}
+            className="h-10 text-xs px-3 bg-white border border-slate-200 rounded-xl focus:outline-none focus:ring-1 focus:ring-[#143e2b]"
+          >
+            <option value="All">Account Sub Type: All</option>
+            {allSubtypes.map(s => (
+              <option key={s} value={s}>{s}</option>
+            ))}
+          </select>
+        </div>
+
+        {/* Status */}
+        <div className="flex flex-col gap-1 min-w-[130px]">
+          <select
+            value={selectedStatus}
+            onChange={e => setSelectedStatus(e.target.value)}
+            className="h-10 text-xs px-3 bg-white border border-slate-200 rounded-xl focus:outline-none focus:ring-1 focus:ring-[#143e2b]"
+          >
+            <option value="All">Status: All</option>
+            <option value="Active">Active</option>
+            <option value="Inactive">Inactive</option>
+          </select>
+        </div>
+
+        {/* Account Group */}
+        <div className="flex flex-col gap-1 min-w-[170px]">
+          <select
+            value={selectedGroup}
+            onChange={e => setSelectedGroup(e.target.value)}
+            className="h-10 text-xs px-3 bg-white border border-slate-200 rounded-xl focus:outline-none focus:ring-1 focus:ring-[#143e2b]"
+          >
+            <option value="All">Account Group: All</option>
+            {headerAccounts.map(h => (
+              <option key={h.id} value={h.id}>{h.code} - {h.name}</option>
+            ))}
+          </select>
+        </div>
+
+        {/* More Filters */}
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={() => setShowDeactivated(p => !p)}
+          className={`h-10 px-4 text-xs font-semibold rounded-xl border ${showDeactivated ? 'bg-slate-200 text-slate-800' : 'bg-white text-slate-700 hover:bg-slate-50'}`}
+        >
+          More Filters
+        </Button>
+
+        {/* Reset / Refresh */}
+        <button
+          onClick={() => {
+            setQuery('');
+            setSelectedType('All');
+            setSelectedSubtype('All');
+            setSelectedStatus('All');
+            setSelectedGroup('All');
+          }}
+          className="p-2.5 bg-white border border-slate-200 rounded-xl hover:bg-slate-50 transition-colors text-slate-500 cursor-pointer flex items-center justify-center"
+          title="Reset Filters"
+        >
+          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"/></svg>
+        </button>
+      </div>
+
+      {/* 4. Main Accounts Table Layout */}
       <div className="bg-white border border-slate-200 rounded-2xl overflow-hidden shadow-xs">
         <Table>
-          <TableHeader className="bg-slate-50/80 border-b border-slate-200">
+          <TableHeader className="bg-slate-50 border-b border-slate-200">
             <TableRow className="hover:bg-transparent">
-              <TableHead className="w-52 text-[10px] font-extrabold text-slate-400 uppercase tracking-wider pl-4">ACCOUNT CODE</TableHead>
-              <TableHead className="text-[10px] font-extrabold text-slate-400 uppercase tracking-wider">REGISTER NAME</TableHead>
-              <TableHead className="w-32 text-[10px] font-extrabold text-slate-400 uppercase tracking-wider">MAJOR TYPE</TableHead>
-              <TableHead className="w-40 text-[10px] font-extrabold text-slate-400 uppercase tracking-wider">SUB-SEGMENT</TableHead>
-              <TableHead className="w-28 text-[10px] font-extrabold text-slate-400 uppercase tracking-wider">LEVEL</TableHead>
-              <TableHead className="w-36 text-[10px] font-extrabold text-slate-400 uppercase tracking-wider">POSTING ALLOWED</TableHead>
-              <TableHead className="w-24 text-[10px] font-extrabold text-slate-400 uppercase tracking-wider">NORMAL</TableHead>
-              <TableHead className="w-44 text-right text-[10px] font-extrabold text-slate-400 uppercase tracking-wider">RUNNING BALANCE</TableHead>
-              <TableHead className="w-24 text-[10px] font-extrabold text-slate-400 uppercase tracking-wider">STATUS</TableHead>
-              <TableHead className="w-32 text-right text-[10px] font-extrabold text-slate-400 uppercase tracking-wider pr-4">ACTIONS</TableHead>
+              <TableHead className="w-52 text-[10px] font-extrabold text-slate-400 uppercase tracking-wider pl-4">Account Code</TableHead>
+              <TableHead className="text-[10px] font-extrabold text-slate-400 uppercase tracking-wider">Account Name</TableHead>
+              <TableHead className="w-36 text-[10px] font-extrabold text-slate-400 uppercase tracking-wider">Account Type</TableHead>
+              <TableHead className="w-40 text-[10px] font-extrabold text-slate-400 uppercase tracking-wider">Account Sub Type</TableHead>
+              <TableHead className="w-44 text-[10px] font-extrabold text-slate-400 uppercase tracking-wider">Parent Account</TableHead>
+              <TableHead className="w-24 text-[10px] font-extrabold text-slate-400 uppercase tracking-wider">Currency</TableHead>
+              <TableHead className="w-28 text-[10px] font-extrabold text-slate-400 uppercase tracking-wider">Status</TableHead>
+              <TableHead className="w-28 text-right text-[10px] font-extrabold text-slate-400 uppercase tracking-wider pr-4">Action</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody className="divide-y divide-slate-100">
-            {isFiltering ? (
-              filteredAccounts.map(acc => renderRow(acc, 0, false))
-            ) : (
-              treeCategories.map(cat => (
-                <React.Fragment key={cat.name}>
-                  <TableRow className="bg-slate-50/50 hover:bg-slate-50/50 font-bold border-t border-b border-slate-100">
-                    <TableCell colSpan={10} className="py-2.5 pl-4 text-xs font-bold text-slate-700">
-                      {cat.name} <span className="font-normal text-slate-400 text-[10px] ml-1">({cat.items.length} registers)</span>
-                    </TableCell>
-                  </TableRow>
-                  {cat.items.map(item => renderRow(item.account, item.depth, item.hasChildren))}
-                </React.Fragment>
-              ))
-            )}
+            {paginatedItems.map(item => renderRow(item.account, item.depth, item.hasChildren))}
 
-            {((isFiltering && filteredAccounts.length === 0) || (!isFiltering && treeCategories.length === 0)) && (
+            {paginatedItems.length === 0 && (
               <TableRow>
-                <TableCell colSpan={10} className="py-20 text-center text-slate-400">
+                <TableCell colSpan={8} className="py-20 text-center text-slate-400">
                   <div className="max-w-xs mx-auto space-y-3">
                     <span className="text-4xl">📂</span>
                     <p className="text-xs font-bold text-slate-600">No matching accounts found</p>
@@ -848,6 +956,90 @@ export const ChartOfAccounts: React.FC<ChartOfAccountsProps> = ({
             )}
           </TableBody>
         </Table>
+      </div>
+
+      {/* 5. Pagination Footer */}
+      <div className="flex items-center justify-between border-t border-slate-100 p-4 bg-white rounded-2xl border border-slate-200 mt-[-12px]">
+        <span className="text-xs text-slate-500 font-medium">
+          Showing {totalEntries === 0 ? 0 : (currentPage - 1) * itemsPerPage + 1} to {Math.min(totalEntries, currentPage * itemsPerPage)} of {totalEntries} entries
+        </span>
+        <div className="flex items-center gap-4">
+          <div className="flex items-center gap-2 text-xs font-semibold text-slate-500">
+            <select
+              value={itemsPerPage}
+              onChange={e => { setItemsPerPage(Number(e.target.value)); setCurrentPage(1); }}
+              className="bg-white border border-slate-200 rounded-lg px-2.5 py-1 text-slate-600 focus:outline-none focus:ring-1 focus:ring-[#143e2b]"
+            >
+              {[10, 25, 50, 100].map(val => (
+                <option key={val} value={val}>{val} per page</option>
+              ))}
+            </select>
+          </div>
+          <div className="flex items-center gap-1">
+            <Button
+              variant="outline"
+              size="sm"
+              disabled={currentPage === 1}
+              onClick={() => setCurrentPage(1)}
+              className="h-8 w-8 p-0 text-slate-500 hover:text-slate-700 disabled:opacity-40"
+            >
+              «
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              disabled={currentPage === 1}
+              onClick={() => setCurrentPage(p => p - 1)}
+              className="h-8 w-8 p-0 text-slate-500 hover:text-slate-700 disabled:opacity-40"
+            >
+              ‹
+            </Button>
+            
+            {Array.from({ length: Math.min(5, totalPages) }).map((_, i) => {
+              let pageNum = currentPage;
+              if (currentPage <= 3) {
+                pageNum = i + 1;
+              } else if (currentPage >= totalPages - 2) {
+                pageNum = Math.max(1, totalPages - 4 + i);
+              } else {
+                pageNum = currentPage - 2 + i;
+              }
+              
+              if (pageNum <= 0 || pageNum > totalPages) return null;
+              
+              return (
+                <Button
+                  key={pageNum}
+                  variant={currentPage === pageNum ? 'default' : 'outline'}
+                  size="sm"
+                  onClick={() => setCurrentPage(pageNum)}
+                  className={`h-8 w-8 p-0 font-bold ${currentPage === pageNum ? 'bg-[#143e2b] text-white hover:bg-[#0c2a1d]' : 'text-slate-600'}`}
+                >
+                  {pageNum}
+                </Button>
+              );
+            })}
+
+            <Button
+              variant="outline"
+              size="sm"
+              disabled={currentPage === totalPages}
+              onClick={() => setCurrentPage(p => p + 1)}
+              className="h-8 w-8 p-0 text-slate-500 hover:text-slate-700 disabled:opacity-40"
+            >
+              ›
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              disabled={currentPage === totalPages}
+              onClick={() => setCurrentPage(totalPages)}
+              className="h-8 w-8 p-0 text-slate-500 hover:text-slate-700 disabled:opacity-40"
+            >
+              »
+            </Button>
+          </div>
+        </div>
       </div>
 
       {/* ACCOUNT BALANCE SUMMARY (GAAP AUDIT ENGINE) */}
@@ -1310,6 +1502,50 @@ export const ChartOfAccounts: React.FC<ChartOfAccountsProps> = ({
           </div>
         </div>
       )}
+
+      {/* Accounting Equation Panel */}
+      <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-xs mt-6 space-y-4">
+        <h3 className="text-xs font-bold text-slate-700 uppercase tracking-wider flex items-center gap-2">
+          📊 Accounting Equation Balance Status
+        </h3>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 items-center">
+          {/* Assets Box */}
+          <div className="bg-blue-50/40 border border-blue-100 rounded-xl p-4 text-center">
+            <span className="text-[10px] font-bold text-blue-500 uppercase tracking-wider block">Total Assets</span>
+            <p className="text-xl font-extrabold text-blue-900 mt-1 font-mono">{formatCurrency(categoryTotals.Asset, 'USD')}</p>
+          </div>
+
+          {/* Equals Operator and status indicator */}
+          <div className="flex flex-col items-center justify-center">
+            <span className="text-2xl font-bold text-slate-400">=</span>
+            {Math.abs(categoryTotals.Asset - (categoryTotals.Liability + categoryTotals.Equity)) < 0.01 ? (
+              <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200 text-xs font-bold mt-2">
+                ✓ Equation in Balance
+              </span>
+            ) : (
+              <div className="text-center mt-2">
+                <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full bg-rose-50 text-rose-700 border border-rose-200 text-xs font-bold">
+                  ⚠ Equation Out of Balance
+                </span>
+                <span className="text-[10px] text-rose-500 block mt-1 font-semibold font-mono">
+                  Diff: {formatCurrency(categoryTotals.Asset - (categoryTotals.Liability + categoryTotals.Equity), 'USD')}
+                </span>
+              </div>
+            )}
+          </div>
+
+          {/* Liabilities + Equity Box */}
+          <div className="bg-slate-50 border border-slate-200 rounded-xl p-4 text-center">
+            <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block">Liabilities + Equity</span>
+            <p className="text-xl font-extrabold text-slate-800 mt-1 font-mono">{formatCurrency(categoryTotals.Liability + categoryTotals.Equity, 'USD')}</p>
+            <div className="flex items-center justify-center gap-3 mt-1.5 text-[10px] text-slate-500 font-semibold">
+              <span>L: {formatCurrency(categoryTotals.Liability, 'USD')}</span>
+              <span>+</span>
+              <span>E: {formatCurrency(categoryTotals.Equity, 'USD')}</span>
+            </div>
+          </div>
+        </div>
+      </div>
     </div>
   );
 };
