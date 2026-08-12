@@ -1,10 +1,14 @@
-import { useEffect, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useCreditNotesStore } from './stores/useCreditNotesStore';
-
-import './CreditNotes.module.css';
+import { useCustomersStore, useCoaStore } from './stores';
+import { useToast } from '@/components/ui/use-toast';
 
 function CreditNotesWorkspace() {
   const { creditNotes, fetchAll, create, post, void: voidNote, loading, error } = useCreditNotesStore();
+  const { toast } = useToast();
+  const customers = useCustomersStore((s) => s.customers as any[]);
+  const companies = useCoaStore((s) => s.accounts as any[]);
+
   const [showCreate, setShowCreate] = useState(false);
   const [form, setForm] = useState({
     companyId: '',
@@ -31,8 +35,9 @@ function CreditNotesWorkspace() {
         memo: form.memo
       });
       setShowCreate(false);
+      toast({ title: '✓ Credit Note created successfully!' });
     } catch (err) {
-      // error handled in store
+      toast({ title: 'Error creating Credit Note', variant: 'destructive' });
     }
   };
 
@@ -90,12 +95,22 @@ function CreditNotesWorkspace() {
             <h3>Create Credit Note</h3>
             <form onSubmit={handleCreate} className="modal-form">
               <label>
-                Company ID
-                <input required value={form.companyId} onChange={(e) => setForm({ ...form, companyId: e.target.value })} />
+                Company *
+                <select required value={form.companyId} onChange={(e) => setForm({ ...form, companyId: e.target.value })}>
+                  <option value="">-- Select Company --</option>
+                  {companies.map(c => (
+                    <option key={c.id} value={c.id}>{c.code} - {c.name}</option>
+                  ))}
+                </select>
               </label>
               <label>
-                Customer ID
-                <input required value={form.customerId} onChange={(e) => setForm({ ...form, customerId: e.target.value })} />
+                Customer *
+                <select required value={form.customerId} onChange={(e) => setForm({ ...form, customerId: e.target.value })}>
+                  <option value="">-- Select Customer --</option>
+                  {customers.map(c => (
+                    <option key={c.id} value={c.id}>{c.name} ({c.customerNumber})</option>
+                  ))}
+                </select>
               </label>
               <label>
                 Reason

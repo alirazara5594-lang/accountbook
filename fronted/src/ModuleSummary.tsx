@@ -37,7 +37,6 @@ export const ModuleSummary: React.FC<ModuleSummaryProps> = ({
   setPage,
   openCreateAccount
 }) => {
-  
   // Calculate dynamic metrics based on current module
   const getMetrics = () => {
     switch (moduleName) {
@@ -48,10 +47,13 @@ export const ModuleSummary: React.FC<ModuleSummaryProps> = ({
         const revenue = accounts
           .filter(a => a.type === 'Revenue')
           .reduce((s, a) => s + a.openingBalance, 0);
+        const activeCustomers = accounts
+          .filter(a => a.type === 'Asset' && a.code.starts('12'))
+          .length;
         return {
           card1: { title: 'RECEIVABLES LEDGER', val: formatCurrency(receivables), desc: 'Outstanding balances from customers', icon: '⌁', color: 'teal' },
           card2: { title: 'TOTAL SALES REVENUE', val: formatCurrency(revenue), desc: 'Accrued sales and customer billing', icon: '⌘', color: 'blue' },
-          card3: { title: 'ACTIVE CUSTOMERS', val: '3', desc: 'Approved customer profile records', icon: '👥', color: 'violet' }
+          card3: { title: 'ACTIVE CUSTOMERS', val: String(activeCustomers), desc: 'Approved customer profile records', icon: '👥', color: 'violet' }
         };
       }
       case 'Procurement': {

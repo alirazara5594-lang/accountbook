@@ -214,6 +214,7 @@ export default function App() {
     'Procurement.Summary': 'module-summary',
     'Procurement.Vendors': 'vendors',
     'Procurement.Bills': 'bills',
+    'Procurement.Debit Notes': 'debit-notes',
     'Procurement.Procurement Workspace': 'procurement-workspace',
     'Banking & Payments.Summary': 'module-summary',
     'Banking & Payments.Bank Accounts': 'bank-accounts',
@@ -328,6 +329,7 @@ export default function App() {
         {activeView === 'credit-notes' && <CreditNotesWorkspace />}
   {activeView === 'procurement-workspace' && <ProcurementWorkspace activeEntityId={activeEntityId} entities={entities as any} />}
   {activeView === 'bills' && <VendorBills activeEntityId={activeEntityId} />}
+  {activeView === 'debit-notes' && <DebitNotes activeEntityId={activeEntityId} entities={entities as any} />}
   {activeView === 'taxes' && <TaxConfiguration />}
   {activeView === 'fixed-assets' && <FixedAssets activeEntityId={activeEntityId} />}
   {activeView === 'assets-inventory' && <AssetsInventoryWorkspace activeEntityId={activeEntityId} entities={entities} />}
