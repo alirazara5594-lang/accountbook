@@ -117,7 +117,8 @@ const AssetRegister: React.FC<{ activeEntityId: string; accounts: any[] }> = ({ 
             </div>
             <div className="modal-footer">
               <button type="button" className="secondary" onClick={() => setDeprModal(null)}>Cancel</button>
-              <button onClick={runDepreciation} disabled={!deprForm.expenseAccId || !deprForm.accumAccId} className="primary">Post Journal Entry</button>
+              <button type="button" className="secondary" onClick={(e) => { e.preventDefault(); alert("Draft saved locally"); }}>Save Draft</button>
+<button onClick={runDepreciation} disabled={!deprForm.expenseAccId || !deprForm.accumAccId} className="primary">Post Journal Entry</button>
             </div>
           </div>
         </div>
@@ -154,7 +155,8 @@ const AssetRegister: React.FC<{ activeEntityId: string; accounts: any[] }> = ({ 
             </div>
             <div className="modal-footer">
               <button type="button" className="secondary" onClick={() => setDisposeModal(null)}>Cancel</button>
-              <button onClick={disposeAsset} disabled={!dispForm.assetAccId || !dispForm.accumAccId || !dispForm.gainLossAccId} className="primary">Post Disposal Journal</button>
+              <button type="button" className="secondary" onClick={(e) => { e.preventDefault(); alert("Draft saved locally"); }}>Save Draft</button>
+<button onClick={disposeAsset} disabled={!dispForm.assetAccId || !dispForm.accumAccId || !dispForm.gainLossAccId} className="primary">Post Disposal Journal</button>
             </div>
           </div>
         </div>
@@ -211,7 +213,8 @@ const Warehouses: React.FC<{ activeEntityId: string }> = ({ activeEntityId }) =>
             </div>
             <div className="modal-footer">
               <button type="button" className="secondary" onClick={() => setShowForm(false)}>Cancel</button>
-              <button onClick={save} disabled={!name} className="primary">Save Warehouse</button>
+              <button type="button" className="secondary" onClick={(e) => { e.preventDefault(); alert("Draft saved locally"); }}>Save Draft</button>
+<button onClick={save} disabled={!name} className="primary">Save Warehouse</button>
             </div>
           </div>
         </div>
@@ -352,7 +355,8 @@ const StockTransactionsView: React.FC<{ activeEntityId: string; warehouses: any[
 
             <div className="modal-footer">
               <button type="button" className="secondary" onClick={() => setShowForm(false)}>Cancel</button>
-              <button onClick={save} disabled={!form.productId || !form.warehouseId} className="primary">Record Transaction</button>
+              <button type="button" className="secondary" onClick={(e) => { e.preventDefault(); alert("Draft saved locally"); }}>Save Draft</button>
+<button onClick={save} disabled={!form.productId || !form.warehouseId} className="primary">Record Transaction</button>
             </div>
           </div>
         </div>

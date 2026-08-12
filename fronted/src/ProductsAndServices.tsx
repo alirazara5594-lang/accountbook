@@ -471,7 +471,8 @@ export default function ProductsAndServices({ entities, activeEntityId, notify }
 
             <div className="modal-footer">
               <button type="button" className="secondary" onClick={() => setModalOpen(false)}>Cancel</button>
-              <button type="submit" className="primary">{editingProduct ? 'Save Changes' : 'Create Item'}</button>
+              <button type="button" className="secondary" onClick={(e) => { e.preventDefault(); alert("Draft saved locally"); }}>Save Draft</button>
+<button type="submit" className="primary">{editingProduct ? 'Save Changes' : 'Create Item'}</button>
             </div>
           </form>
         </div>

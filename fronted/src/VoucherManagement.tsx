@@ -644,6 +644,7 @@ export const VoucherManagement: React.FC<VoucherManagementProps> = ({ activeEnti
               <button type="button" className="secondary" onClick={() => setIsModalOpen(false)}>
                 Cancel
               </button>
+              <button type="button" className="secondary" onClick={(e) => { e.preventDefault(); alert("Draft saved locally"); }}>Save Draft</button>
               <button type="submit" className="primary">
                 Save & Post {selectedVoucherType} Voucher
               </button>

@@ -1014,14 +1014,17 @@ export const BankingWorkspace: React.FC<BankingWorkspaceProps> = ({ subView, act
 
       {/* Modal 1: Inter-Bank Fund Transfer with Mode of Payment */}
       {isTransferModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 backdrop-blur-xs p-4">
-          <div className="bg-white rounded-2xl border border-slate-200 p-6 w-full max-w-lg shadow-xl space-y-4">
-            <div className="flex justify-between items-center border-b border-slate-200 pb-3">
-              <h3 className="text-base font-bold text-slate-900">Inter-Account Fund Transfer</h3>
-              <button onClick={() => setIsTransferModalOpen(false)} className="text-slate-400 hover:text-slate-600 text-lg font-bold">×</button>
+        <div className="overlay">
+          <form className="modal" onSubmit={handleExecuteTransfer} style={{ width: 'min(700px, 100%)' }}>
+            <div className="modal-head">
+              <div>
+                <p className="eyebrow">BANKING & PAYMENTS</p>
+                <h2>Inter-Account Fund Transfer</h2>
+              </div>
+              <button type="button" className="close" onClick={() => setIsTransferModalOpen(false)}>×</button>
             </div>
 
-            <form onSubmit={handleExecuteTransfer} className="space-y-4">
+            <div className="form-grid">
               <div>
                 <label className="text-xs font-semibold text-slate-700 block mb-1">Source Account (Transfer Out)</label>
                 <select
@@ -1085,25 +1088,29 @@ export const BankingWorkspace: React.FC<BankingWorkspaceProps> = ({ subView, act
                 />
               </div>
 
-              <div className="flex justify-end gap-2 pt-2">
-                <Button type="button" variant="outline" size="sm" onClick={() => setIsTransferModalOpen(false)}>Cancel</Button>
-                <Button type="submit" size="sm" className="bg-[#143e2b] text-white hover:bg-[#0f3222]">Execute Transfer</Button>
-              </div>
-            </form>
-          </div>
+            </div>
+            <div className="modal-footer">
+              <button type="button" className="secondary" onClick={() => setIsTransferModalOpen(false)}>Cancel</button>
+              <button type="button" className="secondary" onClick={(e) => { e.preventDefault(); alert("Draft saved locally"); }}>Save Draft</button>
+              <button type="submit" className="primary">Execute Transfer</button>
+            </div>
+          </form>
         </div>
       )}
 
       {/* Modal 2: Create Vendor Payment / Customer Receipt with Mode of Payment */}
       {isNewPaymentModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 backdrop-blur-xs p-4">
-          <div className="bg-white rounded-2xl border border-slate-200 p-6 w-full max-w-lg shadow-xl space-y-4">
-            <div className="flex justify-between items-center border-b border-slate-200 pb-3">
-              <h3 className="text-base font-bold text-slate-900">Record {paymentForm.type}</h3>
-              <button onClick={() => setIsNewPaymentModalOpen(false)} className="text-slate-400 hover:text-slate-600 text-lg font-bold">×</button>
+        <div className="overlay">
+          <form className="modal" onSubmit={handleCreatePayment} style={{ width: 'min(700px, 100%)' }}>
+            <div className="modal-head">
+              <div>
+                <p className="eyebrow">BANKING & PAYMENTS</p>
+                <h2>Record {paymentForm.type}</h2>
+              </div>
+              <button type="button" className="close" onClick={() => setIsNewPaymentModalOpen(false)}>×</button>
             </div>
 
-            <form onSubmit={handleCreatePayment} className="space-y-4">
+            <div className="form-grid">
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className="text-xs font-semibold text-slate-700 block mb-1">Transaction Type</label>
@@ -1183,25 +1190,29 @@ export const BankingWorkspace: React.FC<BankingWorkspaceProps> = ({ subView, act
                 </div>
               </div>
 
-              <div className="flex justify-end gap-2 pt-2">
-                <Button type="button" variant="outline" size="sm" onClick={() => setIsNewPaymentModalOpen(false)}>Cancel</Button>
-                <Button type="submit" size="sm" className="bg-[#143e2b] text-white hover:bg-[#0f3222]">Save {paymentForm.type}</Button>
-              </div>
-            </form>
-          </div>
+            </div>
+            <div className="modal-footer">
+              <button type="button" className="secondary" onClick={() => setIsNewPaymentModalOpen(false)}>Cancel</button>
+              <button type="button" className="secondary" onClick={(e) => { e.preventDefault(); alert("Draft saved locally"); }}>Save Draft</button>
+              <button type="submit" className="primary">Save {paymentForm.type}</button>
+            </div>
+          </form>
         </div>
       )}
 
       {/* Modal 3: Add New Bank / Cash Account */}
       {isNewBankModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 backdrop-blur-xs p-4">
-          <div className="bg-white rounded-2xl border border-slate-200 p-6 w-full max-w-lg shadow-xl space-y-4">
-            <div className="flex justify-between items-center border-b border-slate-200 pb-3">
-              <h3 className="text-base font-bold text-slate-900">Add New Bank or Cash Account</h3>
-              <button onClick={() => setIsNewBankModalOpen(false)} className="text-slate-400 hover:text-slate-600 text-lg font-bold">×</button>
+        <div className="overlay">
+          <form className="modal" onSubmit={handleCreateBankAccount} style={{ width: 'min(700px, 100%)' }}>
+            <div className="modal-head">
+              <div>
+                <p className="eyebrow">BANKING & PAYMENTS</p>
+                <h2>Add New Bank or Cash Account</h2>
+              </div>
+              <button type="button" className="close" onClick={() => setIsNewBankModalOpen(false)}>×</button>
             </div>
 
-            <form onSubmit={handleCreateBankAccount} className="space-y-4">
+            <div className="form-grid">
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className="text-xs font-semibold text-slate-700 block mb-1">GL Account Code</label>
@@ -1287,12 +1298,13 @@ export const BankingWorkspace: React.FC<BankingWorkspaceProps> = ({ subView, act
                 />
               </div>
 
-              <div className="flex justify-end gap-2 pt-2">
-                <Button type="button" variant="outline" size="sm" onClick={() => setIsNewBankModalOpen(false)}>Cancel</Button>
-                <Button type="submit" size="sm" className="bg-[#143e2b] text-white hover:bg-[#0f3222]">Save Account</Button>
-              </div>
-            </form>
-          </div>
+            </div>
+            <div className="modal-footer">
+              <button type="button" className="secondary" onClick={() => setIsNewBankModalOpen(false)}>Cancel</button>
+              <button type="button" className="secondary" onClick={(e) => { e.preventDefault(); alert("Draft saved locally"); }}>Save Draft</button>
+              <button type="submit" className="primary">Save Account</button>
+            </div>
+          </form>
         </div>
       )}
 

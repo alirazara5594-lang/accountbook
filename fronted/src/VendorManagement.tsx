@@ -423,7 +423,8 @@ export default function VendorManagement({ activeEntityId, notify }: { entities:
 
             <div className="modal-footer">
               <button type="button" className="secondary" onClick={() => setModalOpen(false)}>Cancel</button>
-              <button type="submit" className="primary">{editingVendor ? 'Save Changes' : 'Register Vendor'}</button>
+              <button type="button" className="secondary" onClick={(e) => { e.preventDefault(); alert("Draft saved locally"); }}>Save Draft</button>
+<button type="submit" className="primary">{editingVendor ? 'Save Changes' : 'Register Vendor'}</button>
             </div>
           </form>
         </div>

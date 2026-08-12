@@ -81,13 +81,17 @@ export const FundTransfersView: React.FC<{ activeEntityId: string; entities: Ent
       </div>
 
       {isModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 backdrop-blur-xs p-4">
-          <div className="bg-white rounded-2xl border border-slate-200 p-6 w-full max-w-lg shadow-xl space-y-4">
-            <div className="flex justify-between items-center border-b border-slate-200 pb-3">
-              <h3 className="text-base font-bold text-slate-900">New Inter-Account Transfer</h3>
-              <button onClick={() => setIsModalOpen(false)} className="text-slate-400 hover:text-slate-600 text-lg font-bold">×</button>
+        <div className="overlay">
+          <form className="modal" onSubmit={handleCreateTransfer} style={{ width: 'min(700px, 100%)' }}>
+            <div className="modal-head">
+              <div>
+                <p className="eyebrow">BANKING & PAYMENTS</p>
+                <h2>New Inter-Account Transfer</h2>
+              </div>
+              <button type="button" className="close" onClick={() => setIsModalOpen(false)}>×</button>
             </div>
-            <form onSubmit={handleCreateTransfer} className="space-y-4">
+
+            <div className="form-grid">
               <div>
                 <label className="text-xs font-semibold text-slate-700 block mb-1">Source Account (Out)</label>
                 <select value={form.sourceAccount} onChange={e => setForm({ ...form, sourceAccount: e.target.value })} className="w-full h-9 px-3 bg-white border border-slate-200 rounded-lg text-xs">
@@ -116,12 +120,13 @@ export const FundTransfersView: React.FC<{ activeEntityId: string; entities: Ent
                   <Input required type="number" value={form.amount} onChange={e => setForm({ ...form, amount: e.target.value })} className="h-9 text-xs font-mono" />
                 </div>
               </div>
-              <div className="flex justify-end gap-2 pt-2">
-                <Button type="button" variant="outline" size="sm" onClick={() => setIsModalOpen(false)}>Cancel</Button>
-                <Button type="submit" size="sm" className="bg-[#143e2b] text-white">Execute Transfer</Button>
-              </div>
-            </form>
-          </div>
+            </div>
+            <div className="modal-footer">
+              <button type="button" className="secondary" onClick={() => setIsModalOpen(false)}>Cancel</button>
+              <button type="button" className="secondary" onClick={(e) => { e.preventDefault(); alert("Draft saved locally"); }}>Save Draft</button>
+              <button type="submit" className="primary">Execute Transfer</button>
+            </div>
+          </form>
         </div>
       )}
     </div>

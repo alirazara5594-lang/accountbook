@@ -250,13 +250,17 @@ export const CashAccountsView: React.FC<CashAccountsViewProps> = ({ activeEntity
       </div>
 
       {isModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 backdrop-blur-xs p-4">
-          <div className="bg-white rounded-2xl border border-slate-200 p-6 w-full max-w-lg shadow-xl space-y-4">
-            <div className="flex justify-between items-center border-b border-slate-200 pb-3">
-              <h3 className="text-base font-bold text-slate-900">{editingAccount ? 'Edit Cash Account' : 'Add Cash Register'}</h3>
-              <button onClick={() => setIsModalOpen(false)} className="text-slate-400 hover:text-slate-600 text-lg font-bold">×</button>
+        <div className="overlay">
+          <form className="modal" onSubmit={handleSaveAccount} style={{ width: 'min(700px, 100%)' }}>
+            <div className="modal-head">
+              <div>
+                <p className="eyebrow">BANKING & PAYMENTS</p>
+                <h2>{editingAccount ? 'Edit Cash Account' : 'Add Cash Register'}</h2>
+              </div>
+              <button type="button" className="close" onClick={() => setIsModalOpen(false)}>×</button>
             </div>
-            <form onSubmit={handleSaveAccount} className="space-y-4">
+
+            <div className="form-grid">
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className="text-xs font-semibold text-slate-700 block mb-1">GL Code</label>
@@ -290,12 +294,13 @@ export const CashAccountsView: React.FC<CashAccountsViewProps> = ({ activeEntity
                 <label className="text-xs font-semibold text-slate-700 block mb-1">Opening Cash Balance</label>
                 <Input type="number" value={form.balance} onChange={e => setForm({ ...form, balance: e.target.value })} className="h-9 text-xs font-mono" />
               </div>
-              <div className="flex justify-end gap-2 pt-2">
-                <Button type="button" variant="outline" size="sm" onClick={() => setIsModalOpen(false)}>Cancel</Button>
-                <Button type="submit" size="sm" className="bg-[#143e2b] text-white">Save Cash Account</Button>
-              </div>
-            </form>
-          </div>
+            </div>
+            <div className="modal-footer">
+              <button type="button" className="secondary" onClick={() => setIsModalOpen(false)}>Cancel</button>
+              <button type="button" className="secondary" onClick={(e) => { e.preventDefault(); alert("Draft saved locally"); }}>Save Draft</button>
+              <button type="submit" className="primary">Save Cash Account</button>
+            </div>
+          </form>
         </div>
       )}
     </div>
