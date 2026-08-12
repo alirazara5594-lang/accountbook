@@ -23,7 +23,10 @@ const AssetRegister: React.FC<{ activeEntityId: string; accounts: any[] }> = ({ 
   const [dispForm, setDispForm] = useState({ date: new Date().toISOString().slice(0,10), proceeds: '0', assetAccId: '', accumAccId: '', gainLossAccId: '', cashAccId: '' });
   const [toast, setToast] = useState('');
   const [searchTerm, setSearchTerm] = useState('');
-  const [userRole, setUserRole] = useState<'admin' | 'accountant' | 'asset-manager' | 'viewer'>('viewer');
+  const [userRole] = useState<'admin' | 'accountant' | 'asset-manager' | 'viewer'>(() => {
+    const storedRole = typeof window !== 'undefined' ? localStorage.getItem('user_role') : null;
+    return (storedRole as 'admin' | 'accountant' | 'asset-manager' | 'viewer') || 'viewer';
+  });
 
   const assets = useAssetsInventoryStore((s) => s.assets as any[]);
   const fetchFixedAssets = useAssetsInventoryStore((s) => s.fetchFixedAssets);
@@ -31,13 +34,6 @@ const AssetRegister: React.FC<{ activeEntityId: string; accounts: any[] }> = ({ 
   const disposeAssetStore = useAssetsInventoryStore((s) => s.disposeAsset);
 
   useEffect(() => { fetchFixedAssets(activeEntityId); }, [activeEntityId]);
-
-  useEffect(() => {
-    const storedRole = localStorage.getItem('user_role');
-    if (storedRole) {
-      setUserRole(storedRole as 'admin' | 'accountant' | 'asset-manager' | 'viewer');
-    }
-  }, []);
 
   const notify = (m: string) => { setToast(m); setTimeout(() => setToast(''), 3500); };
 
@@ -139,11 +135,11 @@ const AssetRegister: React.FC<{ activeEntityId: string; accounts: any[] }> = ({ 
                 <AccSelect value={deprForm.accumAccId} onChange={(v: string) => setDeprForm(f => ({...f, accumAccId: v}))} accounts={accounts} label="Accumulated Depreciation Account *" filter={(a: any) => a.type === 'ContraAsset' || a.name?.toLowerCase().includes('depreciation')} />
                 <label>
                   Useful Life (years)
-                  <input type="number" value={deprForm.usefulLifeYears} onChange={e => setDeprForm(f => ({...f, usefulLifeYears: parseInt(e.target.value) || 3}))} min="1" style={{ width: '100%' }} />
+                  <input type="number" value={deprForm.usefulLifeYears} onChange={(e) => setDeprForm((f) => ({ ...f, usefulLifeYears: parseInt(e.target.value) || 3 }))} min="1" style={{ width: '100%' }} />
                 </label>
 <label>
                   Salvage Value
-                  <input type="number" value={deprForm.salvageValue} onChange={e => setDeprForm(f => ({...f, salvageValue: Number(e.target.value) || 0))}} step={".01"} style={{ width: '100%' }} />
+                  <input type="number" value={deprForm.salvageValue} onChange={(e) => setDeprForm((f) => ({ ...f, salvageValue: Number(e.target.value) || 0 }))} step={".01"} style={{ width: '100%' }} />
                 </label>
               </div>
             </div>
