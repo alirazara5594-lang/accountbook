@@ -15,10 +15,10 @@ builder.Services.AddControllers().AddJsonOptions(options =>
     options.JsonSerializerOptions.Converters.Add(new JsonStringEnumConverter()));
 builder.Services.AddOpenApi();
 
-// Evaluate connection string from Configuration, Environment Variable, or DATABASE_URL (Render format)
-var rawConnection = builder.Configuration.GetConnectionString("Postgres")
+// Evaluate connection string from environment variables first, falling back to configuration
+var rawConnection = Environment.GetEnvironmentVariable("DATABASE_URL")
     ?? Environment.GetEnvironmentVariable("ConnectionStrings__Postgres")
-    ?? Environment.GetEnvironmentVariable("DATABASE_URL");
+    ?? builder.Configuration.GetConnectionString("Postgres");
 
 var postgresConnection = NormalizePostgresConnectionString(rawConnection);
 
