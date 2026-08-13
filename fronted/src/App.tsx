@@ -694,7 +694,7 @@ const inferSubtype = (code: string, type: string): string => {
 };
 
 function AccountModal({ form, setForm, accounts, editing, close, save }: { form: any; setForm: any; accounts: Account[]; editing: Account | null; close: () => void; save: (e: FormEvent) => void }) {
-  const field = (key: string, value: any) => setForm({ ...form, [key]: value });
+  const field = (key: string, value: any) => setForm((f: any) => ({ ...f, [key]: value }));
 
   const [subtype, setSubtype] = useState(() => {
     if (editing) {
