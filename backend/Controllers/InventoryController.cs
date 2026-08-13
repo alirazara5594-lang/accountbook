@@ -125,4 +125,4 @@ public class InventoryController : ControllerBase
 
 public record WarehouseRequest(string Name, string? Location, Guid? CompanyId);
 public record StockTransactionRequest(DateOnly Date, Guid ProductId, Guid WarehouseId, decimal Quantity, decimal UnitCost, StockTransactionType Type, string? Reference, Guid? CompanyId);
-public record DepreciationRequest(Guid DepreciationExpenseAccountId, Guid AccumulatedDepreciationAccountId);
+public record DepreciationRequest(Guid? DepreciationExpenseAccountId, Guid? AccumulatedDepreciationAccountId);

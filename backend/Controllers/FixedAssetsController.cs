@@ -33,4 +33,4 @@ public class FixedAssetsController : ControllerBase
     }
 }
 
-public record AssetDisposalRequest(DateOnly DisposalDate, decimal Proceeds, Guid AssetAccountId, Guid AccumDeprAccountId, Guid GainLossAccountId, Guid? CashAccountId);
+public record AssetDisposalRequest(DateOnly DisposalDate, decimal Proceeds, Guid? AssetAccountId, Guid? AccumDeprAccountId, Guid? GainLossAccountId, Guid? CashAccountId);

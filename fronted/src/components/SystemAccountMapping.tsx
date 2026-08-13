@@ -42,6 +42,20 @@ export const SystemAccountMapping: React.FC<SystemAccountMappingProps> = ({ acco
     salesReturnsAccountId: '',
     purchaseDiscountsAccountId: '',
     purchaseReturnsAccountId: '',
+
+    // Fixed asset mappings
+    fixedAssetAccountId: '',
+    accumulatedDepreciationAccountId: '',
+    depreciationExpenseAccountId: '',
+    gainLossDisposalAccountId: '',
+
+    // Manufacturing mappings
+    rawMaterialsAccountId: '',
+    workInProgressAccountId: '',
+    finishedGoodsAccountId: '',
+    directLaborAccountId: '',
+    manufacturingOverheadAccountId: '',
+    grniAccrualAccountId: '',
   });
 
   // Load mappings from store, fallback to seed accounts by code
@@ -71,6 +85,18 @@ export const SystemAccountMapping: React.FC<SystemAccountMappingProps> = ({ acco
       const purDiscMap = activeMappings.find(m => m.mappingKey === 'Purchase Discounts');
       const purRetMap = activeMappings.find(m => m.mappingKey === 'Purchase Returns');
 
+      // Fixed asset & manufacturing mappings
+      const faMap = activeMappings.find(m => m.mappingKey === 'Fixed Assets');
+      const accumDeprMap = activeMappings.find(m => m.mappingKey === 'Accumulated Depreciation');
+      const deprExpMap = activeMappings.find(m => m.mappingKey === 'Depreciation Expense');
+      const gainLossMap = activeMappings.find(m => m.mappingKey === 'Gain/Loss on Disposal');
+      const rawMatMap = activeMappings.find(m => m.mappingKey === 'Raw Materials Inventory');
+      const wipMap = activeMappings.find(m => m.mappingKey === 'Work in Progress');
+      const fgMap = activeMappings.find(m => m.mappingKey === 'Finished Goods Inventory');
+      const laborMap = activeMappings.find(m => m.mappingKey === 'Direct Labor');
+      const overheadMap = activeMappings.find(m => m.mappingKey === 'Manufacturing Overhead');
+      const grniMap = activeMappings.find(m => m.mappingKey === 'GRNI Accrual');
+
       const arSeed = accounts.find(a => a.code === '12000');
       const apSeed = accounts.find(a => a.code === '21100');
       const taxSeed = accounts.find(a => a.code === '22000');
@@ -91,6 +117,17 @@ export const SystemAccountMapping: React.FC<SystemAccountMappingProps> = ({ acco
       const salesRetSeed = accounts.find(a => a.code === '41300');
       const purDiscSeed = accounts.find(a => a.code === '51100');
       const purRetSeed = accounts.find(a => a.code === '51200');
+
+      const faSeed = accounts.find(a => a.code === '15100');
+      const accumDeprSeed = accounts.find(a => a.code === '15200');
+      const deprExpSeed = accounts.find(a => a.code === '61300');
+      const gainLossSeed = accounts.find(a => a.code === '51000');
+      const rawMatSeed = accounts.find(a => a.code === '13000');
+      const wipSeed = accounts.find(a => a.code === '13000');
+      const fgSeed = accounts.find(a => a.code === '13000');
+      const laborSeed = accounts.find(a => a.code === '61200');
+      const overheadSeed = accounts.find(a => a.code === '61100');
+      const grniSeed = accounts.find(a => a.code === '21200');
 
       setMappings({
         arAccountId: arMap?.accountId || arSeed?.id || '',
@@ -113,6 +150,18 @@ export const SystemAccountMapping: React.FC<SystemAccountMappingProps> = ({ acco
         salesReturnsAccountId: salesRetMap?.accountId || salesRetSeed?.id || '',
         purchaseDiscountsAccountId: purDiscMap?.accountId || purDiscSeed?.id || '',
         purchaseReturnsAccountId: purRetMap?.accountId || purRetSeed?.id || '',
+
+        fixedAssetAccountId: faMap?.accountId || faSeed?.id || '',
+        accumulatedDepreciationAccountId: accumDeprMap?.accountId || accumDeprSeed?.id || '',
+        depreciationExpenseAccountId: deprExpMap?.accountId || deprExpSeed?.id || '',
+        gainLossDisposalAccountId: gainLossMap?.accountId || gainLossSeed?.id || '',
+
+        rawMaterialsAccountId: rawMatMap?.accountId || rawMatSeed?.id || '',
+        workInProgressAccountId: wipMap?.accountId || wipSeed?.id || '',
+        finishedGoodsAccountId: fgMap?.accountId || fgSeed?.id || '',
+        directLaborAccountId: laborMap?.accountId || laborSeed?.id || '',
+        manufacturingOverheadAccountId: overheadMap?.accountId || overheadSeed?.id || '',
+        grniAccrualAccountId: grniMap?.accountId || grniSeed?.id || '',
       });
     };
 
@@ -142,7 +191,19 @@ export const SystemAccountMapping: React.FC<SystemAccountMappingProps> = ({ acco
       if (mappings.salesReturnsAccountId) await saveMapping('Sales Returns', mappings.salesReturnsAccountId);
       if (mappings.purchaseDiscountsAccountId) await saveMapping('Purchase Discounts', mappings.purchaseDiscountsAccountId);
       if (mappings.purchaseReturnsAccountId) await saveMapping('Purchase Returns', mappings.purchaseReturnsAccountId);
-      
+
+      if (mappings.fixedAssetAccountId) await saveMapping('Fixed Assets', mappings.fixedAssetAccountId);
+      if (mappings.accumulatedDepreciationAccountId) await saveMapping('Accumulated Depreciation', mappings.accumulatedDepreciationAccountId);
+      if (mappings.depreciationExpenseAccountId) await saveMapping('Depreciation Expense', mappings.depreciationExpenseAccountId);
+      if (mappings.gainLossDisposalAccountId) await saveMapping('Gain/Loss on Disposal', mappings.gainLossDisposalAccountId);
+
+      if (mappings.rawMaterialsAccountId) await saveMapping('Raw Materials Inventory', mappings.rawMaterialsAccountId);
+      if (mappings.workInProgressAccountId) await saveMapping('Work in Progress', mappings.workInProgressAccountId);
+      if (mappings.finishedGoodsAccountId) await saveMapping('Finished Goods Inventory', mappings.finishedGoodsAccountId);
+      if (mappings.directLaborAccountId) await saveMapping('Direct Labor', mappings.directLaborAccountId);
+      if (mappings.manufacturingOverheadAccountId) await saveMapping('Manufacturing Overhead', mappings.manufacturingOverheadAccountId);
+      if (mappings.grniAccrualAccountId) await saveMapping('GRNI Accrual', mappings.grniAccrualAccountId);
+
       notify('✓ Centralized account mappings saved in the database!');
       close();
     } catch (err: any) {
@@ -173,6 +234,17 @@ export const SystemAccountMapping: React.FC<SystemAccountMappingProps> = ({ acco
       const purDiscSeed = accounts.find(a => a.code === '51100');
       const purRetSeed = accounts.find(a => a.code === '51200');
 
+      const faSeed = accounts.find(a => a.code === '15100');
+      const accumDeprSeed = accounts.find(a => a.code === '15200');
+      const deprExpSeed = accounts.find(a => a.code === '61300');
+      const gainLossSeed = accounts.find(a => a.code === '51000');
+      const rawMatSeed = accounts.find(a => a.code === '13000');
+      const wipSeed = accounts.find(a => a.code === '13000');
+      const fgSeed = accounts.find(a => a.code === '13000');
+      const laborSeed = accounts.find(a => a.code === '61200');
+      const overheadSeed = accounts.find(a => a.code === '61100');
+      const grniSeed = accounts.find(a => a.code === '21200');
+
       setMappings({
         arAccountId: arSeed?.id || '',
         apAccountId: apSeed?.id || '',
@@ -194,6 +266,18 @@ export const SystemAccountMapping: React.FC<SystemAccountMappingProps> = ({ acco
         salesReturnsAccountId: salesRetSeed?.id || '',
         purchaseDiscountsAccountId: purDiscSeed?.id || '',
         purchaseReturnsAccountId: purRetSeed?.id || '',
+
+        fixedAssetAccountId: faSeed?.id || '',
+        accumulatedDepreciationAccountId: accumDeprSeed?.id || '',
+        depreciationExpenseAccountId: deprExpSeed?.id || '',
+        gainLossDisposalAccountId: gainLossSeed?.id || '',
+
+        rawMaterialsAccountId: rawMatSeed?.id || '',
+        workInProgressAccountId: wipSeed?.id || '',
+        finishedGoodsAccountId: fgSeed?.id || '',
+        directLaborAccountId: laborSeed?.id || '',
+        manufacturingOverheadAccountId: overheadSeed?.id || '',
+        grniAccrualAccountId: grniSeed?.id || '',
       });
       notify('✓ Mappings reset to defaults.');
     }
@@ -455,6 +539,175 @@ export const SystemAccountMapping: React.FC<SystemAccountMappingProps> = ({ acco
               >
                 <option value="">-- Choose Prepaid Account --</option>
                 {arAccounts.map(a => (
+                  <option key={a.id} value={a.id}>{a.code} — {a.name}</option>
+                ))}
+              </select>
+            </div>
+
+            <div>
+              <label className="block text-xs font-semibold text-slate-700 mb-1.5">
+                Fixed Assets Account (Non-Current Asset)
+              </label>
+              <select
+                value={mappings.fixedAssetAccountId}
+                onChange={e => setMappings(prev => ({ ...prev, fixedAssetAccountId: e.target.value }))}
+                className="w-full h-10 border border-slate-200 rounded-lg px-3 py-2 text-sm bg-white focus:border-slate-400 outline-none transition-colors"
+              >
+                <option value="">-- Choose Fixed Assets Account --</option>
+                {arAccounts.map(a => (
+                  <option key={a.id} value={a.id}>{a.code} — {a.name}</option>
+                ))}
+              </select>
+            </div>
+
+            <div>
+              <label className="block text-xs font-semibold text-slate-700 mb-1.5">
+                Accumulated Depreciation (Contra-Asset)
+              </label>
+              <select
+                value={mappings.accumulatedDepreciationAccountId}
+                onChange={e => setMappings(prev => ({ ...prev, accumulatedDepreciationAccountId: e.target.value }))}
+                className="w-full h-10 border border-slate-200 rounded-lg px-3 py-2 text-sm bg-white focus:border-slate-400 outline-none transition-colors"
+              >
+                <option value="">-- Choose Accumulated Depreciation --</option>
+                {arAccounts.map(a => (
+                  <option key={a.id} value={a.id}>{a.code} — {a.name}</option>
+                ))}
+              </select>
+            </div>
+
+            <div>
+              <label className="block text-xs font-semibold text-slate-700 mb-1.5">
+                Depreciation Expense (P&L)
+              </label>
+              <select
+                value={mappings.depreciationExpenseAccountId}
+                onChange={e => setMappings(prev => ({ ...prev, depreciationExpenseAccountId: e.target.value }))}
+                className="w-full h-10 border border-slate-200 rounded-lg px-3 py-2 text-sm bg-white focus:border-slate-400 outline-none transition-colors"
+              >
+                <option value="">-- Choose Depreciation Expense --</option>
+                {expenseAccounts.map(a => (
+                  <option key={a.id} value={a.id}>{a.code} — {a.name}</option>
+                ))}
+              </select>
+            </div>
+
+            <div>
+              <label className="block text-xs font-semibold text-slate-700 mb-1.5">
+                Gain / Loss on Asset Disposal (P&L)
+              </label>
+              <select
+                value={mappings.gainLossDisposalAccountId}
+                onChange={e => setMappings(prev => ({ ...prev, gainLossDisposalAccountId: e.target.value }))}
+                className="w-full h-10 border border-slate-200 rounded-lg px-3 py-2 text-sm bg-white focus:border-slate-400 outline-none transition-colors"
+              >
+                <option value="">-- Choose Gain / Loss Account --</option>
+                {expenseAccounts.map(a => (
+                  <option key={a.id} value={a.id}>{a.code} — {a.name}</option>
+                ))}
+              </select>
+            </div>
+          </div>
+        </div>
+
+        {/* Manufacturing & Production Configuration */}
+        <div className="bg-white border border-slate-200 rounded-2xl p-5 shadow-xs space-y-4 md:col-span-2">
+          <h3 className="text-sm font-bold text-slate-800 border-b border-slate-100 pb-2 flex items-center gap-1.5">
+            <span>🏭</span> Manufacturing & Work Orders
+          </h3>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <label className="block text-xs font-semibold text-slate-700 mb-1.5">
+                Raw Materials Inventory (Asset)
+              </label>
+              <select
+                value={mappings.rawMaterialsAccountId}
+                onChange={e => setMappings(prev => ({ ...prev, rawMaterialsAccountId: e.target.value }))}
+                className="w-full h-10 border border-slate-200 rounded-lg px-3 py-2 text-sm bg-white focus:border-slate-400 outline-none transition-colors"
+              >
+                <option value="">-- Choose Raw Materials Account --</option>
+                {arAccounts.map(a => (
+                  <option key={a.id} value={a.id}>{a.code} — {a.name}</option>
+                ))}
+              </select>
+            </div>
+
+            <div>
+              <label className="block text-xs font-semibold text-slate-700 mb-1.5">
+                Work in Progress (WIP) Inventory
+              </label>
+              <select
+                value={mappings.workInProgressAccountId}
+                onChange={e => setMappings(prev => ({ ...prev, workInProgressAccountId: e.target.value }))}
+                className="w-full h-10 border border-slate-200 rounded-lg px-3 py-2 text-sm bg-white focus:border-slate-400 outline-none transition-colors"
+              >
+                <option value="">-- Choose WIP Account --</option>
+                {arAccounts.map(a => (
+                  <option key={a.id} value={a.id}>{a.code} — {a.name}</option>
+                ))}
+              </select>
+            </div>
+
+            <div>
+              <label className="block text-xs font-semibold text-slate-700 mb-1.5">
+                Finished Goods Inventory (Asset)
+              </label>
+              <select
+                value={mappings.finishedGoodsAccountId}
+                onChange={e => setMappings(prev => ({ ...prev, finishedGoodsAccountId: e.target.value }))}
+                className="w-full h-10 border border-slate-200 rounded-lg px-3 py-2 text-sm bg-white focus:border-slate-400 outline-none transition-colors"
+              >
+                <option value="">-- Choose Finished Goods Account --</option>
+                {arAccounts.map(a => (
+                  <option key={a.id} value={a.id}>{a.code} — {a.name}</option>
+                ))}
+              </select>
+            </div>
+
+            <div>
+              <label className="block text-xs font-semibold text-slate-700 mb-1.5">
+                Direct Labor (P&L)
+              </label>
+              <select
+                value={mappings.directLaborAccountId}
+                onChange={e => setMappings(prev => ({ ...prev, directLaborAccountId: e.target.value }))}
+                className="w-full h-10 border border-slate-200 rounded-lg px-3 py-2 text-sm bg-white focus:border-slate-400 outline-none transition-colors"
+              >
+                <option value="">-- Choose Direct Labor Account --</option>
+                {expenseAccounts.map(a => (
+                  <option key={a.id} value={a.id}>{a.code} — {a.name}</option>
+                ))}
+              </select>
+            </div>
+
+            <div>
+              <label className="block text-xs font-semibold text-slate-700 mb-1.5">
+                Manufacturing Overhead (P&L)
+              </label>
+              <select
+                value={mappings.manufacturingOverheadAccountId}
+                onChange={e => setMappings(prev => ({ ...prev, manufacturingOverheadAccountId: e.target.value }))}
+                className="w-full h-10 border border-slate-200 rounded-lg px-3 py-2 text-sm bg-white focus:border-slate-400 outline-none transition-colors"
+              >
+                <option value="">-- Choose Manufacturing Overhead Account --</option>
+                {expenseAccounts.map(a => (
+                  <option key={a.id} value={a.id}>{a.code} — {a.name}</option>
+                ))}
+              </select>
+            </div>
+
+            <div>
+              <label className="block text-xs font-semibold text-slate-700 mb-1.5">
+                GRNI Accrual (Goods Received Not Invoiced)
+              </label>
+              <select
+                value={mappings.grniAccrualAccountId}
+                onChange={e => setMappings(prev => ({ ...prev, grniAccrualAccountId: e.target.value }))}
+                className="w-full h-10 border border-slate-200 rounded-lg px-3 py-2 text-sm bg-white focus:border-slate-400 outline-none transition-colors"
+              >
+                <option value="">-- Choose GRNI Account --</option>
+                {apAccounts.map(a => (
                   <option key={a.id} value={a.id}>{a.code} — {a.name}</option>
                 ))}
               </select>

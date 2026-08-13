@@ -382,6 +382,32 @@ public class AccountingStore
 
             wo.TotalMaterialCost = totalMatCost;
             wo.Status = WorkOrderStatus.InProgress;
+
+            // Post WIP journal: Dr Work in Progress / Cr Raw Materials Inventory
+            if (totalMatCost > 0)
+            {
+                var wipAccId = GetMappedAccount("Work in Progress");
+                var rawMatAccId = GetMappedAccount("Raw Materials Inventory");
+                Guid.TryParse(wo.CompanyId, out var woCompId);
+                if (wipAccId != Guid.Empty && rawMatAccId != Guid.Empty)
+                {
+                    _entries.Add(new JournalEntry
+                    {
+                        Date = DateOnly.FromDateTime(DateTime.Today),
+                        Reference = $"WO-START-{wo.WorkOrderNumber}",
+                        Description = $"Raw materials issued to production for {wo.WorkOrderNumber}",
+                        TransactionType = TransactionType.Inventory,
+                        CompanyId = woCompId != Guid.Empty ? woCompId : null,
+                        Lines =
+                        [
+                            new JournalLine(wipAccId, totalMatCost, 0, $"Materials issued: {wo.WorkOrderNumber}", null, null, 1, woCompId != Guid.Empty ? woCompId : null),
+                            new JournalLine(rawMatAccId, 0, totalMatCost, $"Materials issued: {wo.WorkOrderNumber}", null, null, 1, woCompId != Guid.Empty ? woCompId : null)
+                        ],
+                        Status = JournalStatus.Posted
+                    });
+                }
+            }
+
             Persist();
             return true;
         }
@@ -451,6 +477,40 @@ public class AccountingStore
 
             wo.Status = WorkOrderStatus.Completed;
             wo.CompletionDate = DateTime.UtcNow.ToString("yyyy-MM-dd");
+
+            // Post Finished Goods journal: Dr Finished Goods / Cr WIP + Direct Labor + Manufacturing Overhead
+            if (wo.TotalCost > 0)
+            {
+                var fgAccId = GetMappedAccount("Finished Goods Inventory");
+                var wipAccId = GetMappedAccount("Work in Progress");
+                var laborAccId = GetMappedAccount("Direct Labor");
+                var overheadAccId = GetMappedAccount("Manufacturing Overhead");
+                Guid.TryParse(wo.CompanyId, out var woCompId);
+                var fgLines = new List<JournalLine>();
+                if (fgAccId != Guid.Empty)
+                    fgLines.Add(new JournalLine(fgAccId, wo.TotalCost, 0, $"Completed production: {wo.WorkOrderNumber}", null, null, 1, woCompId != Guid.Empty ? woCompId : null));
+                if (wipAccId != Guid.Empty && wo.TotalMaterialCost > 0)
+                    fgLines.Add(new JournalLine(wipAccId, 0, wo.TotalMaterialCost, $"WIP transfer: {wo.WorkOrderNumber}", null, null, 1, woCompId != Guid.Empty ? woCompId : null));
+                if (laborAccId != Guid.Empty && directLabor > 0)
+                    fgLines.Add(new JournalLine(laborAccId, 0, directLabor, $"Direct labor: {wo.WorkOrderNumber}", null, null, 1, woCompId != Guid.Empty ? woCompId : null));
+                if (overheadAccId != Guid.Empty && overhead > 0)
+                    fgLines.Add(new JournalLine(overheadAccId, 0, overhead, $"Manufacturing overhead: {wo.WorkOrderNumber}", null, null, 1, woCompId != Guid.Empty ? woCompId : null));
+
+                if (fgLines.Count > 0)
+                {
+                    _entries.Add(new JournalEntry
+                    {
+                        Date = DateOnly.FromDateTime(DateTime.Today),
+                        Reference = $"WO-COMPLETE-{wo.WorkOrderNumber}",
+                        Description = $"Finished goods received from production for {wo.WorkOrderNumber}",
+                        TransactionType = TransactionType.Inventory,
+                        CompanyId = woCompId != Guid.Empty ? woCompId : null,
+                        Lines = fgLines,
+                        Status = JournalStatus.Posted
+                    });
+                }
+            }
+
             Persist();
             return true;
         }
@@ -617,6 +677,47 @@ public class AccountingStore
             }
 
             _grnModels.Add(grn);
+
+            // Post GRNI accrual journal: Dr Inventory / Fixed Assets, Cr GRNI Accrual
+            var accrualLines = new List<JournalLine>();
+            var inventoryAccId = GetMappedAccount("Inventory");
+            var fixedAssetAccId = GetMappedAccount("Fixed Assets");
+            var grniAccId = GetMappedAccount("GRNI Accrual");
+            var grniTotal = 0m;
+            foreach (var line in grn.Lines)
+            {
+                var amount = line.ReceivedQuantity * line.UnitCost;
+                if (amount <= 0) continue;
+                Guid.TryParse(grn.CompanyId, out var compId);
+                if (line.Destination == LineDestination.FixedAsset)
+                {
+                    if (fixedAssetAccId != Guid.Empty)
+                        accrualLines.Add(new JournalLine(fixedAssetAccId, amount, 0, $"GRN: {grn.GrnNumber}", null, null, 1, compId != Guid.Empty ? compId : null));
+                }
+                else
+                {
+                    if (inventoryAccId != Guid.Empty)
+                        accrualLines.Add(new JournalLine(inventoryAccId, amount, 0, $"GRN: {grn.GrnNumber}", null, null, 1, compId != Guid.Empty ? compId : null));
+                }
+                grniTotal += amount;
+            }
+            if (grniAccId != Guid.Empty && accrualLines.Count > 0)
+            {
+                Guid.TryParse(grn.CompanyId, out var grnCompId);
+                accrualLines.Add(new JournalLine(grniAccId, 0, grniTotal, $"GRNI Accrual: {grn.GrnNumber}", null, null, 1, grnCompId != Guid.Empty ? grnCompId : null));
+                var grnJournal = new JournalEntry
+                {
+                    Date = DateOnly.FromDateTime(DateTime.Today),
+                    Reference = grn.GrnNumber,
+                    Description = $"Goods received but not yet invoiced: {grn.GrnNumber}",
+                    TransactionType = TransactionType.Accrual,
+                    CompanyId = grnCompId != Guid.Empty ? grnCompId : null,
+                    Lines = accrualLines,
+                    Status = JournalStatus.Posted
+                };
+                _entries.Add(grnJournal);
+            }
+
             Persist();
             return true;
         }
@@ -672,6 +773,54 @@ public class AccountingStore
             var bill = _vendorBills.FirstOrDefault(b => b.Id == id);
             if (bill == null) { error = "Vendor Bill not found."; return false; }
             if (bill.Status != VendorBillStatus.Draft) { error = "Only Draft bills can be posted."; return false; }
+
+            var apAccountId = GetMappedAccount("Vendor Payables");
+            var apAcc = _accounts.FirstOrDefault(a => a.Id == apAccountId);
+            if (apAcc == null || !apAcc.IsPosting || apAcc.Status == AccountStatus.Inactive)
+            {
+                error = "Vendor Payables account is not mapped to a valid posting account. Configure it under System Account Mapping.";
+                return false;
+            }
+
+            var journalLines = new List<JournalLine>();
+            foreach (var line in bill.Lines)
+            {
+                var subTotal = line.Quantity * line.UnitPrice;
+                if (subTotal <= 0) continue;
+
+                var debitAccId = line.Destination switch
+                {
+                    LineDestination.Inventory or LineDestination.ManufacturingMaterial => GetMappedAccount("Inventory"),
+                    LineDestination.FixedAsset => GetMappedAccount("Fixed Assets"),
+                    _ => GetMappedAccount("Purchases")
+                };
+                if (debitAccId != Guid.Empty && subTotal > 0)
+                    journalLines.Add(new JournalLine(debitAccId, subTotal, 0, $"Purchase: {line.Description}", null, null, 1, bill.CompanyId));
+
+                if (line.TaxAmount > 0)
+                {
+                    var taxAccId = GetMappedAccount("Taxes");
+                    if (taxAccId != Guid.Empty)
+                        journalLines.Add(new JournalLine(taxAccId, line.TaxAmount, 0, $"Purchase Tax: {line.Description}", null, null, 1, bill.CompanyId));
+                }
+            }
+
+            var billTotal = bill.Lines.Sum(l => l.TotalAmount);
+            if (journalLines.Count == 0) { error = "Bill has no valid lines to post."; return false; }
+            journalLines.Add(new JournalLine(apAccountId, 0, billTotal, $"AP: {bill.BillNumber}", null, null, 1, bill.CompanyId));
+
+            var journal = new JournalEntry
+            {
+                Date = bill.Date,
+                Reference = bill.BillNumber,
+                Description = $"Vendor bill from {_vendors.FirstOrDefault(v => v.Id == bill.VendorId)?.Name ?? bill.VendorId.ToString()}",
+                TransactionType = TransactionType.Purchase,
+                CompanyId = bill.CompanyId,
+                Lines = journalLines,
+                Status = JournalStatus.Posted
+            };
+            _entries.Add(journal);
+
             bill.Status = VendorBillStatus.Open;
             Persist();
             return true;
@@ -1183,7 +1332,42 @@ public class AccountingStore
 
             // 3. Optional: Create Accrual Journal Entry (GRNI) 
             // In a real system, you would sum the amounts by GL account and create a balanced entry here.
-            
+            var invAccId = GetMappedAccount("Inventory");
+            var faAccId = GetMappedAccount("Fixed Assets");
+            var grniId = GetMappedAccount("GRNI Accrual");
+            var grniLines = new List<JournalLine>();
+            decimal grniTotal = 0;
+            foreach (var grnLine in grn.Lines)
+            {
+                var poLine = po.Lines.FirstOrDefault(l => l.Id == grnLine.PurchaseOrderLineId);
+                if (poLine == null) continue;
+                var amt = grnLine.QuantityReceived * poLine.UnitPrice;
+                if (amt <= 0) continue;
+                if (poLine.Destination == LineDestination.FixedAsset)
+                {
+                    if (faAccId != Guid.Empty) grniLines.Add(new JournalLine(faAccId, amt, 0, $"GRN: {grn.GrnNumber}", null, null, 1, po.CompanyId));
+                }
+                else if (invAccId != Guid.Empty)
+                {
+                    grniLines.Add(new JournalLine(invAccId, amt, 0, $"GRN: {grn.GrnNumber}", null, null, 1, po.CompanyId));
+                }
+                grniTotal += amt;
+            }
+            if (grniId != Guid.Empty && grniLines.Count > 0)
+            {
+                grniLines.Add(new JournalLine(grniId, 0, grniTotal, $"GRNI Accrual: {grn.GrnNumber}", null, null, 1, po.CompanyId));
+                _entries.Add(new JournalEntry
+                {
+                    Date = grn.DateReceived,
+                    Reference = grn.GrnNumber,
+                    Description = $"Goods received but not yet invoiced: {grn.GrnNumber}",
+                    TransactionType = TransactionType.Accrual,
+                    CompanyId = po.CompanyId,
+                    Lines = grniLines,
+                    Status = JournalStatus.Posted
+                });
+            }
+
             grn.IsProcessed = true;
             Persist();
             return true;
@@ -1191,7 +1375,7 @@ public class AccountingStore
     }
 
     // Fixed Asset Disposal (IAS 16 compliant - posts gain/loss journal)
-    public bool DisposeAsset(Guid assetId, DateOnly disposalDate, decimal proceeds, Guid assetAccountId, Guid accumDeprAccountId, Guid gainLossAccountId, Guid? cashAccountId, out string? error)
+    public bool DisposeAsset(Guid assetId, DateOnly disposalDate, decimal proceeds, Guid? assetAccountId, Guid? accumDeprAccountId, Guid? gainLossAccountId, Guid? cashAccountId, out string? error)
     {
         error = null;
         lock (_lock)
@@ -1200,24 +1384,34 @@ public class AccountingStore
             if (asset == null) { error = "Asset not found."; return false; }
             if (asset.Status == AssetStatus.Disposed) { error = "Asset is already disposed."; return false; }
 
+            // Fall back to centralized System Account Mapping when accounts not supplied
+            var resolvedAssetAcc = (assetAccountId.HasValue && assetAccountId.Value != Guid.Empty) ? assetAccountId.Value : GetMappedAccount("Fixed Assets");
+            var resolvedAccumAcc = (accumDeprAccountId.HasValue && accumDeprAccountId.Value != Guid.Empty) ? accumDeprAccountId.Value : GetMappedAccount("Accumulated Depreciation");
+            var resolvedGainLossAcc = (gainLossAccountId.HasValue && gainLossAccountId.Value != Guid.Empty) ? gainLossAccountId.Value : GetMappedAccount("Gain/Loss on Disposal");
+            if (resolvedAssetAcc == Guid.Empty || resolvedAccumAcc == Guid.Empty || resolvedGainLossAcc == Guid.Empty)
+            {
+                error = "Asset, Accumulated Depreciation or Gain/Loss account is not mapped. Configure it under System Account Mapping.";
+                return false;
+            }
+
             var nbv = asset.PurchasePrice - asset.AccumulatedDepreciation;
             var gainOrLoss = proceeds - nbv; // positive = gain, negative = loss
 
             var lines = new List<JournalLine>
             {
                 // Remove asset at cost: Cr Asset Account
-                new JournalLine(assetAccountId, 0, asset.PurchasePrice, $"Disposal of {asset.Name} (cost)", null, null, 1, asset.CompanyId),
+                new JournalLine(resolvedAssetAcc, 0, asset.PurchasePrice, $"Disposal of {asset.Name} (cost)", null, null, 1, asset.CompanyId),
                 // Remove accumulated depreciation: Dr Accum Depr Account
-                new JournalLine(accumDeprAccountId, asset.AccumulatedDepreciation, 0, $"Disposal of {asset.Name} (accum depr)", null, null, 1, asset.CompanyId),
+                new JournalLine(resolvedAccumAcc, asset.AccumulatedDepreciation, 0, $"Disposal of {asset.Name} (accum depr)", null, null, 1, asset.CompanyId),
             };
 
             if (proceeds > 0 && cashAccountId.HasValue)
                 lines.Add(new JournalLine(cashAccountId.Value, proceeds, 0, $"Proceeds from disposal of {asset.Name}", null, null, 1, asset.CompanyId));
 
             if (gainOrLoss > 0)
-                lines.Add(new JournalLine(gainLossAccountId, 0, gainOrLoss, $"Gain on disposal of {asset.Name}", null, null, 1, asset.CompanyId));
+                lines.Add(new JournalLine(resolvedGainLossAcc, 0, gainOrLoss, $"Gain on disposal of {asset.Name}", null, null, 1, asset.CompanyId));
             else if (gainOrLoss < 0)
-                lines.Add(new JournalLine(gainLossAccountId, Math.Abs(gainOrLoss), 0, $"Loss on disposal of {asset.Name}", null, null, 1, asset.CompanyId));
+                lines.Add(new JournalLine(resolvedGainLossAcc, Math.Abs(gainOrLoss), 0, $"Loss on disposal of {asset.Name}", null, null, 1, asset.CompanyId));
 
             var journalEntry = new JournalEntry
             {
@@ -1287,7 +1481,7 @@ public class AccountingStore
     }
 
     // Fixed Asset Depreciation (posts a real double-entry journal)
-    public bool RunDepreciation(Guid assetId, Guid depreciationExpenseAccountId, Guid accumulatedDepreciationAccountId, out string? error)
+    public bool RunDepreciation(Guid assetId, Guid? depreciationExpenseAccountId, Guid? accumulatedDepreciationAccountId, out string? error)
     {
         error = null;
         lock (_lock)
@@ -1295,6 +1489,15 @@ public class AccountingStore
             var asset = _fixedAssets.FirstOrDefault(a => a.Id == assetId);
             if (asset == null) { error = "Asset not found."; return false; }
             if (asset.Status != AssetStatus.Active) { error = "Asset is not active."; return false; }
+
+            // Fall back to centralized System Account Mapping when accounts not supplied
+            var expAccId = (depreciationExpenseAccountId.HasValue && depreciationExpenseAccountId.Value != Guid.Empty) ? depreciationExpenseAccountId.Value : GetMappedAccount("Depreciation Expense");
+            var accumAccId = (accumulatedDepreciationAccountId.HasValue && accumulatedDepreciationAccountId.Value != Guid.Empty) ? accumulatedDepreciationAccountId.Value : GetMappedAccount("Accumulated Depreciation");
+            if (expAccId == Guid.Empty || accumAccId == Guid.Empty)
+            {
+                error = "Depreciation Expense or Accumulated Depreciation account is not mapped. Configure it under System Account Mapping.";
+                return false;
+            }
 
             // Straight-Line: (Cost - Salvage) / UsefulLife / 12 per month
             var annualDepreciation = (asset.PurchasePrice - asset.SalvageValue) / asset.UsefulLifeYears;
@@ -1320,8 +1523,8 @@ public class AccountingStore
                 CompanyId = asset.CompanyId,
                 Lines =
                 [
-                    new JournalLine(depreciationExpenseAccountId, monthlyDepreciation, 0, $"Depreciation: {asset.Name}", null, null, 1, asset.CompanyId),
-                    new JournalLine(accumulatedDepreciationAccountId, 0, monthlyDepreciation, $"Accum. Depr: {asset.Name}", null, null, 1, asset.CompanyId)
+                    new JournalLine(expAccId, monthlyDepreciation, 0, $"Depreciation: {asset.Name}", null, null, 1, asset.CompanyId),
+                    new JournalLine(accumAccId, 0, monthlyDepreciation, $"Accum. Depr: {asset.Name}", null, null, 1, asset.CompanyId)
                 ]
             };
             journalEntry.Status = JournalStatus.Posted;
@@ -2396,12 +2599,35 @@ public class AccountingStore
             var fallbackCode = mappingKey switch
             {
                 "Customer Receivables" => "12000",
-                "Vendor Payables" => "21100",
-                "Sales" => "41100",
-                "Purchases" => "61100",
+                "Allowance for Doubtful Accounts" => "12100",
+                "WHT Receivable" => "12200",
                 "Inventory" => "13000",
+                "Prepaid Expenses" => "14000",
+                "Fixed Assets" => "15100",
+                "Accumulated Depreciation" => "15200",
+                "Vendor Payables" => "21100",
+                "GRNI Accrual" => "21200",
+                "Accrued Salaries" => "21300",
+                "Payroll Taxes Accrued" => "21400",
+                "Pension Fund Accrued" => "21500",
                 "Taxes" => "22000",
+                "WHT Payable" => "22100",
+                "Deferred Revenue" => "23000",
+                "Sales" => "41100",
+                "Sales Discount" => "41200",
+                "Sales Returns" => "41300",
                 "Cost of Goods Sold" => "51000",
+                "Purchase Discounts" => "51100",
+                "Purchase Returns" => "51200",
+                "Purchases" => "61100",
+                "Payroll Expense" => "61200",
+                "Depreciation Expense" => "61300",
+                "Raw Materials Inventory" => "13000",
+                "Work in Progress" => "13000",
+                "Finished Goods Inventory" => "13000",
+                "Direct Labor" => "61200",
+                "Manufacturing Overhead" => "61100",
+                "Gain/Loss on Disposal" => "51000",
                 _ => null
             };
 
