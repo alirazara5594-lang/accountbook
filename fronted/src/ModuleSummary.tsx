@@ -171,9 +171,37 @@ export const ModuleSummary: React.FC<ModuleSummaryProps> = ({
               <strong>New Journal Entry</strong>
               <p style={{ fontSize: '11px', color: '#8d9aad', marginTop: '4px' }}>Post custom double-entry General Ledger transactions with balanced debits and credits.</p>
             </button>
+            <button onClick={() => setPage('Accounting.General Ledger')} className="nav" style={{ padding: '12px', border: '1px solid #e3e8ef', borderRadius: '8px', background: '#fff', textAlign: 'left', width: '100%', cursor: 'pointer' }}>
+              <strong>General Ledger</strong>
+              <p style={{ fontSize: '11px', color: '#8d9aad', marginTop: '4px' }}>Posting-level register of all journal lines from posted entries.</p>
+            </button>
+            <button onClick={() => setPage('Accounting.Accounts Receivable')} className="nav" style={{ padding: '12px', border: '1px solid #e3e8ef', borderRadius: '8px', background: '#fff', textAlign: 'left', width: '100%', cursor: 'pointer' }}>
+              <strong>Accounts Receivable</strong>
+              <p style={{ fontSize: '11px', color: '#8d9aad', marginTop: '4px' }}>Aged customer trade receivables by due date (IFRS 9).</p>
+            </button>
+            <button onClick={() => setPage('Accounting.Accounts Payable')} className="nav" style={{ padding: '12px', border: '1px solid #e3e8ef', borderRadius: '8px', background: '#fff', textAlign: 'left', width: '100%', cursor: 'pointer' }}>
+              <strong>Accounts Payable</strong>
+              <p style={{ fontSize: '11px', color: '#8d9aad', marginTop: '4px' }}>Aged vendor trade payables by due date (IAS 37).</p>
+            </button>
+            <button onClick={() => setPage('Accounting.Tax Accounting')} className="nav" style={{ padding: '12px', border: '1px solid #e3e8ef', borderRadius: '8px', background: '#fff', textAlign: 'left', width: '100%', cursor: 'pointer' }}>
+              <strong>Tax Accounting</strong>
+              <p style={{ fontSize: '11px', color: '#8d9aad', marginTop: '4px' }}>Multi-jurisdiction VAT, GST, Sales Tax & WHT (UK, USA, PK, EU, UAE, KSA, CA).</p>
+            </button>
+            <button onClick={() => setPage('Accounting.Budgets')} className="nav" style={{ padding: '12px', border: '1px solid #e3e8ef', borderRadius: '8px', background: '#fff', textAlign: 'left', width: '100%', cursor: 'pointer' }}>
+              <strong>Budgets</strong>
+              <p style={{ fontSize: '11px', color: '#8d9aad', marginTop: '4px' }}>Annual budgets by account for variance analysis against actuals.</p>
+            </button>
             <button onClick={() => setPage('Accounting.Financial Reports')} className="nav" style={{ padding: '12px', border: '1px solid #e3e8ef', borderRadius: '8px', background: '#fff', textAlign: 'left', width: '100%', cursor: 'pointer' }}>
               <strong>Financial Reporting</strong>
               <p style={{ fontSize: '11px', color: '#8d9aad', marginTop: '4px' }}>Verify compliance reporting including Balance Sheets and Profit & Loss reports.</p>
+            </button>
+            <button onClick={() => setPage('Accounting.Period Closing')} className="nav" style={{ padding: '12px', border: '1px solid #e3e8ef', borderRadius: '8px', background: '#fff', textAlign: 'left', width: '100%', cursor: 'pointer' }}>
+              <strong>Period Closing</strong>
+              <p style={{ fontSize: '11px', color: '#8d9aad', marginTop: '4px' }}>Close accounting periods to lock books against prior-period postings.</p>
+            </button>
+            <button onClick={() => setPage('Accounting.Audit Trail')} className="nav" style={{ padding: '12px', border: '1px solid #e3e8ef', borderRadius: '8px', background: '#fff', textAlign: 'left', width: '100%', cursor: 'pointer' }}>
+              <strong>Audit Trail</strong>
+              <p style={{ fontSize: '11px', color: '#8d9aad', marginTop: '4px' }}>Immutable event log across the ERP (IAS 8 audit evidence).</p>
             </button>
           </>
         );
@@ -208,7 +236,7 @@ export const ModuleSummary: React.FC<ModuleSummaryProps> = ({
       case 'Banking & Payments':
         return ['Bank Accounts', 'Cash Accounts', 'Transactions', 'Bank Reconciliation', 'Cash Flow'];
       case 'Accounting':
-        return ['Chart of Accounts', 'Journal Entries', 'Fixed Assets', 'General Ledger', 'Financial Reports'];
+        return ['Chart of Accounts', 'Journal Entries', 'Fixed Assets', 'General Ledger', 'Accounts Receivable', 'Accounts Payable', 'Tax Accounting', 'Budgets', 'Financial Reports', 'Period Closing', 'Audit Trail'];
       case 'Assets & Inventory':
         return ['Depreciation Schedule', 'Valuation Reports'];
       default:

@@ -44,12 +44,13 @@ import { TaxAccountingView } from './TaxAccountingView'
 import { BudgetsView } from './BudgetsView'
 import { PeriodClosingView } from './PeriodClosingView'
 import { AuditTrailView } from './AuditTrailView'
+import { JournalEntriesView } from './JournalEntriesView'
 import { useCoaStore, useJournalsStore, useCompanyStore, useIntercompanyStore } from './stores'
 import { Toaster } from '@/components/ui/toast'
 
 import type { Account } from './api/modules/coa.api'
 type AccountType = 'Asset' | 'Liability' | 'Equity' | 'Revenue' | 'Expense' | 'ContraAsset' | 'ContraLiability' | 'ContraEquity' | 'ContraRevenue' | 'ContraExpense'
-type Journal = { id: string; date: string; reference: string; description: string; lines: { accountId: string; debit: number; credit: number }[] }
+type Journal = { id: string; date: string; reference: string; description: string; status?: string; lines: { accountId: string; debit: number; credit: number }[] }
 type Allocation = { id: string; name: string; sourceCompanyId: string; category: string; frequency: string; rate: number; quantity: number; status: string; recipients: { companyId: string; sharePercent: number }[] }
 
 const accountTypes: AccountType[] = ['Asset', 'Liability', 'Equity', 'Revenue', 'Expense', 'ContraAsset', 'ContraLiability', 'ContraEquity', 'ContraRevenue', 'ContraExpense']
@@ -95,7 +96,6 @@ export default function App() {
 
   const entries = useJournalsStore((s) => s.entries as Journal[])
   const fetchJournalEntries = useJournalsStore((s) => s.fetchJournalEntries)
-  const postJournalEntryStore = useJournalsStore((s) => s.postJournalEntry)
 
   const allocations = useIntercompanyStore((s) => s.allocations as Allocation[])
   const fetchAllocations = useIntercompanyStore((s) => s.fetchAllocations)
@@ -138,7 +138,6 @@ export default function App() {
   const [editing, setEditing] = useState<Account | null>(null)
   const [form, setForm] = useState(blank)
   const [toast, setToast] = useState('')
-  const [journal, setJournal] = useState({ date: new Date().toISOString().slice(0, 10), reference: '', description: '', lines: [{ accountId: '', debit: '', credit: '' }, { accountId: '', debit: '', credit: '' }] })
   const notify = (message: string) => { setToast(message); setTimeout(() => setToast(''), 3500) }
 
   const load = async () => {
@@ -194,17 +193,6 @@ export default function App() {
     }
   }
 
-  const postJournal = async (e: FormEvent) => {
-    e.preventDefault();
-    const lines = journal.lines.map(x => ({ accountId: x.accountId, debit: Number(x.debit || 0), credit: Number(x.credit || 0), memo: null }));
-    try {
-      await postJournalEntryStore({ ...journal, lines });
-      notify('Balanced journal draft created');
-      setJournal({ date: new Date().toISOString().slice(0, 10), reference: '', description: '', lines: [{ accountId: '', debit: '', credit: '' }, { accountId: '', debit: '', credit: '' }] });
-    } catch (err: any) {
-      notify(err.message || 'Could not post journal');
-    }
-  }
   const handleGroupClick = (groupName: string) => {
     setOpenGroups(curr => curr.includes(groupName) ? [] : [groupName]);
     setPage(`${groupName}.Summary`);
@@ -316,7 +304,7 @@ export default function App() {
   {activeView === 'bank-reconciliation' && <BankReconciliationView activeEntityId={activeEntityId} entities={entities as any} />}
   {activeView === 'fund-transfers' && <FundTransfersView activeEntityId={activeEntityId} entities={entities as any} />}
   {activeView === 'cash-flow-statements' && <CashFlowView activeEntityId={activeEntityId} entities={entities as any} />}
-  {activeView === 'journal' && <Journals journal={journal} setJournal={setJournal} accounts={accounts.filter(a => a.status === 'Active')} entries={entries} post={postJournal} />}
+  {activeView === 'journal' && <JournalEntriesView accounts={accounts.filter(a => a.status === 'Active')} initialEntries={entries} onEntriesChange={async () => { await fetchJournalEntries(); }} />}
   {activeView === 'intercompany' && <Intercompany allocations={allocations} reload={load} notify={notify} />}
   {activeView === 'settings' && settingsView === 'home' && (
     <SettingsHome 
@@ -658,7 +646,6 @@ function Dashboard({ stats, entries, accounts, setPage }: { stats: { bank: numbe
   );
 }
 
-function Journals({ journal, setJournal, accounts, entries, post }: { journal: any; setJournal: any; accounts: Account[]; entries: Journal[]; post: (e: FormEvent) => void }) { const totals = journal.lines.reduce((x: any, l: any) => ({ debit: x.debit + Number(l.debit || 0), credit: x.credit + Number(l.credit || 0) }), { debit: 0, credit: 0 }); const updateLine = (i: number, key: string, value: string) => { const lines = [...journal.lines]; lines[i] = { ...lines[i], [key]: value }; setJournal({ ...journal, lines }) }; return <><form id="journal-form" className="panel entry-form" onSubmit={post}><div className="form-top"><label>Date<input type="date" value={journal.date} onChange={e => setJournal({ ...journal, date: e.target.value })} /></label><label>Reference<input required placeholder="JE-0001" value={journal.reference} onChange={e => setJournal({ ...journal, reference: e.target.value })} /></label><label className="wide">Description<input required placeholder="Describe this transaction" value={journal.description} onChange={e => setJournal({ ...journal, description: e.target.value })} /></label></div><div className="lines">{journal.lines.map((line: any, i: number) => <div className="line" key={i}><select required value={line.accountId} onChange={e => updateLine(i, 'accountId', e.target.value)}><option value="">Select account</option>{accounts.map(a => <option value={a.id} key={a.id}>{a.code} — {a.name}</option>)}</select><input inputMode="decimal" placeholder="Debit" value={line.debit} onChange={e => updateLine(i, 'debit', e.target.value)} /><input inputMode="decimal" placeholder="Credit" value={line.credit} onChange={e => updateLine(i, 'credit', e.target.value)} />{journal.lines.length > 2 && <button type="button" className="remove" onClick={() => setJournal({ ...journal, lines: journal.lines.filter((_: any, index: number) => index !== i) })}>×</button>}</div>)}</div><button type="button" className="text-button" onClick={() => setJournal({ ...journal, lines: [...journal.lines, { accountId: '', debit: '', credit: '' }] })}>＋ Add line</button><div className="entry-footer"><div><span>Debits <b>{money(totals.debit)}</b></span><span>Credits <b>{money(totals.credit)}</b></span>{totals.debit !== totals.credit && <em>Entry must balance</em>}</div><button className="primary" disabled={totals.debit !== totals.credit}>Post entry</button></div></form><section className="panel recent-entries"><div className="panel-head"><div><h3>Posted entries</h3><p>Immutable general ledger transactions</p></div></div>{entries.length ? entries.map(e => <div className="journal-item" key={e.id}><div className="date-box"><b>{new Date(e.date).toLocaleDateString('en-US', { month: 'short' })}</b><span>{new Date(e.date).getDate()}</span></div><div><strong>{e.description}</strong><small>{e.reference} · {e.lines.length} lines</small></div></div>) : <div className="empty">Your posted journals will appear here.</div>}</section></> }
 const subtypesMap: Record<string, string[]> = {
   Asset: ['Current Assets', 'Non-Current Assets'],
   ContraAsset: ['Non-Current Assets'],

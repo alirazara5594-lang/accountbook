@@ -102,8 +102,9 @@ public class AccountingStore
         var fbr = new TaxAuthority { Name = "FBR", Country = "Pakistan" };
         var pra = new TaxAuthority { Name = "PRA", Country = "Pakistan", State = "Punjab" };
         var cra = new TaxAuthority { Name = "CRA", Country = "Canada" };
+        var eu = new TaxAuthority { Name = "EU VAT", Country = "European Union" };
         
-        _taxAuthorities.AddRange([hmrc, irs, cdtfa, fta, zatca, fbr, pra, cra]);
+        _taxAuthorities.AddRange([hmrc, irs, cdtfa, fta, zatca, fbr, pra, cra, eu]);
 
         // Seed Tax Codes & Rates
         var today = DateOnly.FromDateTime(DateTime.Today);
@@ -139,7 +140,19 @@ public class AccountingStore
         var caHstRate = new TaxRate { TaxCodeId = caHst.Id, Percentage = 13m, EffectiveFrom = today };
         caHst.Rates.Add(caHstRate);
 
-        _taxCodes.AddRange([ukVat, usSalesTax, usCaSalesTax, uaeVat, ksaVat, pkSalesTax, pkPraTax, caGst, caHst]);
+        var euVatStandard = new TaxCode { Code = "VAT-EU-21", Name = "EU Standard VAT 21%", TaxAuthorityId = eu.Id };
+        var euVatStandardRate = new TaxRate { TaxCodeId = euVatStandard.Id, Percentage = 21m, EffectiveFrom = today };
+        euVatStandard.Rates.Add(euVatStandardRate);
+
+        var euVatReduced = new TaxCode { Code = "VAT-EU-5", Name = "EU Reduced VAT 5%", TaxAuthorityId = eu.Id };
+        var euVatReducedRate = new TaxRate { TaxCodeId = euVatReduced.Id, Percentage = 5m, EffectiveFrom = today };
+        euVatReduced.Rates.Add(euVatReducedRate);
+
+        var ukVatReduced = new TaxCode { Code = "VAT-UK-5", Name = "UK Reduced VAT 5%", TaxAuthorityId = hmrc.Id };
+        var ukVatReducedRate = new TaxRate { TaxCodeId = ukVatReduced.Id, Percentage = 5m, EffectiveFrom = today };
+        ukVatReduced.Rates.Add(ukVatReducedRate);
+
+        _taxCodes.AddRange([ukVat, ukVatReduced, usSalesTax, usCaSalesTax, uaeVat, ksaVat, pkSalesTax, pkPraTax, caGst, caHst, euVatStandard, euVatReduced]);
         _taxRates.AddRange(_taxCodes.SelectMany(c => c.Rates));
 
         var defaultWarehouse = new Warehouse { Name = "Main Warehouse", Location = "Headquarters", CompanyId = parentEntity.Id };
@@ -2592,6 +2605,21 @@ public class AccountingStore
 
     // Tax Codes & Rates
     public TaxCode? FindTaxCode(Guid id) => _taxCodes.FirstOrDefault(x => x.Id == id);
+    public bool AddTaxRate(Guid taxCodeId, decimal percentage, DateOnly effectiveFrom, DateOnly? effectiveTo, out TaxRate? rate, out string? error)
+    {
+        rate = null; error = null;
+        lock (_lock)
+        {
+            var code = FindTaxCode(taxCodeId);
+            if (code is null) { error = "Tax code not found."; return false; }
+            if (percentage < 0) { error = "Rate percentage cannot be negative."; return false; }
+            rate = new TaxRate { TaxCodeId = taxCodeId, Percentage = percentage, EffectiveFrom = effectiveFrom, EffectiveTo = effectiveTo };
+            code.Rates.Add(rate);
+            _taxRates.Add(rate);
+            Persist();
+            return true;
+        }
+    }
     public bool CreateTaxCode(TaxCodeRequest request, out TaxCode? code, out string? error)
     {
         code = null; error = null;
@@ -3176,7 +3204,8 @@ public class AccountingStore
             var fbr = new TaxAuthority { Name = "FBR", Country = "Pakistan" };
             var pra = new TaxAuthority { Name = "PRA", Country = "Pakistan", State = "Punjab" };
             var cra = new TaxAuthority { Name = "CRA", Country = "Canada" };
-            _taxAuthorities.AddRange([hmrc, irs, cdtfa, fta, zatca, fbr, pra, cra]);
+            var eu = new TaxAuthority { Name = "EU VAT", Country = "European Union" };
+            _taxAuthorities.AddRange([hmrc, irs, cdtfa, fta, zatca, fbr, pra, cra, eu]);
 
             var today = DateOnly.FromDateTime(DateTime.Today);
             var ukVat = new TaxCode { Code = "VAT-UK-20", Name = "UK Standard VAT 20%", TaxAuthorityId = hmrc.Id };
@@ -3197,7 +3226,13 @@ public class AccountingStore
             var caHst = new TaxCode { Code = "HST-CA-13", Name = "Canada HST 13%", TaxAuthorityId = cra.Id };
             caHst.Rates.Add(new TaxRate { TaxCodeId = caHst.Id, Percentage = 13m, EffectiveFrom = today });
 
-            _taxCodes.AddRange([ukVat, usSales, uaeVat, ksaVat, pkVat, caHst]);
+            var euVatStandard = new TaxCode { Code = "VAT-EU-21", Name = "EU Standard VAT 21%", TaxAuthorityId = eu.Id };
+            euVatStandard.Rates.Add(new TaxRate { TaxCodeId = euVatStandard.Id, Percentage = 21m, EffectiveFrom = today });
+
+            var ukVatReduced = new TaxCode { Code = "VAT-UK-5", Name = "UK Reduced VAT 5%", TaxAuthorityId = hmrc.Id };
+            ukVatReduced.Rates.Add(new TaxRate { TaxCodeId = ukVatReduced.Id, Percentage = 5m, EffectiveFrom = today });
+
+            _taxCodes.AddRange([ukVat, ukVatReduced, usSales, uaeVat, ksaVat, pkVat, caHst, euVatStandard]);
             _taxRates.AddRange(_taxCodes.SelectMany(c => c.Rates));
 
             var defaultWarehouse = new Warehouse { Name = "Main Warehouse", Location = "Headquarters", CompanyId = parentEntity.Id };

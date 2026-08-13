@@ -30,6 +30,23 @@ export interface TaxRate {
   percentage?: number;
 }
 
+export interface TaxJurisdiction {
+  id: string;
+  name: string;
+  flag: string;
+  authority: string;
+  currency: string;
+  regime: string;
+  standardRate: number;
+  reducedRate: number;
+  zeroRate: number;
+  registrationThreshold: number;
+  filingFrequency: string;
+  filingForm: string;
+  corporateTax: string;
+  note: string;
+}
+
 export const taxApi = {
   getTaxAuthorities: async (): Promise<TaxAuthority[]> => {
     return apiClient<TaxAuthority[]>('/taxes/authorities');
@@ -41,6 +58,10 @@ export const taxApi = {
 
   getTaxRates: async (): Promise<TaxRate[]> => {
     return apiClient<TaxRate[]>('/taxes/rates');
+  },
+
+  getJurisdictions: async (): Promise<TaxJurisdiction[]> => {
+    return apiClient<TaxJurisdiction[]>('/taxes/jurisdictions');
   },
 
   createTaxCode: async (data: any): Promise<TaxCode> => {

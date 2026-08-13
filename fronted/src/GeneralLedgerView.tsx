@@ -34,7 +34,6 @@ export const GeneralLedgerView: React.FC<GeneralLedgerViewProps> = ({ activeEnti
   const [query, setQuery] = useState('');
   const [from, setFrom] = useState('');
   const [to, setTo] = useState('');
-  const [accountId, setAccountId] = useState('');
 
   const load = async () => {
     setLoading(true);
@@ -43,7 +42,6 @@ export const GeneralLedgerView: React.FC<GeneralLedgerViewProps> = ({ activeEnti
       if (activeEntityId) params.companyId = activeEntityId;
       if (from) params.from = from;
       if (to) params.to = to;
-      if (accountId) params.accountId = accountId;
       const data = await reportsApi.getGeneralLedger(params);
       setLines(data || []);
       setError('');

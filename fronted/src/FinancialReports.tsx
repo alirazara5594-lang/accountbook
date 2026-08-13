@@ -4,7 +4,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
-import { Printer, CheckCircle, AlertTriangle, Calendar } from 'lucide-react';
+import { Printer, CheckCircle, AlertTriangle, Calendar, Download } from 'lucide-react';
 
 import { type Account } from './api/modules/coa.api';
 type AccountType = string;
@@ -68,6 +68,9 @@ export const FinancialReports: React.FC<FinancialReportsProps> = ({
 
     // Process all posted entries
     entries.forEach(entry => {
+      // Only posted entries flow into financial statements (IAS 1 accrual basis)
+      if (entry.status && entry.status !== 'Posted') return;
+
       // Filter by active entity if applicable
       if (activeEntityId && entry.companyId && entry.companyId !== activeEntityId) {
         return;
@@ -244,6 +247,31 @@ export const FinancialReports: React.FC<FinancialReportsProps> = ({
     window.print();
   };
 
+  // Export active tab data to CSV
+  const handleExport = () => {
+    const columns: string[] = ['Account', 'Amount'];
+    const rows: (string | number)[][] = [];
+    rows.push(['ASSETS']);
+    balanceSheetData.assetAccounts.forEach(a => rows.push([`${a.code} — ${a.name}`, (a.type === 'ContraAsset' ? -1 : 1) * (accountBalances[a.id] || 0)]));
+    rows.push(['', balanceSheetData.totalAssets]);
+    rows.push(['LIABILITIES']);
+    balanceSheetData.liabilityAccounts.forEach(a => rows.push([`${a.code} — ${a.name}`, (a.type === 'ContraLiability' ? -1 : 1) * (accountBalances[a.id] || 0)]));
+    rows.push(['', balanceSheetData.totalLiabilities]);
+    rows.push(['EQUITY']);
+    balanceSheetData.equityAccounts.forEach(a => rows.push([`${a.code} — ${a.name}`, (a.type === 'ContraEquity' ? -1 : 1) * (accountBalances[a.id] || 0)]));
+    rows.push(['', balanceSheetData.totalEquity]);
+    rows.push(['NET INCOME', incomeStatementData.netIncome]);
+
+    const csv = [columns, ...rows].map(r => r.map(c => `"${String(c ?? '').replace(/"/g, '""')}"`).join(',')).join('\n');
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `financial-reports-${new Date().toISOString().slice(0, 10)}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
   return (
     <div className="space-y-6">
       {/* Date Filters Header */}
@@ -283,6 +311,9 @@ export const FinancialReports: React.FC<FinancialReportsProps> = ({
           )}
           <Button variant="outline" size="sm" onClick={handlePrint} className="h-9 text-xs gap-1.5 border-gray-200">
             <Printer className="w-3.5 h-3.5" /> Print Statement
+          </Button>
+          <Button variant="outline" size="sm" onClick={handleExport} className="h-9 text-xs gap-1.5 border-gray-200">
+            <Download className="w-3.5 h-3.5" /> Export CSV
           </Button>
         </div>
       </div>
