@@ -27,6 +27,7 @@ export const SystemAccountMapping: React.FC<SystemAccountMappingProps> = ({ acco
     revenueAccountId: '',
     cogsAccountId: '',
     discountAccountId: '',
+    purchasesAccountId: '',
     whtReceivableAccountId: '',
     whtPayableAccountId: '',
     inventoryAccountId: '',
@@ -69,6 +70,7 @@ export const SystemAccountMapping: React.FC<SystemAccountMappingProps> = ({ acco
       const revMap = activeMappings.find(m => m.mappingKey === 'Sales');
       const cogsMap = activeMappings.find(m => m.mappingKey === 'Cost of Goods Sold');
       const discMap = activeMappings.find(m => m.mappingKey === 'Sales Discount');
+      const purchasesMap = activeMappings.find(m => m.mappingKey === 'Purchases');
       const whtRecMap = activeMappings.find(m => m.mappingKey === 'WHT Receivable');
       const whtPayMap = activeMappings.find(m => m.mappingKey === 'WHT Payable');
       const invMap = activeMappings.find(m => m.mappingKey === 'Inventory');
@@ -103,6 +105,7 @@ export const SystemAccountMapping: React.FC<SystemAccountMappingProps> = ({ acco
       const revSeed = accounts.find(a => a.code === '41100');
       const cogsSeed = accounts.find(a => a.code === '51000');
       const discSeed = accounts.find(a => a.code === '41200');
+      const purchasesSeed = accounts.find(a => a.code === '61100');
       const whtRecSeed = accounts.find(a => a.code === '12200');
       const whtPaySeed = accounts.find(a => a.code === '22100');
       const invSeed = accounts.find(a => a.code === '13000');
@@ -136,6 +139,7 @@ export const SystemAccountMapping: React.FC<SystemAccountMappingProps> = ({ acco
         revenueAccountId: revMap?.accountId || revSeed?.id || '',
         cogsAccountId: cogsMap?.accountId || cogsSeed?.id || '',
         discountAccountId: discMap?.accountId || discSeed?.id || '',
+        purchasesAccountId: purchasesMap?.accountId || purchasesSeed?.id || '',
         whtReceivableAccountId: whtRecMap?.accountId || whtRecSeed?.id || '',
         whtPayableAccountId: whtPayMap?.accountId || whtPaySeed?.id || '',
         inventoryAccountId: invMap?.accountId || invSeed?.id || '',
@@ -177,6 +181,7 @@ export const SystemAccountMapping: React.FC<SystemAccountMappingProps> = ({ acco
       if (mappings.revenueAccountId) await saveMapping('Sales', mappings.revenueAccountId);
       if (mappings.cogsAccountId) await saveMapping('Cost of Goods Sold', mappings.cogsAccountId);
       if (mappings.discountAccountId) await saveMapping('Sales Discount', mappings.discountAccountId);
+      if (mappings.purchasesAccountId) await saveMapping('Purchases', mappings.purchasesAccountId);
       if (mappings.whtReceivableAccountId) await saveMapping('WHT Receivable', mappings.whtReceivableAccountId);
       if (mappings.whtPayableAccountId) await saveMapping('WHT Payable', mappings.whtPayableAccountId);
       if (mappings.inventoryAccountId) await saveMapping('Inventory', mappings.inventoryAccountId);
@@ -219,6 +224,7 @@ export const SystemAccountMapping: React.FC<SystemAccountMappingProps> = ({ acco
       const revSeed = accounts.find(a => a.code === '41100');
       const cogsSeed = accounts.find(a => a.code === '51000');
       const discSeed = accounts.find(a => a.code === '41200');
+      const purchasesSeed = accounts.find(a => a.code === '61100');
       const whtRecSeed = accounts.find(a => a.code === '12200');
       const whtPaySeed = accounts.find(a => a.code === '22100');
       const invSeed = accounts.find(a => a.code === '13000');
@@ -252,6 +258,7 @@ export const SystemAccountMapping: React.FC<SystemAccountMappingProps> = ({ acco
         revenueAccountId: revSeed?.id || '',
         cogsAccountId: cogsSeed?.id || '',
         discountAccountId: discSeed?.id || '',
+        purchasesAccountId: purchasesSeed?.id || '',
         whtReceivableAccountId: whtRecSeed?.id || '',
         whtPayableAccountId: whtPaySeed?.id || '',
         inventoryAccountId: invSeed?.id || '',
@@ -465,6 +472,22 @@ export const SystemAccountMapping: React.FC<SystemAccountMappingProps> = ({ acco
                 className="w-full h-10 border border-slate-200 rounded-lg px-3 py-2 text-sm bg-white focus:border-slate-400 outline-none transition-colors"
               >
                 <option value="">-- Choose Cost account --</option>
+                {expenseAccounts.map(a => (
+                  <option key={a.id} value={a.id}>{a.code} — {a.name}</option>
+                ))}
+              </select>
+            </div>
+
+            <div>
+              <label className="block text-xs font-semibold text-slate-700 mb-1.5">
+                Purchases / Inventory Expense (Vendor Bill Debit)
+              </label>
+              <select
+                value={mappings.purchasesAccountId}
+                onChange={e => setMappings(prev => ({ ...prev, purchasesAccountId: e.target.value }))}
+                className="w-full h-10 border border-slate-200 rounded-lg px-3 py-2 text-sm bg-white focus:border-slate-400 outline-none transition-colors"
+              >
+                <option value="">-- Choose Purchases account --</option>
                 {expenseAccounts.map(a => (
                   <option key={a.id} value={a.id}>{a.code} — {a.name}</option>
                 ))}
