@@ -1,41 +1,104 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { ArrowLeftRight, Plus } from 'lucide-react';
+import { ArrowLeftRight, Plus, RefreshCw } from 'lucide-react';
 import type { Entity } from './EntitySettings';
+import { apiClient } from './api/client';
+
+interface TransferRecord {
+  id: string;
+  transferNumber: string;
+  date: string;
+  fromAccountId: string;
+  fromAccountName: string;
+  fromAccountCode: string;
+  toAccountId: string;
+  toAccountName: string;
+  toAccountCode: string;
+  amount: number;
+  reference: string;
+  status: string;
+}
+
+interface TransferAccount { id: string; code: string; name: string; }
 
 export const FundTransfersView: React.FC<{ activeEntityId: string; entities: Entity[] }> = ({ activeEntityId, entities }) => {
   const currentEntity = entities.find(e => e.id === activeEntityId);
-  const [transfers, setTransfers] = useState([
-    { id: 'tf-1', date: '2026-08-07', reference: 'TRF-3301', sourceAccount: 'Habib Bank Limited (HBL)', targetAccount: 'Meezan Bank Limited', mode: 'RTGS Real-Time', amount: 250000, currency: 'PKR', status: 'Completed' },
-    { id: 'tf-2', date: '2026-08-05', reference: 'TRF-3302', sourceAccount: 'Standard Chartered (USD)', targetAccount: 'Habib Bank Limited (HBL)', mode: 'Wire Transfer (FX)', amount: 10000, currency: 'USD', status: 'Completed' }
-  ]);
+  const [transfers, setTransfers] = useState<TransferRecord[]>([]);
+  const [accounts, setAccounts] = useState<TransferAccount[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [form, setForm] = useState({ sourceAccount: 'Habib Bank Limited (HBL)', targetAccount: 'Meezan Bank Limited', mode: 'RTGS Real-Time', amount: '', reference: `TRF-${Math.floor(1000 + Math.random() * 9000)}` });
+  const [saving, setSaving] = useState(false);
+  const [formError, setFormError] = useState('');
+  const [form, setForm] = useState({
+    fromAccountId: '',
+    toAccountId: '',
+    date: new Date().toISOString().slice(0, 10),
+    amount: '',
+    reference: `TRF-${Math.floor(1000 + Math.random() * 9000)}`
+  });
 
-  const formatCurrency = (val: number, currency: string) => {
-    return new Intl.NumberFormat('en-US', { style: 'currency', currency, maximumFractionDigits: 2 }).format(val);
+  const loadTransfers = async () => {
+    setLoading(true);
+    try {
+      const data = await apiClient<TransferRecord[]>('/fund-transfers', { params: { companyId: activeEntityId || undefined } });
+      setTransfers(data);
+      setError('');
+    } catch (e: any) {
+      setError(e?.message || 'Failed to load fund transfers.');
+    } finally {
+      setLoading(false);
+    }
   };
 
-  const handleCreateTransfer = (e: React.FormEvent) => {
+  useEffect(() => {
+    loadTransfers();
+    apiClient<TransferAccount[]>('/fund-transfers/accounts').then(setAccounts).catch(() => {});
+  }, [activeEntityId]);
+
+  useEffect(() => {
+    if (!isModalOpen) return;
+    setForm(f => ({
+      ...f,
+      fromAccountId: accounts[0]?.id || '',
+      toAccountId: accounts[1]?.id || accounts[0]?.id || '',
+    }));
+  }, [isModalOpen, accounts]);
+
+  const filtered = useMemo(() => transfers, [transfers]);
+
+  const handleCreateTransfer = async (e: React.FormEvent) => {
     e.preventDefault();
+    setFormError('');
     const amt = parseFloat(form.amount);
-    if (isNaN(amt) || amt <= 0) return;
+    if (!form.fromAccountId) { setFormError('Please select a source account.'); return; }
+    if (!form.toAccountId) { setFormError('Please select a target account.'); return; }
+    if (form.fromAccountId === form.toAccountId) { setFormError('Source and target accounts must be different.'); return; }
+    if (isNaN(amt) || amt <= 0) { setFormError('Amount must be greater than zero.'); return; }
 
-    setTransfers(prev => [{
-      id: `tf-${Date.now()}`,
-      date: new Date().toISOString().slice(0, 10),
-      reference: form.reference,
-      sourceAccount: form.sourceAccount,
-      targetAccount: form.targetAccount,
-      mode: form.mode,
-      amount: amt,
-      currency: 'PKR',
-      status: 'Completed'
-    }, ...prev]);
-
-    setIsModalOpen(false);
+    setSaving(true);
+    try {
+      await apiClient('/fund-transfers', {
+        method: 'POST',
+        body: {
+          fromAccountId: form.fromAccountId,
+          toAccountId: form.toAccountId,
+          amount: amt,
+          transferDate: form.date,
+          reference: form.reference,
+          companyId: activeEntityId || undefined,
+        },
+      });
+      setIsModalOpen(false);
+      setForm({ fromAccountId: '', toAccountId: '', date: new Date().toISOString().slice(0, 10), amount: '', reference: `TRF-${Math.floor(1000 + Math.random() * 9000)}` });
+      await loadTransfers();
+    } catch (err: any) {
+      setFormError(err?.data?.error || err?.message || 'Failed to create transfer.');
+    } finally {
+      setSaving(false);
+    }
   };
 
   return (
@@ -46,34 +109,53 @@ export const FundTransfersView: React.FC<{ activeEntityId: string; entities: Ent
             <ArrowLeftRight className="w-4 h-4 text-emerald-600" /> Banking & Payments
           </div>
           <h1 className="text-2xl font-bold text-slate-900 tracking-tight mt-1">Inter-Account Fund Transfers</h1>
-          <p className="text-xs text-slate-500">Internal liquidity bank-to-bank and cash vault transfers for {currentEntity?.name || 'Active Entity'}.</p>
+          <p className="text-xs text-slate-500">Internal liquidity bank-to-bank and cash vault transfers for {currentEntity?.name || 'Active Entity'}. Transfers post a Dr Target / Cr Source journal.</p>
         </div>
-        <Button size="sm" onClick={() => setIsModalOpen(true)} className="h-9 px-4 gap-1.5 text-xs font-semibold text-white bg-[#143e2b]">
-          <Plus className="w-4 h-4" /> New Inter-Bank Transfer
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button size="sm" variant="outline" onClick={loadTransfers} className="h-9 px-3 gap-1.5 text-xs font-semibold">
+            <RefreshCw className="w-4 h-4" /> Refresh
+          </Button>
+          <Button size="sm" onClick={() => setIsModalOpen(true)} className="h-9 px-4 gap-1.5 text-xs font-semibold text-white bg-[#143e2b]">
+            <Plus className="w-4 h-4" /> New Inter-Bank Transfer
+          </Button>
+        </div>
       </div>
+
+      {loading && <p className="text-xs text-slate-500">Loading fund transfers…</p>}
+      {error && <p className="text-xs text-rose-600">{error}</p>}
 
       <div className="bg-white border border-slate-200 rounded-xl overflow-hidden shadow-xs">
         <Table>
           <TableHeader className="bg-slate-50 border-b border-slate-200">
             <TableRow>
               <TableHead className="w-28 text-[11px] font-bold text-slate-500 uppercase tracking-wider pl-4">DATE</TableHead>
-              <TableHead className="w-32 text-[11px] font-bold text-slate-500 uppercase tracking-wider">REFERENCE</TableHead>
+              <TableHead className="w-32 text-[11px] font-bold text-slate-500 uppercase tracking-wider">TRANSFER #</TableHead>
               <TableHead className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">SOURCE ACCOUNT</TableHead>
               <TableHead className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">TARGET ACCOUNT</TableHead>
-              <TableHead className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">TRANSFER MODE</TableHead>
+              <TableHead className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">REFERENCE</TableHead>
+              <TableHead className="w-24 text-[11px] font-bold text-slate-500 uppercase tracking-wider">STATUS</TableHead>
               <TableHead className="w-36 text-right text-[11px] font-bold text-slate-500 uppercase tracking-wider pr-4">AMOUNT</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody className="divide-y divide-slate-100">
-            {transfers.map(t => (
+            {transfers.length === 0 && !loading && (
+              <TableRow>
+                <TableCell colSpan={7} className="py-8 text-center text-xs text-slate-400">
+                  No fund transfers recorded yet.
+                </TableCell>
+              </TableRow>
+            )}
+            {filtered.map(t => (
               <TableRow key={t.id} className="hover:bg-slate-50/80">
                 <TableCell className="py-3.5 pl-4 font-mono text-xs text-slate-600">{t.date}</TableCell>
-                <TableCell className="py-3.5 font-mono text-xs font-bold text-slate-800">{t.reference}</TableCell>
-                <TableCell className="py-3.5 text-xs text-slate-700 font-medium">{t.sourceAccount}</TableCell>
-                <TableCell className="py-3.5 text-xs text-slate-700 font-medium">{t.targetAccount}</TableCell>
-                <TableCell className="py-3.5"><span className="px-2 py-0.5 rounded-md text-[11px] font-semibold bg-slate-100 text-slate-700">{t.mode}</span></TableCell>
-                <TableCell className="py-3.5 text-right font-mono text-xs font-bold text-slate-900 pr-4">{formatCurrency(t.amount, t.currency)}</TableCell>
+                <TableCell className="py-3.5 font-mono text-xs font-bold text-slate-800">{t.transferNumber}</TableCell>
+                <TableCell className="py-3.5 text-xs text-slate-700 font-medium">{t.fromAccountCode} — {t.fromAccountName}</TableCell>
+                <TableCell className="py-3.5 text-xs text-slate-700 font-medium">{t.toAccountCode} — {t.toAccountName}</TableCell>
+                <TableCell className="py-3.5 text-xs text-slate-500">{t.reference || '—'}</TableCell>
+                <TableCell className="py-3.5">
+                  <span className="px-2 py-0.5 rounded-md text-[11px] font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200">{t.status}</span>
+                </TableCell>
+                <TableCell className="py-3.5 text-right font-mono text-xs font-bold text-slate-900 pr-4">{t.amount.toLocaleString()}</TableCell>
               </TableRow>
             ))}
           </TableBody>
@@ -92,39 +174,43 @@ export const FundTransfersView: React.FC<{ activeEntityId: string; entities: Ent
             </div>
 
             <div className="form-grid">
+              {formError && <p className="error" style={{ gridColumn: '1 / -1', color: '#c25c5c', fontSize: 13, marginBottom: 10 }}>{formError}</p>}
               <div>
                 <label className="text-xs font-semibold text-slate-700 block mb-1">Source Account (Out)</label>
-                <select value={form.sourceAccount} onChange={e => setForm({ ...form, sourceAccount: e.target.value })} className="w-full h-9 px-3 bg-white border border-slate-200 rounded-lg text-xs">
-                  <option value="Habib Bank Limited (HBL)">Habib Bank Limited (HBL)</option>
-                  <option value="Standard Chartered (USD)">Standard Chartered (USD)</option>
+                <select value={form.fromAccountId} onChange={e => setForm({ ...form, fromAccountId: e.target.value })} className="w-full h-9 px-3 bg-white border border-slate-200 rounded-lg text-xs">
+                  <option value="">— Select Source —</option>
+                  {accounts.map(a => (
+                    <option key={a.id} value={a.id}>{a.code} — {a.name}</option>
+                  ))}
                 </select>
               </div>
               <div>
                 <label className="text-xs font-semibold text-slate-700 block mb-1">Target Account (In)</label>
-                <select value={form.targetAccount} onChange={e => setForm({ ...form, targetAccount: e.target.value })} className="w-full h-9 px-3 bg-white border border-slate-200 rounded-lg text-xs">
-                  <option value="Meezan Bank Limited">Meezan Bank Limited</option>
-                  <option value="Head Office Petty Cash Vault">Head Office Petty Cash Vault</option>
+                <select value={form.toAccountId} onChange={e => setForm({ ...form, toAccountId: e.target.value })} className="w-full h-9 px-3 bg-white border border-slate-200 rounded-lg text-xs">
+                  <option value="">— Select Target —</option>
+                  {accounts.map(a => (
+                    <option key={a.id} value={a.id}>{a.code} — {a.name}</option>
+                  ))}
                 </select>
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="text-xs font-semibold text-slate-700 block mb-1">Transfer Mode</label>
-                  <select value={form.mode} onChange={e => setForm({ ...form, mode: e.target.value })} className="w-full h-9 px-3 bg-white border border-slate-200 rounded-lg text-xs">
-                    <option value="RTGS Real-Time">RTGS Real-Time</option>
-                    <option value="Wire Transfer (FX)">Wire Transfer (FX)</option>
-                    <option value="Internal Book Transfer">Internal Book Transfer</option>
-                  </select>
+                  <label className="text-xs font-semibold text-slate-700 block mb-1">Transfer Date</label>
+                  <Input required type="date" value={form.date} onChange={e => setForm({ ...form, date: e.target.value })} className="h-9 text-xs" />
                 </div>
                 <div>
                   <label className="text-xs font-semibold text-slate-700 block mb-1">Amount</label>
                   <Input required type="number" value={form.amount} onChange={e => setForm({ ...form, amount: e.target.value })} className="h-9 text-xs font-mono" />
                 </div>
               </div>
+              <div>
+                <label className="text-xs font-semibold text-slate-700 block mb-1">Reference</label>
+                <Input type="text" value={form.reference} onChange={e => setForm({ ...form, reference: e.target.value })} className="h-9 text-xs font-mono" />
+              </div>
             </div>
             <div className="modal-footer">
               <button type="button" className="secondary" onClick={() => setIsModalOpen(false)}>Cancel</button>
-              <button type="button" className="secondary" onClick={(e) => { e.preventDefault(); alert("Draft saved locally"); }}>Save Draft</button>
-              <button type="submit" className="primary">Execute Transfer</button>
+              <button type="submit" className="primary" disabled={saving}>{saving ? 'Executing…' : 'Execute Transfer'}</button>
             </div>
           </form>
         </div>

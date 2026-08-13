@@ -1,10 +1,11 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Building2, Search, Download, Plus, CheckCircle2, AlertCircle, Edit3, FileText, Globe } from 'lucide-react';
+import { Building2, Search, Download, Plus, CheckCircle2, AlertCircle, Edit3, FileText, Globe, RefreshCw } from 'lucide-react';
 import type { Entity } from './EntitySettings';
+import { apiClient } from './api/client';
 
 export interface BankAccountRecord {
   id: string;
@@ -26,6 +27,19 @@ export interface BankAccountRecord {
 interface BankAccountsViewProps {
   activeEntityId: string;
   entities: Entity[];
+}
+
+interface BankAccountDto {
+  id: string;
+  code: string;
+  name: string;
+  currency: string;
+  status: string;
+  openingBalance: number;
+  balance: number;
+  reconciliationEnabled: boolean;
+  bankName: string | null;
+  updatedAt: string;
 }
 
 const initialBankAccountsData: BankAccountRecord[] = [
@@ -97,10 +111,12 @@ const initialBankAccountsData: BankAccountRecord[] = [
 
 export const BankAccountsView: React.FC<BankAccountsViewProps> = ({ activeEntityId, entities }) => {
   const currentEntity = entities.find(e => e.id === activeEntityId);
-  const [bankAccounts, setBankAccounts] = useState<BankAccountRecord[]>(initialBankAccountsData);
+  const [bankAccounts, setBankAccounts] = useState<BankAccountRecord[]>([]);
   const [query, setQuery] = useState('');
   const [selectedCurrency, setSelectedCurrency] = useState('All');
   const [selectedStatus, setSelectedStatus] = useState('All');
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
 
   // Modal State
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -123,6 +139,36 @@ export const BankAccountsView: React.FC<BankAccountsViewProps> = ({ activeEntity
   const formatCurrency = (val: number, currency: string) => {
     return new Intl.NumberFormat('en-US', { style: 'currency', currency, maximumFractionDigits: 2 }).format(val);
   };
+
+  const loadBankAccounts = async () => {
+    setLoading(true);
+    try {
+      const data = await apiClient<BankAccountDto[]>('/bank-accounts');
+      setBankAccounts(data.map((a, i) => ({
+        id: a.id,
+        code: a.code,
+        name: a.name,
+        bankName: a.bankName || a.name,
+        branchName: '',
+        accountNumber: a.code,
+        iban: '',
+        swift: '',
+        currency: a.currency,
+        balance: a.balance,
+        status: a.status as 'Active' | 'Inactive',
+        reconciledStatus: a.reconciliationEnabled ? 'Reconciled' : 'Pending Sync',
+        connectionType: 'Manual Import',
+        updatedAt: a.updatedAt,
+      })));
+      setError('');
+    } catch (e: any) {
+      setError(e?.message || 'Failed to load bank accounts.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => { loadBankAccounts(); }, [activeEntityId]);
 
   // Filtered Accounts
   const filtered = useMemo(() => {
@@ -187,52 +233,35 @@ export const BankAccountsView: React.FC<BankAccountsViewProps> = ({ activeEntity
     setIsModalOpen(true);
   };
 
-  const handleSaveAccount = (e: React.FormEvent) => {
+  const handleSaveAccount = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!form.name || !form.bankName) {
-      alert('Please fill in Account Name and Bank Name.');
+    if (!form.name) {
+      alert('Please fill in Account Name.');
       return;
     }
 
-    if (editingAccount) {
-      setBankAccounts(prev => prev.map(a => a.id === editingAccount.id ? {
-        ...a,
-        code: form.code,
-        name: form.name,
-        bankName: form.bankName,
-        branchName: form.branchName,
-        accountNumber: form.accountNumber,
-        iban: form.iban,
-        swift: form.swift,
-        currency: form.currency,
-        balance: parseFloat(form.openingBalance) || 0,
-        status: form.status,
-        connectionType: form.connectionType,
-        updatedAt: new Date().toISOString().slice(0, 10)
-      } : a));
-      alert(`Bank Account "${form.name}" updated successfully!`);
-    } else {
-      const newAcc: BankAccountRecord = {
-        id: `ba-${Date.now()}`,
-        code: form.code,
-        name: form.name,
-        bankName: form.bankName,
-        branchName: form.branchName,
-        accountNumber: form.accountNumber,
-        iban: form.iban,
-        swift: form.swift,
-        currency: form.currency,
-        balance: parseFloat(form.openingBalance) || 0,
-        status: form.status,
-        reconciledStatus: 'Reconciled',
-        connectionType: form.connectionType,
-        updatedAt: new Date().toISOString().slice(0, 10)
-      };
-      setBankAccounts(prev => [...prev, newAcc]);
-      alert(`Bank Account "${form.name}" created successfully!`);
+    try {
+      if (editingAccount) {
+        alert('Editing bank accounts is handled via the Chart of Accounts. Please update the COA account directly.');
+      } else {
+        await apiClient('/bank-accounts', {
+          method: 'POST',
+          body: {
+            name: form.name,
+            code: form.code,
+            currency: form.currency,
+            openingBalance: parseFloat(form.openingBalance) || 0,
+            reconciliationEnabled: true,
+            bankName: form.bankName,
+            companyId: activeEntityId || undefined,
+          },
+        });
+      }
+      setIsModalOpen(false);
+      await loadBankAccounts();
+    } catch (err: any) {
+      alert(err?.data?.error || err?.message || 'Failed to save bank account.');
     }
-
-    setIsModalOpen(false);
   };
 
   const handleExportCSV = () => {
@@ -275,6 +304,15 @@ export const BankAccountsView: React.FC<BankAccountsViewProps> = ({ activeEntity
         </div>
 
         <div className="flex items-center gap-2">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={loadBankAccounts}
+            className="h-9 gap-1.5 text-xs font-semibold text-slate-700 bg-white border-slate-200 hover:bg-slate-50 shadow-xs"
+          >
+            <RefreshCw className="w-4 h-4 text-slate-500" />
+            Refresh
+          </Button>
           <Button
             variant="outline"
             size="sm"
@@ -344,12 +382,15 @@ export const BankAccountsView: React.FC<BankAccountsViewProps> = ({ activeEntity
             </div>
             <div>
               <p className="text-xs font-medium text-slate-500">Statement Reconciled Status</p>
-              <h3 className="text-lg font-bold text-slate-900">3 of 4 Reconciled</h3>
-              <p className="text-[11px] text-amber-600 font-medium">1 Account Pending Sync</p>
+              <h3 className="text-lg font-bold text-slate-900">{bankAccounts.filter(a => a.reconciledStatus === 'Reconciled').length} of {bankAccounts.length} Reconciled</h3>
+              <p className="text-[11px] text-amber-600 font-medium">{bankAccounts.length - bankAccounts.filter(a => a.reconciledStatus === 'Reconciled').length} Account Pending Sync</p>
             </div>
           </CardContent>
         </Card>
       </div>
+
+      {loading && <p className="text-xs text-slate-500">Loading bank accounts…</p>}
+      {error && <p className="text-xs text-rose-600">{error}</p>}
 
       {/* Control Filter Bar matching COA layout */}
       <div className="flex flex-col md:flex-row items-center justify-between gap-3 p-3 bg-slate-50 border border-slate-200/80 rounded-xl shadow-xs">

@@ -37,6 +37,9 @@ public class AccountingStore
     private readonly List<BillOfMaterials> _boms = [];
     private readonly List<WorkOrder> _workOrders = [];
     private readonly List<CustomerPayment> _customerPayments = [];
+    private readonly List<VendorPayment> _vendorPayments = [];
+    private readonly List<FundTransfer> _fundTransfers = [];
+    private readonly List<BankReconciliation> _reconciliations = [];
     private readonly List<AccountMapping> _mappings = [];
     private readonly Dictionary<Guid, List<AuditItem>> _history = [];
     private readonly object _lock = new();
@@ -70,7 +73,10 @@ public class AccountingStore
         List<AccountMapping>? Mappings = null,
         List<SalesOrder>? SalesOrders = null,
         List<CreditNote>? CreditNotes = null,
-        List<CustomerPayment>? CustomerPayments = null);
+        List<CustomerPayment>? CustomerPayments = null,
+        List<VendorPayment>? VendorPayments = null,
+        List<FundTransfer>? FundTransfers = null,
+        List<BankReconciliation>? Reconciliations = null);
 
     public AccountingStore(IDbContextFactory<AccountingDbContext>? dbFactory = null)
     {
@@ -250,6 +256,9 @@ public class AccountingStore
     public IReadOnlyList<BillOfMaterials> BillOfMaterials => _boms;
     public IReadOnlyList<WorkOrder> WorkOrders => _workOrders;
     public IReadOnlyList<CustomerPayment> CustomerPayments => _customerPayments;
+    public IReadOnlyList<VendorPayment> VendorPayments => _vendorPayments;
+    public IReadOnlyList<FundTransfer> FundTransfers => _fundTransfers;
+    public IReadOnlyList<BankReconciliation> Reconciliations => _reconciliations;
 
     public string NextReceiptNumber()
     {
@@ -271,6 +280,25 @@ public class AccountingStore
                 if (invoice == null) { error = "Invoice not found."; return false; }
                 if (request.Amount > invoice.AmountDue) { error = $"Payment amount ({request.Amount}) exceeds invoice amount due ({invoice.AmountDue})."; return false; }
             }
+
+            // Resolve deposit account (bank/cash receiving the funds)
+            var depositId = request.DepositToAccountId ?? GetDefaultDepositAccount();
+            var depositAcc = _accounts.FirstOrDefault(a => a.Id == depositId);
+            if (depositAcc == null || !depositAcc.IsPosting || depositAcc.Status == AccountStatus.Inactive)
+            {
+                error = "Deposit To account is not a valid active posting account. Select a Cash or Bank account.";
+                return false;
+            }
+
+            // Resolve AR account through the central mapping
+            var arAccountId = GetMappedAccount("Customer Receivables");
+            var arAcc = _accounts.FirstOrDefault(a => a.Id == arAccountId);
+            if (arAcc == null || !arAcc.IsPosting || arAcc.Status == AccountStatus.Inactive)
+            {
+                error = "Customer Receivables account is not mapped to a valid posting account. Configure it under System Account Mapping.";
+                return false;
+            }
+
             payment = new CustomerPayment
             {
                 ReceiptNumber = NextReceiptNumber(),
@@ -280,11 +308,31 @@ public class AccountingStore
                 Amount = request.Amount,
                 PaymentMethod = request.PaymentMethod,
                 BankAccountName = request.BankAccountName,
-                DepositToAccountId = request.DepositToAccountId,
+                DepositToAccountId = depositId,
                 Reference = request.Reference,
                 Memo = request.Memo,
                 CompanyId = request.CompanyId,
+                Status = CustomerPaymentStatus.Posted,
             };
+
+            // Post the double-entry journal: Dr Bank/Cash / Cr AR
+            var journal = new JournalEntry
+            {
+                Date = request.PaymentDate,
+                Reference = payment.ReceiptNumber,
+                Description = $"Customer payment from {customer.Name} ({payment.ReceiptNumber})",
+                TransactionType = TransactionType.Receipt,
+                CompanyId = request.CompanyId,
+                Lines =
+                [
+                    new JournalLine(depositId, payment.Amount, 0, $"Receipt: {payment.ReceiptNumber}", null, null, 1, request.CompanyId),
+                    new JournalLine(arAccountId, 0, payment.Amount, $"AR: {payment.ReceiptNumber}", null, null, 1, request.CompanyId)
+                ],
+                Status = JournalStatus.Posted
+            };
+            _entries.Add(journal);
+            payment.JournalEntryId = journal.Id;
+
             _customerPayments.Add(payment);
             // If posted against an invoice, update invoice AmountPaid
             if (request.InvoiceId.HasValue)
@@ -294,6 +342,262 @@ public class AccountingStore
                 if (invoice.AmountDue <= 0) invoice.Status = SalesInvoiceStatus.Paid;
                 else invoice.Status = SalesInvoiceStatus.PartiallyPaid;
             }
+            Persist();
+            return true;
+        }
+    }
+
+    public string NextVendorPaymentNumber()
+    {
+        var numbers = _vendorPayments.Select(p => p.PaymentNumber).Where(n => n.StartsWith("PAY-") && int.TryParse(n[4..], out _)).Select(n => int.Parse(n[4..])).DefaultIfEmpty(0);
+        return $"PAY-{(numbers.Max() + 1):D4}";
+    }
+
+    public string NextFundTransferNumber()
+    {
+        var numbers = _fundTransfers.Select(t => t.TransferNumber).Where(n => n.StartsWith("TRF-") && int.TryParse(n[4..], out _)).Select(n => int.Parse(n[4..])).DefaultIfEmpty(0);
+        return $"TRF-{(numbers.Max() + 1):D4}";
+    }
+
+    /// <summary>Returns the first active posting Cash/Bank account (child of 11100 or 11200) as default deposit/disbursement target.</summary>
+    public Guid GetDefaultDepositAccount()
+    {
+        var cashParent = _accounts.FirstOrDefault(a => a.Code == "11100");
+        var bankParent = _accounts.FirstOrDefault(a => a.Code == "11200");
+        var account = _accounts.FirstOrDefault(a => a.Status == AccountStatus.Active && a.IsPosting &&
+            ((cashParent != null && a.ParentId == cashParent.Id) || (bankParent != null && a.ParentId == bankParent.Id)));
+        return account?.Id ?? Guid.Empty;
+    }
+
+    /// <summary>Returns Cash (11100 children) or Bank (11200 children) COA accounts with computed GL balances.</summary>
+    public List<object> GetCashBankAccounts(bool bankOnly, Guid? companyId)
+    {
+        lock (_lock)
+        {
+            var parentCode = bankOnly ? "11200" : "11100";
+            var parent = _accounts.FirstOrDefault(a => a.Code == parentCode);
+            if (parent == null) return [];
+
+            var result = new List<object>();
+            foreach (var account in _accounts.Where(a => a.ParentId == parent.Id).OrderBy(a => a.Code))
+            {
+                var glBalance = account.OpeningBalance + _entries
+                    .Where(e => e.Status == JournalStatus.Posted)
+                    .SelectMany(e => e.Lines)
+                    .Where(l => l.AccountId == account.Id)
+                    .Sum(l => l.Debit - l.Credit);
+
+                result.Add(new
+                {
+                    account.Id,
+                    account.Code,
+                    account.Name,
+                    account.Currency,
+                    account.Status,
+                    OpeningBalance = account.OpeningBalance,
+                    Balance = glBalance,
+                    account.ReconciliationEnabled,
+                    BankName = account.CustomFields.TryGetValue("BankName", out var bn) ? bn : null,
+                    account.UpdatedAt
+                });
+            }
+            return result;
+        }
+    }
+
+    public bool CreateCashBankAccount(CashBankAccountRequest request, bool bankOnly, out Account? account, out string? error)
+    {
+        lock (_lock)
+        {
+            account = null; error = null;
+            if (string.IsNullOrWhiteSpace(request.Name)) { error = "Account name is required."; return false; }
+
+            var parentCode = bankOnly ? "11200" : "11100";
+            var parent = _accounts.FirstOrDefault(a => a.Code == parentCode);
+            if (parent == null) { error = "Cash/Bank parent account not found."; return false; }
+
+            var code = request.Code?.Trim();
+            if (string.IsNullOrWhiteSpace(code))
+            {
+                var prefix = bankOnly ? "112" : "111";
+                var next = _accounts.Where(a => a.Code.StartsWith(prefix)).Select(a => int.TryParse(a.Code[3..], out var n) ? n : 0).DefaultIfEmpty(0).Max() + 1;
+                code = $"{prefix}{next:D2}";
+            }
+            if (code.Length != 5 || !code.All(char.IsDigit)) { error = "Account code must contain exactly 5 numeric digits."; return false; }
+            if (_accounts.Any(a => a.Code.Equals(code, StringComparison.OrdinalIgnoreCase))) { error = $"Account code '{code}' already exists."; return false; }
+
+            account = Seed(code, request.Name, AccountType.Asset, parent.Id, request.ReconciliationEnabled, request.OpeningBalance, false);
+            account.Currency = string.IsNullOrWhiteSpace(request.Currency) ? "USD" : request.Currency;
+            if (!string.IsNullOrWhiteSpace(request.BankName)) account.CustomFields["BankName"] = request.BankName;
+            account.UpdatedAt = DateTime.UtcNow;
+            RecalculateHierarchy();
+            Persist();
+            return true;
+        }
+    }
+
+    public bool CreateVendorPayment(VendorPaymentRequest request, out VendorPayment? payment, out string? error)
+    {
+        lock (_lock)
+        {
+            payment = null; error = null;
+            if (request.Amount <= 0) { error = "Payment amount must be positive."; return false; }
+            var vendor = _vendors.FirstOrDefault(v => v.Id == request.VendorId);
+            if (vendor == null) { error = "Vendor not found."; return false; }
+
+            VendorBill? bill = null;
+            if (request.BillId.HasValue)
+            {
+                bill = _vendorBills.FirstOrDefault(b => b.Id == request.BillId.Value);
+                if (bill == null) { error = "Vendor bill not found."; return false; }
+                if (request.Amount > bill.AmountDue) { error = $"Payment amount ({request.Amount}) exceeds bill amount due ({bill.AmountDue})."; return false; }
+            }
+
+            // Resolve disbursement account (bank/cash the funds come FROM)
+            var fromId = request.WithdrawFromAccountId ?? GetDefaultDepositAccount();
+            var fromAcc = _accounts.FirstOrDefault(a => a.Id == fromId);
+            if (fromAcc == null || !fromAcc.IsPosting || fromAcc.Status == AccountStatus.Inactive)
+            {
+                error = "Withdraw From account is not a valid active posting account. Select a Cash or Bank account.";
+                return false;
+            }
+
+            // Resolve AP account through the central mapping
+            var apAccountId = GetMappedAccount("Vendor Payables");
+            var apAcc = _accounts.FirstOrDefault(a => a.Id == apAccountId);
+            if (apAcc == null || !apAcc.IsPosting || apAcc.Status == AccountStatus.Inactive)
+            {
+                error = "Vendor Payables account is not mapped to a valid posting account. Configure it under System Account Mapping.";
+                return false;
+            }
+
+            payment = new VendorPayment
+            {
+                PaymentNumber = NextVendorPaymentNumber(),
+                VendorId = request.VendorId,
+                BillId = request.BillId,
+                PaymentDate = request.PaymentDate,
+                Amount = request.Amount,
+                PaymentMethod = request.PaymentMethod,
+                BankAccountName = request.BankAccountName,
+                WithdrawFromAccountId = fromId,
+                Reference = request.Reference,
+                Memo = request.Memo,
+                CompanyId = request.CompanyId,
+                Status = VendorPaymentStatus.Posted,
+            };
+
+            // Post the double-entry journal: Dr AP / Cr Bank-Cash
+            var journal = new JournalEntry
+            {
+                Date = request.PaymentDate,
+                Reference = payment.PaymentNumber,
+                Description = $"Vendor payment to {vendor.Name} ({payment.PaymentNumber})",
+                TransactionType = TransactionType.Payment,
+                CompanyId = request.CompanyId,
+                Lines =
+                [
+                    new JournalLine(apAccountId, payment.Amount, 0, $"AP: {payment.PaymentNumber}", null, null, 1, request.CompanyId),
+                    new JournalLine(fromId, 0, payment.Amount, $"Payment: {payment.PaymentNumber}", null, null, 1, request.CompanyId)
+                ],
+                Status = JournalStatus.Posted
+            };
+            _entries.Add(journal);
+            payment.JournalEntryId = journal.Id;
+
+            _vendorPayments.Add(payment);
+            // If paid against a bill, update bill AmountPaid
+            if (bill != null)
+            {
+                bill.AmountPaid += request.Amount;
+                if (bill.AmountDue <= 0) bill.Status = VendorBillStatus.Paid;
+                else bill.Status = VendorBillStatus.PartiallyPaid;
+            }
+            Persist();
+            return true;
+        }
+    }
+
+    public bool CreateFundTransfer(FundTransferRequest request, out FundTransfer? transfer, out string? error)
+    {
+        lock (_lock)
+        {
+            transfer = null; error = null;
+            if (request.Amount <= 0) { error = "Transfer amount must be positive."; return false; }
+            if (request.FromAccountId == request.ToAccountId) { error = "Source and target accounts must be different."; return false; }
+
+            var fromAcc = _accounts.FirstOrDefault(a => a.Id == request.FromAccountId);
+            var toAcc = _accounts.FirstOrDefault(a => a.Id == request.ToAccountId);
+            if (fromAcc == null || !fromAcc.IsPosting || fromAcc.Status == AccountStatus.Inactive)
+            { error = "Source account is not a valid active posting account."; return false; }
+            if (toAcc == null || !toAcc.IsPosting || toAcc.Status == AccountStatus.Inactive)
+            { error = "Target account is not a valid active posting account."; return false; }
+
+            transfer = new FundTransfer
+            {
+                TransferNumber = NextFundTransferNumber(),
+                FromAccountId = request.FromAccountId,
+                ToAccountId = request.ToAccountId,
+                Amount = request.Amount,
+                TransferDate = request.TransferDate,
+                Reference = request.Reference,
+                Memo = request.Memo,
+                CompanyId = request.CompanyId,
+                Status = FundTransferStatus.Posted,
+            };
+
+            // Post the double-entry journal: Dr Target / Cr Source
+            var journal = new JournalEntry
+            {
+                Date = request.TransferDate,
+                Reference = transfer.TransferNumber,
+                Description = $"Fund transfer {fromAcc.Name} → {toAcc.Name}",
+                TransactionType = TransactionType.Transfer,
+                CompanyId = request.CompanyId,
+                Lines =
+                [
+                    new JournalLine(request.ToAccountId, transfer.Amount, 0, $"Transfer in: {transfer.TransferNumber}", null, null, 1, request.CompanyId),
+                    new JournalLine(request.FromAccountId, 0, transfer.Amount, $"Transfer out: {transfer.TransferNumber}", null, null, 1, request.CompanyId)
+                ],
+                Status = JournalStatus.Posted
+            };
+            _entries.Add(journal);
+            transfer.JournalEntryId = journal.Id;
+
+            _fundTransfers.Add(transfer);
+            Persist();
+            return true;
+        }
+    }
+
+    public bool CreateBankReconciliation(BankReconciliationRequest request, out BankReconciliation? reconciliation, out string? error)
+    {
+        lock (_lock)
+        {
+            reconciliation = null; error = null;
+            var account = _accounts.FirstOrDefault(a => a.Id == request.BankAccountId);
+            if (account == null) { error = "Bank account not found."; return false; }
+
+            // Compute GL balance from posted journal lines touching this account
+            var glBalance = _entries
+                .Where(e => e.Status == JournalStatus.Posted)
+                .SelectMany(e => e.Lines)
+                .Where(l => l.AccountId == request.BankAccountId)
+                .Sum(l => l.Debit - l.Credit) + account.OpeningBalance;
+
+            reconciliation = new BankReconciliation
+            {
+                BankAccountId = request.BankAccountId,
+                StatementDate = request.StatementDate,
+                StatementBalance = request.StatementBalance,
+                GlBalance = glBalance,
+                Memo = request.Memo,
+                CompanyId = request.CompanyId,
+                Status = Math.Abs(glBalance - request.StatementBalance) < 0.01m
+                    ? ReconciliationStatus.Balanced
+                    : ReconciliationStatus.Difference
+            };
+            _reconciliations.Add(reconciliation);
             Persist();
             return true;
         }
@@ -2478,6 +2782,9 @@ public class AccountingStore
         _boms.Clear(); _boms.AddRange(state.Boms ?? []);
         _workOrders.Clear(); _workOrders.AddRange(state.WorkOrders ?? []);
         _customerPayments.Clear(); _customerPayments.AddRange(state.CustomerPayments ?? []);
+        _vendorPayments.Clear(); _vendorPayments.AddRange(state.VendorPayments ?? []);
+        _fundTransfers.Clear(); _fundTransfers.AddRange(state.FundTransfers ?? []);
+        _reconciliations.Clear(); _reconciliations.AddRange(state.Reconciliations ?? []);
         _mappings.Clear(); _mappings.AddRange(state.Mappings ?? []);
         if (state.History != null)
         {
@@ -2491,7 +2798,7 @@ public class AccountingStore
     {
         if (_dbFactory is null) return;
         using var db = _dbFactory.CreateDbContext();
-        var json = JsonSerializer.Serialize(new StoredState(_accounts, _entries, _history, _templates, _recurringEntries, _journalEvents, _intercompanyAllocations, _companies, _customers, _products, _vendors, _purchaseOrders, _grns, _fixedAssets, _taxAuthorities, _taxCodes, _taxRates, _warehouses, _stockLevels, _stockTransactions, _salesInvoices, _estimates, _boms, _workOrders, _mappings, _salesOrders, _creditNotes, _customerPayments));
+        var json = JsonSerializer.Serialize(new StoredState(_accounts, _entries, _history, _templates, _recurringEntries, _journalEvents, _intercompanyAllocations, _companies, _customers, _products, _vendors, _purchaseOrders, _grns, _fixedAssets, _taxAuthorities, _taxCodes, _taxRates, _warehouses, _stockLevels, _stockTransactions, _salesInvoices, _estimates, _boms, _workOrders, _mappings, _salesOrders, _creditNotes, _customerPayments, _vendorPayments, _fundTransfers, _reconciliations));
         var snapshot = db.AccountingStateSnapshots.Find(1);
         if (snapshot is null) db.AccountingStateSnapshots.Add(new AccountingStateSnapshot { Id = 1, Json = json, UpdatedAt = DateTime.UtcNow });
         else { snapshot.Json = json; snapshot.UpdatedAt = DateTime.UtcNow; }
@@ -2672,6 +2979,10 @@ public class AccountingStore
             _creditNotes.Clear();
             _boms.Clear();
             _workOrders.Clear();
+            _customerPayments.Clear();
+            _vendorPayments.Clear();
+            _fundTransfers.Clear();
+            _reconciliations.Clear();
             _mappings.Clear();
 
             // Re-seed Companies

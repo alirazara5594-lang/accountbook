@@ -34,6 +34,7 @@ import { BankImportView } from './BankImportView'
 import { BankTransactionsView } from './BankTransactionsView'
 import { BankReconciliationView } from './BankReconciliationView'
 import { FundTransfersView } from './FundTransfersView'
+import { VendorPaymentsView } from './VendorPaymentsView'
 import { VoucherManagement } from './VoucherManagement'
 import { CashFlowView } from './CashFlowView'
 import { useCoaStore, useJournalsStore, useCompanyStore, useIntercompanyStore } from './stores'
@@ -217,6 +218,7 @@ export default function App() {
     'Procurement.Bills': 'bills',
     'Procurement.Debit Notes': 'debit-notes',
     'Procurement.Procurement Workspace': 'procurement-workspace',
+    'Procurement.Vendor Payments': 'vendor-payments',
     'Banking & Payments.Summary': 'module-summary',
     'Banking & Payments.Bank Accounts': 'bank-accounts',
     'Banking & Payments.Cash Accounts': 'cash-accounts',
@@ -329,6 +331,7 @@ export default function App() {
   {activeView === 'sales-orders' && <SalesOrdersWorkspace activeEntityId={activeEntityId} />}
         {activeView === 'credit-notes' && <CreditNotesWorkspace />}
   {activeView === 'procurement-workspace' && <ProcurementWorkspace activeEntityId={activeEntityId} entities={entities as any} />}
+  {activeView === 'vendor-payments' && <VendorPaymentsView activeEntityId={activeEntityId} entities={entities as any} />}
   {activeView === 'bills' && <VendorBills activeEntityId={activeEntityId} />}
   {activeView === 'vendor-statements' && <VendorStatementsWorkspace activeEntityId={activeEntityId} entities={entities as any} />}
   {activeView === 'payables-aging' && <PayablesAgingWorkspace activeEntityId={activeEntityId} entities={entities as any} />}

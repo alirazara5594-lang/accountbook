@@ -401,7 +401,107 @@ public class VendorBill
     public int PaymentTermsDays { get; set; } = 30;
     public string CurrencyCode { get; set; } = "USD";
     public string? Notes { get; set; }
+    public decimal AmountPaid { get; set; } = 0;
+    public decimal AmountDue => Lines.Sum(l => l.TotalAmount) - AmountPaid;
+    public decimal TotalAmount => Lines.Sum(l => l.TotalAmount);
 }
+
+public enum VendorPaymentStatus { Draft, Posted, Void }
+
+public class VendorPayment
+{
+    public Guid Id { get; init; } = Guid.NewGuid();
+    public required string PaymentNumber { get; set; }
+    public Guid VendorId { get; set; }
+    public Guid? BillId { get; set; }                       // optional: payment against a specific bill
+    public DateOnly PaymentDate { get; set; }
+    public decimal Amount { get; set; }
+    public PaymentMethodType PaymentMethod { get; set; } = PaymentMethodType.BankTransfer;
+    public string? BankAccountName { get; set; }            // bank account name when method = Bank
+    public Guid? WithdrawFromAccountId { get; set; }        // Chart-of-Account: Cash or Bank account money comes FROM
+    public string? Reference { get; set; }                  // cheque #, wire ref, etc.
+    public string? Memo { get; set; }
+    public VendorPaymentStatus Status { get; set; } = VendorPaymentStatus.Draft;
+    public Guid? JournalEntryId { get; set; }               // linked double-entry journal
+    public Guid? CompanyId { get; set; }
+    public DateTime CreatedAt { get; init; } = DateTime.UtcNow;
+    public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
+}
+
+public record VendorPaymentRequest(
+    Guid VendorId,
+    Guid? BillId,
+    DateOnly PaymentDate,
+    decimal Amount,
+    PaymentMethodType PaymentMethod = PaymentMethodType.BankTransfer,
+    string? BankAccountName = null,
+    Guid? WithdrawFromAccountId = null,
+    string? Reference = null,
+    string? Memo = null,
+    Guid? CompanyId = null
+);
+
+public enum FundTransferStatus { Draft, Posted, Void }
+
+public class FundTransfer
+{
+    public Guid Id { get; init; } = Guid.NewGuid();
+    public required string TransferNumber { get; set; }
+    public Guid FromAccountId { get; set; }
+    public Guid ToAccountId { get; set; }
+    public decimal Amount { get; set; }
+    public DateOnly TransferDate { get; set; }
+    public string? Reference { get; set; }
+    public string? Memo { get; set; }
+    public FundTransferStatus Status { get; set; } = FundTransferStatus.Draft;
+    public Guid? JournalEntryId { get; set; }               // linked double-entry journal
+    public Guid? CompanyId { get; set; }
+    public DateTime CreatedAt { get; init; } = DateTime.UtcNow;
+}
+
+public record FundTransferRequest(
+    Guid FromAccountId,
+    Guid ToAccountId,
+    decimal Amount,
+    DateOnly TransferDate,
+    string? Reference = null,
+    string? Memo = null,
+    Guid? CompanyId = null
+);
+
+public enum ReconciliationStatus { InProgress, Balanced, Difference }
+
+public class BankReconciliation
+{
+    public Guid Id { get; init; } = Guid.NewGuid();
+    public Guid BankAccountId { get; set; }
+    public DateOnly StatementDate { get; set; }
+    public decimal StatementBalance { get; set; }
+    public decimal GlBalance { get; set; }
+    public decimal Difference => StatementBalance - GlBalance;
+    public ReconciliationStatus Status { get; set; } = ReconciliationStatus.InProgress;
+    public string? Memo { get; set; }
+    public Guid? CompanyId { get; set; }
+    public DateTime CreatedAt { get; init; } = DateTime.UtcNow;
+}
+
+public record BankReconciliationRequest(
+    Guid BankAccountId,
+    DateOnly StatementDate,
+    decimal StatementBalance,
+    string? Memo = null,
+    Guid? CompanyId = null
+);
+
+public record CashBankAccountRequest(
+    string Name,
+    string Code,
+    string Currency = "USD",
+    decimal OpeningBalance = 0,
+    bool ReconciliationEnabled = true,
+    string? BankName = null,
+    Guid? CompanyId = null
+);
 
 public record VendorBillLineRequest(Guid ProductId, string Description, decimal Quantity, decimal UnitPrice, Guid? TaxCodeId, decimal TaxAmount, LineDestination Destination);
 public record VendorBillRequest(

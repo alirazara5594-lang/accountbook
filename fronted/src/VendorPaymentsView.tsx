@@ -1,95 +1,110 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useVendorsStore } from './stores';
+import { vendorPaymentsApi, type VendorPayment, type WithdrawAccount, type VendorBillLite } from './api/modules/vendorPayments.api';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Send, Search, Plus } from 'lucide-react';
+import { Send, Search, Plus, RefreshCw } from 'lucide-react';
 import type { Entity } from './EntitySettings';
 
 type PaymentMode = 'ACH' | 'Wire Transfer' | 'Cheque / Pay Order' | 'SWIFT' | 'RTGS' | 'Credit Card' | 'Direct Debit' | 'Online Banking';
 
-export interface VendorPaymentRecord {
-  id: string;
-  date: string;
-  reference: string;
-  vendorName: string;
-  bankAccount: string;
-  paymentMode: PaymentMode;
-  amount: number;
-  currency: string;
-  status: 'Completed' | 'Pending Clearance' | 'Processing';
-}
+const MODE_METHOD: Record<string, string> = {
+  'Wire Transfer': 'WireTransfer',
+  'ACH': 'ACH',
+  'Cheque / Pay Order': 'Cheque',
+  'SWIFT': 'WireTransfer',
+  'RTGS': 'BankTransfer',
+  'Credit Card': 'CreditCard',
+  'Direct Debit': 'DirectDebit',
+  'Online Banking': 'OnlineBanking',
+};
 
 interface VendorPaymentsViewProps {
   activeEntityId: string;
   entities: Entity[];
 }
 
-const initialVendorPayments: VendorPaymentRecord[] = [
-  {
-    id: 'vp-1',
-    date: '2026-08-09',
-    reference: 'PAY-8841',
-    vendorName: 'Allied Engineering Supplies Ltd',
-    bankAccount: 'Habib Bank Limited (HBL)',
-    paymentMode: 'Wire Transfer',
-    amount: 450000,
-    currency: 'PKR',
-    status: 'Completed'
-  },
-  {
-    id: 'vp-2',
-    date: '2026-08-08',
-    reference: 'PAY-8842',
-    vendorName: 'Cloud Infrastructure Services USA',
-    bankAccount: 'Standard Chartered (USD)',
-    paymentMode: 'ACH',
-    amount: 3200,
-    currency: 'USD',
-    status: 'Completed'
-  },
-  {
-    id: 'vp-3',
-    date: '2026-08-06',
-    reference: 'PAY-8843',
-    vendorName: 'National Electric Equipment Co',
-    bankAccount: 'Meezan Bank Limited',
-    paymentMode: 'Cheque / Pay Order',
-    amount: 180000,
-    currency: 'PKR',
-    status: 'Pending Clearance'
-  }
-];
-
 export const VendorPaymentsView: React.FC<VendorPaymentsViewProps> = ({ activeEntityId, entities }) => {
   const currentEntity = entities.find(e => e.id === activeEntityId);
-  const [payments, setPayments] = useState<VendorPaymentRecord[]>(initialVendorPayments);
+  const [payments, setPayments] = useState<VendorPayment[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
   const vendors = useVendorsStore((s) => s.vendors);
+  const fetchVendors = useVendorsStore((s) => s.fetchVendors);
   const [query, setQuery] = useState('');
   const [selectedMode, setSelectedMode] = useState('All');
   const [isModalOpen, setIsModalOpen] = useState(false);
-
-  const defaultVendorName = 'Allied Engineering Supplies Ltd';
+  const [withdrawAccounts, setWithdrawAccounts] = useState<WithdrawAccount[]>([]);
+  const [bills, setBills] = useState<VendorBillLite[]>([]);
+  const [formError, setFormError] = useState('');
+  const [saving, setSaving] = useState(false);
 
   const [form, setForm] = useState({
-    vendorName: defaultVendorName,
-    bankAccount: 'Habib Bank Limited (HBL)',
+    vendorId: '',
+    billId: '',
+    paymentDate: new Date().toISOString().slice(0, 10),
     paymentMode: 'Wire Transfer' as PaymentMode,
+    withdrawFromAccountId: '',
     amount: '',
     currency: 'PKR',
     reference: `PAY-${Math.floor(1000 + Math.random() * 9000)}`,
     description: ''
   });
 
-  const fetchVendors = useVendorsStore((s) => s.fetchVendors);
+  const loadPayments = async () => {
+    setLoading(true);
+    try {
+      const data = await vendorPaymentsApi.getAll(activeEntityId || undefined);
+      setPayments(data);
+      setError('');
+    } catch (e: any) {
+      setError(e?.message || 'Failed to load vendor payments.');
+    } finally {
+      setLoading(false);
+    }
+  };
 
-  React.useEffect(() => {
-    fetchVendors(activeEntityId).then((data) => {
-      if (Array.isArray(data) && data.length > 0) {
-        setForm(f => ({ ...f, vendorName: data[0].name }));
-      }
-    });
+  useEffect(() => {
+    loadPayments();
+    fetchVendors(activeEntityId);
+    vendorPaymentsApi.getWithdrawAccounts().then(setWithdrawAccounts).catch(() => {});
   }, [activeEntityId]);
+
+  useEffect(() => {
+    if (!isModalOpen) return;
+    vendorPaymentsApi.getBills().then(setBills).catch(() => {});
+  }, [isModalOpen]);
+
+  // Auto-fill default vendor + default withdraw account when modal opens / vendors load
+  useEffect(() => {
+    if (!isModalOpen) return;
+    setForm(f => ({
+      ...f,
+      vendorId: vendors[0]?.id || '',
+      withdrawFromAccountId: withdrawAccounts[0]?.id || '',
+    }));
+  }, [isModalOpen, vendors, withdrawAccounts]);
+
+  const onVendorChange = (vendorId: string) => {
+    setForm({ ...form, vendorId, billId: '', amount: '' });
+    vendorPaymentsApi.getBills(vendorId).then(b => {
+      setBills(b);
+      if (b.length > 0) {
+        setForm(prev => ({ ...prev, vendorId, billId: b[0].id, amount: String(b[0].amountDue) }));
+      }
+    }).catch(() => {});
+  };
+
+  const onBillChange = (billId: string) => {
+    const bill = bills.find(b => b.id === billId);
+    setForm({
+      ...form,
+      billId,
+      vendorId: bill ? bill.vendorId : form.vendorId,
+      amount: bill ? String(bill.amountDue) : form.amount,
+    });
+  };
 
   const formatCurrency = (val: number, currency: string) => {
     return new Intl.NumberFormat('en-US', { style: 'currency', currency, maximumFractionDigits: 2 }).format(val);
@@ -97,36 +112,57 @@ export const VendorPaymentsView: React.FC<VendorPaymentsViewProps> = ({ activeEn
 
   const filtered = useMemo(() => {
     return payments.filter(p => {
-      if (selectedMode !== 'All' && p.paymentMode !== selectedMode) return false;
+      if (selectedMode !== 'All' && p.paymentMethod !== selectedMode) return false;
       if (query.trim()) {
         const lower = query.toLowerCase();
-        const matchesVendor = p.vendorName.toLowerCase().includes(lower);
-        const matchesRef = p.reference.toLowerCase().includes(lower);
-        const matchesBank = p.bankAccount.toLowerCase().includes(lower);
+        const matchesVendor = (p.vendorName || '').toLowerCase().includes(lower);
+        const matchesRef = (p.reference || p.paymentNumber || '').toLowerCase().includes(lower);
+        const matchesBank = (p.withdrawFromAccountName || p.bankAccountName || '').toLowerCase().includes(lower);
         if (!matchesVendor && !matchesRef && !matchesBank) return false;
       }
       return true;
     });
   }, [payments, query, selectedMode]);
 
-  const handleCreatePayment = (e: React.FormEvent) => {
+  const handleCreatePayment = async (e: React.FormEvent) => {
     e.preventDefault();
+    setFormError('');
     const amt = parseFloat(form.amount);
-    if (isNaN(amt) || amt <= 0 || !form.vendorName) return;
+    if (!form.vendorId) { setFormError('Please select a vendor.'); return; }
+    if (isNaN(amt) || amt <= 0) { setFormError('Amount must be greater than zero.'); return; }
+    if (!form.withdrawFromAccountId) { setFormError('Please select a Withdraw From account.'); return; }
 
-    setPayments(prev => [{
-      id: `vp-${Date.now()}`,
-      date: new Date().toISOString().slice(0, 10),
-      reference: form.reference,
-      vendorName: form.vendorName,
-      bankAccount: form.bankAccount,
-      paymentMode: form.paymentMode,
-      amount: amt,
-      currency: form.currency,
-      status: 'Completed'
-    }, ...prev]);
-
-    setIsModalOpen(false);
+    setSaving(true);
+    try {
+      await vendorPaymentsApi.create({
+        vendorId: form.vendorId,
+        billId: form.billId || undefined,
+        paymentDate: form.paymentDate,
+        amount: amt,
+        paymentMethod: MODE_METHOD[form.paymentMode] || 'BankTransfer',
+        withdrawFromAccountId: form.withdrawFromAccountId,
+        reference: form.reference || undefined,
+        memo: form.description || undefined,
+        companyId: activeEntityId || undefined,
+      });
+      setIsModalOpen(false);
+      setForm({
+        vendorId: '',
+        billId: '',
+        paymentDate: new Date().toISOString().slice(0, 10),
+        paymentMode: 'Wire Transfer',
+        withdrawFromAccountId: '',
+        amount: '',
+        currency: 'PKR',
+        reference: `PAY-${Math.floor(1000 + Math.random() * 9000)}`,
+        description: '',
+      });
+      await loadPayments();
+    } catch (err: any) {
+      setFormError(err?.data?.error || err?.message || 'Failed to create payment.');
+    } finally {
+      setSaving(false);
+    }
   };
 
   return (
@@ -134,15 +170,19 @@ export const VendorPaymentsView: React.FC<VendorPaymentsViewProps> = ({ activeEn
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 border-b border-slate-200 pb-4">
         <div>
           <div className="flex items-center gap-2 text-xs text-slate-500 uppercase tracking-wider font-semibold">
-            <Send className="w-4 h-4 text-emerald-600" /> Banking & Payments
+            <Send className="w-4 h-4 text-emerald-600" /> Procurement & Payments
           </div>
           <h1 className="text-2xl font-bold text-slate-900 tracking-tight mt-1">Vendor Payments</h1>
           <p className="text-xs text-slate-500">
             Outgoing supplier disbursements via Wire, ACH, SWIFT, Cheque, RTGS, and Credit Card for {currentEntity?.name || 'Active Entity'}.
+            Payments post a Dr Accounts Payable / Cr Bank journal.
           </p>
         </div>
 
         <div className="flex items-center gap-2">
+          <Button size="sm" variant="outline" onClick={loadPayments} className="h-9 px-3 gap-1.5 text-xs font-semibold">
+            <RefreshCw className="w-4 h-4" /> Refresh
+          </Button>
           <Button
             size="sm"
             onClick={() => setIsModalOpen(true)}
@@ -181,32 +221,48 @@ export const VendorPaymentsView: React.FC<VendorPaymentsViewProps> = ({ activeEn
         </div>
       </div>
 
+      {loading && <p className="text-xs text-slate-500">Loading vendor payments…</p>}
+      {error && <p className="text-xs text-rose-600">{error}</p>}
+
       <div className="bg-white border border-slate-200 rounded-xl overflow-hidden shadow-xs">
         <Table>
           <TableHeader className="bg-slate-50 border-b border-slate-200">
             <TableRow>
               <TableHead className="w-28 text-[11px] font-bold text-slate-500 uppercase tracking-wider pl-4">DATE</TableHead>
-              <TableHead className="w-32 text-[11px] font-bold text-slate-500 uppercase tracking-wider">REFERENCE</TableHead>
+              <TableHead className="w-32 text-[11px] font-bold text-slate-500 uppercase tracking-wider">PAYMENT #</TableHead>
               <TableHead className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">VENDOR / PAYEE NAME</TableHead>
               <TableHead className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">MODE OF PAYMENT</TableHead>
               <TableHead className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">DISBURSED FROM</TableHead>
+              <TableHead className="w-24 text-[11px] font-bold text-slate-500 uppercase tracking-wider">STATUS</TableHead>
               <TableHead className="w-36 text-right text-[11px] font-bold text-slate-500 uppercase tracking-wider pr-4">AMOUNT</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody className="divide-y divide-slate-100">
+            {payments.length === 0 && !loading && (
+              <TableRow>
+                <TableCell colSpan={7} className="py-8 text-center text-xs text-slate-400">
+                  No vendor payments recorded yet. Use "Record Vendor Payment" to disburse supplier funds.
+                </TableCell>
+              </TableRow>
+            )}
             {filtered.map(p => (
               <TableRow key={p.id} className="hover:bg-slate-50/80">
                 <TableCell className="py-3.5 pl-4 font-mono text-xs text-slate-600">{p.date}</TableCell>
-                <TableCell className="py-3.5 font-mono text-xs font-bold text-slate-800">{p.reference}</TableCell>
+                <TableCell className="py-3.5 font-mono text-xs font-bold text-slate-800">{p.paymentNumber}</TableCell>
                 <TableCell className="py-3.5 font-bold text-xs text-slate-800">{p.vendorName}</TableCell>
                 <TableCell className="py-3.5">
                   <span className="inline-flex items-center px-2.5 py-0.5 rounded-md text-[11px] font-semibold bg-slate-100 text-slate-700 border border-slate-200">
-                    {p.paymentMode}
+                    {p.paymentMethod}
                   </span>
                 </TableCell>
-                <TableCell className="py-3.5 text-xs text-slate-600 font-medium">{p.bankAccount}</TableCell>
+                <TableCell className="py-3.5 text-xs text-slate-600 font-medium">{p.withdrawFromAccountName || p.bankAccountName || '—'}</TableCell>
+                <TableCell className="py-3.5">
+                  <span className={`inline-flex items-center px-2.5 py-0.5 rounded-md text-[11px] font-semibold ${p.status === 'Posted' ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' : 'bg-slate-100 text-slate-600 border border-slate-200'}`}>
+                    {p.status}
+                  </span>
+                </TableCell>
                 <TableCell className="py-3.5 text-right font-mono text-xs font-bold text-rose-600 pr-4">
-                  - {formatCurrency(p.amount, p.currency)}
+                  - {formatCurrency(p.amount, 'PKR')}
                 </TableCell>
               </TableRow>
             ))}
@@ -226,29 +282,21 @@ export const VendorPaymentsView: React.FC<VendorPaymentsViewProps> = ({ activeEn
             </div>
 
             <div className="form-grid">
+              {formError && <p className="error" style={{ gridColumn: '1 / -1', color: '#c25c5c', fontSize: 13, marginBottom: 10 }}>{formError}</p>}
               <div>
                 <label className="text-xs font-semibold text-slate-700 block mb-1">Select Vendor (from Vendor Management)</label>
                 <select
                   required
-                  value={form.vendorName}
-                  onChange={e => setForm({ ...form, vendorName: e.target.value })}
+                  value={form.vendorId}
+                  onChange={e => onVendorChange(e.target.value)}
                   className="w-full h-9 px-3 bg-white border border-slate-200 rounded-lg text-xs font-semibold text-slate-800 outline-none"
                 >
-                  {vendors.length > 0 ? (
-                    vendors.map(v => (
-                      <option key={v.id} value={v.name}>
-                        {v.vendorNumber ? `${v.vendorNumber} — ${v.name}` : v.name}
-                      </option>
-                    ))
-                  ) : (
-                    <>
-                      <option value="Allied Engineering Supplies Ltd">V-1001 — Allied Engineering Supplies Ltd</option>
-                      <option value="Cloud Infrastructure Services USA">V-1002 — Cloud Infrastructure Services USA</option>
-                      <option value="National Electric Equipment Co">V-1003 — National Electric Equipment Co</option>
-                      <option value="Siemens Pakistan">V-1004 — Siemens Pakistan</option>
-                      <option value="Packages Limited">V-1005 — Packages Limited</option>
-                    </>
-                  )}
+                  <option value="">— Select Vendor —</option>
+                  {vendors.map(v => (
+                    <option key={v.id} value={v.id}>
+                      {v.vendorNumber ? `${v.vendorNumber} — ${v.name}` : v.name}
+                    </option>
+                  ))}
                 </select>
               </div>
               <div className="grid grid-cols-2 gap-3">
@@ -264,13 +312,29 @@ export const VendorPaymentsView: React.FC<VendorPaymentsViewProps> = ({ activeEn
                   </select>
                 </div>
                 <div>
-                  <label className="text-xs font-semibold text-slate-700 block mb-1">Disbursed From Account</label>
-                  <select value={form.bankAccount} onChange={e => setForm({ ...form, bankAccount: e.target.value })} className="w-full h-9 px-3 bg-white border border-slate-200 rounded-lg text-xs">
-                    <option value="Habib Bank Limited (HBL)">Habib Bank Limited (HBL)</option>
-                    <option value="Meezan Bank Limited">Meezan Bank Limited</option>
-                    <option value="Standard Chartered (USD)">Standard Chartered (USD)</option>
+                  <label className="text-xs font-semibold text-slate-700 block mb-1">Withdraw From Account</label>
+                  <select value={form.withdrawFromAccountId} onChange={e => setForm({ ...form, withdrawFromAccountId: e.target.value })} className="w-full h-9 px-3 bg-white border border-slate-200 rounded-lg text-xs">
+                    <option value="">— Select Account —</option>
+                    {withdrawAccounts.map(a => (
+                      <option key={a.id} value={a.id}>{a.code} — {a.name}</option>
+                    ))}
                   </select>
                 </div>
+              </div>
+              <div>
+                <label className="text-xs font-semibold text-slate-700 block mb-1">Against Bill</label>
+                <select value={form.billId} onChange={e => onBillChange(e.target.value)} className="w-full h-9 px-3 bg-white border border-slate-200 rounded-lg text-xs">
+                  <option value="">— On Account (no bill) —</option>
+                  {bills.map(b => (
+                    <option key={b.id} value={b.id}>
+                      {b.billNumber} — Due: {b.amountDue.toLocaleString()} {b.currencyCode}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label className="text-xs font-semibold text-slate-700 block mb-1">Payment Date</label>
+                <Input required type="date" value={form.paymentDate} onChange={e => setForm({ ...form, paymentDate: e.target.value })} className="h-9 text-xs" />
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <div>
@@ -278,20 +342,14 @@ export const VendorPaymentsView: React.FC<VendorPaymentsViewProps> = ({ activeEn
                   <Input required type="number" placeholder="0.00" value={form.amount} onChange={e => setForm({ ...form, amount: e.target.value })} className="h-9 text-xs font-mono" />
                 </div>
                 <div>
-                  <label className="text-xs font-semibold text-slate-700 block mb-1">Currency</label>
-                  <select value={form.currency} onChange={e => setForm({ ...form, currency: e.target.value })} className="w-full h-9 px-3 bg-white border border-slate-200 rounded-lg text-xs font-mono">
-                    <option value="PKR">PKR</option>
-                    <option value="USD">USD</option>
-                    <option value="EUR">EUR</option>
-                    <option value="GBP">GBP</option>
-                  </select>
+                  <label className="text-xs font-semibold text-slate-700 block mb-1">Reference</label>
+                  <Input type="text" placeholder="Wire ref / cheque #" value={form.reference} onChange={e => setForm({ ...form, reference: e.target.value })} className="h-9 text-xs font-mono" />
                 </div>
               </div>
             </div>
             <div className="modal-footer">
               <button type="button" className="secondary" onClick={() => setIsModalOpen(false)}>Cancel</button>
-              <button type="button" className="secondary" onClick={(e) => { e.preventDefault(); alert("Draft saved locally"); }}>Save Draft</button>
-              <button type="submit" className="primary">Record Payment</button>
+              <button type="submit" className="primary" disabled={saving}>{saving ? 'Posting…' : 'Post & Record Payment'}</button>
             </div>
           </form>
         </div>
