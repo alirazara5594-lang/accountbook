@@ -20,4 +20,12 @@ export const reportsApi = {
   getGeneralLedger: async (params?: Record<string, any>): Promise<any> => {
     return apiClient('/reports/general-ledger', { params });
   },
+
+  getArLedger: async (params?: Record<string, any>): Promise<any> => {
+    return apiClient('/reports/ar-ledger', { params });
+  },
+
+  getApLedger: async (params?: Record<string, any>): Promise<any> => {
+    return apiClient('/reports/ap-ledger', { params });
+  },
 };

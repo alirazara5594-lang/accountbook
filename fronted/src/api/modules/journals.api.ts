@@ -28,4 +28,28 @@ export const journalsApi = {
       body: entryData,
     });
   },
+
+  submit: async (id: string, note?: string): Promise<JournalEntry> =>
+    apiClient<JournalEntry>(`/journal-entries/${id}/submit`, {
+      method: 'POST',
+      body: { note },
+    }),
+
+  approve: async (id: string, note?: string): Promise<JournalEntry> =>
+    apiClient<JournalEntry>(`/journal-entries/${id}/approve`, {
+      method: 'POST',
+      body: { note },
+    }),
+
+  post: async (id: string, note?: string): Promise<JournalEntry> =>
+    apiClient<JournalEntry>(`/journal-entries/${id}/post`, {
+      method: 'POST',
+      body: { note },
+    }),
+
+  batchPost: async (entryIds: string[]): Promise<{ posted: number }> =>
+    apiClient<{ posted: number }>('/journal-entries/batch-post', {
+      method: 'POST',
+      body: { entryIds },
+    }),
 };

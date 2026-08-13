@@ -37,6 +37,13 @@ import { FundTransfersView } from './FundTransfersView'
 import { VendorPaymentsView } from './VendorPaymentsView'
 import { VoucherManagement } from './VoucherManagement'
 import { CashFlowView } from './CashFlowView'
+import { GeneralLedgerView } from './GeneralLedgerView'
+import { AccountsReceivableView } from './AccountsReceivableView'
+import { AccountsPayableView } from './AccountsPayableView'
+import { TaxAccountingView } from './TaxAccountingView'
+import { BudgetsView } from './BudgetsView'
+import { PeriodClosingView } from './PeriodClosingView'
+import { AuditTrailView } from './AuditTrailView'
 import { useCoaStore, useJournalsStore, useCompanyStore, useIntercompanyStore } from './stores'
 import { Toaster } from '@/components/ui/toast'
 
@@ -233,7 +240,14 @@ export default function App() {
     'Accounting.Chart of Accounts': 'accounts',
     'Accounting.Journal Entries': 'journal',
     'Accounting.Fixed Assets': 'fixed-assets',
+    'Accounting.General Ledger': 'general-ledger',
+    'Accounting.Accounts Receivable': 'accounts-receivable',
+    'Accounting.Accounts Payable': 'accounts-payable',
+    'Accounting.Tax Accounting': 'tax-accounting',
+    'Accounting.Budgets': 'budgets',
     'Accounting.Financial Reports': 'financial-reports',
+    'Accounting.Period Closing': 'period-closing',
+    'Accounting.Audit Trail': 'audit-trail',
     'Assets & Inventory.Summary': 'module-summary',
     'Assets & Inventory.Assets & Inventory Workspace': 'assets-inventory',
     'Manufacturing & Production.Summary': 'manufacturing',
@@ -341,6 +355,13 @@ export default function App() {
   {activeView === 'assets-inventory' && <AssetsInventoryWorkspace activeEntityId={activeEntityId} entities={entities} />}
   {activeView === 'manufacturing' && <ManufacturingWorkspace activeEntityId={activeEntityId} entities={entities} />}
   {activeView === 'financial-reports' && <FinancialReports accounts={accounts} entries={entries} activeEntityId={activeEntityId} />}
+  {activeView === 'general-ledger' && <GeneralLedgerView activeEntityId={activeEntityId} entities={entities as any} />}
+  {activeView === 'accounts-receivable' && <AccountsReceivableView activeEntityId={activeEntityId} entities={entities as any} />}
+  {activeView === 'accounts-payable' && <AccountsPayableView activeEntityId={activeEntityId} entities={entities as any} />}
+  {activeView === 'tax-accounting' && <TaxAccountingView activeEntityId={activeEntityId} entities={entities as any} />}
+  {activeView === 'budgets' && <BudgetsView activeEntityId={activeEntityId} entities={entities as any} />}
+  {activeView === 'period-closing' && <PeriodClosingView activeEntityId={activeEntityId} entities={entities as any} />}
+  {activeView === 'audit-trail' && <AuditTrailView activeEntityId={activeEntityId} entities={entities as any} />}
   {activeView === 'customer-payments' && <CustomerPaymentsWorkspace activeEntityId={activeEntityId} />}
   {activeView === 'customer-statements' && <CustomerStatementsWorkspace activeEntityId={activeEntityId} />}
   {activeView === 'sales-reports' && <SalesReportsWorkspace activeEntityId={activeEntityId} />}

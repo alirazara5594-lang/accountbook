@@ -40,7 +40,10 @@ public class AccountingStore
     private readonly List<VendorPayment> _vendorPayments = [];
     private readonly List<FundTransfer> _fundTransfers = [];
     private readonly List<BankReconciliation> _reconciliations = [];
+    private readonly List<Budget> _budgets = [];
+    private readonly List<PeriodClose> _periodCloses = [];
     private readonly List<AccountMapping> _mappings = [];
+    private readonly List<AuditItem> _auditLog = [];
     private readonly Dictionary<Guid, List<AuditItem>> _history = [];
     private readonly object _lock = new();
 
@@ -76,7 +79,10 @@ public class AccountingStore
         List<CustomerPayment>? CustomerPayments = null,
         List<VendorPayment>? VendorPayments = null,
         List<FundTransfer>? FundTransfers = null,
-        List<BankReconciliation>? Reconciliations = null);
+        List<BankReconciliation>? Reconciliations = null,
+        List<Budget>? Budgets = null,
+        List<PeriodClose>? PeriodCloses = null,
+        List<AuditItem>? AuditLog = null);
 
     public AccountingStore(IDbContextFactory<AccountingDbContext>? dbFactory = null)
     {
@@ -259,6 +265,8 @@ public class AccountingStore
     public IReadOnlyList<VendorPayment> VendorPayments => _vendorPayments;
     public IReadOnlyList<FundTransfer> FundTransfers => _fundTransfers;
     public IReadOnlyList<BankReconciliation> Reconciliations => _reconciliations;
+    public IReadOnlyList<Budget> Budgets => _budgets;
+    public IReadOnlyList<PeriodClose> PeriodCloses => _periodCloses;
 
     public string NextReceiptNumber()
     {
@@ -601,6 +609,163 @@ public class AccountingStore
             Persist();
             return true;
         }
+    }
+
+    public bool CreateBudget(BudgetRequest request, out Budget? budget, out string? error)
+    {
+        lock (_lock)
+        {
+            budget = null; error = null;
+            if (string.IsNullOrWhiteSpace(request.BudgetName)) { error = "Budget name is required."; return false; }
+            if (request.Amount <= 0) { error = "Budget amount must be positive."; return false; }
+            var account = _accounts.FirstOrDefault(a => a.Id == request.AccountId);
+            if (account == null) { error = "Budget account not found."; return false; }
+
+            budget = new Budget
+            {
+                BudgetName = request.BudgetName,
+                AccountId = request.AccountId,
+                Amount = request.Amount,
+                FiscalYear = request.FiscalYear,
+                PeriodType = request.PeriodType,
+                Status = request.Status,
+                CompanyId = request.CompanyId
+            };
+            _budgets.Add(budget);
+            AddAudit("budget.create", budget.Id, $"Created budget '{budget.BudgetName}' for {budget.FiscalYear}", request.CompanyId);
+            Persist();
+            return true;
+        }
+    }
+
+    public bool UpdateBudget(Guid id, BudgetRequest request, out string? error)
+    {
+        lock (_lock)
+        {
+            error = null;
+            var budget = _budgets.FirstOrDefault(b => b.Id == id);
+            if (budget == null) { error = "Budget not found."; return false; }
+            if (budget.Status == BudgetStatus.Locked) { error = "Locked budgets cannot be edited."; return false; }
+            budget.BudgetName = request.BudgetName;
+            budget.AccountId = request.AccountId;
+            budget.Amount = request.Amount;
+            budget.FiscalYear = request.FiscalYear;
+            budget.PeriodType = request.PeriodType;
+            budget.Status = request.Status;
+            budget.UpdatedAt = DateTime.UtcNow;
+            AddAudit("budget.update", id, $"Updated budget '{budget.BudgetName}'", budget.CompanyId);
+            Persist();
+            return true;
+        }
+    }
+
+    public bool DeleteBudget(Guid id, out string? error)
+    {
+        lock (_lock)
+        {
+            error = null;
+            var budget = _budgets.FirstOrDefault(b => b.Id == id);
+            if (budget == null) { error = "Budget not found."; return false; }
+            _budgets.Remove(budget);
+            AddAudit("budget.delete", id, $"Deleted budget '{budget.BudgetName}'", budget.CompanyId);
+            Persist();
+            return true;
+        }
+    }
+
+    public bool CreatePeriodClose(PeriodCloseRequest request, out PeriodClose? period, out string? error)
+    {
+        lock (_lock)
+        {
+            period = null; error = null;
+            if (string.IsNullOrWhiteSpace(request.PeriodName)) { error = "Period name is required."; return false; }
+
+            period = new PeriodClose
+            {
+                PeriodName = request.PeriodName,
+                PeriodEndDate = request.PeriodEndDate,
+                Note = request.Note,
+                CompanyId = request.CompanyId,
+                Status = PeriodCloseStatus.Open
+            };
+            _periodCloses.Add(period);
+            AddAudit("period.close", period.Id, $"Opened period '{period.PeriodName}'", request.CompanyId);
+            Persist();
+            return true;
+        }
+    }
+
+    public bool ClosePeriod(Guid id, string? by, string? note, out string? error)
+    {
+        lock (_lock)
+        {
+            error = null;
+            var period = _periodCloses.FirstOrDefault(p => p.Id == id);
+            if (period == null) { error = "Period not found."; return false; }
+            if (period.Status == PeriodCloseStatus.Closed) { error = "Period is already closed."; return false; }
+            period.Status = PeriodCloseStatus.Closed;
+            period.ClosedAt = DateTime.UtcNow;
+            period.ClosedBy = by;
+            period.Note = note;
+            AddAudit("period.close", id, $"Closed period '{period.PeriodName}'{(string.IsNullOrWhiteSpace(by) ? "" : $" by {by}")}", period.CompanyId);
+            Persist();
+            return true;
+        }
+    }
+
+    public bool ReopenPeriod(Guid id, out string? error)
+    {
+        lock (_lock)
+        {
+            error = null;
+            var period = _periodCloses.FirstOrDefault(p => p.Id == id);
+            if (period == null) { error = "Period not found."; return false; }
+            period.Status = PeriodCloseStatus.Reopened;
+            period.ClosedAt = null;
+            AddAudit("period.reopen", id, $"Reopened period '{period.PeriodName}'", period.CompanyId);
+            Persist();
+            return true;
+        }
+    }
+
+    /// <summary>Global audit trail: account history, journal lifecycle events, and module actions.</summary>
+    public List<object> GetAuditTrail(Guid? companyId, int limit = 200)
+    {
+        lock (_lock)
+        {
+            var trail = new List<object>();
+
+            foreach (var (accountId, items) in _history)
+            {
+                var account = _accounts.FirstOrDefault(a => a.Id == accountId);
+                if (account == null) continue;
+                foreach (var item in items)
+                {
+                    trail.Add(new { item.At, item.Action, item.Detail, Entity = "Account", EntityName = $"{account.Code} — {account.Name}", EntityId = accountId, CompanyId = account.ParentId });
+                }
+            }
+
+            foreach (var entry in _entries)
+            {
+                if (companyId.HasValue && entry.CompanyId != companyId) continue;
+                foreach (var ev in _journalEvents.Where(x => x.JournalEntryId == entry.Id))
+                {
+                    trail.Add(new { ev.OccurredAt, Action = ev.EventType, Detail = ev.Detail, Entity = "JournalEntry", EntityName = $"{entry.Reference} — {entry.Description}", EntityId = entry.Id, CompanyId = entry.CompanyId });
+                }
+            }
+
+            foreach (var item in _auditLog)
+            {
+                trail.Add(new { item.At, item.Action, item.Detail, Entity = "System", EntityName = "ERP-wide action", EntityId = (Guid?)null, CompanyId = (Guid?)null });
+            }
+
+            return trail.OrderByDescending(x => (DateTime)((dynamic)x).At).Take(limit).ToList();
+        }
+    }
+
+    private void AddAudit(string action, Guid entityId, string detail, Guid? companyId = null)
+    {
+        _auditLog.Add(new AuditItem(DateTime.UtcNow, action, detail));
     }
 
     public string NextBomNumber()
@@ -2785,6 +2950,9 @@ public class AccountingStore
         _vendorPayments.Clear(); _vendorPayments.AddRange(state.VendorPayments ?? []);
         _fundTransfers.Clear(); _fundTransfers.AddRange(state.FundTransfers ?? []);
         _reconciliations.Clear(); _reconciliations.AddRange(state.Reconciliations ?? []);
+        _budgets.Clear(); _budgets.AddRange(state.Budgets ?? []);
+        _periodCloses.Clear(); _periodCloses.AddRange(state.PeriodCloses ?? []);
+        _auditLog.Clear(); _auditLog.AddRange(state.AuditLog ?? []);
         _mappings.Clear(); _mappings.AddRange(state.Mappings ?? []);
         if (state.History != null)
         {
@@ -2798,7 +2966,7 @@ public class AccountingStore
     {
         if (_dbFactory is null) return;
         using var db = _dbFactory.CreateDbContext();
-        var json = JsonSerializer.Serialize(new StoredState(_accounts, _entries, _history, _templates, _recurringEntries, _journalEvents, _intercompanyAllocations, _companies, _customers, _products, _vendors, _purchaseOrders, _grns, _fixedAssets, _taxAuthorities, _taxCodes, _taxRates, _warehouses, _stockLevels, _stockTransactions, _salesInvoices, _estimates, _boms, _workOrders, _mappings, _salesOrders, _creditNotes, _customerPayments, _vendorPayments, _fundTransfers, _reconciliations));
+        var json = JsonSerializer.Serialize(new StoredState(_accounts, _entries, _history, _templates, _recurringEntries, _journalEvents, _intercompanyAllocations, _companies, _customers, _products, _vendors, _purchaseOrders, _grns, _fixedAssets, _taxAuthorities, _taxCodes, _taxRates, _warehouses, _stockLevels, _stockTransactions, _salesInvoices, _estimates, _boms, _workOrders, _mappings, _salesOrders, _creditNotes, _customerPayments, _vendorPayments, _fundTransfers, _reconciliations, _budgets, _periodCloses, _auditLog));
         var snapshot = db.AccountingStateSnapshots.Find(1);
         if (snapshot is null) db.AccountingStateSnapshots.Add(new AccountingStateSnapshot { Id = 1, Json = json, UpdatedAt = DateTime.UtcNow });
         else { snapshot.Json = json; snapshot.UpdatedAt = DateTime.UtcNow; }
@@ -2983,6 +3151,9 @@ public class AccountingStore
             _vendorPayments.Clear();
             _fundTransfers.Clear();
             _reconciliations.Clear();
+            _budgets.Clear();
+            _periodCloses.Clear();
+            _auditLog.Clear();
             _mappings.Clear();
 
             // Re-seed Companies

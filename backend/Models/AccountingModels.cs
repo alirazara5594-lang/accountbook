@@ -503,6 +503,55 @@ public record CashBankAccountRequest(
     Guid? CompanyId = null
 );
 
+public enum BudgetStatus { Draft, Active, Locked }
+public enum BudgetPeriodType { Monthly, Quarterly, Yearly }
+
+public class Budget
+{
+    public Guid Id { get; init; } = Guid.NewGuid();
+    public required string BudgetName { get; set; }
+    public Guid AccountId { get; set; }
+    public decimal Amount { get; set; }
+    public int FiscalYear { get; set; }
+    public BudgetPeriodType PeriodType { get; set; } = BudgetPeriodType.Monthly;
+    public BudgetStatus Status { get; set; } = BudgetStatus.Draft;
+    public Guid? CompanyId { get; set; }
+    public DateTime CreatedAt { get; init; } = DateTime.UtcNow;
+    public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
+}
+
+public record BudgetRequest(
+    string BudgetName,
+    Guid AccountId,
+    decimal Amount,
+    int FiscalYear,
+    BudgetPeriodType PeriodType = BudgetPeriodType.Monthly,
+    BudgetStatus Status = BudgetStatus.Draft,
+    Guid? CompanyId = null
+);
+
+public class PeriodClose
+{
+    public Guid Id { get; init; } = Guid.NewGuid();
+    public required string PeriodName { get; set; }          // e.g. "FY2026-Q3", "August 2026"
+    public DateOnly? PeriodEndDate { get; set; }
+    public PeriodCloseStatus Status { get; set; } = PeriodCloseStatus.Open;
+    public string? Note { get; set; }
+    public Guid? CompanyId { get; set; }
+    public DateTime CreatedAt { get; init; } = DateTime.UtcNow;
+    public DateTime? ClosedAt { get; set; }
+    public string? ClosedBy { get; set; }
+}
+
+public enum PeriodCloseStatus { Open, Closed, Reopened }
+
+public record PeriodCloseRequest(
+    string PeriodName,
+    DateOnly? PeriodEndDate = null,
+    string? Note = null,
+    Guid? CompanyId = null
+);
+
 public record VendorBillLineRequest(Guid ProductId, string Description, decimal Quantity, decimal UnitPrice, Guid? TaxCodeId, decimal TaxAmount, LineDestination Destination);
 public record VendorBillRequest(
     string BillNumber,
