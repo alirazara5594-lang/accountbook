@@ -579,12 +579,12 @@ export default function CustomerManagement({
               </label>
             </div>
 
-            <div className="modal-footer">
-              <button type="button" className="secondary" onClick={() => setModalOpen(false)}>
+<div className="modal-footer">
+              <button type="button" className="secondary btn-cancel" onClick={() => setModalOpen(false)}>
                 Cancel
               </button>
-              <button type="button" className="secondary" onClick={(e) => { e.preventDefault(); saveDraft(); notify('✓ Customer draft saved locally.'); }}>Save Draft</button>
-              <button type="submit" className="primary">
+              <button type="button" className="secondary btn-draft" onClick={(e) => { e.preventDefault(); saveDraft(); notify('��� Customer draft saved locally.'); }}>Save Draft</button>
+              <button type="submit" className="primary btn-finalize">
                 {editingCustomer ? 'Finalize & Save Changes' : 'Finalize & Create Customer'}
               </button>
             </div>

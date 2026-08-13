@@ -248,8 +248,9 @@ const EstimateForm = ({ customers, products, onSave, onCancel }: {
         </div>
 
         <div className="modal-footer">
-          <button type="button" className="secondary" onClick={onCancel}>Cancel</button>
-          <button onClick={submit} disabled={!form.customerId || lines.every(l => !l.description)} className="primary">
+          <button type="button" className="secondary btn-cancel" onClick={onCancel}>Cancel</button>
+          <button type="button" className="secondary btn-draft" onClick={(e) => { e.preventDefault(); alert("��� Draft saved locally"); }}>Save Draft</button>
+          <button type="button" className="primary btn-finalize" onClick={submit} disabled={!form.customerId || lines.every(l => !l.description)}>
             Save Estimate
           </button>
         </div>

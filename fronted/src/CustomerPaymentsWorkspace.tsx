@@ -322,9 +322,9 @@ function CustomerPaymentsWorkspace() {
             </div>
 
             <div className="modal-footer">
-              <button type="button" className="secondary" onClick={() => setIsModalOpen(false)}>Cancel</button>
-              <button type="button" className="secondary" onClick={(e) => { e.preventDefault(); alert("Draft saved locally"); }}>Save Draft</button>
-              <button type="submit" className="primary">Save Payment</button>
+              <button type="button" className="secondary btn-cancel" onClick={() => setIsModalOpen(false)}>Cancel</button>
+              <button type="button" className="secondary btn-draft" onClick={(e) => { e.preventDefault(); alert("��� Draft saved locally"); }}>Save Draft</button>
+              <button type="submit" className="primary btn-finalize">Save Payment</button>
             </div>
           </form>
         </div>

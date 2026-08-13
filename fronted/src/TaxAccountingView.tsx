@@ -418,8 +418,9 @@ export const TaxAccountingView: React.FC<TaxAccountingViewProps> = ({ activeEnti
               </div>
             </div>
             <div className="modal-footer">
-              <button type="button" className="secondary" onClick={() => setShowCodeForm(false)}>Cancel</button>
-              <button type="submit" className="primary" disabled={saving}>{saving ? 'Saving…' : 'Create Tax Code'}</button>
+              <button type="button" className="secondary btn-cancel" onClick={() => setShowCodeForm(false)}>Cancel</button>
+              <button type="button" className="secondary btn-draft" onClick={(e) => { e.preventDefault(); alert("��� Draft saved locally"); }}>Save Draft</button>
+              <button type="submit" className="primary btn-finalize" disabled={saving}>{saving ? 'Saving…' : 'Create Tax Code'}</button>
             </div>
           </form>
         </div>
@@ -454,8 +455,9 @@ export const TaxAccountingView: React.FC<TaxAccountingViewProps> = ({ activeEnti
               </div>
             </div>
             <div className="modal-footer">
-              <button type="button" className="secondary" onClick={() => setShowRateForm(false)}>Cancel</button>
-              <button type="submit" className="primary" disabled={saving}>{saving ? 'Saving…' : 'Create Tax Rate'}</button>
+              <button type="button" className="secondary btn-cancel" onClick={() => setShowRateForm(false)}>Cancel</button>
+              <button type="button" className="secondary btn-draft" onClick={(e) => { e.preventDefault(); alert("��� Draft saved locally"); }}>Save Draft</button>
+              <button type="submit" className="primary btn-finalize" disabled={saving}>{saving ? 'Saving…' : 'Create Tax Rate'}</button>
             </div>
           </form>
         </div>

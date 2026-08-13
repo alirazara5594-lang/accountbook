@@ -547,11 +547,11 @@ export const VendorBills: React.FC<{ activeEntityId: string }> = ({ activeEntity
             </div>
 
             <div className="modal-footer">
-              <button type="button" className="secondary" onClick={() => setShowBillModal(false)}>
+              <button type="button" className="secondary btn-cancel" onClick={() => setShowBillModal(false)}>
                 Cancel
               </button>
-              <button type="button" className="secondary" onClick={(e) => { e.preventDefault(); alert("Draft saved locally"); }}>Save Draft</button>
-              <button type="submit" className="primary">
+              <button type="button" className="secondary btn-draft" onClick={(e) => { e.preventDefault(); alert("��� Draft saved locally"); }}>Save Draft</button>
+              <button type="submit" className="primary btn-finalize">
                 {entryMode === 'direct' ? 'Post Direct Accounts Payable Liability' : 'Save Vendor Bill & Validate Match'}
               </button>
             </div>

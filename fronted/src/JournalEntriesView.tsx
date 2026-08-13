@@ -155,13 +155,13 @@ export const JournalEntriesView: React.FC<JournalEntriesViewProps> = ({ accounts
           ))}
         </div>
         <button type="button" className="text-button" onClick={() => setJournal({ ...journal, lines: [...journal.lines, { accountId: '', debit: '', credit: '' }] })}>＋ Add line</button>
-        <div className="entry-footer">
-          <div>
+        <div className="modal-footer">
+          <div style={{ flex: 1 }}>
             <span>Debits <b>{new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(totals.debit)}</b></span>
             <span>Credits <b>{new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(totals.credit)}</b></span>
-            {totals.debit !== totals.credit && <em>Entry must balance</em>}
+            {totals.debit !== totals.credit && <em style={{ marginLeft: 12, color: '#ef4444' }}>Entry must balance</em>}
           </div>
-          <button className="primary" disabled={totals.debit !== totals.credit || saving}>{saving ? 'Posting…' : 'Post entry'}</button>
+          <button className="primary btn-finalize" disabled={totals.debit !== totals.credit || saving}>{saving ? 'Posting…' : 'Post entry'}</button>
         </div>
       </form>
 

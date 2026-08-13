@@ -485,10 +485,10 @@ export default function ProductsAndServices({ entities, activeEntityId, notify }
               </div>
             </div>
 
-            <div className="modal-footer">
-              <button type="button" className="secondary" onClick={() => setModalOpen(false)}>Cancel</button>
-              <button type="button" className="secondary" onClick={(e) => { e.preventDefault(); alert("Draft saved locally"); }}>Save Draft</button>
-<button type="submit" className="primary">{editingProduct ? 'Save Changes' : 'Create Item'}</button>
+<div className="modal-footer">
+              <button type="button" className="secondary btn-cancel" onClick={() => setModalOpen(false)}>Cancel</button>
+              <button type="button" className="secondary btn-draft" onClick={(e) => { e.preventDefault(); alert("��� Draft saved locally"); }}>Save Draft</button>
+              <button type="submit" className="primary btn-finalize">{editingProduct ? 'Save Changes' : 'Create Item'}</button>
             </div>
           </form>
         </div>

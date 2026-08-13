@@ -616,13 +616,13 @@ export const VoucherManagement: React.FC<VoucherManagementProps> = ({ activeEnti
               </label>
             </div>
 
-            {/* Modal Footer matching Customer Management */}
+{/* Modal Footer */}
             <div className="modal-footer">
-              <button type="button" className="secondary" onClick={() => setIsModalOpen(false)}>
+              <button type="button" className="secondary btn-cancel" onClick={() => setIsModalOpen(false)}>
                 Cancel
               </button>
-              <button type="button" className="secondary" onClick={(e) => { e.preventDefault(); saveDraft(); alert("✓ Voucher draft saved successfully!"); }}>Save Draft</button>
-              <button type="submit" className="primary">
+              <button type="button" className="secondary btn-draft" onClick={(e) => { e.preventDefault(); saveDraft(); alert("��� Voucher draft saved successfully!"); }}>Save Draft</button>
+              <button type="submit" className="primary btn-finalize">
                 Finalize & Post {selectedVoucherType} Voucher
               </button>
             </div>
