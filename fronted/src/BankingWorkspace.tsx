@@ -7,7 +7,6 @@ import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import {
   Building2,
-  RefreshCw,
   CheckCircle2,
   Plus,
   Search,
@@ -18,8 +17,10 @@ import {
   UploadCloud,
   FileSpreadsheet,
   Building,
-  Zap
+  Zap,
+  Clock
 } from 'lucide-react';
+import { DataToolbar } from '@/components/ui/data-toolbar';
 import type { Entity } from './EntitySettings';
 
 type PaymentMode = 'ACH' | 'Wire Transfer' | 'Cheque / Pay Order' | 'SWIFT' | 'RTGS' | 'Credit Card' | 'Direct Debit' | 'Online Banking';
@@ -357,6 +358,17 @@ export const BankingWorkspace: React.FC<BankingWorkspaceProps> = ({ subView, act
     b.accountNumber.toLowerCase().includes(query.toLowerCase())
   );
 
+  const exportHeaders = ['Code', 'Account', 'Bank', 'Account Number', 'Currency', 'Type', 'Balance', 'Status'];
+  const exportRows = filteredAccounts.map(a => [
+    a.code, a.name, a.bankName, a.accountNumber, a.currency, a.type, a.balance, a.reconciledStatus,
+  ]);
+  const totalBalance = filteredAccounts.reduce((s, a) => s + (a.balance || 0), 0);
+
+  const exportTxHeaders = ['Date', 'Reference', 'Account', 'Counterparty', 'Description', 'Type', 'Mode', 'Amount', 'Currency', 'Status'];
+  const exportTxRows = transactions.map(t => [
+    t.date, t.reference, t.accountName, t.counterparty, t.description, t.type, t.paymentMode, t.amount, t.currency, t.status,
+  ]);
+
   return (
     <div className="space-y-6 font-sans text-slate-800 p-2 md:p-6">
       {/* Top Header & Quick Actions */}
@@ -372,6 +384,24 @@ export const BankingWorkspace: React.FC<BankingWorkspaceProps> = ({ subView, act
         </div>
 
         <div className="flex flex-wrap items-center gap-2">
+          <DataToolbar
+            exportFileName="bank-accounts"
+            exportSheetName="Bank Accounts"
+            exportTitle="Banking & Payments Workspace"
+            exportSubtitle={`Bank accounts, cash registers and transactions for ${currentEntity?.name || 'Active Entity'}.`}
+            exportHeaders={exportHeaders}
+            exportRows={exportRows}
+            exportTotals={[{ label: 'Total Balance', value: totalBalance }]}
+            onRefresh={() => setQuery('')}
+          />
+          <DataToolbar
+            exportFileName="bank-transactions"
+            exportSheetName="Bank Transactions"
+            exportTitle="Bank Transactions"
+            exportSubtitle={`All payment transactions across accounts.`}
+            exportHeaders={exportTxHeaders}
+            exportRows={exportTxRows}
+          />
           <Button
             variant="outline"
             size="sm"
@@ -434,7 +464,7 @@ export const BankingWorkspace: React.FC<BankingWorkspaceProps> = ({ subView, act
         <Card className="bg-white border-slate-200 shadow-xs">
           <CardContent className="p-4 flex items-center gap-3">
             <div className="p-3 bg-amber-50 rounded-xl text-amber-600 border border-amber-100">
-              <RefreshCw className="w-5 h-5" />
+              <Clock className="w-5 h-5" />
             </div>
             <div>
               <p className="text-xs font-medium text-slate-500">Pending Reconciliation</p>

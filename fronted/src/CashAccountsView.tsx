@@ -3,7 +3,8 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Wallet, Search, Plus, Edit3, ArrowLeftRight, CheckCircle2, RefreshCw } from 'lucide-react';
+import { Wallet, Search, Plus, Edit3, ArrowLeftRight, CheckCircle2 } from 'lucide-react';
+import { DataToolbar } from '@/components/ui/data-toolbar';
 import type { Entity } from './EntitySettings';
 import { apiClient } from './api/client';
 
@@ -99,6 +100,12 @@ export const CashAccountsView: React.FC<CashAccountsViewProps> = ({ activeEntity
     });
   }, [cashAccounts, query]);
 
+  const exportHeaders = ['GL CODE', 'CASH ACCOUNT', 'VAULT LOCATION', 'CUSTODIAN', 'CURRENCY', 'BALANCE', 'STATUS', 'LAST AUDITED'];
+  const exportRows = filtered.map(a => [
+    a.code, a.name, a.vaultLocation, a.custodian, a.currency, a.balance, a.status, a.lastAuditedDate,
+  ]);
+  const totalBalance = filtered.reduce((s, a) => s + (a.balance || 0), 0);
+
   const handleSaveAccount = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!form.name) return;
@@ -140,14 +147,16 @@ export const CashAccountsView: React.FC<CashAccountsViewProps> = ({ activeEntity
         </div>
 
         <div className="flex items-center gap-2">
-          <Button
-            size="sm"
-            variant="outline"
-            onClick={loadCashAccounts}
-            className="h-9 px-3 gap-1.5 text-xs font-semibold text-slate-700 bg-white border-slate-200 hover:bg-slate-50"
-          >
-            <RefreshCw className="w-4 h-4" /> Refresh
-          </Button>
+          <DataToolbar
+            exportFileName="cash-accounts"
+            exportSheetName="Cash Accounts"
+            exportTitle="Cash Accounts & Vaults"
+            exportSubtitle={`Physical cash register balances for ${currentEntity?.name || 'Active Entity'}.`}
+            exportHeaders={exportHeaders}
+            exportRows={exportRows}
+            exportTotals={[{ label: 'Total Cash Balance', value: totalBalance }]}
+            onRefresh={loadCashAccounts}
+          />
           <Button
             size="sm"
             onClick={() => {

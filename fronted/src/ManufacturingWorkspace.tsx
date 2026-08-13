@@ -3,6 +3,7 @@ import { useManufacturingStore, useProductsStore, useAssetsInventoryStore } from
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { DataToolbar } from '@/components/ui/data-toolbar';
 
 function money(amount: number) {
   return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(amount || 0);
@@ -161,6 +162,12 @@ export const ManufacturingWorkspace: React.FC<{ activeEntityId: string; entities
     { id: 'costing', label: 'Job Costing Reports', icon: '📊' },
   ];
 
+  const exportBomHeaders = ['BOM Number', 'Finished Product', 'Produces', 'Raw Materials'];
+  const exportBomRows = boms.map(b => [b.bomNumber, b.finishedProductName, b.quantityProduced, b.lines?.map((l: any) => `${l.rawMaterialProductName} x ${l.quantityRequired}`).join('; ') || '']);
+
+  const exportWoHeaders = ['WO No.', 'Finished Good', 'Target Qty', 'Produced', 'Unit Cost', 'Total Cost', 'Status'];
+  const exportWoRows = workOrders.map(wo => [wo.workOrderNumber, wo.finishedProductName, wo.quantityToProduce, wo.quantityProduced || 0, wo.unitCost, wo.totalCost, String(wo.status)]);
+
   return (
     <div className="p-8 max-w-7xl mx-auto space-y-6">
       {toast && <div className="fixed top-6 right-6 z-50 px-5 py-3 bg-emerald-600 text-white rounded-2xl shadow-lg text-sm font-medium">{toast}</div>}
@@ -171,6 +178,23 @@ export const ManufacturingWorkspace: React.FC<{ activeEntityId: string; entities
           <p className="text-gray-500 text-sm mt-1">Manage BOM recipes, work orders, WIP material issues, and IAS 2 job costing.</p>
         </div>
         <div className="flex gap-2">
+          <DataToolbar
+            exportFileName="manufacturing-boms"
+            exportSheetName="BOM Recipes"
+            exportTitle="Bill of Materials"
+            exportSubtitle="BOM recipes for finished products."
+            exportHeaders={exportBomHeaders}
+            exportRows={exportBomRows}
+          />
+          <DataToolbar
+            exportFileName="manufacturing-work-orders"
+            exportSheetName="Work Orders"
+            exportTitle="Work Orders"
+            exportSubtitle="Manufacturing work orders and production costs."
+            exportHeaders={exportWoHeaders}
+            exportRows={exportWoRows}
+            onRefresh={() => fetchAllManufacturing(activeEntityId)}
+          />
           <Button variant="outline" onClick={() => setShowBomModal(true)}>+ New BOM Recipe</Button>
           <Button className="bg-emerald-600 hover:bg-emerald-700 text-white" onClick={() => setShowWoModal(true)}>+ New Work Order</Button>
         </div>

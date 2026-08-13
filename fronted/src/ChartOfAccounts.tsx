@@ -1,13 +1,14 @@
-import React, { useState, useMemo, useRef, useEffect } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { useCoaStore, useJournalsStore, useSalesStore, useProcurementStore } from './stores';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { 
-  Search, Edit3, Download, Upload, Plus, 
+  Search, Edit3, Plus, 
   ChevronDown, ChevronRight, Lock, Folder, FolderOpen, 
   FileText, Shield, PieChart, ArrowRight, Eye, Calendar, User, CheckCircle
 } from 'lucide-react';
+import { DataToolbar } from '@/components/ui/data-toolbar';
 
 import { type Account } from './api/modules/coa.api';
 type AccountType = string;
@@ -54,7 +55,6 @@ export const ChartOfAccounts: React.FC<ChartOfAccountsProps> = ({
   const [selectedType, setSelectedType] = useState<string>('All');
   const [showDeactivated, setShowDeactivated] = useState<boolean>(true);
   const [collapsedIds, setCollapsedIds] = useState<Record<string, boolean>>({});
-  const fileInputRef = useRef<HTMLInputElement | null>(null);
 
   // Fetch audit trail dependencies on load
   useEffect(() => {
@@ -282,41 +282,14 @@ export const ChartOfAccounts: React.FC<ChartOfAccountsProps> = ({
   }, [query, selectedType, selectedSubtype, selectedStatus, selectedGroup, showDeactivated]);
 
   // CSV operations
-  const handleExportCSV = () => {
-    const listToExport = isFiltering ? filteredAccounts : accounts;
-    const headers = ['ACCOUNT CODE', 'ACCOUNT NAME', 'MAJOR TYPE', 'SUBTYPE', 'LEVEL', 'POSTING ACCOUNT', 'NORMAL BALANCE', 'CURRENCY', 'CURRENT BALANCE', 'STATUS'];
-    const rows = listToExport.map(a => {
-      const bal = getAccountBalancesRecursive(a.id).current;
-      return [
-        `"${a.code}"`,
-        `"${a.name}"`,
-        `"${a.type}"`,
-        `"${a.subtype}"`,
-        `"${a.level}"`,
-        `"${a.isPosting ? 'Yes' : 'No'}"`,
-        `"${a.normalBalance}"`,
-        `"${a.currency}"`,
-        bal,
-        `"${a.status}"`
-      ];
-    });
+  const listToExport = isFiltering ? filteredAccounts : accounts;
+  const exportHeaders = ['ACCOUNT CODE', 'ACCOUNT NAME', 'MAJOR TYPE', 'SUBTYPE', 'LEVEL', 'POSTING ACCOUNT', 'NORMAL BALANCE', 'CURRENCY', 'CURRENT BALANCE', 'STATUS'];
+  const exportRows = listToExport.map(a => {
+    const bal = getAccountBalancesRecursive(a.id).current;
+    return [a.code, a.name, a.type, a.subtype, a.level, a.isPosting ? 'Yes' : 'No', a.normalBalance, a.currency, bal, a.status];
+  });
 
-    const csvContent = 'data:text/csv;charset=utf-8,' + [headers.join(','), ...rows.map(r => r.join(','))].join('\n');
-    const encodedUri = encodeURI(csvContent);
-    const link = document.createElement('a');
-    link.setAttribute('href', encodedUri);
-    link.setAttribute('download', `Zenabook_ChartOfAccounts_${new Date().toISOString().slice(0, 10)}.csv`);
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-  };
-
-  const handleImportCSVClick = () => {
-    fileInputRef.current?.click();
-  };
-
-  const handleImportCSV = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
+  const handleImportCSV = (file: File) => {
     if (!file) return;
 
     const reader = new FileReader();
@@ -705,24 +678,18 @@ export const ChartOfAccounts: React.FC<ChartOfAccountsProps> = ({
           <p className="text-xs text-slate-500 mt-1">View and manage all your chart of accounts</p>
         </div>
         <div className="flex items-center gap-2">
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={handleImportCSVClick}
-            className="h-9 px-3.5 gap-1.5 text-xs font-semibold text-slate-700 bg-white border-slate-200 hover:bg-slate-50 rounded-xl"
-          >
-            <Upload className="w-3.5 h-3.5 text-slate-400" />
-            Import
-          </Button>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={handleExportCSV}
-            className="h-9 px-3.5 gap-1.5 text-xs font-semibold text-slate-700 bg-white border-slate-200 hover:bg-slate-50 rounded-xl"
-          >
-            <Download className="w-3.5 h-3.5 text-slate-400" />
-            Export
-          </Button>
+          <DataToolbar
+            exportFileName={`Zenabook_ChartOfAccounts_${new Date().toISOString().slice(0, 10)}`}
+            exportSheetName="Chart of Accounts"
+            exportTitle="Chart of Accounts Summary"
+            exportSubtitle="All accounts with balances and posting status."
+            exportHeaders={exportHeaders}
+            exportRows={exportRows}
+            onUpload={handleImportCSV}
+            uploadAccept=".csv"
+            uploadLabel="Import"
+            onRefresh={reloadAccounts}
+          />
           <Button
             size="sm"
             onClick={() => { setParentIdForNew(''); openCreate(); }}
@@ -731,13 +698,6 @@ export const ChartOfAccounts: React.FC<ChartOfAccountsProps> = ({
             <Plus className="w-4 h-4" />
             New Account
           </Button>
-          <input 
-            type="file" 
-            ref={fileInputRef} 
-            onChange={handleImportCSV} 
-            accept=".csv" 
-            className="hidden" 
-          />
         </div>
       </div>
 

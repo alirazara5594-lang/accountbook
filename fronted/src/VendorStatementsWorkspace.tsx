@@ -1,6 +1,7 @@
 import { useEffect } from 'react';
 import { useVendorsStore } from './stores';
 import { Button } from '@/components/ui/button';
+import { DataToolbar } from '@/components/ui/data-toolbar';
 
 type VendorStatementsProps = { activeEntityId: string };
 
@@ -17,10 +18,22 @@ function VendorStatementsWorkspace({ activeEntityId }: VendorStatementsProps) {
 
   const fmt = (n?: number) => (n != null ? n.toLocaleString() : '0.00');
 
+  const exportHeaders = ['Vendor', 'Vendor Number', 'Total Purchases', 'Unpaid Invoices', 'Status'];
+  const exportRows = vendors.map((v: any) => [v.name, v.vendorNumber || '', 0, 0, v.status]);
+
   return (
     <section className="workspace-card">
       <header className="workspace-header">
         <h2>Vendor Statements</h2>
+        <DataToolbar
+          exportFileName="vendor-statements"
+          exportSheetName="Vendor Statements"
+          exportTitle="Vendor Statements"
+          exportSubtitle="Vendor balances and unpaid invoice register."
+          exportHeaders={exportHeaders}
+          exportRows={exportRows}
+          onRefresh={() => fetchVendors(activeEntityId)}
+        />
       </header>
       {loading && <p>Loading vendors…</p>}
       {error && <p className="error">{error}</p>}

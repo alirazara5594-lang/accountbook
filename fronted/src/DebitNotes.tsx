@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
+import { DataToolbar } from '@/components/ui/data-toolbar';
 
 type Tab = 'dn' | 'ec' | 'pn' | 'sr';
 
@@ -23,6 +24,14 @@ export const DebitNotes: React.FC<{ activeEntityId: string; entities?: any[] }> 
           <p className="text-gray-500 text-xs mt-1">Record vendor debit notes, track expenses, and manage payment obligations.</p>
         </div>
         <div className="flex gap-2">
+          <DataToolbar
+            exportFileName="debit-notes"
+            exportSheetName="Debit Notes"
+            exportTitle="Debit Notes Management"
+            exportSubtitle="Vendor debit notes, expense claims and payment obligations."
+            exportHeaders={['Debit Note Number', 'Vendor', 'Date', 'Total Amount', 'Status']}
+            exportRows={[]}
+          />
           <Button variant="outline" size="sm" onClick={() => setActiveTab('dn')}>+ New Debit Note</Button>
         </div>
       </div>

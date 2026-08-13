@@ -1,6 +1,7 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useMemo } from 'react';
 import { useCreditNotesStore } from './stores/useCreditNotesStore';
 import { useCustomersStore, useCoaStore } from './stores';
+import { DataToolbar } from '@/components/ui/data-toolbar';
 
 function CreditNotesWorkspace() {
   const { creditNotes, fetchAll, create, post, void: voidNote, loading, error } = useCreditNotesStore();
@@ -10,6 +11,7 @@ function CreditNotesWorkspace() {
   const companies = useCoaStore((s) => s.accounts as any[]);
 
   const [showCreate, setShowCreate] = useState(false);
+  const [query, setQuery] = useState('');
   const [form, setForm] = useState({
     companyId: '',
     customerId: '',
@@ -48,13 +50,42 @@ function CreditNotesWorkspace() {
 
   const formatDate = (dateStr: string) => new Date(dateStr).toLocaleDateString();
 
+  const filtered = useMemo(() => {
+    if (!query.trim()) return creditNotes;
+    const q = query.toLowerCase();
+    return creditNotes.filter((cn: any) =>
+      (cn.customerId || '').toLowerCase().includes(q) ||
+      (cn.notes || '').toLowerCase().includes(q) ||
+      (cn.status || '').toLowerCase().includes(q)
+    );
+  }, [creditNotes, query]);
+
+  const exportHeaders = ['Date', 'Customer', 'Reason', 'Amount', 'Status'];
+  const exportRows = filtered.map((cn: any) => [formatDate(cn.creditNoteDate || cn.createdAt), cn.customerId, cn.notes || '', cn.totalAmount, cn.status]);
+  const totalCredit = filtered.reduce((s: number, cn: any) => s + (cn.totalAmount || 0), 0);
+
   return (
     <div className="credit-notes-workspace glass">
       <header className="workspace-header">
         <h2>Credit Notes</h2>
-        <button className="primary" onClick={() => setShowCreate(true)}>
-          ＋ Create Credit Note
-        </button>
+        <div className="flex items-center gap-2">
+          <DataToolbar
+            query={query}
+            setQuery={setQuery}
+            searchPlaceholder="Search customer, reason, status..."
+            exportFileName="credit-notes"
+            exportSheetName="Credit Notes"
+            exportTitle="Credit Notes"
+            exportSubtitle="Customer credit notes with draft → posted lifecycle."
+            exportHeaders={exportHeaders}
+            exportRows={exportRows}
+            exportTotals={[{ label: 'Total Credit', value: totalCredit }]}
+            onRefresh={() => fetchAll()}
+          />
+          <button className="primary" onClick={() => setShowCreate(true)}>
+            ＋ Create Credit Note
+          </button>
+        </div>
       </header>
       {loading && <p>Loading...</p>}
       {error && <p className="error">{error}</p>}
@@ -70,7 +101,7 @@ function CreditNotesWorkspace() {
           </tr>
         </thead>
         <tbody>
-          {creditNotes.map((cn) => (
+          {filtered.map((cn) => (
             <tr key={cn.id} className={cn.status === 'Posted' ? 'posted' : cn.status === 'Void' ? 'voided' : ''}>
               <td>{formatDate(cn.creditNoteDate || cn.createdAt)}</td>
               <td>{cn.customerId}</td>

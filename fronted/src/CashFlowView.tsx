@@ -2,10 +2,21 @@ import React from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { DollarSign } from 'lucide-react';
+import { DataToolbar } from '@/components/ui/data-toolbar';
 import type { Entity } from './EntitySettings';
 
 export const CashFlowView: React.FC<{ activeEntityId: string; entities: Entity[] }> = ({ activeEntityId, entities }) => {
   const currentEntity = entities.find(e => e.id === activeEntityId);
+
+  const exportHeaders = ['Cash Flow Activity Line Item', 'Amount (PKR)'];
+  const exportRows: (string | number)[][] = [
+    ['1. Cash Flows from Operating Activities', ''],
+    ['Cash Received from Customers & Collections', 12400000],
+    ['Cash Paid to Vendors, Suppliers & Operations', -7850000],
+    ['2. Cash Flows from Investing & Financing Activities', ''],
+    ['Capital Expenditure & Machinery Acquisition', -1200000],
+    ['NET INCREASE IN LIQUID CASH & BANK RESERVES', 3350000],
+  ];
 
   return (
     <div className="space-y-6 font-sans text-slate-800 p-2 md:p-6">
@@ -17,6 +28,14 @@ export const CashFlowView: React.FC<{ activeEntityId: string; entities: Entity[]
           <h1 className="text-2xl font-bold text-slate-900 tracking-tight mt-1">Cash Flow Statements (IAS 7)</h1>
           <p className="text-xs text-slate-500">Operating, Investing, and Financing Cash Movements for {currentEntity?.name || 'Active Entity'}.</p>
         </div>
+        <DataToolbar
+          exportFileName="cash-flow-statement"
+          exportSheetName="Cash Flow Statement"
+          exportTitle="Cash Flow Statements (IAS 7)"
+          exportSubtitle={`Direct method statement of cash flows for ${currentEntity?.name || 'Active Entity'} (IAS 7).`}
+          exportHeaders={exportHeaders}
+          exportRows={exportRows}
+        />
       </div>
 
       <Card className="bg-white border-slate-200 shadow-xs">

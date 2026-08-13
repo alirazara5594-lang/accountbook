@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { RefreshCw, CheckCircle2, Scale } from 'lucide-react';
+import { DataToolbar } from '@/components/ui/data-toolbar';
 import type { Entity } from './EntitySettings';
 import { apiClient } from './api/client';
 
@@ -59,6 +60,9 @@ export const BankReconciliationView: React.FC<{ activeEntityId: string; entities
   const statementValue = parseFloat(statementBalance);
   const glDisplay = currentGl ?? 0;
   const diff = Number.isFinite(statementValue) ? glDisplay - statementValue : 0;
+
+  const exportHeaders = ['Date', 'Bank Account', 'GL Balance', 'Statement Balance', 'Difference', 'Status'];
+  const exportRows = reconciliations.map(r => [r.date, `${r.bankAccountCode} — ${r.bankAccountName}`, r.glBalance, r.statementBalance, r.difference, r.status]);
 
   const handleComplete = async () => {
     if (!selectedBankId) return;
@@ -160,8 +164,21 @@ export const BankReconciliationView: React.FC<{ activeEntityId: string; entities
 
       <Card className="bg-white border-slate-200 shadow-xs">
         <CardHeader className="pb-3 border-b border-slate-200">
-          <CardTitle className="text-base font-bold text-slate-900">Reconciliation History</CardTitle>
-          <CardDescription className="text-xs text-slate-500">All recorded reconciliation runs for the active entity.</CardDescription>
+          <div className="flex justify-between items-center">
+            <div>
+              <CardTitle className="text-base font-bold text-slate-900">Reconciliation History</CardTitle>
+              <CardDescription className="text-xs text-slate-500">All recorded reconciliation runs for the active entity.</CardDescription>
+            </div>
+            <DataToolbar
+              exportFileName="bank-reconciliations"
+              exportSheetName="Bank Reconciliations"
+              exportTitle="Bank Statement Reconciliation"
+              exportSubtitle={`Reconciliation runs for ${currentEntity?.name || 'Active Entity'} (IAS 7).`}
+              exportHeaders={exportHeaders}
+              exportRows={exportRows}
+              onRefresh={() => loadAll()}
+            />
+          </div>
         </CardHeader>
         <CardContent className="p-0">
           <Table>

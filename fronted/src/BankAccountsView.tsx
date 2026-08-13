@@ -3,7 +3,8 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Building2, Search, Download, Plus, CheckCircle2, AlertCircle, Edit3, FileText, Globe, RefreshCw } from 'lucide-react';
+import { Building2, Search, Plus, CheckCircle2, AlertCircle, Edit3, FileText, Globe } from 'lucide-react';
+import { DataToolbar } from '@/components/ui/data-toolbar';
 import type { Entity } from './EntitySettings';
 import { apiClient } from './api/client';
 
@@ -197,30 +198,11 @@ export const BankAccountsView: React.FC<BankAccountsViewProps> = ({ activeEntity
     }
   };
 
-  const handleExportCSV = () => {
-    const headers = ['GL CODE', 'BANK ACCOUNT NAME', 'BANK INSTITUTION', 'BRANCH', 'ACCOUNT NUMBER', 'IBAN', 'SWIFT', 'CURRENCY', 'BALANCE', 'STATUS'];
-    const rows = filtered.map(a => [
-      `"${a.code}"`,
-      `"${a.name}"`,
-      `"${a.bankName}"`,
-      `"${a.branchName}"`,
-      `"${a.accountNumber}"`,
-      `"${a.iban}"`,
-      `"${a.swift}"`,
-      `"${a.currency}"`,
-      a.balance,
-      `"${a.status}"`
-    ]);
-
-    const csvContent = 'data:text/csv;charset=utf-8,' + [headers.join(','), ...rows.map(r => r.join(','))].join('\n');
-    const encodedUri = encodeURI(csvContent);
-    const link = document.createElement('a');
-    link.setAttribute('href', encodedUri);
-    link.setAttribute('download', `bank_accounts_summary_${new Date().toISOString().slice(0, 10)}.csv`);
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-  };
+  const exportHeaders = ['GL CODE', 'BANK ACCOUNT NAME', 'BANK INSTITUTION', 'BRANCH', 'ACCOUNT NUMBER', 'IBAN', 'SWIFT', 'CURRENCY', 'BALANCE', 'STATUS'];
+  const exportRows = filtered.map(a => [
+    a.code, a.name, a.bankName, a.branchName, a.accountNumber, a.iban, a.swift, a.currency, a.balance, a.status,
+  ]);
+  const totalBalance = filtered.reduce((s, a) => s + (a.balance || 0), 0);
 
   return (
     <div className="space-y-6 font-sans text-slate-800 p-2 md:p-6">
@@ -237,24 +219,16 @@ export const BankAccountsView: React.FC<BankAccountsViewProps> = ({ activeEntity
         </div>
 
         <div className="flex items-center gap-2">
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={loadBankAccounts}
-            className="h-9 gap-1.5 text-xs font-semibold text-slate-700 bg-white border-slate-200 hover:bg-slate-50 shadow-xs"
-          >
-            <RefreshCw className="w-4 h-4 text-slate-500" />
-            Refresh
-          </Button>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={handleExportCSV}
-            className="h-9 gap-1.5 text-xs font-semibold text-slate-700 bg-white border-slate-200 hover:bg-slate-50 shadow-xs"
-          >
-            <Download className="w-4 h-4 text-slate-500" />
-            Export CSV
-          </Button>
+          <DataToolbar
+            exportFileName={`bank_accounts_summary_${new Date().toISOString().slice(0, 10)}`}
+            exportSheetName="Bank Accounts"
+            exportTitle="Bank Accounts Summary"
+            exportSubtitle={`Commercial bank account balances for ${currentEntity?.name || 'Active Entity'}.`}
+            exportHeaders={exportHeaders}
+            exportRows={exportRows}
+            exportTotals={[{ label: 'Total Balance', value: totalBalance }]}
+            onRefresh={loadBankAccounts}
+          />
 
           <Button
             size="sm"

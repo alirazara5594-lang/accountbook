@@ -1,5 +1,6 @@
 import React, { useEffect } from 'react';
 import { useTaxStore } from './stores';
+import { DataToolbar } from '@/components/ui/data-toolbar';
 
 interface TaxAuthority {
   id: string;
@@ -38,6 +39,16 @@ export const TaxConfiguration: React.FC = () => {
 
   if (loading) return <div className="p-8 text-center text-gray-500">Loading global tax configurations...</div>;
 
+  const authHeaders = ['Authority Name', 'Country', 'Registration No.'];
+  const authRows = authorities.map(auth => [auth.name, auth.country || '', auth.registrationNumber || '']);
+
+  const codeHeaders = ['Code', 'Name', 'Authority', 'Current Rate', 'Status'];
+  const codeRows = codes.map(code => {
+    const authority = authorities.find(a => a.id === code.taxAuthorityId);
+    const currentRate = code.rates.length > 0 ? code.rates[code.rates.length - 1].percentage : 0;
+    return [code.code, code.name, `${authority?.name} (${authority?.country})`, `${currentRate}%`, code.isActive ? 'Active' : 'Inactive'];
+  });
+
   return (
     <div className="p-8 max-w-[1200px] mx-auto animate-fade-in">
       <div className="flex justify-between items-center mb-8">
@@ -45,9 +56,15 @@ export const TaxConfiguration: React.FC = () => {
           <h1 className="text-3xl font-bold text-gray-900 tracking-tight">Tax Configuration</h1>
           <p className="text-gray-500 mt-1">Manage global tax authorities, VAT, GST, and Sales Tax codes</p>
         </div>
-        <button className="px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-xl shadow-sm shadow-blue-600/20 transition-all active:scale-95">
-          + New Tax Code
-        </button>
+        <DataToolbar
+          exportFileName="tax-configuration"
+          exportSheetName="Tax Configuration"
+          exportTitle="Tax Configuration"
+          exportSubtitle="Global tax authorities, VAT, GST and Sales Tax codes."
+          exportHeaders={authHeaders}
+          exportRows={authRows}
+          onRefresh={() => fetchAllTaxData()}
+        />
       </div>
 
       <div className="bg-blue-50/50 p-4 rounded-xl border border-blue-100 mb-8 flex gap-3 text-sm text-blue-800">
@@ -81,8 +98,16 @@ export const TaxConfiguration: React.FC = () => {
         </div>
 
         <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
-          <div className="p-6 border-b border-gray-100">
+          <div className="p-6 border-b border-gray-100 flex items-center justify-between">
             <h2 className="text-lg font-semibold text-gray-900">Tax Codes & Rates</h2>
+            <DataToolbar
+              exportFileName="tax-codes-rates"
+              exportSheetName="Tax Codes & Rates"
+              exportTitle="Tax Codes & Rates"
+              exportSubtitle="VAT, GST and Sales Tax codes with current rates."
+              exportHeaders={codeHeaders}
+              exportRows={codeRows}
+            />
           </div>
           <table className="w-full text-left text-sm">
             <thead>

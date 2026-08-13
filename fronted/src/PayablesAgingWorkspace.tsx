@@ -1,6 +1,7 @@
 import { useEffect } from 'react';
 import { useReportsStore } from './stores/useReportsStore';
 import { useVendorsStore } from './stores';
+import { DataToolbar } from '@/components/ui/data-toolbar';
 
 type PayablesAgingProps = { activeEntityId: string };
 
@@ -15,10 +16,27 @@ function PayablesAgingWorkspace({ activeEntityId }: PayablesAgingProps) {
   // Format currency safely
   const fmt = (n?: number) => (n != null ? n.toLocaleString() : '0.00');
 
+  const exportHeaders = ['Vendor', 'Outstanding', 'Current', '31-60 Days', '61-90 Days', '90+ Days', 'Status'];
+  const exportRows = vendors.map((v: any) => [
+    v.name, v.outstandingBalance || 0, v.currentAging?.current || 0,
+    v.currentAging?.['30'] || 0, v.currentAging?.['60'] || 0, v.currentAging?.['90'] || 0,
+    v.outstandingBalance > 0 ? 'Outstanding' : 'Current',
+  ]);
+
   return (
     <section className="workspace-card">
       <header className="workspace-header">
         <h2>Payables Aging</h2>
+        <DataToolbar
+          exportFileName="payables-aging"
+          exportSheetName="Payables Aging"
+          exportTitle="Payables Aging Report"
+          exportSubtitle="Aging of vendor balances by age bucket."
+          exportHeaders={exportHeaders}
+          exportRows={exportRows}
+          exportTotals={[{ label: 'Total Payables', value: incomeStatement?.totalPayables || 0 }]}
+          onRefresh={() => fetchIncomeStatement({ entityId: activeEntityId })}
+        />
       </header>
       {loading && <p>Loading aging report…</p>}
       {error && <p className="error">{error}</p>}

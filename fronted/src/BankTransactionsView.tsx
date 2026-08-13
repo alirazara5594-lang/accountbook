@@ -1,8 +1,9 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { ArrowLeftRight, Search } from 'lucide-react';
+import { DataToolbar } from '@/components/ui/data-toolbar';
 import type { Entity } from './EntitySettings';
 
 export const BankTransactionsView: React.FC<{ activeEntityId: string; entities: Entity[] }> = ({ activeEntityId, entities }) => {
@@ -19,6 +20,22 @@ export const BankTransactionsView: React.FC<{ activeEntityId: string; entities: 
     const formatted = new Intl.NumberFormat('en-US', { style: 'currency', currency: curr, maximumFractionDigits: 2 }).format(Math.abs(val));
     return val < 0 ? `-${formatted}` : `+${formatted}`;
   };
+
+  const filtered = useMemo(() => {
+    if (!query.trim()) return transactions;
+    const q = query.toLowerCase();
+    return transactions.filter(t =>
+      t.date.includes(q) ||
+      t.ref.toLowerCase().includes(q) ||
+      t.bank.toLowerCase().includes(q) ||
+      t.payee.toLowerCase().includes(q) ||
+      t.mode.toLowerCase().includes(q) ||
+      t.type.toLowerCase().includes(q)
+    );
+  }, [query]);
+
+  const exportHeaders = ['Date', 'Reference', 'Bank Account', 'Payee / Recipient', 'Mode', 'Type', 'Amount', 'Currency'];
+  const exportRows = filtered.map(t => [t.date, t.ref, t.bank, t.payee, t.mode, t.type, t.amount, t.curr]);
 
   return (
     <div className="space-y-6 font-sans text-slate-800 p-2 md:p-6">
@@ -42,6 +59,14 @@ export const BankTransactionsView: React.FC<{ activeEntityId: string; entities: 
             className="pl-9 h-9 bg-white border border-slate-200 rounded-lg text-xs"
           />
         </div>
+        <DataToolbar
+          exportFileName="bank-transactions"
+          exportSheetName="Bank Transactions"
+          exportTitle="Bank & Cash Transactions"
+          exportSubtitle={`General ledger bank movements for ${currentEntity?.name || 'Active Entity'}.`}
+          exportHeaders={exportHeaders}
+          exportRows={exportRows}
+        />
       </div>
 
       <div className="bg-white border border-slate-200 rounded-xl overflow-hidden shadow-xs">
@@ -58,7 +83,7 @@ export const BankTransactionsView: React.FC<{ activeEntityId: string; entities: 
             </TableRow>
           </TableHeader>
           <TableBody className="divide-y divide-slate-100">
-            {transactions.map(t => (
+            {filtered.map(t => (
               <TableRow key={t.id} className="hover:bg-slate-50/80">
                 <TableCell className="py-3.5 pl-4 font-mono text-xs text-slate-600">{t.date}</TableCell>
                 <TableCell className="py-3.5 font-mono text-xs font-bold text-slate-800">{t.ref}</TableCell>
