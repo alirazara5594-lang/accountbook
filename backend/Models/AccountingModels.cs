@@ -1078,3 +1078,77 @@ public record VoucherRequest(
     string? Narration,
     Guid? CompanyId = null
 );
+
+// ─── Expense Claims ────────────────────────────────────────────────────────────
+public enum ExpenseClaimStatus { Draft, Submitted, Approved, Rejected, Paid }
+
+public class ExpenseClaimLine
+{
+    public Guid Id { get; init; } = Guid.NewGuid();
+    public Guid? AccountId { get; set; }
+    public string Category { get; set; } = "";
+    public string Description { get; set; } = "";
+    public decimal Amount { get; set; }
+    public string Currency { get; set; } = "USD";
+}
+
+public class ExpenseClaim
+{
+    public Guid Id { get; init; } = Guid.NewGuid();
+    public required string ClaimNumber { get; set; }
+    public string EmployeeName { get; set; } = "";
+    public string Department { get; set; } = "";
+    public DateOnly Date { get; set; }
+    public ExpenseClaimStatus Status { get; set; } = ExpenseClaimStatus.Draft;
+    public List<ExpenseClaimLine> Lines { get; set; } = [];
+    public decimal TotalAmount => Lines.Sum(l => l.Amount);
+    public string Currency { get; set; } = "USD";
+    public string? Notes { get; set; }
+    public Guid? JournalEntryId { get; set; }
+    public Guid? CompanyId { get; set; }
+    public DateTime CreatedAt { get; init; } = DateTime.UtcNow;
+    public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
+}
+
+public record ExpenseClaimLineRequest(
+    Guid? AccountId,
+    string? Category,
+    string? Description,
+    decimal Amount,
+    string? Currency = null
+);
+
+public record ExpenseClaimRequest(
+    string? EmployeeName,
+    string? Department,
+    DateOnly Date,
+    List<ExpenseClaimLineRequest> Lines,
+    string? Currency,
+    string? Notes,
+    Guid? CompanyId = null
+);
+
+public record ExpenseClaimStatusRequest(ExpenseClaimStatus Status);
+
+// ─── Bank Statement Imports ───────────────────────────────────────────────────
+public class BankStatementImport
+{
+    public Guid Id { get; init; } = Guid.NewGuid();
+    public Guid? BankAccountId { get; set; }
+    public string FileName { get; set; } = "Manual statement import";
+    public string Format { get; set; } = "CSV";
+    public int TransactionCount { get; set; }
+    public decimal TotalAmount { get; set; }
+    public string Status { get; set; } = "Imported";
+    public Guid? CompanyId { get; set; }
+    public DateTime ImportedAt { get; init; } = DateTime.UtcNow;
+}
+
+public record BankStatementImportRequest(
+    Guid? BankAccountId,
+    string? FileName,
+    string? Format,
+    int TransactionCount,
+    decimal TotalAmount,
+    Guid? CompanyId = null
+);

@@ -28,4 +28,8 @@ export const reportsApi = {
   getApLedger: async (params?: Record<string, any>): Promise<any> => {
     return apiClient('/reports/ap-ledger', { params });
   },
+
+  getPurchaseReports: async (params?: Record<string, any>): Promise<any> => {
+    return apiClient('/reports/purchase-reports', { params });
+  },
 };

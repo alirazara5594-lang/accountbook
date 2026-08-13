@@ -181,4 +181,72 @@ public class ReportsController(AccountingStore store) : ControllerBase
         var pastDue = bills.Where(b => b.AmountDue > 0 && (DateTime.Parse(b.DueDate) - DateTime.Today).Days < 0).Sum(b => b.AmountDue);
         return Ok(new { apAccountId = apId, current, pastDue, totalDue = current + pastDue, bills });
     }
+
+    [HttpGet("purchase-reports")]
+    public IActionResult PurchaseReports([FromQuery] Guid? companyId, [FromQuery] string? from, [FromQuery] string? to)
+    {
+        bool InRange(DateOnly date)
+        {
+            if (DateOnly.TryParse(from, out var fromDate) && date < fromDate) return false;
+            if (DateOnly.TryParse(to, out var toDate) && date > toDate) return false;
+            return true;
+        }
+
+        var bills = store.VendorBills
+            .Where(b => companyId == null || b.CompanyId == companyId)
+            .Where(b => InRange(b.Date))
+            .ToList();
+        var purchaseOrders = store.PurchaseOrders
+            .Where(p => companyId == null || p.CompanyId == companyId)
+            .Where(p => InRange(p.Date))
+            .ToList();
+        var payments = store.VendorPayments
+            .Where(p => companyId == null || p.CompanyId == companyId)
+            .Where(p => InRange(p.PaymentDate))
+            .ToList();
+
+        var vendors = store.Vendors.ToDictionary(v => v.Id, v => v.Name);
+        var vendorSpend = bills
+            .GroupBy(b => b.VendorId)
+            .Select(g => new
+            {
+                VendorId = g.Key,
+                VendorName = vendors.GetValueOrDefault(g.Key, "Unknown"),
+                BillCount = g.Count(),
+                TotalBilled = g.Sum(b => b.TotalAmount),
+                AmountPaid = g.Sum(b => b.AmountPaid),
+                AmountDue = g.Sum(b => b.AmountDue)
+            })
+            .OrderByDescending(v => v.TotalBilled)
+            .ToList();
+
+        return Ok(new
+        {
+            totalPurchaseOrders = purchaseOrders.Count,
+            purchaseOrderValue = purchaseOrders.Sum(p => p.Lines.Sum(l => l.TotalAmount)),
+            totalBills = bills.Count,
+            totalBilled = bills.Sum(b => b.TotalAmount),
+            amountPaid = bills.Sum(b => b.AmountPaid),
+            amountDue = bills.Sum(b => b.AmountDue),
+            vendorPayments = payments.Sum(p => p.Amount),
+            openBills = bills.Count(b => b.Status == VendorBillStatus.Open || b.Status == VendorBillStatus.PartiallyPaid),
+            vendorSpend,
+            recentBills = bills
+                .OrderByDescending(b => b.Date)
+                .Take(25)
+                .Select(b => new
+                {
+                    b.Id,
+                    b.BillNumber,
+                    VendorName = vendors.GetValueOrDefault(b.VendorId, "Unknown"),
+                    Date = b.Date.ToString("yyyy-MM-dd"),
+                    DueDate = b.DueDate.ToString("yyyy-MM-dd"),
+                    b.TotalAmount,
+                    b.AmountPaid,
+                    b.AmountDue,
+                    Status = b.Status.ToString(),
+                    b.CurrencyCode
+                })
+        });
+    }
 }

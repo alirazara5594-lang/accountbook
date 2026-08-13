@@ -5,6 +5,8 @@ import {
   type CashAccount,
   type BankTransaction,
   type FundTransfer,
+  type BankConnection,
+  type BankImport,
 } from '../api/modules/banking.api';
 
 interface BankingState {
@@ -12,6 +14,8 @@ interface BankingState {
   cashAccounts: CashAccount[];
   transactions: BankTransaction[];
   transfers: FundTransfer[];
+  connections: BankConnection[];
+  imports: BankImport[];
   reconciliations: any[];
   loading: boolean;
   error: string | null;
@@ -20,6 +24,10 @@ interface BankingState {
   fetchCashAccounts: (companyId?: string) => Promise<CashAccount[]>;
   fetchTransactions: (bankAccountId?: string, companyId?: string) => Promise<BankTransaction[]>;
   fetchTransfers: (companyId?: string) => Promise<FundTransfer[]>;
+  fetchConnections: (companyId?: string) => Promise<BankConnection[]>;
+  syncConnection: (accountId: string, companyId?: string) => Promise<void>;
+  fetchImports: (companyId?: string) => Promise<BankImport[]>;
+  createImport: (data: any) => Promise<BankImport>;
   fetchReconciliations: (bankAccountId?: string) => Promise<any[]>;
   fetchAllBanking: (companyId?: string) => Promise<void>;
 
@@ -33,6 +41,8 @@ export const useBankingStore = create<BankingState>((set, get) => ({
   cashAccounts: [],
   transactions: [],
   transfers: [],
+  connections: [],
+  imports: [],
   reconciliations: [],
   loading: false,
   error: null,
@@ -75,6 +85,37 @@ export const useBankingStore = create<BankingState>((set, get) => ({
     } catch {
       return [];
     }
+  },
+
+  fetchConnections: async (companyId?: string) => {
+    try {
+      const connections = await bankingApi.getBankConnections(companyId);
+      set({ connections });
+      return connections;
+    } catch {
+      return [];
+    }
+  },
+
+  syncConnection: async (accountId: string, companyId?: string) => {
+    await bankingApi.syncBankConnection(accountId);
+    await get().fetchConnections(companyId);
+  },
+
+  fetchImports: async (companyId?: string) => {
+    try {
+      const imports = await bankingApi.getBankImports(companyId);
+      set({ imports });
+      return imports;
+    } catch {
+      return [];
+    }
+  },
+
+  createImport: async (data: any) => {
+    const res = await bankingApi.createBankImport(data);
+    await get().fetchImports(data.companyId);
+    return res;
   },
 
   fetchReconciliations: async (bankAccountId?: string) => {

@@ -43,6 +43,8 @@ public class AccountingStore
     private readonly List<Budget> _budgets = [];
     private readonly List<PeriodClose> _periodCloses = [];
     private readonly List<Voucher> _vouchers = [];
+    private readonly List<ExpenseClaim> _expenseClaims = [];
+    private readonly List<BankStatementImport> _bankImports = [];
     private readonly List<AccountMapping> _mappings = [];
     private readonly List<AuditItem> _auditLog = [];
     private readonly Dictionary<Guid, List<AuditItem>> _history = [];
@@ -84,6 +86,8 @@ public class AccountingStore
         List<Budget>? Budgets = null,
         List<PeriodClose>? PeriodCloses = null,
         List<Voucher>? Vouchers = null,
+        List<ExpenseClaim>? ExpenseClaims = null,
+        List<BankStatementImport>? BankImports = null,
         List<AuditItem>? AuditLog = null);
 
     public AccountingStore(IDbContextFactory<AccountingDbContext>? dbFactory = null)
@@ -283,6 +287,8 @@ public class AccountingStore
     public IReadOnlyList<Budget> Budgets => _budgets;
     public IReadOnlyList<PeriodClose> PeriodCloses => _periodCloses;
     public IReadOnlyList<Voucher> Vouchers => _vouchers;
+    public IReadOnlyList<ExpenseClaim> ExpenseClaims => _expenseClaims;
+    public IReadOnlyList<BankStatementImport> BankImports => _bankImports;
 
     public string NextReceiptNumber()
     {
@@ -758,6 +764,159 @@ public class AccountingStore
             }
 
             return result;
+        }
+    }
+
+    public List<object> GetBankConnections(Guid? companyId)
+    {
+        lock (_lock)
+        {
+            var bankParent = _accounts.FirstOrDefault(a => a.Code == "11200");
+            if (bankParent == null) return [];
+            return _accounts
+                .Where(a => a.ParentId == bankParent.Id && a.Status == AccountStatus.Active)
+                .OrderBy(a => a.Code)
+                .Select(a => new
+                {
+                    a.Id,
+                    a.Code,
+                    a.Name,
+                    Provider = a.CustomFields.TryGetValue("BankName", out var bankName) ? bankName : a.Name,
+                    AccountNumber = a.Code,
+                    Status = a.ReconciliationEnabled ? "Connected" : "Manual Import",
+                    FeedType = a.ReconciliationEnabled ? "Open Banking Feed" : "Manual Statement Upload",
+                    a.Currency,
+                    a.UpdatedAt,
+                    CompanyId = companyId
+                })
+                .Cast<object>()
+                .ToList();
+        }
+    }
+
+    public bool SyncBankConnection(Guid accountId, out Account? account, out string? error)
+    {
+        lock (_lock)
+        {
+            account = _accounts.FirstOrDefault(a => a.Id == accountId);
+            error = null;
+            if (account == null) { error = "Bank account not found."; return false; }
+            account.ReconciliationEnabled = true;
+            account.UpdatedAt = DateTime.UtcNow;
+            Persist();
+            return true;
+        }
+    }
+
+    public bool CreateBankImport(BankStatementImportRequest request, out BankStatementImport? import, out string? error)
+    {
+        lock (_lock)
+        {
+            import = null; error = null;
+            if (request.TransactionCount < 0) { error = "Transaction count cannot be negative."; return false; }
+            if (request.BankAccountId.HasValue && !_accounts.Any(a => a.Id == request.BankAccountId.Value))
+            { error = "Bank account not found."; return false; }
+            import = new BankStatementImport
+            {
+                BankAccountId = request.BankAccountId,
+                FileName = request.FileName?.Trim() ?? "Manual statement import",
+                Format = request.Format?.Trim() ?? "CSV",
+                TransactionCount = request.TransactionCount,
+                TotalAmount = request.TotalAmount,
+                CompanyId = request.CompanyId,
+                Status = "Imported"
+            };
+            _bankImports.Add(import);
+            Persist();
+            return true;
+        }
+    }
+
+    public string NextExpenseClaimNumber()
+    {
+        var numbers = _expenseClaims
+            .Select(c => c.ClaimNumber)
+            .Where(n => n.StartsWith("EC-") && int.TryParse(n[3..], out _))
+            .Select(n => int.Parse(n[3..]))
+            .DefaultIfEmpty(0);
+        return $"EC-{numbers.Max() + 1:D4}";
+    }
+
+    public bool CreateExpenseClaim(ExpenseClaimRequest request, out ExpenseClaim? claim, out string? error)
+    {
+        lock (_lock)
+        {
+            claim = null; error = null;
+            if (request.Lines.Count == 0) { error = "At least one expense line is required."; return false; }
+            if (request.Lines.Any(l => l.Amount <= 0)) { error = "Expense line amounts must be positive."; return false; }
+
+            var fallbackExpenseAccountId = GetMappedAccount("Purchases");
+            claim = new ExpenseClaim
+            {
+                ClaimNumber = NextExpenseClaimNumber(),
+                EmployeeName = request.EmployeeName?.Trim() ?? "Employee",
+                Department = request.Department?.Trim() ?? "General",
+                Date = request.Date,
+                Status = ExpenseClaimStatus.Submitted,
+                Currency = request.Currency ?? "USD",
+                Notes = request.Notes,
+                CompanyId = request.CompanyId,
+                Lines = request.Lines.Select(l =>
+                {
+                    var accountId = l.AccountId.HasValue && _accounts.Any(a => a.Id == l.AccountId.Value && a.IsPosting && a.Status == AccountStatus.Active)
+                        ? l.AccountId.Value
+                        : fallbackExpenseAccountId;
+                    return new ExpenseClaimLine
+                    {
+                        AccountId = accountId,
+                        Category = l.Category?.Trim() ?? "General Expense",
+                        Description = l.Description?.Trim() ?? "Expense claim line",
+                        Amount = l.Amount,
+                        Currency = l.Currency ?? request.Currency ?? "USD"
+                    };
+                }).ToList()
+            };
+
+            _expenseClaims.Add(claim);
+            Persist();
+            return true;
+        }
+    }
+
+    public bool SetExpenseClaimStatus(Guid id, ExpenseClaimStatus status, out ExpenseClaim? claim, out string? error)
+    {
+        lock (_lock)
+        {
+            claim = _expenseClaims.FirstOrDefault(c => c.Id == id); error = null;
+            if (claim == null) { error = "Expense claim not found."; return false; }
+            var selectedClaim = claim;
+            if (status == ExpenseClaimStatus.Paid && selectedClaim.JournalEntryId == null)
+            {
+                var cashAccountId = GetDefaultDepositAccount();
+                var lines = selectedClaim.Lines
+                    .Select(l => new JournalLine(l.AccountId ?? GetMappedAccount("Purchases"), l.Amount, 0, $"Expense claim {selectedClaim.ClaimNumber}: {l.Category}", null, l.Currency, 1, selectedClaim.CompanyId))
+                    .ToList();
+                lines.Add(new JournalLine(cashAccountId, 0, selectedClaim.TotalAmount, $"Expense claim reimbursement: {selectedClaim.ClaimNumber}", null, selectedClaim.Currency, 1, selectedClaim.CompanyId));
+
+                var journal = new JournalEntry
+                {
+                    Date = selectedClaim.Date,
+                    Reference = selectedClaim.ClaimNumber,
+                    Description = $"Expense claim {selectedClaim.ClaimNumber} — {selectedClaim.EmployeeName}",
+                    TransactionType = TransactionType.Payment,
+                    CurrencyCode = selectedClaim.Currency,
+                    CompanyId = selectedClaim.CompanyId,
+                    Lines = lines,
+                    Status = JournalStatus.Posted
+                };
+                _entries.Add(journal);
+                selectedClaim.JournalEntryId = journal.Id;
+            }
+
+            claim.Status = status;
+            claim.UpdatedAt = DateTime.UtcNow;
+            Persist();
+            return true;
         }
     }
 
@@ -3151,6 +3310,8 @@ public class AccountingStore
         _budgets.Clear(); _budgets.AddRange(state.Budgets ?? []);
         _periodCloses.Clear(); _periodCloses.AddRange(state.PeriodCloses ?? []);
         _vouchers.Clear(); _vouchers.AddRange(state.Vouchers ?? []);
+        _expenseClaims.Clear(); _expenseClaims.AddRange(state.ExpenseClaims ?? []);
+        _bankImports.Clear(); _bankImports.AddRange(state.BankImports ?? []);
         _auditLog.Clear(); _auditLog.AddRange(state.AuditLog ?? []);
         _mappings.Clear(); _mappings.AddRange(state.Mappings ?? []);
         if (state.History != null)
@@ -3165,7 +3326,7 @@ public class AccountingStore
     {
         if (_dbFactory is null) return;
         using var db = _dbFactory.CreateDbContext();
-        var json = JsonSerializer.Serialize(new StoredState(_accounts, _entries, _history, _templates, _recurringEntries, _journalEvents, _intercompanyAllocations, _companies, _customers, _products, _vendors, _purchaseOrders, _grns, _fixedAssets, _taxAuthorities, _taxCodes, _taxRates, _warehouses, _stockLevels, _stockTransactions, _salesInvoices, _estimates, _boms, _workOrders, _mappings, _salesOrders, _creditNotes, _customerPayments, _vendorPayments, _fundTransfers, _reconciliations, _budgets, _periodCloses, _vouchers, _auditLog));
+        var json = JsonSerializer.Serialize(new StoredState(_accounts, _entries, _history, _templates, _recurringEntries, _journalEvents, _intercompanyAllocations, _companies, _customers, _products, _vendors, _purchaseOrders, _grns, _fixedAssets, _taxAuthorities, _taxCodes, _taxRates, _warehouses, _stockLevels, _stockTransactions, _salesInvoices, _estimates, _boms, _workOrders, _mappings, _salesOrders, _creditNotes, _customerPayments, _vendorPayments, _fundTransfers, _reconciliations, _budgets, _periodCloses, _vouchers, _expenseClaims, _bankImports, _auditLog));
         var snapshot = db.AccountingStateSnapshots.Find(1);
         if (snapshot is null) db.AccountingStateSnapshots.Add(new AccountingStateSnapshot { Id = 1, Json = json, UpdatedAt = DateTime.UtcNow });
         else { snapshot.Json = json; snapshot.UpdatedAt = DateTime.UtcNow; }
@@ -3353,6 +3514,8 @@ public class AccountingStore
             _budgets.Clear();
             _periodCloses.Clear();
             _vouchers.Clear();
+            _expenseClaims.Clear();
+            _bankImports.Clear();
             _auditLog.Clear();
             _mappings.Clear();
 

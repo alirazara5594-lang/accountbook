@@ -540,8 +540,8 @@ const StockValuationReport: React.FC<{ activeEntityId: string }> = ({ activeEnti
 // ─── Master Workspace ─────────────────────────────────────────────────────────
 type Tab = 'assets' | 'warehouses' | 'stock' | 'transactions' | 'schedule' | 'valuation';
 
-export const AssetsInventoryWorkspace: React.FC<{ activeEntityId: string; entities: any[] }> = ({ activeEntityId }) => {
-  const [activeTab, setActiveTab] = useState<Tab>('assets');
+export const AssetsInventoryWorkspace: React.FC<{ activeEntityId: string; entities: any[]; initialTab?: Tab }> = ({ activeEntityId, initialTab }) => {
+  const [activeTab, setActiveTab] = useState<Tab>(initialTab || 'assets');
   const accounts = useCoaStore((s) => s.accounts);
   const fetchAccounts = useCoaStore((s) => s.fetchAccounts);
 

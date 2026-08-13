@@ -27,6 +27,8 @@ import SalesReportsWorkspace from './SalesReportsWorkspace';
 import VendorStatementsWorkspace from './VendorStatementsWorkspace';
 import PayablesAgingWorkspace from './PayablesAgingWorkspace';
 import { DebitNotes } from './DebitNotes';
+import { ExpenseClaimsView } from './ExpenseClaimsView';
+import { PurchaseReportsView } from './PurchaseReportsView';
 
 import { SystemAccountMapping } from './components/SystemAccountMapping'
 import { ModuleSummary } from './ModuleSummary'
@@ -65,7 +67,7 @@ const NAVIGATION = [
   { name: 'Sales & Customers', icon: '☖', items: ['Customers', 'Products & Services', 'Sales Workspace', 'Estimates & Quotes', 'Sales Orders', 'Credit Notes', 'Customer Payments', 'Customer Statements', 'Sales Reports'] },
   { name: 'Procurement', icon: '⇡', items: ['Vendors', 'Procurement Workspace', 'Bills', 'Debit Notes', 'Expense Claims', 'Vendor Payments', 'Vendor Statements', 'Payables Aging', 'Purchase Reports'] },
   { name: 'Banking & Payments', icon: '🏛', items: ['Bank Accounts', 'Cash Accounts', 'Bank Connection', 'Bank Import', 'Transactions', 'Bank Reconciliation', 'Voucher Management', 'Fund Transfers', 'Cash Flow Statements'] },
-  { name: 'Accounting', icon: '⌘', items: ['Chart of Accounts', 'Journal Entries', 'Fixed Assets', 'General Ledger', 'Accounts Receivable', 'Accounts Payable', 'Tax Accounting', 'Budgets', 'Financial Reports', 'Period Closing', 'Audit Trail'] },
+  { name: 'Accounting', icon: '⌘', items: ['Chart of Accounts', 'Journal Entries', 'Fixed Assets', 'General Ledger', 'Accounts Receivable', 'Accounts Payable', 'Tax Accounting', 'Budgets', 'Financial Reports', 'Period Closing', 'Audit Trail', 'Intercompany Allocations'] },
   { name: 'Assets & Inventory', icon: '📦', items: ['Assets & Inventory Workspace', 'Depreciation Schedule', 'Valuation Reports'] },
   { name: 'Manufacturing & Production', icon: '⚙️', items: ['Manufacturing Workspace', 'Bill of Materials', 'Work Orders', 'Job Costing'] },
   { name: 'Payroll & HR', icon: '👥', items: ['Employees', 'Attendance', 'Leave', 'Payroll', 'Salary', 'Loans & Advances', 'HR Reports'] },
@@ -215,6 +217,10 @@ export default function App() {
     'Procurement.Debit Notes': 'debit-notes',
     'Procurement.Procurement Workspace': 'procurement-workspace',
     'Procurement.Vendor Payments': 'vendor-payments',
+    'Procurement.Vendor Statements': 'vendor-statements',
+    'Procurement.Payables Aging': 'payables-aging',
+    'Procurement.Expense Claims': 'expense-claims',
+    'Procurement.Purchase Reports': 'purchase-reports',
     'Banking & Payments.Summary': 'module-summary',
     'Banking & Payments.Bank Accounts': 'bank-accounts',
     'Banking & Payments.Cash Accounts': 'cash-accounts',
@@ -237,8 +243,11 @@ export default function App() {
     'Accounting.Financial Reports': 'financial-reports',
     'Accounting.Period Closing': 'period-closing',
     'Accounting.Audit Trail': 'audit-trail',
+    'Accounting.Intercompany Allocations': 'intercompany',
     'Assets & Inventory.Summary': 'module-summary',
     'Assets & Inventory.Assets & Inventory Workspace': 'assets-inventory',
+    'Assets & Inventory.Depreciation Schedule': 'assets-inventory-schedule',
+    'Assets & Inventory.Valuation Reports': 'assets-inventory-valuation',
     'Manufacturing & Production.Summary': 'manufacturing',
     'Manufacturing & Production.Manufacturing Workspace': 'manufacturing',
     'Manufacturing & Production.Bill of Materials': 'manufacturing',
@@ -335,6 +344,8 @@ export default function App() {
         {activeView === 'credit-notes' && <CreditNotesWorkspace />}
   {activeView === 'procurement-workspace' && <ProcurementWorkspace activeEntityId={activeEntityId} entities={entities as any} />}
   {activeView === 'vendor-payments' && <VendorPaymentsView activeEntityId={activeEntityId} entities={entities as any} />}
+  {activeView === 'expense-claims' && <ExpenseClaimsView activeEntityId={activeEntityId} entities={entities as any} />}
+  {activeView === 'purchase-reports' && <PurchaseReportsView activeEntityId={activeEntityId} entities={entities as any} />}
   {activeView === 'bills' && <VendorBills activeEntityId={activeEntityId} />}
   {activeView === 'vendor-statements' && <VendorStatementsWorkspace activeEntityId={activeEntityId} />}
   {activeView === 'payables-aging' && <PayablesAgingWorkspace activeEntityId={activeEntityId} />}
@@ -342,6 +353,8 @@ export default function App() {
   {activeView === 'taxes' && <TaxConfiguration />}
   {activeView === 'fixed-assets' && <FixedAssets activeEntityId={activeEntityId} />}
   {activeView === 'assets-inventory' && <AssetsInventoryWorkspace activeEntityId={activeEntityId} entities={entities} />}
+  {activeView === 'assets-inventory-schedule' && <AssetsInventoryWorkspace activeEntityId={activeEntityId} entities={entities} initialTab="schedule" />}
+  {activeView === 'assets-inventory-valuation' && <AssetsInventoryWorkspace activeEntityId={activeEntityId} entities={entities} initialTab="valuation" />}
   {activeView === 'manufacturing' && <ManufacturingWorkspace activeEntityId={activeEntityId} entities={entities} />}
   {activeView === 'financial-reports' && <FinancialReports accounts={accounts} entries={entries} activeEntityId={activeEntityId} />}
   {activeView === 'general-ledger' && <GeneralLedgerView activeEntityId={activeEntityId} entities={entities as any} />}
