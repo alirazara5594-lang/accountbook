@@ -4,7 +4,8 @@ import { useCoaStore } from './stores';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Search, RefreshCw, Plus, Pencil, Trash2, Target } from 'lucide-react';
+import { Search, Plus, Pencil, Trash2, Target } from 'lucide-react';
+import { DataToolbar } from '@/components/ui/data-toolbar';
 import type { Entity } from './EntitySettings';
 
 interface BudgetsViewProps {
@@ -144,6 +145,9 @@ export const BudgetsView: React.FC<BudgetsViewProps> = ({ activeEntityId, entiti
 
   const totalBudget = budgets.reduce((s, b) => s + (b.amount || 0), 0);
 
+  const exportHeaders = ['Budget', 'Account Code', 'Account Name', 'Fiscal Year', 'Period Type', 'Amount', 'Status'];
+  const exportRows = filtered.map(b => [b.budgetName, b.accountCode, b.accountName, b.fiscalYear, b.periodType, b.amount, b.status]);
+
   return (
     <div className="space-y-6 font-sans text-slate-800 p-2 md:p-6">
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 border-b border-slate-200 pb-4">
@@ -158,9 +162,16 @@ export const BudgetsView: React.FC<BudgetsViewProps> = ({ activeEntityId, entiti
           </p>
         </div>
         <div className="flex items-center gap-2">
-          <Button size="sm" variant="outline" onClick={load} className="h-9 px-3 gap-1.5 text-xs font-semibold">
-            <RefreshCw className="w-4 h-4" /> Refresh
-          </Button>
+          <DataToolbar
+            exportFileName="budgets"
+            exportSheetName="Budgets"
+            exportTitle="Budgets"
+            exportSubtitle={`Annual budgets by account for ${currentEntity?.name || 'Active Entity'}.`}
+            exportHeaders={exportHeaders}
+            exportRows={exportRows}
+            exportTotals={[{ label: 'Total Budget', value: totalBudget }]}
+            onRefresh={load}
+          />
           <Button size="sm" onClick={openCreate} className="h-9 px-4 gap-1.5 text-xs font-semibold text-white bg-[#143e2b] hover:bg-[#0f3222]">
             <Plus className="w-4 h-4" /> Create Budget
           </Button>

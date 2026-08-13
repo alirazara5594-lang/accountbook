@@ -1,9 +1,9 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { reportsApi } from './api/modules/reports.api';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Search, RefreshCw, FileDown, ReceiptText } from 'lucide-react';
+import { Search, ReceiptText } from 'lucide-react';
+import { DataToolbar } from '@/components/ui/data-toolbar';
 import type { Entity } from './EntitySettings';
 
 interface ArInvoice {
@@ -67,18 +67,8 @@ export const AccountsReceivableView: React.FC<AccountsReceivableViewProps> = ({ 
 
   const totalDue = invoices.reduce((s, i) => s + (i.amountDue || 0), 0);
 
-  const exportCsv = () => {
-    const header = ['Invoice #', 'Customer', 'Date', 'Due Date', 'Total', 'Paid', 'Due', 'Status'];
-    const rows = filtered.map(i => [i.invoiceNumber, i.customerName, i.date, i.dueDate, i.totalAmount, i.amountPaid, i.amountDue, i.status]);
-    const csv = [header, ...rows].map(r => r.map(c => `"${String(c ?? '').replace(/"/g, '""')}"`).join(',')).join('\n');
-    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = 'accounts-receivable.csv';
-    a.click();
-    URL.revokeObjectURL(url);
-  };
+  const exportHeaders = ['Invoice #', 'Customer', 'Date', 'Due Date', 'Total', 'Paid', 'Due', 'Status'];
+  const exportRows = filtered.map(i => [i.invoiceNumber, i.customerName, i.date, i.dueDate, i.totalAmount, i.amountPaid, i.amountDue, i.status]);
 
   return (
     <div className="space-y-6 font-sans text-slate-800 p-2 md:p-6">
@@ -93,12 +83,16 @@ export const AccountsReceivableView: React.FC<AccountsReceivableViewProps> = ({ 
           </p>
         </div>
         <div className="flex items-center gap-2">
-          <Button size="sm" variant="outline" onClick={load} className="h-9 px-3 gap-1.5 text-xs font-semibold">
-            <RefreshCw className="w-4 h-4" /> Refresh
-          </Button>
-          <Button size="sm" variant="outline" onClick={exportCsv} className="h-9 px-3 gap-1.5 text-xs font-semibold">
-            <FileDown className="w-4 h-4" /> Export CSV
-          </Button>
+          <DataToolbar
+            exportFileName="accounts-receivable"
+            exportSheetName="Accounts Receivable"
+            exportTitle="Accounts Receivable"
+            exportSubtitle={`Customer trade receivables aged by due date for ${currentEntity?.name || 'Active Entity'} (IAS 39/IFRS 9).`}
+            exportHeaders={exportHeaders}
+            exportRows={exportRows}
+            exportTotals={[{ label: 'Total Due', value: totalDue }]}
+            onRefresh={load}
+          />
         </div>
       </div>
 

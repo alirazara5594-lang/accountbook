@@ -1,5 +1,6 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useSalesStore, useCustomersStore, useProductsStore, useCoaStore } from './stores';
+import { DataToolbar } from '@/components/ui/data-toolbar';
 function money(v: number) { return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(v); }
 
 const statusColors: Record<string, string> = {
@@ -30,6 +31,7 @@ const SalesInvoicesTab: React.FC<{ activeEntityId: string }> = ({ activeEntityId
   const [showForm, setShowForm] = useState(false);
   const [postModal, setPostModal] = useState<any>(null);
   const [toast, setToast] = useState('');
+  const [query, setQuery] = useState('');
 
   // Form state
   const [form, setForm] = useState({
@@ -123,13 +125,47 @@ const SalesInvoicesTab: React.FC<{ activeEntityId: string }> = ({ activeEntityId
     fetchData();
   };
 
+  const filteredInvoices = useMemo(() => {
+    if (!query.trim()) return invoices;
+    const q = query.toLowerCase();
+    return invoices.filter((inv: any) =>
+      (inv.invoiceNumber || '').toLowerCase().includes(q) ||
+      (inv.customerName || '').toLowerCase().includes(q) ||
+      ['Draft', 'Sent', 'Paid', 'Void', 'Partly Paid', 'Overdue'][inv.status]?.toLowerCase().includes(q)
+    );
+  }, [invoices, query]);
+
+  const exportHeaders = ['Invoice #', 'Customer', 'Date', 'Due Date', 'Discount', 'Tax', 'Total', 'Due', 'Status'];
+  const exportRows = filteredInvoices.map((inv: any) => [
+    inv.invoiceNumber, inv.customerName, inv.invoiceDate, inv.dueDate,
+    inv.discountTotal, inv.taxTotal, inv.totalAmount, inv.amountDue,
+    ['Draft', 'Sent', 'Paid', 'Void', 'Partly Paid', 'Overdue'][inv.status],
+  ]);
+
+  const totalDue = invoices.filter((i: any) => i.status !== 2 && i.status !== 3).reduce((s: number, i: any) => s + (i.amountDue || 0), 0);
+
   return (
     <div className="space-y-4">
       {toast && <div className="px-4 py-2 bg-green-50 border border-green-200 text-green-800 rounded-xl text-sm">{toast}</div>}
 
       <div className="flex justify-between items-center">
         <h2 className="text-xl font-bold text-gray-900">Sales Invoices</h2>
-        <button onClick={() => setShowForm(true)} className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-xl">+ New Invoice</button>
+        <div className="flex items-center gap-2">
+          <DataToolbar
+            query={query}
+            setQuery={setQuery}
+            searchPlaceholder="Search invoice #, customer, status..."
+            exportFileName="sales-invoices"
+            exportSheetName="Sales Invoices"
+            exportTitle="Sales Invoices"
+            exportSubtitle="Sales invoice register with posting to the general ledger."
+            exportHeaders={exportHeaders}
+            exportRows={exportRows}
+            exportTotals={[{ label: 'Total Outstanding', value: totalDue }]}
+            onRefresh={() => fetchData()}
+          />
+          <button onClick={() => setShowForm(true)} className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-xl">+ New Invoice</button>
+        </div>
       </div>
 
       {/* Summary Cards */}
@@ -284,7 +320,7 @@ const SalesInvoicesTab: React.FC<{ activeEntityId: string }> = ({ activeEntityId
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-50">
-            {invoices.map((inv: any) => (
+            {filteredInvoices.map((inv: any) => (
               <tr key={inv.id} className="hover:bg-gray-50/60 transition-colors">
                 <td className="py-3 px-4 font-medium text-gray-900">{inv.invoiceNumber}</td>
                 <td className="py-3 px-4 text-gray-700">{inv.customerName}</td>
@@ -329,7 +365,7 @@ const SalesInvoicesTab: React.FC<{ activeEntityId: string }> = ({ activeEntityId
                 </td>
               </tr>
             ))}
-            {!loading && invoices.length === 0 && (
+            {!loading && filteredInvoices.length === 0 && (
               <tr><td colSpan={8} className="py-10 text-center text-gray-400">No invoices yet. Create your first invoice above.</td></tr>
             )}
           </tbody>

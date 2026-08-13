@@ -3,7 +3,8 @@ import { accountingApi, type PeriodCloseRecord } from './api/modules/accounting.
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { RefreshCw, Plus, Lock, Unlock, CalendarClock } from 'lucide-react';
+import { Plus, Lock, Unlock, CalendarClock } from 'lucide-react';
+import { DataToolbar } from '@/components/ui/data-toolbar';
 import type { Entity } from './EntitySettings';
 
 interface PeriodClosingViewProps {
@@ -16,6 +17,7 @@ export const PeriodClosingView: React.FC<PeriodClosingViewProps> = ({ activeEnti
   const [periods, setPeriods] = useState<PeriodCloseRecord[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [query, setQuery] = useState('');
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [formError, setFormError] = useState('');
   const [saving, setSaving] = useState(false);
@@ -93,6 +95,19 @@ export const PeriodClosingView: React.FC<PeriodClosingViewProps> = ({ activeEnti
     }
   };
 
+  const filtered = React.useMemo(() => {
+    if (!query.trim()) return periods;
+    const q = query.toLowerCase();
+    return periods.filter(p =>
+      p.periodName.toLowerCase().includes(q) ||
+      (p.note || '').toLowerCase().includes(q) ||
+      p.status.toLowerCase().includes(q)
+    );
+  }, [periods, query]);
+
+  const exportHeaders = ['Period', 'End Date', 'Note', 'Status', 'Closed At', 'Closed By'];
+  const exportRows = filtered.map(p => [p.periodName, p.periodEndDate, p.note, p.status, p.closedAt, p.closedBy]);
+
   return (
     <div className="space-y-6 font-sans text-slate-800 p-2 md:p-6">
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 border-b border-slate-200 pb-4">
@@ -107,9 +122,18 @@ export const PeriodClosingView: React.FC<PeriodClosingViewProps> = ({ activeEnti
           </p>
         </div>
         <div className="flex items-center gap-2">
-          <Button size="sm" variant="outline" onClick={load} className="h-9 px-3 gap-1.5 text-xs font-semibold">
-            <RefreshCw className="w-4 h-4" /> Refresh
-          </Button>
+          <DataToolbar
+            query={query}
+            setQuery={setQuery}
+            searchPlaceholder="Search period, note, status..."
+            exportFileName="period-closing"
+            exportSheetName="Period Closing"
+            exportTitle="Period Closing"
+            exportSubtitle={`Accounting periods for ${currentEntity?.name || 'Active Entity'}.`}
+            exportHeaders={exportHeaders}
+            exportRows={exportRows}
+            onRefresh={load}
+          />
           <Button size="sm" onClick={() => setIsModalOpen(true)} className="h-9 px-4 gap-1.5 text-xs font-semibold text-white bg-[#143e2b] hover:bg-[#0f3222]">
             <Plus className="w-4 h-4" /> Open New Period
           </Button>
@@ -140,7 +164,7 @@ export const PeriodClosingView: React.FC<PeriodClosingViewProps> = ({ activeEnti
                 </TableCell>
               </TableRow>
             )}
-            {periods.map(p => (
+            {filtered.map(p => (
               <TableRow key={p.id} className="hover:bg-slate-50/80">
                 <TableCell className="py-3.5 pl-4 text-xs font-bold text-slate-800">{p.periodName}</TableCell>
                 <TableCell className="py-3.5 font-mono text-xs text-slate-600">{p.periodEndDate || '—'}</TableCell>

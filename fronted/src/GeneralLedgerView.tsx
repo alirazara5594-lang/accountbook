@@ -3,7 +3,8 @@ import { reportsApi } from './api/modules/reports.api';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Search, RefreshCw, FileDown } from 'lucide-react';
+import { Search } from 'lucide-react';
+import { DataToolbar } from '@/components/ui/data-toolbar';
 import type { Entity } from './EntitySettings';
 
 interface GeneralLedgerLine {
@@ -68,18 +69,8 @@ export const GeneralLedgerView: React.FC<GeneralLedgerViewProps> = ({ activeEnti
     );
   }, [lines, query]);
 
-  const exportCsv = () => {
-    const header = ['Date', 'Reference', 'Description', 'Account Code', 'Account Name', 'Debit', 'Credit', 'Transaction Type'];
-    const rows = filtered.map(l => [l.date, l.reference, l.description, l.accountCode, l.accountName, l.debit, l.credit, l.transactionType]);
-    const csv = [header, ...rows].map(r => r.map(c => `"${String(c ?? '').replace(/"/g, '""')}"`).join(',')).join('\n');
-    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = 'general-ledger.csv';
-    a.click();
-    URL.revokeObjectURL(url);
-  };
+  const exportHeaders = ['Date', 'Reference', 'Description', 'Account Code', 'Account Name', 'Debit', 'Credit', 'Transaction Type'];
+  const exportRows = filtered.map(l => [l.date, l.reference, l.description, l.accountCode, l.accountName, l.debit, l.credit, l.transactionType]);
 
   return (
     <div className="space-y-6 font-sans text-slate-800 p-2 md:p-6">
@@ -96,12 +87,16 @@ export const GeneralLedgerView: React.FC<GeneralLedgerViewProps> = ({ activeEnti
         </div>
 
         <div className="flex items-center gap-2">
-          <Button size="sm" variant="outline" onClick={load} className="h-9 px-3 gap-1.5 text-xs font-semibold">
-            <RefreshCw className="w-4 h-4" /> Refresh
-          </Button>
-          <Button size="sm" variant="outline" onClick={exportCsv} className="h-9 px-3 gap-1.5 text-xs font-semibold">
-            <FileDown className="w-4 h-4" /> Export CSV
-          </Button>
+          <DataToolbar
+            exportFileName="general-ledger"
+            exportSheetName="General Ledger"
+            exportTitle="General Ledger"
+            exportSubtitle={`Posting-level register for ${currentEntity?.name || 'Active Entity'} (IAS 1, IFRS-compliant).`}
+            exportHeaders={exportHeaders}
+            exportRows={exportRows}
+            exportTotals={[{ label: 'Total Debit', value: totalDebit }, { label: 'Total Credit', value: totalCredit }]}
+            onRefresh={load}
+          />
         </div>
       </div>
 

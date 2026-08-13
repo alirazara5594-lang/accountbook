@@ -1,5 +1,6 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useSalesStore, useCustomersStore, useProductsStore } from './stores';
+import { DataToolbar } from '@/components/ui/data-toolbar';
 const money = (v: number) => new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(v);
 
 const statusColors: Record<number, string> = {
@@ -303,6 +304,7 @@ export const EstimatesAndQuotes: React.FC<{ activeEntityId: string }> = ({ activ
   const [showForm, setShowForm] = useState(false);
   const [convertModal, setConvertModal] = useState<any>(null);
   const [toast, setToast] = useState('');
+  const [query, setQuery] = useState('');
 
   const fetchData = async () => {
     setLoading(true);
@@ -350,6 +352,22 @@ export const EstimatesAndQuotes: React.FC<{ activeEntityId: string }> = ({ activ
   const accepted = estimates.filter((e: any) => String(e.status) === '2').length;
   const pending = estimates.filter((e: any) => Number(e.status) <= 1).length;
 
+  const filteredEstimates = useMemo(() => {
+    if (!query.trim()) return estimates;
+    const q = query.toLowerCase();
+    return estimates.filter((e: any) =>
+      (e.estimateNumber || '').toLowerCase().includes(q) ||
+      (e.customerName || '').toLowerCase().includes(q) ||
+      (statusLabels[e.status] || '').toLowerCase().includes(q)
+    );
+  }, [estimates, query]);
+
+  const exportHeaders = ['Estimate #', 'Customer', 'Date', 'Expiry', 'Subtotal', 'Discount', 'Tax', 'Total', 'Status'];
+  const exportRows = filteredEstimates.map((e: any) => [
+    e.estimateNumber, e.customerName, e.estimateDate, e.expiryDate || '',
+    e.subTotal, e.totalDiscount, e.totalTax, e.totalAmount, statusLabels[e.status],
+  ]);
+
   return (
     <div className="p-8 max-w-7xl mx-auto space-y-6">
       {toast && <div className="fixed top-6 right-6 z-50 px-5 py-3 bg-green-600 text-white rounded-2xl shadow-lg text-sm font-medium">{toast}</div>}
@@ -359,10 +377,25 @@ export const EstimatesAndQuotes: React.FC<{ activeEntityId: string }> = ({ activ
           <h1 className="text-3xl font-bold text-gray-900 tracking-tight">Estimates & Quotes</h1>
           <p className="text-gray-500 text-sm mt-1">Create quotes for customers and convert accepted ones into Sales Invoices.</p>
         </div>
-        <button onClick={() => setShowForm(true)}
-          className="px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-xl shadow-sm shadow-blue-600/20 transition-all active:scale-95">
-          + New Estimate
-        </button>
+        <div className="flex items-center gap-2">
+          <DataToolbar
+            query={query}
+            setQuery={setQuery}
+            searchPlaceholder="Search estimate #, customer, status..."
+            exportFileName="estimates-and-quotes"
+            exportSheetName="Estimates & Quotes"
+            exportTitle="Estimates & Quotes"
+            exportSubtitle="Quotes and estimates with conversion to sales invoices."
+            exportHeaders={exportHeaders}
+            exportRows={exportRows}
+            exportTotals={[{ label: 'Total Value', value: totalValue }]}
+            onRefresh={() => fetchData()}
+          />
+          <button onClick={() => setShowForm(true)}
+            className="px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-xl shadow-sm shadow-blue-600/20 transition-all active:scale-95">
+            + New Estimate
+          </button>
+        </div>
       </div>
 
       {/* KPI Cards */}
@@ -406,7 +439,7 @@ export const EstimatesAndQuotes: React.FC<{ activeEntityId: string }> = ({ activ
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-50">
-            {estimates.map((e: any) => (
+            {filteredEstimates.map((e: any) => (
               <tr key={e.id} className="hover:bg-gray-50/60 transition-colors">
                 <td className="py-3 px-4 font-medium text-gray-900">{e.estimateNumber}</td>
                 <td className="py-3 px-4 text-gray-700">{e.customerName}</td>
@@ -445,7 +478,7 @@ export const EstimatesAndQuotes: React.FC<{ activeEntityId: string }> = ({ activ
                 </td>
               </tr>
             ))}
-            {!loading && estimates.length === 0 && (
+            {!loading && filteredEstimates.length === 0 && (
               <tr><td colSpan={10} className="py-12 text-center text-gray-400">
                 No estimates yet. Create your first estimate to start the sales cycle.
               </td></tr>

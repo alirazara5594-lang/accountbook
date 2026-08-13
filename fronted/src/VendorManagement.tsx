@@ -4,6 +4,7 @@ import { Building2, Search, Plus, Pencil, Trash2, Mail, Phone, Users, Wallet, Ca
 
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { DataToolbar } from '@/components/ui/data-toolbar'
 
 import { useVendorsStore, useCoaStore } from './stores'
 
@@ -108,6 +109,12 @@ export default function VendorManagement({ activeEntityId, notify }: { entities:
       return matchesSearch && matchesStatus
     })
   }, [vendors, search, statusFilter])
+
+  const exportHeaders = ['Number', 'Name', 'Email', 'Phone', 'City', 'Country', 'Currency', 'Payment Terms', 'Status']
+  const exportRows = filteredVendors.map(v => [
+    v.vendorNumber, v.name, v.email || '', v.phone || '', v.city || '', v.country || '',
+    v.currencyCode, v.paymentTermsDays, v.status,
+  ])
 
   const stats = useMemo(() => {
     const total = vendors.length
@@ -245,6 +252,16 @@ export default function VendorManagement({ activeEntityId, notify }: { entities:
             <option value="Inactive">Inactive</option>
             <option value="Blocked">Blocked</option>
           </select>
+
+          <DataToolbar
+            exportFileName="vendors"
+            exportSheetName="Vendors"
+            exportTitle="Vendors"
+            exportSubtitle={`Vendor master list (${filteredVendors.length} records).`}
+            exportHeaders={exportHeaders}
+            exportRows={exportRows}
+            onRefresh={() => fetchVendors(activeEntityId)}
+          />
 
           <button className="primary flex items-center gap-2" onClick={openCreateModal}>
             <Plus className="w-4 h-4" /> New Vendor

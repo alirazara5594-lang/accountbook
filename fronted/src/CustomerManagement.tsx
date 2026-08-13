@@ -4,6 +4,7 @@ import { Building2, Mail, Phone, Search, ShieldAlert, UserCheck, UserX, Users, C
 
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { DataToolbar } from '@/components/ui/data-toolbar'
 import type { Entity } from './EntitySettings'
 import { useCustomersStore } from './stores'
 import { useFormDraft } from './hooks/useFormDraft'
@@ -120,6 +121,12 @@ export default function CustomerManagement({
       return matchesSearch && matchesCompany && matchesStatus
     })
   }, [customers, search, companyFilter, statusFilter])
+
+  const exportHeaders = ['Number', 'Name', 'Email', 'Phone', 'City', 'Country', 'Currency', 'Credit Limit', 'Payment Terms', 'Status']
+  const exportRows = filteredCustomers.map(c => [
+    c.customerNumber, c.name, c.email || '', c.phone || '', c.city || '', c.country || '',
+    c.currencyCode, c.creditLimit, c.paymentTermsDays, c.status,
+  ])
 
   const stats = useMemo(() => {
     const total = customers.length
@@ -299,6 +306,17 @@ export default function CustomerManagement({
             <option value="Inactive">Inactive</option>
             <option value="Blocked">Blocked</option>
           </select>
+
+          <DataToolbar
+            exportFileName="customers"
+            exportSheetName="Customers"
+            exportTitle="Customers"
+            exportSubtitle={`Customer master list (${filteredCustomers.length} records).`}
+            exportHeaders={exportHeaders}
+            exportRows={exportRows}
+            exportTotals={[{ label: 'Total Credit Limit', value: stats.totalCreditLimit }]}
+            onRefresh={() => fetchCustomers()}
+          />
 
           <button className="primary" onClick={openCreateModal}>
             ＋ New Customer

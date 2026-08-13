@@ -4,7 +4,8 @@ import { vendorPaymentsApi, type VendorPayment, type WithdrawAccount, type Vendo
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Send, Search, Plus, RefreshCw } from 'lucide-react';
+import { Send, Search, Plus } from 'lucide-react';
+import { DataToolbar } from '@/components/ui/data-toolbar';
 import type { Entity } from './EntitySettings';
 
 type PaymentMode = 'ACH' | 'Wire Transfer' | 'Cheque / Pay Order' | 'SWIFT' | 'RTGS' | 'Credit Card' | 'Direct Debit' | 'Online Banking';
@@ -124,6 +125,14 @@ export const VendorPaymentsView: React.FC<VendorPaymentsViewProps> = ({ activeEn
     });
   }, [payments, query, selectedMode]);
 
+  const exportHeaders = ['Payment Number', 'Date', 'Vendor', 'Bill', 'Amount', 'Mode', 'Bank Account', 'Reference', 'Status'];
+  const exportRows = filtered.map(p => [
+    p.paymentNumber || '', p.date, p.vendorName || '', p.billNumber || '',
+    p.amount, p.paymentMethod, p.withdrawFromAccountName || p.bankAccountName || '',
+    p.reference || '', p.status,
+  ]);
+  const totalPaid = filtered.reduce((s, p) => s + (p.amount || 0), 0);
+
   const handleCreatePayment = async (e: React.FormEvent) => {
     e.preventDefault();
     setFormError('');
@@ -180,9 +189,16 @@ export const VendorPaymentsView: React.FC<VendorPaymentsViewProps> = ({ activeEn
         </div>
 
         <div className="flex items-center gap-2">
-          <Button size="sm" variant="outline" onClick={loadPayments} className="h-9 px-3 gap-1.5 text-xs font-semibold">
-            <RefreshCw className="w-4 h-4" /> Refresh
-          </Button>
+          <DataToolbar
+            exportFileName="vendor-payments"
+            exportSheetName="Vendor Payments"
+            exportTitle="Vendor Payments"
+            exportSubtitle={`Outgoing supplier disbursements for ${currentEntity?.name || 'Active Entity'}.`}
+            exportHeaders={exportHeaders}
+            exportRows={exportRows}
+            exportTotals={[{ label: 'Total Paid', value: totalPaid }]}
+            onRefresh={loadPayments}
+          />
           <Button
             size="sm"
             onClick={() => setIsModalOpen(true)}

@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useProcurementStore, useVendorsStore, useProductsStore, useCoaStore } from './stores';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
+import { DataToolbar } from '@/components/ui/data-toolbar';
 
 function money(amount: number, currency = 'USD') {
   return new Intl.NumberFormat('en-US', { style: 'currency', currency }).format(amount || 0);
@@ -24,6 +25,7 @@ export const VendorBills: React.FC<{ activeEntityId: string }> = ({ activeEntity
   const fetchAccounts = useCoaStore((s) => s.fetchAccounts);
 
   const [toast, setToast] = useState('');
+  const [query, setQuery] = useState('');
   const [showBillModal, setShowBillModal] = useState(false);
   const [entryMode, setEntryMode] = useState<'direct' | 'procurement'>('direct');
   const [forcedMode, setForcedMode] = useState<'direct' | 'procurement' | null>(null);
@@ -125,6 +127,31 @@ export const VendorBills: React.FC<{ activeEntityId: string }> = ({ activeEntity
 
   const totalOutstanding = bills.reduce((sum, b: any) => sum + (b.lines?.reduce((s: number, l: any) => s + ((l.quantity || 1) * (l.unitPrice || 0)), 0) || 0), 0);
 
+  const filteredBills = (bills as any[]).filter((bill: any) => {
+    if (!query.trim()) return true;
+    const q = query.toLowerCase();
+    const vendor = vendors.find(v => v.id === bill.vendorId);
+    return (
+      (bill.billNumber || '').toLowerCase().includes(q) ||
+      (bill.vendorInvoiceNumber || bill.vendorBillNumber || '').toLowerCase().includes(q) ||
+      (vendor?.name || bill.vendorName || '').toLowerCase().includes(q) ||
+      (bill.date || '').includes(q)
+    );
+  });
+
+  const exportHeaders = ['Bill Number', 'Supplier Invoice #', 'Entry Type', 'Vendor Name', 'Bill Date', 'Due Date', 'Total Amount'];
+  const exportRows = filteredBills.map((bill: any) => {
+    const vendor = vendors.find(v => v.id === bill.vendorId);
+    const total = bill.lines?.reduce((acc: number, l: any) => acc + ((l.quantity || 1) * (l.unitPrice || 0)), 0) || 0;
+    return [
+      bill.billNumber,
+      bill.vendorInvoiceNumber || bill.vendorBillNumber || '',
+      bill.purchaseOrderId ? 'Procurement PO' : 'Direct Bill',
+      vendor?.name || bill.vendorName || 'Vendor',
+      bill.date, bill.dueDate, total,
+    ];
+  });
+
   return (
     <div className="p-6 max-w-7xl mx-auto space-y-6">
       {toast && <div className="fixed top-6 right-6 z-50 px-5 py-3 bg-emerald-600 text-white rounded-2xl shadow-lg text-sm font-medium">{toast}</div>}
@@ -137,6 +164,19 @@ export const VendorBills: React.FC<{ activeEntityId: string }> = ({ activeEntity
           <p className="text-gray-500 text-xs mt-1">Direct supplier liability creation or procurement-linked 3-way match invoices.</p>
         </div>
         <div className="flex gap-2">
+          <DataToolbar
+            query={query}
+            setQuery={setQuery}
+            searchPlaceholder="Search bill #, invoice #, vendor..."
+            exportFileName="vendor-bills"
+            exportSheetName="Vendor Bills"
+            exportTitle="Vendor Bills & Supplier Invoices"
+            exportSubtitle="Supplier liabilities with direct entry and procurement-linked 3-way match."
+            exportHeaders={exportHeaders}
+            exportRows={exportRows}
+            exportTotals={[{ label: 'Total Outstanding', value: totalOutstanding }]}
+            onRefresh={() => { fetchBills(activeEntityId); fetchOrders(activeEntityId); }}
+          />
           <Button variant="outline" className="text-blue-600 border-blue-200 hover:bg-blue-50" onClick={() => handleOpenModal(null, 'direct')}>
             ⚡ Direct Bill Entry
           </Button>
@@ -178,7 +218,7 @@ export const VendorBills: React.FC<{ activeEntityId: string }> = ({ activeEntity
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-50">
-            {(bills as any[]).map((bill: any) => {
+            {filteredBills.map((bill: any) => {
               const vendor = vendors.find(v => v.id === bill.vendorId);
               const total = bill.lines?.reduce((acc: number, l: any) => acc + ((l.quantity || 1) * (l.unitPrice || 0)), 0) || 0;
               const isDirect = !bill.purchaseOrderId;
@@ -209,8 +249,8 @@ export const VendorBills: React.FC<{ activeEntityId: string }> = ({ activeEntity
                 </tr>
               );
             })}
-            {!loading && bills.length === 0 && (
-              <tr><td colSpan={8} className="py-12 text-center text-gray-400">No Vendor Bills found. Click "+ Direct Bill Entry" or "+ Procurement PO Bill" to record a supplier invoice.</td></tr>
+{!loading && filteredBills.length === 0 && (
+              <tr><td colSpan={8} className="py-12 text-center text-gray-400">No Vendor Bills found. Click "Direct Bill Entry" to create one.</td></tr>
             )}
           </tbody>
         </table>

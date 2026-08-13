@@ -1,9 +1,9 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { reportsApi } from './api/modules/reports.api';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Search, RefreshCw, FileDown, Wallet } from 'lucide-react';
+import { Search, Wallet } from 'lucide-react';
+import { DataToolbar } from '@/components/ui/data-toolbar';
 import type { Entity } from './EntitySettings';
 
 interface ApBill {
@@ -67,18 +67,8 @@ export const AccountsPayableView: React.FC<AccountsPayableViewProps> = ({ active
 
   const totalDue = bills.reduce((s, b) => s + (b.amountDue || 0), 0);
 
-  const exportCsv = () => {
-    const header = ['Bill #', 'Vendor', 'Date', 'Due Date', 'Total', 'Paid', 'Due', 'Status'];
-    const rows = filtered.map(b => [b.billNumber, b.vendorName, b.date, b.dueDate, b.totalAmount, b.amountPaid, b.amountDue, b.status]);
-    const csv = [header, ...rows].map(r => r.map(c => `"${String(c ?? '').replace(/"/g, '""')}"`).join(',')).join('\n');
-    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = 'accounts-payable.csv';
-    a.click();
-    URL.revokeObjectURL(url);
-  };
+  const exportHeaders = ['Bill #', 'Vendor', 'Date', 'Due Date', 'Total', 'Paid', 'Due', 'Status'];
+  const exportRows = filtered.map(b => [b.billNumber, b.vendorName, b.date, b.dueDate, b.totalAmount, b.amountPaid, b.amountDue, b.status]);
 
   return (
     <div className="space-y-6 font-sans text-slate-800 p-2 md:p-6">
@@ -93,12 +83,16 @@ export const AccountsPayableView: React.FC<AccountsPayableViewProps> = ({ active
           </p>
         </div>
         <div className="flex items-center gap-2">
-          <Button size="sm" variant="outline" onClick={load} className="h-9 px-3 gap-1.5 text-xs font-semibold">
-            <RefreshCw className="w-4 h-4" /> Refresh
-          </Button>
-          <Button size="sm" variant="outline" onClick={exportCsv} className="h-9 px-3 gap-1.5 text-xs font-semibold">
-            <FileDown className="w-4 h-4" /> Export CSV
-          </Button>
+          <DataToolbar
+            exportFileName="accounts-payable"
+            exportSheetName="Accounts Payable"
+            exportTitle="Accounts Payable"
+            exportSubtitle={`Vendor trade payables aged by due date for ${currentEntity?.name || 'Active Entity'} (IAS 37 / IAS 32).`}
+            exportHeaders={exportHeaders}
+            exportRows={exportRows}
+            exportTotals={[{ label: 'Total Due', value: totalDue }]}
+            onRefresh={load}
+          />
         </div>
       </div>
 

@@ -1,9 +1,10 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { journalsApi } from './api/modules/journals.api';
 import type { Account } from './api/modules/coa.api';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
-import { Send, CheckCircle2, Zap, RefreshCw } from 'lucide-react';
+import { Send, CheckCircle2, Zap } from 'lucide-react';
+import { DataToolbar } from '@/components/ui/data-toolbar';
 
 interface Journal {
   id: string;
@@ -32,6 +33,7 @@ export const JournalEntriesView: React.FC<JournalEntriesViewProps> = ({ accounts
   const [saving, setSaving] = useState(false);
   const [actingId, setActingId] = useState<string | null>(null);
   const [error, setError] = useState('');
+  const [query, setQuery] = useState('');
 
   const totals = journal.lines.reduce(
     (x, l) => ({ debit: x.debit + Number(l.debit || 0), credit: x.credit + Number(l.credit || 0) }),
@@ -99,12 +101,34 @@ export const JournalEntriesView: React.FC<JournalEntriesViewProps> = ({ accounts
     }
   };
 
+  const filteredEntries = useMemo(() => {
+    if (!query.trim()) return initialEntries;
+    const q = query.toLowerCase();
+    return initialEntries.filter(e =>
+      (e.reference || '').toLowerCase().includes(q) ||
+      (e.description || '').toLowerCase().includes(q) ||
+      (e.status || '').toLowerCase().includes(q)
+    );
+  }, [initialEntries, query]);
+
+  const exportHeaders = ['Date', 'Reference', 'Description', 'Lines', 'Status'];
+  const exportRows = filteredEntries.map(e => [e.date?.slice(0, 10) || '', e.reference, e.description, e.lines.length, e.status || 'Draft']);
+
   return (
     <div className="space-y-6 font-sans text-slate-800 p-2 md:p-6">
       <div className="flex items-center gap-2">
-        <Button size="sm" variant="outline" onClick={refresh} className="h-8 px-3 gap-1.5 text-xs font-semibold">
-          <RefreshCw className="w-3.5 h-3.5" /> Refresh
-        </Button>
+        <DataToolbar
+          query={query}
+          setQuery={setQuery}
+          searchPlaceholder="Search reference, description, status..."
+          exportFileName="journal-entries"
+          exportSheetName="Journal Entries"
+          exportTitle="Journal Entries"
+          exportSubtitle="General journal with full draft → submitted → approved → posted lifecycle (IAS 8)."
+          exportHeaders={exportHeaders}
+          exportRows={exportRows}
+          onRefresh={refresh}
+        />
       </div>
 
       {error && <p className="text-xs text-rose-600">{error}</p>}
@@ -154,14 +178,14 @@ export const JournalEntriesView: React.FC<JournalEntriesViewProps> = ({ accounts
             </TableRow>
           </TableHeader>
           <TableBody className="divide-y divide-slate-100">
-            {initialEntries.length === 0 && (
+            {filteredEntries.length === 0 && (
               <TableRow>
                 <TableCell colSpan={6} className="py-8 text-center text-xs text-slate-400">
                   No journal entries yet. Create one above, then Submit → Approve → Post through the lifecycle.
                 </TableCell>
               </TableRow>
             )}
-            {initialEntries.map(e => {
+            {filteredEntries.map(e => {
               const step = STATUS_STEPS[e.status || 'Draft'] ?? 0;
               return (
                 <TableRow key={e.id} className="hover:bg-slate-50/80">

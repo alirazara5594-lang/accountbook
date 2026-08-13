@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { useSalesOrdersStore, useCustomersStore, useProductsStore } from './stores';
+import { DataToolbar } from '@/components/ui/data-toolbar';
 import { 
-  Plus, Shield, Search, Calendar, Eye, XCircle, ArrowRight, RefreshCw 
+  Plus, Shield, Search, Calendar, Eye, XCircle, ArrowRight 
 } from 'lucide-react';
 
 function money(v: number) { 
@@ -33,7 +34,6 @@ export const SalesOrdersWorkspace: React.FC<SalesOrdersWorkspaceProps> = ({ acti
   const products = useProductsStore(s => s.products);
   const fetchProducts = useProductsStore(s => s.fetchProducts);
 
-  const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
   const [activeOrderDetails, setActiveOrderDetails] = useState<any | null>(null);
   const [toast, setToast] = useState('');
@@ -66,7 +66,6 @@ export const SalesOrdersWorkspace: React.FC<SalesOrdersWorkspaceProps> = ({ acti
   };
 
   const loadData = async () => {
-    setLoading(true);
     try {
       await Promise.all([
         fetchOrders(activeEntityId),
@@ -74,7 +73,6 @@ export const SalesOrdersWorkspace: React.FC<SalesOrdersWorkspaceProps> = ({ acti
         fetchProducts(),
       ]);
     } catch {}
-    setLoading(false);
   };
 
   useEffect(() => {
@@ -203,6 +201,12 @@ export const SalesOrdersWorkspace: React.FC<SalesOrdersWorkspaceProps> = ({ acti
     totalVal: orders.filter(o => o.status !== 'Cancelled').reduce((sum, o) => sum + o.totalAmount, 0)
   };
 
+  const exportHeaders = ['Order Number', 'Order Date', 'Customer', 'Expected Delivery', 'Reference', 'Total Amount', 'Status'];
+  const exportRows = filteredOrders.map(o => {
+    const cust = customers.find(c => c.id === o.customerId);
+    return [o.orderNumber, o.orderDate, cust?.name || 'Unknown', o.expectedDeliveryDate || '', o.reference || '', o.totalAmount, o.status];
+  });
+
   return (
     <div className="space-y-6 max-w-7xl mx-auto font-sans pb-12">
       {/* Top Metrics Cards */}
@@ -235,15 +239,17 @@ export const SalesOrdersWorkspace: React.FC<SalesOrdersWorkspaceProps> = ({ acti
         </div>
 
         <div className="flex items-center gap-2">
-          <button
-            onClick={loadData}
-            disabled={loading}
-            className="h-10 px-3.5 gap-1.5 text-xs font-semibold text-slate-700 bg-white border border-slate-200 hover:bg-slate-50 rounded-xl flex items-center transition-colors cursor-pointer"
-          >
-            <RefreshCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin' : ''}`} />
-            Refresh
-          </button>
-          
+          <DataToolbar
+            exportFileName="sales-orders"
+            exportSheetName="Sales Orders"
+            exportTitle="Sales Orders"
+            exportSubtitle="Sales order register with confirmation and invoicing workflow."
+            exportHeaders={exportHeaders}
+            exportRows={exportRows}
+            exportTotals={[{ label: 'Active Value', value: metrics.totalVal }]}
+            onRefresh={() => loadData()}
+          />
+
           <button
             onClick={() => setShowForm(true)}
             className="h-10 px-4 gap-1.5 text-xs font-bold text-white bg-[#143e2b] hover:bg-[#0c2a1d] rounded-xl shadow-xs flex items-center transition-colors cursor-pointer"

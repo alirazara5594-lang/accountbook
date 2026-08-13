@@ -3,7 +3,8 @@ import { taxApi, type TaxAuthority, type TaxCode, type TaxRate, type TaxJurisdic
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Percent, RefreshCw, Plus, Globe2, FileCheck2 } from 'lucide-react';
+import { Percent, Plus, Globe2, FileCheck2 } from 'lucide-react';
+import { DataToolbar } from '@/components/ui/data-toolbar';
 import type { Entity } from './EntitySettings';
 
 interface TaxAccountingViewProps {
@@ -30,6 +31,7 @@ export const TaxAccountingView: React.FC<TaxAccountingViewProps> = ({ activeEnti
   const [selectedJurisdiction, setSelectedJurisdiction] = useState('UK');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [query, setQuery] = useState('');
   const [showCodeForm, setShowCodeForm] = useState(false);
   const [showRateForm, setShowRateForm] = useState(false);
   const [formError, setFormError] = useState('');
@@ -151,6 +153,26 @@ export const TaxAccountingView: React.FC<TaxAccountingViewProps> = ({ activeEnti
     }
   };
 
+  const filteredCodes = useMemo(() => {
+    if (!query.trim()) return jurisdictionCodes;
+    const q = query.toLowerCase();
+    return jurisdictionCodes.filter(c =>
+      c.code.toLowerCase().includes(q) || c.name.toLowerCase().includes(q) || (c.taxType || '').toLowerCase().includes(q)
+    );
+  }, [jurisdictionCodes, query]);
+
+  const filteredRates = useMemo(() => {
+    if (!query.trim()) return jurisdictionRates;
+    const q = query.toLowerCase();
+    return jurisdictionRates.filter(r => (r.name || '').toLowerCase().includes(q) || String(r.ratePercent).includes(q));
+  }, [jurisdictionRates, query]);
+
+  const exportHeaders = ['Type', 'Code', 'Name', 'Rate %', 'Effective From', 'Authority'];
+  const exportRows = [
+    ...filteredCodes.map(c => ['Tax Code', c.code, c.name, String(c.rates?.[0]?.percentage ?? ''), c.rates?.[0]?.effectiveFrom ?? '', c.taxAuthorityId || '']),
+    ...filteredRates.map(r => ['Tax Rate', r.taxCodeId, r.name, String(r.ratePercent), r.effectiveFrom, '']),
+  ];
+
   return (
     <div className="space-y-6 font-sans text-slate-800 p-2 md:p-6">
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 border-b border-slate-200 pb-4">
@@ -165,9 +187,18 @@ export const TaxAccountingView: React.FC<TaxAccountingViewProps> = ({ activeEnti
           </p>
         </div>
         <div className="flex items-center gap-2">
-          <Button size="sm" variant="outline" onClick={load} className="h-9 px-3 gap-1.5 text-xs font-semibold">
-            <RefreshCw className="w-4 h-4" /> Refresh
-          </Button>
+          <DataToolbar
+            query={query}
+            setQuery={setQuery}
+            searchPlaceholder="Search tax code, rate, name..."
+            exportFileName={`tax-accounting-${selectedJurisdiction}`}
+            exportSheetName={`Tax Accounting — ${current?.name || selectedJurisdiction}`}
+            exportTitle="Tax Accounting"
+            exportSubtitle={`Multi-jurisdiction VAT / Sales Tax / GST configuration for ${currentEntity?.name || 'Active Entity'} — ${current?.name || ''} (IAS 12 / IAS 37 / IFRS 15).`}
+            exportHeaders={exportHeaders}
+            exportRows={exportRows}
+            onRefresh={load}
+          />
           <Button size="sm" onClick={openCreateCode} className="h-9 px-4 gap-1.5 text-xs font-semibold text-white bg-[#143e2b] hover:bg-[#0f3222]">
             <Plus className="w-4 h-4" /> New Tax Code
           </Button>
@@ -245,7 +276,7 @@ export const TaxAccountingView: React.FC<TaxAccountingViewProps> = ({ activeEnti
         <section className="bg-white border border-slate-200 rounded-xl overflow-hidden shadow-xs">
           <div className="px-4 py-3 bg-slate-50 border-b border-slate-200 flex items-center justify-between">
             <h2 className="text-xs font-bold text-slate-700 uppercase tracking-wider">Tax Codes — {current?.flag} {current?.name}</h2>
-            <span className="text-[10px] font-bold text-slate-400">{jurisdictionCodes.length} codes</span>
+            <span className="text-[10px] font-bold text-slate-400">{filteredCodes.length} codes</span>
           </div>
           <Table>
             <TableHeader className="bg-slate-50 border-b border-slate-200">
@@ -257,10 +288,10 @@ export const TaxAccountingView: React.FC<TaxAccountingViewProps> = ({ activeEnti
               </TableRow>
             </TableHeader>
             <TableBody className="divide-y divide-slate-100">
-              {jurisdictionCodes.length === 0 && !loading && (
+              {filteredCodes.length === 0 && !loading && (
                 <TableRow><TableCell colSpan={4} className="py-6 text-center text-xs text-slate-400">No tax codes for this jurisdiction yet.</TableCell></TableRow>
               )}
-              {jurisdictionCodes.map(c => {
+              {filteredCodes.map(c => {
                 const latestRate = c.rates?.length ? c.rates[c.rates.length - 1] : undefined;
                 return (
                   <TableRow key={c.id} className="hover:bg-slate-50/80">
@@ -282,7 +313,7 @@ export const TaxAccountingView: React.FC<TaxAccountingViewProps> = ({ activeEnti
         <section className="bg-white border border-slate-200 rounded-xl overflow-hidden shadow-xs">
           <div className="px-4 py-3 bg-slate-50 border-b border-slate-200 flex items-center justify-between">
             <h2 className="text-xs font-bold text-slate-700 uppercase tracking-wider">Tax Rates — {current?.flag} {current?.name}</h2>
-            <span className="text-[10px] font-bold text-slate-400">{jurisdictionRates.length} rates</span>
+            <span className="text-[10px] font-bold text-slate-400">{filteredRates.length} rates</span>
           </div>
           <Table>
             <TableHeader className="bg-slate-50 border-b border-slate-200">
@@ -294,10 +325,10 @@ export const TaxAccountingView: React.FC<TaxAccountingViewProps> = ({ activeEnti
               </TableRow>
             </TableHeader>
             <TableBody className="divide-y divide-slate-100">
-              {jurisdictionRates.length === 0 && !loading && (
+              {filteredRates.length === 0 && !loading && (
                 <TableRow><TableCell colSpan={4} className="py-6 text-center text-xs text-slate-400">No tax rates for this jurisdiction yet.</TableCell></TableRow>
               )}
-              {jurisdictionRates.map(r => {
+              {filteredRates.map(r => {
                 const code = jurisdictionCodes.find(c => c.id === r.taxCodeId);
                 return (
                   <TableRow key={r.id} className="hover:bg-slate-50/80">

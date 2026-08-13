@@ -4,6 +4,7 @@ import { Wrench, Search, Plus, Pencil, Trash2, Package, Tag, Archive } from 'luc
 
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { DataToolbar } from '@/components/ui/data-toolbar'
 
 import { useProductsStore, useCoaStore, useTaxStore } from './stores'
 
@@ -124,6 +125,11 @@ export default function ProductsAndServices({ entities, activeEntityId, notify }
       return matchesSearch && matchesType
     })
   }, [products, search, typeFilter])
+
+  const exportHeaders = ['Code', 'Name', 'Description', 'Type', 'Category', 'Unit', 'Unit Price', 'Cost Price', 'Status']
+  const exportRows = filteredProducts.map((p: any) => [
+    p.code, p.name, p.description || '', p.type, p.category || '', p.unit, p.unitPrice, p.costPrice, p.status,
+  ])
 
   const stats = useMemo(() => {
     const total = products.length
@@ -257,6 +263,16 @@ export default function ProductsAndServices({ entities, activeEntityId, notify }
             <option value="NonInventory">Non-Inventory</option>
             <option value="Bundle">Bundles / Kits</option>
           </select>
+
+          <DataToolbar
+            exportFileName="products-and-services"
+            exportSheetName="Products & Services"
+            exportTitle="Products & Services"
+            exportSubtitle={`Product and service catalog (${filteredProducts.length} items).`}
+            exportHeaders={exportHeaders}
+            exportRows={exportRows}
+            onRefresh={() => fetchProducts()}
+          />
 
           <button className="primary flex items-center gap-2" onClick={openCreateModal}>
             <Plus className="w-4 h-4" /> New Item

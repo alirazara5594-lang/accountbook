@@ -4,7 +4,8 @@ import { assetsInventoryApi } from './api/modules/assetsInventory.api';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { RefreshCw, Zap, Trash2, Wallet } from 'lucide-react';
+import { Zap, Trash2, Wallet } from 'lucide-react';
+import { DataToolbar } from '@/components/ui/data-toolbar';
 
 interface FixedAsset {
   id: string;
@@ -38,6 +39,7 @@ export const FixedAssets: React.FC<{activeEntityId: string}> = ({activeEntityId}
 
   const [message, setMessage] = useState('');
   const [error, setError] = useState('');
+  const [query, setQuery] = useState('');
   const [actingId, setActingId] = useState<string | null>(null);
   const [deprModal, setDeprModal] = useState<FixedAsset | null>(null);
   const [disposeModal, setDisposeModal] = useState<FixedAsset | null>(null);
@@ -111,6 +113,28 @@ export const FixedAssets: React.FC<{activeEntityId: string}> = ({activeEntityId}
   const totalCost = activeAssets.reduce((sum, a) => sum + (a.purchasePrice || a.cost || 0), 0);
   const totalDepr = assets.reduce((sum, a) => sum + (a.accumulatedDepreciation || 0), 0);
 
+  const filteredAssets = React.useMemo(() => {
+    if (!query.trim()) return assets;
+    const q = query.toLowerCase();
+    return assets.filter(a =>
+      (a.name || '').toLowerCase().includes(q) ||
+      (a.assetTag || a.assetCode || '').toLowerCase().includes(q) ||
+      (a.description || '').toLowerCase().includes(q)
+    );
+  }, [assets, query]);
+
+  const exportHeaders = ['Asset Tag', 'Name', 'Description', 'Purchase Date', 'Cost', 'Accumulated Depreciation', 'Net Book Value', 'Status'];
+  const exportRows = filteredAssets.map(a => [
+    a.assetTag || a.assetCode || '',
+    a.name,
+    a.description || '',
+    (a.purchaseDate || a.acquisitionDate || '').slice(0, 10),
+    a.purchasePrice || a.cost || 0,
+    a.accumulatedDepreciation || 0,
+    a.netBookValue ?? ((a.purchasePrice || a.cost || 0) - (a.accumulatedDepreciation || 0)),
+    String(a.status),
+  ]);
+
   return (
     <div className="space-y-6 font-sans text-slate-800 p-2 md:p-6">
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 border-b border-slate-200 pb-4">
@@ -124,9 +148,23 @@ export const FixedAssets: React.FC<{activeEntityId: string}> = ({activeEntityId}
           </p>
         </div>
         <div className="flex items-center gap-2">
-          <Button size="sm" variant="outline" onClick={() => fetchFixedAssets(activeEntityId)} className="h-9 px-3 gap-1.5 text-xs font-semibold">
-            <RefreshCw className="w-4 h-4" /> Refresh
-          </Button>
+          <DataToolbar
+            query={query}
+            setQuery={setQuery}
+            searchPlaceholder="Search asset tag, name, description..."
+            exportFileName="fixed-assets"
+            exportSheetName="Fixed Assets"
+            exportTitle="Fixed Assets"
+            exportSubtitle="Asset register with depreciation and disposal (IAS 16)."
+            exportHeaders={exportHeaders}
+            exportRows={exportRows}
+            exportTotals={[
+              { label: 'Total Cost', value: totalCost },
+              { label: 'Accumulated Depreciation', value: totalDepr },
+              { label: 'Net Book Value', value: totalValue },
+            ]}
+            onRefresh={() => fetchFixedAssets(activeEntityId)}
+          />
         </div>
       </div>
 
@@ -165,14 +203,14 @@ export const FixedAssets: React.FC<{activeEntityId: string}> = ({activeEntityId}
             </TableRow>
           </TableHeader>
           <TableBody className="divide-y divide-slate-100">
-            {assets.length === 0 && !loading && (
+            {filteredAssets.length === 0 && !loading && (
               <TableRow>
                 <TableCell colSpan={8} className="py-8 text-center text-xs text-slate-400">
                   No fixed assets in the register yet.
                 </TableCell>
               </TableRow>
             )}
-            {assets.map(asset => (
+            {filteredAssets.map(asset => (
               <TableRow key={asset.id} className="hover:bg-slate-50/80">
                 <TableCell className="py-3 pl-4 font-mono text-xs font-bold text-slate-800">{asset.assetTag || asset.assetCode || asset.id.slice(0, 8)}</TableCell>
                 <TableCell className="py-3 font-bold text-xs text-slate-800">{asset.name}</TableCell>

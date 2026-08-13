@@ -1,10 +1,11 @@
 // src/CustomerPaymentsWorkspace.tsx
 // Professional "Receive Payment" workspace — IAS/GAAP compliant
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import { useCustomerPaymentsStore } from './stores/useCustomerPaymentsStore';
 import { salesApi, type Invoice } from './api/modules/sales.api';
 import { customersApi, type Customer } from './api/modules/customers.api';
 import { apiClient } from './api/client';
+import { DataToolbar } from '@/components/ui/data-toolbar';
 import './CustomerPayments.module.css';
 
 // ─── Payment methods by region ──────────────────────────────────────────────────
@@ -54,6 +55,7 @@ function CustomerPaymentsWorkspace() {
   const [depositAccounts, setDepositAccounts] = useState<DepositAccount[]>([]);
   const [formData, setFormData] = useState({ ...emptyForm });
   const [formError, setFormError] = useState('');
+  const [query, setQuery] = useState('');
 
   // Load payments on mount
   useEffect(() => { fetchAll(); }, []);
@@ -143,11 +145,45 @@ function CustomerPaymentsWorkspace() {
     setIsModalOpen(true);
   };
 
+  const filteredPayments = useMemo(() => {
+    if (!query.trim()) return payments;
+    const q = query.toLowerCase();
+    return payments.filter((p: any) =>
+      (p.receiptNumber || '').toLowerCase().includes(q) ||
+      (p.customerName || p.customerId || '').toLowerCase().includes(q) ||
+      (p.invoiceNumber || '').toLowerCase().includes(q) ||
+      (p.paymentMethod || '').toLowerCase().includes(q) ||
+      (p.reference || '').toLowerCase().includes(q)
+    );
+  }, [payments, query]);
+
+  const exportHeaders = ['Receipt #', 'Date', 'Customer', 'Invoice', 'Amount', 'Method', 'Deposit To', 'Reference', 'Status'];
+  const exportRows = filteredPayments.map((p: any) => [
+    p.receiptNumber, p.date, p.customerName || p.customerId, p.invoiceNumber || '', p.amount,
+    p.paymentMethod, p.depositToAccountName || '', p.reference || '', p.status,
+  ]);
+  const totalReceived = filteredPayments.reduce((s: number, p: any) => s + (p.amount || 0), 0);
+
   return (
     <section className="workspace-card">
       <header className="workspace-header">
         <h2>Customer Payments</h2>
-        <button className="primary" onClick={openModal}>+ Receive Payment</button>
+        <div className="flex items-center gap-2">
+          <DataToolbar
+            query={query}
+            setQuery={setQuery}
+            searchPlaceholder="Search receipt #, customer, invoice..."
+            exportFileName="customer-payments"
+            exportSheetName="Customer Payments"
+            exportTitle="Customer Payments"
+            exportSubtitle="Payments received from customers applied to invoices."
+            exportHeaders={exportHeaders}
+            exportRows={exportRows}
+            exportTotals={[{ label: 'Total Received', value: totalReceived }]}
+            onRefresh={() => fetchAll()}
+          />
+          <button className="primary" onClick={openModal}>+ Receive Payment</button>
+        </div>
       </header>
 
       {/* ═══════════════════ Receive Payment Modal ═══════════════════ */}
@@ -312,10 +348,10 @@ function CustomerPaymentsWorkspace() {
           </tr>
         </thead>
         <tbody>
-          {payments.length === 0 && !loading && (
+          {filteredPayments.length === 0 && !loading && (
             <tr><td colSpan={9} style={{ textAlign: 'center', opacity: 0.6 }}>No payments recorded yet.</td></tr>
           )}
-          {payments.map((p: any) => (
+          {filteredPayments.map((p: any) => (
             <tr key={p.id}>
               <td>{p.receiptNumber}</td>
               <td>{p.date}</td>

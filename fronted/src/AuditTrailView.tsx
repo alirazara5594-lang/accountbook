@@ -1,9 +1,9 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { accountingApi, type AuditTrailItem } from './api/modules/accounting.api';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Search, RefreshCw, FileDown, ScrollText } from 'lucide-react';
+import { Search, ScrollText } from 'lucide-react';
+import { DataToolbar } from '@/components/ui/data-toolbar';
 import type { Entity } from './EntitySettings';
 
 interface AuditTrailViewProps {
@@ -50,18 +50,8 @@ export const AuditTrailView: React.FC<AuditTrailViewProps> = ({ activeEntityId, 
     });
   }, [items, query, entityFilter]);
 
-  const exportCsv = () => {
-    const header = ['Timestamp', 'Action', 'Entity', 'Entity Name', 'Detail', 'Company'];
-    const rows = filtered.map(i => [i.at, i.action, i.entity, i.entityName, i.detail, i.companyId || '']);
-    const csv = [header, ...rows].map(r => r.map(c => `"${String(c ?? '').replace(/"/g, '""')}"`).join(',')).join('\n');
-    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = 'audit-trail.csv';
-    a.click();
-    URL.revokeObjectURL(url);
-  };
+  const exportHeaders = ['Timestamp', 'Action', 'Entity', 'Entity Name', 'Detail', 'Company'];
+  const exportRows = filtered.map(i => [i.at, i.action, i.entity, i.entityName, i.detail, i.companyId || '']);
 
   const formatTime = (at: string) => {
     const d = new Date(at);
@@ -82,12 +72,15 @@ export const AuditTrailView: React.FC<AuditTrailViewProps> = ({ activeEntityId, 
           </p>
         </div>
         <div className="flex items-center gap-2">
-          <Button size="sm" variant="outline" onClick={load} className="h-9 px-3 gap-1.5 text-xs font-semibold">
-            <RefreshCw className="w-4 h-4" /> Refresh
-          </Button>
-          <Button size="sm" variant="outline" onClick={exportCsv} className="h-9 px-3 gap-1.5 text-xs font-semibold">
-            <FileDown className="w-4 h-4" /> Export CSV
-          </Button>
+          <DataToolbar
+            exportFileName="audit-trail"
+            exportSheetName="Audit Trail"
+            exportTitle="Audit Trail"
+            exportSubtitle={`Immutable event log for ${currentEntity?.name || 'Active Entity'} (IAS 8 / audit evidence).`}
+            exportHeaders={exportHeaders}
+            exportRows={exportRows}
+            onRefresh={load}
+          />
         </div>
       </div>
 

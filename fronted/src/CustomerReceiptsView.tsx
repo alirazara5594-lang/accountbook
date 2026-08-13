@@ -4,6 +4,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { ArrowDownLeft, Search, Plus } from 'lucide-react';
+import { DataToolbar } from '@/components/ui/data-toolbar';
 import type { Entity } from './EntitySettings';
 
 type PaymentMode = 'ACH' | 'Wire Transfer' | 'Cheque / Pay Order' | 'Credit Card' | 'Payment Gateway' | 'Direct Deposit';
@@ -114,6 +115,10 @@ export const CustomerReceiptsView: React.FC<CustomerReceiptsViewProps> = ({ acti
     setIsModalOpen(false);
   };
 
+  const exportHeaders = ['Date', 'Reference', 'Customer', 'Bank Account', 'Payment Mode', 'Amount', 'Currency', 'Status'];
+  const exportRows = filtered.map(r => [r.date, r.reference, r.customerName, r.bankAccount, r.paymentMode, r.amount, r.currency, r.status]);
+  const totalReceipts = filtered.reduce((s, r) => s + (r.amount || 0), 0);
+
   return (
     <div className="space-y-6 font-sans text-slate-800 p-2 md:p-6">
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 border-b border-slate-200 pb-4">
@@ -146,6 +151,15 @@ export const CustomerReceiptsView: React.FC<CustomerReceiptsViewProps> = ({ acti
             className="pl-9 h-9 bg-white border border-slate-200 rounded-lg text-xs"
           />
         </div>
+        <DataToolbar
+          exportFileName="customer-receipts"
+          exportSheetName="Customer Receipts"
+          exportTitle="Customer Receipts"
+          exportSubtitle={`Incoming customer collections for ${currentEntity?.name || 'Active Entity'}.`}
+          exportHeaders={exportHeaders}
+          exportRows={exportRows}
+          exportTotals={[{ label: 'Total Amount', value: totalReceipts }]}
+        />
       </div>
 
       <div className="bg-white border border-slate-200 rounded-xl overflow-hidden shadow-xs">

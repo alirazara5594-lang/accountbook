@@ -4,7 +4,8 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
-import { Printer, CheckCircle, AlertTriangle, Calendar, Download } from 'lucide-react';
+import { CheckCircle, AlertTriangle, Calendar } from 'lucide-react';
+import { DataToolbar } from '@/components/ui/data-toolbar';
 
 import { type Account } from './api/modules/coa.api';
 type AccountType = string;
@@ -242,35 +243,18 @@ export const FinancialReports: React.FC<FinancialReportsProps> = ({
   // Balance Check
   const balanceSheetBalanced = Math.abs(balanceSheetData.totalAssets - (balanceSheetData.totalLiabilities + balanceSheetData.totalEquity + incomeStatementData.netIncome)) < 0.01;
 
-  // Print function
-  const handlePrint = () => {
-    window.print();
-  };
-
-  // Export active tab data to CSV
-  const handleExport = () => {
-    const columns: string[] = ['Account', 'Amount'];
-    const rows: (string | number)[][] = [];
-    rows.push(['ASSETS']);
-    balanceSheetData.assetAccounts.forEach(a => rows.push([`${a.code} — ${a.name}`, (a.type === 'ContraAsset' ? -1 : 1) * (accountBalances[a.id] || 0)]));
-    rows.push(['', balanceSheetData.totalAssets]);
-    rows.push(['LIABILITIES']);
-    balanceSheetData.liabilityAccounts.forEach(a => rows.push([`${a.code} — ${a.name}`, (a.type === 'ContraLiability' ? -1 : 1) * (accountBalances[a.id] || 0)]));
-    rows.push(['', balanceSheetData.totalLiabilities]);
-    rows.push(['EQUITY']);
-    balanceSheetData.equityAccounts.forEach(a => rows.push([`${a.code} — ${a.name}`, (a.type === 'ContraEquity' ? -1 : 1) * (accountBalances[a.id] || 0)]));
-    rows.push(['', balanceSheetData.totalEquity]);
-    rows.push(['NET INCOME', incomeStatementData.netIncome]);
-
-    const csv = [columns, ...rows].map(r => r.map(c => `"${String(c ?? '').replace(/"/g, '""')}"`).join(',')).join('\n');
-    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `financial-reports-${new Date().toISOString().slice(0, 10)}.csv`;
-    a.click();
-    URL.revokeObjectURL(url);
-  };
+  const exportHeaders = ['Account', 'Amount'];
+  const exportRows: (string | number)[][] = [];
+  exportRows.push(['ASSETS']);
+  balanceSheetData.assetAccounts.forEach(a => exportRows.push([`${a.code} — ${a.name}`, (a.type === 'ContraAsset' ? -1 : 1) * (accountBalances[a.id] || 0)]));
+  exportRows.push(['', balanceSheetData.totalAssets]);
+  exportRows.push(['LIABILITIES']);
+  balanceSheetData.liabilityAccounts.forEach(a => exportRows.push([`${a.code} — ${a.name}`, (a.type === 'ContraLiability' ? -1 : 1) * (accountBalances[a.id] || 0)]));
+  exportRows.push(['', balanceSheetData.totalLiabilities]);
+  exportRows.push(['EQUITY']);
+  balanceSheetData.equityAccounts.forEach(a => exportRows.push([`${a.code} — ${a.name}`, (a.type === 'ContraEquity' ? -1 : 1) * (accountBalances[a.id] || 0)]));
+  exportRows.push(['', balanceSheetData.totalEquity]);
+  exportRows.push(['NET INCOME', incomeStatementData.netIncome]);
 
   return (
     <div className="space-y-6">
@@ -309,12 +293,15 @@ export const FinancialReports: React.FC<FinancialReportsProps> = ({
               Clear
             </Button>
           )}
-          <Button variant="outline" size="sm" onClick={handlePrint} className="h-9 text-xs gap-1.5 border-gray-200">
-            <Printer className="w-3.5 h-3.5" /> Print Statement
-          </Button>
-          <Button variant="outline" size="sm" onClick={handleExport} className="h-9 text-xs gap-1.5 border-gray-200">
-            <Download className="w-3.5 h-3.5" /> Export CSV
-          </Button>
+          <DataToolbar
+            exportFileName={`financial-reports-${new Date().toISOString().slice(0, 10)}`}
+            exportSheetName="Financial Reports"
+            exportTitle="Financial Reports"
+            exportSubtitle={`Balance sheet and income statement — ${dateFrom || 'start'} to ${dateTo || 'today'} (IAS 1 / IFRS 15).`}
+            exportHeaders={exportHeaders}
+            exportRows={exportRows}
+            onRefresh={() => { setDateFrom(''); setDateTo(''); }}
+          />
         </div>
       </div>
 
