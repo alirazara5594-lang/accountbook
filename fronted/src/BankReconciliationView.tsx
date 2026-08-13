@@ -83,8 +83,6 @@ export const BankReconciliationView: React.FC<{ activeEntityId: string; entities
     }
   };
 
-  const selectedAccount = accounts.find(a => a.id === selectedBankId);
-
   return (
     <div className="space-y-6 font-sans text-slate-800 p-2 md:p-6">
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 border-b border-slate-200 pb-4">

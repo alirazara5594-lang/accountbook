@@ -42,73 +42,6 @@ interface BankAccountDto {
   updatedAt: string;
 }
 
-const initialBankAccountsData: BankAccountRecord[] = [
-  {
-    id: 'ba-1',
-    code: '11101',
-    name: 'Habib Bank Limited — Main Operating',
-    bankName: 'Habib Bank Limited',
-    branchName: 'Corporate Branch, I.I. Chundrigar Rd',
-    accountNumber: '00012345678901',
-    iban: 'PK12HABB00012345678901',
-    swift: 'HABBPKKA',
-    currency: 'PKR',
-    balance: 4500000,
-    status: 'Active',
-    reconciledStatus: 'Reconciled',
-    connectionType: 'Live Feed API',
-    updatedAt: '2026-08-09'
-  },
-  {
-    id: 'ba-2',
-    code: '11102',
-    name: 'Meezan Bank — Corporate Islamic Account',
-    bankName: 'Meezan Bank Limited',
-    branchName: 'Islamic Banking Center, Gulberg',
-    accountNumber: '00098765432102',
-    iban: 'PK45MEZN00098765432102',
-    swift: 'MEZNPKKA',
-    currency: 'PKR',
-    balance: 1850000,
-    status: 'Active',
-    reconciledStatus: 'Pending Sync',
-    connectionType: 'Live Feed API',
-    updatedAt: '2026-08-08'
-  },
-  {
-    id: 'ba-3',
-    code: '11103',
-    name: 'Standard Chartered — Global USD Trade Account',
-    bankName: 'Standard Chartered Bank',
-    branchName: 'Main Commercial Hub, NY',
-    accountNumber: 'SCB-USD-992144',
-    iban: 'US89SCBL000992144',
-    swift: 'SCBLUS33',
-    currency: 'USD',
-    balance: 62500,
-    status: 'Active',
-    reconciledStatus: 'Reconciled',
-    connectionType: 'Live Feed API',
-    updatedAt: '2026-08-09'
-  },
-  {
-    id: 'ba-4',
-    code: '11104',
-    name: 'Emirates NBD — UAE Dirham Treasury',
-    bankName: 'Emirates NBD',
-    branchName: 'Dubai Financial Center (DIFC)',
-    accountNumber: 'ENBD-AED-774120',
-    iban: 'AE210330000011223344556',
-    swift: 'EBILAEAD',
-    currency: 'AED',
-    balance: 48000,
-    status: 'Active',
-    reconciledStatus: 'Reconciled',
-    connectionType: 'Manual Import',
-    updatedAt: '2026-08-05'
-  }
-];
-
 export const BankAccountsView: React.FC<BankAccountsViewProps> = ({ activeEntityId, entities }) => {
   const currentEntity = entities.find(e => e.id === activeEntityId);
   const [bankAccounts, setBankAccounts] = useState<BankAccountRecord[]>([]);
@@ -144,7 +77,7 @@ export const BankAccountsView: React.FC<BankAccountsViewProps> = ({ activeEntity
     setLoading(true);
     try {
       const data = await apiClient<BankAccountDto[]>('/bank-accounts');
-      setBankAccounts(data.map((a, i) => ({
+      setBankAccounts(data.map((a) => ({
         id: a.id,
         code: a.code,
         name: a.name,

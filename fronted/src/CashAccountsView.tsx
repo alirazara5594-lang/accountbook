@@ -1,10 +1,11 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Wallet, Search, Plus, Edit3, ArrowLeftRight, CheckCircle2 } from 'lucide-react';
+import { Wallet, Search, Plus, Edit3, ArrowLeftRight, CheckCircle2, RefreshCw } from 'lucide-react';
 import type { Entity } from './EntitySettings';
+import { apiClient } from './api/client';
 
 export interface CashAccountRecord {
   id: string;
@@ -23,48 +24,27 @@ interface CashAccountsViewProps {
   entities: Entity[];
 }
 
-const initialCashAccounts: CashAccountRecord[] = [
-  {
-    id: 'ca-1',
-    code: '11104',
-    name: 'Head Office Main Cash Vault',
-    vaultLocation: 'Head Office Secure Vault #01',
-    custodian: 'Muhammad Ali (Finance Admin)',
-    currency: 'PKR',
-    balance: 125000,
-    status: 'Active',
-    lastAuditedDate: '2026-08-08'
-  },
-  {
-    id: 'ca-2',
-    code: '11105',
-    name: 'Branch Office Petty Cash Till',
-    vaultLocation: 'Lahore Regional Office Cash Register',
-    custodian: 'Usman Tariq (Branch Admin)',
-    currency: 'PKR',
-    balance: 45000,
-    status: 'Active',
-    lastAuditedDate: '2026-08-07'
-  },
-  {
-    id: 'ca-3',
-    code: '11106',
-    name: 'USD Emergency Travel Cash Reserve',
-    vaultLocation: 'Executive Safe',
-    custodian: 'Finance Director',
-    currency: 'USD',
-    balance: 3500,
-    status: 'Active',
-    lastAuditedDate: '2026-08-01'
-  }
-];
+interface CashAccountDto {
+  id: string;
+  code: string;
+  name: string;
+  currency: string;
+  status: string;
+  openingBalance: number;
+  balance: number;
+  reconciliationEnabled: boolean;
+  bankName: string | null;
+  updatedAt: string;
+}
 
 export const CashAccountsView: React.FC<CashAccountsViewProps> = ({ activeEntityId, entities }) => {
   const currentEntity = entities.find(e => e.id === activeEntityId);
-  const [cashAccounts, setCashAccounts] = useState<CashAccountRecord[]>(initialCashAccounts);
+  const [cashAccounts, setCashAccounts] = useState<CashAccountRecord[]>([]);
   const [query, setQuery] = useState('');
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingAccount, setEditingAccount] = useState<CashAccountRecord | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
 
   const [form, setForm] = useState({
     code: '11107',
@@ -80,6 +60,31 @@ export const CashAccountsView: React.FC<CashAccountsViewProps> = ({ activeEntity
     return new Intl.NumberFormat('en-US', { style: 'currency', currency, maximumFractionDigits: 2 }).format(val);
   };
 
+  const loadCashAccounts = async () => {
+    setLoading(true);
+    try {
+      const data = await apiClient<CashAccountDto[]>('/cash-accounts');
+      setCashAccounts(data.map(a => ({
+        id: a.id,
+        code: a.code,
+        name: a.name,
+        vaultLocation: '',
+        custodian: '',
+        currency: a.currency,
+        balance: a.balance,
+        status: a.status as 'Active' | 'Inactive',
+        lastAuditedDate: (a.updatedAt || '').slice(0, 10),
+      })));
+      setError('');
+    } catch (e: any) {
+      setError(e?.message || 'Failed to load cash accounts.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => { loadCashAccounts(); }, [activeEntityId]);
+
   const filtered = useMemo(() => {
     return cashAccounts.filter(acc => {
       if (query.trim()) {
@@ -94,36 +99,31 @@ export const CashAccountsView: React.FC<CashAccountsViewProps> = ({ activeEntity
     });
   }, [cashAccounts, query]);
 
-  const handleSaveAccount = (e: React.FormEvent) => {
+  const handleSaveAccount = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!form.name) return;
 
-    if (editingAccount) {
-      setCashAccounts(prev => prev.map(a => a.id === editingAccount.id ? {
-        ...a,
-        code: form.code,
-        name: form.name,
-        vaultLocation: form.vaultLocation,
-        custodian: form.custodian,
-        currency: form.currency,
-        balance: parseFloat(form.balance) || 0,
-        status: form.status,
-        lastAuditedDate: new Date().toISOString().slice(0, 10)
-      } : a));
-    } else {
-      setCashAccounts(prev => [...prev, {
-        id: `ca-${Date.now()}`,
-        code: form.code,
-        name: form.name,
-        vaultLocation: form.vaultLocation || 'Main Cash Vault',
-        custodian: form.custodian || 'Cashier',
-        currency: form.currency,
-        balance: parseFloat(form.balance) || 0,
-        status: form.status,
-        lastAuditedDate: new Date().toISOString().slice(0, 10)
-      }]);
+    try {
+      if (editingAccount) {
+        alert('Editing cash accounts is handled via the Chart of Accounts. Please update the COA account directly.');
+      } else {
+        await apiClient('/cash-accounts', {
+          method: 'POST',
+          body: {
+            name: form.name,
+            code: form.code,
+            currency: form.currency,
+            openingBalance: parseFloat(form.balance) || 0,
+            reconciliationEnabled: true,
+            companyId: activeEntityId || undefined,
+          },
+        });
+      }
+      setIsModalOpen(false);
+      await loadCashAccounts();
+    } catch (err: any) {
+      alert(err?.data?.error || err?.message || 'Failed to save cash account.');
     }
-    setIsModalOpen(false);
   };
 
   return (
@@ -142,6 +142,14 @@ export const CashAccountsView: React.FC<CashAccountsViewProps> = ({ activeEntity
         <div className="flex items-center gap-2">
           <Button
             size="sm"
+            variant="outline"
+            onClick={loadCashAccounts}
+            className="h-9 px-3 gap-1.5 text-xs font-semibold text-slate-700 bg-white border-slate-200 hover:bg-slate-50"
+          >
+            <RefreshCw className="w-4 h-4" /> Refresh
+          </Button>
+          <Button
+            size="sm"
             onClick={() => {
               setEditingAccount(null);
               setForm({ code: `1110${cashAccounts.length + 4}`, name: '', vaultLocation: '', custodian: '', currency: 'PKR', balance: '0', status: 'Active' });
@@ -153,6 +161,9 @@ export const CashAccountsView: React.FC<CashAccountsViewProps> = ({ activeEntity
           </Button>
         </div>
       </div>
+
+      {loading && <p className="text-xs text-slate-500">Loading cash accounts…</p>}
+      {error && <p className="text-xs text-rose-600">{error}</p>}
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <Card className="bg-white border-slate-200 shadow-xs">
@@ -175,8 +186,8 @@ export const CashAccountsView: React.FC<CashAccountsViewProps> = ({ activeEntity
             </div>
             <div>
               <p className="text-xs font-medium text-slate-500">PKR Petty Cash Reserves</p>
-              <h3 className="text-lg font-bold text-slate-900">{formatCurrency(170000, 'PKR')}</h3>
-              <p className="text-[11px] text-blue-600 font-medium font-mono">11104 & 11105 Registers</p>
+              <h3 className="text-lg font-bold text-slate-900">{formatCurrency(cashAccounts.filter(a => a.currency === 'PKR').reduce((s, a) => s + a.balance, 0), 'PKR')}</h3>
+              <p className="text-[11px] text-blue-600 font-medium font-mono">On-hand registers</p>
             </div>
           </CardContent>
         </Card>
@@ -187,9 +198,9 @@ export const CashAccountsView: React.FC<CashAccountsViewProps> = ({ activeEntity
               <ArrowLeftRight className="w-5 h-5" />
             </div>
             <div>
-              <p className="text-xs font-medium text-slate-500">USD Emergency Travel Reserve</p>
-              <h3 className="text-lg font-bold text-slate-900">{formatCurrency(3500, 'USD')}</h3>
-              <p className="text-[11px] text-indigo-600 font-medium">Executive Safe Vault</p>
+              <p className="text-xs font-medium text-slate-500">Foreign Currency Reserve</p>
+              <h3 className="text-lg font-bold text-slate-900">{formatCurrency(cashAccounts.filter(a => a.currency !== 'PKR').reduce((s, a) => s + a.balance, 0), 'USD')}</h3>
+              <p className="text-[11px] text-indigo-600 font-medium">Non-PKR vaults</p>
             </div>
           </CardContent>
         </Card>

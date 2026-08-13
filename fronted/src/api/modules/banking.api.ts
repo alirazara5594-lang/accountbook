@@ -47,34 +47,34 @@ export interface FundTransfer {
 
 export const bankingApi = {
   getBankAccounts: async (companyId?: string): Promise<BankAccount[]> => {
-    return apiClient<BankAccount[]>('/bankaccounts', { params: { companyId } });
+    return apiClient<BankAccount[]>('/bank-accounts', { params: { companyId } });
   },
 
   createBankAccount: async (data: any): Promise<BankAccount> => {
-    return apiClient<BankAccount>('/bankaccounts', { method: 'POST', body: data });
+    return apiClient<BankAccount>('/bank-accounts', { method: 'POST', body: data });
   },
 
   getCashAccounts: async (companyId?: string): Promise<CashAccount[]> => {
-    return apiClient<CashAccount[]>('/cashaccounts', { params: { companyId } });
+    return apiClient<CashAccount[]>('/cash-accounts', { params: { companyId } });
   },
 
   createCashAccount: async (data: any): Promise<CashAccount> => {
-    return apiClient<CashAccount>('/cashaccounts', { method: 'POST', body: data });
+    return apiClient<CashAccount>('/cash-accounts', { method: 'POST', body: data });
   },
 
   getBankTransactions: async (bankAccountId?: string, companyId?: string): Promise<BankTransaction[]> => {
-    return apiClient<BankTransaction[]>('/banktransactions', { params: { bankAccountId, companyId } });
+    return apiClient<BankTransaction[]>('/bank-transactions', { params: { bankAccountId, companyId } });
   },
 
   getFundTransfers: async (companyId?: string): Promise<FundTransfer[]> => {
-    return apiClient<FundTransfer[]>('/fundtransfers', { params: { companyId } });
+    return apiClient<FundTransfer[]>('/fund-transfers', { params: { companyId } });
   },
 
   createFundTransfer: async (data: any): Promise<FundTransfer> => {
-    return apiClient<FundTransfer>('/fundtransfers', { method: 'POST', body: data });
+    return apiClient<FundTransfer>('/fund-transfers', { method: 'POST', body: data });
   },
 
   getReconciliations: async (bankAccountId?: string): Promise<any[]> => {
-    return apiClient<any[]>('/bankreconciliations', { params: { bankAccountId } });
+    return apiClient<any[]>('/bank-reconciliations', { params: { bankAccountId } });
   },
 };
