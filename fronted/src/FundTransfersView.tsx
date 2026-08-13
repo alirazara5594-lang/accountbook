@@ -2,7 +2,8 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { ArrowLeftRight, Plus, RefreshCw } from 'lucide-react';
+import { ArrowLeftRight, Plus } from 'lucide-react';
+import { DataToolbar } from '@/components/ui/data-toolbar';
 import type { Entity } from './EntitySettings';
 import { apiClient } from './api/client';
 
@@ -32,6 +33,7 @@ export const FundTransfersView: React.FC<{ activeEntityId: string; entities: Ent
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [saving, setSaving] = useState(false);
   const [formError, setFormError] = useState('');
+  const [query, setQuery] = useState('');
   const [form, setForm] = useState({
     fromAccountId: '',
     toAccountId: '',
@@ -67,7 +69,20 @@ export const FundTransfersView: React.FC<{ activeEntityId: string; entities: Ent
     }));
   }, [isModalOpen, accounts]);
 
-  const filtered = useMemo(() => transfers, [transfers]);
+  const filtered = useMemo(() => {
+    if (!query.trim()) return transfers;
+    const q = query.toLowerCase();
+    return transfers.filter(t =>
+      (t.transferNumber || '').toLowerCase().includes(q) ||
+      (t.fromAccountName || '').toLowerCase().includes(q) ||
+      (t.toAccountName || '').toLowerCase().includes(q) ||
+      (t.reference || '').toLowerCase().includes(q)
+    );
+  }, [transfers, query]);
+
+  const exportHeaders = ['Date', 'Transfer #', 'Source Account', 'Target Account', 'Reference', 'Status', 'Amount'];
+  const exportRows = filtered.map(t => [t.date, t.transferNumber, `${t.fromAccountCode} — ${t.fromAccountName}`, `${t.toAccountCode} — ${t.toAccountName}`, t.reference || '', t.status, t.amount]);
+  const totalTransferred = filtered.reduce((s, t) => s + (t.amount || 0), 0);
 
   const handleCreateTransfer = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -112,9 +127,19 @@ export const FundTransfersView: React.FC<{ activeEntityId: string; entities: Ent
           <p className="text-xs text-slate-500">Internal liquidity bank-to-bank and cash vault transfers for {currentEntity?.name || 'Active Entity'}. Transfers post a Dr Target / Cr Source journal.</p>
         </div>
         <div className="flex items-center gap-2">
-          <Button size="sm" variant="outline" onClick={loadTransfers} className="h-9 px-3 gap-1.5 text-xs font-semibold">
-            <RefreshCw className="w-4 h-4" /> Refresh
-          </Button>
+          <DataToolbar
+            query={query}
+            setQuery={setQuery}
+            searchPlaceholder="Search transfer #, accounts, reference..."
+            exportFileName="fund-transfers"
+            exportSheetName="Fund Transfers"
+            exportTitle="Inter-Account Fund Transfers"
+            exportSubtitle="Bank-to-bank and cash vault internal transfers."
+            exportHeaders={exportHeaders}
+            exportRows={exportRows}
+            exportTotals={[{ label: 'Total Transferred', value: totalTransferred }]}
+            onRefresh={loadTransfers}
+          />
           <Button size="sm" onClick={() => setIsModalOpen(true)} className="h-9 px-4 gap-1.5 text-xs font-semibold text-white bg-[#143e2b]">
             <Plus className="w-4 h-4" /> New Inter-Bank Transfer
           </Button>

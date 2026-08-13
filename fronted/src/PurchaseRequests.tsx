@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useProcurementStore, useProductsStore } from './stores';
+import { DataToolbar } from '@/components/ui/data-toolbar';
 
 interface PurchaseRequestLine {
   id?: string;
@@ -97,9 +98,20 @@ export const PurchaseRequests: React.FC<{activeEntityId: string, entities: any[]
     <div className="space-y-6">
       <div className="flex justify-between items-center">
         <h2 className="text-xl font-bold text-gray-900">Request List</h2>
-        <button onClick={() => setIsModalOpen(true)} className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-xl shadow-sm transition-all">
-          + New Request
-        </button>
+        <div className="flex items-center gap-2">
+          <DataToolbar
+            exportFileName="purchase-requests"
+            exportSheetName="Purchase Requests"
+            exportTitle="Purchase Requests"
+            exportSubtitle="Internal requisitions from requester through approval to ordering."
+            exportHeaders={['Request No.', 'Date', 'Requester', 'Status']}
+            exportRows={requests.map((pr: any) => [pr.requestNumber, pr.date, pr.requesterName, ['Draft', 'Submitted', 'Approved', 'Rejected', 'Ordered'][pr.status]])}
+            onRefresh={fetchData}
+          />
+          <button onClick={() => setIsModalOpen(true)} className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-xl shadow-sm transition-all">
+            + New Request
+          </button>
+        </div>
       </div>
 
       <div className="bg-white border border-gray-200 rounded-2xl shadow-sm overflow-hidden">

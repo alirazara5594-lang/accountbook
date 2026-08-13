@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useProcurementStore, useVendorsStore, useProductsStore, useTaxStore } from './stores';
+import { DataToolbar } from '@/components/ui/data-toolbar';
 import './App.css';
 
 interface TaxRate {
@@ -271,7 +272,21 @@ export const PurchaseOrders: React.FC<{activeEntityId?: string, entities?: any[]
     <div className="animate-fade-in space-y-6">
       <div className="flex justify-between items-center mb-8">
         <h2 className="text-xl font-bold text-gray-900">Purchase Orders & GRN List</h2>
-        <div className="flex gap-4">
+        <div className="flex gap-4 items-center">
+          <DataToolbar
+            exportFileName="purchase-orders-grns"
+            exportSheetName="Purchase Orders & GRNs"
+            exportTitle="Purchase Orders & Goods Receipts"
+            exportSubtitle="Procurement purchase orders and goods receipt notes."
+            exportHeaders={['PO Number', 'Date', 'Vendor', 'Total Amount', 'Status']}
+            exportRows={pos.map((po: any) => {
+              const vendor = vendors.find(v => v.id === po.vendorId);
+              const total = po.lines.reduce((s: number, l: any) => s + (l.totalAmount || 0), 0);
+              return [po.poNumber, po.date, vendor?.name || 'Unknown', total, getStatusString(po.status)];
+            })}
+            exportTotals={[{ label: 'Total PO Value', value: pos.reduce((s: number, po: any) => s + po.lines.reduce((a: number, l: any) => a + (l.totalAmount || 0), 0), 0) }]}
+            onRefresh={fetchData}
+          />
           <button onClick={() => setIsPoModalOpen(true)} className="px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-xl shadow-sm shadow-blue-600/20 transition-all active:scale-95">
             + New Purchase Order
           </button>

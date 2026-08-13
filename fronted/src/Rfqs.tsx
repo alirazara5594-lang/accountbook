@@ -1,5 +1,6 @@
 import { useEffect } from 'react'
 import { useProcurementStore } from './stores'
+import { DataToolbar } from '@/components/ui/data-toolbar'
 
 export const Rfqs = ({ activeEntityId }: { activeEntityId: string }) => {
   const rfqs = useProcurementStore((s) => s.rfqs);
@@ -35,6 +36,15 @@ export const Rfqs = ({ activeEntityId }: { activeEntityId: string }) => {
     <div className="space-y-6">
       <div className="flex justify-between items-center">
         <h2 className="text-xl font-bold text-gray-900">RFQ List</h2>
+        <DataToolbar
+          exportFileName="rfqs"
+          exportSheetName="RFQs"
+          exportTitle="Requests for Quotation"
+          exportSubtitle="RFQs issued to suppliers with deadlines and status."
+          exportHeaders={['RFQ No.', 'Date', 'Deadline', 'Status']}
+          exportRows={(rfqs as any[]).map((rfq: any) => [rfq.rfqNumber, rfq.issueDate || rfq.date || '-', rfq.dueDate || rfq.deadline || '-', String(rfq.status || 'Open')])}
+          onRefresh={() => fetchRfqs(activeEntityId)}
+        />
       </div>
       
       <div className="bg-white border border-gray-200 rounded-2xl shadow-sm overflow-hidden">

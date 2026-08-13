@@ -9,6 +9,7 @@ import {
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { DataToolbar } from '@/components/ui/data-toolbar';
 
 function money(amount: number) {
   return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(amount || 0);
@@ -316,7 +317,34 @@ export const ProcurementWorkspace: React.FC<{ activeEntityId: string; entities?:
           </h1>
           <p className="text-gray-500 text-xs mt-1">Full 8-Step Procurement Lifecycle, GRN Destination Routing, Quotation Award & 3-Way Match Validation.</p>
         </div>
-        <div className="flex gap-2">
+        <div className="flex gap-2 items-center">
+          <DataToolbar
+            exportFileName="procurement-lifecycle"
+            exportSheetName="Procurement Lifecycle"
+            exportTitle="Enterprise Procurement Workspace"
+            exportSubtitle="Full 8-step procurement lifecycle: PR, RFQ, quotes, PO, GRN, bills, 3-way match, transfers."
+            exportHeaders={['Type', 'Number', 'Vendor / Requestor', 'Date', 'Amount', 'Status']}
+            exportRows={[
+              ...requests.map((pr: any) => ['PR', pr.requestNumber, pr.requestorName, pr.createdAt || '', pr.totalEstimatedAmount || 0, ['Draft', 'Submitted', 'Approved', 'Rejected', 'Ordered'][pr.status] || pr.status]),
+              ...orders.map((po: any) => {
+                const vendor = vendors.find((v: any) => v.id === po.vendorId);
+                const total = po.lines?.reduce((s: number, l: any) => s + (l.totalAmount || 0), 0) || 0;
+                return ['PO', po.poNumber, vendor?.name || 'Unknown', po.date, total, ['Draft', 'Issued', 'Partially Received', 'Fulfilled'][po.status] || po.status];
+              }),
+              ...grns.map((grn: any) => ['GRN', grn.grnNumber, grn.purchaseOrderId, grn.dateReceived, 0, grn.isProcessed ? 'Processed' : 'Pending']),
+              ...vendorQuotes.map((q: any) => {
+                const vendor = vendors.find((v: any) => v.id === q.vendorId);
+                return ['Quote', q.quoteNumber || q.rfqNumber, vendor?.name || 'Unknown', q.quotedDate || '', q.totalQuotedPrice || 0, q.awarded ? 'Awarded' : 'Open'];
+              }),
+            ]}
+            exportTotals={[
+              { label: 'Purchase Requests', value: requests.length },
+              { label: 'Purchase Orders', value: orders.length },
+              { label: 'GRNs', value: grns.length },
+              { label: 'Vendor Quotes', value: vendorQuotes.length },
+            ]}
+            onRefresh={() => fetchAllProcurement(activeEntityId)}
+          />
           <Button variant="outline" size="sm" onClick={() => setShowPrModal(true)}>+ New Purchase Request</Button>
           <Button size="sm" className="bg-blue-600 hover:bg-blue-700 text-white" onClick={() => setShowTransferModal(true)}>+ Warehouse Transfer</Button>
         </div>

@@ -1,6 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { useAssetsInventoryStore, useCoaStore, useProductsStore } from './stores';
-import { Input } from '@/components/ui/input';
 import { DataToolbar } from '@/components/ui/data-toolbar';
 function money(v: number) { return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(v); }
 
@@ -61,23 +60,32 @@ const AssetRegister: React.FC<{ activeEntityId: string; accounts: any[] }> = ({ 
 
   const totalNBV = assets.filter(a => a.status === 0).reduce((s, a) => s + (a.purchasePrice - (a.accumulatedDepreciation || 0)), 0);
 
+  const filteredAssets = assets.filter(a => !searchTerm || a.name.toLowerCase().includes(searchTerm.toLowerCase()) || (a.assetTag && a.assetTag.toLowerCase().includes(searchTerm.toLowerCase())));
+  const exportHeaders = ['Tag', 'Name', 'Purchase Date', 'Cost', 'Accum. Depr.', 'NBV', 'Status'];
+  const exportRows = filteredAssets.map((a: any) => [
+    a.assetTag, a.name, a.purchaseDate, a.purchasePrice, a.accumulatedDepreciation ?? 0,
+    a.purchasePrice - (a.accumulatedDepreciation ?? 0), ['Active', 'Disposed', 'Fully Depreciated'][a.status],
+  ]);
+
   return (
     <div className="space-y-4">
       {toast && <div className="px-4 py-2 bg-green-50 border border-green-200 text-green-800 rounded-xl text-sm">{toast}</div>}
 <div className="flex justify-between items-center">
         <h2 className="text-xl font-bold text-gray-900">Fixed Asset Register</h2>
         <div className="flex items-center gap-2">
-          <Input
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            placeholder="Search by tag, name..."
-            className="w-48 text-sm"
+          <DataToolbar
+            query={searchTerm}
+            setQuery={setSearchTerm}
+            searchPlaceholder="Search by tag, name..."
+            exportFileName="asset-register"
+            exportSheetName="Asset Register"
+            exportTitle="Fixed Asset Register"
+            exportSubtitle="All fixed assets with cost, accumulated depreciation and net book value."
+            exportHeaders={exportHeaders}
+            exportRows={exportRows}
+            exportTotals={[{ label: 'Total Net Book Value', value: totalNBV }]}
+            onRefresh={() => fetchFixedAssets(activeEntityId)}
           />
-          <button onClick={() => setSearchTerm('')}
-            className="px-2 py-1 text-xs text-gray-400 hover:text-gray-600"
-            title="Clear search">
-            ✕
-          </button>
         </div>
         <div className="text-right"><p className="text-xs text-gray-500 uppercase tracking-wide">Total Net Book Value</p><p className="text-2xl font-bold text-emerald-600">{money(totalNBV)}</p></div>
 </div>
@@ -91,7 +99,7 @@ const AssetRegister: React.FC<{ activeEntityId: string; accounts: any[] }> = ({ 
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-50">
-            {assets.filter(a => !searchTerm || a.name.toLowerCase().includes(searchTerm.toLowerCase()) || (a.assetTag && a.assetTag.toLowerCase().includes(searchTerm.toLowerCase()))).map(a => (
+            {filteredAssets.map(a => (
               <tr key={a.id} className="hover:bg-gray-50/60 transition-colors">
                 <td className="py-3 px-4 font-mono text-xs text-gray-500">{a.assetTag}</td>
                 <td className="py-3 px-4 font-medium text-gray-900">{a.name}</td>
@@ -110,7 +118,7 @@ const AssetRegister: React.FC<{ activeEntityId: string; accounts: any[] }> = ({ 
                 </td>
               </tr>
             ))}
-            {(searchTerm && !assets.filter(a => a.name.toLowerCase().includes(searchTerm.toLowerCase()) || (a.assetTag && a.assetTag.toLowerCase().includes(searchTerm.toLowerCase()))).length) || (!searchTerm && assets.length === 0) && (
+            {(searchTerm && filteredAssets.length === 0) || (!searchTerm && assets.length === 0) && (
               <tr><td colSpan={8} className="py-10 text-center text-gray-400">No assets matching "{searchTerm}". Process a GRN with "Fixed Asset" destination to auto-create assets.</td></tr>
             )}
           </tbody>
