@@ -1040,3 +1040,41 @@ public record CustomerPaymentRequest(
     string? Memo = null,
     Guid? CompanyId = null
 );
+
+// ─── Vouchers (BPV/BRV/CPV/CRV/JV) ─────────────────────────────────────────────
+public enum VoucherType { BPV, BRV, CPV, CRV, JV }
+
+public class Voucher
+{
+    public Guid Id { get; init; } = Guid.NewGuid();
+    public required string VoucherNumber { get; set; }
+    public VoucherType Type { get; set; }
+    public DateOnly Date { get; set; }
+    public string AccountName { get; set; } = "";
+    public Guid? AccountId { get; set; }
+    public string PartyType { get; set; } = "General Ledger";
+    public string PartyName { get; set; } = "";
+    public string PaymentMode { get; set; } = "";
+    public string? ChequeNumber { get; set; }
+    public decimal Amount { get; set; }
+    public string Currency { get; set; } = "USD";
+    public string Narration { get; set; } = "";
+    public string Status { get; set; } = "Posted";
+    public Guid? JournalEntryId { get; set; }
+    public Guid? CompanyId { get; set; }
+    public DateTime CreatedAt { get; init; } = DateTime.UtcNow;
+}
+
+public record VoucherRequest(
+    VoucherType Type,
+    DateOnly Date,
+    string? AccountName,
+    string? PartyType,
+    string? PartyName,
+    string? PaymentMode,
+    string? ChequeNumber,
+    decimal Amount,
+    string? Currency,
+    string? Narration,
+    Guid? CompanyId = null
+);

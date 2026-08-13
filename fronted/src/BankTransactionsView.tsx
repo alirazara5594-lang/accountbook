@@ -1,20 +1,46 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { ArrowLeftRight, Search } from 'lucide-react';
 import { DataToolbar } from '@/components/ui/data-toolbar';
 import type { Entity } from './EntitySettings';
+import { useBankingStore } from './stores';
+
+interface BankTransactionRecord {
+  id: string;
+  date: string;
+  ref: string;
+  bank: string;
+  payee: string;
+  mode: string;
+  type: string;
+  amount: number;
+  curr: string;
+}
 
 export const BankTransactionsView: React.FC<{ activeEntityId: string; entities: Entity[] }> = ({ activeEntityId, entities }) => {
   const currentEntity = entities.find(e => e.id === activeEntityId);
   const [query, setQuery] = useState('');
+  const { transactions, fetchTransactions } = useBankingStore();
 
-  const transactions = [
-    { id: 't1', date: '2026-08-09', ref: 'PAY-8841', bank: 'Habib Bank Limited (HBL)', payee: 'Allied Engineering Supplies', mode: 'Wire Transfer', type: 'Vendor Payment', amount: -450000, curr: 'PKR' },
-    { id: 't2', date: '2026-08-08', ref: 'REC-1092', bank: 'Standard Chartered (USD)', payee: 'Apex Global Logistics USA', mode: 'ACH', type: 'Customer Receipt', amount: 14800, curr: 'USD' },
-    { id: 't3', date: '2026-08-07', ref: 'TRF-3301', bank: 'Habib Bank Limited (HBL)', payee: 'Meezan Bank Limited', mode: 'RTGS', type: 'Inter-Account Transfer', amount: -250000, curr: 'PKR' }
-  ];
+  useEffect(() => {
+    fetchTransactions(undefined, activeEntityId);
+  }, [activeEntityId]);
+
+  const transactionsData: BankTransactionRecord[] = useMemo(() => {
+    return transactions.map(t => ({
+      id: String(t.id),
+      date: t.date,
+      ref: t.ref,
+      bank: t.bank,
+      payee: t.payee,
+      mode: t.mode,
+      type: t.type,
+      amount: t.amount,
+      curr: t.curr
+    }));
+  }, [transactions]);
 
   const formatCurrency = (val: number, curr: string) => {
     const formatted = new Intl.NumberFormat('en-US', { style: 'currency', currency: curr, maximumFractionDigits: 2 }).format(Math.abs(val));
@@ -22,9 +48,9 @@ export const BankTransactionsView: React.FC<{ activeEntityId: string; entities: 
   };
 
   const filtered = useMemo(() => {
-    if (!query.trim()) return transactions;
+    if (!query.trim()) return transactionsData;
     const q = query.toLowerCase();
-    return transactions.filter(t =>
+    return transactionsData.filter(t =>
       t.date.includes(q) ||
       t.ref.toLowerCase().includes(q) ||
       t.bank.toLowerCase().includes(q) ||
@@ -32,7 +58,7 @@ export const BankTransactionsView: React.FC<{ activeEntityId: string; entities: 
       t.mode.toLowerCase().includes(q) ||
       t.type.toLowerCase().includes(q)
     );
-  }, [query]);
+  }, [query, transactionsData]);
 
   const exportHeaders = ['Date', 'Reference', 'Bank Account', 'Payee / Recipient', 'Mode', 'Type', 'Amount', 'Currency'];
   const exportRows = filtered.map(t => [t.date, t.ref, t.bank, t.payee, t.mode, t.type, t.amount, t.curr]);

@@ -30,8 +30,8 @@ export const productsApi = {
     });
   },
 
-  getNextProductCode: async (): Promise<{ itemCode: string }> => {
-    return apiClient<{ itemCode: string }>('/products/next-code');
+  getNextProductCode: async (): Promise<{ code: string }> => {
+    return apiClient<{ code: string }>('/products/next-code');
   },
 
   saveProduct: async (productData: any, id?: string): Promise<Product> => {

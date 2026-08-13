@@ -2,36 +2,46 @@ import { apiClient } from '../client';
 
 export interface BankAccount {
   id: string;
-  accountName: string;
-  accountNumber: string;
-  bankName: string;
+  code: string;
+  name: string;
   currency: string;
+  status: string;
+  openingBalance: number;
   balance: number;
-  connectionStatus: string;
-  connectionType: 'Live Feed API' | 'Manual Import';
-  accountType?: string;
+  reconciliationEnabled: boolean;
+  bankName?: string;
+  updatedAt?: string;
   companyId?: string;
 }
 
 export interface CashAccount {
   id: string;
+  code: string;
   name: string;
   currency: string;
-  balance: number;
-  custodian?: string;
   status: string;
+  openingBalance: number;
+  balance: number;
+  reconciliationEnabled: boolean;
+  custodian?: string;
   companyId?: string;
 }
 
 export interface BankTransaction {
   id: string;
   bankAccountId: string;
+  bank: string;
   date: string;
+  ref: string;
   description: string;
+  payee: string;
+  mode: string;
+  type: string;
   amount: number;
-  type: 'Credit' | 'Debit';
+  curr: string;
   status: string;
   reconciled: boolean;
+  journalEntryId: string;
 }
 
 export interface FundTransfer {

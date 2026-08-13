@@ -1,15 +1,39 @@
 import { apiClient } from '../client';
 
+export type VoucherType = 'BPV' | 'BRV' | 'CPV' | 'CRV' | 'JV';
+
 export interface Voucher {
   id: string;
   voucherNumber: string;
-  voucherType: 'Payment' | 'Receipt' | 'Journal' | 'Contra';
+  voucherType: VoucherType;
   date: string;
+  accountId?: string;
+  accountName: string;
+  partyType: 'Vendor' | 'Customer' | 'General Ledger';
+  partyName: string;
+  paymentMode: string;
+  chequeNumber?: string;
   amount: number;
-  payeeName?: string;
-  description: string;
-  status: string;
-  lines?: any[];
+  currency: string;
+  narration: string;
+  status: 'Posted' | 'Draft';
+  journalEntryId?: string;
+  companyId?: string;
+  createdAt?: string;
+}
+
+export interface VoucherRequest {
+  type: VoucherType;
+  date: string;
+  accountName?: string;
+  partyType?: string;
+  partyName?: string;
+  paymentMode?: string;
+  chequeNumber?: string;
+  amount: number;
+  currency?: string;
+  narration?: string;
+  companyId?: string;
 }
 
 export const vouchersApi = {
@@ -17,7 +41,7 @@ export const vouchersApi = {
     return apiClient<Voucher[]>('/vouchers', { params: { companyId } });
   },
 
-  createVoucher: async (data: any): Promise<Voucher> => {
+  createVoucher: async (data: VoucherRequest): Promise<Voucher> => {
     return apiClient<Voucher>('/vouchers', { method: 'POST', body: data });
   },
 };

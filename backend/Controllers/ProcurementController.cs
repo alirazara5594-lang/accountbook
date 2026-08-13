@@ -94,9 +94,11 @@ namespace Zenabook.Api.Controllers
         }
 
         [HttpPost("orders")]
-        public IActionResult CreatePurchaseOrder([FromBody] PurchaseOrder po)
+        public IActionResult CreatePurchaseOrder([FromBody] PurchaseOrderRequest request)
         {
-            return Ok(po);
+            if (_store.CreatePurchaseOrder(request, out var po, out var error))
+                return Ok(po);
+            return BadRequest(new { error });
         }
 
         // ─── 4. Goods Receipt Notes (GRN) & Destination Routing ─────────────────────

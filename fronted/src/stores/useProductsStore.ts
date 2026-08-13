@@ -32,7 +32,7 @@ export const useProductsStore = create<ProductsState>((set, get) => ({
   fetchNextCode: async () => {
     try {
       const res = await productsApi.getNextProductCode();
-      return res.itemCode;
+      return res.code;
     } catch {
       return '';
     }

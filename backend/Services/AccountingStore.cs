@@ -42,6 +42,7 @@ public class AccountingStore
     private readonly List<BankReconciliation> _reconciliations = [];
     private readonly List<Budget> _budgets = [];
     private readonly List<PeriodClose> _periodCloses = [];
+    private readonly List<Voucher> _vouchers = [];
     private readonly List<AccountMapping> _mappings = [];
     private readonly List<AuditItem> _auditLog = [];
     private readonly Dictionary<Guid, List<AuditItem>> _history = [];
@@ -82,6 +83,7 @@ public class AccountingStore
         List<BankReconciliation>? Reconciliations = null,
         List<Budget>? Budgets = null,
         List<PeriodClose>? PeriodCloses = null,
+        List<Voucher>? Vouchers = null,
         List<AuditItem>? AuditLog = null);
 
     public AccountingStore(IDbContextFactory<AccountingDbContext>? dbFactory = null)
@@ -280,6 +282,7 @@ public class AccountingStore
     public IReadOnlyList<BankReconciliation> Reconciliations => _reconciliations;
     public IReadOnlyList<Budget> Budgets => _budgets;
     public IReadOnlyList<PeriodClose> PeriodCloses => _periodCloses;
+    public IReadOnlyList<Voucher> Vouchers => _vouchers;
 
     public string NextReceiptNumber()
     {
@@ -588,6 +591,173 @@ public class AccountingStore
             _fundTransfers.Add(transfer);
             Persist();
             return true;
+        }
+    }
+
+    public string NextVoucherNumber(VoucherType type)
+    {
+        var prefix = type switch
+        {
+            VoucherType.BPV => "BPV",
+            VoucherType.BRV => "BRV",
+            VoucherType.CPV => "CPV",
+            VoucherType.CRV => "CRV",
+            _ => "JV"
+        };
+        var numbers = _vouchers
+            .Where(v => v.Type == type)
+            .Select(v => v.VoucherNumber)
+            .Where(n => n.StartsWith(prefix + "-") && int.TryParse(n[(prefix.Length + 1)..], out _))
+            .Select(n => int.Parse(n[(prefix.Length + 1)..]))
+            .DefaultIfEmpty(0);
+        return $"{prefix}-{DateTime.Now.Year}-{numbers.Max() + 1:D4}";
+    }
+
+    public bool CreateVoucher(VoucherRequest request, out Voucher? voucher, out string? error)
+    {
+        lock (_lock)
+        {
+            voucher = null; error = null;
+            if (request.Amount <= 0) { error = "Voucher amount must be positive."; return false; }
+
+            // Resolve the cash/bank/GL account. Fall back to the default deposit account when the
+            // supplied name doesn't map to a real COA account.
+            var accountId = Guid.Empty;
+            if (!string.IsNullOrWhiteSpace(request.AccountName))
+            {
+                var name = request.AccountName.Trim();
+                var code = name.Split('—')[0].Trim();
+                var matched = _accounts.FirstOrDefault(a => a.Name.Equals(name, StringComparison.OrdinalIgnoreCase))
+                              ?? (int.TryParse(code, out _) ? _accounts.FirstOrDefault(a => a.Code == code) : null);
+                accountId = matched?.Id ?? Guid.Empty;
+            }
+            if (accountId == Guid.Empty) accountId = GetDefaultDepositAccount();
+            var account = _accounts.FirstOrDefault(a => a.Id == accountId);
+            if (account == null || !account.IsPosting || account.Status == AccountStatus.Inactive)
+            { error = "Cash/Bank account is not a valid active posting account. Create one under Bank Accounts first."; return false; }
+
+            var type = request.Type;
+            var voucherNumber = NextVoucherNumber(type);
+            var isReceipt = type is VoucherType.BRV or VoucherType.CRV;
+
+            voucher = new Voucher
+            {
+                VoucherNumber = voucherNumber,
+                Type = type,
+                Date = request.Date,
+                AccountName = account.Name,
+                AccountId = account.Id,
+                PartyType = request.PartyType ?? "General Ledger",
+                PartyName = request.PartyName ?? "",
+                PaymentMode = request.PaymentMode ?? "",
+                ChequeNumber = request.ChequeNumber,
+                Amount = request.Amount,
+                Currency = request.Currency ?? "USD",
+                Narration = request.Narration ?? "",
+                CompanyId = request.CompanyId,
+                Status = "Posted",
+            };
+
+            // Determine offset account for the second journal leg
+            var offsetId = isReceipt ? GetMappedAccount("Customer Receivables") : GetMappedAccount("Purchases");
+            if (offsetId == accountId)
+            {
+                var alt = _accounts.FirstOrDefault(a => a.IsPosting && a.Status == AccountStatus.Active && a.Id != accountId);
+                offsetId = alt?.Id ?? Guid.Empty;
+            }
+
+            // Post double-entry journal: receipts Dr cash/bank / Cr AR; payments Dr expense / Cr cash/bank
+            var journal = new JournalEntry
+            {
+                Date = request.Date,
+                Reference = voucherNumber,
+                Description = $"{type} {voucherNumber} — {voucher.PartyName} ({account.Name})",
+                TransactionType = type == VoucherType.JV ? TransactionType.Adjustment
+                    : isReceipt ? TransactionType.Receipt : TransactionType.Payment,
+                CompanyId = request.CompanyId,
+                Lines = isReceipt
+                    ? [new JournalLine(accountId, voucher.Amount, 0, $"{type} receipt: {voucherNumber}", null, null, 1, request.CompanyId),
+                       new JournalLine(offsetId, 0, voucher.Amount, $"{type} offset: {voucherNumber}", null, null, 1, request.CompanyId)]
+                    : [new JournalLine(offsetId, voucher.Amount, 0, $"{type} expense: {voucherNumber}", null, null, 1, request.CompanyId),
+                       new JournalLine(accountId, 0, voucher.Amount, $"{type} disbursement: {voucherNumber}", null, null, 1, request.CompanyId)],
+                Status = JournalStatus.Posted
+            };
+            _entries.Add(journal);
+            voucher.JournalEntryId = journal.Id;
+
+            _vouchers.Add(voucher);
+            Persist();
+            return true;
+        }
+    }
+
+    public List<object> GetBankTransactions(Guid? bankAccountId, Guid? companyId)
+    {
+        lock (_lock)
+        {
+            var cashParent = _accounts.FirstOrDefault(a => a.Code == "11100");
+            var bankParent = _accounts.FirstOrDefault(a => a.Code == "11200");
+            var cashParentId = cashParent?.Id;
+            var bankParentId = bankParent?.Id;
+
+            var result = new List<object>();
+            var entries = _entries
+                .Where(e => e.Status == JournalStatus.Posted)
+                .Where(e => companyId == null || e.CompanyId == companyId)
+                .OrderBy(e => e.Date);
+
+            foreach (var entry in entries)
+            {
+                foreach (var line in entry.Lines)
+                {
+                    var account = _accounts.FirstOrDefault(a => a.Id == line.AccountId);
+                    if (account == null) continue;
+                    var isCashBank = account.ParentId == cashParentId || account.ParentId == bankParentId
+                        || account.Name.Contains("Cash", StringComparison.OrdinalIgnoreCase)
+                        || account.Name.Contains("Bank", StringComparison.OrdinalIgnoreCase);
+                    if (!isCashBank) continue;
+                    if (bankAccountId != null && account.Id != bankAccountId) continue;
+
+                    // Parse payee/recipient from description "TYPE NUM — Party (Account)"
+                    var payee = entry.Description;
+                    var dashIdx = entry.Description.IndexOf("—", StringComparison.Ordinal);
+                    if (dashIdx >= 0) payee = entry.Description[(dashIdx + 1)..].Trim();
+
+                    var displayType = entry.TransactionType switch
+                    {
+                        TransactionType.Payment => "Payment",
+                        TransactionType.Receipt => "Receipt",
+                        TransactionType.Transfer => "Inter-Account Transfer",
+                        TransactionType.Sales => "Customer Receipt",
+                        TransactionType.Purchase => "Vendor Payment",
+                        TransactionType.Adjustment => "Journal Adjustment",
+                        TransactionType.Depreciation => "Depreciation",
+                        TransactionType.Payroll => "Payroll",
+                        _ => entry.TransactionType.ToString()
+                    };
+                    var mode = line.Debit > 0 ? "Cash In" : "Cash Out";
+
+                    result.Add(new
+                    {
+                        Id = $"{entry.Id}:{line.AccountId}:{line.Debit}-{line.Credit}",
+                        BankAccountId = account.Id,
+                        Bank = account.Name,
+                        Date = entry.Date.ToString("yyyy-MM-dd"),
+                        Ref = entry.Reference,
+                        Description = entry.Description,
+                        Payee = payee,
+                        Mode = mode,
+                        Type = displayType,
+                        Amount = line.Debit - line.Credit,
+                        Curr = account.Currency ?? entry.CurrencyCode,
+                        Status = entry.Status.ToString(),
+                        Reconciled = false,
+                        JournalEntryId = entry.Id
+                    });
+                }
+            }
+
+            return result;
         }
     }
 
@@ -2980,6 +3150,7 @@ public class AccountingStore
         _reconciliations.Clear(); _reconciliations.AddRange(state.Reconciliations ?? []);
         _budgets.Clear(); _budgets.AddRange(state.Budgets ?? []);
         _periodCloses.Clear(); _periodCloses.AddRange(state.PeriodCloses ?? []);
+        _vouchers.Clear(); _vouchers.AddRange(state.Vouchers ?? []);
         _auditLog.Clear(); _auditLog.AddRange(state.AuditLog ?? []);
         _mappings.Clear(); _mappings.AddRange(state.Mappings ?? []);
         if (state.History != null)
@@ -2994,7 +3165,7 @@ public class AccountingStore
     {
         if (_dbFactory is null) return;
         using var db = _dbFactory.CreateDbContext();
-        var json = JsonSerializer.Serialize(new StoredState(_accounts, _entries, _history, _templates, _recurringEntries, _journalEvents, _intercompanyAllocations, _companies, _customers, _products, _vendors, _purchaseOrders, _grns, _fixedAssets, _taxAuthorities, _taxCodes, _taxRates, _warehouses, _stockLevels, _stockTransactions, _salesInvoices, _estimates, _boms, _workOrders, _mappings, _salesOrders, _creditNotes, _customerPayments, _vendorPayments, _fundTransfers, _reconciliations, _budgets, _periodCloses, _auditLog));
+        var json = JsonSerializer.Serialize(new StoredState(_accounts, _entries, _history, _templates, _recurringEntries, _journalEvents, _intercompanyAllocations, _companies, _customers, _products, _vendors, _purchaseOrders, _grns, _fixedAssets, _taxAuthorities, _taxCodes, _taxRates, _warehouses, _stockLevels, _stockTransactions, _salesInvoices, _estimates, _boms, _workOrders, _mappings, _salesOrders, _creditNotes, _customerPayments, _vendorPayments, _fundTransfers, _reconciliations, _budgets, _periodCloses, _vouchers, _auditLog));
         var snapshot = db.AccountingStateSnapshots.Find(1);
         if (snapshot is null) db.AccountingStateSnapshots.Add(new AccountingStateSnapshot { Id = 1, Json = json, UpdatedAt = DateTime.UtcNow });
         else { snapshot.Json = json; snapshot.UpdatedAt = DateTime.UtcNow; }
@@ -3181,6 +3352,7 @@ public class AccountingStore
             _reconciliations.Clear();
             _budgets.Clear();
             _periodCloses.Clear();
+            _vouchers.Clear();
             _auditLog.Clear();
             _mappings.Clear();
 

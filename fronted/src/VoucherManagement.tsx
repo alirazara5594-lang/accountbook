@@ -1,6 +1,6 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { useFormDraft } from './hooks/useFormDraft';
-import { useVendorsStore, useCustomersStore } from './stores';
+import { useVendorsStore, useCustomersStore, useVouchersStore, useBankingStore } from './stores';
 import type { FormEvent } from 'react';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
@@ -32,85 +32,15 @@ interface VoucherManagementProps {
   entities: Entity[];
 }
 
-const initialVouchers: VoucherRecord[] = [
-  {
-    id: 'v-1',
-    voucherNumber: 'BPV-2026-0001',
-    voucherType: 'BPV',
-    date: '2026-08-09',
-    accountName: 'Habib Bank Limited (HBL)',
-    partyType: 'Vendor',
-    partyName: 'Allied Engineering Supplies Ltd',
-    paymentMode: 'Wire Transfer',
-    chequeNumber: 'WT-88412',
-    amount: 450000,
-    currency: 'PKR',
-    narration: 'Disbursement for spare parts procurement batch #44',
-    status: 'Posted'
-  },
-  {
-    id: 'v-2',
-    voucherNumber: 'BRV-2026-0001',
-    voucherType: 'BRV',
-    date: '2026-08-08',
-    accountName: 'Standard Chartered (USD)',
-    partyType: 'Customer',
-    partyName: 'Apex Global Logistics USA',
-    paymentMode: 'ACH',
-    amount: 14800,
-    currency: 'USD',
-    narration: 'Customer invoice settlement #INV-209',
-    status: 'Posted'
-  },
-  {
-    id: 'v-3',
-    voucherNumber: 'CPV-2026-0001',
-    voucherType: 'CPV',
-    date: '2026-08-07',
-    accountName: 'Head Office Petty Cash Vault',
-    partyType: 'Vendor',
-    partyName: 'Office Express Stationary',
-    paymentMode: 'Cash',
-    amount: 12500,
-    currency: 'PKR',
-    narration: 'Petty cash purchase of monthly printing supplies',
-    status: 'Posted'
-  },
-  {
-    id: 'v-4',
-    voucherNumber: 'CRV-2026-0001',
-    voucherType: 'CRV',
-    date: '2026-08-06',
-    accountName: 'Head Office Petty Cash Vault',
-    partyType: 'Customer',
-    partyName: 'Crescent Retail Store',
-    paymentMode: 'Cash',
-    amount: 35000,
-    currency: 'PKR',
-    narration: 'Cash counter collection for invoice #CS-102',
-    status: 'Posted'
-  },
-  {
-    id: 'v-5',
-    voucherNumber: 'JV-2026-0001',
-    voucherType: 'JV',
-    date: '2026-08-05',
-    accountName: 'General Ledger Adjustments',
-    partyType: 'General Ledger',
-    partyName: 'Period-End Accruals',
-    paymentMode: 'N/A',
-    amount: 85000,
-    currency: 'PKR',
-    narration: 'Monthly utility bill accrual adjustment entry',
-    status: 'Posted'
-  }
-];
-
 export const VoucherManagement: React.FC<VoucherManagementProps> = ({ activeEntityId, entities }) => {
   const currentEntity = entities.find(e => e.id === activeEntityId);
-  const [vouchers, setVouchers] = useState<VoucherRecord[]>(initialVouchers);
+  const [vouchers, setVouchers] = useState<VoucherRecord[]>([]);
   const [vendors, setVendors] = useState<any[]>([]);
   const [customers, setCustomers] = useState<any[]>([]);
+  const [bankAccounts, setBankAccounts] = useState<{ id: string; code: string; name: string }[]>([]);
+  const [cashAccounts, setCashAccounts] = useState<{ id: string; code: string; name: string }[]>([]);
+  const { vouchers: storeVouchers, fetchVouchers, createVoucher } = useVouchersStore();
+  const { bankAccounts: storeBankAccounts, cashAccounts: storeCashAccounts, fetchBankAccounts, fetchCashAccounts } = useBankingStore();
 
   // Modal Dialog Open State & Active Voucher Type
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -146,28 +76,65 @@ export const VoucherManagement: React.FC<VoucherManagementProps> = ({ activeEnti
     });
   }, [activeEntityId]);
 
+  useEffect(() => {
+    fetchVouchers(activeEntityId);
+  }, [activeEntityId]);
+
+  useEffect(() => {
+    fetchBankAccounts(activeEntityId);
+    fetchCashAccounts(activeEntityId);
+  }, [activeEntityId]);
+
+  useEffect(() => {
+    setBankAccounts(storeBankAccounts.map(a => ({ id: a.id, code: a.code, name: a.name })));
+  }, [storeBankAccounts]);
+
+  useEffect(() => {
+    setCashAccounts(storeCashAccounts.map(a => ({ id: a.id, code: a.code, name: a.name })));
+  }, [storeCashAccounts]);
+
+  useEffect(() => {
+    setVouchers(storeVouchers.map(v => ({
+      id: v.id,
+      voucherNumber: v.voucherNumber,
+      voucherType: v.voucherType,
+      date: v.date,
+      accountName: v.accountName,
+      partyType: v.partyType,
+      partyName: v.partyName,
+      paymentMode: v.paymentMode,
+      chequeNumber: v.chequeNumber,
+      amount: v.amount,
+      currency: v.currency,
+      narration: v.narration,
+      status: v.status
+    })));
+  }, [storeVouchers]);
+
   // Open Modal ONLY for the clicked voucher type (Exact Customer Management style)
   const openVoucherModal = (type: VoucherType) => {
     setSelectedVoucherType(type);
 
-    let defaultAcc = 'Habib Bank Limited (HBL)';
+    const bankAcc = bankAccounts.length > 0 ? bankAccounts[0].name : 'Habib Bank Limited (HBL)';
+    const cashAcc = cashAccounts.length > 0 ? cashAccounts[0].name : 'Head Office Petty Cash Vault';
+    let defaultAcc = bankAcc;
     let defaultMode = 'Wire Transfer';
     let defaultParty = '';
 
     if (type === 'BPV') {
-      defaultAcc = 'Habib Bank Limited (HBL)';
+      defaultAcc = bankAcc;
       defaultMode = 'Wire Transfer';
       defaultParty = vendors.length > 0 ? vendors[0].name : 'Allied Engineering Supplies Ltd';
     } else if (type === 'BRV') {
-      defaultAcc = 'Habib Bank Limited (HBL)';
+      defaultAcc = bankAcc;
       defaultMode = 'Wire Transfer';
       defaultParty = customers.length > 0 ? customers[0].name : 'Apex Global Logistics USA';
     } else if (type === 'CPV') {
-      defaultAcc = 'Head Office Petty Cash Vault';
+      defaultAcc = cashAcc;
       defaultMode = 'Cash';
       defaultParty = vendors.length > 0 ? vendors[0].name : 'Office Express Stationary';
     } else if (type === 'CRV') {
-      defaultAcc = 'Head Office Petty Cash Vault';
+      defaultAcc = cashAcc;
       defaultMode = 'Cash';
       defaultParty = customers.length > 0 ? customers[0].name : 'Crescent Retail Store';
     } else if (type === 'JV') {
@@ -190,7 +157,7 @@ export const VoucherManagement: React.FC<VoucherManagementProps> = ({ activeEnti
     setIsModalOpen(true);
   };
 
-  const handlePostVoucher = (e: FormEvent) => {
+  const handlePostVoucher = async (e: FormEvent) => {
     e.preventDefault();
     const amt = parseFloat(form.amount);
     if (isNaN(amt) || amt <= 0) {
@@ -206,29 +173,27 @@ export const VoucherManagement: React.FC<VoucherManagementProps> = ({ activeEnti
       JV: 'General Ledger'
     };
 
-    const countOfSameType = vouchers.filter(v => v.voucherType === selectedVoucherType).length + 1;
-    const vNum = `${selectedVoucherType}-2026-${String(countOfSameType).padStart(4, '0')}`;
+    try {
+      const created = await createVoucher({
+        type: selectedVoucherType,
+        date: form.date,
+        accountName: form.accountName,
+        partyType: partyTypeMap[selectedVoucherType],
+        partyName: form.partyName,
+        paymentMode: form.paymentMode,
+        chequeNumber: form.chequeNumber || undefined,
+        amount: amt,
+        currency: form.currency,
+        narration: form.narration || `${selectedVoucherType} Entry`,
+        companyId: activeEntityId
+      });
 
-    const newV: VoucherRecord = {
-      id: `v-${Date.now()}`,
-      voucherNumber: vNum,
-      voucherType: selectedVoucherType,
-      date: form.date,
-      accountName: form.accountName,
-      partyType: partyTypeMap[selectedVoucherType],
-      partyName: form.partyName || (partyTypeMap[selectedVoucherType] === 'Vendor' ? 'Vendor Payee' : partyTypeMap[selectedVoucherType] === 'Customer' ? 'Customer Payer' : 'GL Adjustment'),
-      paymentMode: form.paymentMode,
-      chequeNumber: form.chequeNumber,
-      amount: amt,
-      currency: form.currency,
-      narration: form.narration || `${selectedVoucherType} Entry`,
-      status: 'Posted'
-    };
-
-    setVouchers(prev => [newV, ...prev]);
-    clearDraft();
-    setIsModalOpen(false);
-    alert(`Voucher ${vNum} posted successfully to General Ledger!`);
+      clearDraft();
+      setIsModalOpen(false);
+      alert(`Voucher ${created.voucherNumber} posted successfully to General Ledger!`);
+    } catch (err: any) {
+      alert(`Failed to post voucher: ${err.message || 'Unknown error'}`);
+    }
   };
 
   const formatCurrency = (val: number, currency: string) => {
@@ -532,16 +497,24 @@ export const VoucherManagement: React.FC<VoucherManagementProps> = ({ activeEnti
                   onChange={e => setForm({ ...form, accountName: e.target.value })}
                 >
                   {selectedVoucherType.startsWith('B') ? (
-                    <>
-                      <option value="Habib Bank Limited (HBL)">11101 — Habib Bank Limited (HBL)</option>
-                      <option value="Meezan Bank Limited">11102 — Meezan Bank Limited</option>
-                      <option value="Standard Chartered (USD)">11103 — Standard Chartered (USD)</option>
-                    </>
+                    bankAccounts.length > 0 ? (
+                      bankAccounts.map(a => <option key={a.id} value={a.name}>{a.code} — {a.name}</option>)
+                    ) : (
+                      <>
+                        <option value="Habib Bank Limited (HBL)">11101 — Habib Bank Limited (HBL)</option>
+                        <option value="Meezan Bank Limited">11102 — Meezan Bank Limited</option>
+                        <option value="Standard Chartered (USD)">11103 — Standard Chartered (USD)</option>
+                      </>
+                    )
                   ) : selectedVoucherType.startsWith('C') ? (
-                    <>
-                      <option value="Head Office Petty Cash Vault">11104 — Head Office Petty Cash Vault</option>
-                      <option value="Branch Office Cash Register">11105 — Branch Office Cash Register</option>
-                    </>
+                    cashAccounts.length > 0 ? (
+                      cashAccounts.map(a => <option key={a.id} value={a.name}>{a.code} — {a.name}</option>)
+                    ) : (
+                      <>
+                        <option value="Head Office Petty Cash Vault">11104 — Head Office Petty Cash Vault</option>
+                        <option value="Branch Office Cash Register">11105 — Branch Office Cash Register</option>
+                      </>
+                    )
                   ) : (
                     <option value="General Ledger Adjustments">General Ledger Adjustments</option>
                   )}
