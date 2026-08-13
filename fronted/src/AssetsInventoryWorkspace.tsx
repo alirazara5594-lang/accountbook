@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { useAssetsInventoryStore, useCoaStore, useProductsStore } from './stores';
+import { Input } from '@/components/ui/input';
 function money(v: number) { return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(v); }
 
 // ─── Shared Select ───────────────────────────────────────────────────────────
@@ -39,7 +40,7 @@ const AssetRegister: React.FC<{ activeEntityId: string; accounts: any[] }> = ({ 
 
   const runDepreciation = async () => {
     try {
-      await runDepreciationStore(deprModal.id, deprForm.expenseAccId, deprForm.accumAccId, deprForm.usefulLifeYears, deprForm.salvageValue);
+      await runDepreciationStore(deprModal.id, deprForm.expenseAccId, deprForm.accumAccId);
       notify('✓ Depreciation journal posted!');
       setDeprModal(null);
     } catch (e: any) {
@@ -545,11 +546,6 @@ export const AssetsInventoryWorkspace: React.FC<{ activeEntityId: string; entiti
     fetchAccounts();
     fetchWarehouses(activeEntityId);
     fetchProducts();
-    // Get user role from localStorage (set by auth system)
-    const storedRole = localStorage.getItem('user_role');
-    if (storedRole) {
-      setUserRole(storedRole as 'admin' | 'accountant' | 'asset-manager' | 'viewer');
-    }
   }, [activeEntityId]);
 
   const tabs: { id: Tab; label: string; icon: string }[] = [

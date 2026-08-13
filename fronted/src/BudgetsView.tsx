@@ -56,7 +56,7 @@ export const BudgetsView: React.FC<BudgetsViewProps> = ({ activeEntityId, entiti
 
   useEffect(() => {
     load();
-    fetchAccounts(activeEntityId);
+    fetchAccounts();
   }, [activeEntityId, yearFilter]);
 
   const openCreate = () => {

@@ -4,9 +4,9 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { 
-  Search, Edit3, Download, Upload, Plus, Trash2, 
+  Search, Edit3, Download, Upload, Plus, 
   ChevronDown, ChevronRight, Lock, Folder, FolderOpen, 
-  FileText, Shield, PieChart, Info, ArrowRight, Eye, Calendar, User, CheckCircle
+  FileText, Shield, PieChart, ArrowRight, Eye, Calendar, User, CheckCircle
 } from 'lucide-react';
 
 import { type Account } from './api/modules/coa.api';
@@ -281,11 +281,6 @@ export const ChartOfAccounts: React.FC<ChartOfAccountsProps> = ({
     setCurrentPage(1);
   }, [query, selectedType, selectedSubtype, selectedStatus, selectedGroup, showDeactivated]);
 
-  const maxAccountBalance = useMemo(() => {
-    const balances = accounts.map(a => Math.abs(getAccountBalancesRecursive(a.id).current));
-    return Math.max(...balances, 1);
-  }, [accounts, accountBalances]);
-
   // CSV operations
   const handleExportCSV = () => {
     const listToExport = isFiltering ? filteredAccounts : accounts;
@@ -368,17 +363,6 @@ export const ChartOfAccounts: React.FC<ChartOfAccountsProps> = ({
       if (reloadAccounts) reloadAccounts();
     };
     reader.readAsText(file);
-  };
-
-  const handleClearAll = async () => {
-    if (window.confirm('Warning: Clearing all accounts will reset the system state. System mappings and child balances will be deleted. Do you want to proceed?')) {
-      try {
-        await useCoaStore.getState().clearAllAccounts();
-        if (reloadAccounts) reloadAccounts();
-      } catch {
-        alert('Could not clear accounts.');
-      }
-    }
   };
 
   const toggleCollapse = (id: string, e: React.MouseEvent) => {

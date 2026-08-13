@@ -7,6 +7,7 @@ export interface TaxAuthority {
   region?: string;
   jurisdiction?: string;
   state?: string;
+  registrationNumber?: string;
 }
 
 export interface TaxCode {
@@ -28,6 +29,8 @@ export interface TaxRate {
   ratePercent: number;
   effectiveDate: string;
   percentage?: number;
+  effectiveFrom?: string;
+  effectiveTo?: string;
 }
 
 export interface TaxJurisdiction {

@@ -1,19 +1,10 @@
-import React, { useState, useEffect } from 'react';
-import { useDebitNotesStore, useVendorsStore } from './stores';
+import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 
 type Tab = 'dn' | 'ec' | 'pn' | 'sr';
 
-export const DebitNotes: React.FC<{ activeEntityId: string; entities?: any[] }> = ({ activeEntityId }) => {
+export const DebitNotes: React.FC<{ activeEntityId: string; entities?: any[] }> = () => {
   const [activeTab, setActiveTab] = useState<Tab>('dn');
-
-  const debitNotes = useDebitNotesStore((s) => s.debitNotes);
-  const vendors = useVendorsStore((s) => s.vendors);
-  const loading = useDebitNotesStore((s) => s.loading);
-
-  useEffect(() => {
-    fetchDebitNotes(activeEntityId);
-  }, [activeEntityId]);
 
   const tabsList: { id: Tab; label: string; icon: string }[] = [
     { id: 'dn', label: 'Debit Notes', icon: '📝' },
@@ -24,8 +15,6 @@ export const DebitNotes: React.FC<{ activeEntityId: string; entities?: any[] }> 
 
   return (
     <div className="p-6 max-w-7xl mx-auto space-y-5">
-      {toast && <div className="fixed top-6 right-6 z-50 px-5 py-3 bg-emerald-600 text-white rounded-2xl shadow-lg text-sm font-medium">{toast}</div>}
-
       <div className="flex justify-between items-center bg-white p-5 rounded-2xl border border-gray-200 shadow-sm">
         <div>
           <h1 className="text-xl font-bold text-gray-900 tracking-tight flex items-center gap-2">
@@ -65,25 +54,7 @@ export const DebitNotes: React.FC<{ activeEntityId: string; entities?: any[] }> 
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-50">
-              {!loading && debitNotes.length === 0 && (
-                <tr><td colSpan={6} className="py-12 text-center text-gray-400">No Debit Notes found. Click "+ New Debit Note" to begin.</td></tr>
-              )}
-              {debitNotes.map((dn: any) => (
-                <tr key={dn.id} className="hover:bg-gray-50/60">
-                  <td className="py-3 px-4 font-mono font-bold text-gray-900">{dn.debitNoteNumber}</td>
-                  <td className="py-3 px-4 font-medium text-gray-900">{vendors.find((v: any) => v.id === dn.vendorId)?.name || 'Vendor'}</td>
-                  <td className="py-3 px-4 text-gray-500">{dn.date}</td>
-                  <td className="py-3 px-4 text-right font-bold text-emerald-700">$0.00</td>
-                  <td className="py-3 px-4 text-center"><span className="px-2 py-1 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-700">{dn.status}</span></td>
-                  <td className="py-3 px-4 text-right space-x-2">
-                    <Button size="sm" variant="outline" className="text-blue-600 border-blue-200">View</Button>
-                    <Button size="sm" variant="outline" className="text-emerald-600 border-emerald-200">Edit</Button>
-                  </td>
-                </tr>
-              ))}
-              {!loading && debitNotes.length === 0 && (
-                <tr><td colSpan={6} className="py-12 text-center text-gray-400">No Debit Notes found. Click "+ New Debit Note" to begin.</td></tr>
-              )}
+              <tr><td colSpan={6} className="py-12 text-center text-gray-400">No Debit Notes found. Click "+ New Debit Note" to begin.</td></tr>
             </tbody>
           </table>
         </div>

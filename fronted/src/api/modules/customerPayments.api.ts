@@ -1,6 +1,8 @@
 // src/api/modules/customerPayments.api.ts
 import { salesApi, type CustomerReceipt } from './sales.api';
 
+export type { CustomerReceipt };
+
 export const customerPaymentsApi = {
   // Fetch all customer receipts (payments)
   getAll: async (companyId?: string): Promise<CustomerReceipt[]> => {

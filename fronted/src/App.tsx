@@ -24,6 +24,9 @@ import CreditNotesWorkspace from './CreditNotesWorkspace';
 import CustomerPaymentsWorkspace from './CustomerPaymentsWorkspace';
 import CustomerStatementsWorkspace from './CustomerStatementsWorkspace';
 import SalesReportsWorkspace from './SalesReportsWorkspace';
+import VendorStatementsWorkspace from './VendorStatementsWorkspace';
+import PayablesAgingWorkspace from './PayablesAgingWorkspace';
+import { DebitNotes } from './DebitNotes';
 
 import { SystemAccountMapping } from './components/SystemAccountMapping'
 import { ModuleSummary } from './ModuleSummary'
@@ -46,7 +49,6 @@ import { PeriodClosingView } from './PeriodClosingView'
 import { AuditTrailView } from './AuditTrailView'
 import { JournalEntriesView } from './JournalEntriesView'
 import { useCoaStore, useJournalsStore, useCompanyStore, useIntercompanyStore } from './stores'
-import { Toaster } from '@/components/ui/toast'
 
 import type { Account } from './api/modules/coa.api'
 type AccountType = 'Asset' | 'Liability' | 'Equity' | 'Revenue' | 'Expense' | 'ContraAsset' | 'ContraLiability' | 'ContraEquity' | 'ContraRevenue' | 'ContraExpense'
@@ -154,7 +156,6 @@ export default function App() {
   }
 
   useEffect(() => { load() }, [])
-  const stats = { bank: accounts.filter(a => a.reconciliationEnabled).reduce((sum, a) => sum + a.openingBalance, 0), active: accounts.filter(a => a.status === 'Active').length, entries: entries.length }
   const openCreate = async () => { setEditing(null); setForm(blank); setModal(true) }
   const openEdit = (a: Account) => { setEditing(a); setForm({ code: a.code, name: a.name, type: a.type as AccountType, parentId: a.parentId || '', openingBalance: String(a.openingBalance), reconciliationEnabled: a.reconciliationEnabled, ifrsTag: a.ifrsTag || '', gaapTag: a.gaapTag || '', isSystem: a.isSystem, subtype: a.subtype || '', currency: a.currency || 'USD', taxCategory: a.taxCategory || '', allowManualJournal: a.allowManualJournal !== false, description: a.description || '', status: a.status || 'Active' }); setModal(true) }
 
@@ -289,7 +290,7 @@ export default function App() {
       );
     })}
   </nav><div className="bottom"><div className="user"><div className="avatar small">{currentUser?.avatar}</div><div style={{ flex: 1, minWidth: 0 }}><strong style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{currentUser?.fullName}</strong><small style={{ display: 'block', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{currentUser?.role}</small></div><button onClick={handleLogout} title="Sign Out" style={{ background: 'transparent', border: 'none', color: '#aebed0', cursor: 'pointer', padding: '6px', display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'color 0.2s ease', flexShrink: 0 }} onMouseEnter={(e) => (e.currentTarget.style.color = '#fca5a5')} onMouseLeave={(e) => (e.currentTarget.style.color = '#aebed0')}><LogOut size={16} /></button></div></div></aside><main><header><div><p className="eyebrow">{group.toUpperCase()}</p><h1>{module}</h1></div><label className="entity-picker">Working in<select value={activeEntityId} onChange={e => setActiveEntityId(e.target.value)}>{entities.map(x => <option key={x.id} value={x.id}>{x.name}{x.code ? ` · ${x.code}` : ''}</option>)}</select></label>{activeView === 'journal' && <button className="primary" onClick={() => document.getElementById('journal-form')?.scrollIntoView({ behavior: 'smooth' })}>＋ New entry</button>}</header>
-  {activeView === 'dashboard' && <Dashboard stats={stats} entries={entries} accounts={accounts} setPage={setPage} />}
+  {activeView === 'dashboard' && <Dashboard accounts={accounts} setPage={setPage} />}
   {activeView === 'module-summary' && <ModuleSummary moduleName={group} accounts={accounts} entries={entries} setPage={setPage} openCreateAccount={openCreate} />}
   {activeView === 'customers' && <CustomerManagement entities={entities as any} activeEntityId={activeEntityId} notify={notify} />}
   {activeView === 'accounts' && (
@@ -335,8 +336,8 @@ export default function App() {
   {activeView === 'procurement-workspace' && <ProcurementWorkspace activeEntityId={activeEntityId} entities={entities as any} />}
   {activeView === 'vendor-payments' && <VendorPaymentsView activeEntityId={activeEntityId} entities={entities as any} />}
   {activeView === 'bills' && <VendorBills activeEntityId={activeEntityId} />}
-  {activeView === 'vendor-statements' && <VendorStatementsWorkspace activeEntityId={activeEntityId} entities={entities as any} />}
-  {activeView === 'payables-aging' && <PayablesAgingWorkspace activeEntityId={activeEntityId} entities={entities as any} />}
+  {activeView === 'vendor-statements' && <VendorStatementsWorkspace activeEntityId={activeEntityId} />}
+  {activeView === 'payables-aging' && <PayablesAgingWorkspace activeEntityId={activeEntityId} />}
   {activeView === 'debit-notes' && <DebitNotes activeEntityId={activeEntityId} entities={entities as any} />}
   {activeView === 'taxes' && <TaxConfiguration />}
   {activeView === 'fixed-assets' && <FixedAssets activeEntityId={activeEntityId} />}
@@ -350,7 +351,7 @@ export default function App() {
   {activeView === 'budgets' && <BudgetsView activeEntityId={activeEntityId} entities={entities as any} />}
   {activeView === 'period-closing' && <PeriodClosingView activeEntityId={activeEntityId} entities={entities as any} />}
   {activeView === 'audit-trail' && <AuditTrailView activeEntityId={activeEntityId} entities={entities as any} />}
-  {activeView === 'customer-payments' && <CustomerPaymentsWorkspace activeEntityId={activeEntityId} />}
+  {activeView === 'customer-payments' && <CustomerPaymentsWorkspace />}
   {activeView === 'customer-statements' && <CustomerStatementsWorkspace activeEntityId={activeEntityId} />}
   {activeView === 'sales-reports' && <SalesReportsWorkspace activeEntityId={activeEntityId} />}
   {activeView === 'placeholder' && <div style={{ padding: 40, textAlign: 'center', color: '#666' }}><span style={{ fontSize: 48, opacity: 0.2, display: 'block', marginBottom: 20 }}>🏗</span><h3>Under Construction</h3><p>This module ({module}) is part of the layout but not yet developed.</p></div>}
@@ -399,7 +400,7 @@ function SettingsHome({ openEntities, openMappings, onReset }: { openEntities: (
   ); 
 }
 
-function Dashboard({ stats, entries, accounts, setPage }: { stats: { bank: number; active: number; entries: number }; entries: Journal[]; accounts: Account[]; setPage: (page: string) => void }) { 
+function Dashboard({ accounts, setPage }: { accounts: Account[]; setPage: (page: string) => void }) { 
   // 1. Calculate real balances from active Neon DB state
   const cashBal = accounts.filter(a => a.code.startsWith('111')).reduce((sum, a) => sum + Math.abs(a.openingBalance), 0);
   const bankBal = accounts.filter(a => a.code.startsWith('112')).reduce((sum, a) => sum + Math.abs(a.openingBalance), 0);

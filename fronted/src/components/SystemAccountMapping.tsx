@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useCoaStore } from '../stores';
-import { Lock, Save, ArrowLeft, RefreshCw, HelpCircle } from 'lucide-react';
+import { Save, ArrowLeft, RefreshCw, HelpCircle } from 'lucide-react';
 
 interface Account {
   id: string;

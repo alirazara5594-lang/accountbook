@@ -1,19 +1,12 @@
-import { useEffect, useState } from 'react';
+import { useEffect } from 'react';
 import { useReportsStore } from './stores/useReportsStore';
-import { useVendorsStore, useCoaStore } from './stores';
-import { useToast } from '@/components/ui/use-toast';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Select, SelectTrigger, SelectContent, SelectItem, SelectValue } from '@/components/ui/select';
+import { useVendorsStore } from './stores';
 
 type PayablesAgingProps = { activeEntityId: string };
 
 function PayablesAgingWorkspace({ activeEntityId }: PayablesAgingProps) {
   const { incomeStatement, loading, error, fetchIncomeStatement } = useReportsStore();
   const vendors = useVendorsStore((s) => s.vendors);
-  const companies = useCoaStore((s) => s.accounts as any[]);
-  const { toast } = useToast();
 
   useEffect(() => {
     fetchIncomeStatement({ entityId: activeEntityId });
@@ -21,19 +14,6 @@ function PayablesAgingWorkspace({ activeEntityId }: PayablesAgingProps) {
 
   // Format currency safely
   const fmt = (n?: number) => (n != null ? n.toLocaleString() : '0.00');
-
-  // aging buckets: Current, 30 days, 60 days, 90+ days
-  const calculateAging = (outstanding: number) => {
-    if (!outstanding) return { current: outstanding, '30': 0, '60': 0, '90': 0 };
-    // Simplified aging - in real app would use invoice dates
-    const total = outstanding;
-    return {
-      current: Math.round(total * 0.7),
-      '30': Math.round(total * 0.2),
-      '60': Math.round(total * 0.1),
-      '90': total - Math.round(total * 0.7) - Math.round(total * 0.2) - Math.round(total * 0.1),
-    };
-  };
 
   return (
     <section className="workspace-card">
@@ -100,7 +80,7 @@ function PayablesAgingWorkspace({ activeEntityId }: PayablesAgingProps) {
                 <tr>
                   <th>Vendor</th>
                   <th>Outstanding</th>
-                  <th>Current</td>
+                  <th>Current</th>
                   <th>31-60 Days</th>
                   <th>61-90 Days</th>
                   <th>90+ Days</th>

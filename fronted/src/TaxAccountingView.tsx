@@ -71,7 +71,7 @@ export const TaxAccountingView: React.FC<TaxAccountingViewProps> = ({ activeEnti
   const authorityIds = new Set(jurisdictionAuthorities.map(a => a.id));
 
   const jurisdictionCodes = useMemo(
-    () => codes.filter(c => authorityIds.has(c.taxAuthorityId)),
+    () => codes.filter(c => c.taxAuthorityId && authorityIds.has(c.taxAuthorityId)),
     [codes, selectedJurisdiction]
   );
   const jurisdictionCodeIds = new Set(jurisdictionCodes.map(c => c.id));

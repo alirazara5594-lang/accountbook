@@ -198,25 +198,8 @@ export const ProcurementWorkspace: React.FC<{ activeEntityId: string; entities?:
       const fixedAssetLines = grnLines.filter((l: any) => l.destination === 'FixedAsset');
       if (fixedAssetLines.length > 0) {
         // Auto-create basic asset records for each fixed asset line
-        const assetPromises = fixedAssetLines.map((line: any) => {
+        const assetPromises = fixedAssetLines.map(() => {
           // Create asset with basic info from the GRN line
-          const assetData = {
-            name: line.description || 'Fixed Asset',
-            code: line.productId || 'FA-000',
-            type: 'FixedAsset' as any,
-            parentId: '',
-            openingBalance: line.unitCost ? parseFloat(line.unitCost) * parseFloat(line.receivedQuantity) : 0,
-            reconciliationEnabled: false,
-            ifrsTag: '',
-            gaapTag: '',
-            isSystem: false,
-            subtype: '',
-            currency: 'USD',
-            taxCategory: '',
-            allowManualJournal: true,
-            description: line.description || 'Fixed Asset acquired via GRN',
-            status: 'Active'
-          };
           // In a real implementation, this would call an API to create the asset
           // For now, we'll just notify the user
           return null;

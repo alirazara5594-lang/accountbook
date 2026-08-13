@@ -13,10 +13,10 @@ function CreditNotesWorkspace() {
   const [form, setForm] = useState({
     companyId: '',
     customerId: '',
-    reason: '',
+    creditNoteDate: new Date().toISOString().slice(0, 10),
+    notes: '',
     amount: 0,
-    tax: 0,
-    memo: ''
+    tax: 0
   });
 
   useEffect(() => {
@@ -29,14 +29,19 @@ function CreditNotesWorkspace() {
       await create({
         companyId: form.companyId,
         customerId: form.customerId,
-        reason: form.reason,
-        amount: Number(form.amount),
-        tax: Number(form.tax),
-        memo: form.memo
+        creditNoteDate: form.creditNoteDate,
+        notes: form.notes,
+        lines: [{
+          description: form.notes || 'Credit Note',
+          quantity: 1,
+          unitPrice: Number(form.amount),
+          discountAmount: 0,
+          taxAmount: Number(form.tax)
+        }]
       });
       setShowCreate(false);
       notify('✓ Credit Note created successfully!');
-    } catch (err) {
+    } catch {
       notify('Error creating Credit Note');
     }
   };
@@ -66,19 +71,19 @@ function CreditNotesWorkspace() {
         </thead>
         <tbody>
           {creditNotes.map((cn) => (
-            <tr key={cn.id} className={cn.isPosted ? 'posted' : cn.isVoided ? 'voided' : ''}>
-              <td>{formatDate(cn.createdAt)}</td>
+            <tr key={cn.id} className={cn.status === 'Posted' ? 'posted' : cn.status === 'Void' ? 'voided' : ''}>
+              <td>{formatDate(cn.creditNoteDate || cn.createdAt)}</td>
               <td>{cn.customerId}</td>
-              <td>{cn.reason}</td>
-              <td>{cn.amount.toLocaleString(undefined, { style: 'currency', currency: 'USD' })}</td>
-              <td>{cn.isVoided ? 'Voided' : cn.isPosted ? 'Posted' : 'Draft'}</td>
+              <td>{cn.notes || '—'}</td>
+              <td>{cn.totalAmount.toLocaleString(undefined, { style: 'currency', currency: 'USD' })}</td>
+              <td>{cn.status === 'Void' ? 'Voided' : cn.status === 'Posted' ? 'Posted' : 'Draft'}</td>
               <td>
-                {!cn.isPosted && !cn.isVoided && (
+                {cn.status === 'Draft' && (
                   <button className="action" onClick={() => post(cn.id)} title="Post">
                     📤
                   </button>
                 )}
-                {!cn.isVoided && (
+                {cn.status !== 'Void' && (
                   <button className="action" onClick={() => voidNote(cn.id)} title="Void">
                     🗑️
                   </button>
@@ -113,8 +118,12 @@ function CreditNotesWorkspace() {
                 </select>
               </label>
               <label>
-                Reason
-                <input required value={form.reason} onChange={(e) => setForm({ ...form, reason: e.target.value })} />
+                Date *
+                <input type="date" required value={form.creditNoteDate} onChange={(e) => setForm({ ...form, creditNoteDate: e.target.value })} />
+              </label>
+              <label>
+                Reason / Notes
+                <input required value={form.notes} onChange={(e) => setForm({ ...form, notes: e.target.value })} />
               </label>
               <label>
                 Amount
@@ -123,10 +132,6 @@ function CreditNotesWorkspace() {
               <label>
                 Tax
                 <input type="number" step="0.01" value={form.tax} onChange={(e) => setForm({ ...form, tax: Number(e.target.value) })} />
-              </label>
-              <label>
-                Memo
-                <textarea value={form.memo} onChange={(e) => setForm({ ...form, memo: e.target.value })} />
               </label>
               <div className="modal-actions">
                 <button type="button" className="secondary" onClick={() => setShowCreate(false)}>
