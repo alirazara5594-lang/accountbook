@@ -29,7 +29,12 @@ import PayablesAgingWorkspace from './PayablesAgingWorkspace';
 import { DebitNotes } from './DebitNotes';
 import { ExpenseClaimsView } from './ExpenseClaimsView';
 import { PurchaseReportsView } from './PurchaseReportsView';
-import PayrollWorkspace from './PayrollWorkspace';
+import EmployeeDirectory from './EmployeeDirectory';
+import AttendanceTracker from './AttendanceTracker';
+import LeaveManagement from './LeaveManagement';
+import PayrollProcessing from './PayrollProcessing';
+import SalarySlipsView from './SalarySlipsView';
+import LoansAdvancesView from './LoansAdvancesView';
 
 import { SystemAccountMapping } from './components/SystemAccountMapping'
 import { ModuleSummary } from './ModuleSummary'
@@ -255,13 +260,13 @@ export default function App() {
     'Manufacturing & Production.Work Orders': 'manufacturing',
     'Manufacturing & Production.Job Costing': 'manufacturing',
     'Payroll & HR.Summary': 'module-summary',
-    'Payroll & HR.Employees': 'payroll',
-    'Payroll & HR.Attendance': 'payroll',
-    'Payroll & HR.Leave': 'payroll',
-    'Payroll & HR.Payroll': 'payroll',
-    'Payroll & HR.Salary': 'payroll',
-    'Payroll & HR.Loans & Advances': 'payroll',
-    'Payroll & HR.HR Reports': 'payroll',
+    'Payroll & HR.Employees': 'payroll-employees',
+    'Payroll & HR.Attendance': 'payroll-attendance',
+    'Payroll & HR.Leave': 'payroll-leave',
+    'Payroll & HR.Payroll': 'payroll-processing',
+    'Payroll & HR.Salary': 'payroll-salary',
+    'Payroll & HR.Loans & Advances': 'payroll-loans',
+    'Payroll & HR.HR Reports': 'module-summary',
     'Survey & Field Operations.Summary': 'module-summary',
     'Government Compliance.Summary': 'module-summary',
     'Projects.Summary': 'module-summary',
@@ -354,7 +359,12 @@ export default function App() {
   {activeView === 'vendor-payments' && <VendorPaymentsView activeEntityId={activeEntityId} entities={entities as any} />}
   {activeView === 'expense-claims' && <ExpenseClaimsView activeEntityId={activeEntityId} entities={entities as any} />}
   {activeView === 'purchase-reports' && <PurchaseReportsView activeEntityId={activeEntityId} entities={entities as any} />}
-  {activeView === 'payroll' && <PayrollWorkspace />}
+  {activeView === 'payroll-employees' && <EmployeeDirectory />}
+  {activeView === 'payroll-attendance' && <AttendanceTracker />}
+  {activeView === 'payroll-leave' && <LeaveManagement />}
+  {activeView === 'payroll-processing' && <PayrollProcessing />}
+  {activeView === 'payroll-salary' && <SalarySlipsView />}
+  {activeView === 'payroll-loans' && <LoansAdvancesView />}
   {activeView === 'bills' && <VendorBills activeEntityId={activeEntityId} />}
   {activeView === 'vendor-statements' && <VendorStatementsWorkspace activeEntityId={activeEntityId} />}
   {activeView === 'payables-aging' && <PayablesAgingWorkspace activeEntityId={activeEntityId} />}
