@@ -7,6 +7,10 @@ import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@/components/ui/select';
+import { FormSection } from '@/components/ui/form-section';
+import { FormField } from '@/components/ui/form-field';
+import { PageHeader } from '@/components/ui/page-header';
+import { StatCard } from '@/components/ui/stat-card';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Plus, CheckCircle2, XCircle, Clock, Calendar, ArrowLeft, Save } from 'lucide-react';
@@ -76,54 +80,45 @@ export default function LeaveManagement() {
   if (view === 'form') {
     return (
       <div className="p-6 max-w-[1100px] mx-auto space-y-5">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-4">
-            <Button variant="outline" onClick={() => setView('list')}><ArrowLeft className="mr-1.5 h-4 w-4" /> Back</Button>
-            <div>
-              <h1 className="text-2xl font-bold tracking-tight">New Leave Request</h1>
-              <p className="text-sm text-muted-foreground">Create a leave request for an employee</p>
-            </div>
-          </div>
+        <div className="flex items-center gap-4">
+          <Button variant="outline" onClick={() => setView('list')}><ArrowLeft className="mr-1.5 h-4 w-4" /> Back</Button>
+          <PageHeader
+            title="New Leave Request"
+            description="Create a leave request for an employee"
+          />
           <Button onClick={handleCreate} disabled={saving}><Save className="mr-1.5 h-4 w-4" />{saving ? 'Saving...' : 'Submit Request'}</Button>
         </div>
 
         <div className="space-y-4">
-          <div className="bg-violet-50 border border-violet-100 rounded-xl p-4">
-            <h4 className="text-sm font-bold text-violet-600 mb-3 flex items-center gap-2 border-l-4 border-violet-400 pl-2 justify-start text-left">Employee & Leave Type</h4>
-            <div className="grid grid-cols-3 gap-4">
-              <div className="col-span-3"><Label>Employee *</Label><Select value={form.employeeId} onValueChange={v => set('employeeId', v)}>
-                <SelectTrigger><SelectValue placeholder="Select employee" /></SelectTrigger>
-                <SelectContent>{employees.filter(e => e.status === 'Active').map(e => <SelectItem key={e.id} value={e.id}>{e.firstName} {e.lastName} ({e.employeeNumber})</SelectItem>)}</SelectContent>
-              </Select></div>
-              <div><Label>Leave Type *</Label><Select value={form.leaveType} onValueChange={v => set('leaveType', v)}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="Annual">Annual Leave</SelectItem><SelectItem value="Sick">Sick Leave</SelectItem>
-                  <SelectItem value="Maternity">Maternity</SelectItem><SelectItem value="Paternity">Paternity</SelectItem>
-                  <SelectItem value="Bereavement">Bereavement</SelectItem><SelectItem value="Unpaid">Unpaid</SelectItem>
-                  <SelectItem value="CompOff">Compensatory Off</SelectItem><SelectItem value="PublicHoliday">Public Holiday</SelectItem>
-                </SelectContent>
-              </Select></div>
-              <div><Label>Total Days (auto)</Label><Input value={form.startDate && form.endDate ? calcDays() : '-'} disabled /></div>
-            </div>
-          </div>
+          <FormSection icon={Calendar} title="Employee & Leave Type" tone="violet">
+            <FormField label="Employee" required className="col-span-full"><Select value={form.employeeId} onValueChange={v => set('employeeId', v)}>
+              <SelectTrigger><SelectValue placeholder="Select employee" /></SelectTrigger>
+              <SelectContent>{employees.filter(e => e.status === 'Active').map(e => <SelectItem key={e.id} value={e.id}>{e.firstName} {e.lastName} ({e.employeeNumber})</SelectItem>)}</SelectContent>
+            </Select></FormField>
+            <FormField label="Leave Type" required><Select value={form.leaveType} onValueChange={v => set('leaveType', v)}>
+              <SelectTrigger><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="Annual">Annual Leave</SelectItem><SelectItem value="Sick">Sick Leave</SelectItem>
+                <SelectItem value="Maternity">Maternity</SelectItem><SelectItem value="Paternity">Paternity</SelectItem>
+                <SelectItem value="Bereavement">Bereavement</SelectItem><SelectItem value="Unpaid">Unpaid</SelectItem>
+                <SelectItem value="CompOff">Compensatory Off</SelectItem><SelectItem value="PublicHoliday">Public Holiday</SelectItem>
+              </SelectContent>
+            </Select></FormField>
+            <FormField label="Total Days (auto)"><Input value={form.startDate && form.endDate ? calcDays() : '-'} disabled /></FormField>
+          </FormSection>
 
-          <div className="bg-blue-50 border border-blue-100 rounded-xl p-4">
-            <h4 className="text-sm font-bold text-blue-600 mb-3 flex items-center gap-2 border-l-4 border-blue-400 pl-2 justify-start text-left">Leave Period</h4>
-            <div className="grid grid-cols-3 gap-4">
-              <div><Label>Start Date *</Label><Input type="date" value={form.startDate} onChange={e => set('startDate', e.target.value)} /></div>
-              <div><Label>End Date *</Label><Input type="date" value={form.endDate} onChange={e => set('endDate', e.target.value)} /></div>
-              <div><Label>Working Days (auto)</Label><Input value={form.startDate && form.endDate ? calcWorkingDays() : '-'} disabled /></div>
-            </div>
-          </div>
+          <FormSection icon={Calendar} title="Leave Period" tone="blue">
+            <FormField label="Start Date" required><Input type="date" value={form.startDate} onChange={e => set('startDate', e.target.value)} /></FormField>
+            <FormField label="End Date" required><Input type="date" value={form.endDate} onChange={e => set('endDate', e.target.value)} /></FormField>
+            <FormField label="Working Days (auto)"><Input value={form.startDate && form.endDate ? calcWorkingDays() : '-'} disabled /></FormField>
+          </FormSection>
 
-          <div className="bg-slate-50 border border-slate-100 rounded-xl p-4">
-            <h4 className="text-sm font-bold text-slate-600 mb-3 flex items-center gap-2 border-l-4 border-slate-400 pl-2 justify-start text-left">Reason</h4>
-            <div><Label>Reason</Label><Textarea value={form.reason} onChange={e => set('reason', e.target.value)} placeholder="Reason for leave..." rows={3} /></div>
-          </div>
+          <FormSection icon={Calendar} title="Reason" tone="slate">
+            <FormField label="Reason"><Textarea value={form.reason} onChange={e => set('reason', e.target.value)} placeholder="Reason for leave..." rows={3} /></FormField>
+          </FormSection>
         </div>
 
-        <div className="flex items-center justify-end gap-3 border-t pt-4 sticky bottom-0 bg-[#f5f7fa] py-3">
+        <div className="flex items-center justify-end gap-3 border-t pt-4 sticky bottom-0 bg-background py-3">
           <Button variant="outline" onClick={() => setView('list')}>Cancel</Button>
           <Button onClick={handleCreate} disabled={saving}><Save className="mr-1.5 h-4 w-4" />{saving ? 'Saving...' : 'Submit Request'}</Button>
         </div>
@@ -133,18 +128,16 @@ export default function LeaveManagement() {
 
   return (
     <div className="p-6 max-w-[1400px] mx-auto space-y-4">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight">Leave Management</h1>
-          <p className="text-sm text-muted-foreground">Manage employee leave requests, approvals, and balances</p>
-        </div>
-        <Button onClick={() => setView('form')}><Plus className="mr-2 h-4 w-4" /> New Leave Request</Button>
-      </div>
+      <PageHeader
+        title="Leave Management"
+        description="Manage employee leave requests, approvals, and balances"
+        actions={<Button onClick={() => setView('form')}><Plus className="mr-2 h-4 w-4" /> New Leave Request</Button>}
+      />
 
       <div className="grid grid-cols-3 gap-4">
-        <Card className="p-4"><div className="flex items-center gap-3"><div className="w-10 h-10 rounded-lg bg-amber-500/10 flex items-center justify-center"><Clock className="h-5 w-5 text-amber-600" /></div><div><p className="text-2xl font-bold">{pending}</p><p className="text-xs text-muted-foreground">Pending Approval</p></div></div></Card>
-        <Card className="p-4"><div className="flex items-center gap-3"><div className="w-10 h-10 rounded-lg bg-green-500/10 flex items-center justify-center"><CheckCircle2 className="h-5 w-5 text-green-600" /></div><div><p className="text-2xl font-bold">{approved}</p><p className="text-xs text-muted-foreground">Approved (Total)</p></div></div></Card>
-        <Card className="p-4"><div className="flex items-center gap-3"><div className="w-10 h-10 rounded-lg bg-blue-500/10 flex items-center justify-center"><Calendar className="h-5 w-5 text-blue-600" /></div><div><p className="text-2xl font-bold">{thisMonth}</p><p className="text-xs text-muted-foreground">This Month</p></div></div></Card>
+        <StatCard icon={Clock} label="Pending Approval" value={pending} tone="amber" />
+        <StatCard icon={CheckCircle2} label="Approved (Total)" value={approved} tone="green" />
+        <StatCard icon={Calendar} label="This Month" value={thisMonth} tone="blue" />
       </div>
 
       <div className="flex gap-3 items-center">

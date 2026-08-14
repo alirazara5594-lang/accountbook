@@ -1,47 +1,58 @@
 /*
-  Global theme configuration.
+  Global theme configuration — single source of truth for the design system.
   Update these variables to change the application's visual system in one place.
 */
 :root {
-  /* Brand colors */
-  --color-primary: #176f76;
-  --color-primary-hover: #105b61;
+  /* ─── Brand colors ─── */
+  --color-primary: #14606b;
+  --color-primary-hover: #0f505a;
   --color-primary-foreground: #ffffff;
-  --color-secondary: #e7f4f2;
-  --color-secondary-hover: #d4ebe7;
-  --color-secondary-foreground: #155c60;
-  --color-accent: #55d8c5;
-  --color-accent-foreground: #10233d;
+  --color-secondary: #e6f2f3;
+  --color-secondary-hover: #d4e9ea;
+  --color-secondary-foreground: #144f58;
+  --color-accent: #2fb8a6;
+  --color-accent-foreground: #0e3b3d;
 
-  /* Surface and text colors */
-  --color-background: #f5f7fa;
+  /* ─── Surface and text colors ─── */
+  --color-background: #f6f7f9;
   --color-surface: #ffffff;
-  --color-surface-muted: #f8f9fb;
-  --color-text: #172136;
-  --color-text-strong: #16233b;
-  --color-text-muted: #6f7d91;
-  --color-text-subtle: #8b97a7;
-  --color-border: #dce3eb;
-  --color-border-subtle: #e7ebf0;
+  --color-surface-muted: #f1f3f6;
+  --color-text: #1a1d23;
+  --color-text-strong: #111418;
+  --color-text-muted: #6b7280;
+  --color-text-subtle: #9aa1ac;
+  --color-border: #e3e7ec;
+  --color-border-subtle: #edf0f3;
 
-  /* Feedback colors */
-  --color-success: #198754;
-  --color-success-background: #e4f8f4;
-  --color-warning: #a36c13;
-  --color-warning-background: #fff4d6;
-  --color-danger: #bf4c4c;
-  --color-danger-background: #fff0f0;
-  --color-info: #4474d1;
-  --color-info-background: #e8f0ff;
+  /* ─── Feedback colors ─── */
+  --color-success: #15803d;
+  --color-success-background: #e8f7ee;
+  --color-warning: #b45309;
+  --color-warning-background: #fdf1e1;
+  --color-danger: #dc2626;
+  --color-danger-background: #fdecec;
+  --color-info: #2563eb;
+  --color-info-background: #eaf0fe;
 
-  /* Layout tokens */
-  --radius-sm: 0.375rem;
-  --radius-md: 0.5rem;
-  --radius-lg: 0.75rem;
-  --shadow-sm: 0 2px 5px rgb(24 40 66 / 0.03);
-  --shadow-md: 0 8px 28px rgb(16 35 61 / 0.12);
+  /* ─── Sidebar (dark nav) ─── */
+  --color-sidebar-bg: #0f1d33;
+  --color-sidebar-bg-hover: #182c4d;
+  --color-sidebar-text: #a9bacd;
+  --color-sidebar-text-hover: #f0f5fa;
+  --color-sidebar-brand: #ffffff;
+  --color-sidebar-border: #223a5c;
+  --color-sidebar-accent: #55d8c5;
 
-  /* shadcn/ui semantic tokens */
+  /* ─── Layout tokens ─── */
+  --radius-sm: 0.5rem;
+  --radius-md: 0.625rem;
+  --radius-lg: 0.875rem;
+  --radius-xl: 1rem;
+  --shadow-sm: 0 1px 2px rgb(17 20 24 / 0.04), 0 1px 3px rgb(17 20 24 / 0.06);
+  --shadow-md: 0 4px 12px rgb(17 20 24 / 0.07), 0 2px 4px rgb(17 20 24 / 0.05);
+  --shadow-lg: 0 12px 32px rgb(17 20 24 / 0.12), 0 4px 8px rgb(17 20 24 / 0.06);
+
+  /* ─── shadcn/ui semantic tokens (light) ─── */
   --background: var(--color-background);
   --foreground: var(--color-text);
   --card: var(--color-surface);
@@ -54,26 +65,71 @@
   --secondary-foreground: var(--color-secondary-foreground);
   --muted: var(--color-surface-muted);
   --muted-foreground: var(--color-text-muted);
-  --accent: var(--color-accent);
-  --accent-foreground: var(--color-accent-foreground);
+  --accent: var(--color-secondary);
+  --accent-foreground: var(--color-secondary-foreground);
   --destructive: var(--color-danger);
   --destructive-foreground: #ffffff;
   --border: var(--color-border);
   --input: var(--color-border);
-  --ring: var(--color-accent);
+  --ring: var(--color-primary);
   --radius: var(--radius-md);
+  --chart-1: #14606b;
+  --chart-2: #2fb8a6;
+  --chart-3: #2563eb;
+  --chart-4: #b45309;
+  --chart-5: #7c3aed;
+  --sidebar: var(--color-surface);
+  --sidebar-foreground: var(--color-text);
+  --sidebar-primary: var(--color-primary);
+  --sidebar-primary-foreground: #ffffff;
+  --sidebar-accent: var(--color-surface-muted);
+  --sidebar-accent-foreground: var(--color-text);
+  --sidebar-border: var(--color-border);
+  --sidebar-ring: var(--color-primary);
 }
 
 .dark {
-  --color-background: #10233d;
-  --color-surface: #172d49;
-  --color-surface-muted: #203a58;
-  --color-text: #f4f8fc;
-  --color-text-strong: #ffffff;
-  --color-text-muted: #b2c0d1;
-  --color-text-subtle: #91a2b6;
-  --color-border: #2d4968;
-  --color-border-subtle: #25415f;
-  --color-secondary: #1f4b50;
-  --color-secondary-foreground: #d6fffa;
+  /* ─── Surface and text colors (dark) ─── */
+  --color-background: #0f1317;
+  --color-surface: #171c22;
+  --color-surface-muted: #1f2630;
+  --color-text: #e6eaf0;
+  --color-text-strong: #f4f7fa;
+  --color-text-muted: #94a0b0;
+  --color-text-subtle: #7c8a99;
+  --color-border: #2a333d;
+  --color-border-subtle: #232c35;
+
+  --color-secondary: #1d3338;
+  --color-secondary-foreground: #bfe8e3;
+  --color-accent: #2fb8a6;
+  --color-accent-foreground: #0e3b3d;
+  --color-primary-hover: #2a8fa1;
+
+  /* shadcn/ui semantic tokens (dark) */
+  --background: var(--color-background);
+  --foreground: var(--color-text);
+  --card: var(--color-surface);
+  --card-foreground: var(--color-text);
+  --popover: var(--color-surface);
+  --popover-foreground: var(--color-text);
+  --primary: #2aa0b4;
+  --primary-foreground: #06181c;
+  --secondary: var(--color-secondary);
+  --secondary-foreground: var(--color-secondary-foreground);
+  --muted: var(--color-surface-muted);
+  --muted-foreground: var(--color-text-muted);
+  --accent: var(--color-secondary);
+  --accent-foreground: var(--color-secondary-foreground);
+  --border: var(--color-border);
+  --input: var(--color-border);
+  --ring: var(--color-primary);
+  --sidebar: var(--color-surface);
+  --sidebar-foreground: var(--color-text);
+  --sidebar-primary: #2aa0b4;
+  --sidebar-primary-foreground: #06181c;
+  --sidebar-accent: var(--color-surface-muted);
+  --sidebar-accent-foreground: var(--color-text);
+  --sidebar-border: var(--color-border);
+  --sidebar-ring: var(--color-primary);
 }

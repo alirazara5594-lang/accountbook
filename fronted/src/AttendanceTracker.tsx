@@ -5,7 +5,10 @@ import { Input } from '@/components/ui/input';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@/components/ui/select';
-import { Label } from '@/components/ui/label';
+import { FormSection } from '@/components/ui/form-section';
+import { FormField } from '@/components/ui/form-field';
+import { PageHeader } from '@/components/ui/page-header';
+import { StatCard } from '@/components/ui/stat-card';
 import { Plus, Clock, CheckCircle2, XCircle, AlertTriangle, User, ArrowLeft, Save } from 'lucide-react';
 
 const EMPTY_FORM = { employeeId: '', date: new Date().toISOString().split('T')[0], clockIn: '09:00', clockOut: '17:00', breakStart: '', breakEnd: '', regularHours: 8, overtimeHours: 0, nightHours: 0, status: 'Present', notes: '' };
@@ -49,63 +52,51 @@ export default function AttendanceTracker() {
   if (view === 'form') {
     return (
       <div className="p-6 max-w-[1100px] mx-auto space-y-5">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-4">
-            <Button variant="outline" onClick={() => setView('list')}><ArrowLeft className="mr-1.5 h-4 w-4" /> Back</Button>
-            <div>
-              <h1 className="text-2xl font-bold tracking-tight">Record Attendance</h1>
-              <p className="text-sm text-muted-foreground">Log a daily attendance entry with clock times and work hours</p>
-            </div>
-          </div>
+        <div className="flex items-center gap-4">
+          <Button variant="outline" onClick={() => setView('list')}><ArrowLeft className="mr-1.5 h-4 w-4" /> Back</Button>
+          <PageHeader
+            title="Record Attendance"
+            description="Log a daily attendance entry with clock times and work hours"
+          />
           <Button onClick={handleSubmit} disabled={saving}><Save className="mr-1.5 h-4 w-4" />{saving ? 'Saving...' : 'Save Record'}</Button>
         </div>
 
         <div className="space-y-4">
-          <div className="bg-teal-50 border border-teal-100 rounded-xl p-4">
-            <h4 className="text-sm font-bold text-teal-600 mb-3 flex items-center gap-2 border-l-4 border-teal-400 pl-2 justify-start text-left">Employee & Date</h4>
-            <div className="grid grid-cols-3 gap-4">
-              <div className="col-span-3"><Label>Employee *</Label><Select value={form.employeeId} onValueChange={v => set('employeeId', v)}>
-                <SelectTrigger><SelectValue placeholder="Select employee" /></SelectTrigger>
-                <SelectContent>{employees.filter(e => e.status === 'Active').map(e => <SelectItem key={e.id} value={e.id}>{e.firstName} {e.lastName} ({e.employeeNumber})</SelectItem>)}</SelectContent>
-              </Select></div>
-              <div><Label>Date *</Label><Input type="date" value={form.date} onChange={e => set('date', e.target.value)} /></div>
-              <div><Label>Status</Label><Select value={form.status} onValueChange={v => v !== null && set('status', v)}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="Present">Present</SelectItem><SelectItem value="Absent">Absent</SelectItem>
-                  <SelectItem value="Late">Late</SelectItem><SelectItem value="HalfDay">Half Day</SelectItem>
-                  <SelectItem value="OnLeave">On Leave</SelectItem><SelectItem value="Holiday">Holiday</SelectItem>
-                </SelectContent>
-              </Select></div>
-            </div>
-          </div>
+          <FormSection icon={User} title="Employee & Date" tone="teal">
+            <FormField label="Employee" required className="col-span-full"><Select value={form.employeeId} onValueChange={v => set('employeeId', v)}>
+              <SelectTrigger><SelectValue placeholder="Select employee" /></SelectTrigger>
+              <SelectContent>{employees.filter(e => e.status === 'Active').map(e => <SelectItem key={e.id} value={e.id}>{e.firstName} {e.lastName} ({e.employeeNumber})</SelectItem>)}</SelectContent>
+            </Select></FormField>
+            <FormField label="Date" required><Input type="date" value={form.date} onChange={e => set('date', e.target.value)} /></FormField>
+            <FormField label="Status"><Select value={form.status} onValueChange={v => v !== null && set('status', v)}>
+              <SelectTrigger><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="Present">Present</SelectItem><SelectItem value="Absent">Absent</SelectItem>
+                <SelectItem value="Late">Late</SelectItem><SelectItem value="HalfDay">Half Day</SelectItem>
+                <SelectItem value="OnLeave">On Leave</SelectItem><SelectItem value="Holiday">Holiday</SelectItem>
+              </SelectContent>
+            </Select></FormField>
+          </FormSection>
 
-          <div className="bg-blue-50 border border-blue-100 rounded-xl p-4">
-            <h4 className="text-sm font-bold text-blue-600 mb-3 flex items-center gap-2 border-l-4 border-blue-400 pl-2 justify-start text-left">Clock Times</h4>
-            <div className="grid grid-cols-4 gap-4">
-              <div><Label>Clock In</Label><Input type="time" value={form.clockIn} onChange={e => set('clockIn', e.target.value)} /></div>
-              <div><Label>Clock Out</Label><Input type="time" value={form.clockOut} onChange={e => set('clockOut', e.target.value)} /></div>
-              <div><Label>Break Start</Label><Input type="time" value={form.breakStart} onChange={e => set('breakStart', e.target.value)} /></div>
-              <div><Label>Break End</Label><Input type="time" value={form.breakEnd} onChange={e => set('breakEnd', e.target.value)} /></div>
-            </div>
-          </div>
+          <FormSection icon={Clock} title="Clock Times" tone="blue" columns={4}>
+            <FormField label="Clock In"><Input type="time" value={form.clockIn} onChange={e => set('clockIn', e.target.value)} /></FormField>
+            <FormField label="Clock Out"><Input type="time" value={form.clockOut} onChange={e => set('clockOut', e.target.value)} /></FormField>
+            <FormField label="Break Start"><Input type="time" value={form.breakStart} onChange={e => set('breakStart', e.target.value)} /></FormField>
+            <FormField label="Break End"><Input type="time" value={form.breakEnd} onChange={e => set('breakEnd', e.target.value)} /></FormField>
+          </FormSection>
 
-          <div className="bg-emerald-50 border border-emerald-100 rounded-xl p-4">
-            <h4 className="text-sm font-bold text-emerald-600 mb-3 flex items-center gap-2 border-l-4 border-emerald-400 pl-2 justify-start text-left">Work Hours</h4>
-            <div className="grid grid-cols-3 gap-4">
-              <div><Label>Regular Hours</Label><Input type="number" step="0.5" value={form.regularHours} onChange={e => set('regularHours', e.target.value)} /></div>
-              <div><Label>Overtime Hours</Label><Input type="number" step="0.5" value={form.overtimeHours} onChange={e => set('overtimeHours', e.target.value)} /></div>
-              <div><Label>Night Shift Hours</Label><Input type="number" step="0.5" value={form.nightHours} onChange={e => set('nightHours', e.target.value)} /></div>
-            </div>
-          </div>
+          <FormSection icon={Clock} title="Work Hours" tone="emerald">
+            <FormField label="Regular Hours"><Input type="number" step="0.5" value={form.regularHours} onChange={e => set('regularHours', e.target.value)} /></FormField>
+            <FormField label="Overtime Hours"><Input type="number" step="0.5" value={form.overtimeHours} onChange={e => set('overtimeHours', e.target.value)} /></FormField>
+            <FormField label="Night Shift Hours"><Input type="number" step="0.5" value={form.nightHours} onChange={e => set('nightHours', e.target.value)} /></FormField>
+          </FormSection>
 
-          <div className="bg-slate-50 border border-slate-100 rounded-xl p-4">
-            <h4 className="text-sm font-bold text-slate-600 mb-3 flex items-center gap-2 border-l-4 border-slate-400 pl-2 justify-start text-left">Additional Notes</h4>
-            <div><Label>Notes</Label><Input value={form.notes} onChange={e => set('notes', e.target.value)} placeholder="Optional notes..." /></div>
-          </div>
+          <FormSection icon={User} title="Additional Notes" tone="slate">
+            <FormField label="Notes"><Input value={form.notes} onChange={e => set('notes', e.target.value)} placeholder="Optional notes..." /></FormField>
+          </FormSection>
         </div>
 
-        <div className="flex items-center justify-end gap-3 border-t pt-4 sticky bottom-0 bg-[#f5f7fa] py-3">
+        <div className="flex items-center justify-end gap-3 border-t pt-4 sticky bottom-0 bg-background py-3">
           <Button variant="outline" onClick={() => setView('list')}>Cancel</Button>
           <Button onClick={handleSubmit} disabled={saving}><Save className="mr-1.5 h-4 w-4" />{saving ? 'Saving...' : 'Save Record'}</Button>
         </div>
@@ -115,18 +106,16 @@ export default function AttendanceTracker() {
 
   return (
     <div className="p-6 max-w-[1400px] mx-auto space-y-4">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight">Attendance Tracker</h1>
-          <p className="text-sm text-muted-foreground">Track daily attendance, clock-in/out, and work hours</p>
-        </div>
-        <Button onClick={() => setView('form')}><Plus className="mr-2 h-4 w-4" /> Record Attendance</Button>
-      </div>
+      <PageHeader
+        title="Attendance Tracker"
+        description="Track daily attendance, clock-in/out, and work hours"
+        actions={<Button onClick={() => setView('form')}><Plus className="mr-2 h-4 w-4" /> Record Attendance</Button>}
+      />
 
       <div className="grid grid-cols-3 gap-4">
-        <Card className="p-4"><div className="flex items-center gap-3"><div className="w-10 h-10 rounded-lg bg-green-500/10 flex items-center justify-center"><CheckCircle2 className="h-5 w-5 text-green-600" /></div><div><p className="text-2xl font-bold">{todayPresent}</p><p className="text-xs text-muted-foreground">Present Today</p></div></div></Card>
-        <Card className="p-4"><div className="flex items-center gap-3"><div className="w-10 h-10 rounded-lg bg-red-500/10 flex items-center justify-center"><XCircle className="h-5 w-5 text-red-600" /></div><div><p className="text-2xl font-bold">{todayAbsent}</p><p className="text-xs text-muted-foreground">Absent Today</p></div></div></Card>
-        <Card className="p-4"><div className="flex items-center gap-3"><div className="w-10 h-10 rounded-lg bg-amber-500/10 flex items-center justify-center"><AlertTriangle className="h-5 w-5 text-amber-600" /></div><div><p className="text-2xl font-bold">{todayLate}</p><p className="text-xs text-muted-foreground">Late Today</p></div></div></Card>
+        <StatCard icon={CheckCircle2} label="Present Today" value={todayPresent} tone="green" />
+        <StatCard icon={XCircle} label="Absent Today" value={todayAbsent} tone="red" />
+        <StatCard icon={AlertTriangle} label="Late Today" value={todayLate} tone="amber" />
       </div>
 
       <div className="flex gap-3 items-center">

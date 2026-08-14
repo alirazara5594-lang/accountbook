@@ -7,8 +7,11 @@ import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@/components/ui/select';
-import { Label } from '@/components/ui/label';
-import { Plus, Play, CheckCircle2, FileText, Users, ArrowLeft, Save } from 'lucide-react';
+import { FormSection } from '@/components/ui/form-section';
+import { FormField } from '@/components/ui/form-field';
+import { PageHeader } from '@/components/ui/page-header';
+import { StatCard } from '@/components/ui/stat-card';
+import { Plus, Play, CheckCircle2, FileText, Users, ArrowLeft, Save, Settings2, CalendarRange, Info } from 'lucide-react';
 
 const EMPTY_FORM = { frequency: 'Monthly', periodStart: '', periodEnd: '', payDate: '', taxYear: 2025 };
 
@@ -62,14 +65,12 @@ export default function PayrollProcessing() {
   if (view === 'form') {
     return (
       <div className="p-6 max-w-[1100px] mx-auto space-y-5">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-4">
-            <Button variant="outline" onClick={() => setView('list')}><ArrowLeft className="mr-1.5 h-4 w-4" /> Back</Button>
-            <div>
-              <h1 className="text-2xl font-bold tracking-tight">New Payrun</h1>
-              <p className="text-sm text-muted-foreground">Configure and run payroll for the selected period</p>
-            </div>
-          </div>
+        <div className="flex items-center gap-4">
+          <Button variant="outline" onClick={() => setView('list')}><ArrowLeft className="mr-1.5 h-4 w-4" /> Back</Button>
+          <PageHeader
+            title="New Payrun"
+            description="Configure and run payroll for the selected period"
+          />
           <div className="flex gap-2">
             <Button variant="secondary" onClick={handleCalculate} disabled={saving}>{saving ? 'Calculating...' : 'Calculate Only'}</Button>
             <Button onClick={handlePost} disabled={saving}><Save className="mr-1.5 h-4 w-4" />{saving ? 'Processing...' : 'Calculate & Post to GL'}</Button>
@@ -77,38 +78,31 @@ export default function PayrollProcessing() {
         </div>
 
         <div className="space-y-4">
-          <div className="bg-teal-50 border border-teal-100 rounded-xl p-4">
-            <h4 className="text-sm font-bold text-teal-600 mb-3 flex items-center gap-2 border-l-4 border-teal-400 pl-2 justify-start text-left">Payrun Configuration</h4>
-            <div className="grid grid-cols-3 gap-4">
-              <div><Label>Pay Frequency *</Label><Select value={form.frequency} onValueChange={v => set('frequency', v)}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="Weekly">Weekly</SelectItem><SelectItem value="BiWeekly">Bi-Weekly</SelectItem>
-                  <SelectItem value="SemiMonthly">Semi-Monthly</SelectItem><SelectItem value="Monthly">Monthly</SelectItem>
-                </SelectContent>
-              </Select></div>
-              <div><Label>Tax Year *</Label><Input type="number" value={form.taxYear} onChange={e => set('taxYear', +e.target.value)} placeholder="2026" /></div>
-              <div className="flex items-end pb-1">
-                <Badge variant="secondary" className="text-xs font-normal">{employees.filter(e => e.status === 'Active').length} active employees</Badge>
-              </div>
-            </div>
-          </div>
+          <FormSection icon={Settings2} title="Payrun Configuration" tone="teal">
+            <FormField label="Pay Frequency" required><Select value={form.frequency} onValueChange={v => set('frequency', v)}>
+              <SelectTrigger><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="Weekly">Weekly</SelectItem><SelectItem value="BiWeekly">Bi-Weekly</SelectItem>
+                <SelectItem value="SemiMonthly">Semi-Monthly</SelectItem><SelectItem value="Monthly">Monthly</SelectItem>
+              </SelectContent>
+            </Select></FormField>
+            <FormField label="Tax Year" required><Input type="number" value={form.taxYear} onChange={e => set('taxYear', +e.target.value)} placeholder="2026" /></FormField>
+            <FormField label="Active Employees"><Badge variant="secondary" className="mt-1.5 text-xs font-normal">{employees.filter(e => e.status === 'Active').length} active employees</Badge></FormField>
+          </FormSection>
 
-          <div className="bg-blue-50 border border-blue-100 rounded-xl p-4">
-            <h4 className="text-sm font-bold text-blue-600 mb-3 flex items-center gap-2 border-l-4 border-blue-400 pl-2 justify-start text-left">Pay Period</h4>
-            <div className="grid grid-cols-3 gap-4">
-              <div><Label>Period Start *</Label><Input type="date" value={form.periodStart} onChange={e => set('periodStart', e.target.value)} /></div>
-              <div><Label>Period End *</Label><Input type="date" value={form.periodEnd} onChange={e => set('periodEnd', e.target.value)} /></div>
-              <div><Label>Pay Date *</Label><Input type="date" value={form.payDate} onChange={e => set('payDate', e.target.value)} /></div>
-            </div>
-          </div>
+          <FormSection icon={CalendarRange} title="Pay Period" tone="blue">
+            <FormField label="Period Start" required><Input type="date" value={form.periodStart} onChange={e => set('periodStart', e.target.value)} /></FormField>
+            <FormField label="Period End" required><Input type="date" value={form.periodEnd} onChange={e => set('periodEnd', e.target.value)} /></FormField>
+            <FormField label="Pay Date" required><Input type="date" value={form.payDate} onChange={e => set('payDate', e.target.value)} /></FormField>
+          </FormSection>
 
-          <div className="bg-amber-50 border border-amber-100 rounded-xl p-3 text-xs text-amber-700">
-            All active employees will be processed. Country-specific income tax, social security, and statutory deductions will be calculated automatically based on the selected tax year slabs.
+          <div className="flex items-start gap-3 rounded-xl border border-amber-200/70 bg-amber-50/60 p-4 text-xs text-amber-800">
+            <Info className="mt-0.5 h-4 w-4 shrink-0 text-amber-500" />
+            <span>All active employees will be processed. Country-specific income tax, social security, and statutory deductions will be calculated automatically based on the selected tax year slabs.</span>
           </div>
         </div>
 
-        <div className="flex items-center justify-end gap-3 border-t pt-4 sticky bottom-0 bg-[#f5f7fa] py-3">
+        <div className="flex items-center justify-end gap-3 border-t pt-4 sticky bottom-0 bg-background py-3">
           <Button variant="outline" onClick={() => setView('list')}>Cancel</Button>
           <Button variant="secondary" onClick={handleCalculate} disabled={saving}>{saving ? 'Calculating...' : 'Calculate Only'}</Button>
           <Button onClick={handlePost} disabled={saving}><Save className="mr-1.5 h-4 w-4" />{saving ? 'Processing...' : 'Calculate & Post to GL'}</Button>
@@ -119,18 +113,16 @@ export default function PayrollProcessing() {
 
   return (
     <div className="p-6 max-w-[1400px] mx-auto space-y-4">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight">Payroll Processing</h1>
-          <p className="text-sm text-muted-foreground">Calculate, review, and post payroll runs with country-specific statutory deductions</p>
-        </div>
-        <Button onClick={() => setView('form')}><Plus className="mr-2 h-4 w-4" /> New Payrun</Button>
-      </div>
+      <PageHeader
+        title="Payroll Processing"
+        description="Calculate, review, and post payroll runs with country-specific statutory deductions"
+        actions={<Button onClick={() => setView('form')}><Plus className="mr-2 h-4 w-4" /> New Payrun</Button>}
+      />
 
       <div className="grid grid-cols-3 gap-4">
-        <Card className="p-4"><div className="flex items-center gap-3"><div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center"><Play className="h-5 w-5 text-primary" /></div><div><p className="text-2xl font-bold">{payruns.length}</p><p className="text-xs text-muted-foreground">Total Payruns</p></div></div></Card>
-        <Card className="p-4"><div className="flex items-center gap-3"><div className="w-10 h-10 rounded-lg bg-green-500/10 flex items-center justify-center"><CheckCircle2 className="h-5 w-5 text-green-600" /></div><div><p className="text-2xl font-bold">{totalPosted}</p><p className="text-xs text-muted-foreground">Posted</p></div></div></Card>
-        <Card className="p-4"><div className="flex items-center gap-3"><div className="w-10 h-10 rounded-lg bg-amber-500/10 flex items-center justify-center"><FileText className="h-5 w-5 text-amber-600" /></div><div><p className="text-2xl font-bold">{totalDraft}</p><p className="text-xs text-muted-foreground">Draft / Calculated</p></div></div></Card>
+        <StatCard icon={Play} label="Total Payruns" value={payruns.length} tone="teal" />
+        <StatCard icon={CheckCircle2} label="Posted" value={totalPosted} tone="green" />
+        <StatCard icon={FileText} label="Draft / Calculated" value={totalDraft} tone="amber" />
       </div>
 
       <div className="flex gap-3 items-center">

@@ -6,7 +6,9 @@ import { Input } from '@/components/ui/input';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@/components/ui/select';
-import { Label } from '@/components/ui/label';
+import { FormSection } from '@/components/ui/form-section';
+import { FormField } from '@/components/ui/form-field';
+import { PageHeader } from '@/components/ui/page-header';
 import { Plus, Pencil, UserX, MapPin, Building2, Briefcase, Shield, Globe, CreditCard, GraduationCap, ArrowLeft, ArrowRight, Save, Users, Check } from 'lucide-react';
 
 const COUNTRY_OPTIONS = [
@@ -126,14 +128,12 @@ export default function EmployeeDirectory() {
 
   if (view === 'form') {
     return (
-      <div className="p-6 max-w-[1000px] mx-auto space-y-5">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-4">
-            <Button variant="outline" onClick={() => setView('list')}><ArrowLeft className="mr-1.5 h-4 w-4" /> Back</Button>
-            <div>
-              <h1 className="text-2xl font-bold tracking-tight">{editing ? `Edit Employee — ${editing.firstName} ${editing.lastName}` : 'New Employee'}</h1>
-              <p className="text-sm text-muted-foreground">Step {stepIndex + 1} of {STEPS.length}: {STEPS[stepIndex].label}</p>
-            </div>
+      <div className="mx-auto max-w-[1000px] space-y-5 p-6">
+        <div className="flex items-center gap-4">
+          <Button variant="outline" onClick={() => setView('list')}><ArrowLeft className="mr-1.5 h-4 w-4" /> Back</Button>
+          <div>
+            <h1 className="text-2xl font-bold tracking-tight">{editing ? `Edit Employee — ${editing.firstName} ${editing.lastName}` : 'New Employee'}</h1>
+            <p className="text-sm text-muted-foreground">Step {stepIndex + 1} of {STEPS.length}: {STEPS[stepIndex].label}</p>
           </div>
         </div>
 
@@ -158,178 +158,151 @@ export default function EmployeeDirectory() {
         <div className="space-y-4">
           {step === 'personal' && (
             <>
-              <div className="bg-slate-50 border border-slate-100 rounded-xl p-4">
-                <h4 className="text-sm font-bold text-slate-700 mb-3 flex items-center gap-2 border-l-4 border-slate-400 pl-2 justify-start text-left"><Users className="h-4 w-4 text-slate-500" /> Personal Information</h4>
-                <div className="grid grid-cols-3 gap-4">
-                  <div><Label className="justify-start text-left">First Name <span className="text-red-500">*</span></Label><Input value={form.firstName} onChange={e => set('firstName', e.target.value)} placeholder="John" /></div>
-                  <div><Label className="justify-start text-left">Middle Name</Label><Input value={form.middleName} onChange={e => set('middleName', e.target.value)} placeholder="Middle" /></div>
-                  <div><Label className="justify-start text-left">Last Name <span className="text-red-500">*</span></Label><Input value={form.lastName} onChange={e => set('lastName', e.target.value)} placeholder="Doe" /></div>
-                  <div><Label className="justify-start text-left">Preferred Name</Label><Input value={form.preferredName} onChange={e => set('preferredName', e.target.value)} placeholder="Nickname" /></div>
-                  <div><Label className="justify-start text-left">Email</Label><Input type="email" value={form.email} onChange={e => set('email', e.target.value)} placeholder="john@company.com" /></div>
-                  <div><Label className="justify-start text-left">Phone</Label><Input value={form.phone} onChange={e => set('phone', e.target.value)} placeholder="+1 234 567 890" /></div>
-                  <div><Label className="justify-start text-left">Date of Birth</Label><Input type="date" value={form.dateOfBirth} onChange={e => set('dateOfBirth', e.target.value)} /></div>
-                  <div><Label className="justify-start text-left">Gender</Label><Select value={form.gender} onValueChange={v => v !== null && set('gender', v)}>
-                    <SelectTrigger className="w-full"><SelectValue placeholder="Select" /></SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="Male">Male</SelectItem><SelectItem value="Female">Female</SelectItem><SelectItem value="Other">Other</SelectItem>
-                    </SelectContent>
-                  </Select></div>
-                  <div><Label className="justify-start text-left">Marital Status</Label><Select value={form.maritalStatus} onValueChange={v => v !== null && set('maritalStatus', v)}>
-                    <SelectTrigger className="w-full"><SelectValue placeholder="Select" /></SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="Single">Single</SelectItem><SelectItem value="Married">Married</SelectItem>
-                      <SelectItem value="Divorced">Divorced</SelectItem><SelectItem value="Widowed">Widowed</SelectItem>
-                    </SelectContent>
-                  </Select></div>
-                  <div><Label className="justify-start text-left">Nationality</Label><Input value={form.nationality} onChange={e => set('nationality', e.target.value)} placeholder="American" /></div>
-                  <div><Label className="justify-start text-left">National ID / SSN</Label><Input value={form.nationalId} onChange={e => set('nationalId', e.target.value)} placeholder="123-45-6789" /></div>
-                </div>
-              </div>
-              <div className="bg-blue-50 border border-blue-100 rounded-xl p-4">
-                <h4 className="text-sm font-bold text-blue-700 mb-3 flex items-center gap-2 border-l-4 border-blue-400 pl-2 justify-start text-left"><MapPin className="h-4 w-4 text-blue-500" /> Address</h4>
-                <div className="grid grid-cols-3 gap-4">
-                  <div className="col-span-3"><Label className="justify-start text-left">Street Address</Label><Input value={form.address} onChange={e => set('address', e.target.value)} placeholder="Street address" /></div>
-                  <div><Label className="justify-start text-left">City</Label><Input value={form.city} onChange={e => set('city', e.target.value)} placeholder="City" /></div>
-                  <div><Label className="justify-start text-left">State / Province</Label><Input value={form.stateProvince} onChange={e => set('stateProvince', e.target.value)} placeholder="State / Province" /></div>
-                  <div><Label className="justify-start text-left">Postal Code</Label><Input value={form.postalCode} onChange={e => set('postalCode', e.target.value)} placeholder="Postal code" /></div>
-                  <div><Label className="justify-start text-left">Country</Label><Select value={form.country} onValueChange={v => v !== null && set('country', v)}>
-                    <SelectTrigger className="w-full"><SelectValue /></SelectTrigger>
-                    <SelectContent>{COUNTRY_OPTIONS.map(c => <SelectItem key={c.value} value={c.value}>{c.label}</SelectItem>)}</SelectContent>
-                  </Select></div>
-                </div>
-              </div>
-              <div className="bg-amber-50 border border-amber-100 rounded-xl p-4">
-                <h4 className="text-sm font-bold text-amber-700 mb-3 flex items-center gap-2 border-l-4 border-amber-400 pl-2 justify-start text-left"><Shield className="h-4 w-4 text-amber-500" /> Emergency Contact</h4>
-                <div className="grid grid-cols-3 gap-4">
-                  <div><Label className="justify-start text-left">Name</Label><Input value={form.emergencyContactName} onChange={e => set('emergencyContactName', e.target.value)} /></div>
-                  <div><Label className="justify-start text-left">Phone</Label><Input value={form.emergencyContactPhone} onChange={e => set('emergencyContactPhone', e.target.value)} /></div>
-                  <div><Label className="justify-start text-left">Relation</Label><Input value={form.emergencyContactRelation} onChange={e => set('emergencyContactRelation', e.target.value)} /></div>
-                </div>
-              </div>
+              <FormSection icon={Users} title="Personal Information" tone="slate">
+                <FormField label="First Name" required><Input value={form.firstName} onChange={e => set('firstName', e.target.value)} placeholder="John" /></FormField>
+                <FormField label="Middle Name"><Input value={form.middleName} onChange={e => set('middleName', e.target.value)} placeholder="Middle" /></FormField>
+                <FormField label="Last Name" required><Input value={form.lastName} onChange={e => set('lastName', e.target.value)} placeholder="Doe" /></FormField>
+                <FormField label="Preferred Name"><Input value={form.preferredName} onChange={e => set('preferredName', e.target.value)} placeholder="Nickname" /></FormField>
+                <FormField label="Email"><Input type="email" value={form.email} onChange={e => set('email', e.target.value)} placeholder="john@company.com" /></FormField>
+                <FormField label="Phone"><Input value={form.phone} onChange={e => set('phone', e.target.value)} placeholder="+1 234 567 890" /></FormField>
+                <FormField label="Date of Birth"><Input type="date" value={form.dateOfBirth} onChange={e => set('dateOfBirth', e.target.value)} /></FormField>
+                <FormField label="Gender"><Select value={form.gender} onValueChange={v => v !== null && set('gender', v)}>
+                  <SelectTrigger className="w-full"><SelectValue placeholder="Select" /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="Male">Male</SelectItem><SelectItem value="Female">Female</SelectItem><SelectItem value="Other">Other</SelectItem>
+                  </SelectContent>
+                </Select></FormField>
+                <FormField label="Marital Status"><Select value={form.maritalStatus} onValueChange={v => v !== null && set('maritalStatus', v)}>
+                  <SelectTrigger className="w-full"><SelectValue placeholder="Select" /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="Single">Single</SelectItem><SelectItem value="Married">Married</SelectItem>
+                    <SelectItem value="Divorced">Divorced</SelectItem><SelectItem value="Widowed">Widowed</SelectItem>
+                  </SelectContent>
+                </Select></FormField>
+                <FormField label="Nationality"><Input value={form.nationality} onChange={e => set('nationality', e.target.value)} placeholder="American" /></FormField>
+                <FormField label="National ID / SSN"><Input value={form.nationalId} onChange={e => set('nationalId', e.target.value)} placeholder="123-45-6789" /></FormField>
+              </FormSection>
+              <FormSection icon={MapPin} title="Address" tone="blue">
+                <FormField label="Street Address" className="col-span-full"><Input value={form.address} onChange={e => set('address', e.target.value)} placeholder="Street address" /></FormField>
+                <FormField label="City"><Input value={form.city} onChange={e => set('city', e.target.value)} placeholder="City" /></FormField>
+                <FormField label="State / Province"><Input value={form.stateProvince} onChange={e => set('stateProvince', e.target.value)} placeholder="State / Province" /></FormField>
+                <FormField label="Postal Code"><Input value={form.postalCode} onChange={e => set('postalCode', e.target.value)} placeholder="Postal code" /></FormField>
+                <FormField label="Country"><Select value={form.country} onValueChange={v => v !== null && set('country', v)}>
+                  <SelectTrigger className="w-full"><SelectValue /></SelectTrigger>
+                  <SelectContent>{COUNTRY_OPTIONS.map(c => <SelectItem key={c.value} value={c.value}>{c.label}</SelectItem>)}</SelectContent>
+                </Select></FormField>
+              </FormSection>
+              <FormSection icon={Shield} title="Emergency Contact" tone="amber">
+                <FormField label="Name"><Input value={form.emergencyContactName} onChange={e => set('emergencyContactName', e.target.value)} /></FormField>
+                <FormField label="Phone"><Input value={form.emergencyContactPhone} onChange={e => set('emergencyContactPhone', e.target.value)} /></FormField>
+                <FormField label="Relation"><Input value={form.emergencyContactRelation} onChange={e => set('emergencyContactRelation', e.target.value)} /></FormField>
+              </FormSection>
             </>
           )}
 
           {step === 'employment' && (
             <>
-              <div className="bg-teal-50 border border-teal-100 rounded-xl p-4">
-                <h4 className="text-sm font-bold text-teal-700 mb-3 flex items-center gap-2 border-l-4 border-teal-400 pl-2 justify-start text-left"><Briefcase className="h-4 w-4 text-teal-500" /> Employment Details</h4>
-                <div className="grid grid-cols-3 gap-4">
-                  <div><Label className="justify-start text-left">Employment Type</Label><Select value={form.employmentType} onValueChange={v => v !== null && set('employmentType', v)}>
-                    <SelectTrigger className="w-full"><SelectValue /></SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="FullTime">Full-Time</SelectItem><SelectItem value="PartTime">Part-Time</SelectItem>
-                      <SelectItem value="Contract">Contract</SelectItem><SelectItem value="Intern">Intern</SelectItem><SelectItem value="Seasonal">Seasonal</SelectItem>
-                    </SelectContent>
-                  </Select></div>
-                  <div><Label className="justify-start text-left">Pay Frequency</Label><Select value={form.payFrequency} onValueChange={v => v !== null && set('payFrequency', v)}>
-                    <SelectTrigger className="w-full"><SelectValue /></SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="Weekly">Weekly</SelectItem><SelectItem value="BiWeekly">Bi-Weekly</SelectItem>
-                      <SelectItem value="SemiMonthly">Semi-Monthly</SelectItem><SelectItem value="Monthly">Monthly</SelectItem>
-                    </SelectContent>
-                  </Select></div>
-                  <div><Label className="justify-start text-left">Status</Label><Select value={form.status} onValueChange={v => v !== null && set('status', v)}>
-                    <SelectTrigger className="w-full"><SelectValue /></SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="Active">Active</SelectItem><SelectItem value="OnLeave">On Leave</SelectItem>
-                      <SelectItem value="Probation">Probation</SelectItem><SelectItem value="Terminated">Terminated</SelectItem>
-                    </SelectContent>
-                  </Select></div>
-                  <div><Label className="justify-start text-left">Hire Date</Label><Input type="date" value={form.hireDate} onChange={e => set('hireDate', e.target.value)} /></div>
-                  <div><Label className="justify-start text-left">Probation End Date</Label><Input type="date" value={form.probationEndDate} onChange={e => set('probationEndDate', e.target.value)} /></div>
-                  <div><Label className="justify-start text-left">Termination Date</Label><Input type="date" value={form.terminationDate} onChange={e => set('terminationDate', e.target.value)} /></div>
-                </div>
-              </div>
-              <div className="bg-violet-50 border border-violet-100 rounded-xl p-4">
-                <h4 className="text-sm font-bold text-violet-700 mb-3 flex items-center gap-2 border-l-4 border-violet-400 pl-2 justify-start text-left"><Building2 className="h-4 w-4 text-violet-500" /> Organization</h4>
-                <div className="grid grid-cols-3 gap-4">
-                  <div><Label className="justify-start text-left">Department</Label><Select value={form.departmentId} onValueChange={v => set('departmentId', v)}>
-                    <SelectTrigger className="w-full"><SelectValue placeholder="Select department" /></SelectTrigger>
-                    <SelectContent>{departments.map(d => <SelectItem key={d.id} value={d.id}>{d.name}</SelectItem>)}</SelectContent>
-                  </Select></div>
-                  <div><Label className="justify-start text-left">Position</Label><Select value={form.positionId} onValueChange={v => set('positionId', v)}>
-                    <SelectTrigger className="w-full"><SelectValue placeholder="Select position" /></SelectTrigger>
-                    <SelectContent>{positions.map(p => <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>)}</SelectContent>
-                  </Select></div>
-                  <div><Label className="justify-start text-left">Pay Grade</Label><Select value={form.payGradeId} onValueChange={v => set('payGradeId', v)}>
-                    <SelectTrigger className="w-full"><SelectValue placeholder="Select pay grade" /></SelectTrigger>
-                    <SelectContent>{payGrades.map(g => <SelectItem key={g.id} value={g.id}>{g.name}</SelectItem>)}</SelectContent>
-                  </Select></div>
-                  <div><Label className="justify-start text-left">Manager</Label><Select value={form.managerId} onValueChange={v => set('managerId', v)}>
-                    <SelectTrigger className="w-full"><SelectValue placeholder="Select manager" /></SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="">No Manager</SelectItem>
-                      {employees.filter(e => e.id !== editing?.id && e.status === 'Active').map(e => <SelectItem key={e.id} value={e.id}>{e.firstName} {e.lastName}</SelectItem>)}
-                    </SelectContent>
-                  </Select></div>
-                </div>
-              </div>
-              <div className="bg-emerald-50 border border-emerald-100 rounded-xl p-4">
-                <h4 className="text-sm font-bold text-emerald-700 mb-3 flex items-center gap-2 border-l-4 border-emerald-400 pl-2 justify-start text-left"><CreditCard className="h-4 w-4 text-emerald-500" /> Compensation</h4>
-                <div className="grid grid-cols-3 gap-4">
-                  <div><Label className="justify-start text-left">Basic Salary</Label><Input type="number" value={form.basicSalary} onChange={e => set('basicSalary', e.target.value)} placeholder="75000" /></div>
-                  <div><Label className="justify-start text-left">Currency</Label><Input value={form.currency} onChange={e => set('currency', e.target.value)} placeholder="USD" /></div>
-                  <div><Label className="justify-start text-left">Additional Tax Withholding</Label><Input type="number" value={form.additionalTaxWithholding} onChange={e => set('additionalTaxWithholding', e.target.value)} placeholder="0" /></div>
-                </div>
-              </div>
+              <FormSection icon={Briefcase} title="Employment Details" tone="teal">
+                <FormField label="Employment Type"><Select value={form.employmentType} onValueChange={v => v !== null && set('employmentType', v)}>
+                  <SelectTrigger className="w-full"><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="FullTime">Full-Time</SelectItem><SelectItem value="PartTime">Part-Time</SelectItem>
+                    <SelectItem value="Contract">Contract</SelectItem><SelectItem value="Intern">Intern</SelectItem><SelectItem value="Seasonal">Seasonal</SelectItem>
+                  </SelectContent>
+                </Select></FormField>
+                <FormField label="Pay Frequency"><Select value={form.payFrequency} onValueChange={v => v !== null && set('payFrequency', v)}>
+                  <SelectTrigger className="w-full"><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="Weekly">Weekly</SelectItem><SelectItem value="BiWeekly">Bi-Weekly</SelectItem>
+                    <SelectItem value="SemiMonthly">Semi-Monthly</SelectItem><SelectItem value="Monthly">Monthly</SelectItem>
+                  </SelectContent>
+                </Select></FormField>
+                <FormField label="Status"><Select value={form.status} onValueChange={v => v !== null && set('status', v)}>
+                  <SelectTrigger className="w-full"><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="Active">Active</SelectItem><SelectItem value="OnLeave">On Leave</SelectItem>
+                    <SelectItem value="Probation">Probation</SelectItem><SelectItem value="Terminated">Terminated</SelectItem>
+                  </SelectContent>
+                </Select></FormField>
+                <FormField label="Hire Date" required><Input type="date" value={form.hireDate} onChange={e => set('hireDate', e.target.value)} /></FormField>
+                <FormField label="Probation End Date"><Input type="date" value={form.probationEndDate} onChange={e => set('probationEndDate', e.target.value)} /></FormField>
+                <FormField label="Termination Date"><Input type="date" value={form.terminationDate} onChange={e => set('terminationDate', e.target.value)} /></FormField>
+              </FormSection>
+              <FormSection icon={Building2} title="Organization" tone="violet">
+                <FormField label="Department"><Select value={form.departmentId} onValueChange={v => set('departmentId', v)}>
+                  <SelectTrigger className="w-full"><SelectValue placeholder="Select department" /></SelectTrigger>
+                  <SelectContent>{departments.map(d => <SelectItem key={d.id} value={d.id}>{d.name}</SelectItem>)}</SelectContent>
+                </Select></FormField>
+                <FormField label="Position"><Select value={form.positionId} onValueChange={v => set('positionId', v)}>
+                  <SelectTrigger className="w-full"><SelectValue placeholder="Select position" /></SelectTrigger>
+                  <SelectContent>{positions.map(p => <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>)}</SelectContent>
+                </Select></FormField>
+                <FormField label="Pay Grade"><Select value={form.payGradeId} onValueChange={v => set('payGradeId', v)}>
+                  <SelectTrigger className="w-full"><SelectValue placeholder="Select pay grade" /></SelectTrigger>
+                  <SelectContent>{payGrades.map(g => <SelectItem key={g.id} value={g.id}>{g.name}</SelectItem>)}</SelectContent>
+                </Select></FormField>
+                <FormField label="Manager"><Select value={form.managerId} onValueChange={v => set('managerId', v)}>
+                  <SelectTrigger className="w-full"><SelectValue placeholder="Select manager" /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="">No Manager</SelectItem>
+                    {employees.filter(e => e.id !== editing?.id && e.status === 'Active').map(e => <SelectItem key={e.id} value={e.id}>{e.firstName} {e.lastName}</SelectItem>)}
+                  </SelectContent>
+                </Select></FormField>
+              </FormSection>
+              <FormSection icon={CreditCard} title="Compensation" tone="emerald">
+                <FormField label="Basic Salary"><Input type="number" value={form.basicSalary} onChange={e => set('basicSalary', e.target.value)} placeholder="75000" /></FormField>
+                <FormField label="Currency"><Input value={form.currency} onChange={e => set('currency', e.target.value)} placeholder="USD" /></FormField>
+                <FormField label="Additional Tax Withholding"><Input type="number" value={form.additionalTaxWithholding} onChange={e => set('additionalTaxWithholding', e.target.value)} placeholder="0" /></FormField>
+              </FormSection>
             </>
           )}
 
           {step === 'education' && (
-            <div className="bg-indigo-50 border border-indigo-100 rounded-xl p-4">
-              <h4 className="text-sm font-bold text-indigo-700 mb-3 flex items-center gap-2 border-l-4 border-indigo-400 pl-2 justify-start text-left"><GraduationCap className="h-4 w-4 text-indigo-500" /> Education Details</h4>
-              <div className="grid grid-cols-3 gap-4">
-                <div><Label className="justify-start text-left">Highest Degree</Label><Select value={form.highestDegree} onValueChange={v => v !== null && set('highestDegree', v)}>
-                  <SelectTrigger className="w-full"><SelectValue placeholder="Select degree" /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="HighSchool">High School</SelectItem><SelectItem value="Diploma">Diploma</SelectItem>
-                    <SelectItem value="Associate">Associate Degree</SelectItem><SelectItem value="Bachelor">Bachelor's</SelectItem>
-                    <SelectItem value="Master">Master's</SelectItem><SelectItem value="Doctorate">Doctorate / PhD</SelectItem>
-                  </SelectContent>
-                </Select></div>
-                <div><Label className="justify-start text-left">Field of Study</Label><Input value={form.fieldOfStudy} onChange={e => set('fieldOfStudy', e.target.value)} placeholder="Computer Science" /></div>
-                <div><Label className="justify-start text-left">Graduation Year</Label><Input type="number" value={form.graduationYear} onChange={e => set('graduationYear', e.target.value)} placeholder="2020" /></div>
-                <div><Label className="justify-start text-left">Institution</Label><Input value={form.institution} onChange={e => set('institution', e.target.value)} placeholder="University / College name" /></div>
-                <div><Label className="justify-start text-left">Skills</Label><Input value={form.skills} onChange={e => set('skills', e.target.value)} placeholder="JavaScript, Leadership, SAP..." /></div>
-                <div><Label className="justify-start text-left">Certifications</Label><Input value={form.certifications} onChange={e => set('certifications', e.target.value)} placeholder="PMP, CFA, AWS Certified..." /></div>
-              </div>
-            </div>
+            <FormSection icon={GraduationCap} title="Education Details" tone="indigo">
+              <FormField label="Highest Degree"><Select value={form.highestDegree} onValueChange={v => v !== null && set('highestDegree', v)}>
+                <SelectTrigger className="w-full"><SelectValue placeholder="Select degree" /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="HighSchool">High School</SelectItem><SelectItem value="Diploma">Diploma</SelectItem>
+                  <SelectItem value="Associate">Associate Degree</SelectItem><SelectItem value="Bachelor">Bachelor's</SelectItem>
+                  <SelectItem value="Master">Master's</SelectItem><SelectItem value="Doctorate">Doctorate / PhD</SelectItem>
+                </SelectContent>
+              </Select></FormField>
+              <FormField label="Field of Study"><Input value={form.fieldOfStudy} onChange={e => set('fieldOfStudy', e.target.value)} placeholder="Computer Science" /></FormField>
+              <FormField label="Graduation Year"><Input type="number" value={form.graduationYear} onChange={e => set('graduationYear', e.target.value)} placeholder="2020" /></FormField>
+              <FormField label="Institution"><Input value={form.institution} onChange={e => set('institution', e.target.value)} placeholder="University / College name" /></FormField>
+              <FormField label="Skills"><Input value={form.skills} onChange={e => set('skills', e.target.value)} placeholder="JavaScript, Leadership, SAP..." /></FormField>
+              <FormField label="Certifications"><Input value={form.certifications} onChange={e => set('certifications', e.target.value)} placeholder="PMP, CFA, AWS Certified..." /></FormField>
+            </FormSection>
           )}
 
           {step === 'bank' && (
-            <div className="bg-cyan-50 border border-cyan-100 rounded-xl p-4">
-              <h4 className="text-sm font-bold text-cyan-700 mb-3 flex items-center gap-2 border-l-4 border-cyan-400 pl-2 justify-start text-left"><CreditCard className="h-4 w-4 text-cyan-500" /> Bank Account Details</h4>
-              <div className="grid grid-cols-3 gap-4">
-                <div><Label className="justify-start text-left">Bank Name</Label><Input value={form.bankName} onChange={e => set('bankName', e.target.value)} placeholder="Chase Bank" /></div>
-                <div><Label className="justify-start text-left">Account Name</Label><Input value={form.bankAccountName} onChange={e => set('bankAccountName', e.target.value)} placeholder="John Doe" /></div>
-                <div><Label className="justify-start text-left">Account Number</Label><Input value={form.bankAccountNumber} onChange={e => set('bankAccountNumber', e.target.value)} placeholder="123456789" /></div>
-                <div><Label className="justify-start text-left">Routing Number / Sort Code</Label><Input value={form.bankRoutingNumber} onChange={e => set('bankRoutingNumber', e.target.value)} placeholder="021000021" /></div>
-                <div><Label className="justify-start text-left">IBAN</Label><Input value={form.bankIBAN} onChange={e => set('bankIBAN', e.target.value)} placeholder="GB29NWBK60161331926819" /></div>
-                <div><Label className="justify-start text-left">SWIFT / BIC</Label><Input value={form.bankSWIFT} onChange={e => set('bankSWIFT', e.target.value)} placeholder="NWBKGB2L" /></div>
-              </div>
-            </div>
+            <FormSection icon={CreditCard} title="Bank Account Details" tone="cyan">
+              <FormField label="Bank Name"><Input value={form.bankName} onChange={e => set('bankName', e.target.value)} placeholder="Chase Bank" /></FormField>
+              <FormField label="Account Name"><Input value={form.bankAccountName} onChange={e => set('bankAccountName', e.target.value)} placeholder="John Doe" /></FormField>
+              <FormField label="Account Number"><Input value={form.bankAccountNumber} onChange={e => set('bankAccountNumber', e.target.value)} placeholder="123456789" /></FormField>
+              <FormField label="Routing Number / Sort Code"><Input value={form.bankRoutingNumber} onChange={e => set('bankRoutingNumber', e.target.value)} placeholder="021000021" /></FormField>
+              <FormField label="IBAN"><Input value={form.bankIBAN} onChange={e => set('bankIBAN', e.target.value)} placeholder="GB29NWBK60161331926819" /></FormField>
+              <FormField label="SWIFT / BIC"><Input value={form.bankSWIFT} onChange={e => set('bankSWIFT', e.target.value)} placeholder="NWBKGB2L" /></FormField>
+            </FormSection>
           )}
 
           {step === 'tax' && (
-            <div className="bg-rose-50 border border-rose-100 rounded-xl p-4">
-              <h4 className="text-sm font-bold text-rose-700 mb-3 flex items-center gap-2 border-l-4 border-rose-400 pl-2 justify-start text-left"><Shield className="h-4 w-4 text-rose-500" /> Tax Information</h4>
-              <div className="grid grid-cols-3 gap-4">
-                <div><Label className="justify-start text-left">Tax ID / UTR / NTN</Label><Input value={form.taxId} onChange={e => set('taxId', e.target.value)} placeholder="Tax identification number" /></div>
-                <div><Label className="justify-start text-left">Tax Filing Status</Label><Select value={form.taxFilingStatus} onValueChange={v => set('taxFilingStatus', v)}>
-                  <SelectTrigger className="w-full"><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="Single">Single</SelectItem><SelectItem value="MarriedFilingJointly">Married Filing Jointly</SelectItem>
-                    <SelectItem value="MarriedFilingSeparately">Married Filing Separately</SelectItem>
-                    <SelectItem value="HeadOfHousehold">Head of Household</SelectItem><SelectItem value="NonResident">Non-Resident</SelectItem>
-                  </SelectContent>
-                </Select></div>
-                <div><Label className="justify-start text-left">Tax Exemptions</Label><Input type="number" value={form.taxExemptions} onChange={e => set('taxExemptions', e.target.value)} placeholder="0" /></div>
-              </div>
-            </div>
+            <FormSection icon={Shield} title="Tax Information" tone="rose">
+              <FormField label="Tax ID / UTR / NTN"><Input value={form.taxId} onChange={e => set('taxId', e.target.value)} placeholder="Tax identification number" /></FormField>
+              <FormField label="Tax Filing Status"><Select value={form.taxFilingStatus} onValueChange={v => set('taxFilingStatus', v)}>
+                <SelectTrigger className="w-full"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="Single">Single</SelectItem><SelectItem value="MarriedFilingJointly">Married Filing Jointly</SelectItem>
+                  <SelectItem value="MarriedFilingSeparately">Married Filing Separately</SelectItem>
+                  <SelectItem value="HeadOfHousehold">Head of Household</SelectItem><SelectItem value="NonResident">Non-Resident</SelectItem>
+                </SelectContent>
+              </Select></FormField>
+              <FormField label="Tax Exemptions"><Input type="number" value={form.taxExemptions} onChange={e => set('taxExemptions', e.target.value)} placeholder="0" /></FormField>
+            </FormSection>
           )}
         </div>
 
-        <div className="flex items-center justify-between border-t pt-4 sticky bottom-0 bg-[#f5f7fa] py-3">
+        <div className="flex items-center justify-between border-t pt-4 sticky bottom-0 bg-background py-3">
           <div className="flex gap-2">
             <Button variant="outline" onClick={() => setView('list')}>Cancel</Button>
             {stepIndex > 0 && <Button variant="outline" onClick={goToPrev}><ArrowLeft className="mr-1.5 h-4 w-4" /> Back</Button>}
@@ -344,13 +317,11 @@ export default function EmployeeDirectory() {
 
   return (
     <div className="p-6 max-w-[1400px] mx-auto space-y-4">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight">Employee Directory</h1>
-          <p className="text-sm text-muted-foreground">Manage employee records, contracts, and personal information</p>
-        </div>
-        <Button onClick={openCreate}><Plus className="mr-2 h-4 w-4" /> Add Employee</Button>
-      </div>
+      <PageHeader
+        title="Employee Directory"
+        description="Manage employee records, contracts, and personal information"
+        actions={<Button onClick={openCreate}><Plus className="mr-2 h-4 w-4" /> Add Employee</Button>}
+      />
 
       <div className="flex gap-3 items-center">
         <div className="relative flex-1 max-w-sm">
