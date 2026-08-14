@@ -380,6 +380,18 @@ public IReadOnlyList<EmployeeCompensation> EmployeeCompensations => _employeeCom
         return $"PRJ-{(numbers.Max() + 1):D4}";
     }
 
+    public string NextObligationNumber()
+    {
+        var numbers = _taxObligations.Select(o => o.ObligationNumber).Where(n => n.StartsWith("OBL-") && int.TryParse(n[4..], out _)).Select(n => int.Parse(n[4..])).DefaultIfEmpty(0);
+        return $"OBL-{(numbers.Max() + 1):D4}";
+    }
+
+    public string NextReturnNumber()
+    {
+        var numbers = _taxReturns.Select(r => r.ReturnNumber).Where(n => n.StartsWith("RET-") && int.TryParse(n[4..], out _)).Select(n => int.Parse(n[4..])).DefaultIfEmpty(0);
+        return $"RET-{(numbers.Max() + 1):D4}";
+    }
+
     public bool CreateCustomerPayment(CustomerPaymentRequest request, out CustomerPayment? payment, out string? error)
     {
         lock (_lock)
@@ -3853,6 +3865,76 @@ _bankImports.Clear(); _bankImports.AddRange(state.BankImports ?? []);
         foreach (var p in _projects) RecalculateProjectProgress(p.Id);
     }
 
+    private void SeedComplianceData()
+    {
+        var companyId = _companies.FirstOrDefault()?.Id;
+        var today = DateOnly.FromDateTime(DateTime.Today);
+        var qStart = new DateOnly(today.Year, ((today.Month - 1) / 3) * 3 + 1, 1);
+        var qEnd = qStart.AddMonths(3).AddDays(-1);
+
+        // ── Tax Obligations ──────────────────────────────────────────────────
+        _taxObligations.AddRange([
+            new TaxObligation { ObligationNumber = NextObligationNumber(), JurisdictionId = "UK", ObligationType = "VAT", PeriodStart = qStart, PeriodEnd = qEnd, DueDate = qEnd.AddDays(37), Status = TaxObligationStatus.Due, AmountDue = 12840, CompanyId = companyId, Notes = "Quarterly VAT Return" },
+            new TaxObligation { ObligationNumber = NextObligationNumber(), JurisdictionId = "PK", ObligationType = "Sales Tax", PeriodStart = new DateOnly(today.Year, today.Month, 1), PeriodEnd = new DateOnly(today.Year, today.Month, DateTime.DaysInMonth(today.Year, today.Month)), DueDate = new DateOnly(today.Year, today.Month, 20), Status = TaxObligationStatus.Due, AmountDue = 45200, CompanyId = companyId, Notes = "Monthly Sales Tax Return (FBR)" },
+            new TaxObligation { ObligationNumber = NextObligationNumber(), JurisdictionId = "SA", ObligationType = "VAT", PeriodStart = qStart, PeriodEnd = qEnd, DueDate = qEnd.AddDays(30), Status = TaxObligationStatus.Filed, FiledDate = today.AddDays(-5), AmountDue = 31800, AmountPaid = 31800, CompanyId = companyId, Notes = "ZATCA Quarterly VAT" },
+            new TaxObligation { ObligationNumber = NextObligationNumber(), JurisdictionId = "AE", ObligationType = "Corporate Tax", PeriodStart = new DateOnly(today.Year - 1, 1, 1), PeriodEnd = new DateOnly(today.Year - 1, 12, 31), DueDate = new DateOnly(today.Year, 9, 30), Status = TaxObligationStatus.Filed, FiledDate = today.AddDays(-20), AmountDue = 67450, AmountPaid = 67450, CompanyId = companyId, Notes = "Annual CT Registration" },
+        ]);
+
+        // ── Tax Returns ──────────────────────────────────────────────────────
+        var outputTax = _salesInvoices.Sum(i => i.TaxTotal);
+        var inputTax = _vendorBills.Sum(b => b.Lines.Sum(l => l.TaxAmount));
+        _taxReturns.AddRange([
+            new TaxReturn { ReturnNumber = NextReturnNumber(), JurisdictionId = "UK", ReturnType = "VAT", PeriodStart = qStart, PeriodEnd = qEnd, DueDate = qEnd.AddDays(37), Status = "Draft", OutputTax = Math.Round(outputTax, 2), InputTax = Math.Round(inputTax, 2), CompanyId = companyId, Reference = "Computed from sales invoices & vendor bills" },
+            new TaxReturn { ReturnNumber = NextReturnNumber(), JurisdictionId = "PK", ReturnType = "Sales Tax", PeriodStart = new DateOnly(today.Year, today.Month, 1), PeriodEnd = new DateOnly(today.Year, today.Month, DateTime.DaysInMonth(today.Year, today.Month)), DueDate = new DateOnly(today.Year, today.Month, 20), Status = "Filed", OutputTax = Math.Round(outputTax, 2), InputTax = Math.Round(inputTax * 0.8m, 2), AmountPaid = 45200, FiledDate = today.AddDays(-3), CompanyId = companyId },
+            new TaxReturn { ReturnNumber = NextReturnNumber(), JurisdictionId = "SA", ReturnType = "VAT", PeriodStart = qStart.AddMonths(-3), PeriodEnd = qStart.AddDays(-1), DueDate = qStart.AddDays(29), Status = "Filed", OutputTax = 51200, InputTax = 19400, AmountPaid = 31800, FiledDate = today.AddDays(-8), CompanyId = companyId },
+        ]);
+
+        // ── Withholding Certificates ─────────────────────────────────────────
+        _withholdingCertificates.AddRange([
+            new WithholdingCertificate { CertificateNumber = "WHT-2026-001", CertificateType = "Payment", CounterpartyName = "Global Consulting Ltd", TaxId = "GB-4521-8890", RatePercent = 20, GrossAmount = 120000, WithheldAmount = 24000, PeriodStart = new DateOnly(2026, 1, 1), PeriodEnd = new DateOnly(2026, 3, 31), Status = "Issued", CompanyId = companyId },
+            new WithholdingCertificate { CertificateNumber = "WHT-2026-002", CertificateType = "Contract", CounterpartyName = "Field Services LLC", TaxId = "SA-3012-7784", RatePercent = 5, GrossAmount = 85000, WithheldAmount = 4250, PeriodStart = new DateOnly(2026, 4, 1), PeriodEnd = new DateOnly(2026, 6, 30), Status = "Issued", CompanyId = companyId },
+            new WithholdingCertificate { CertificateNumber = "WHT-2026-003", CertificateType = "Payment", CounterpartyName = "Acme Marketing Agency", TaxId = "AE-1044-5566", RatePercent = 15, GrossAmount = 45000, WithheldAmount = 6750, PeriodStart = new DateOnly(2026, 1, 1), PeriodEnd = new DateOnly(2026, 6, 30), Status = "Draft", CompanyId = companyId },
+        ]);
+
+        // ── E-Invoices ───────────────────────────────────────────────────────
+        foreach (var inv in _salesInvoices.Take(6))
+        {
+            _eInvoices.Add(new EInvoice
+            {
+                InvoiceNumber = inv.InvoiceNumber,
+                InvoiceType = "Sales",
+                CounterpartyName = _customers.FirstOrDefault(c => c.Id == inv.CustomerId)?.Name ?? "Customer",
+                CounterpartyTaxId = null,
+                IssueDate = inv.InvoiceDate,
+                Reference = $"Sales invoice {inv.InvoiceNumber}",
+                GrossAmount = inv.TotalAmount - inv.TaxTotal,
+                TaxAmount = inv.TaxTotal,
+                TotalAmount = inv.TotalAmount,
+                Status = EInvoiceStatus.Validated,
+                Uuid = Guid.NewGuid().ToString(),
+                CompanyId = companyId,
+            });
+        }
+        foreach (var bill in _vendorBills.Take(4))
+        {
+            var tax = bill.Lines.Sum(l => l.TaxAmount);
+            _eInvoices.Add(new EInvoice
+            {
+                InvoiceNumber = bill.BillNumber,
+                InvoiceType = "Purchase",
+                CounterpartyName = _vendors.FirstOrDefault(v => v.Id == bill.VendorId)?.Name ?? "Vendor",
+                IssueDate = bill.Date,
+                Reference = $"Vendor bill {bill.BillNumber}",
+                GrossAmount = bill.TotalAmount - tax,
+                TaxAmount = tax,
+                TotalAmount = bill.TotalAmount,
+                Status = EInvoiceStatus.Validated,
+                Uuid = Guid.NewGuid().ToString(),
+                CompanyId = companyId,
+            });
+        }
+    }
+
     private void SeedPayrollData()
     {
         var companyId = _companies.FirstOrDefault()?.Id;
@@ -5493,6 +5575,239 @@ _bankImports.Clear(); _bankImports.AddRange(state.BankImports ?? []);
             budgetUtilization,
             remainingBudget = budget - totalCost,
             profitability = totalCost > 0 ? Math.Round((budget - totalCost) / totalCost * 100, 1) : 0,
+        };
+    }
+
+    #endregion
+
+    #region Government Compliance
+
+    public List<TaxObligation> GetTaxObligations(string? jurisdictionId = null, TaxObligationStatus? status = null, Guid? companyId = null)
+    {
+        var query = _taxObligations.AsEnumerable();
+        if (!string.IsNullOrWhiteSpace(jurisdictionId)) query = query.Where(o => o.JurisdictionId == jurisdictionId);
+        if (status.HasValue) query = query.Where(o => o.Status == status.Value);
+        if (companyId.HasValue) query = query.Where(o => o.CompanyId == companyId.Value);
+        return query.OrderByDescending(o => o.PeriodStart).ToList();
+    }
+
+    public bool CreateTaxObligation(TaxObligationRequest request, out TaxObligation? obligation, out string? error)
+    {
+        lock (_lock)
+        {
+            obligation = null; error = null;
+            if (request.PeriodStart > request.PeriodEnd) { error = "Period start must be before period end."; return false; }
+            if (request.AmountDue < 0) { error = "Amount due cannot be negative."; return false; }
+            obligation = new TaxObligation
+            {
+                ObligationNumber = NextObligationNumber(),
+                JurisdictionId = string.IsNullOrWhiteSpace(request.JurisdictionId) ? "UK" : request.JurisdictionId,
+                ObligationType = string.IsNullOrWhiteSpace(request.ObligationType) ? "VAT" : request.ObligationType,
+                PeriodStart = request.PeriodStart,
+                PeriodEnd = request.PeriodEnd,
+                DueDate = request.DueDate,
+                AmountDue = request.AmountDue,
+                Notes = request.Notes,
+                CompanyId = request.CompanyId,
+            };
+            _taxObligations.Add(obligation);
+            Persist(); return true;
+        }
+    }
+
+    public bool SetObligationStatus(Guid id, TaxObligationStatus status, out TaxObligation? obligation, out string? error)
+    {
+        lock (_lock)
+        {
+            obligation = null; error = null;
+            var existing = _taxObligations.FirstOrDefault(o => o.Id == id);
+            if (existing == null) { error = "Obligation not found."; return false; }
+            existing.Status = status;
+            if (status == TaxObligationStatus.Filed || status == TaxObligationStatus.Paid) existing.FiledDate ??= DateOnly.FromDateTime(DateTime.Today);
+            if (status == TaxObligationStatus.Paid) existing.AmountPaid = existing.AmountDue;
+            Persist();
+            obligation = existing; return true;
+        }
+    }
+
+    public List<TaxReturn> GetTaxReturns(string? jurisdictionId = null, string? status = null, Guid? companyId = null)
+    {
+        var query = _taxReturns.AsEnumerable();
+        if (!string.IsNullOrWhiteSpace(jurisdictionId)) query = query.Where(r => r.JurisdictionId == jurisdictionId);
+        if (!string.IsNullOrWhiteSpace(status)) query = query.Where(r => r.Status == status);
+        if (companyId.HasValue) query = query.Where(r => r.CompanyId == companyId.Value);
+        return query.OrderByDescending(r => r.PeriodStart).ToList();
+    }
+
+    public bool CreateTaxReturn(TaxReturn request, out TaxReturn? ret, out string? error)
+    {
+        lock (_lock)
+        {
+            ret = null; error = null;
+            if (request.PeriodStart > request.PeriodEnd) { error = "Period start must be before period end."; return false; }
+            if (string.IsNullOrWhiteSpace(request.ReturnType)) { error = "Return type is required."; return false; }
+            ret = new TaxReturn
+            {
+                ReturnNumber = NextReturnNumber(),
+                JurisdictionId = string.IsNullOrWhiteSpace(request.JurisdictionId) ? "UK" : request.JurisdictionId,
+                ReturnType = request.ReturnType,
+                PeriodStart = request.PeriodStart,
+                PeriodEnd = request.PeriodEnd,
+                DueDate = request.DueDate,
+                OutputTax = request.OutputTax,
+                InputTax = request.InputTax,
+                AmountPaid = request.AmountPaid,
+                Reference = request.Reference,
+                CompanyId = request.CompanyId,
+            };
+            _taxReturns.Add(ret);
+            Persist(); return true;
+        }
+    }
+
+    public bool FileTaxReturn(Guid id, out TaxReturn? ret, out string? error)
+    {
+        lock (_lock)
+        {
+            ret = null; error = null;
+            var existing = _taxReturns.FirstOrDefault(r => r.Id == id);
+            if (existing == null) { error = "Tax return not found."; return false; }
+            existing.Status = "Filed";
+            existing.FiledDate ??= DateOnly.FromDateTime(DateTime.Today);
+            Persist();
+            ret = existing; return true;
+        }
+    }
+
+    public List<WithholdingCertificate> GetWithholdingCertificates(string? type = null, string? status = null, Guid? companyId = null)
+    {
+        var query = _withholdingCertificates.AsEnumerable();
+        if (!string.IsNullOrWhiteSpace(type)) query = query.Where(c => c.CertificateType == type);
+        if (!string.IsNullOrWhiteSpace(status)) query = query.Where(c => c.Status == status);
+        if (companyId.HasValue) query = query.Where(c => c.CompanyId == companyId.Value);
+        return query.OrderByDescending(c => c.PeriodStart).ToList();
+    }
+
+    public bool CreateWithholdingCertificate(WithholdingCertificateRequest request, out WithholdingCertificate? cert, out string? error)
+    {
+        lock (_lock)
+        {
+            cert = null; error = null;
+            if (string.IsNullOrWhiteSpace(request.CounterpartyName)) { error = "Counterparty name is required."; return false; }
+            if (request.GrossAmount <= 0) { error = "Gross amount must be positive."; return false; }
+            if (request.RatePercent <= 0) { error = "Rate must be positive."; return false; }
+            cert = new WithholdingCertificate
+            {
+                CertificateNumber = NextWithholdingNumber(),
+                CertificateType = string.IsNullOrWhiteSpace(request.CertificateType) ? "Payment" : request.CertificateType,
+                CounterpartyName = request.CounterpartyName.Trim(),
+                TaxId = request.TaxId ?? "",
+                RatePercent = request.RatePercent,
+                GrossAmount = request.GrossAmount,
+                WithheldAmount = Math.Round(request.GrossAmount * request.RatePercent / 100, 2),
+                PeriodStart = request.PeriodStart,
+                PeriodEnd = request.PeriodEnd,
+                Status = string.IsNullOrWhiteSpace(request.Status) ? "Issued" : request.Status,
+                CompanyId = request.CompanyId,
+            };
+            _withholdingCertificates.Add(cert);
+            Persist(); return true;
+        }
+    }
+
+    public string NextWithholdingNumber()
+    {
+        var numbers = _withholdingCertificates.Select(c => c.CertificateNumber).Where(n => n.StartsWith("WHT-") && int.TryParse(n[4..], out _)).Select(n => int.Parse(n[4..])).DefaultIfEmpty(0);
+        return $"WHT-{(numbers.Max() + 1):D4}";
+    }
+
+    public List<EInvoice> GetEInvoices(string? type = null, EInvoiceStatus? status = null, Guid? companyId = null)
+    {
+        var query = _eInvoices.AsEnumerable();
+        if (!string.IsNullOrWhiteSpace(type)) query = query.Where(e => e.InvoiceType == type);
+        if (status.HasValue) query = query.Where(e => e.Status == status.Value);
+        if (companyId.HasValue) query = query.Where(e => e.CompanyId == companyId.Value);
+        return query.OrderByDescending(e => e.IssueDate).ToList();
+    }
+
+    public bool CreateEInvoice(EInvoiceRequest request, out EInvoice? invoice, out string? error)
+    {
+        lock (_lock)
+        {
+            invoice = null; error = null;
+            if (string.IsNullOrWhiteSpace(request.CounterpartyName)) { error = "Counterparty name is required."; return false; }
+            if (request.GrossAmount < 0 || request.TaxAmount < 0) { error = "Amounts cannot be negative."; return false; }
+            invoice = new EInvoice
+            {
+                InvoiceNumber = NextEInvoiceNumber(),
+                InvoiceType = string.IsNullOrWhiteSpace(request.InvoiceType) ? "Sales" : request.InvoiceType,
+                CounterpartyName = request.CounterpartyName.Trim(),
+                CounterpartyTaxId = request.CounterpartyTaxId,
+                IssueDate = request.IssueDate,
+                Reference = request.Reference,
+                GrossAmount = request.GrossAmount,
+                TaxAmount = request.TaxAmount,
+                TotalAmount = request.GrossAmount + request.TaxAmount,
+                Status = EInvoiceStatus.Draft,
+                Uuid = request.Uuid,
+                CompanyId = request.CompanyId,
+            };
+            _eInvoices.Add(invoice);
+            Persist(); return true;
+        }
+    }
+
+    public string NextEInvoiceNumber()
+    {
+        var numbers = _eInvoices.Select(e => e.InvoiceNumber).Where(n => n.StartsWith("EINV-") && int.TryParse(n[5..], out _)).Select(n => int.Parse(n[5..])).DefaultIfEmpty(0);
+        return $"EINV-{(numbers.Max() + 1):D4}";
+    }
+
+    public bool SetEInvoiceStatus(Guid id, EInvoiceStatus status, out EInvoice? invoice, out string? error)
+    {
+        lock (_lock)
+        {
+            invoice = null; error = null;
+            var existing = _eInvoices.FirstOrDefault(e => e.Id == id);
+            if (existing == null) { error = "E-invoice not found."; return false; }
+            existing.Status = status;
+            if (existing.Uuid == null) existing.Uuid = Guid.NewGuid().ToString();
+            Persist();
+            invoice = existing; return true;
+        }
+    }
+
+    public object GetComplianceDashboard()
+    {
+        var today = DateOnly.FromDateTime(DateTime.Today);
+        var due = _taxObligations.Count(o => o.Status == TaxObligationStatus.Due || o.Status == TaxObligationStatus.Overdue);
+        var overdue = _taxObligations.Count(o => o.Status == TaxObligationStatus.Overdue);
+        var filed = _taxObligations.Count(o => o.Status == TaxObligationStatus.Filed || o.Status == TaxObligationStatus.Paid);
+        var totalDue = _taxObligations.Where(o => o.Status == TaxObligationStatus.Due || o.Status == TaxObligationStatus.Overdue).Sum(o => o.AmountDue - o.AmountPaid);
+        var totalWithheld = _withholdingCertificates.Sum(c => c.WithheldAmount);
+        var validatedInvoices = _eInvoices.Count(e => e.Status == EInvoiceStatus.Validated);
+        var pendingInvoices = _eInvoices.Count(e => e.Status == EInvoiceStatus.Submitted);
+        var rejectedInvoices = _eInvoices.Count(e => e.Status == EInvoiceStatus.Rejected);
+        var upcoming = _taxObligations
+            .Where(o => o.Status == TaxObligationStatus.Due && o.DueDate >= today)
+            .OrderBy(o => o.DueDate)
+            .Take(5)
+            .Select(o => new { o.Id, o.ObligationNumber, o.JurisdictionId, o.ObligationType, o.DueDate, o.AmountDue })
+            .ToList();
+        return new
+        {
+            obligations = _taxObligations.Count,
+            due,
+            overdue,
+            filed,
+            totalDue,
+            totalWithheld,
+            validatedInvoices,
+            pendingInvoices,
+            rejectedInvoices,
+            invoices = _eInvoices.Count,
+            returns = _taxReturns.Count,
+            upcoming,
         };
     }
 

@@ -37,6 +37,7 @@ import SalarySlipsView from './SalarySlipsView';
 import LoansAdvancesView from './LoansAdvancesView';
 import HRReportsView from './HRReportsView';
 import ProjectsWorkspace from './ProjectsWorkspace';
+import ComplianceWorkspace from './ComplianceWorkspace';
 
 import { SystemAccountMapping } from './components/SystemAccountMapping'
 import { ModuleSummary } from './ModuleSummary'
@@ -270,7 +271,13 @@ export default function App() {
     'Payroll & HR.Loans & Advances': 'payroll-loans',
     'Payroll & HR.HR Reports': 'payroll-reports',
     'Survey & Field Operations.Summary': 'module-summary',
-    'Government Compliance.Summary': 'module-summary',
+    'Government Compliance.Summary': 'compliance',
+    'Government Compliance.Tax Management': 'compliance',
+    'Government Compliance.VAT / Sales Tax': 'compliance',
+    'Government Compliance.Withholding Tax': 'compliance',
+    'Government Compliance.Tax Returns': 'compliance',
+    'Government Compliance.E-Invoicing': 'compliance',
+    'Government Compliance.Compliance Reports': 'compliance',
     'Projects.Summary': 'projects',
     'Projects.Projects': 'projects',
     'Projects.Project Planning': 'projects',
@@ -379,6 +386,7 @@ export default function App() {
   {activeView === 'payroll-loans' && <LoansAdvancesView />}
   {activeView === 'payroll-reports' && <HRReportsView />}
   {activeView === 'projects' && <ProjectsWorkspace activeEntityId={activeEntityId} />}
+  {activeView === 'compliance' && <ComplianceWorkspace activeEntityId={activeEntityId} />}
   {activeView === 'bills' && <VendorBills activeEntityId={activeEntityId} />}
   {activeView === 'vendor-statements' && <VendorStatementsWorkspace activeEntityId={activeEntityId} />}
   {activeView === 'payables-aging' && <PayablesAgingWorkspace activeEntityId={activeEntityId} />}
