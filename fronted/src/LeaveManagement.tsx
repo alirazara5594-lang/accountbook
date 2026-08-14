@@ -125,24 +125,38 @@ export default function LeaveManagement() {
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
         <DialogContent className="sm:max-w-2xl max-h-[85vh] overflow-y-auto">
           <DialogHeader><DialogTitle>New Leave Request</DialogTitle></DialogHeader>
-          <div className="grid grid-cols-2 gap-4">
-            <div className="col-span-2"><Label>Employee *</Label><Select value={form.employeeId} onValueChange={v => set('employeeId', v)}>
-              <SelectTrigger><SelectValue placeholder="Select employee" /></SelectTrigger>
-              <SelectContent>{employees.filter(e => e.status === 'Active').map(e => <SelectItem key={e.id} value={e.id}>{e.firstName} {e.lastName}</SelectItem>)}</SelectContent>
-            </Select></div>
-            <div><Label>Leave Type *</Label><Select value={form.leaveType} onValueChange={v => set('leaveType', v)}>
-              <SelectTrigger><SelectValue /></SelectTrigger>
-              <SelectContent>
-                <SelectItem value="Annual">Annual Leave</SelectItem><SelectItem value="Sick">Sick Leave</SelectItem>
-                <SelectItem value="Maternity">Maternity</SelectItem><SelectItem value="Paternity">Paternity</SelectItem>
-                <SelectItem value="Bereavement">Bereavement</SelectItem><SelectItem value="Unpaid">Unpaid</SelectItem>
-                <SelectItem value="CompOff">Compensatory Off</SelectItem><SelectItem value="PublicHoliday">Public Holiday</SelectItem>
-              </SelectContent>
-            </Select></div>
-            <div><Label>Total Days</Label><Input value={form.startDate && form.endDate ? `${Math.ceil((new Date(form.endDate).getTime() - new Date(form.startDate).getTime()) / 86400000) + 1}` : '-'} disabled /></div>
-            <div><Label>Start Date *</Label><Input type="date" value={form.startDate} onChange={e => set('startDate', e.target.value)} /></div>
-            <div><Label>End Date *</Label><Input type="date" value={form.endDate} onChange={e => set('endDate', e.target.value)} /></div>
-            <div className="col-span-2"><Label>Reason</Label><Textarea value={form.reason} onChange={e => set('reason', e.target.value)} placeholder="Reason for leave..." rows={3} /></div>
+          <div className="space-y-4">
+            <div className="bg-violet-50 border border-violet-100 rounded-xl p-4">
+              <h4 className="text-xs font-bold text-violet-600 uppercase tracking-wider mb-3 flex items-center gap-2 border-l-3 border-violet-400 pl-2">Employee & Leave Type</h4>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="col-span-2"><Label>Employee *</Label><Select value={form.employeeId} onValueChange={v => set('employeeId', v)}>
+                  <SelectTrigger><SelectValue placeholder="Select employee" /></SelectTrigger>
+                  <SelectContent>{employees.filter(e => e.status === 'Active').map(e => <SelectItem key={e.id} value={e.id}>{e.firstName} {e.lastName} ({e.employeeNumber})</SelectItem>)}</SelectContent>
+                </Select></div>
+                <div><Label>Leave Type *</Label><Select value={form.leaveType} onValueChange={v => set('leaveType', v)}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="Annual">Annual Leave</SelectItem><SelectItem value="Sick">Sick Leave</SelectItem>
+                    <SelectItem value="Maternity">Maternity</SelectItem><SelectItem value="Paternity">Paternity</SelectItem>
+                    <SelectItem value="Bereavement">Bereavement</SelectItem><SelectItem value="Unpaid">Unpaid</SelectItem>
+                    <SelectItem value="CompOff">Compensatory Off</SelectItem><SelectItem value="PublicHoliday">Public Holiday</SelectItem>
+                  </SelectContent>
+                </Select></div>
+                <div><Label>Total Days</Label><Input value={form.startDate && form.endDate ? `${Math.ceil((new Date(form.endDate).getTime() - new Date(form.startDate).getTime()) / 86400000) + 1}` : '-'} disabled /></div>
+              </div>
+            </div>
+            <div className="bg-blue-50 border border-blue-100 rounded-xl p-4">
+              <h4 className="text-xs font-bold text-blue-600 uppercase tracking-wider mb-3 flex items-center gap-2 border-l-3 border-blue-400 pl-2">Leave Period</h4>
+              <div className="grid grid-cols-3 gap-4">
+                <div><Label>Start Date *</Label><Input type="date" value={form.startDate} onChange={e => set('startDate', e.target.value)} /></div>
+                <div><Label>End Date *</Label><Input type="date" value={form.endDate} onChange={e => set('endDate', e.target.value)} /></div>
+                <div><Label>Working Days</Label><Input value={form.startDate && form.endDate ? `${Math.max(0, Math.ceil((new Date(form.endDate).getTime() - new Date(form.startDate).getTime()) / 86400000) + 1 - 2 * Math.floor(Math.ceil((new Date(form.endDate).getTime() - new Date(form.startDate).getTime()) / 86400000) / 7))}` : '-'} disabled /></div>
+              </div>
+            </div>
+            <div className="bg-slate-50 border border-slate-100 rounded-xl p-4">
+              <h4 className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-3 flex items-center gap-2 border-l-3 border-slate-400 pl-2">Reason</h4>
+              <div><Label>Reason</Label><Textarea value={form.reason} onChange={e => set('reason', e.target.value)} placeholder="Reason for leave..." rows={3} /></div>
+            </div>
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setDialogOpen(false)}>Cancel</Button>

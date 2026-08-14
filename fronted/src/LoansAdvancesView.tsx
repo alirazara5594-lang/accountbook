@@ -18,7 +18,23 @@ export default function LoansAdvancesView() {
   useEffect(() => { fetchEmployees(); fetchLoans(); }, []);
 
   const filtered = loans.filter(l => { if (statusFilter && l.status !== statusFilter) return false; return true; });
-  const set = (k: string, v: any) => setForm(f => ({ ...f, [k]: v }));
+  const set = (k: string, v: any) => {
+    setForm(f => {
+      const next = { ...f, [k]: v };
+      if (k === 'principalAmount' || k === 'interestRate' || k === 'totalInstallments') {
+        const p = Number(next.principalAmount) || 0;
+        const r = Number(next.interestRate) || 0;
+        const n = Number(next.totalInstallments) || 1;
+        if (p > 0 && n > 0) {
+          const monthlyRate = r / 100 / 12;
+          next.installmentAmount = monthlyRate > 0
+            ? Math.round((p * monthlyRate * Math.pow(1 + monthlyRate, n)) / (Math.pow(1 + monthlyRate, n) - 1) * 100) / 100
+            : Math.round((p / n) * 100) / 100;
+        }
+      }
+      return next;
+    });
+  };
   const getEmpName = (id: string) => { const e = employees.find(x => x.id === id); return e ? `${e.firstName} ${e.lastName}` : 'Unknown'; };
 
   const handleCreate = async () => {
@@ -107,25 +123,36 @@ export default function LoansAdvancesView() {
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
         <DialogContent className="sm:max-w-2xl max-h-[85vh] overflow-y-auto">
           <DialogHeader><DialogTitle>New Loan / Advance</DialogTitle></DialogHeader>
-          <div className="grid grid-cols-2 gap-4">
-            <div className="col-span-2"><Label>Employee *</Label><Select value={form.employeeId} onValueChange={v => set('employeeId', v)}>
-              <SelectTrigger><SelectValue placeholder="Select employee" /></SelectTrigger>
-              <SelectContent>{employees.filter(e => e.status === 'Active').map(e => <SelectItem key={e.id} value={e.id}>{e.firstName} {e.lastName}</SelectItem>)}</SelectContent>
-            </Select></div>
-            <div><Label>Loan Number *</Label><Input value={form.loanNumber} onChange={e => set('loanNumber', e.target.value)} placeholder="LN-001" /></div>
-            <div><Label>Loan Type *</Label><Select value={form.loanType} onValueChange={v => set('loanType', v)}>
-              <SelectTrigger><SelectValue /></SelectTrigger>
-              <SelectContent>
-                <SelectItem value="SalaryAdvance">Salary Advance</SelectItem><SelectItem value="PersonalLoan">Personal Loan</SelectItem>
-                <SelectItem value="EmergencyLoan">Emergency Loan</SelectItem><SelectItem value="TravelAdvance">Travel Advance</SelectItem>
-                <SelectItem value="EquipmentLoan">Equipment Loan</SelectItem>
-              </SelectContent>
-            </Select></div>
-            <div><Label>Principal Amount *</Label><Input type="number" value={form.principalAmount} onChange={e => set('principalAmount', +e.target.value)} /></div>
-            <div><Label>Annual Interest Rate %</Label><Input type="number" value={form.interestRate} onChange={e => set('interestRate', +e.target.value)} step="0.1" /></div>
-            <div><Label>Number of Installments *</Label><Input type="number" value={form.totalInstallments} onChange={e => set('totalInstallments', +e.target.value)} /></div>
-            <div><Label>Installment Amount *</Label><Input type="number" value={form.installmentAmount} onChange={e => set('installmentAmount', +e.target.value)} /></div>
-            <div className="col-span-2"><Label>Disbursement Date *</Label><Input type="date" value={form.startDate} onChange={e => set('startDate', e.target.value)} /></div>
+          <div className="space-y-4">
+            <div className="bg-violet-50 border border-violet-100 rounded-xl p-4">
+              <h4 className="text-xs font-bold text-violet-600 uppercase tracking-wider mb-3 flex items-center gap-2 border-l-3 border-violet-400 pl-2">Employee & Loan Type</h4>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="col-span-2"><Label>Employee *</Label><Select value={form.employeeId} onValueChange={v => set('employeeId', v)}>
+                  <SelectTrigger><SelectValue placeholder="Select employee" /></SelectTrigger>
+                  <SelectContent>{employees.filter(e => e.status === 'Active').map(e => <SelectItem key={e.id} value={e.id}>{e.firstName} {e.lastName} ({e.employeeNumber})</SelectItem>)}</SelectContent>
+                </Select></div>
+                <div><Label>Loan Number *</Label><Input value={form.loanNumber} onChange={e => set('loanNumber', e.target.value)} placeholder="LN-001" /></div>
+                <div><Label>Loan Type *</Label><Select value={form.loanType} onValueChange={v => set('loanType', v)}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="SalaryAdvance">Salary Advance</SelectItem><SelectItem value="PersonalLoan">Personal Loan</SelectItem>
+                    <SelectItem value="EmergencyLoan">Emergency Loan</SelectItem><SelectItem value="TravelAdvance">Travel Advance</SelectItem>
+                    <SelectItem value="EquipmentLoan">Equipment Loan</SelectItem>
+                  </SelectContent>
+                </Select></div>
+              </div>
+            </div>
+            <div className="bg-emerald-50 border border-emerald-100 rounded-xl p-4">
+              <h4 className="text-xs font-bold text-emerald-600 uppercase tracking-wider mb-3 flex items-center gap-2 border-l-3 border-emerald-400 pl-2">Loan Amount & Terms</h4>
+              <div className="grid grid-cols-3 gap-4">
+                <div><Label>Principal Amount *</Label><Input type="number" value={form.principalAmount} onChange={e => set('principalAmount', e.target.value)} /></div>
+                <div><Label>Annual Interest Rate %</Label><Input type="number" value={form.interestRate} onChange={e => set('interestRate', e.target.value)} step="0.1" /></div>
+                <div><Label>Number of Installments *</Label><Input type="number" value={form.totalInstallments} onChange={e => set('totalInstallments', e.target.value)} /></div>
+                <div><Label>Installment Amount (auto)</Label><Input type="number" value={form.installmentAmount} readOnly className="bg-muted/50" /></div>
+                <div><Label>Total Payable</Label><Input value={Number(form.installmentAmount) * Number(form.totalInstallments)} readOnly disabled className="bg-muted/50" /></div>
+                <div><Label>Disbursement Date *</Label><Input type="date" value={form.startDate} onChange={e => set('startDate', e.target.value)} /></div>
+              </div>
+            </div>
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setDialogOpen(false)}>Cancel</Button>

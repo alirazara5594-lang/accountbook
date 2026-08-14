@@ -109,21 +109,34 @@ export default function PayrollProcessing() {
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
         <DialogContent className="sm:max-w-2xl max-h-[85vh] overflow-y-auto">
           <DialogHeader><DialogTitle>New Payrun</DialogTitle></DialogHeader>
-          <div className="grid grid-cols-2 gap-4">
-            <div><Label>Pay Frequency *</Label><Select value={form.frequency} onValueChange={v => set('frequency', v)}>
-              <SelectTrigger><SelectValue /></SelectTrigger>
-              <SelectContent>
-                <SelectItem value="Weekly">Weekly</SelectItem><SelectItem value="BiWeekly">Bi-Weekly</SelectItem>
-                <SelectItem value="SemiMonthly">Semi-Monthly</SelectItem><SelectItem value="Monthly">Monthly</SelectItem>
-              </SelectContent>
-            </Select></div>
-            <div><Label>Tax Year *</Label><Input type="number" value={form.taxYear} onChange={e => set('taxYear', +e.target.value)} placeholder="2026" /></div>
-            <div><Label>Period Start *</Label><Input type="date" value={form.periodStart} onChange={e => set('periodStart', e.target.value)} /></div>
-            <div><Label>Period End *</Label><Input type="date" value={form.periodEnd} onChange={e => set('periodEnd', e.target.value)} /></div>
-            <div className="col-span-2"><Label>Pay Date *</Label><Input type="date" value={form.payDate} onChange={e => set('payDate', e.target.value)} /></div>
-          </div>
-          <div className="bg-muted/50 rounded-lg p-3 text-xs text-muted-foreground">
-            All active employees will be processed. Country-specific income tax, social security, and statutory deductions will be calculated automatically based on the selected tax year slabs.
+          <div className="space-y-4">
+            <div className="bg-teal-50 border border-teal-100 rounded-xl p-4">
+              <h4 className="text-xs font-bold text-teal-600 uppercase tracking-wider mb-3 flex items-center gap-2 border-l-3 border-teal-400 pl-2">Payrun Configuration</h4>
+              <div className="grid grid-cols-3 gap-4">
+                <div><Label>Pay Frequency *</Label><Select value={form.frequency} onValueChange={v => set('frequency', v)}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="Weekly">Weekly</SelectItem><SelectItem value="BiWeekly">Bi-Weekly</SelectItem>
+                    <SelectItem value="SemiMonthly">Semi-Monthly</SelectItem><SelectItem value="Monthly">Monthly</SelectItem>
+                  </SelectContent>
+                </Select></div>
+                <div><Label>Tax Year *</Label><Input type="number" value={form.taxYear} onChange={e => set('taxYear', +e.target.value)} placeholder="2026" /></div>
+                <div className="flex items-end pb-1">
+                  <Badge variant="secondary" className="text-xs font-normal">{employees.filter(e => e.status === 'Active').length} active employees</Badge>
+                </div>
+              </div>
+            </div>
+            <div className="bg-blue-50 border border-blue-100 rounded-xl p-4">
+              <h4 className="text-xs font-bold text-blue-600 uppercase tracking-wider mb-3 flex items-center gap-2 border-l-3 border-blue-400 pl-2">Pay Period</h4>
+              <div className="grid grid-cols-3 gap-4">
+                <div><Label>Period Start *</Label><Input type="date" value={form.periodStart} onChange={e => set('periodStart', e.target.value)} /></div>
+                <div><Label>Period End *</Label><Input type="date" value={form.periodEnd} onChange={e => set('periodEnd', e.target.value)} /></div>
+                <div><Label>Pay Date *</Label><Input type="date" value={form.payDate} onChange={e => set('payDate', e.target.value)} /></div>
+              </div>
+            </div>
+            <div className="bg-amber-50 border border-amber-100 rounded-xl p-3 text-xs text-amber-700">
+              All active employees will be processed. Country-specific income tax, social security, and statutory deductions will be calculated automatically based on the selected tax year slabs.
+            </div>
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setDialogOpen(false)}>Cancel</Button>
