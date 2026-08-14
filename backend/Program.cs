@@ -2,6 +2,9 @@ using Zenabook.Api.Services;
 using System.Text.Json.Serialization;
 using Microsoft.EntityFrameworkCore;
 using Zenabook.Api.Data;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.IdentityModel.Tokens;
+using System.Text;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -26,6 +29,29 @@ if (!string.IsNullOrWhiteSpace(postgresConnection))
     builder.Services.AddDbContextFactory<AccountingDbContext>(options => options.UseNpgsql(postgresConnection));
 
 builder.Services.AddSingleton<AccountingStore>();
+
+// JWT Authentication
+builder.Services.AddAuthentication(options =>
+{
+    options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
+    options.DefaultChallengeScheme = JwtBearerDefaults.AuthenticationScheme;
+})
+.AddJwtBearer(options =>
+{
+    options.TokenValidationParameters = new TokenValidationParameters
+    {
+        ValidateIssuer = true,
+        ValidateAudience = true,
+        ValidateLifetime = true,
+        ValidateIssuerSigningKey = true,
+        ValidIssuer = builder.Configuration["Jwt:Issuer"] ?? "ZenabookERP",
+        ValidAudience = builder.Configuration["Jwt:Audience"] ?? "ZenabookERP.Client",
+        IssuerSigningKey = new SymmetricSecurityKey(
+            Encoding.UTF8.GetBytes(builder.Configuration["Jwt:Key"] ?? "DEFAULt-Jwt-S3cr3t-K3y-F0r-Dev-0nly!"))
+    };
+});
+
+builder.Services.AddAuthorization();
 
 // Environment-aware CORS configuration
 var allowedOrigins = Environment.GetEnvironmentVariable("ALLOWED_ORIGINS");
@@ -60,6 +86,7 @@ if (app.Environment.IsDevelopment())
 }
 
 app.UseCors();
+app.UseAuthentication();
 app.UseAuthorization();
 
 app.MapGet("/", () => Results.Ok(new
