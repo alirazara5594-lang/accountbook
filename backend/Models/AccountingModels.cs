@@ -1556,9 +1556,92 @@ public record SalaryTaxSlabRequest(
     decimal StandardDeduction,
     decimal PersonalAllowance,
     bool IsActive,
-    List<SalaryTaxBracketRequest> Brackets,
+    Guid? CompanyId,
+    List<SalaryTaxBracketRequest>? Brackets
+);
+
+// ── Lease Accounting Models ───────────────────────────────────────────────
+
+public enum LeaseType
+{
+    FinanceLease,
+    OperatingLease
+}
+
+public class LeaseAgreement
+{
+    public Guid Id { get; init; } = Guid.NewGuid();
+    public string LeaseNumber { get; set; } = "";
+    public string Counterparty { get; set; } = "";
+    public LeaseType Type { get; set; }
+    public string PropertyDescription { get; set; } = "";
+    public decimal InitialValue { get; set; }
+    public decimal MonthlyRent { get; set; }
+    public decimal AnnualEscalationRate { get; set; } = 0;
+    public DateOnly StartDate { get; set; }
+    public DateOnly EndDate { get; set; }
+    public int TermMonths { get; set; }
+    public decimal PresentValue { get; set; }
+    public decimal RightOfUseAssetValue { get; set; }
+    public decimal AccumulatedDepreciation { get; set; }
+    public decimal BalanceSheetLiability { get; set; }
+    public Guid? AssetAccountId { get; set; }
+    public Guid? LiabilityAccountId { get; set; }
+    public Guid? InterestAccountId { get; set; }
+    public Guid? CashAccountId { get; set; }
+    public Guid? CompanyId { get; set; }
+    public bool IsActive { get; set; } = true;
+    public DateTime CreatedAt { get; init; } = DateTime.UtcNow;
+    public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
+}
+
+public class LeaseScheduleItem
+{
+    public int Period { get; set; }
+    public DateOnly Date { get; set; }
+    public decimal OpeningLiability { get; set; }
+    public decimal InterestExpense { get; set; }
+    public decimal PrincipalPayment { get; set; }
+    public decimal ClosingLiability { get; set; }
+    public decimal DepreciationExpense { get; set; }
+    public decimal TotalExpense => InterestExpense + DepreciationExpense;
+}
+
+public class LeaseScheduleResponse
+{
+    public Guid LeaseId { get; set; }
+    public List<LeaseScheduleItem> Schedule { get; set; } = [];
+    public decimal TotalInterest { get; set; }
+    public decimal TotalPayments { get; set; }
+    public decimal PresentValue { get; set; }
+}
+
+public record LeaseRequest(
+    string LeaseNumber,
+    string Counterparty,
+    LeaseType Type,
+    string PropertyDescription,
+    decimal InitialValue,
+    decimal MonthlyRent,
+    decimal AnnualEscalationRate,
+    DateOnly StartDate,
+    DateOnly EndDate,
+    int? TermMonths,
+    Guid? AssetAccountId,
+    Guid? LiabilityAccountId,
+    Guid? InterestAccountId,
+    Guid? CashAccountId,
     Guid? CompanyId
 );
+
+public class LeaseAccrualResult
+{
+    public bool Success { get; set; }
+    public string? Error { get; set; }
+    public JournalEntry? JournalEntry { get; set; }
+    public decimal InterestAmount { get; set; }
+    public decimal DepreciationAmount { get; set; }
+}
 
 // Specific compensation item assigned to an employee (e.g. customized allowances or recurring deductions)
 public class EmployeeCompensation

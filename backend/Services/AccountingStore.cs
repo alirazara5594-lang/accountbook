@@ -69,6 +69,7 @@ private readonly List<Voucher> _vouchers = [];
     private readonly List<ProjectExpense> _projectExpenses = [];
     private readonly List<TaxObligation> _taxObligations = [];
     private readonly List<TaxReturn> _taxReturns = [];
+    private readonly List<LeaseAgreement> _leases = [];
     private readonly List<WithholdingCertificate> _withholdingCertificates = [];
     private readonly List<EInvoice> _eInvoices = [];
     private readonly List<Survey> _surveys = [];
@@ -163,7 +164,8 @@ List<ExpenseClaim>? ExpenseClaims = null,
         List<ApprovalWorkflow>? ApprovalWorkflows = null,
         List<NumberSeries>? NumberSeries = null,
         List<Currency>? Currencies = null,
-        List<AuditItem>? AuditLog = null);
+        List<AuditItem>? AuditLog = null,
+        List<LeaseAgreement>? Leases = null);
 
     public AccountingStore(IDbContextFactory<AccountingDbContext>? dbFactory = null, IConfiguration? config = null)
     {
@@ -386,6 +388,7 @@ public IReadOnlyList<ExpenseClaim> ExpenseClaims => _expenseClaims;
     public IReadOnlyList<SalarySlip> SalarySlips => _salarySlips;
     public IReadOnlyList<Holiday> Holidays => _holidays;
     public IReadOnlyList<LoanAdvance> LoanAdvances => _loanAdvances;
+    public IReadOnlyList<LeaseAgreement> Leases => _leases;
     public IReadOnlyList<SalaryTaxSlab> TaxSlabs => _taxSlabs;
 public IReadOnlyList<EmployeeCompensation> EmployeeCompensations => _employeeCompensations;
     public IReadOnlyList<Project> Projects => _projects;
@@ -3497,7 +3500,7 @@ _bankImports.Clear(); _bankImports.AddRange(state.BankImports ?? []);
     {
         if (_dbFactory is null) return;
         using var db = _dbFactory.CreateDbContext();
-        var json = JsonSerializer.Serialize(new StoredState(_accounts, _entries, _history, _templates, _recurringEntries, _journalEvents, _intercompanyAllocations, _companies, _customers, _products, _vendors, _purchaseOrders, _grns, _fixedAssets, _taxAuthorities, _taxCodes, _taxRates, _warehouses, _stockLevels, _stockTransactions, _salesInvoices, _estimates, _boms, _workOrders, _mappings, _salesOrders, _creditNotes, _customerPayments, _vendorPayments, _fundTransfers, _reconciliations, _budgets, _periodCloses, _vouchers, _expenseClaims, _bankImports, _payComponents, _employees, _departments, _positions, _payGrades, _leaveBalances, _leaveRequests, _attendanceRecords, _payruns, _payrunEmployees, _payrunLines, _salarySlips, _holidays, _loanAdvances, _taxSlabs, _employeeCompensations, _projects, _projectPhases, _projectTasks, _timesheets, _projectExpenses, _taxObligations, _taxReturns, _withholdingCertificates, _eInvoices, _surveys, _fieldVisits, _inspections, _fieldWorkOrders, _fieldExpenses, _adminUsers, _userRoles, _branches, _approvalWorkflows, _numberSeries, _currencies, _auditLog));
+        var json = JsonSerializer.Serialize(new StoredState(_accounts, _entries, _history, _templates, _recurringEntries, _journalEvents, _intercompanyAllocations, _companies, _customers, _products, _vendors, _purchaseOrders, _grns, _fixedAssets, _taxAuthorities, _taxCodes, _taxRates, _warehouses, _stockLevels, _stockTransactions, _salesInvoices, _estimates, _boms, _workOrders, _mappings, _salesOrders, _creditNotes, _customerPayments, _vendorPayments, _fundTransfers, _reconciliations, _budgets, _periodCloses, _vouchers, _expenseClaims, _bankImports, _payComponents, _employees, _departments, _positions, _payGrades, _leaveBalances, _leaveRequests, _attendanceRecords, _payruns, _payrunEmployees, _payrunLines, _salarySlips, _holidays, _loanAdvances, _taxSlabs, _employeeCompensations, _projects, _projectPhases, _projectTasks, _timesheets, _projectExpenses, _taxObligations, _taxReturns, _withholdingCertificates, _eInvoices, _surveys, _fieldVisits, _inspections, _fieldWorkOrders, _fieldExpenses, _adminUsers, _userRoles, _branches, _approvalWorkflows, _numberSeries, _currencies, _auditLog, _leases));
         var snapshot = db.AccountingStateSnapshots.Find(1);
         if (snapshot is null) db.AccountingStateSnapshots.Add(new AccountingStateSnapshot { Id = 1, Json = json, UpdatedAt = DateTime.UtcNow });
         else { snapshot.Json = json; snapshot.UpdatedAt = DateTime.UtcNow; }
@@ -6504,6 +6507,187 @@ _bankImports.Clear(); _bankImports.AddRange(state.BankImports ?? []);
             baseCurrency = _currencies.FirstOrDefault(c => c.Base)?.Code ?? "USD",
         };
     }
+
+    #region Lease Accounting
+
+    public List<LeaseAgreement> GetLeases(Guid? companyId = null, bool? active = null, LeaseType? type = null)
+    {
+        var query = _leases.AsQueryable();
+        if (companyId.HasValue) query = query.Where(l => l.CompanyId == companyId.Value);
+        if (active.HasValue) query = query.Where(l => l.IsActive == active.Value);
+        if (type.HasValue) query = query.Where(l => l.Type == type.Value);
+        return query.ToList();
+    }
+
+    public bool CreateLease(LeaseRequest request, out LeaseAgreement? lease, out string? error)
+    {
+        error = null;
+        try
+        {
+            var term = request.TermMonths ?? (int)((request.EndDate - request.StartDate).TotalDays / 30.44);
+            var pv = CalculateLeasePresentValue(request.MonthlyRent, request.AnnualEscalationRate, term, request.Type);
+            
+            lease = new LeaseAgreement
+            {
+                LeaseNumber = request.LeaseNumber,
+                Counterparty = request.Counterparty,
+                Type = request.Type,
+                PropertyDescription = request.PropertyDescription,
+                InitialValue = request.InitialValue,
+                MonthlyRent = request.MonthlyRent,
+                AnnualEscalationRate = request.AnnualEscalationRate,
+                StartDate = request.StartDate,
+                EndDate = request.EndDate,
+                TermMonths = term,
+                PresentValue = pv,
+                RightOfUseAssetValue = pv,
+                AssetAccountId = request.AssetAccountId,
+                LiabilityAccountId = request.LiabilityAccountId,
+                InterestAccountId = request.InterestAccountId,
+                CashAccountId = request.CashAccountId,
+                CompanyId = request.CompanyId,
+                IsActive = true
+            };
+            
+            _leases.Add(lease);
+            Persist();
+            error = null;
+            return true;
+        }
+        catch (Exception ex)
+        {
+            error = $"Failed to create lease: {ex.Message}";
+            lease = null;
+            return false;
+        }
+    }
+
+    public bool GetLeaseSchedule(Guid leaseId, int months, out LeaseScheduleResponse? schedule, out string? error)
+    {
+        error = null;
+        var lease = _leases.FirstOrDefault(l => l.Id == leaseId);
+        if (lease == null) { error = "Lease not found"; schedule = null; return false; }
+
+        schedule = GenerateLeaseSchedule(lease, months);
+        return true;
+    }
+
+    public bool PostLeaseAccrual(Guid leaseId, DateOnly asOfDate, out JournalEntry? entry, out string? error)
+    {
+        error = null;
+        var lease = _leases.FirstOrDefault(l => l.Id == leaseId);
+        if (lease == null) { error = "Lease not found"; entry = null; return true; }
+
+        var schedule = GenerateLeaseSchedule(lease, 12);
+        var currentMonth = schedule.Schedule.FirstOrDefault(s => s.Date >= asOfDate) ?? schedule.Schedule.FirstOrDefault();
+        if (currentMonth == null) { error = "No schedule period found for date"; entry = null; return false; }
+
+        var assetAcc = (lease.AssetAccountId.HasValue && lease.AssetAccountId != Guid.Empty) ? lease.AssetAccountId.Value : GetMappedAccount("Right of Use Asset");
+        var liabilityAcc = (lease.LiabilityAccountId.HasValue && lease.LiabilityAccountId != Guid.Empty) ? lease.LiabilityAccountId.Value : GetMappedAccount("Lease Liability");
+        var interestAcc = (lease.InterestAccountId.HasValue && lease.InterestAccountId != Guid.Empty) ? lease.InterestAccountId.Value : GetMappedAccount("Interest Expense");
+        var depreciationAcc = GetMappedAccount("Depreciation Expense");
+        var cashAcc = (lease.CashAccountId.HasValue && lease.CashAccountId != Guid.Empty) ? lease.CashAccountId.Value : Guid.Empty;
+
+        entry = new JournalEntry
+        {
+            Date = asOfDate,
+            Reference = $"LEASE-{lease.LeaseNumber}-{asOfDate:yyyyMM}",
+            Description = $"Monthly lease accrual for {lease.Counterparty} ({lease.PropertyDescription})",
+            TransactionType = TransactionType.Leasing,
+            CompanyId = lease.CompanyId,
+            Lines = new List<JournalLine>(),
+            Status = JournalStatus.Posted
+        };
+
+        // Interest portion (for finance leases)
+        if (lease.Type == LeaseType.FinanceLease && currentMonth.InterestExpense > 0)
+        {
+            entry.Lines.Add(new JournalLine(interestAcc, currentMonth.InterestExpense, 0, "Lease interest accrual", null, null, 1, lease.CompanyId));
+        }
+
+        // Depreciation portion
+        if (currentMonth.DepreciationExpense > 0)
+        {
+            entry.Lines.Add(new JournalLine(depreciationAcc, currentMonth.DepreciationExpense, 0, "Lease asset depreciation", null, null, 1, lease.CompanyId));
+        }
+
+        // For operating leases, everything hits the same P&L account
+        if (lease.Type == LeaseType.OperatingLease)
+        {
+            // Single line for operating lease rent expense
+            var totalExpense = currentMonth.TotalExpense;
+            if (totalExpense > 0)
+                entry.Lines.Add(new JournalLine(depreciationAcc, totalExpense, 0, "Operating lease expense", null, null, 1, lease.CompanyId));
+        }
+
+        // Update lease balances
+        lease.BalanceSheetLiability = currentMonth.ClosingLiability;
+        lease.AccumulatedDepreciation += currentMonth.DepreciationExpense;
+
+        _entries.Add(entry);
+        Persist();
+        return true;
+    }
+
+    private decimal CalculateLeasePresentValue(decimal monthlyRent, decimal escalationRate, int months, LeaseType type)
+    {
+        if (type == LeaseType.OperatingLease) return monthlyRent * months; // Simplified for operating leases
+        
+        // For finance leases, calculate discounted present value
+        var rate = 0.05m; // Assumed incremental borrowing rate of 5%
+        decimal pv = 0;
+        for (int m = 1; m <= months; m++)
+        {
+            var monthlyEscalation = (decimal)Math.Pow((double)(1 + escalationRate / 100), m / 12.0);
+            var payment = monthlyRent * monthlyEscalation;
+            var discountFactor = (decimal)Math.Pow((double)(1 + rate), -m);
+            pv += payment * discountFactor;
+        }
+        return Math.Round(pv, 2);
+    }
+
+    private LeaseScheduleResponse GenerateLeaseSchedule(LeaseAgreement lease, int months)
+    {
+        var schedule = new LeaseScheduleResponse { LeaseId = lease.Id, PresentValue = lease.PresentValue };
+        var openingBalance = lease.BalanceSheetLiability;
+        var rate = 0.05m;
+        var monthlyRate = rate / 12;
+
+        for (int m = 1; m <= months; m++)
+        {
+            var date = lease.StartDate.AddMonths(m);
+            var escalationFactor = (decimal)Math.Pow((double)(1 + lease.AnnualEscalationRate / 100), m / 12.0);
+            var monthlyPayment = lease.MonthlyRent * escalationFactor;
+
+            var interest = Math.Round(openingBalance * monthlyRate, 2);
+            var principal = Math.Round(monthlyPayment - interest, 2);
+            var closingBalance = Math.Round(openingBalance - principal, 2);
+
+            // Depreciation (straight-line over lease term)
+            var depreciation = lease.Type == LeaseType.FinanceLease 
+                ? Math.Round(lease.RightOfUseAssetValue / lease.TermMonths, 2)
+                : 0;
+
+            schedule.Schedule.Add(new LeaseScheduleItem
+            {
+                Period = m,
+                Date = date,
+                OpeningLiability = openingBalance,
+                InterestExpense = interest,
+                PrincipalPayment = principal,
+                ClosingLiability = closingBalance,
+                DepreciationExpense = depreciation
+            });
+
+            openingBalance = closingBalance;
+        }
+
+        schedule.TotalInterest = schedule.Schedule.Sum(s => s.InterestExpense);
+        schedule.TotalPayments = schedule.Schedule.Sum(s => s.PrincipalPayment + s.InterestExpense);
+        return schedule;
+    }
+
+    #endregion
 
     #endregion
 }
