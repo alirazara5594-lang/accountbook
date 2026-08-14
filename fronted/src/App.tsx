@@ -36,8 +36,16 @@ import PayrollProcessing from './PayrollProcessing';
 import SalarySlipsView from './SalarySlipsView';
 import LoansAdvancesView from './LoansAdvancesView';
 import HRReportsView from './HRReportsView';
-import ProjectsWorkspace from './ProjectsWorkspace';
-import ComplianceWorkspace from './ComplianceWorkspace';
+import {
+  FieldOperationsSummaryView, SurveysView, FieldVisitsView, InspectionsView, WorkOrdersView, FieldExpensesView, FieldReportsView
+} from './FieldOperationsViews';
+import {
+  ProjectsSummaryView, ProjectsListView, ProjectPlanningView, ProjectsTasksView, ProjectBudgetView, ProjectCostingView,
+  ProjectsTimesheetsView, ProjectBillingView, ProjectsExpensesView, ProjectProfitabilityView, ProjectsReportsView
+} from './ProjectsViews';
+import {
+  ComplianceSummaryView, TaxManagementView, VatSalesTaxView, WithholdingTaxView, TaxReturnsView, EInvoicingView, ComplianceReportsView
+} from './ComplianceViews';
 
 import { SystemAccountMapping } from './components/SystemAccountMapping'
 import { ModuleSummary } from './ModuleSummary'
@@ -270,25 +278,31 @@ export default function App() {
     'Payroll & HR.Salary': 'payroll-salary',
     'Payroll & HR.Loans & Advances': 'payroll-loans',
     'Payroll & HR.HR Reports': 'payroll-reports',
-    'Survey & Field Operations.Summary': 'module-summary',
-    'Government Compliance.Summary': 'compliance',
-    'Government Compliance.Tax Management': 'compliance',
-    'Government Compliance.VAT / Sales Tax': 'compliance',
-    'Government Compliance.Withholding Tax': 'compliance',
-    'Government Compliance.Tax Returns': 'compliance',
-    'Government Compliance.E-Invoicing': 'compliance',
-    'Government Compliance.Compliance Reports': 'compliance',
-    'Projects.Summary': 'projects',
-    'Projects.Projects': 'projects',
-    'Projects.Project Planning': 'projects',
-    'Projects.Tasks': 'projects',
-    'Projects.Project Budget': 'projects',
-    'Projects.Project Costing': 'projects',
-    'Projects.Timesheets': 'projects',
-    'Projects.Project Billing': 'projects',
-    'Projects.Project Expenses': 'projects',
-    'Projects.Project Profitability': 'projects',
-    'Projects.Reports': 'projects',
+    'Survey & Field Operations.Summary': 'field-summary',
+    'Survey & Field Operations.Surveys': 'field-surveys',
+    'Survey & Field Operations.Field Visits': 'field-visits',
+    'Survey & Field Operations.Inspections': 'field-inspections',
+    'Survey & Field Operations.Work Orders': 'field-work-orders',
+    'Survey & Field Operations.Field Expenses': 'field-expenses',
+    'Survey & Field Operations.Field Reports': 'field-reports',
+    'Government Compliance.Summary': 'compliance-summary',
+    'Government Compliance.Tax Management': 'compliance-tax',
+    'Government Compliance.VAT / Sales Tax': 'compliance-vat',
+    'Government Compliance.Withholding Tax': 'compliance-withholding',
+    'Government Compliance.Tax Returns': 'compliance-returns',
+    'Government Compliance.E-Invoicing': 'compliance-einvoicing',
+    'Government Compliance.Compliance Reports': 'compliance-reports',
+    'Projects.Summary': 'projects-summary',
+    'Projects.Projects': 'projects-list',
+    'Projects.Project Planning': 'projects-planning',
+    'Projects.Tasks': 'projects-tasks',
+    'Projects.Project Budget': 'projects-budget',
+    'Projects.Project Costing': 'projects-costing',
+    'Projects.Timesheets': 'projects-timesheets',
+    'Projects.Project Billing': 'projects-billing',
+    'Projects.Project Expenses': 'projects-expenses',
+    'Projects.Project Profitability': 'projects-profitability',
+    'Projects.Reports': 'projects-reports',
     'AI & Analytics.Summary': 'module-summary',
     'Administration.Summary': 'module-summary',
     'Administration.System Settings': 'settings',
@@ -385,8 +399,31 @@ export default function App() {
   {activeView === 'payroll-salary' && <SalarySlipsView />}
   {activeView === 'payroll-loans' && <LoansAdvancesView />}
   {activeView === 'payroll-reports' && <HRReportsView />}
-  {activeView === 'projects' && <ProjectsWorkspace activeEntityId={activeEntityId} />}
-  {activeView === 'compliance' && <ComplianceWorkspace activeEntityId={activeEntityId} />}
+  {activeView === 'projects-summary' && <ProjectsSummaryView />}
+  {activeView === 'projects-list' && <ProjectsListView activeEntityId={activeEntityId} />}
+  {activeView === 'projects-planning' && <ProjectPlanningView activeEntityId={activeEntityId} />}
+  {activeView === 'projects-tasks' && <ProjectsTasksView activeEntityId={activeEntityId} />}
+  {activeView === 'projects-budget' && <ProjectBudgetView activeEntityId={activeEntityId} />}
+  {activeView === 'projects-costing' && <ProjectCostingView activeEntityId={activeEntityId} />}
+  {activeView === 'projects-timesheets' && <ProjectsTimesheetsView activeEntityId={activeEntityId} />}
+  {activeView === 'projects-billing' && <ProjectBillingView activeEntityId={activeEntityId} />}
+  {activeView === 'projects-expenses' && <ProjectsExpensesView activeEntityId={activeEntityId} />}
+  {activeView === 'projects-profitability' && <ProjectProfitabilityView activeEntityId={activeEntityId} />}
+  {activeView === 'projects-reports' && <ProjectsReportsView activeEntityId={activeEntityId} />}
+  {activeView === 'compliance-summary' && <ComplianceSummaryView />}
+  {activeView === 'compliance-tax' && <TaxManagementView activeEntityId={activeEntityId} />}
+  {activeView === 'compliance-vat' && <VatSalesTaxView activeEntityId={activeEntityId} />}
+  {activeView === 'compliance-withholding' && <WithholdingTaxView activeEntityId={activeEntityId} />}
+  {activeView === 'compliance-returns' && <TaxReturnsView activeEntityId={activeEntityId} />}
+  {activeView === 'compliance-einvoicing' && <EInvoicingView activeEntityId={activeEntityId} />}
+  {activeView === 'compliance-reports' && <ComplianceReportsView activeEntityId={activeEntityId} />}
+  {activeView === 'field-summary' && <FieldOperationsSummaryView />}
+  {activeView === 'field-surveys' && <SurveysView activeEntityId={activeEntityId} />}
+  {activeView === 'field-visits' && <FieldVisitsView activeEntityId={activeEntityId} />}
+  {activeView === 'field-inspections' && <InspectionsView activeEntityId={activeEntityId} />}
+  {activeView === 'field-work-orders' && <WorkOrdersView activeEntityId={activeEntityId} />}
+  {activeView === 'field-expenses' && <FieldExpensesView activeEntityId={activeEntityId} />}
+  {activeView === 'field-reports' && <FieldReportsView />}
   {activeView === 'bills' && <VendorBills activeEntityId={activeEntityId} />}
   {activeView === 'vendor-statements' && <VendorStatementsWorkspace activeEntityId={activeEntityId} />}
   {activeView === 'payables-aging' && <PayablesAgingWorkspace activeEntityId={activeEntityId} />}

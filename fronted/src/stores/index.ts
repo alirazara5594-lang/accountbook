@@ -18,3 +18,4 @@ export * from './useExpenseClaimsStore';
 export * from './usePayrollStore';
 export * from './useProjectsStore';
 export * from './useComplianceStore';
+export * from './useFieldOperationsStore';

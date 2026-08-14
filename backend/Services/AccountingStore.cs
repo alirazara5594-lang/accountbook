@@ -70,6 +70,11 @@ private readonly List<Voucher> _vouchers = [];
     private readonly List<TaxReturn> _taxReturns = [];
     private readonly List<WithholdingCertificate> _withholdingCertificates = [];
     private readonly List<EInvoice> _eInvoices = [];
+    private readonly List<Survey> _surveys = [];
+    private readonly List<FieldVisit> _fieldVisits = [];
+    private readonly List<Inspection> _inspections = [];
+    private readonly List<FieldWorkOrder> _fieldWorkOrders = [];
+    private readonly List<FieldExpense> _fieldExpenses = [];
     private readonly List<AccountMapping> _mappings = [];
     private readonly List<AuditItem> _auditLog = [];
     private readonly Dictionary<Guid, List<AuditItem>> _history = [];
@@ -138,6 +143,11 @@ List<ExpenseClaim>? ExpenseClaims = null,
         List<TaxReturn>? TaxReturns = null,
         List<WithholdingCertificate>? WithholdingCertificates = null,
         List<EInvoice>? EInvoices = null,
+        List<Survey>? Surveys = null,
+        List<FieldVisit>? FieldVisits = null,
+        List<Inspection>? Inspections = null,
+        List<FieldWorkOrder>? FieldWorkOrders = null,
+        List<FieldExpense>? FieldExpenses = null,
         List<AuditItem>? AuditLog = null);
 
     public AccountingStore(IDbContextFactory<AccountingDbContext>? dbFactory = null)
@@ -217,6 +227,7 @@ List<ExpenseClaim>? ExpenseClaims = null,
         SeedPayrollData();
         SeedProjectsData();
         SeedComplianceData();
+        SeedFieldOperationsData();
         Persist();
     }
 
@@ -367,6 +378,11 @@ public IReadOnlyList<EmployeeCompensation> EmployeeCompensations => _employeeCom
     public IReadOnlyList<TaxReturn> TaxReturns => _taxReturns;
     public IReadOnlyList<WithholdingCertificate> WithholdingCertificates => _withholdingCertificates;
     public IReadOnlyList<EInvoice> EInvoices => _eInvoices;
+    public IReadOnlyList<Survey> Surveys => _surveys;
+    public IReadOnlyList<FieldVisit> FieldVisits => _fieldVisits;
+    public IReadOnlyList<Inspection> Inspections => _inspections;
+    public IReadOnlyList<FieldWorkOrder> FieldWorkOrders => _fieldWorkOrders;
+    public IReadOnlyList<FieldExpense> FieldExpenses => _fieldExpenses;
 
     public string NextReceiptNumber()
     {
@@ -3431,6 +3447,11 @@ _bankImports.Clear(); _bankImports.AddRange(state.BankImports ?? []);
         _taxReturns.Clear(); _taxReturns.AddRange(state.TaxReturns ?? []);
         _withholdingCertificates.Clear(); _withholdingCertificates.AddRange(state.WithholdingCertificates ?? []);
         _eInvoices.Clear(); _eInvoices.AddRange(state.EInvoices ?? []);
+        _surveys.Clear(); _surveys.AddRange(state.Surveys ?? []);
+        _fieldVisits.Clear(); _fieldVisits.AddRange(state.FieldVisits ?? []);
+        _inspections.Clear(); _inspections.AddRange(state.Inspections ?? []);
+        _fieldWorkOrders.Clear(); _fieldWorkOrders.AddRange(state.FieldWorkOrders ?? []);
+        _fieldExpenses.Clear(); _fieldExpenses.AddRange(state.FieldExpenses ?? []);
         _auditLog.Clear(); _auditLog.AddRange(state.AuditLog ?? []);
         _mappings.Clear(); _mappings.AddRange(state.Mappings ?? []);
         if (state.History != null)
@@ -3445,7 +3466,7 @@ _bankImports.Clear(); _bankImports.AddRange(state.BankImports ?? []);
     {
         if (_dbFactory is null) return;
         using var db = _dbFactory.CreateDbContext();
-        var json = JsonSerializer.Serialize(new StoredState(_accounts, _entries, _history, _templates, _recurringEntries, _journalEvents, _intercompanyAllocations, _companies, _customers, _products, _vendors, _purchaseOrders, _grns, _fixedAssets, _taxAuthorities, _taxCodes, _taxRates, _warehouses, _stockLevels, _stockTransactions, _salesInvoices, _estimates, _boms, _workOrders, _mappings, _salesOrders, _creditNotes, _customerPayments, _vendorPayments, _fundTransfers, _reconciliations, _budgets, _periodCloses, _vouchers, _expenseClaims, _bankImports, _payComponents, _employees, _departments, _positions, _payGrades, _leaveBalances, _leaveRequests, _attendanceRecords, _payruns, _payrunEmployees, _payrunLines, _salarySlips, _holidays, _loanAdvances, _taxSlabs, _employeeCompensations, _projects, _projectPhases, _projectTasks, _timesheets, _projectExpenses, _taxObligations, _taxReturns, _withholdingCertificates, _eInvoices, _auditLog));
+        var json = JsonSerializer.Serialize(new StoredState(_accounts, _entries, _history, _templates, _recurringEntries, _journalEvents, _intercompanyAllocations, _companies, _customers, _products, _vendors, _purchaseOrders, _grns, _fixedAssets, _taxAuthorities, _taxCodes, _taxRates, _warehouses, _stockLevels, _stockTransactions, _salesInvoices, _estimates, _boms, _workOrders, _mappings, _salesOrders, _creditNotes, _customerPayments, _vendorPayments, _fundTransfers, _reconciliations, _budgets, _periodCloses, _vouchers, _expenseClaims, _bankImports, _payComponents, _employees, _departments, _positions, _payGrades, _leaveBalances, _leaveRequests, _attendanceRecords, _payruns, _payrunEmployees, _payrunLines, _salarySlips, _holidays, _loanAdvances, _taxSlabs, _employeeCompensations, _projects, _projectPhases, _projectTasks, _timesheets, _projectExpenses, _taxObligations, _taxReturns, _withholdingCertificates, _eInvoices, _surveys, _fieldVisits, _inspections, _fieldWorkOrders, _fieldExpenses, _auditLog));
         var snapshot = db.AccountingStateSnapshots.Find(1);
         if (snapshot is null) db.AccountingStateSnapshots.Add(new AccountingStateSnapshot { Id = 1, Json = json, UpdatedAt = DateTime.UtcNow });
         else { snapshot.Json = json; snapshot.UpdatedAt = DateTime.UtcNow; }
@@ -3933,6 +3954,51 @@ _bankImports.Clear(); _bankImports.AddRange(state.BankImports ?? []);
                 CompanyId = companyId,
             });
         }
+    }
+
+    private void SeedFieldOperationsData()
+    {
+        var companyId = _companies.FirstOrDefault()?.Id;
+        var today = DateOnly.FromDateTime(DateTime.Today);
+        var engId = _employees.FirstOrDefault()?.Id;
+        var techId = _employees.Skip(1).FirstOrDefault()?.Id;
+        var customer1 = _customers.FirstOrDefault()?.Id;
+        var customer1Name = _customers.FirstOrDefault()?.Name ?? "Acme Corp";
+
+        // ── Surveys ──────────────────────────────────────────────────────────
+        _surveys.AddRange([
+            new Survey { SurveyNumber = NextSurveyNumber(), Title = "Q3 Customer Satisfaction Survey", Description = "Measure satisfaction across retail and wholesale customers.", Category = "Customer Satisfaction", Status = SurveyStatus.Active, StartDate = new DateOnly(today.Year, today.Month, 1), EndDate = new DateOnly(today.Year, today.Month, 30), Region = "North Region", AssignedTo = engId, TargetResponses = 200, ResponseCount = 87, CompanyId = companyId },
+            new Survey { SurveyNumber = NextSurveyNumber(), Title = "Product Quality Feedback", Description = "Collect product quality feedback from field agents.", Category = "Quality", Status = SurveyStatus.Active, StartDate = new DateOnly(today.Year, today.Month, 10), EndDate = new DateOnly(today.Year, today.Month + 1, 10), Region = "All Regions", AssignedTo = techId, TargetResponses = 150, ResponseCount = 42, CompanyId = companyId },
+            new Survey { SurveyNumber = NextSurveyNumber(), Title = "Market Demand Study", Description = "Evaluate demand for new product lines in key territories.", Category = "Market Research", Status = SurveyStatus.Draft, StartDate = new DateOnly(today.Year, today.Month + 1, 1), Region = "South Region", AssignedTo = engId, TargetResponses = 300, ResponseCount = 0, CompanyId = companyId },
+        ]);
+
+        // ── Field Visits ─────────────────────────────────────────────────────
+        _fieldVisits.AddRange([
+            new FieldVisit { VisitNumber = NextVisitNumber(), VisitType = "Site Visit", CustomerId = customer1, CustomerName = customer1Name, ContactName = "Jane Smith", Purpose = "Annual account review and upsell opportunity.", ScheduledDate = today.AddDays(3), StartTime = "10:00", DurationHours = 2.5m, Status = FieldVisitStatus.Scheduled, Location = "Downtown HQ", AssignedTo = techId, CompanyId = companyId },
+            new FieldVisit { VisitNumber = NextVisitNumber(), VisitType = "Support Visit", CustomerName = "Riverside Traders", ContactName = "Mark Lee", Purpose = "Resolve billing issue and provide training.", ScheduledDate = today.AddDays(-5), StartTime = "14:00", DurationHours = 1.5m, Status = FieldVisitStatus.Completed, Location = "Riverside Branch", AssignedTo = engId, Findings = "Trained staff on new invoicing flow; issue resolved.", CompanyId = companyId },
+            new FieldVisit { VisitNumber = NextVisitNumber(), VisitType = "Audit Visit", CustomerName = "Northgate Stores", ContactName = "Priya Patel", Purpose = "Inventory spot-check and compliance review.", ScheduledDate = today.AddDays(-12), StartTime = "09:00", DurationHours = 3m, Status = FieldVisitStatus.Completed, Location = "Northgate Mall", AssignedTo = techId, Findings = "Stock variances under 1%; no action needed.", CompanyId = companyId },
+        ]);
+
+        // ── Inspections ──────────────────────────────────────────────────────
+        _inspections.AddRange([
+            new Inspection { InspectionNumber = NextInspectionNumber(), InspectionType = "Quality", Location = "Main Warehouse", ScheduledDate = today.AddDays(2), InspectorId = engId, Status = InspectionStatus.Scheduled, Score = 0, CompanyId = companyId },
+            new Inspection { InspectionNumber = NextInspectionNumber(), InspectionType = "Safety", Location = "Production Floor A", ScheduledDate = today.AddDays(-8), InspectorId = techId, Status = InspectionStatus.Passed, Score = 92, Findings = "All fire extinguishers up to date. Minor signage improvement recommended.", Reference = "Safety audit Q3", CompanyId = companyId },
+            new Inspection { InspectionNumber = NextInspectionNumber(), InspectionType = "Quality", Location = "Branch #12", ScheduledDate = today.AddDays(-15), InspectorId = engId, Status = InspectionStatus.Failed, Score = 61, Findings = "Stock rotation process not followed in cold storage.", Reference = "Routine quality check", CompanyId = companyId },
+        ]);
+
+        // ── Field Work Orders ────────────────────────────────────────────────
+        _fieldWorkOrders.AddRange([
+            new FieldWorkOrder { WorkOrderNumber = NextFieldWorkOrderNumber(), WorkType = "Repair", CustomerName = customer1Name, CustomerId = customer1, Description = "POS terminal not connecting to network.", Priority = "High", Status = FieldWorkOrderStatus.InProgress, AssignedTo = techId, ScheduledDate = today.AddDays(1), LaborHours = 3, LaborCost = 150, PartsCost = 0, Location = customer1Name, CompanyId = companyId },
+            new FieldWorkOrder { WorkOrderNumber = NextFieldWorkOrderNumber(), WorkType = "Installation", CustomerName = "Riverside Traders", Description = "Install new POS workstation and barcode scanner.", Priority = "Medium", Status = FieldWorkOrderStatus.Assigned, AssignedTo = engId, ScheduledDate = today.AddDays(5), LaborHours = 6, LaborCost = 360, PartsCost = 480, Location = "Riverside Branch", CompanyId = companyId },
+            new FieldWorkOrder { WorkOrderNumber = NextFieldWorkOrderNumber(), WorkType = "Maintenance", CustomerName = "Northgate Stores", Description = "Quarterly maintenance of 4 self-checkout kiosks.", Priority = "Low", Status = FieldWorkOrderStatus.Completed, AssignedTo = techId, ScheduledDate = today.AddDays(-20), CompletedDate = today.AddDays(-18), LaborHours = 8, LaborCost = 440, PartsCost = 120, Location = "Northgate Mall", CompanyId = companyId },
+        ]);
+
+        // ── Field Expenses ───────────────────────────────────────────────────
+        _fieldExpenses.AddRange([
+            new FieldExpense { ExpenseNumber = NextFieldExpenseNumber(), WorkOrderId = _fieldWorkOrders.FirstOrDefault(w => w.WorkType == "Repair")?.Id, Category = "Travel", Description = "Site visit fuel and parking", Amount = 85.50m, Currency = "USD", ExpenseDate = today.AddDays(-1), Reimbursed = true, CompanyId = companyId },
+            new FieldExpense { ExpenseNumber = NextFieldExpenseNumber(), WorkOrderId = _fieldWorkOrders.FirstOrDefault(w => w.WorkType == "Installation")?.Id, Category = "Supplies", Description = "Cabling and connectors", Amount = 145m, Currency = "USD", ExpenseDate = today.AddDays(-2), CompanyId = companyId },
+            new FieldExpense { ExpenseNumber = NextFieldExpenseNumber(), WorkOrderId = _fieldWorkOrders.FirstOrDefault(w => w.WorkType == "Maintenance")?.Id, Category = "Meals", Description = "Team lunch during maintenance", Amount = 62m, Currency = "USD", ExpenseDate = today.AddDays(-18), Reimbursed = true, CompanyId = companyId },
+        ]);
     }
 
     private void SeedPayrollData()
@@ -5763,6 +5829,36 @@ _bankImports.Clear(); _bankImports.AddRange(state.BankImports ?? []);
         return $"EINV-{(numbers.Max() + 1):D4}";
     }
 
+    public string NextSurveyNumber()
+    {
+        var numbers = _surveys.Select(s => s.SurveyNumber).Where(n => n.StartsWith("SUR-") && int.TryParse(n[4..], out _)).Select(n => int.Parse(n[4..])).DefaultIfEmpty(0);
+        return $"SUR-{(numbers.Max() + 1):D4}";
+    }
+
+    public string NextVisitNumber()
+    {
+        var numbers = _fieldVisits.Select(v => v.VisitNumber).Where(n => n.StartsWith("VIS-") && int.TryParse(n[4..], out _)).Select(n => int.Parse(n[4..])).DefaultIfEmpty(0);
+        return $"VIS-{(numbers.Max() + 1):D4}";
+    }
+
+    public string NextInspectionNumber()
+    {
+        var numbers = _inspections.Select(i => i.InspectionNumber).Where(n => n.StartsWith("INS-") && int.TryParse(n[4..], out _)).Select(n => int.Parse(n[4..])).DefaultIfEmpty(0);
+        return $"INS-{(numbers.Max() + 1):D4}";
+    }
+
+    public string NextFieldWorkOrderNumber()
+    {
+        var numbers = _fieldWorkOrders.Select(w => w.WorkOrderNumber).Where(n => n.StartsWith("FWO-") && int.TryParse(n[4..], out _)).Select(n => int.Parse(n[4..])).DefaultIfEmpty(0);
+        return $"FWO-{(numbers.Max() + 1):D4}";
+    }
+
+    public string NextFieldExpenseNumber()
+    {
+        var numbers = _fieldExpenses.Select(e => e.ExpenseNumber).Where(n => n.StartsWith("FEX-") && int.TryParse(n[4..], out _)).Select(n => int.Parse(n[4..])).DefaultIfEmpty(0);
+        return $"FEX-{(numbers.Max() + 1):D4}";
+    }
+
     public bool SetEInvoiceStatus(Guid id, EInvoiceStatus status, out EInvoice? invoice, out string? error)
     {
         lock (_lock)
@@ -5808,6 +5904,275 @@ _bankImports.Clear(); _bankImports.AddRange(state.BankImports ?? []);
             invoices = _eInvoices.Count,
             returns = _taxReturns.Count,
             upcoming,
+        };
+    }
+
+    #endregion
+
+    #region Survey & Field Operations
+
+    public List<Survey> GetSurveys(SurveyStatus? status = null, string? category = null, Guid? companyId = null)
+    {
+        var query = _surveys.AsEnumerable();
+        if (status.HasValue) query = query.Where(s => s.Status == status.Value);
+        if (!string.IsNullOrWhiteSpace(category)) query = query.Where(s => s.Category == category);
+        if (companyId.HasValue) query = query.Where(s => s.CompanyId == companyId.Value);
+        return query.OrderByDescending(s => s.CreatedAt).ToList();
+    }
+
+    public bool CreateSurvey(SurveyRequest request, out Survey? survey, out string? error)
+    {
+        lock (_lock)
+        {
+            survey = null; error = null;
+            if (string.IsNullOrWhiteSpace(request.Title)) { error = "Survey title is required."; return false; }
+            if (request.StartDate > request.EndDate) { error = "Start date must be before end date."; return false; }
+            survey = new Survey
+            {
+                SurveyNumber = NextSurveyNumber(),
+                Title = request.Title.Trim(),
+                Description = request.Description ?? "",
+                Category = string.IsNullOrWhiteSpace(request.Category) ? "Customer Satisfaction" : request.Category,
+                Status = request.Status,
+                StartDate = request.StartDate,
+                EndDate = request.EndDate,
+                Region = request.Region ?? "",
+                AssignedTo = request.AssignedTo,
+                TargetResponses = request.TargetResponses,
+                CompanyId = request.CompanyId,
+            };
+            _surveys.Add(survey);
+            Persist(); return true;
+        }
+    }
+
+    public bool SetSurveyStatus(Guid id, SurveyStatus status, out Survey? survey, out string? error)
+    {
+        lock (_lock)
+        {
+            survey = null; error = null;
+            var existing = _surveys.FirstOrDefault(s => s.Id == id);
+            if (existing == null) { error = "Survey not found."; return false; }
+            existing.Status = status;
+            Persist();
+            survey = existing; return true;
+        }
+    }
+
+    public List<FieldVisit> GetFieldVisits(FieldVisitStatus? status = null, string? visitType = null, Guid? companyId = null)
+    {
+        var query = _fieldVisits.AsEnumerable();
+        if (status.HasValue) query = query.Where(v => v.Status == status.Value);
+        if (!string.IsNullOrWhiteSpace(visitType)) query = query.Where(v => v.VisitType == visitType);
+        if (companyId.HasValue) query = query.Where(v => v.CompanyId == companyId.Value);
+        return query.OrderByDescending(v => v.ScheduledDate).ToList();
+    }
+
+    public bool CreateFieldVisit(FieldVisitRequest request, out FieldVisit? visit, out string? error)
+    {
+        lock (_lock)
+        {
+            visit = null; error = null;
+            if (string.IsNullOrWhiteSpace(request.Purpose)) { error = "Visit purpose is required."; return false; }
+            visit = new FieldVisit
+            {
+                VisitNumber = NextVisitNumber(),
+                VisitType = string.IsNullOrWhiteSpace(request.VisitType) ? "Site Visit" : request.VisitType,
+                CustomerId = request.CustomerId,
+                CustomerName = request.CustomerName ?? "",
+                ContactName = request.ContactName ?? "",
+                Purpose = request.Purpose.Trim(),
+                ScheduledDate = request.ScheduledDate,
+                StartTime = request.StartTime,
+                DurationHours = request.DurationHours,
+                Status = request.Status,
+                Location = request.Location ?? "",
+                AssignedTo = request.AssignedTo,
+                Findings = request.Findings ?? "",
+                CompanyId = request.CompanyId,
+            };
+            _fieldVisits.Add(visit);
+            Persist(); return true;
+        }
+    }
+
+    public bool SetFieldVisitStatus(Guid id, FieldVisitStatus status, out FieldVisit? visit, out string? error)
+    {
+        lock (_lock)
+        {
+            visit = null; error = null;
+            var existing = _fieldVisits.FirstOrDefault(v => v.Id == id);
+            if (existing == null) { error = "Field visit not found."; return false; }
+            existing.Status = status;
+            Persist();
+            visit = existing; return true;
+        }
+    }
+
+    public List<Inspection> GetInspections(InspectionStatus? status = null, string? type = null, Guid? companyId = null)
+    {
+        var query = _inspections.AsEnumerable();
+        if (status.HasValue) query = query.Where(i => i.Status == status.Value);
+        if (!string.IsNullOrWhiteSpace(type)) query = query.Where(i => i.InspectionType == type);
+        if (companyId.HasValue) query = query.Where(i => i.CompanyId == companyId.Value);
+        return query.OrderByDescending(i => i.ScheduledDate).ToList();
+    }
+
+    public bool CreateInspection(InspectionRequest request, out Inspection? inspection, out string? error)
+    {
+        lock (_lock)
+        {
+            inspection = null; error = null;
+            if (string.IsNullOrWhiteSpace(request.InspectionType)) { error = "Inspection type is required."; return false; }
+            if (request.Score is < 0 or > 100) { error = "Score must be between 0 and 100."; return false; }
+            inspection = new Inspection
+            {
+                InspectionNumber = NextInspectionNumber(),
+                InspectionType = request.InspectionType,
+                Location = request.Location ?? "",
+                ScheduledDate = request.ScheduledDate,
+                InspectorId = request.InspectorId,
+                Status = request.Status,
+                Score = request.Score,
+                Findings = request.Findings ?? "",
+                Reference = request.Reference,
+                CompanyId = request.CompanyId,
+            };
+            _inspections.Add(inspection);
+            Persist(); return true;
+        }
+    }
+
+    public bool SetInspectionStatus(Guid id, InspectionStatus status, out Inspection? inspection, out string? error)
+    {
+        lock (_lock)
+        {
+            inspection = null; error = null;
+            var existing = _inspections.FirstOrDefault(i => i.Id == id);
+            if (existing == null) { error = "Inspection not found."; return false; }
+            existing.Status = status;
+            if (status == InspectionStatus.Passed) existing.Score = Math.Max(existing.Score, 70);
+            if (status == InspectionStatus.Failed) existing.Score = Math.Min(existing.Score == 0 ? 61 : existing.Score, 69);
+            Persist();
+            inspection = existing; return true;
+        }
+    }
+
+    public List<FieldWorkOrder> GetFieldWorkOrders(FieldWorkOrderStatus? status = null, string? priority = null, Guid? companyId = null)
+    {
+        var query = _fieldWorkOrders.AsEnumerable();
+        if (status.HasValue) query = query.Where(w => w.Status == status.Value);
+        if (!string.IsNullOrWhiteSpace(priority)) query = query.Where(w => w.Priority == priority);
+        if (companyId.HasValue) query = query.Where(w => w.CompanyId == companyId.Value);
+        return query.OrderByDescending(w => w.ScheduledDate).ToList();
+    }
+
+    public bool CreateFieldWorkOrder(FieldWorkOrderRequest request, out FieldWorkOrder? order, out string? error)
+    {
+        lock (_lock)
+        {
+            order = null; error = null;
+            if (string.IsNullOrWhiteSpace(request.Description)) { error = "Work order description is required."; return false; }
+            order = new FieldWorkOrder
+            {
+                WorkOrderNumber = NextFieldWorkOrderNumber(),
+                WorkType = string.IsNullOrWhiteSpace(request.WorkType) ? "Repair" : request.WorkType,
+                CustomerId = request.CustomerId,
+                CustomerName = request.CustomerName ?? "",
+                Description = request.Description.Trim(),
+                Priority = string.IsNullOrWhiteSpace(request.Priority) ? "Medium" : request.Priority,
+                Status = request.Status,
+                AssignedTo = request.AssignedTo,
+                ScheduledDate = request.ScheduledDate,
+                CompletedDate = request.CompletedDate,
+                LaborHours = request.LaborHours,
+                LaborCost = request.LaborCost,
+                PartsCost = request.PartsCost,
+                Location = request.Location ?? "",
+                CompanyId = request.CompanyId,
+            };
+            _fieldWorkOrders.Add(order);
+            Persist(); return true;
+        }
+    }
+
+    public bool SetFieldWorkOrderStatus(Guid id, FieldWorkOrderStatus status, out FieldWorkOrder? order, out string? error)
+    {
+        lock (_lock)
+        {
+            order = null; error = null;
+            var existing = _fieldWorkOrders.FirstOrDefault(w => w.Id == id);
+            if (existing == null) { error = "Field work order not found."; return false; }
+            existing.Status = status;
+            if (status == FieldWorkOrderStatus.Completed) existing.CompletedDate ??= DateOnly.FromDateTime(DateTime.Today);
+            Persist();
+            order = existing; return true;
+        }
+    }
+
+    public List<FieldExpense> GetFieldExpenses(Guid? workOrderId = null, string? category = null, Guid? companyId = null)
+    {
+        var query = _fieldExpenses.AsEnumerable();
+        if (workOrderId.HasValue) query = query.Where(e => e.WorkOrderId == workOrderId.Value);
+        if (!string.IsNullOrWhiteSpace(category)) query = query.Where(e => e.Category == category);
+        if (companyId.HasValue) query = query.Where(e => e.CompanyId == companyId.Value);
+        return query.OrderByDescending(e => e.ExpenseDate).ToList();
+    }
+
+    public bool CreateFieldExpense(FieldExpenseRequest request, out FieldExpense? expense, out string? error)
+    {
+        lock (_lock)
+        {
+            expense = null; error = null;
+            if (request.Amount <= 0) { error = "Expense amount must be positive."; return false; }
+            if (string.IsNullOrWhiteSpace(request.Description)) { error = "Expense description is required."; return false; }
+            expense = new FieldExpense
+            {
+                ExpenseNumber = NextFieldExpenseNumber(),
+                WorkOrderId = request.WorkOrderId,
+                Category = string.IsNullOrWhiteSpace(request.Category) ? "Travel" : request.Category,
+                Description = request.Description.Trim(),
+                Amount = request.Amount,
+                Currency = string.IsNullOrWhiteSpace(request.Currency) ? "USD" : request.Currency,
+                ExpenseDate = request.ExpenseDate,
+                Reimbursed = request.Reimbursed,
+                CompanyId = request.CompanyId,
+            };
+            _fieldExpenses.Add(expense);
+            Persist(); return true;
+        }
+    }
+
+    public object GetFieldOperationsDashboard()
+    {
+        var today = DateOnly.FromDateTime(DateTime.Today);
+        var activeSurveys = _surveys.Count(s => s.Status == SurveyStatus.Active);
+        var totalResponses = _surveys.Sum(s => s.ResponseCount);
+        var upcomingVisits = _fieldVisits.Count(v => v.Status == FieldVisitStatus.Scheduled);
+        var completedVisits = _fieldVisits.Count(v => v.Status == FieldVisitStatus.Completed);
+        var openOrders = _fieldWorkOrders.Count(w => w.Status is FieldWorkOrderStatus.Open or FieldWorkOrderStatus.Assigned or FieldWorkOrderStatus.InProgress);
+        var completedOrders = _fieldWorkOrders.Count(w => w.Status == FieldWorkOrderStatus.Completed);
+        var totalOrderCost = _fieldWorkOrders.Sum(w => w.TotalCost);
+        var pendingInspections = _inspections.Count(i => i.Status == InspectionStatus.Scheduled);
+        var failedInspections = _inspections.Count(i => i.Status == InspectionStatus.Failed);
+        var totalExpenses = _fieldExpenses.Sum(e => e.Amount);
+        return new
+        {
+            surveys = _surveys.Count,
+            activeSurveys,
+            totalResponses,
+            visits = _fieldVisits.Count,
+            upcomingVisits,
+            completedVisits,
+            workOrders = _fieldWorkOrders.Count,
+            openOrders,
+            completedOrders,
+            totalOrderCost,
+            inspections = _inspections.Count,
+            pendingInspections,
+            failedInspections,
+            expenses = _fieldExpenses.Count,
+            totalExpenses,
         };
     }
 
