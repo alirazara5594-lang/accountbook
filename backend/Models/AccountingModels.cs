@@ -1152,3 +1152,444 @@ public record BankStatementImportRequest(
     decimal TotalAmount,
     Guid? CompanyId = null
 );
+
+// ─── Payroll & HR ──────────────────────────────────────────────────────────────
+
+public enum PayrollCountry { US, CA, UK, DE, FR, NL, BE, ES, IT, PL, PK, SA, AE }
+public enum EmploymentType { FullTime, PartTime, Contract, Intern, Seasonal }
+public enum PayFrequency { Weekly, BiWeekly, SemiMonthly, Monthly }
+public enum EmployeeStatus { Active, OnLeave, Terminated, Probation }
+public enum LeaveType { Annual, Sick, Maternity, Paternity, Bereavement, Unpaid, CompOff, PublicHoliday }
+public enum LeaveStatus { Pending, Approved, Rejected, Cancelled }
+public enum PayrunStatus { Draft, Calculated, Approved, Posted, Cancelled }
+public enum PayComponentType { Earning, Deduction, EmployerContribution }
+public enum TaxFilingStatus { Single, MarriedFilingJointly, MarriedFilingSeparately, HeadOfHousehold, NonResident }
+public enum PayComponentCategory
+{
+    // Earnings
+    BasicSalary, HousingAllowance, TransportAllowance, MedicalAllowance, FoodAllowance,
+    Overtime, Bonus, Commission, LeaveEncashment, Arrears, ShiftAllowance, NightAllowance,
+    HazardAllowance, RemoteWorkAllowance, EducationAllowance, ChildAllowance, PhoneAllowance,
+    UniformAllowance, ToolsAllowance, PerformanceBonus, SigningBonus, RetentionBonus,
+    // Deductions - Universal
+    IncomeTax, SocialSecurity, Medicare, PensionContribution, HealthInsurance, LifeInsurance,
+    UnionDues, LoanRepayment, Garnishment, AdvanceRepayment, VoluntaryPension,
+    // US Specific
+    FederalIncomeTax, StateIncomeTax, LocalIncomeTax, FICA_SocialSecurity, FICA_Medicare,
+    FUTA, SUTA, SDI, FMLA, Section125_Cafeteria, HSA_Contribution, FSA_Contribution,
+    Roth401k_Contribution, Traditional401k_Contribution, WageGarnishment,
+    // Canada Specific
+    CPP, QPP, EI, QPIP, FederalTax_CA, ProvincialTax_CA, RRSP_Contribution, TFSA_Contribution,
+    // UK Specific
+    PAYE, NationalInsurance, StudentLoan_Plan1, StudentLoan_Plan2, StudentLoan_Plan4, PGL, SIPP,
+    // EU Common
+    SocialSecurity_EU, HealthInsurance_EU, UnemploymentInsurance_EU, Pension_EU, SolidaritySurcharge,
+    // Germany Specific
+    KircheSteuer, Rentenversicherung, Krankenversicherung, Pflegeversicherung, Arbeitslosenversicherung,
+    // France Specific
+    CSG_CRDS, PrelevementSource, Mutuelle, Prevoyance, Retraite_Complementaire,
+    // Pakistan Specific
+    Zakat, EOBI, SESSI, WWF, WPPF, IncomeTax_PK, ProfessionalTax_PK,
+    // Saudi Arabia Specific
+    GOSI_Saudi, GOSI_Expat, HazardPay_SA, RemoteWorkAllowance_SA,
+    // UAE Specific
+    Gratuity_UAE, EndOfService_UAE, HousingAllowance_UAE, TransportAllowance_UAE,
+    // Employer Contributions
+    Employer_SS, Employer_Medicare, Employer_FUTA, Employer_SUTA, Employer_CPP, Employer_EI,
+    Employer_NI, Employer_Pension, Employer_HealthIns, Employer_GOSI, Employer_Gratuity
+}
+
+public class PayComponent
+{
+    public Guid Id { get; init; } = Guid.NewGuid();
+    public required string Code { get; set; }
+    public required string Name { get; set; }
+    public string Description { get; set; } = "";
+    public PayComponentType Type { get; set; }
+    public PayComponentCategory Category { get; set; }
+    public PayrollCountry Country { get; set; }
+    public bool IsTaxable { get; set; } = true;
+    public bool IsStatutory { get; set; } = false;
+    public decimal? FixedAmount { get; set; }
+    public decimal? PercentageOf { get; set; } // Percentage of basic or gross
+    public string? PercentageBase { get; set; } // "Basic", "Gross", "Custom"
+    public Guid? AccountId { get; set; } // GL Account for posting
+    public int DisplayOrder { get; set; }
+    public bool IsActive { get; set; } = true;
+    public Guid? CompanyId { get; set; }
+    public DateTime CreatedAt { get; init; } = DateTime.UtcNow;
+}
+
+public record PayComponentRequest(
+    string Code, string Name, string Description, PayComponentType Type,
+    PayComponentCategory Category, PayrollCountry Country, bool IsTaxable,
+    bool IsStatutory, decimal? FixedAmount, decimal? PercentageOf,
+    string? PercentageBase, Guid? AccountId, int DisplayOrder, Guid? CompanyId
+);
+
+public class Employee
+{
+    public Guid Id { get; init; } = Guid.NewGuid();
+    public required string EmployeeNumber { get; set; }
+    public required string FirstName { get; set; }
+    public string MiddleName { get; set; } = "";
+    public required string LastName { get; set; }
+    public string PreferredName { get; set; } = "";
+    public DateOnly DateOfBirth { get; set; }
+    public string Gender { get; set; } = "";
+    public string MaritalStatus { get; set; } = "";
+    public string Nationality { get; set; } = "";
+    public string NationalId { get; set; } = ""; // SSN, NINO, CNIC, Iqama, Emirates ID
+    public string TaxId { get; set; } = ""; // TIN, UTR, NTN, Tax Number
+    public PayrollCountry Country { get; set; }
+    public string StateProvince { get; set; } = ""; // US State, CA Province, UK Region, DE Bundesland, etc.
+    public string City { get; set; } = "";
+    public string Address { get; set; } = "";
+    public string PostalCode { get; set; } = "";
+    public string Phone { get; set; } = "";
+    public string Email { get; set; } = "";
+    public string EmergencyContactName { get; set; } = "";
+    public string EmergencyContactPhone { get; set; } = "";
+    public string EmergencyContactRelation { get; set; } = "";
+    public string BankName { get; set; } = "";
+    public string BankAccountNumber { get; set; } = "";
+    public string BankRoutingNumber { get; set; } = ""; // ABA, Sort Code, IBAN, SWIFT
+    public string BankAccountName { get; set; } = "";
+    public string BankIBAN { get; set; } = "";
+    public string BankSWIFT { get; set; } = "";
+    public EmploymentType EmploymentType { get; set; } = EmploymentType.FullTime;
+    public PayFrequency PayFrequency { get; set; } = PayFrequency.Monthly;
+    public EmployeeStatus Status { get; set; } = EmployeeStatus.Active;
+    public DateOnly HireDate { get; set; }
+    public DateOnly? ProbationEndDate { get; set; }
+    public DateOnly? TerminationDate { get; set; }
+    public string TerminationReason { get; set; } = "";
+    public Guid? DepartmentId { get; set; }
+    public Guid? PositionId { get; set; }
+    public Guid? ManagerId { get; set; }
+    public Guid? PayGradeId { get; set; }
+    public decimal BasicSalary { get; set; }
+    public string Currency { get; set; } = "USD";
+    public TaxFilingStatus TaxFilingStatus { get; set; } = TaxFilingStatus.Single;
+    public int TaxExemptions { get; set; } = 0;
+    public decimal? AdditionalTaxWithholding { get; set; }
+    public Guid? CompanyId { get; set; }
+    public DateTime CreatedAt { get; init; } = DateTime.UtcNow;
+    public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
+}
+
+public record EmployeeRequest(
+    string EmployeeNumber, string FirstName, string MiddleName, string LastName,
+    string PreferredName, DateOnly DateOfBirth, string Gender, string MaritalStatus,
+    string Nationality, string NationalId, string TaxId, PayrollCountry Country,
+    string StateProvince, string City, string Address, string PostalCode,
+    string Phone, string Email, string EmergencyContactName, string EmergencyContactPhone,
+    string EmergencyContactRelation, string BankName, string BankAccountNumber,
+    string BankRoutingNumber, string BankAccountName, string BankIBAN, string BankSWIFT,
+    EmploymentType EmploymentType, PayFrequency PayFrequency, DateOnly HireDate,
+    DateOnly? ProbationEndDate, Guid? DepartmentId, Guid? PositionId, Guid? ManagerId,
+    Guid? PayGradeId, decimal BasicSalary, string Currency, TaxFilingStatus TaxFilingStatus,
+    int TaxExemptions, decimal? AdditionalTaxWithholding, Guid? CompanyId
+);
+
+public class Department
+{
+    public Guid Id { get; init; } = Guid.NewGuid();
+    public required string Code { get; set; }
+    public required string Name { get; set; }
+    public string Description { get; set; } = "";
+    public Guid? ParentDepartmentId { get; set; }
+    public Guid? ManagerId { get; set; }
+    public Guid? CompanyId { get; set; }
+    public bool IsActive { get; set; } = true;
+}
+
+public record DepartmentRequest(string Code, string Name, string Description, Guid? ParentDepartmentId, Guid? ManagerId, Guid? CompanyId);
+
+public class Position
+{
+    public Guid Id { get; init; } = Guid.NewGuid();
+    public required string Code { get; set; }
+    public required string Name { get; set; }
+    public string Description { get; set; } = "";
+    public Guid? DepartmentId { get; set; }
+    public decimal MinSalary { get; set; }
+    public decimal MaxSalary { get; set; }
+    public Guid? CompanyId { get; set; }
+}
+
+public record PositionRequest(string Code, string Name, string Description, Guid? DepartmentId, decimal MinSalary, decimal MaxSalary, Guid? CompanyId);
+
+public class PayGrade
+{
+    public Guid Id { get; init; } = Guid.NewGuid();
+    public required string Code { get; set; }
+    public required string Name { get; set; }
+    public decimal MinBasic { get; set; }
+    public decimal MidBasic { get; set; }
+    public decimal MaxBasic { get; set; }
+    public Guid? CompanyId { get; set; }
+}
+
+public record PayGradeRequest(string Code, string Name, decimal MinBasic, decimal MidBasic, decimal MaxBasic, Guid? CompanyId);
+
+public class LeaveBalance
+{
+    public Guid Id { get; init; } = Guid.NewGuid();
+    public Guid EmployeeId { get; set; }
+    public LeaveType LeaveType { get; set; }
+    public int FiscalYear { get; set; }
+    public decimal EntitledDays { get; set; }
+    public decimal CarriedForwardDays { get; set; }
+    public decimal AvailedDays { get; set; }
+    public decimal BalanceDays => EntitledDays + CarriedForwardDays - AvailedDays;
+    public Guid? CompanyId { get; set; }
+}
+
+public record LeaveBalanceRequest(Guid EmployeeId, LeaveType LeaveType, int FiscalYear, decimal EntitledDays, decimal CarriedForwardDays, Guid? CompanyId);
+
+public class LeaveRequest
+{
+    public Guid Id { get; init; } = Guid.NewGuid();
+    public Guid EmployeeId { get; set; }
+    public LeaveType LeaveType { get; set; }
+    public DateOnly StartDate { get; set; }
+    public DateOnly EndDate { get; set; }
+    public decimal TotalDays { get; set; }
+    public string Reason { get; set; } = "";
+    public LeaveStatus Status { get; set; } = LeaveStatus.Pending;
+    public Guid? ApprovedBy { get; set; }
+    public DateTime? ApprovedAt { get; set; }
+    public string ApproverComments { get; set; } = "";
+    public Guid? CompanyId { get; set; }
+    public DateTime CreatedAt { get; init; } = DateTime.UtcNow;
+}
+
+public record LeaveRequestRequest(Guid EmployeeId, LeaveType LeaveType, DateOnly StartDate, DateOnly EndDate, string Reason, Guid? CompanyId);
+public record LeaveRequestActionRequest(LeaveStatus Status, string? ApproverComments);
+
+public class AttendanceRecord
+{
+    public Guid Id { get; init; } = Guid.NewGuid();
+    public Guid EmployeeId { get; set; }
+    public DateOnly Date { get; set; }
+    public TimeOnly? ClockIn { get; set; }
+    public TimeOnly? ClockOut { get; set; }
+    public TimeOnly? BreakStart { get; set; }
+    public TimeOnly? BreakEnd { get; set; }
+    public decimal RegularHours { get; set; }
+    public decimal OvertimeHours { get; set; }
+    public decimal NightHours { get; set; }
+    public string Status { get; set; } = "Present"; // Present, Absent, Late, HalfDay, Holiday, OnLeave
+    public string? Notes { get; set; }
+    public Guid? CompanyId { get; set; }
+    public DateTime CreatedAt { get; init; } = DateTime.UtcNow;
+}
+
+public record AttendanceRecordRequest(Guid EmployeeId, DateOnly Date, TimeOnly? ClockIn, TimeOnly? ClockOut, TimeOnly? BreakStart, TimeOnly? BreakEnd, string Status, string? Notes, Guid? CompanyId);
+
+public class Payrun
+{
+    public Guid Id { get; init; } = Guid.NewGuid();
+    public required string PayrunNumber { get; set; }
+    public PayFrequency Frequency { get; set; }
+    public DateOnly PeriodStart { get; set; }
+    public DateOnly PeriodEnd { get; set; }
+    public DateOnly PayDate { get; set; }
+    public PayrunStatus Status { get; set; } = PayrunStatus.Draft;
+    public Guid? CompanyId { get; set; }
+    public Guid? CreatedBy { get; set; }
+    public DateTime CreatedAt { get; init; } = DateTime.UtcNow;
+    public DateTime? ApprovedAt { get; set; }
+    public Guid? ApprovedBy { get; set; }
+    public DateTime? PostedAt { get; set; }
+    public Guid? JournalEntryId { get; set; }
+}
+
+public record PayrunRequest(PayFrequency Frequency, DateOnly PeriodStart, DateOnly PeriodEnd, DateOnly PayDate, Guid? CompanyId);
+
+public class PayrunEmployee
+{
+    public Guid Id { get; init; } = Guid.NewGuid();
+    public Guid PayrunId { get; set; }
+    public Guid EmployeeId { get; set; }
+    public decimal BasicSalary { get; set; }
+    public decimal GrossEarnings { get; set; }
+    public decimal TotalDeductions { get; set; }
+    public decimal NetPay { get; set; }
+    public decimal EmployerContributions { get; set; }
+    public string Currency { get; set; } = "USD";
+    public PayrunStatus Status { get; set; } = PayrunStatus.Draft;
+    public Guid? JournalEntryId { get; set; }
+}
+
+public record PayrunEmployeeRequest(Guid PayrunId, Guid EmployeeId, Guid? CompanyId);
+
+public class PayrunLine
+{
+    public Guid Id { get; init; } = Guid.NewGuid();
+    public Guid PayrunEmployeeId { get; set; }
+    public Guid PayComponentId { get; set; }
+    public PayComponentCategory Category { get; set; }
+    public decimal Amount { get; set; }
+    public decimal? Rate { get; set; }
+    public decimal? Hours { get; set; }
+    public string? Notes { get; set; }
+}
+
+public record PayrunLineRequest(Guid PayrunEmployeeId, Guid PayComponentId, decimal Amount, decimal? Rate, decimal? Hours, string? Notes);
+
+public class SalarySlip
+{
+    public Guid Id { get; init; } = Guid.NewGuid();
+    public Guid PayrunEmployeeId { get; set; }
+    public required string SlipNumber { get; set; }
+    public DateOnly PeriodStart { get; set; }
+    public DateOnly PeriodEnd { get; set; }
+    public DateOnly PayDate { get; set; }
+    public string EmployeeName { get; set; } = "";
+    public string EmployeeNumber { get; set; } = "";
+    public string Department { get; set; } = "";
+    public string Position { get; set; } = "";
+    public string BankName { get; set; } = "";
+    public string BankAccountLast4 { get; set; } = "";
+    public decimal BasicSalary { get; set; }
+    public decimal GrossEarnings { get; set; }
+    public decimal TotalDeductions { get; set; }
+    public decimal NetPay { get; set; }
+    public decimal EmployerContributions { get; set; }
+    public string Currency { get; set; } = "USD";
+    public string PayFrequency { get; set; } = "";
+    public List<SalarySlipLine> Earnings { get; set; } = [];
+    public List<SalarySlipLine> Deductions { get; set; } = [];
+    public List<SalarySlipLine> EmployerContribs { get; set; } = [];
+    public DateTime GeneratedAt { get; init; } = DateTime.UtcNow;
+}
+
+public class SalarySlipLine
+{
+    public string Code { get; set; } = "";
+    public string Name { get; set; } = "";
+    public decimal Amount { get; set; }
+    public string Category { get; set; } = "";
+    public bool IsStatutory { get; set; }
+}
+
+public class Holiday
+{
+    public Guid Id { get; init; } = Guid.NewGuid();
+    public required string Name { get; set; }
+    public DateOnly Date { get; set; }
+    public PayrollCountry Country { get; set; }
+    public string? StateProvince { get; set; }
+    public bool IsRecurring { get; set; } = true;
+    public Guid? CompanyId { get; set; }
+}
+
+public record HolidayRequest(string Name, DateOnly Date, PayrollCountry Country, string? StateProvince, bool IsRecurring, Guid? CompanyId);
+
+public class LoanAdvance
+{
+    public Guid Id { get; init; } = Guid.NewGuid();
+    public Guid EmployeeId { get; set; }
+    public required string LoanNumber { get; set; }
+    public string LoanType { get; set; } = ""; // Salary Advance, Personal Loan, Car Loan, Housing Loan
+    public decimal PrincipalAmount { get; set; }
+    public decimal InterestRate { get; set; }
+    public int TotalInstallments { get; set; }
+    public decimal InstallmentAmount { get; set; }
+    public int PaidInstallments { get; set; } = 0;
+    public decimal BalanceAmount => PrincipalAmount - (InstallmentAmount * PaidInstallments);
+    public DateOnly StartDate { get; set; }
+    public DateOnly? EndDate { get; set; }
+    public string Status { get; set; } = "Active"; // Active, Completed, Defaulted
+    public Guid? CompanyId { get; set; }
+    public DateTime CreatedAt { get; init; } = DateTime.UtcNow;
+}
+
+public record LoanAdvanceRequest(Guid EmployeeId, string LoanNumber, string LoanType, decimal PrincipalAmount, decimal InterestRate, int TotalInstallments, decimal InstallmentAmount, DateOnly StartDate, DateOnly? EndDate, Guid? CompanyId);
+
+// ─── Salary Tax Slabs & Brackets (Multi-Country, Configurable by Year) ─────────
+public class SalaryTaxBracket
+{
+    public Guid Id { get; init; } = Guid.NewGuid();
+    public decimal FromAmount { get; set; }
+    public decimal? ToAmount { get; set; }
+    public decimal RatePercent { get; set; }
+    public decimal FixedTax { get; set; }
+    public string? Description { get; set; }
+}
+
+public record SalaryTaxBracketRequest(
+    decimal FromAmount,
+    decimal? ToAmount,
+    decimal RatePercent,
+    decimal FixedTax,
+    string? Description
+);
+
+public class SalaryTaxSlab
+{
+    public Guid Id { get; init; } = Guid.NewGuid();
+    public PayrollCountry Country { get; set; }
+    public int TaxYear { get; set; }
+    public string Name { get; set; } = "";
+    public string Currency { get; set; } = "USD";
+    public TaxFilingStatus FilingStatus { get; set; } = TaxFilingStatus.Single;
+    public string PeriodBasis { get; set; } = "Annual"; // "Annual" or "Monthly"
+    public decimal StandardDeduction { get; set; } = 0;
+    public decimal PersonalAllowance { get; set; } = 0;
+    public bool IsActive { get; set; } = true;
+    public List<SalaryTaxBracket> Brackets { get; set; } = [];
+    public Guid? CompanyId { get; set; }
+    public DateTime CreatedAt { get; init; } = DateTime.UtcNow;
+    public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
+}
+
+public record SalaryTaxSlabRequest(
+    PayrollCountry Country,
+    int TaxYear,
+    string Name,
+    string Currency,
+    TaxFilingStatus FilingStatus,
+    string PeriodBasis,
+    decimal StandardDeduction,
+    decimal PersonalAllowance,
+    bool IsActive,
+    List<SalaryTaxBracketRequest> Brackets,
+    Guid? CompanyId
+);
+
+// Specific compensation item assigned to an employee (e.g. customized allowances or recurring deductions)
+public class EmployeeCompensation
+{
+    public Guid Id { get; init; } = Guid.NewGuid();
+    public Guid EmployeeId { get; set; }
+    public Guid PayComponentId { get; set; }
+    public decimal Amount { get; set; }
+    public bool IsPercentage { get; set; } = false;
+    public string? PercentageOf { get; set; } = "Basic";
+    public bool IsActive { get; set; } = true;
+    public Guid? CompanyId { get; set; }
+}
+
+public record EmployeeCompensationRequest(
+    Guid EmployeeId,
+    Guid PayComponentId,
+    decimal Amount,
+    bool IsPercentage,
+    string? PercentageOf,
+    bool IsActive,
+    Guid? CompanyId
+);
+
+public record CalculatePayrunRequest(
+    PayFrequency Frequency,
+    DateOnly PeriodStart,
+    DateOnly PeriodEnd,
+    DateOnly PayDate,
+    int TaxYear,
+    List<Guid>? EmployeeIds,
+    Guid? CompanyId
+);
+

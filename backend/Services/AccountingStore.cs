@@ -42,9 +42,25 @@ public class AccountingStore
     private readonly List<BankReconciliation> _reconciliations = [];
     private readonly List<Budget> _budgets = [];
     private readonly List<PeriodClose> _periodCloses = [];
-    private readonly List<Voucher> _vouchers = [];
+private readonly List<Voucher> _vouchers = [];
     private readonly List<ExpenseClaim> _expenseClaims = [];
     private readonly List<BankStatementImport> _bankImports = [];
+    private readonly List<PayComponent> _payComponents = [];
+    private readonly List<Employee> _employees = [];
+    private readonly List<Department> _departments = [];
+    private readonly List<Position> _positions = [];
+    private readonly List<PayGrade> _payGrades = [];
+    private readonly List<LeaveBalance> _leaveBalances = [];
+    private readonly List<LeaveRequest> _leaveRequests = [];
+    private readonly List<AttendanceRecord> _attendanceRecords = [];
+    private readonly List<Payrun> _payruns = [];
+    private readonly List<PayrunEmployee> _payrunEmployees = [];
+    private readonly List<PayrunLine> _payrunLines = [];
+    private readonly List<SalarySlip> _salarySlips = [];
+    private readonly List<Holiday> _holidays = [];
+    private readonly List<LoanAdvance> _loanAdvances = [];
+    private readonly List<SalaryTaxSlab> _taxSlabs = [];
+    private readonly List<EmployeeCompensation> _employeeCompensations = [];
     private readonly List<AccountMapping> _mappings = [];
     private readonly List<AuditItem> _auditLog = [];
     private readonly Dictionary<Guid, List<AuditItem>> _history = [];
@@ -86,8 +102,24 @@ public class AccountingStore
         List<Budget>? Budgets = null,
         List<PeriodClose>? PeriodCloses = null,
         List<Voucher>? Vouchers = null,
-        List<ExpenseClaim>? ExpenseClaims = null,
+List<ExpenseClaim>? ExpenseClaims = null,
         List<BankStatementImport>? BankImports = null,
+        List<PayComponent>? PayComponents = null,
+        List<Employee>? Employees = null,
+        List<Department>? Departments = null,
+        List<Position>? Positions = null,
+        List<PayGrade>? PayGrades = null,
+        List<LeaveBalance>? LeaveBalances = null,
+        List<LeaveRequest>? LeaveRequests = null,
+        List<AttendanceRecord>? AttendanceRecords = null,
+        List<Payrun>? Payruns = null,
+        List<PayrunEmployee>? PayrunEmployees = null,
+        List<PayrunLine>? PayrunLines = null,
+        List<SalarySlip>? SalarySlips = null,
+        List<Holiday>? Holidays = null,
+        List<LoanAdvance>? LoanAdvances = null,
+        List<SalaryTaxSlab>? TaxSlabs = null,
+        List<EmployeeCompensation>? EmployeeCompensations = null,
         List<AuditItem>? AuditLog = null);
 
     public AccountingStore(IDbContextFactory<AccountingDbContext>? dbFactory = null)
@@ -164,6 +196,7 @@ public class AccountingStore
         var defaultWarehouse = new Warehouse { Name = "Main Warehouse", Location = "Headquarters", CompanyId = parentEntity.Id };
         _warehouses.Add(defaultWarehouse);
 
+        SeedPayrollData();
         Persist();
     }
 
@@ -287,8 +320,24 @@ public class AccountingStore
     public IReadOnlyList<Budget> Budgets => _budgets;
     public IReadOnlyList<PeriodClose> PeriodCloses => _periodCloses;
     public IReadOnlyList<Voucher> Vouchers => _vouchers;
-    public IReadOnlyList<ExpenseClaim> ExpenseClaims => _expenseClaims;
+public IReadOnlyList<ExpenseClaim> ExpenseClaims => _expenseClaims;
     public IReadOnlyList<BankStatementImport> BankImports => _bankImports;
+    public IReadOnlyList<PayComponent> PayComponents => _payComponents;
+    public IReadOnlyList<Employee> Employees => _employees;
+    public IReadOnlyList<Department> Departments => _departments;
+    public IReadOnlyList<Position> Positions => _positions;
+    public IReadOnlyList<PayGrade> PayGrades => _payGrades;
+    public IReadOnlyList<LeaveBalance> LeaveBalances => _leaveBalances;
+    public IReadOnlyList<LeaveRequest> LeaveRequests => _leaveRequests;
+    public IReadOnlyList<AttendanceRecord> AttendanceRecords => _attendanceRecords;
+    public IReadOnlyList<Payrun> Payruns => _payruns;
+    public IReadOnlyList<PayrunEmployee> PayrunEmployees => _payrunEmployees;
+    public IReadOnlyList<PayrunLine> PayrunLines => _payrunLines;
+    public IReadOnlyList<SalarySlip> SalarySlips => _salarySlips;
+    public IReadOnlyList<Holiday> Holidays => _holidays;
+    public IReadOnlyList<LoanAdvance> LoanAdvances => _loanAdvances;
+    public IReadOnlyList<SalaryTaxSlab> TaxSlabs => _taxSlabs;
+    public IReadOnlyList<EmployeeCompensation> EmployeeCompensations => _employeeCompensations;
 
     public string NextReceiptNumber()
     {
@@ -3311,7 +3360,21 @@ public class AccountingStore
         _periodCloses.Clear(); _periodCloses.AddRange(state.PeriodCloses ?? []);
         _vouchers.Clear(); _vouchers.AddRange(state.Vouchers ?? []);
         _expenseClaims.Clear(); _expenseClaims.AddRange(state.ExpenseClaims ?? []);
-        _bankImports.Clear(); _bankImports.AddRange(state.BankImports ?? []);
+_bankImports.Clear(); _bankImports.AddRange(state.BankImports ?? []);
+        _payComponents.Clear(); _payComponents.AddRange(state.PayComponents ?? []);
+        _employees.Clear(); _employees.AddRange(state.Employees ?? []);
+        _departments.Clear(); _departments.AddRange(state.Departments ?? []);
+        _positions.Clear(); _positions.AddRange(state.Positions ?? []);
+        _payGrades.Clear(); _payGrades.AddRange(state.PayGrades ?? []);
+        _leaveBalances.Clear(); _leaveBalances.AddRange(state.LeaveBalances ?? []);
+        _leaveRequests.Clear(); _leaveRequests.AddRange(state.LeaveRequests ?? []);
+        _attendanceRecords.Clear(); _attendanceRecords.AddRange(state.AttendanceRecords ?? []);
+        _payruns.Clear(); _payruns.AddRange(state.Payruns ?? []);
+        _payrunEmployees.Clear(); _payrunEmployees.AddRange(state.PayrunEmployees ?? []);
+        _payrunLines.Clear(); _payrunLines.AddRange(state.PayrunLines ?? []);
+        _salarySlips.Clear(); _salarySlips.AddRange(state.SalarySlips ?? []);
+        _holidays.Clear(); _holidays.AddRange(state.Holidays ?? []);
+        _loanAdvances.Clear(); _loanAdvances.AddRange(state.LoanAdvances ?? []);
         _auditLog.Clear(); _auditLog.AddRange(state.AuditLog ?? []);
         _mappings.Clear(); _mappings.AddRange(state.Mappings ?? []);
         if (state.History != null)
@@ -3326,7 +3389,7 @@ public class AccountingStore
     {
         if (_dbFactory is null) return;
         using var db = _dbFactory.CreateDbContext();
-        var json = JsonSerializer.Serialize(new StoredState(_accounts, _entries, _history, _templates, _recurringEntries, _journalEvents, _intercompanyAllocations, _companies, _customers, _products, _vendors, _purchaseOrders, _grns, _fixedAssets, _taxAuthorities, _taxCodes, _taxRates, _warehouses, _stockLevels, _stockTransactions, _salesInvoices, _estimates, _boms, _workOrders, _mappings, _salesOrders, _creditNotes, _customerPayments, _vendorPayments, _fundTransfers, _reconciliations, _budgets, _periodCloses, _vouchers, _expenseClaims, _bankImports, _auditLog));
+        var json = JsonSerializer.Serialize(new StoredState(_accounts, _entries, _history, _templates, _recurringEntries, _journalEvents, _intercompanyAllocations, _companies, _customers, _products, _vendors, _purchaseOrders, _grns, _fixedAssets, _taxAuthorities, _taxCodes, _taxRates, _warehouses, _stockLevels, _stockTransactions, _salesInvoices, _estimates, _boms, _workOrders, _mappings, _salesOrders, _creditNotes, _customerPayments, _vendorPayments, _fundTransfers, _reconciliations, _budgets, _periodCloses, _vouchers, _expenseClaims, _bankImports, _payComponents, _employees, _departments, _positions, _payGrades, _leaveBalances, _leaveRequests, _attendanceRecords, _payruns, _payrunEmployees, _payrunLines, _salarySlips, _holidays, _loanAdvances, _taxSlabs, _employeeCompensations, _auditLog));
         var snapshot = db.AccountingStateSnapshots.Find(1);
         if (snapshot is null) db.AccountingStateSnapshots.Add(new AccountingStateSnapshot { Id = 1, Json = json, UpdatedAt = DateTime.UtcNow });
         else { snapshot.Json = json; snapshot.UpdatedAt = DateTime.UtcNow; }
@@ -3516,6 +3579,22 @@ public class AccountingStore
             _vouchers.Clear();
             _expenseClaims.Clear();
             _bankImports.Clear();
+            _payComponents.Clear();
+            _employees.Clear();
+            _departments.Clear();
+            _positions.Clear();
+            _payGrades.Clear();
+            _leaveBalances.Clear();
+            _leaveRequests.Clear();
+            _attendanceRecords.Clear();
+            _payruns.Clear();
+            _payrunEmployees.Clear();
+            _payrunLines.Clear();
+            _salarySlips.Clear();
+            _holidays.Clear();
+            _loanAdvances.Clear();
+            _taxSlabs.Clear();
+            _employeeCompensations.Clear();
             _auditLog.Clear();
             _mappings.Clear();
 
@@ -3573,6 +3652,7 @@ public class AccountingStore
             var defaultWarehouse = new Warehouse { Name = "Main Warehouse", Location = "Headquarters", CompanyId = parentEntity.Id };
             _warehouses.Add(defaultWarehouse);
 
+            SeedPayrollData();
             Persist();
         }
     }
@@ -3606,4 +3686,1269 @@ public class AccountingStore
     {
         return _mappings.Any(m => m.AccountId == accountId);
     }
+
+    // ═══════════════════════════════════════════════════════════════════════════════
+    // PAYROLL & HR MODULE
+    // ═══════════════════════════════════════════════════════════════════════════════
+
+    #region Seed Payroll Data
+
+    private void SeedPayrollData()
+    {
+        var companyId = _companies.FirstOrDefault()?.Id;
+
+        // ── Departments ─────────────────────────────────────────────────────────
+        var deptEng = new Department { Code = "ENG", Name = "Engineering", Description = "Software Engineering", CompanyId = companyId };
+        var deptFin = new Department { Code = "FIN", Name = "Finance & Accounting", Description = "Finance and Accounting", CompanyId = companyId };
+        var deptSales = new Department { Code = "SAL", Name = "Sales & Marketing", Description = "Sales and Marketing", CompanyId = companyId };
+        var deptHr = new Department { Code = "HR", Name = "Human Resources", Description = "People and Culture", CompanyId = companyId };
+        var deptOps = new Department { Code = "OPS", Name = "Operations & Supply Chain", Description = "Operations", CompanyId = companyId };
+        var deptLegal = new Department { Code = "LEG", Name = "Legal & Compliance", Description = "Legal and Compliance", CompanyId = companyId };
+        var deptIt = new Department { Code = "IT", Name = "Information Technology", Description = "IT Infrastructure", CompanyId = companyId };
+        _departments.AddRange([deptEng, deptFin, deptSales, deptHr, deptOps, deptLegal, deptIt]);
+
+        // ── Positions ───────────────────────────────────────────────────────────
+        _positions.AddRange([
+            new Position { Code = "CEO", Name = "Chief Executive Officer", DepartmentId = deptHr.Id, MinSalary = 150000, MaxSalary = 500000, CompanyId = companyId },
+            new Position { Code = "CFO", Name = "Chief Financial Officer", DepartmentId = deptFin.Id, MinSalary = 120000, MaxSalary = 350000, CompanyId = companyId },
+            new Position { Code = "CTO", Name = "Chief Technology Officer", DepartmentId = deptEng.Id, MinSalary = 120000, MaxSalary = 350000, CompanyId = companyId },
+            new Position { Code = "VP_ENG", Name = "VP of Engineering", DepartmentId = deptEng.Id, MinSalary = 100000, MaxSalary = 250000, CompanyId = companyId },
+            new Position { Code = "VP_SAL", Name = "VP of Sales", DepartmentId = deptSales.Id, MinSalary = 100000, MaxSalary = 250000, CompanyId = companyId },
+            new Position { Code = "SR_ENG", Name = "Senior Software Engineer", DepartmentId = deptEng.Id, MinSalary = 80000, MaxSalary = 160000, CompanyId = companyId },
+            new Position { Code = "JR_ENG", Name = "Junior Software Engineer", DepartmentId = deptEng.Id, MinSalary = 45000, MaxSalary = 85000, CompanyId = companyId },
+            new Position { Code = "ACC", Name = "Accountant", DepartmentId = deptFin.Id, MinSalary = 50000, MaxSalary = 90000, CompanyId = companyId },
+            new Position { Code = "SALES", Name = "Sales Representative", DepartmentId = deptSales.Id, MinSalary = 40000, MaxSalary = 80000, CompanyId = companyId },
+            new Position { Code = "HR_OFF", Name = "HR Officer", DepartmentId = deptHr.Id, MinSalary = 45000, MaxSalary = 80000, CompanyId = companyId },
+        ]);
+
+        // ── Pay Components: Earnings (Common + Country-Specific) ────────────────
+        _payComponents.AddRange([
+            // Basic
+            new PayComponent { Code = "BASIC", Name = "Basic Salary", Type = PayComponentType.Earning, Category = PayComponentCategory.BasicSalary, IsTaxable = true, DisplayOrder = 1, Country = PayrollCountry.US },
+            // Allowances
+            new PayComponent { Code = "HOU", Name = "Housing Allowance", Type = PayComponentType.Earning, Category = PayComponentCategory.HousingAllowance, IsTaxable = true, PercentageOf = 30, PercentageBase = "Basic", DisplayOrder = 10, Country = PayrollCountry.US },
+            new PayComponent { Code = "TRA", Name = "Transport Allowance", Type = PayComponentType.Earning, Category = PayComponentCategory.TransportAllowance, IsTaxable = true, FixedAmount = 300, DisplayOrder = 11, Country = PayrollCountry.US },
+            new PayComponent { Code = "MED", Name = "Medical Allowance", Type = PayComponentType.Earning, Category = PayComponentCategory.MedicalAllowance, IsTaxable = false, FixedAmount = 200, DisplayOrder = 12, Country = PayrollCountry.US },
+            new PayComponent { Code = "UTL", Name = "Utility Allowance", Type = PayComponentType.Earning, Category = PayComponentCategory.PhoneAllowance, IsTaxable = true, FixedAmount = 100, DisplayOrder = 13, Country = PayrollCountry.US },
+            new PayComponent { Code = "PERF", Name = "Performance Bonus", Type = PayComponentType.Earning, Category = PayComponentCategory.PerformanceBonus, IsTaxable = true, DisplayOrder = 20, Country = PayrollCountry.US },
+            new PayComponent { Code = "SHIFT", Name = "Shift Allowance", Type = PayComponentType.Earning, Category = PayComponentCategory.ShiftAllowance, IsTaxable = true, FixedAmount = 200, DisplayOrder = 21, Country = PayrollCountry.US },
+        ]);
+
+        // ── Pay Components: Deductions - US ────────────────────────────────────
+        _payComponents.AddRange([
+            new PayComponent { Code = "FED_TAX", Name = "Federal Income Tax", Type = PayComponentType.Deduction, Category = PayComponentCategory.FederalIncomeTax, IsStatutory = true, IsTaxable = false, Country = PayrollCountry.US, DisplayOrder = 100 },
+            new PayComponent { Code = "ST_TAX", Name = "State Income Tax", Type = PayComponentType.Deduction, Category = PayComponentCategory.StateIncomeTax, IsStatutory = true, IsTaxable = false, Country = PayrollCountry.US, DisplayOrder = 101 },
+            new PayComponent { Code = "FICA_SS", Name = "FICA Social Security", Type = PayComponentType.Deduction, Category = PayComponentCategory.FICA_SocialSecurity, IsStatutory = true, IsTaxable = false, Country = PayrollCountry.US, DisplayOrder = 102 },
+            new PayComponent { Code = "FICA_MED", Name = "FICA Medicare", Type = PayComponentType.Deduction, Category = PayComponentCategory.FICA_Medicare, IsStatutory = true, IsTaxable = false, Country = PayrollCountry.US, DisplayOrder = 103 },
+            new PayComponent { Code = "401K", Name = "401(k) Contribution", Type = PayComponentType.Deduction, Category = PayComponentCategory.Traditional401k_Contribution, IsTaxable = false, Country = PayrollCountry.US, DisplayOrder = 104 },
+            new PayComponent { Code = "HEALTH", Name = "Health Insurance", Type = PayComponentType.Deduction, Category = PayComponentCategory.HealthInsurance, IsTaxable = false, Country = PayrollCountry.US, DisplayOrder = 105 },
+        ]);
+
+        // ── Pay Components: Deductions - CA ────────────────────────────────────
+        _payComponents.AddRange([
+            new PayComponent { Code = "CA_FED", Name = "Federal Tax (CA)", Type = PayComponentType.Deduction, Category = PayComponentCategory.FederalTax_CA, IsStatutory = true, IsTaxable = false, Country = PayrollCountry.CA, DisplayOrder = 100 },
+            new PayComponent { Code = "CA_PROV", Name = "Provincial Tax (CA)", Type = PayComponentType.Deduction, Category = PayComponentCategory.ProvincialTax_CA, IsStatutory = true, IsTaxable = false, Country = PayrollCountry.CA, DisplayOrder = 101 },
+            new PayComponent { Code = "CA_CPP", Name = "CPP Contribution", Type = PayComponentType.Deduction, Category = PayComponentCategory.CPP, IsStatutory = true, IsTaxable = false, Country = PayrollCountry.CA, DisplayOrder = 102 },
+            new PayComponent { Code = "CA_EI", Name = "EI Premium", Type = PayComponentType.Deduction, Category = PayComponentCategory.EI, IsStatutory = true, IsTaxable = false, Country = PayrollCountry.CA, DisplayOrder = 103 },
+        ]);
+
+        // ── Pay Components: Deductions - UK ────────────────────────────────────
+        _payComponents.AddRange([
+            new PayComponent { Code = "UK_PAYE", Name = "PAYE Income Tax", Type = PayComponentType.Deduction, Category = PayComponentCategory.PAYE, IsStatutory = true, IsTaxable = false, Country = PayrollCountry.UK, DisplayOrder = 100 },
+            new PayComponent { Code = "UK_NI", Name = "National Insurance", Type = PayComponentType.Deduction, Category = PayComponentCategory.NationalInsurance, IsStatutory = true, IsTaxable = false, Country = PayrollCountry.UK, DisplayOrder = 101 },
+            new PayComponent { Code = "UK_PENSION", Name = "Workplace Pension", Type = PayComponentType.Deduction, Category = PayComponentCategory.SIPP, IsTaxable = false, Country = PayrollCountry.UK, DisplayOrder = 102 },
+            new PayComponent { Code = "UK_SL", Name = "Student Loan", Type = PayComponentType.Deduction, Category = PayComponentCategory.StudentLoan_Plan2, IsStatutory = true, IsTaxable = false, Country = PayrollCountry.UK, DisplayOrder = 103 },
+        ]);
+
+        // ── Pay Components: Deductions - DE (EU) ──────────────────────────────
+        _payComponents.AddRange([
+            new PayComponent { Code = "DE_LST", Name = "Lohnsteuer (Income Tax)", Type = PayComponentType.Deduction, Category = PayComponentCategory.IncomeTax, IsStatutory = true, IsTaxable = false, Country = PayrollCountry.DE, DisplayOrder = 100 },
+            new PayComponent { Code = "DE_SOLI", Name = "Solidaritaetszuschlag", Type = PayComponentType.Deduction, Category = PayComponentCategory.SolidaritySurcharge, IsStatutory = true, IsTaxable = false, Country = PayrollCountry.DE, DisplayOrder = 101 },
+            new PayComponent { Code = "DE_RV", Name = "Rentenversicherung (Pension)", Type = PayComponentType.Deduction, Category = PayComponentCategory.Rentenversicherung, IsStatutory = true, IsTaxable = false, Country = PayrollCountry.DE, DisplayOrder = 102 },
+            new PayComponent { Code = "DE_KV", Name = "Krankenversicherung (Health)", Type = PayComponentType.Deduction, Category = PayComponentCategory.Krankenversicherung, IsStatutory = true, IsTaxable = false, Country = PayrollCountry.DE, DisplayOrder = 103 },
+            new PayComponent { Code = "DE_PV", Name = "Pflegeversicherung (Care)", Type = PayComponentType.Deduction, Category = PayComponentCategory.Pflegeversicherung, IsStatutory = true, IsTaxable = false, Country = PayrollCountry.DE, DisplayOrder = 104 },
+            new PayComponent { Code = "DE_AV", Name = "Arbeitslosenversicherung (Unemployment)", Type = PayComponentType.Deduction, Category = PayComponentCategory.Arbeitslosenversicherung, IsStatutory = true, IsTaxable = false, Country = PayrollCountry.DE, DisplayOrder = 105 },
+        ]);
+
+        // ── Pay Components: Deductions - PK ────────────────────────────────────
+        _payComponents.AddRange([
+            new PayComponent { Code = "PK_IT", Name = "Income Tax on Salary", Type = PayComponentType.Deduction, Category = PayComponentCategory.IncomeTax_PK, IsStatutory = true, IsTaxable = false, Country = PayrollCountry.PK, DisplayOrder = 100 },
+            new PayComponent { Code = "PK_EOBI", Name = "EOBI Contribution", Type = PayComponentType.Deduction, Category = PayComponentCategory.EOBI, IsStatutory = true, IsTaxable = false, Country = PayrollCountry.PK, DisplayOrder = 101 },
+            new PayComponent { Code = "PK_PF", Name = "Provident Fund", Type = PayComponentType.Deduction, Category = PayComponentCategory.PensionContribution, IsTaxable = false, Country = PayrollCountry.PK, DisplayOrder = 102 },
+            new PayComponent { Code = "PK_SESSI", Name = "SESSI Contribution", Type = PayComponentType.Deduction, Category = PayComponentCategory.SESSI, IsStatutory = true, IsTaxable = false, Country = PayrollCountry.PK, DisplayOrder = 103 },
+        ]);
+
+        // ── Pay Components: Deductions - SA ────────────────────────────────────
+        _payComponents.AddRange([
+            new PayComponent { Code = "SA_GOSI_S", Name = "GOSI Employee (Saudi)", Type = PayComponentType.Deduction, Category = PayComponentCategory.GOSI_Saudi, IsStatutory = true, IsTaxable = false, Country = PayrollCountry.SA, DisplayOrder = 100 },
+            new PayComponent { Code = "SA_GOSI_E", Name = "GOSI Employer Contribution", Type = PayComponentType.EmployerContribution, Category = PayComponentCategory.Employer_GOSI, IsStatutory = true, IsTaxable = false, Country = PayrollCountry.SA, DisplayOrder = 101 },
+        ]);
+
+        // ── Pay Components: Deductions - UAE ───────────────────────────────────
+        _payComponents.AddRange([
+            new PayComponent { Code = "AE_GPSSA", Name = "GPSSA Contribution (UAE National)", Type = PayComponentType.Deduction, Category = PayComponentCategory.VoluntaryPension, IsStatutory = true, IsTaxable = false, Country = PayrollCountry.AE, DisplayOrder = 100 },
+            new PayComponent { Code = "AE_Gratuity", Name = "End of Service Gratuity", Type = PayComponentType.EmployerContribution, Category = PayComponentCategory.Gratuity_UAE, IsStatutory = true, IsTaxable = false, Country = PayrollCountry.AE, DisplayOrder = 101 },
+        ]);
+
+        // ── Tax Slabs: Pakistan 2025 (FBR) ─────────────────────────────────────
+        _taxSlabs.Add(new SalaryTaxSlab
+        {
+            Country = PayrollCountry.PK,
+            TaxYear = 2025,
+            Name = "Pakistan FBR Salary Tax Slab 2025 (Annual)",
+            Currency = "PKR",
+            FilingStatus = TaxFilingStatus.Single,
+            PeriodBasis = "Annual",
+            StandardDeduction = 0,
+            PersonalAllowance = 0,
+            IsActive = true,
+            Brackets =
+            [
+                new SalaryTaxBracket { FromAmount = 0, ToAmount = 600000, RatePercent = 0, FixedTax = 0, Description = "Up to PKR 600,000 - Exempt" },
+                new SalaryTaxBracket { FromAmount = 600001, ToAmount = 1200000, RatePercent = 5, FixedTax = 0, Description = "PKR 600,001 – 1,200,000 @ 5%" },
+                new SalaryTaxBracket { FromAmount = 1200001, ToAmount = 2200000, RatePercent = 15, FixedTax = 30000, Description = "PKR 1,200,001 – 2,200,000 @ 15%" },
+                new SalaryTaxBracket { FromAmount = 2200001, ToAmount = 3200000, RatePercent = 25, FixedTax = 180000, Description = "PKR 2,200,001 – 3,200,000 @ 25%" },
+                new SalaryTaxBracket { FromAmount = 3200001, ToAmount = 4100000, RatePercent = 30, FixedTax = 430000, Description = "PKR 3,200,001 – 4,100,000 @ 30%" },
+                new SalaryTaxBracket { FromAmount = 4100001, ToAmount = null, RatePercent = 35, FixedTax = 700000, Description = "Above PKR 4,100,000 @ 35%" },
+            ]
+        });
+
+        // ── Tax Slabs: Pakistan 2026 (FBR - projected) ─────────────────────────
+        _taxSlabs.Add(new SalaryTaxSlab
+        {
+            Country = PayrollCountry.PK,
+            TaxYear = 2026,
+            Name = "Pakistan FBR Salary Tax Slab 2026 (Annual)",
+            Currency = "PKR",
+            FilingStatus = TaxFilingStatus.Single,
+            PeriodBasis = "Annual",
+            StandardDeduction = 0,
+            PersonalAllowance = 0,
+            IsActive = true,
+            Brackets =
+            [
+                new SalaryTaxBracket { FromAmount = 0, ToAmount = 600000, RatePercent = 0, FixedTax = 0, Description = "Up to PKR 600,000 - Exempt" },
+                new SalaryTaxBracket { FromAmount = 600001, ToAmount = 1200000, RatePercent = 5, FixedTax = 0, Description = "PKR 600,001 – 1,200,000 @ 5%" },
+                new SalaryTaxBracket { FromAmount = 1200001, ToAmount = 2200000, RatePercent = 15, FixedTax = 30000, Description = "PKR 1,200,001 – 2,200,000 @ 15%" },
+                new SalaryTaxBracket { FromAmount = 2200001, ToAmount = 3200000, RatePercent = 25, FixedTax = 180000, Description = "PKR 2,200,001 – 3,200,000 @ 25%" },
+                new SalaryTaxBracket { FromAmount = 3200001, ToAmount = 4100000, RatePercent = 30, FixedTax = 430000, Description = "PKR 3,200,001 – 4,100,000 @ 30%" },
+                new SalaryTaxBracket { FromAmount = 4100001, ToAmount = null, RatePercent = 35, FixedTax = 700000, Description = "Above PKR 4,100,000 @ 35%" },
+            ]
+        });
+
+        // ── Tax Slabs: US 2025 (Federal, Single) ──────────────────────────────
+        _taxSlabs.Add(new SalaryTaxSlab
+        {
+            Country = PayrollCountry.US,
+            TaxYear = 2025,
+            Name = "US Federal Income Tax 2025 (Single)",
+            Currency = "USD",
+            FilingStatus = TaxFilingStatus.Single,
+            PeriodBasis = "Annual",
+            StandardDeduction = 15000,
+            PersonalAllowance = 0,
+            IsActive = true,
+            Brackets =
+            [
+                new SalaryTaxBracket { FromAmount = 0, ToAmount = 11925, RatePercent = 10, FixedTax = 0, Description = "10% bracket" },
+                new SalaryTaxBracket { FromAmount = 11925, ToAmount = 48475, RatePercent = 12, FixedTax = 1192.50m, Description = "12% bracket" },
+                new SalaryTaxBracket { FromAmount = 48475, ToAmount = 103350, RatePercent = 22, FixedTax = 5618.50m, Description = "22% bracket" },
+                new SalaryTaxBracket { FromAmount = 103350, ToAmount = 197300, RatePercent = 24, FixedTax = 17688.50m, Description = "24% bracket" },
+                new SalaryTaxBracket { FromAmount = 197300, ToAmount = 250525, RatePercent = 32, FixedTax = 40244.50m, Description = "32% bracket" },
+                new SalaryTaxBracket { FromAmount = 250525, ToAmount = 626350, RatePercent = 35, FixedTax = 57270.50m, Description = "35% bracket" },
+                new SalaryTaxBracket { FromAmount = 626350, ToAmount = null, RatePercent = 37, FixedTax = 188490.50m, Description = "37% bracket" },
+            ]
+        });
+
+        // ── Tax Slabs: US 2026 (Federal, Single) ──────────────────────────────
+        _taxSlabs.Add(new SalaryTaxSlab
+        {
+            Country = PayrollCountry.US,
+            TaxYear = 2026,
+            Name = "US Federal Income Tax 2026 (Single)",
+            Currency = "USD",
+            FilingStatus = TaxFilingStatus.Single,
+            PeriodBasis = "Annual",
+            StandardDeduction = 15400,
+            PersonalAllowance = 0,
+            IsActive = true,
+            Brackets =
+            [
+                new SalaryTaxBracket { FromAmount = 0, ToAmount = 12200, RatePercent = 10, FixedTax = 0, Description = "10% bracket" },
+                new SalaryTaxBracket { FromAmount = 12200, ToAmount = 49500, RatePercent = 12, FixedTax = 1220, Description = "12% bracket" },
+                new SalaryTaxBracket { FromAmount = 49500, ToAmount = 105500, RatePercent = 22, FixedTax = 5696, Description = "22% bracket" },
+                new SalaryTaxBracket { FromAmount = 105500, ToAmount = 201000, RatePercent = 24, FixedTax = 18016, Description = "24% bracket" },
+                new SalaryTaxBracket { FromAmount = 201000, ToAmount = 255500, RatePercent = 32, FixedTax = 41136, Description = "32% bracket" },
+                new SalaryTaxBracket { FromAmount = 255500, ToAmount = 639000, RatePercent = 35, FixedTax = 58576, Description = "35% bracket" },
+                new SalaryTaxBracket { FromAmount = 639000, ToAmount = null, RatePercent = 37, FixedTax = 192801, Description = "37% bracket" },
+            ]
+        });
+
+        // ── Tax Slabs: UK 2025/26 ─────────────────────────────────────────────
+        _taxSlabs.Add(new SalaryTaxSlab
+        {
+            Country = PayrollCountry.UK,
+            TaxYear = 2025,
+            Name = "UK Income Tax 2025/26",
+            Currency = "GBP",
+            FilingStatus = TaxFilingStatus.Single,
+            PeriodBasis = "Annual",
+            StandardDeduction = 12570,
+            PersonalAllowance = 12570,
+            IsActive = true,
+            Brackets =
+            [
+                new SalaryTaxBracket { FromAmount = 0, ToAmount = 37700, RatePercent = 20, FixedTax = 0, Description = "Basic Rate (20%)" },
+                new SalaryTaxBracket { FromAmount = 37700, ToAmount = 125140, RatePercent = 40, FixedTax = 7540, Description = "Higher Rate (40%)" },
+                new SalaryTaxBracket { FromAmount = 125140, ToAmount = null, RatePercent = 45, FixedTax = 42516, Description = "Additional Rate (45%)" },
+            ]
+        });
+
+        _taxSlabs.Add(new SalaryTaxSlab
+        {
+            Country = PayrollCountry.UK,
+            TaxYear = 2026,
+            Name = "UK Income Tax 2026/27",
+            Currency = "GBP",
+            FilingStatus = TaxFilingStatus.Single,
+            PeriodBasis = "Annual",
+            StandardDeduction = 12570,
+            PersonalAllowance = 12570,
+            IsActive = true,
+            Brackets =
+            [
+                new SalaryTaxBracket { FromAmount = 0, ToAmount = 37700, RatePercent = 20, FixedTax = 0, Description = "Basic Rate (20%)" },
+                new SalaryTaxBracket { FromAmount = 37700, ToAmount = 125140, RatePercent = 40, FixedTax = 7540, Description = "Higher Rate (40%)" },
+                new SalaryTaxBracket { FromAmount = 125140, ToAmount = null, RatePercent = 45, FixedTax = 42516, Description = "Additional Rate (45%)" },
+            ]
+        });
+
+        // ── Tax Slabs: Canada 2025 (Federal) ──────────────────────────────────
+        _taxSlabs.Add(new SalaryTaxSlab
+        {
+            Country = PayrollCountry.CA,
+            TaxYear = 2025,
+            Name = "Canada Federal Income Tax 2025",
+            Currency = "CAD",
+            FilingStatus = TaxFilingStatus.Single,
+            PeriodBasis = "Annual",
+            StandardDeduction = 15705,
+            PersonalAllowance = 15705,
+            IsActive = true,
+            Brackets =
+            [
+                new SalaryTaxBracket { FromAmount = 0, ToAmount = 55867, RatePercent = 15, FixedTax = 0, Description = "15% bracket" },
+                new SalaryTaxBracket { FromAmount = 55867, ToAmount = 111733, RatePercent = 20.5m, FixedTax = 8380.05m, Description = "20.5% bracket" },
+                new SalaryTaxBracket { FromAmount = 111733, ToAmount = 154906, RatePercent = 26, FixedTax = 19623.58m, Description = "26% bracket" },
+                new SalaryTaxBracket { FromAmount = 154906, ToAmount = 220000, RatePercent = 29, FixedTax = 30858.56m, Description = "29% bracket" },
+                new SalaryTaxBracket { FromAmount = 220000, ToAmount = null, RatePercent = 33, FixedTax = 49727.74m, Description = "33% bracket" },
+            ]
+        });
+
+        _taxSlabs.Add(new SalaryTaxSlab
+        {
+            Country = PayrollCountry.CA,
+            TaxYear = 2026,
+            Name = "Canada Federal Income Tax 2026",
+            Currency = "CAD",
+            FilingStatus = TaxFilingStatus.Single,
+            PeriodBasis = "Annual",
+            StandardDeduction = 16129,
+            PersonalAllowance = 16129,
+            IsActive = true,
+            Brackets =
+            [
+                new SalaryTaxBracket { FromAmount = 0, ToAmount = 57375, RatePercent = 15, FixedTax = 0, Description = "15% bracket" },
+                new SalaryTaxBracket { FromAmount = 57375, ToAmount = 114750, RatePercent = 20.5m, FixedTax = 8606.25m, Description = "20.5% bracket" },
+                new SalaryTaxBracket { FromAmount = 114750, ToAmount = 159000, RatePercent = 26, FixedTax = 19947.38m, Description = "26% bracket" },
+                new SalaryTaxBracket { FromAmount = 159000, ToAmount = 225000, RatePercent = 29, FixedTax = 31252.38m, Description = "29% bracket" },
+                new SalaryTaxBracket { FromAmount = 225000, ToAmount = null, RatePercent = 33, FixedTax = 50392.38m, Description = "33% bracket" },
+            ]
+        });
+
+        // ── Tax Slabs: Germany 2025 ───────────────────────────────────────────
+        _taxSlabs.Add(new SalaryTaxSlab
+        {
+            Country = PayrollCountry.DE,
+            TaxYear = 2025,
+            Name = "Germany Lohnsteuer 2025",
+            Currency = "EUR",
+            FilingStatus = TaxFilingStatus.Single,
+            PeriodBasis = "Annual",
+            StandardDeduction = 12096,
+            PersonalAllowance = 12096,
+            IsActive = true,
+            Brackets =
+            [
+                new SalaryTaxBracket { FromAmount = 0, ToAmount = 12096, RatePercent = 0, FixedTax = 0, Description = "Tax-free allowance" },
+                new SalaryTaxBracket { FromAmount = 12096, ToAmount = 17005, RatePercent = 14, FixedTax = 0, Description = "14% (progression zone)" },
+                new SalaryTaxBracket { FromAmount = 17005, ToAmount = 66760, RatePercent = 24, FixedTax = 1612, Description = "24% bracket" },
+                new SalaryTaxBracket { FromAmount = 66760, ToAmount = 277825, RatePercent = 42, FixedTax = 12568, Description = "42% bracket" },
+                new SalaryTaxBracket { FromAmount = 277825, ToAmount = null, RatePercent = 45, FixedTax = 23129, Description = "45% top rate" },
+            ]
+        });
+
+        _taxSlabs.Add(new SalaryTaxSlab
+        {
+            Country = PayrollCountry.DE,
+            TaxYear = 2026,
+            Name = "Germany Lohnsteuer 2026",
+            Currency = "EUR",
+            FilingStatus = TaxFilingStatus.Single,
+            PeriodBasis = "Annual",
+            StandardDeduction = 12300,
+            PersonalAllowance = 12300,
+            IsActive = true,
+            Brackets =
+            [
+                new SalaryTaxBracket { FromAmount = 0, ToAmount = 12300, RatePercent = 0, FixedTax = 0, Description = "Tax-free allowance" },
+                new SalaryTaxBracket { FromAmount = 12300, ToAmount = 17443, RatePercent = 14, FixedTax = 0, Description = "14% (progression zone)" },
+                new SalaryTaxBracket { FromAmount = 17443, ToAmount = 68480, RatePercent = 24, FixedTax = 1654, Description = "24% bracket" },
+                new SalaryTaxBracket { FromAmount = 68480, ToAmount = 277825, RatePercent = 42, FixedTax = 12860, Description = "42% bracket" },
+                new SalaryTaxBracket { FromAmount = 277825, ToAmount = null, RatePercent = 45, FixedTax = 23340, Description = "45% top rate" },
+            ]
+        });
+
+        // ── Tax Slabs: Saudi Arabia (No income tax, but GOSI config) ──────────
+        _taxSlabs.Add(new SalaryTaxSlab
+        {
+            Country = PayrollCountry.SA,
+            TaxYear = 2025,
+            Name = "Saudi Arabia - No Income Tax (GOSI Only)",
+            Currency = "SAR",
+            FilingStatus = TaxFilingStatus.Single,
+            PeriodBasis = "Annual",
+            StandardDeduction = 0,
+            PersonalAllowance = 0,
+            IsActive = true,
+            Brackets = []
+        });
+
+        _taxSlabs.Add(new SalaryTaxSlab
+        {
+            Country = PayrollCountry.SA,
+            TaxYear = 2026,
+            Name = "Saudi Arabia - No Income Tax (GOSI Only)",
+            Currency = "SAR",
+            FilingStatus = TaxFilingStatus.Single,
+            PeriodBasis = "Annual",
+            StandardDeduction = 0,
+            PersonalAllowance = 0,
+            IsActive = true,
+            Brackets = []
+        });
+
+        // ── Tax Slabs: UAE (No income tax, but GPSSA config) ─────────────────
+        _taxSlabs.Add(new SalaryTaxSlab
+        {
+            Country = PayrollCountry.AE,
+            TaxYear = 2025,
+            Name = "UAE - No Income Tax (GPSSA Only)",
+            Currency = "AED",
+            FilingStatus = TaxFilingStatus.Single,
+            PeriodBasis = "Annual",
+            StandardDeduction = 0,
+            PersonalAllowance = 0,
+            IsActive = true,
+            Brackets = []
+        });
+
+        _taxSlabs.Add(new SalaryTaxSlab
+        {
+            Country = PayrollCountry.AE,
+            TaxYear = 2026,
+            Name = "UAE - No Income Tax (GPSSA Only)",
+            Currency = "AED",
+            FilingStatus = TaxFilingStatus.Single,
+            PeriodBasis = "Annual",
+            StandardDeduction = 0,
+            PersonalAllowance = 0,
+            IsActive = true,
+            Brackets = []
+        });
+
+        // ── Sample Employees (One per country) ────────────────────────────────
+        _employees.AddRange([
+            new Employee
+            {
+                EmployeeNumber = "EMP-0001", FirstName = "John", LastName = "Doe", Country = PayrollCountry.US,
+                StateProvince = "California", City = "San Francisco", DepartmentId = deptEng.Id,
+                PositionId = _positions[5].Id, BasicSalary = 105000, Currency = "USD",
+                HireDate = DateOnly.FromDateTime(DateTime.Today.AddDays(-365)), Email = "john.doe@acme.com",
+                BankName = "Chase", BankAccountNumber = "****1234", BankRoutingNumber = "021000021",
+                TaxFilingStatus = TaxFilingStatus.Single, EmploymentType = EmploymentType.FullTime,
+                PayFrequency = PayFrequency.Monthly, CompanyId = companyId
+            },
+            new Employee
+            {
+                EmployeeNumber = "EMP-0002", FirstName = "Sarah", LastName = "Jenkins", Country = PayrollCountry.UK,
+                StateProvince = "England", City = "London", DepartmentId = deptFin.Id,
+                PositionId = _positions[7].Id, BasicSalary = 55000, Currency = "GBP",
+                HireDate = DateOnly.FromDateTime(DateTime.Today.AddDays(-300)), Email = "sarah.jenkins@acme.com",
+                BankName = "Barclays", BankAccountNumber = "****5678", BankRoutingNumber = "20-12-34",
+                TaxFilingStatus = TaxFilingStatus.Single, EmploymentType = EmploymentType.FullTime,
+                PayFrequency = PayFrequency.Monthly, CompanyId = companyId
+            },
+            new Employee
+            {
+                EmployeeNumber = "EMP-0003", FirstName = "Muhammad", LastName = "Ali", Country = PayrollCountry.PK,
+                StateProvince = "Punjab", City = "Lahore", DepartmentId = deptOps.Id,
+                PositionId = _positions[9].Id, BasicSalary = 1800000, Currency = "PKR",
+                HireDate = DateOnly.FromDateTime(DateTime.Today.AddDays(-200)), Email = "muhammad.ali@acme.com",
+                BankName = "HBL", BankAccountNumber = "****9012", BankRoutingNumber = "12345678",
+                TaxFilingStatus = TaxFilingStatus.Single, EmploymentType = EmploymentType.FullTime,
+                PayFrequency = PayFrequency.Monthly, CompanyId = companyId
+            },
+            new Employee
+            {
+                EmployeeNumber = "EMP-0004", FirstName = "Tariq", LastName = "Al-Otaibi", Country = PayrollCountry.SA,
+                StateProvince = "Riyadh", City = "Riyadh", DepartmentId = deptSales.Id,
+                PositionId = _positions[4].Id, BasicSalary = 35000, Currency = "SAR",
+                HireDate = DateOnly.FromDateTime(DateTime.Today.AddDays(-150)), Email = "tariq.alotaibi@acme.com",
+                BankName = "Al Rajhi Bank", BankAccountNumber = "****3456", BankRoutingNumber = "SA00000000000",
+                TaxFilingStatus = TaxFilingStatus.Single, EmploymentType = EmploymentType.FullTime,
+                PayFrequency = PayFrequency.Monthly, CompanyId = companyId
+            },
+            new Employee
+            {
+                EmployeeNumber = "EMP-0005", FirstName = "Rashid", LastName = "Al-Maktoum", Country = PayrollCountry.AE,
+                StateProvince = "Dubai", City = "Dubai", DepartmentId = deptIt.Id,
+                PositionId = _positions[2].Id, BasicSalary = 50000, Currency = "AED",
+                HireDate = DateOnly.FromDateTime(DateTime.Today.AddDays(-100)), Email = "rashid.almaktoum@acme.com",
+                BankName = "Emirates NBD", BankAccountNumber = "****7890", BankRoutingNumber = "AE0000000000",
+                TaxFilingStatus = TaxFilingStatus.Single, EmploymentType = EmploymentType.FullTime,
+                PayFrequency = PayFrequency.Monthly, CompanyId = companyId
+            },
+            new Employee
+            {
+                EmployeeNumber = "EMP-0006", FirstName = "Jean", LastName = "Dupont", Country = PayrollCountry.DE,
+                StateProvince = "Bavaria", City = "Munich", DepartmentId = deptEng.Id,
+                PositionId = _positions[5].Id, BasicSalary = 72000, Currency = "EUR",
+                HireDate = DateOnly.FromDateTime(DateTime.Today.AddDays(-180)), Email = "jean.dupont@acme.com",
+                BankName = "Deutsche Bank", BankAccountNumber = "****2345", BankRoutingNumber = "DE0000000000",
+                TaxFilingStatus = TaxFilingStatus.Single, EmploymentType = EmploymentType.FullTime,
+                PayFrequency = PayFrequency.Monthly, CompanyId = companyId
+            },
+            new Employee
+            {
+                EmployeeNumber = "EMP-0007", FirstName = "Emily", LastName = "Tremblay", Country = PayrollCountry.CA,
+                StateProvince = "Quebec", City = "Montreal", DepartmentId = deptSales.Id,
+                PositionId = _positions[8].Id, BasicSalary = 65000, Currency = "CAD",
+                HireDate = DateOnly.FromDateTime(DateTime.Today.AddDays(-250)), Email = "emily.tremblay@acme.com",
+                BankName = "RBC", BankAccountNumber = "****6789", BankRoutingNumber = "000123456",
+                TaxFilingStatus = TaxFilingStatus.Single, EmploymentType = EmploymentType.FullTime,
+                PayFrequency = PayFrequency.Monthly, CompanyId = companyId
+            },
+        ]);
+    }
+
+    #endregion
+
+    #region Employee CRUD
+
+    public string NextEmployeeNumber()
+    {
+        var numbers = _employees.Select(e => e.EmployeeNumber)
+            .Where(n => n.StartsWith("EMP-") && int.TryParse(n[4..], out _))
+            .Select(n => int.Parse(n[4..]))
+            .DefaultIfEmpty(0);
+        return $"EMP-{(numbers.Max() + 1):D4}";
+    }
+
+    public bool CreateEmployee(EmployeeRequest request, out Employee? employee, out string? error)
+    {
+        lock (_lock)
+        {
+            employee = null; error = null;
+            if (string.IsNullOrWhiteSpace(request.FirstName)) { error = "First name is required."; return false; }
+            if (string.IsNullOrWhiteSpace(request.LastName)) { error = "Last name is required."; return false; }
+            if (request.BasicSalary <= 0) { error = "Basic salary must be positive."; return false; }
+
+            employee = new Employee
+            {
+                EmployeeNumber = string.IsNullOrWhiteSpace(request.EmployeeNumber) ? NextEmployeeNumber() : request.EmployeeNumber.Trim(),
+                FirstName = request.FirstName.Trim(),
+                MiddleName = request.MiddleName?.Trim() ?? "",
+                LastName = request.LastName.Trim(),
+                PreferredName = request.PreferredName?.Trim() ?? "",
+                DateOfBirth = request.DateOfBirth,
+                Gender = request.Gender ?? "",
+                MaritalStatus = request.MaritalStatus ?? "",
+                Nationality = request.Nationality ?? "",
+                NationalId = request.NationalId ?? "",
+                TaxId = request.TaxId ?? "",
+                Country = request.Country,
+                StateProvince = request.StateProvince ?? "",
+                City = request.City ?? "",
+                Address = request.Address ?? "",
+                PostalCode = request.PostalCode ?? "",
+                Phone = request.Phone ?? "",
+                Email = request.Email ?? "",
+                EmergencyContactName = request.EmergencyContactName ?? "",
+                EmergencyContactPhone = request.EmergencyContactPhone ?? "",
+                EmergencyContactRelation = request.EmergencyContactRelation ?? "",
+                BankName = request.BankName ?? "",
+                BankAccountNumber = request.BankAccountNumber ?? "",
+                BankRoutingNumber = request.BankRoutingNumber ?? "",
+                BankAccountName = request.BankAccountName ?? "",
+                BankIBAN = request.BankIBAN ?? "",
+                BankSWIFT = request.BankSWIFT ?? "",
+                EmploymentType = request.EmploymentType,
+                PayFrequency = request.PayFrequency,
+                Status = EmployeeStatus.Active,
+                HireDate = request.HireDate,
+                ProbationEndDate = request.ProbationEndDate,
+                DepartmentId = request.DepartmentId,
+                PositionId = request.PositionId,
+                ManagerId = request.ManagerId,
+                PayGradeId = request.PayGradeId,
+                BasicSalary = request.BasicSalary,
+                Currency = request.Currency ?? "USD",
+                TaxFilingStatus = request.TaxFilingStatus,
+                TaxExemptions = request.TaxExemptions,
+                AdditionalTaxWithholding = request.AdditionalTaxWithholding,
+                CompanyId = request.CompanyId,
+            };
+
+            _employees.Add(employee);
+            Persist();
+            return true;
+        }
+    }
+
+    public bool UpdateEmployee(Guid id, EmployeeRequest request, out Employee? employee, out string? error)
+    {
+        lock (_lock)
+        {
+            employee = _employees.FirstOrDefault(e => e.Id == id); error = null;
+            if (employee == null) { error = "Employee not found."; return false; }
+            if (string.IsNullOrWhiteSpace(request.FirstName)) { error = "First name is required."; return false; }
+            if (string.IsNullOrWhiteSpace(request.LastName)) { error = "Last name is required."; return false; }
+            if (request.BasicSalary <= 0) { error = "Basic salary must be positive."; return false; }
+
+            employee.FirstName = request.FirstName.Trim();
+            employee.MiddleName = request.MiddleName?.Trim() ?? "";
+            employee.LastName = request.LastName.Trim();
+            employee.PreferredName = request.PreferredName?.Trim() ?? "";
+            employee.DateOfBirth = request.DateOfBirth;
+            employee.Gender = request.Gender ?? "";
+            employee.MaritalStatus = request.MaritalStatus ?? "";
+            employee.Nationality = request.Nationality ?? "";
+            employee.NationalId = request.NationalId ?? "";
+            employee.TaxId = request.TaxId ?? "";
+            employee.Country = request.Country;
+            employee.StateProvince = request.StateProvince ?? "";
+            employee.City = request.City ?? "";
+            employee.Address = request.Address ?? "";
+            employee.PostalCode = request.PostalCode ?? "";
+            employee.Phone = request.Phone ?? "";
+            employee.Email = request.Email ?? "";
+            employee.EmergencyContactName = request.EmergencyContactName ?? "";
+            employee.EmergencyContactPhone = request.EmergencyContactPhone ?? "";
+            employee.EmergencyContactRelation = request.EmergencyContactRelation ?? "";
+            employee.BankName = request.BankName ?? "";
+            employee.BankAccountNumber = request.BankAccountNumber ?? "";
+            employee.BankRoutingNumber = request.BankRoutingNumber ?? "";
+            employee.BankAccountName = request.BankAccountName ?? "";
+            employee.BankIBAN = request.BankIBAN ?? "";
+            employee.BankSWIFT = request.BankSWIFT ?? "";
+            employee.EmploymentType = request.EmploymentType;
+            employee.PayFrequency = request.PayFrequency;
+            employee.HireDate = request.HireDate;
+            employee.ProbationEndDate = request.ProbationEndDate;
+            employee.DepartmentId = request.DepartmentId;
+            employee.PositionId = request.PositionId;
+            employee.ManagerId = request.ManagerId;
+            employee.PayGradeId = request.PayGradeId;
+            employee.BasicSalary = request.BasicSalary;
+            employee.Currency = request.Currency ?? "USD";
+            employee.TaxFilingStatus = request.TaxFilingStatus;
+            employee.TaxExemptions = request.TaxExemptions;
+            employee.AdditionalTaxWithholding = request.AdditionalTaxWithholding;
+            employee.CompanyId = request.CompanyId;
+            employee.UpdatedAt = DateTime.UtcNow;
+
+            Persist();
+            return true;
+        }
+    }
+
+    public bool SetEmployeeStatus(Guid id, EmployeeStatus status, out Employee? employee, out string? error)
+    {
+        lock (_lock)
+        {
+            employee = _employees.FirstOrDefault(e => e.Id == id); error = null;
+            if (employee == null) { error = "Employee not found."; return false; }
+            employee.Status = status;
+            if (status == EmployeeStatus.Terminated) employee.TerminationDate = DateOnly.FromDateTime(DateTime.Today);
+            employee.UpdatedAt = DateTime.UtcNow;
+            Persist();
+            return true;
+        }
+    }
+
+    public Employee? GetEmployee(Guid id) => _employees.FirstOrDefault(e => e.Id == id);
+
+    #endregion
+
+    #region Department / Position / PayGrade CRUD
+
+    public bool CreateDepartment(DepartmentRequest request, out Department? dept, out string? error)
+    {
+        lock (_lock)
+        {
+            dept = null; error = null;
+            if (string.IsNullOrWhiteSpace(request.Name)) { error = "Department name is required."; return false; }
+            dept = new Department { Code = request.Code.Trim(), Name = request.Name.Trim(), Description = request.Description ?? "", ParentDepartmentId = request.ParentDepartmentId, ManagerId = request.ManagerId, CompanyId = request.CompanyId };
+            _departments.Add(dept);
+            Persist(); return true;
+        }
+    }
+
+    public bool UpdateDepartment(Guid id, DepartmentRequest request, out Department? dept, out string? error)
+    {
+        lock (_lock)
+        {
+            dept = _departments.FirstOrDefault(d => d.Id == id); error = null;
+            if (dept == null) { error = "Department not found."; return false; }
+            dept.Code = request.Code.Trim(); dept.Name = request.Name.Trim(); dept.Description = request.Description ?? "";
+            dept.ParentDepartmentId = request.ParentDepartmentId; dept.ManagerId = request.ManagerId; dept.CompanyId = request.CompanyId;
+            Persist(); return true;
+        }
+    }
+
+    public bool DeleteDepartment(Guid id, out string? error)
+    {
+        lock (_lock)
+        {
+            error = null;
+            var dept = _departments.FirstOrDefault(d => d.Id == id);
+            if (dept == null) { error = "Department not found."; return false; }
+            if (_employees.Any(e => e.DepartmentId == id)) { error = "Cannot delete department with assigned employees."; return false; }
+            _departments.Remove(dept);
+            Persist(); return true;
+        }
+    }
+
+    public bool CreatePosition(PositionRequest request, out Position? pos, out string? error)
+    {
+        lock (_lock)
+        {
+            pos = null; error = null;
+            if (string.IsNullOrWhiteSpace(request.Name)) { error = "Position name is required."; return false; }
+            pos = new Position { Code = request.Code.Trim(), Name = request.Name.Trim(), Description = request.Description ?? "", DepartmentId = request.DepartmentId, MinSalary = request.MinSalary, MaxSalary = request.MaxSalary, CompanyId = request.CompanyId };
+            _positions.Add(pos);
+            Persist(); return true;
+        }
+    }
+
+    public bool UpdatePosition(Guid id, PositionRequest request, out Position? pos, out string? error)
+    {
+        lock (_lock)
+        {
+            pos = _positions.FirstOrDefault(p => p.Id == id); error = null;
+            if (pos == null) { error = "Position not found."; return false; }
+            pos.Code = request.Code.Trim(); pos.Name = request.Name.Trim(); pos.Description = request.Description ?? "";
+            pos.DepartmentId = request.DepartmentId; pos.MinSalary = request.MinSalary; pos.MaxSalary = request.MaxSalary; pos.CompanyId = request.CompanyId;
+            Persist(); return true;
+        }
+    }
+
+    public bool DeletePosition(Guid id, out string? error)
+    {
+        lock (_lock)
+        {
+            error = null;
+            var pos = _positions.FirstOrDefault(p => p.Id == id);
+            if (pos == null) { error = "Position not found."; return false; }
+            if (_employees.Any(e => e.PositionId == id)) { error = "Cannot delete position with assigned employees."; return false; }
+            _positions.Remove(pos);
+            Persist(); return true;
+        }
+    }
+
+    public bool CreatePayGrade(PayGradeRequest request, out PayGrade? grade, out string? error)
+    {
+        lock (_lock)
+        {
+            grade = null; error = null;
+            if (string.IsNullOrWhiteSpace(request.Name)) { error = "Pay grade name is required."; return false; }
+            grade = new PayGrade { Code = request.Code.Trim(), Name = request.Name.Trim(), MinBasic = request.MinBasic, MidBasic = request.MidBasic, MaxBasic = request.MaxBasic, CompanyId = request.CompanyId };
+            _payGrades.Add(grade);
+            Persist(); return true;
+        }
+    }
+
+    public bool UpdatePayGrade(Guid id, PayGradeRequest request, out PayGrade? grade, out string? error)
+    {
+        lock (_lock)
+        {
+            grade = _payGrades.FirstOrDefault(g => g.Id == id); error = null;
+            if (grade == null) { error = "Pay grade not found."; return false; }
+            grade.Code = request.Code.Trim(); grade.Name = request.Name.Trim();
+            grade.MinBasic = request.MinBasic; grade.MidBasic = request.MidBasic; grade.MaxBasic = request.MaxBasic; grade.CompanyId = request.CompanyId;
+            Persist(); return true;
+        }
+    }
+
+    public bool DeletePayGrade(Guid id, out string? error)
+    {
+        lock (_lock)
+        {
+            error = null;
+            var grade = _payGrades.FirstOrDefault(g => g.Id == id);
+            if (grade == null) { error = "Pay grade not found."; return false; }
+            _payGrades.Remove(grade);
+            Persist(); return true;
+        }
+    }
+
+    #endregion
+
+    #region PayComponent CRUD
+
+    public bool CreatePayComponent(PayComponentRequest request, out PayComponent? comp, out string? error)
+    {
+        lock (_lock)
+        {
+            comp = null; error = null;
+            if (string.IsNullOrWhiteSpace(request.Name)) { error = "Component name is required."; return false; }
+            comp = new PayComponent
+            {
+                Code = request.Code.Trim(), Name = request.Name.Trim(), Description = request.Description ?? "",
+                Type = request.Type, Category = request.Category, Country = request.Country,
+                IsTaxable = request.IsTaxable, IsStatutory = request.IsStatutory,
+                FixedAmount = request.FixedAmount, PercentageOf = request.PercentageOf,
+                PercentageBase = request.PercentageBase, AccountId = request.AccountId,
+                DisplayOrder = request.DisplayOrder, CompanyId = request.CompanyId
+            };
+            _payComponents.Add(comp);
+            Persist(); return true;
+        }
+    }
+
+    public bool UpdatePayComponent(Guid id, PayComponentRequest request, out PayComponent? comp, out string? error)
+    {
+        lock (_lock)
+        {
+            comp = _payComponents.FirstOrDefault(c => c.Id == id); error = null;
+            if (comp == null) { error = "Pay component not found."; return false; }
+            comp.Code = request.Code.Trim(); comp.Name = request.Name.Trim(); comp.Description = request.Description ?? "";
+            comp.Type = request.Type; comp.Category = request.Category; comp.Country = request.Country;
+            comp.IsTaxable = request.IsTaxable; comp.IsStatutory = request.IsStatutory;
+            comp.FixedAmount = request.FixedAmount; comp.PercentageOf = request.PercentageOf;
+            comp.PercentageBase = request.PercentageBase; comp.AccountId = request.AccountId;
+            comp.DisplayOrder = request.DisplayOrder; comp.CompanyId = request.CompanyId;
+            Persist(); return true;
+        }
+    }
+
+    public bool DeletePayComponent(Guid id, out string? error)
+    {
+        lock (_lock)
+        {
+            error = null;
+            var comp = _payComponents.FirstOrDefault(c => c.Id == id);
+            if (comp == null) { error = "Pay component not found."; return false; }
+            _payComponents.Remove(comp);
+            Persist(); return true;
+        }
+    }
+
+    #endregion
+
+    #region Tax Slab Management
+
+    public List<SalaryTaxSlab> GetTaxSlabs(PayrollCountry? country = null, int? taxYear = null, Guid? companyId = null)
+    {
+        var query = _taxSlabs.AsEnumerable();
+        if (country.HasValue) query = query.Where(s => s.Country == country.Value);
+        if (taxYear.HasValue) query = query.Where(s => s.TaxYear == taxYear.Value);
+        if (companyId.HasValue) query = query.Where(s => s.CompanyId == companyId.Value || s.CompanyId == null);
+        return query.ToList();
+    }
+
+    public bool CreateTaxSlab(SalaryTaxSlabRequest request, out SalaryTaxSlab? slab, out string? error)
+    {
+        lock (_lock)
+        {
+            slab = null; error = null;
+            if (string.IsNullOrWhiteSpace(request.Name)) { error = "Tax slab name is required."; return false; }
+            slab = new SalaryTaxSlab
+            {
+                Country = request.Country, TaxYear = request.TaxYear, Name = request.Name.Trim(),
+                Currency = request.Currency, FilingStatus = request.FilingStatus, PeriodBasis = request.PeriodBasis,
+                StandardDeduction = request.StandardDeduction, PersonalAllowance = request.PersonalAllowance,
+                IsActive = request.IsActive, CompanyId = request.CompanyId,
+                Brackets = request.Brackets.Select(b => new SalaryTaxBracket
+                {
+                    FromAmount = b.FromAmount, ToAmount = b.ToAmount, RatePercent = b.RatePercent,
+                    FixedTax = b.FixedTax, Description = b.Description
+                }).ToList()
+            };
+            _taxSlabs.Add(slab);
+            Persist(); return true;
+        }
+    }
+
+    public bool UpdateTaxSlab(Guid id, SalaryTaxSlabRequest request, out SalaryTaxSlab? slab, out string? error)
+    {
+        lock (_lock)
+        {
+            slab = _taxSlabs.FirstOrDefault(s => s.Id == id); error = null;
+            if (slab == null) { error = "Tax slab not found."; return false; }
+            slab.Country = request.Country; slab.TaxYear = request.TaxYear; slab.Name = request.Name.Trim();
+            slab.Currency = request.Currency; slab.FilingStatus = request.FilingStatus; slab.PeriodBasis = request.PeriodBasis;
+            slab.StandardDeduction = request.StandardDeduction; slab.PersonalAllowance = request.PersonalAllowance;
+            slab.IsActive = request.IsActive; slab.CompanyId = request.CompanyId; slab.UpdatedAt = DateTime.UtcNow;
+            slab.Brackets.Clear();
+            slab.Brackets.AddRange(request.Brackets.Select(b => new SalaryTaxBracket
+            {
+                FromAmount = b.FromAmount, ToAmount = b.ToAmount, RatePercent = b.RatePercent,
+                FixedTax = b.FixedTax, Description = b.Description
+            }));
+            Persist(); return true;
+        }
+    }
+
+    public bool DeleteTaxSlab(Guid id, out string? error)
+    {
+        lock (_lock)
+        {
+            error = null;
+            var slab = _taxSlabs.FirstOrDefault(s => s.Id == id);
+            if (slab == null) { error = "Tax slab not found."; return false; }
+            _taxSlabs.Remove(slab);
+            Persist(); return true;
+        }
+    }
+
+    private decimal CalculateIncomeTax(PayrollCountry country, int taxYear, decimal annualTaxableIncome, TaxFilingStatus filingStatus)
+    {
+        var slab = _taxSlabs
+            .Where(s => s.Country == country && s.TaxYear == taxYear && s.IsActive)
+            .OrderByDescending(s => s.FilingStatus == filingStatus)
+            .FirstOrDefault();
+        if (slab == null || slab.Brackets.Count == 0) return 0;
+
+        var income = annualTaxableIncome - slab.StandardDeduction - slab.PersonalAllowance;
+        if (income <= 0) return 0;
+
+        decimal tax = 0;
+        foreach (var bracket in slab.Brackets.OrderBy(b => b.FromAmount))
+        {
+            if (income <= bracket.FromAmount) break;
+            var taxableInBracket = bracket.ToAmount.HasValue
+                ? Math.Min(income, bracket.ToAmount.Value) - bracket.FromAmount
+                : income - bracket.FromAmount;
+            if (taxableInBracket > 0)
+                tax += taxableInBracket * bracket.RatePercent / 100m;
+        }
+        return Math.Max(0, tax + slab.Brackets.FirstOrDefault(b => income >= b.FromAmount && (b.ToAmount == null || income <= b.ToAmount))?.FixedTax ?? 0);
+    }
+
+    #endregion
+
+    #region Leave & Attendance
+
+    public bool CreateLeaveRequest(LeaveRequestRequest request, out LeaveRequest? lr, out string? error)
+    {
+        lock (_lock)
+        {
+            lr = null; error = null;
+            var emp = _employees.FirstOrDefault(e => e.Id == request.EmployeeId);
+            if (emp == null) { error = "Employee not found."; return false; }
+            if (request.EndDate < request.StartDate) { error = "End date must be on or after start date."; return false; }
+            var totalDays = (request.EndDate.DayNumber - request.StartDate.DayNumber) + 1;
+            lr = new LeaveRequest
+            {
+                EmployeeId = request.EmployeeId, LeaveType = request.LeaveType,
+                StartDate = request.StartDate, EndDate = request.EndDate,
+                TotalDays = totalDays, Reason = request.Reason ?? "",
+                Status = LeaveStatus.Pending, CompanyId = request.CompanyId
+            };
+            _leaveRequests.Add(lr);
+            Persist(); return true;
+        }
+    }
+
+    public bool ActionLeaveRequest(Guid id, LeaveRequestActionRequest action, out LeaveRequest? lr, out string? error)
+    {
+        lock (_lock)
+        {
+            lr = _leaveRequests.FirstOrDefault(l => l.Id == id); error = null;
+            if (lr == null) { error = "Leave request not found."; return false; }
+            lr.Status = action.Status;
+            lr.ApproverComments = action.ApproverComments ?? "";
+            lr.ApprovedAt = DateTime.UtcNow;
+            Persist(); return true;
+        }
+    }
+
+    public bool RecordAttendance(AttendanceRecordRequest request, out AttendanceRecord? rec, out string? error)
+    {
+        lock (_lock)
+        {
+            rec = null; error = null;
+            var emp = _employees.FirstOrDefault(e => e.Id == request.EmployeeId);
+            if (emp == null) { error = "Employee not found."; return false; }
+            rec = new AttendanceRecord
+            {
+                EmployeeId = request.EmployeeId, Date = request.Date,
+                ClockIn = request.ClockIn, ClockOut = request.ClockOut,
+                BreakStart = request.BreakStart, BreakEnd = request.BreakEnd,
+                Status = request.Status ?? "Present",
+                Notes = request.Notes, CompanyId = request.CompanyId
+            };
+            _attendanceRecords.Add(rec);
+            Persist(); return true;
+        }
+    }
+
+    #endregion
+
+    #region Loans & Advances
+
+    public bool CreateLoanAdvance(LoanAdvanceRequest request, out LoanAdvance? loan, out string? error)
+    {
+        lock (_lock)
+        {
+            loan = null; error = null;
+            var emp = _employees.FirstOrDefault(e => e.Id == request.EmployeeId);
+            if (emp == null) { error = "Employee not found."; return false; }
+            if (request.PrincipalAmount <= 0) { error = "Principal amount must be positive."; return false; }
+            loan = new LoanAdvance
+            {
+                EmployeeId = request.EmployeeId, LoanNumber = request.LoanNumber.Trim(),
+                LoanType = request.LoanType, PrincipalAmount = request.PrincipalAmount,
+                InterestRate = request.InterestRate, TotalInstallments = request.TotalInstallments,
+                InstallmentAmount = request.InstallmentAmount, StartDate = request.StartDate,
+                EndDate = request.EndDate, CompanyId = request.CompanyId
+            };
+            _loanAdvances.Add(loan);
+            Persist(); return true;
+        }
+    }
+
+    public bool RecordLoanRepayment(Guid id, out LoanAdvance? loan, out string? error)
+    {
+        lock (_lock)
+        {
+            loan = _loanAdvances.FirstOrDefault(l => l.Id == id); error = null;
+            if (loan == null) { error = "Loan not found."; return false; }
+            if (loan.PaidInstallments >= loan.TotalInstallments) { error = "Loan already fully repaid."; return false; }
+            loan.PaidInstallments++;
+            if (loan.PaidInstallments >= loan.TotalInstallments) { loan.Status = "Completed"; loan.EndDate = DateOnly.FromDateTime(DateTime.Today); }
+            Persist(); return true;
+        }
+    }
+
+    #endregion
+
+    #region Payrun Processing
+
+    public string NextPayrunNumber()
+    {
+        var numbers = _payruns.Select(p => p.PayrunNumber)
+            .Where(n => n.StartsWith("PR-") && int.TryParse(n[3..], out _))
+            .Select(n => int.Parse(n[3..]))
+            .DefaultIfEmpty(0);
+        return $"PR-{(numbers.Max() + 1):D5}";
+    }
+
+    public string NextSlipNumber()
+    {
+        var numbers = _salarySlips.Select(s => s.SlipNumber)
+            .Where(n => n.StartsWith("SLIP-") && int.TryParse(n[5..], out _))
+            .Select(n => int.Parse(n[5..]))
+            .DefaultIfEmpty(0);
+        return $"SLIP-{(numbers.Max() + 1):D6}";
+    }
+
+    public bool CalculateAndProcessPayrun(CalculatePayrunRequest request, bool autoPost, out Payrun? payrun, out List<SalarySlip> slips, out string? error)
+    {
+        lock (_lock)
+        {
+            payrun = null; slips = []; error = null;
+
+            var employees = request.EmployeeIds != null && request.EmployeeIds.Count > 0
+                ? _employees.Where(e => request.EmployeeIds.Contains(e.Id) && e.Status == EmployeeStatus.Active).ToList()
+                : _employees.Where(e => e.Status == EmployeeStatus.Active && (request.CompanyId == null || e.CompanyId == request.CompanyId)).ToList();
+
+            if (employees.Count == 0) { error = "No active employees found for this payrun."; return false; }
+
+            payrun = new Payrun
+            {
+                PayrunNumber = NextPayrunNumber(), Frequency = request.Frequency,
+                PeriodStart = request.PeriodStart, PeriodEnd = request.PeriodEnd,
+                PayDate = request.PayDate, Status = PayrunStatus.Calculated, CompanyId = request.CompanyId
+            };
+
+            int periodsInYear = request.Frequency switch
+            {
+                PayFrequency.Weekly => 52,
+                PayFrequency.BiWeekly => 26,
+                PayFrequency.SemiMonthly => 24,
+                _ => 12
+            };
+
+            decimal totalGrossAll = 0, totalDeductionsAll = 0, totalEmployerAll = 0;
+
+            foreach (var emp in employees)
+            {
+                var pe = new PayrunEmployee
+                {
+                    PayrunId = payrun.Id, EmployeeId = emp.Id, BasicSalary = emp.BasicSalary,
+                    Currency = emp.Currency, Status = PayrunStatus.Calculated
+                };
+
+                decimal basic = emp.BasicSalary;
+                decimal grossEarnings = basic;
+                decimal totalDeductions = 0;
+                decimal totalEmployerContrib = 0;
+
+                var empLines = new List<PayrunLine>();
+
+                // ── Earnings from active pay components (non-statutory, non-employer) ──
+                var earningComponents = _payComponents
+                    .Where(c => c.Country == emp.Country && c.Type == PayComponentType.Earning && !c.IsStatutory && c.IsActive)
+                    .OrderBy(c => c.DisplayOrder);
+
+                foreach (var comp in earningComponents)
+                {
+                    decimal amount = comp.FixedAmount ?? 0;
+                    if (comp.PercentageOf.HasValue && comp.PercentageBase == "Basic")
+                        amount = basic * comp.PercentageOf.Value / 100m;
+
+                    if (amount > 0)
+                    {
+                        grossEarnings += amount;
+                        empLines.Add(new PayrunLine { PayrunEmployeeId = pe.Id, PayComponentId = comp.Id, Category = comp.Category, Amount = amount, Notes = comp.Name });
+                    }
+                }
+
+                decimal annualGross = grossEarnings * periodsInYear;
+
+                // ── Country-Specific Statutory Deductions ────────────────────────────
+                switch (emp.Country)
+                {
+                    case PayrollCountry.US:
+                        {
+                            decimal fedTax = CalculateIncomeTax(PayrollCountry.US, request.TaxYear, annualGross, emp.TaxFilingStatus) / periodsInYear;
+                            var fedComp = _payComponents.FirstOrDefault(c => c.Code == "FED_TAX");
+                            if (fedComp != null && fedTax > 0) { totalDeductions += fedTax; empLines.Add(new PayrunLine { PayrunEmployeeId = pe.Id, PayComponentId = fedComp.Id, Category = fedComp.Category, Amount = Math.Round(fedTax, 2), Notes = "Federal Income Tax" }); }
+
+                            decimal ficaSS = Math.Min(annualGross, 176100) * 0.062m / periodsInYear;
+                            var ssComp = _payComponents.FirstOrDefault(c => c.Code == "FICA_SS");
+                            if (ssComp != null && ficaSS > 0) { totalDeductions += ficaSS; empLines.Add(new PayrunLine { PayrunEmployeeId = pe.Id, PayComponentId = ssComp.Id, Category = ssComp.Category, Amount = Math.Round(ficaSS, 2), Notes = "FICA Social Security" }); }
+
+                            decimal ficaMed = annualGross * 0.0145m / periodsInYear;
+                            var medComp = _payComponents.FirstOrDefault(c => c.Code == "FICA_MED");
+                            if (medComp != null && ficaMed > 0) { totalDeductions += ficaMed; empLines.Add(new PayrunLine { PayrunEmployeeId = pe.Id, PayComponentId = medComp.Id, Category = medComp.Category, Amount = Math.Round(ficaMed, 2), Notes = "FICA Medicare" }); }
+
+                            totalEmployerContrib += ficaSS + ficaMed;
+                        }
+                        break;
+
+                    case PayrollCountry.CA:
+                        {
+                            decimal fedTax = CalculateIncomeTax(PayrollCountry.CA, request.TaxYear, annualGross, emp.TaxFilingStatus) / periodsInYear;
+                            var fedComp = _payComponents.FirstOrDefault(c => c.Code == "CA_FED");
+                            if (fedComp != null && fedTax > 0) { totalDeductions += fedTax; empLines.Add(new PayrunLine { PayrunEmployeeId = pe.Id, PayComponentId = fedComp.Id, Category = fedComp.Category, Amount = Math.Round(fedTax, 2), Notes = "Federal Tax (CA)" }); }
+
+                            decimal cpp = Math.Min(annualGross, 73200) * 0.0595m / periodsInYear;
+                            var cppComp = _payComponents.FirstOrDefault(c => c.Code == "CA_CPP");
+                            if (cppComp != null && cpp > 0) { totalDeductions += cpp; empLines.Add(new PayrunLine { PayrunEmployeeId = pe.Id, PayComponentId = cppComp.Id, Category = cppComp.Category, Amount = Math.Round(cpp, 2), Notes = "CPP" }); }
+
+                            decimal ei = Math.Min(annualGross, 68500) * 0.0166m / periodsInYear;
+                            var eiComp = _payComponents.FirstOrDefault(c => c.Code == "CA_EI");
+                            if (eiComp != null && ei > 0) { totalDeductions += ei; empLines.Add(new PayrunLine { PayrunEmployeeId = pe.Id, PayComponentId = eiComp.Id, Category = eiComp.Category, Amount = Math.Round(ei, 2), Notes = "EI" }); }
+
+                            totalEmployerContrib += cpp * 1.4m + ei * 1.4m;
+                        }
+                        break;
+
+                    case PayrollCountry.UK:
+                        {
+                            decimal payeTax = CalculateIncomeTax(PayrollCountry.UK, request.TaxYear, annualGross, emp.TaxFilingStatus) / periodsInYear;
+                            var payeComp = _payComponents.FirstOrDefault(c => c.Code == "UK_PAYE");
+                            if (payeComp != null && payeTax > 0) { totalDeductions += payeTax; empLines.Add(new PayrunLine { PayrunEmployeeId = pe.Id, PayComponentId = payeComp.Id, Category = payeComp.Category, Amount = Math.Round(payeTax, 2), Notes = "PAYE" }); }
+
+                            decimal ni = Math.Min(annualGross, 50270) * 0.08m / periodsInYear;
+                            var niComp = _payComponents.FirstOrDefault(c => c.Code == "UK_NI");
+                            if (niComp != null && ni > 0) { totalDeductions += ni; empLines.Add(new PayrunLine { PayrunEmployeeId = pe.Id, PayComponentId = niComp.Id, Category = niComp.Category, Amount = Math.Round(ni, 2), Notes = "National Insurance" }); }
+
+                            totalEmployerContrib += ni * 1.38m;
+                        }
+                        break;
+
+                    case PayrollCountry.DE:
+                        {
+                            decimal lstTax = CalculateIncomeTax(PayrollCountry.DE, request.TaxYear, annualGross, emp.TaxFilingStatus) / periodsInYear;
+                            var lstComp = _payComponents.FirstOrDefault(c => c.Code == "DE_LST");
+                            if (lstComp != null && lstTax > 0) { totalDeductions += lstTax; empLines.Add(new PayrunLine { PayrunEmployeeId = pe.Id, PayComponentId = lstComp.Id, Category = lstComp.Category, Amount = Math.Round(lstTax, 2), Notes = "Lohnsteuer" }); }
+
+                            decimal soli = lstTax > 18130 ? lstTax * 0.055m : 0;
+                            var soliComp = _payComponents.FirstOrDefault(c => c.Code == "DE_SOLI");
+                            if (soliComp != null && soli > 0) { totalDeductions += soli; empLines.Add(new PayrunLine { PayrunEmployeeId = pe.Id, PayComponentId = soliComp.Id, Category = soliComp.Category, Amount = Math.Round(soli, 2), Notes = "Solidaritaetszuschlag" }); }
+
+                            decimal rv = annualGross * 0.093m / 2 / periodsInYear;
+                            var rvComp = _payComponents.FirstOrDefault(c => c.Code == "DE_RV");
+                            if (rvComp != null && rv > 0) { totalDeductions += rv; empLines.Add(new PayrunLine { PayrunEmployeeId = pe.Id, PayComponentId = rvComp.Id, Category = rvComp.Category, Amount = Math.Round(rv, 2), Notes = "Rentenversicherung" }); }
+
+                            decimal kv = annualGross * 0.073m / 2 / periodsInYear;
+                            var kvComp = _payComponents.FirstOrDefault(c => c.Code == "DE_KV");
+                            if (kvComp != null && kv > 0) { totalDeductions += kv; empLines.Add(new PayrunLine { PayrunEmployeeId = pe.Id, PayComponentId = kvComp.Id, Category = kvComp.Category, Amount = Math.Round(kv, 2), Notes = "Krankenversicherung" }); }
+
+                            decimal pv = annualGross * 0.022m / 2 / periodsInYear;
+                            var pvComp = _payComponents.FirstOrDefault(c => c.Code == "DE_PV");
+                            if (pvComp != null && pv > 0) { totalDeductions += pv; empLines.Add(new PayrunLine { PayrunEmployeeId = pe.Id, PayComponentId = pvComp.Id, Category = pvComp.Category, Amount = Math.Round(pv, 2), Notes = "Pflegeversicherung" }); }
+
+                            decimal av = annualGross * 0.013m / 2 / periodsInYear;
+                            var avComp = _payComponents.FirstOrDefault(c => c.Code == "DE_AV");
+                            if (avComp != null && av > 0) { totalDeductions += av; empLines.Add(new PayrunLine { PayrunEmployeeId = pe.Id, PayComponentId = avComp.Id, Category = avComp.Category, Amount = Math.Round(av, 2), Notes = "Arbeitslosenversicherung" }); }
+
+                            totalEmployerContrib += rv + kv + pv + av;
+                        }
+                        break;
+
+                    case PayrollCountry.PK:
+                        {
+                            decimal pkTax = CalculateIncomeTax(PayrollCountry.PK, request.TaxYear, annualGross, emp.TaxFilingStatus) / periodsInYear;
+                            var pkTaxComp = _payComponents.FirstOrDefault(c => c.Code == "PK_IT");
+                            if (pkTaxComp != null && pkTax > 0) { totalDeductions += pkTax; empLines.Add(new PayrunLine { PayrunEmployeeId = pe.Id, PayComponentId = pkTaxComp.Id, Category = pkTaxComp.Category, Amount = Math.Round(pkTax, 2), Notes = "Income Tax on Salary" }); }
+
+                            decimal eobi = Math.Min(annualGross, 25000) * 0.01m / periodsInYear;
+                            var eobiComp = _payComponents.FirstOrDefault(c => c.Code == "PK_EOBI");
+                            if (eobiComp != null && eobi > 0) { totalDeductions += eobi; empLines.Add(new PayrunLine { PayrunEmployeeId = pe.Id, PayComponentId = eobiComp.Id, Category = eobiComp.Category, Amount = Math.Round(eobi, 2), Notes = "EOBI" }); }
+
+                            totalEmployerContrib += eobi;
+                        }
+                        break;
+
+                    case PayrollCountry.SA:
+                        {
+                            decimal gosiEmp = annualGross * 0.0975m / periodsInYear;
+                            var gosiComp = _payComponents.FirstOrDefault(c => c.Code == "SA_GOSI_S");
+                            if (gosiComp != null && gosiEmp > 0) { totalDeductions += gosiEmp; empLines.Add(new PayrunLine { PayrunEmployeeId = pe.Id, PayComponentId = gosiComp.Id, Category = gosiComp.Category, Amount = Math.Round(gosiEmp, 2), Notes = "GOSI Employee (9.75%)" }); }
+
+                            decimal gosiEmr = annualGross * 0.1175m / periodsInYear;
+                            totalEmployerContrib += gosiEmr;
+                        }
+                        break;
+
+                    case PayrollCountry.AE:
+                        {
+                            // UAE: No income tax. GPSSA for UAE nationals only.
+                            // For expats: 0% employee deduction.
+                            // Gratuity provision for all (accrual basis):
+                            decimal gratuityProvision = basic * 0.0833m / 12;
+                            totalEmployerContrib += gratuityProvision;
+                        }
+                        break;
+
+                    default:
+                        break;
+                }
+
+                decimal netPay = grossEarnings - totalDeductions;
+
+                pe.GrossEarnings = Math.Round(grossEarnings, 2);
+                pe.TotalDeductions = Math.Round(totalDeductions, 2);
+                pe.NetPay = Math.Round(netPay, 2);
+                pe.EmployerContributions = Math.Round(totalEmployerContrib, 2);
+
+                totalGrossAll += grossEarnings;
+                totalDeductionsAll += totalDeductions;
+                totalEmployerAll += totalEmployerContrib;
+
+                _payrunEmployees.Add(pe);
+                _payrunLines.AddRange(empLines);
+
+                // ── Generate Salary Slip ───────────────────────────────────────────
+                var empDept = _departments.FirstOrDefault(d => d.Id == emp.DepartmentId);
+                var empPos = _positions.FirstOrDefault(p => p.Id == emp.PositionId);
+                var slip = new SalarySlip
+                {
+                    PayrunEmployeeId = pe.Id, SlipNumber = NextSlipNumber(),
+                    PeriodStart = request.PeriodStart, PeriodEnd = request.PeriodEnd, PayDate = request.PayDate,
+                    EmployeeName = $"{emp.FirstName} {emp.LastName}", EmployeeNumber = emp.EmployeeNumber,
+                    Department = empDept?.Name ?? "", Position = empPos?.Name ?? "",
+                    BankName = emp.BankName, BankAccountLast4 = emp.BankAccountNumber.Length >= 4 ? emp.BankAccountNumber[^4..] : emp.BankAccountNumber,
+                    BasicSalary = Math.Round(basic, 2), GrossEarnings = Math.Round(grossEarnings, 2),
+                    TotalDeductions = Math.Round(totalDeductions, 2), NetPay = Math.Round(netPay, 2),
+                    EmployerContributions = Math.Round(totalEmployerContrib, 2), Currency = emp.Currency,
+                    PayFrequency = request.Frequency.ToString(),
+                    Earnings = empLines.Where(l => _payComponents.FirstOrDefault(c => c.Id == l.PayComponentId)?.Type == PayComponentType.Earning)
+                        .Select(l => new SalarySlipLine { Code = _payComponents.First(c => c.Id == l.PayComponentId).Code, Name = l.Notes ?? "", Amount = l.Amount, Category = l.Category.ToString(), IsStatutory = false }).ToList(),
+                    Deductions = empLines.Where(l => _payComponents.FirstOrDefault(c => c.Id == l.PayComponentId)?.Type == PayComponentType.Deduction)
+                        .Select(l => new SalarySlipLine { Code = _payComponents.First(c => c.Id == l.PayComponentId).Code, Name = l.Notes ?? "", Amount = l.Amount, Category = l.Category.ToString(), IsStatutory = true }).ToList(),
+                    EmployerContribs = [],
+                };
+                _salarySlips.Add(slip);
+                slips.Add(slip);
+            }
+
+            _payruns.Add(payrun);
+
+            // ── GL Posting if autoPost ───────────────────────────────────────────
+            if (autoPost && totalGrossAll > 0)
+            {
+                var salaryExpAccountId = GetMappedAccount("Payroll Expense") != Guid.Empty ? GetMappedAccount("Payroll Expense") : _accounts.FirstOrDefault(a => a.Code == "61200")?.Id ?? Guid.Empty;
+                var accruedSalAccountId = _accounts.FirstOrDefault(a => a.Code == "21300")?.Id ?? Guid.Empty;
+                var taxPayableAccountId = _accounts.FirstOrDefault(a => a.Code == "21400")?.Id ?? Guid.Empty;
+                var cashAccountId = GetDefaultDepositAccount();
+
+                var grossDr = totalGrossAll + totalEmployerAll;
+                var netPayCredit = totalGrossAll - totalDeductionsAll;
+                var taxCredit = totalDeductionsAll;
+                var employerCredit = totalEmployerAll;
+
+                var je = new JournalEntry
+                {
+                    Date = DateOnly.FromDateTime(DateTime.Today),
+                    Reference = $"PAYRUN-{payrun.PayrunNumber}",
+                    Description = $"Payroll: {payrun.PayrunNumber} | {request.PeriodStart:yyyy-MM-dd} to {request.PeriodEnd:yyyy-MM-dd} | {employees.Count} employees",
+                    TransactionType = TransactionType.Payroll,
+                    CompanyId = payrun.CompanyId,
+                    Status = JournalStatus.Posted,
+                    Lines = new List<JournalLine>
+                    {
+                        new JournalLine(salaryExpAccountId, grossDr, 0, $"Payroll expense: {payrun.PayrunNumber}", null, "USD", 1, payrun.CompanyId),
+                        new JournalLine(cashAccountId, 0, netPayCredit, $"Net pay disbursed: {payrun.PayrunNumber}", null, "USD", 1, payrun.CompanyId),
+                        new JournalLine(taxPayableAccountId, 0, taxCredit, $"Statutory withholdings payable: {payrun.PayrunNumber}", null, "USD", 1, payrun.CompanyId),
+                        new JournalLine(accruedSalAccountId, 0, employerCredit, $"Employer contributions payable: {payrun.PayrunNumber}", null, "USD", 1, payrun.CompanyId),
+                    }
+                };
+
+                _entries.Add(je);
+                payrun.JournalEntryId = je.Id;
+                payrun.PostedAt = DateTime.UtcNow;
+                payrun.Status = PayrunStatus.Posted;
+            }
+
+            Persist();
+            return true;
+        }
+    }
+
+    public List<SalarySlip> GetSalarySlips(Guid? payrunId = null, Guid? employeeId = null, Guid? companyId = null)
+    {
+        var query = _salarySlips.AsEnumerable();
+        if (payrunId.HasValue)
+        {
+            var empIds = _payrunEmployees.Where(pe => pe.PayrunId == payrunId.Value).Select(pe => pe.Id).ToHashSet();
+            query = query.Where(s => empIds.Contains(s.PayrunEmployeeId));
+        }
+        if (employeeId.HasValue)
+        {
+            var empIds = _payrunEmployees.Where(pe => pe.EmployeeId == employeeId.Value).Select(pe => pe.Id).ToHashSet();
+            query = query.Where(s => empIds.Contains(s.PayrunEmployeeId));
+        }
+        return query.OrderByDescending(s => s.GeneratedAt).ToList();
+    }
+
+    public SalarySlip? GetSalarySlipById(Guid id) => _salarySlips.FirstOrDefault(s => s.Id == id);
+
+    #endregion
 }
