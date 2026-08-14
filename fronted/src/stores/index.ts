@@ -16,3 +16,4 @@ export * from './useManufacturingStore';
 export * from './useSalesOrdersStore';
 export * from './useExpenseClaimsStore';
 export * from './usePayrollStore';
+export * from './useProjectsStore';

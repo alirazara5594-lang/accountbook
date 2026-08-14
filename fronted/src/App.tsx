@@ -35,6 +35,8 @@ import LeaveManagement from './LeaveManagement';
 import PayrollProcessing from './PayrollProcessing';
 import SalarySlipsView from './SalarySlipsView';
 import LoansAdvancesView from './LoansAdvancesView';
+import HRReportsView from './HRReportsView';
+import ProjectsWorkspace from './ProjectsWorkspace';
 
 import { SystemAccountMapping } from './components/SystemAccountMapping'
 import { ModuleSummary } from './ModuleSummary'
@@ -266,10 +268,20 @@ export default function App() {
     'Payroll & HR.Payroll': 'payroll-processing',
     'Payroll & HR.Salary': 'payroll-salary',
     'Payroll & HR.Loans & Advances': 'payroll-loans',
-    'Payroll & HR.HR Reports': 'module-summary',
+    'Payroll & HR.HR Reports': 'payroll-reports',
     'Survey & Field Operations.Summary': 'module-summary',
     'Government Compliance.Summary': 'module-summary',
-    'Projects.Summary': 'module-summary',
+    'Projects.Summary': 'projects',
+    'Projects.Projects': 'projects',
+    'Projects.Project Planning': 'projects',
+    'Projects.Tasks': 'projects',
+    'Projects.Project Budget': 'projects',
+    'Projects.Project Costing': 'projects',
+    'Projects.Timesheets': 'projects',
+    'Projects.Project Billing': 'projects',
+    'Projects.Project Expenses': 'projects',
+    'Projects.Project Profitability': 'projects',
+    'Projects.Reports': 'projects',
     'AI & Analytics.Summary': 'module-summary',
     'Administration.Summary': 'module-summary',
     'Administration.System Settings': 'settings',
@@ -365,6 +377,8 @@ export default function App() {
   {activeView === 'payroll-processing' && <PayrollProcessing />}
   {activeView === 'payroll-salary' && <SalarySlipsView />}
   {activeView === 'payroll-loans' && <LoansAdvancesView />}
+  {activeView === 'payroll-reports' && <HRReportsView />}
+  {activeView === 'projects' && <ProjectsWorkspace activeEntityId={activeEntityId} />}
   {activeView === 'bills' && <VendorBills activeEntityId={activeEntityId} />}
   {activeView === 'vendor-statements' && <VendorStatementsWorkspace activeEntityId={activeEntityId} />}
   {activeView === 'payables-aging' && <PayablesAgingWorkspace activeEntityId={activeEntityId} />}

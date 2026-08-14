@@ -61,6 +61,15 @@ private readonly List<Voucher> _vouchers = [];
     private readonly List<LoanAdvance> _loanAdvances = [];
     private readonly List<SalaryTaxSlab> _taxSlabs = [];
     private readonly List<EmployeeCompensation> _employeeCompensations = [];
+    private readonly List<Project> _projects = [];
+    private readonly List<ProjectPhase> _projectPhases = [];
+    private readonly List<ProjectTask> _projectTasks = [];
+    private readonly List<TimesheetEntry> _timesheets = [];
+    private readonly List<ProjectExpense> _projectExpenses = [];
+    private readonly List<TaxObligation> _taxObligations = [];
+    private readonly List<TaxReturn> _taxReturns = [];
+    private readonly List<WithholdingCertificate> _withholdingCertificates = [];
+    private readonly List<EInvoice> _eInvoices = [];
     private readonly List<AccountMapping> _mappings = [];
     private readonly List<AuditItem> _auditLog = [];
     private readonly Dictionary<Guid, List<AuditItem>> _history = [];
@@ -120,6 +129,15 @@ List<ExpenseClaim>? ExpenseClaims = null,
         List<LoanAdvance>? LoanAdvances = null,
         List<SalaryTaxSlab>? TaxSlabs = null,
         List<EmployeeCompensation>? EmployeeCompensations = null,
+        List<Project>? Projects = null,
+        List<ProjectPhase>? ProjectPhases = null,
+        List<ProjectTask>? ProjectTasks = null,
+        List<TimesheetEntry>? Timesheets = null,
+        List<ProjectExpense>? ProjectExpenses = null,
+        List<TaxObligation>? TaxObligations = null,
+        List<TaxReturn>? TaxReturns = null,
+        List<WithholdingCertificate>? WithholdingCertificates = null,
+        List<EInvoice>? EInvoices = null,
         List<AuditItem>? AuditLog = null);
 
     public AccountingStore(IDbContextFactory<AccountingDbContext>? dbFactory = null)
@@ -197,6 +215,8 @@ List<ExpenseClaim>? ExpenseClaims = null,
         _warehouses.Add(defaultWarehouse);
 
         SeedPayrollData();
+        SeedProjectsData();
+        SeedComplianceData();
         Persist();
     }
 
@@ -337,12 +357,27 @@ public IReadOnlyList<ExpenseClaim> ExpenseClaims => _expenseClaims;
     public IReadOnlyList<Holiday> Holidays => _holidays;
     public IReadOnlyList<LoanAdvance> LoanAdvances => _loanAdvances;
     public IReadOnlyList<SalaryTaxSlab> TaxSlabs => _taxSlabs;
-    public IReadOnlyList<EmployeeCompensation> EmployeeCompensations => _employeeCompensations;
+public IReadOnlyList<EmployeeCompensation> EmployeeCompensations => _employeeCompensations;
+    public IReadOnlyList<Project> Projects => _projects;
+    public IReadOnlyList<ProjectPhase> ProjectPhases => _projectPhases;
+    public IReadOnlyList<ProjectTask> ProjectTasks => _projectTasks;
+    public IReadOnlyList<TimesheetEntry> Timesheets => _timesheets;
+    public IReadOnlyList<ProjectExpense> ProjectExpenses => _projectExpenses;
+    public IReadOnlyList<TaxObligation> TaxObligations => _taxObligations;
+    public IReadOnlyList<TaxReturn> TaxReturns => _taxReturns;
+    public IReadOnlyList<WithholdingCertificate> WithholdingCertificates => _withholdingCertificates;
+    public IReadOnlyList<EInvoice> EInvoices => _eInvoices;
 
     public string NextReceiptNumber()
     {
         var numbers = _customerPayments.Select(p => p.ReceiptNumber).Where(n => n.StartsWith("REC-") && int.TryParse(n[4..], out _)).Select(n => int.Parse(n[4..])).DefaultIfEmpty(0);
         return $"REC-{(numbers.Max() + 1):D4}";
+    }
+
+    public string NextProjectNumber()
+    {
+        var numbers = _projects.Select(p => p.ProjectNumber).Where(n => n.StartsWith("PRJ-") && int.TryParse(n[4..], out _)).Select(n => int.Parse(n[4..])).DefaultIfEmpty(0);
+        return $"PRJ-{(numbers.Max() + 1):D4}";
     }
 
     public bool CreateCustomerPayment(CustomerPaymentRequest request, out CustomerPayment? payment, out string? error)
@@ -3375,6 +3410,15 @@ _bankImports.Clear(); _bankImports.AddRange(state.BankImports ?? []);
         _salarySlips.Clear(); _salarySlips.AddRange(state.SalarySlips ?? []);
         _holidays.Clear(); _holidays.AddRange(state.Holidays ?? []);
         _loanAdvances.Clear(); _loanAdvances.AddRange(state.LoanAdvances ?? []);
+        _projects.Clear(); _projects.AddRange(state.Projects ?? []);
+        _projectPhases.Clear(); _projectPhases.AddRange(state.ProjectPhases ?? []);
+        _projectTasks.Clear(); _projectTasks.AddRange(state.ProjectTasks ?? []);
+        _timesheets.Clear(); _timesheets.AddRange(state.Timesheets ?? []);
+        _projectExpenses.Clear(); _projectExpenses.AddRange(state.ProjectExpenses ?? []);
+        _taxObligations.Clear(); _taxObligations.AddRange(state.TaxObligations ?? []);
+        _taxReturns.Clear(); _taxReturns.AddRange(state.TaxReturns ?? []);
+        _withholdingCertificates.Clear(); _withholdingCertificates.AddRange(state.WithholdingCertificates ?? []);
+        _eInvoices.Clear(); _eInvoices.AddRange(state.EInvoices ?? []);
         _auditLog.Clear(); _auditLog.AddRange(state.AuditLog ?? []);
         _mappings.Clear(); _mappings.AddRange(state.Mappings ?? []);
         if (state.History != null)
@@ -3389,7 +3433,7 @@ _bankImports.Clear(); _bankImports.AddRange(state.BankImports ?? []);
     {
         if (_dbFactory is null) return;
         using var db = _dbFactory.CreateDbContext();
-        var json = JsonSerializer.Serialize(new StoredState(_accounts, _entries, _history, _templates, _recurringEntries, _journalEvents, _intercompanyAllocations, _companies, _customers, _products, _vendors, _purchaseOrders, _grns, _fixedAssets, _taxAuthorities, _taxCodes, _taxRates, _warehouses, _stockLevels, _stockTransactions, _salesInvoices, _estimates, _boms, _workOrders, _mappings, _salesOrders, _creditNotes, _customerPayments, _vendorPayments, _fundTransfers, _reconciliations, _budgets, _periodCloses, _vouchers, _expenseClaims, _bankImports, _payComponents, _employees, _departments, _positions, _payGrades, _leaveBalances, _leaveRequests, _attendanceRecords, _payruns, _payrunEmployees, _payrunLines, _salarySlips, _holidays, _loanAdvances, _taxSlabs, _employeeCompensations, _auditLog));
+        var json = JsonSerializer.Serialize(new StoredState(_accounts, _entries, _history, _templates, _recurringEntries, _journalEvents, _intercompanyAllocations, _companies, _customers, _products, _vendors, _purchaseOrders, _grns, _fixedAssets, _taxAuthorities, _taxCodes, _taxRates, _warehouses, _stockLevels, _stockTransactions, _salesInvoices, _estimates, _boms, _workOrders, _mappings, _salesOrders, _creditNotes, _customerPayments, _vendorPayments, _fundTransfers, _reconciliations, _budgets, _periodCloses, _vouchers, _expenseClaims, _bankImports, _payComponents, _employees, _departments, _positions, _payGrades, _leaveBalances, _leaveRequests, _attendanceRecords, _payruns, _payrunEmployees, _payrunLines, _salarySlips, _holidays, _loanAdvances, _taxSlabs, _employeeCompensations, _projects, _projectPhases, _projectTasks, _timesheets, _projectExpenses, _taxObligations, _taxReturns, _withholdingCertificates, _eInvoices, _auditLog));
         var snapshot = db.AccountingStateSnapshots.Find(1);
         if (snapshot is null) db.AccountingStateSnapshots.Add(new AccountingStateSnapshot { Id = 1, Json = json, UpdatedAt = DateTime.UtcNow });
         else { snapshot.Json = json; snapshot.UpdatedAt = DateTime.UtcNow; }
@@ -3692,6 +3736,122 @@ _bankImports.Clear(); _bankImports.AddRange(state.BankImports ?? []);
     // ═══════════════════════════════════════════════════════════════════════════════
 
     #region Seed Payroll Data
+
+    private void SeedProjectsData()
+    {
+        var companyId = _companies.FirstOrDefault()?.Id;
+        var engDept = _departments.FirstOrDefault(d => d.Code == "ENG")?.Id;
+        var finDept = _departments.FirstOrDefault(d => d.Code == "FIN")?.Id;
+        var opsDept = _departments.FirstOrDefault(d => d.Code == "OPS")?.Id;
+        var manager = _employees.FirstOrDefault(e => e.DepartmentId == engDept)?.Id;
+        var financeManager = _employees.FirstOrDefault(e => e.DepartmentId == finDept)?.Id;
+        var engineer2 = _employees.Skip(1).FirstOrDefault(e => e.DepartmentId == engDept)?.Id;
+
+        var p1 = new Project
+        {
+            ProjectNumber = NextProjectNumber(),
+            Name = "ERP Cloud Migration",
+            Description = "Migrate on-premise ERP to multi-tenant cloud infrastructure with zero downtime.",
+            Status = ProjectStatus.Active,
+            StartDate = new DateOnly(2026, 1, 15),
+            EndDate = new DateOnly(2026, 9, 30),
+            ManagerId = manager,
+            DepartmentId = engDept,
+            CustomerId = null,
+            CustomerName = "Internal",
+            Budget = 250000,
+            Currency = "USD",
+            ProgressPercent = 45,
+            CompanyId = companyId,
+        };
+        _projects.Add(p1);
+
+        var p2 = new Project
+        {
+            ProjectNumber = NextProjectNumber(),
+            Name = "Retail POS Rollout",
+            Description = "Deploy point-of-sale terminals across 120 retail branches nationwide.",
+            Status = ProjectStatus.Active,
+            StartDate = new DateOnly(2026, 3, 1),
+            EndDate = new DateOnly(2026, 12, 31),
+            ManagerId = financeManager,
+            DepartmentId = opsDept,
+            CustomerName = "Acme Retail Group",
+            Budget = 420000,
+            Currency = "USD",
+            ProgressPercent = 20,
+            CompanyId = companyId,
+        };
+        _projects.Add(p2);
+
+        var p3 = new Project
+        {
+            ProjectNumber = NextProjectNumber(),
+            Name = "Financial Dashboard Revamp",
+            Description = "Rebuild executive financial dashboards with real-time analytics and AI insights.",
+            Status = ProjectStatus.Planning,
+            StartDate = new DateOnly(2026, 8, 1),
+            EndDate = new DateOnly(2027, 1, 31),
+            ManagerId = financeManager,
+            DepartmentId = finDept,
+            CustomerName = "Internal",
+            Budget = 120000,
+            Currency = "USD",
+            ProgressPercent = 0,
+            CompanyId = companyId,
+        };
+        _projects.Add(p3);
+
+        // ── Phases ─────────────────────────────────────────────────────────────
+        _projectPhases.AddRange([
+            new ProjectPhase { ProjectId = p1.Id, Name = "Discovery", Description = "Requirements & architecture", OrderIndex = 1 },
+            new ProjectPhase { ProjectId = p1.Id, Name = "Migration", Description = "Data migration & cutover", OrderIndex = 2, Status = ProjectTaskStatus.InProgress },
+            new ProjectPhase { ProjectId = p1.Id, Name = "UAT & Go-Live", Description = "User acceptance & launch", OrderIndex = 3 },
+            new ProjectPhase { ProjectId = p2.Id, Name = "Pilot", Description = "Pilot in 10 stores", OrderIndex = 1, Status = ProjectTaskStatus.InProgress },
+            new ProjectPhase { ProjectId = p2.Id, Name = "Nationwide", Description = "Scale to all branches", OrderIndex = 2 },
+        ]);
+
+        // ── Tasks ──────────────────────────────────────────────────────────────
+        var phaseDiscovery = _projectPhases.First(p => p.Name == "Discovery" && p.ProjectId == p1.Id).Id;
+        var phaseMigration = _projectPhases.First(p => p.Name == "Migration" && p.ProjectId == p1.Id).Id;
+        var phasePilot = _projectPhases.First(p => p.Name == "Pilot" && p.ProjectId == p2.Id).Id;
+
+        _projectTasks.AddRange([
+            new ProjectTask { ProjectId = p1.Id, PhaseId = phaseDiscovery, Title = "Architecture blueprint", Description = "Define target cloud architecture", AssigneeId = manager, Status = ProjectTaskStatus.Completed, Priority = TaskPriority.High, StartDate = new DateOnly(2026, 1, 15), DueDate = new DateOnly(2026, 2, 15), EstimatedHours = 80, ActualHours = 92, CompanyId = companyId },
+            new ProjectTask { ProjectId = p1.Id, PhaseId = phaseMigration, Title = "Database migration scripts", Description = "Write & test ETL scripts", AssigneeId = engineer2, Status = ProjectTaskStatus.InProgress, Priority = TaskPriority.Critical, StartDate = new DateOnly(2026, 2, 16), DueDate = new DateOnly(2026, 5, 1), EstimatedHours = 160, ActualHours = 118, CompanyId = companyId },
+            new ProjectTask { ProjectId = p1.Id, PhaseId = phaseMigration, Title = "Zero-downtime cutover plan", Description = "Plan and rehearse cutover runbook", AssigneeId = manager, Status = ProjectTaskStatus.NotStarted, Priority = TaskPriority.High, StartDate = new DateOnly(2026, 6, 1), DueDate = new DateOnly(2026, 8, 15), EstimatedHours = 60, CompanyId = companyId },
+            new ProjectTask { ProjectId = p2.Id, PhaseId = phasePilot, Title = "POS hardware procurement", Description = "Source terminals for pilot stores", AssigneeId = financeManager, Status = ProjectTaskStatus.InProgress, Priority = TaskPriority.Medium, StartDate = new DateOnly(2026, 3, 1), DueDate = new DateOnly(2026, 4, 15), EstimatedHours = 40, ActualHours = 22, CompanyId = companyId },
+            new ProjectTask { ProjectId = p2.Id, PhaseId = phasePilot, Title = "Branch staff training", Description = "Train cashiers on new POS software", AssigneeId = financeManager, Status = ProjectTaskStatus.Completed, Priority = TaskPriority.Low, StartDate = new DateOnly(2026, 5, 1), DueDate = new DateOnly(2026, 6, 1), EstimatedHours = 120, ActualHours = 130, CompanyId = companyId },
+        ]);
+
+        // ── Timesheets ─────────────────────────────────────────────────────────
+        var today = DateOnly.FromDateTime(DateTime.Today);
+        if (engineer2.HasValue)
+        {
+            _timesheets.AddRange([
+                new TimesheetEntry { ProjectId = p1.Id, TaskId = _projectTasks.First(t => t.Title == "Database migration scripts").Id, EmployeeId = engineer2.Value, Date = today.AddDays(-2), Hours = 8, Description = "ETL script debugging", Billable = false, CompanyId = companyId },
+                new TimesheetEntry { ProjectId = p1.Id, TaskId = _projectTasks.First(t => t.Title == "Database migration scripts").Id, EmployeeId = engineer2.Value, Date = today.AddDays(-1), Hours = 7.5m, Description = "Load testing", Billable = false, CompanyId = companyId },
+                new TimesheetEntry { ProjectId = p2.Id, TaskId = _projectTasks.First(t => t.Title == "Branch staff training").Id, EmployeeId = engineer2.Value, Date = today.AddDays(-3), Hours = 6, Description = "Training material review", Billable = true, BillableRate = 95, CompanyId = companyId },
+            ]);
+        }
+        if (manager.HasValue)
+        {
+            _timesheets.AddRange([
+                new TimesheetEntry { ProjectId = p1.Id, TaskId = _projectTasks.First(t => t.Title == "Architecture blueprint").Id, EmployeeId = manager.Value, Date = today.AddDays(-4), Hours = 4, Description = "Stakeholder workshop", Billable = true, BillableRate = 120, CompanyId = companyId },
+                new TimesheetEntry { ProjectId = p2.Id, TaskId = _projectTasks.First(t => t.Title == "POS hardware procurement").Id, EmployeeId = manager.Value, Date = today.AddDays(-2), Hours = 5, Description = "Vendor negotiation", Billable = true, BillableRate = 120, CompanyId = companyId },
+            ]);
+        }
+
+        // ── Expenses ───────────────────────────────────────────────────────────
+        _projectExpenses.AddRange([
+            new ProjectExpense { ProjectId = p1.Id, Category = "Software", Description = "Cloud infrastructure credits", VendorName = "Cloud Provider", Amount = 15000, Currency = "USD", ExpenseDate = today.AddMonths(-1), Billable = false, CompanyId = companyId },
+            new ProjectExpense { ProjectId = p1.Id, Category = "Travel", Description = "Site visit to data center", VendorName = "Airline", Amount = 2400, Currency = "USD", ExpenseDate = today.AddDays(-20), Billable = false, CompanyId = companyId },
+            new ProjectExpense { ProjectId = p2.Id, Category = "Hardware", Description = "Pilot POS terminal batch", VendorName = "Retail Hardware Co", Amount = 32000, Currency = "USD", ExpenseDate = today.AddDays(-15), Billable = true, CompanyId = companyId },
+            new ProjectExpense { ProjectId = p2.Id, Category = "Consulting", Description = "Installation contractor fees", VendorName = "Field Services LLC", Amount = 8500, Currency = "USD", ExpenseDate = today.AddDays(-10), Billable = true, CompanyId = companyId },
+        ]);
+
+        foreach (var p in _projects) RecalculateProjectProgress(p.Id);
+    }
 
     private void SeedPayrollData()
     {
@@ -4949,6 +5109,392 @@ _bankImports.Clear(); _bankImports.AddRange(state.BankImports ?? []);
     }
 
     public SalarySlip? GetSalarySlipById(Guid id) => _salarySlips.FirstOrDefault(s => s.Id == id);
+
+    #endregion
+
+    #region Projects
+
+    public List<Project> GetProjects(ProjectStatus? status = null, Guid? companyId = null)
+    {
+        var query = _projects.AsEnumerable();
+        if (status.HasValue) query = query.Where(p => p.Status == status.Value);
+        if (companyId.HasValue) query = query.Where(p => p.CompanyId == companyId.Value);
+        return query.OrderByDescending(p => p.CreatedAt).ToList();
+    }
+
+    public Project? GetProjectById(Guid id) => _projects.FirstOrDefault(p => p.Id == id);
+
+    public bool CreateProject(ProjectRequest request, out Project? project, out string? error)
+    {
+        lock (_lock)
+        {
+            project = null; error = null;
+            if (string.IsNullOrWhiteSpace(request.Name)) { error = "Project name is required."; return false; }
+            if (request.Budget < 0) { error = "Budget cannot be negative."; return false; }
+            project = new Project
+            {
+                ProjectNumber = NextProjectNumber(),
+                Name = request.Name.Trim(),
+                Description = request.Description ?? "",
+                Status = request.Status,
+                StartDate = request.StartDate,
+                EndDate = request.EndDate,
+                ManagerId = request.ManagerId,
+                DepartmentId = request.DepartmentId,
+                CustomerId = request.CustomerId,
+                CustomerName = request.CustomerName ?? "",
+                Budget = request.Budget,
+                Currency = string.IsNullOrWhiteSpace(request.Currency) ? "USD" : request.Currency,
+                CompanyId = request.CompanyId,
+            };
+            _projects.Add(project);
+            Persist(); return true;
+        }
+    }
+
+    public bool UpdateProject(Guid id, ProjectRequest request, out Project? project, out string? error)
+    {
+        lock (_lock)
+        {
+            project = null; error = null;
+            var existing = _projects.FirstOrDefault(p => p.Id == id);
+            if (existing == null) { error = "Project not found."; return false; }
+            if (string.IsNullOrWhiteSpace(request.Name)) { error = "Project name is required."; return false; }
+            existing.Name = request.Name.Trim();
+            existing.Description = request.Description ?? "";
+            existing.Status = request.Status;
+            existing.StartDate = request.StartDate;
+            existing.EndDate = request.EndDate;
+            existing.ManagerId = request.ManagerId;
+            existing.DepartmentId = request.DepartmentId;
+            existing.CustomerId = request.CustomerId;
+            existing.CustomerName = request.CustomerName ?? "";
+            existing.Budget = request.Budget;
+            existing.Currency = string.IsNullOrWhiteSpace(request.Currency) ? "USD" : request.Currency;
+            existing.CompanyId = request.CompanyId;
+            existing.UpdatedAt = DateTime.UtcNow;
+            RecalculateProjectProgress(existing.Id);
+            Persist();
+            project = existing; return true;
+        }
+    }
+
+    public bool SetProjectStatus(Guid id, ProjectStatus status, out Project? project, out string? error)
+    {
+        lock (_lock)
+        {
+            project = null; error = null;
+            var existing = _projects.FirstOrDefault(p => p.Id == id);
+            if (existing == null) { error = "Project not found."; return false; }
+            existing.Status = status;
+            existing.UpdatedAt = DateTime.UtcNow;
+            if (status == ProjectStatus.Completed) existing.ProgressPercent = 100;
+            if (status == ProjectStatus.Planning) existing.ProgressPercent = 0;
+            Persist();
+            project = existing; return true;
+        }
+    }
+
+    public bool DeleteProject(Guid id, out string? error)
+    {
+        lock (_lock)
+        {
+            error = null;
+            var existing = _projects.FirstOrDefault(p => p.Id == id);
+            if (existing == null) { error = "Project not found."; return false; }
+            _projects.Remove(existing);
+            _projectPhases.RemoveAll(p => p.ProjectId == id);
+            _projectTasks.RemoveAll(t => t.ProjectId == id);
+            _timesheets.RemoveAll(t => t.ProjectId == id);
+            _projectExpenses.RemoveAll(e => e.ProjectId == id);
+            Persist(); return true;
+        }
+    }
+
+    private void RecalculateProjectProgress(Guid projectId)
+    {
+        var project = _projects.FirstOrDefault(p => p.Id == projectId);
+        if (project == null) return;
+        var tasks = _projectTasks.Where(t => t.ProjectId == projectId).ToList();
+        if (tasks.Count == 0) return;
+        var done = tasks.Count(t => t.Status == ProjectTaskStatus.Completed);
+        project.ProgressPercent = Math.Round((decimal)done / tasks.Count * 100, 1);
+    }
+
+    // ── Phases ───────────────────────────────────────────────────────────────
+    public List<ProjectPhase> GetPhases(Guid? projectId = null)
+    {
+        var query = _projectPhases.AsEnumerable();
+        if (projectId.HasValue) query = query.Where(p => p.ProjectId == projectId.Value);
+        return query.OrderBy(p => p.OrderIndex).ToList();
+    }
+
+    public bool CreatePhase(ProjectPhaseRequest request, out ProjectPhase? phase, out string? error)
+    {
+        lock (_lock)
+        {
+            phase = null; error = null;
+            if (_projects.FirstOrDefault(p => p.Id == request.ProjectId) == null) { error = "Project not found."; return false; }
+            if (string.IsNullOrWhiteSpace(request.Name)) { error = "Phase name is required."; return false; }
+            phase = new ProjectPhase
+            {
+                ProjectId = request.ProjectId,
+                Name = request.Name.Trim(),
+                Description = request.Description ?? "",
+                OrderIndex = request.OrderIndex,
+            };
+            _projectPhases.Add(phase);
+            Persist(); return true;
+        }
+    }
+
+    // ── Tasks ────────────────────────────────────────────────────────────────
+    public List<ProjectTask> GetTasks(Guid? projectId = null, Guid? assigneeId = null, ProjectTaskStatus? status = null)
+    {
+        var query = _projectTasks.AsEnumerable();
+        if (projectId.HasValue) query = query.Where(t => t.ProjectId == projectId.Value);
+        if (assigneeId.HasValue) query = query.Where(t => t.AssigneeId == assigneeId.Value);
+        if (status.HasValue) query = query.Where(t => t.Status == status.Value);
+        return query.OrderByDescending(t => t.CreatedAt).ToList();
+    }
+
+    public bool CreateTask(ProjectTaskRequest request, out ProjectTask? task, out string? error)
+    {
+        lock (_lock)
+        {
+            task = null; error = null;
+            if (_projects.FirstOrDefault(p => p.Id == request.ProjectId) == null) { error = "Project not found."; return false; }
+            if (string.IsNullOrWhiteSpace(request.Title)) { error = "Task title is required."; return false; }
+            task = new ProjectTask
+            {
+                ProjectId = request.ProjectId,
+                PhaseId = request.PhaseId,
+                Title = request.Title.Trim(),
+                Description = request.Description ?? "",
+                AssigneeId = request.AssigneeId,
+                Status = request.Status,
+                Priority = request.Priority,
+                StartDate = request.StartDate,
+                DueDate = request.DueDate,
+                EstimatedHours = request.EstimatedHours,
+                CompanyId = request.CompanyId,
+            };
+            _projectTasks.Add(task);
+            RecalculateProjectProgress(request.ProjectId);
+            Persist(); return true;
+        }
+    }
+
+    public bool UpdateTask(Guid id, ProjectTaskRequest request, out ProjectTask? task, out string? error)
+    {
+        lock (_lock)
+        {
+            task = null; error = null;
+            var existing = _projectTasks.FirstOrDefault(t => t.Id == id);
+            if (existing == null) { error = "Task not found."; return false; }
+            if (string.IsNullOrWhiteSpace(request.Title)) { error = "Task title is required."; return false; }
+            existing.Title = request.Title.Trim();
+            existing.Description = request.Description ?? "";
+            existing.PhaseId = request.PhaseId;
+            existing.AssigneeId = request.AssigneeId;
+            existing.Status = request.Status;
+            existing.Priority = request.Priority;
+            existing.StartDate = request.StartDate;
+            existing.DueDate = request.DueDate;
+            existing.EstimatedHours = request.EstimatedHours;
+            existing.CompanyId = request.CompanyId;
+            existing.UpdatedAt = DateTime.UtcNow;
+            RecalculateProjectProgress(existing.ProjectId);
+            Persist();
+            task = existing; return true;
+        }
+    }
+
+    public bool SetTaskStatus(Guid id, ProjectTaskStatus status, out ProjectTask? task, out string? error)
+    {
+        lock (_lock)
+        {
+            task = null; error = null;
+            var existing = _projectTasks.FirstOrDefault(t => t.Id == id);
+            if (existing == null) { error = "Task not found."; return false; }
+            existing.Status = status;
+            existing.UpdatedAt = DateTime.UtcNow;
+            RecalculateProjectProgress(existing.ProjectId);
+            Persist();
+            task = existing; return true;
+        }
+    }
+
+    public bool DeleteTask(Guid id, out string? error)
+    {
+        lock (_lock)
+        {
+            error = null;
+            var existing = _projectTasks.FirstOrDefault(t => t.Id == id);
+            if (existing == null) { error = "Task not found."; return false; }
+            _projectTasks.Remove(existing);
+            RecalculateProjectProgress(existing.ProjectId);
+            Persist(); return true;
+        }
+    }
+
+    // ── Timesheets ───────────────────────────────────────────────────────────
+    public List<TimesheetEntry> GetTimesheets(Guid? projectId = null, Guid? employeeId = null, bool? approved = null)
+    {
+        var query = _timesheets.AsEnumerable();
+        if (projectId.HasValue) query = query.Where(t => t.ProjectId == projectId.Value);
+        if (employeeId.HasValue) query = query.Where(t => t.EmployeeId == employeeId.Value);
+        if (approved.HasValue) query = query.Where(t => t.Approved == approved.Value);
+        return query.OrderByDescending(t => t.Date).ToList();
+    }
+
+    public bool LogTimesheet(TimesheetRequest request, out TimesheetEntry? entry, out string? error)
+    {
+        lock (_lock)
+        {
+            entry = null; error = null;
+            if (_projects.FirstOrDefault(p => p.Id == request.ProjectId) == null) { error = "Project not found."; return false; }
+            if (_employees.FirstOrDefault(e => e.Id == request.EmployeeId) == null) { error = "Employee not found."; return false; }
+            if (request.Hours <= 0 || request.Hours > 24) { error = "Hours must be between 0 and 24."; return false; }
+            entry = new TimesheetEntry
+            {
+                ProjectId = request.ProjectId,
+                TaskId = request.TaskId,
+                EmployeeId = request.EmployeeId,
+                Date = request.Date,
+                Hours = request.Hours,
+                Description = request.Description ?? "",
+                Billable = request.Billable,
+                BillableRate = request.BillableRate,
+                Currency = string.IsNullOrWhiteSpace(request.Currency) ? "USD" : request.Currency,
+                CompanyId = request.CompanyId,
+            };
+            if (request.TaskId.HasValue)
+            {
+                var task = _projectTasks.FirstOrDefault(t => t.Id == request.TaskId.Value);
+                if (task != null) task.ActualHours += request.Hours;
+            }
+            _timesheets.Add(entry);
+            Persist(); return true;
+        }
+    }
+
+    public bool ApproveTimesheet(Guid id, Guid? approvedBy, out TimesheetEntry? entry, out string? error)
+    {
+        lock (_lock)
+        {
+            entry = null; error = null;
+            var existing = _timesheets.FirstOrDefault(t => t.Id == id);
+            if (existing == null) { error = "Timesheet entry not found."; return false; }
+            existing.Approved = true;
+            existing.ApprovedBy = approvedBy;
+            Persist();
+            entry = existing; return true;
+        }
+    }
+
+    public bool DeleteTimesheet(Guid id, out string? error)
+    {
+        lock (_lock)
+        {
+            error = null;
+            var existing = _timesheets.FirstOrDefault(t => t.Id == id);
+            if (existing == null) { error = "Timesheet entry not found."; return false; }
+            if (existing.TaskId.HasValue)
+            {
+                var task = _projectTasks.FirstOrDefault(t => t.Id == existing.TaskId.Value);
+                if (task != null) task.ActualHours = Math.Max(0, task.ActualHours - existing.Hours);
+            }
+            _timesheets.Remove(existing);
+            Persist(); return true;
+        }
+    }
+
+    // ── Expenses ─────────────────────────────────────────────────────────────
+    public List<ProjectExpense> GetProjectExpenses(Guid? projectId = null, string? category = null)
+    {
+        var query = _projectExpenses.AsEnumerable();
+        if (projectId.HasValue) query = query.Where(e => e.ProjectId == projectId.Value);
+        if (!string.IsNullOrWhiteSpace(category)) query = query.Where(e => e.Category == category);
+        return query.OrderByDescending(e => e.ExpenseDate).ToList();
+    }
+
+    public bool CreateProjectExpense(ProjectExpenseRequest request, out ProjectExpense? expense, out string? error)
+    {
+        lock (_lock)
+        {
+            expense = null; error = null;
+            if (_projects.FirstOrDefault(p => p.Id == request.ProjectId) == null) { error = "Project not found."; return false; }
+            if (request.Amount <= 0) { error = "Expense amount must be positive."; return false; }
+            if (string.IsNullOrWhiteSpace(request.Category)) { error = "Expense category is required."; return false; }
+            expense = new ProjectExpense
+            {
+                ProjectId = request.ProjectId,
+                EmployeeId = request.EmployeeId,
+                Category = request.Category.Trim(),
+                Description = request.Description ?? "",
+                VendorName = request.VendorName,
+                Amount = request.Amount,
+                Currency = string.IsNullOrWhiteSpace(request.Currency) ? "USD" : request.Currency,
+                ExpenseDate = request.ExpenseDate,
+                Billable = request.Billable,
+                CompanyId = request.CompanyId,
+            };
+            _projectExpenses.Add(expense);
+            Persist(); return true;
+        }
+    }
+
+    public bool DeleteProjectExpense(Guid id, out string? error)
+    {
+        lock (_lock)
+        {
+            error = null;
+            var existing = _projectExpenses.FirstOrDefault(e => e.Id == id);
+            if (existing == null) { error = "Expense not found."; return false; }
+            _projectExpenses.Remove(existing);
+            Persist(); return true;
+        }
+    }
+
+    // ── Dashboard / Profitability ────────────────────────────────────────────
+    public object GetProjectDashboard(Guid projectId)
+    {
+        var project = _projects.FirstOrDefault(p => p.Id == projectId);
+        if (project == null) return new { };
+        var tasks = _projectTasks.Where(t => t.ProjectId == projectId).ToList();
+        var timesheets = _timesheets.Where(t => t.ProjectId == projectId).ToList();
+        var expenses = _projectExpenses.Where(e => e.ProjectId == projectId).ToList();
+
+        var totalHours = timesheets.Sum(t => t.Hours);
+        var billableHours = timesheets.Where(t => t.Billable).Sum(t => t.Hours);
+        var laborCost = timesheets.Sum(t => t.Hours * t.BillableRate);
+        var expenseTotal = expenses.Sum(e => e.Amount);
+        var totalCost = laborCost + expenseTotal;
+        var budget = project.Budget;
+        var budgetUtilization = budget > 0 ? Math.Round(totalCost / budget * 100, 1) : 0;
+
+        return new
+        {
+            project,
+            tasks,
+            timesheets,
+            expenses,
+            totalTasks = tasks.Count,
+            completedTasks = tasks.Count(t => t.Status == ProjectTaskStatus.Completed),
+            inProgressTasks = tasks.Count(t => t.Status == ProjectTaskStatus.InProgress),
+            overdueTasks = tasks.Count(t => t.DueDate.HasValue && t.Status != ProjectTaskStatus.Completed && t.DueDate.Value < DateOnly.FromDateTime(DateTime.Today)),
+            totalHours,
+            billableHours,
+            laborCost,
+            expenseTotal,
+            totalCost,
+            budget,
+            budgetUtilization,
+            remainingBudget = budget - totalCost,
+            profitability = totalCost > 0 ? Math.Round((budget - totalCost) / totalCost * 100, 1) : 0,
+        };
+    }
 
     #endregion
 }
