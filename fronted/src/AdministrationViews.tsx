@@ -1,0 +1,670 @@
+import { useState, useEffect } from 'react';
+import { useCompanyStore } from './stores';
+import { accountingApi, type AuditTrailItem } from './api/modules/accounting.api';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Card } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
+import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@/components/ui/select';
+import { FormField } from '@/components/ui/form-field';
+import { PageHeader } from '@/components/ui/page-header';
+import { StatCard } from '@/components/ui/stat-card';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { ModuleSummaryLayout, SummaryPanel } from '@/components/module-summary-layout';
+import {
+  Users, ShieldCheck, Building2, GitBranch, CheckCircle2, Hash, Coins, ScrollText, Plus, Save, Trash2, Pencil, KeyRound, Lock, Globe, Search
+} from 'lucide-react';
+
+const today = () => new Date().toISOString().split('T')[0];
+
+// ── local persistence helpers ─────────────────────────────────────────────────
+function load<T>(key: string, fallback: T): T {
+  try {
+    const raw = localStorage.getItem(key);
+    return raw ? JSON.parse(raw) as T : fallback;
+  } catch { return fallback; }
+}
+
+function persist<T>(key: string, value: T) {
+  localStorage.setItem(key, JSON.stringify(value));
+}
+
+const uid = () => Math.random().toString(36).slice(2, 10);
+
+// ── Summary (module overview) ─────────────────────────────────────────────────
+export function AdministrationSummaryView() {
+  const { entities } = useCompanyStore();
+  useEffect(() => { useCompanyStore.getState().fetchCompanies(); }, []);
+  const users = load('ab_users', SEED_USERS);
+  const roles = load('ab_roles', SEED_ROLES);
+  const branches = load('ab_branches', SEED_BRANCHES);
+  const series = load('ab_number_series', SEED_SERIES);
+
+  const activeEntities = entities.filter(e => e.active).length;
+  const auditCount = load('ab_audit_count', 0);
+
+  return (
+    <ModuleSummaryLayout
+      title="Administration"
+      description="User access, roles, company structure, workflows, number series, currency, and audit"
+      stats={[
+        { icon: Users, label: 'Users', value: users.length, tone: 'teal' },
+        { icon: ShieldCheck, label: 'Roles', value: roles.length, tone: 'blue' },
+        { icon: Building2, label: 'Active Companies', value: activeEntities, tone: 'green' },
+        { icon: GitBranch, label: 'Branches', value: branches.length, tone: 'violet' },
+      ]}
+    >
+      <SummaryPanel icon={CheckCircle2} title="Configuration Status">
+        <div className="space-y-2">
+          <div className="flex items-center justify-between border rounded-lg px-3 py-2 text-sm"><span>Number Series</span><Badge variant={series.length ? 'secondary' : 'outline'}>{series.length} defined</Badge></div>
+          <div className="flex items-center justify-between border rounded-lg px-3 py-2 text-sm"><span>Approval Workflows</span><Badge variant="secondary">{load('ab_approvals', SEED_APPROVALS).length} active</Badge></div>
+          <div className="flex items-center justify-between border rounded-lg px-3 py-2 text-sm"><span>Currencies</span><Badge variant="secondary">{load('ab_currencies', SEED_CURRENCIES).length} enabled</Badge></div>
+          <div className="flex items-center justify-between border rounded-lg px-3 py-2 text-sm"><span>Audit Events Logged</span><Badge variant="outline">{auditCount}</Badge></div>
+        </div>
+      </SummaryPanel>
+      <SummaryPanel icon={Lock} title="Security Posture">
+        <div className="grid grid-cols-2 gap-3">
+          <div className="border rounded-lg p-3 text-center"><p className="text-2xl font-semibold">{users.filter(u => u.status === 'Active').length}</p><p className="text-xs text-muted-foreground">Active Users</p></div>
+          <div className="border rounded-lg p-3 text-center"><p className="text-2xl font-semibold">{users.filter(u => u.status === 'Locked').length}</p><p className="text-xs text-muted-foreground">Locked Accounts</p></div>
+          <div className="border rounded-lg p-3 text-center"><p className="text-2xl font-semibold">{roles.reduce((s, r) => s + r.permissions.length, 0)}</p><p className="text-xs text-muted-foreground">Total Permissions</p></div>
+          <div className="border rounded-lg p-3 text-center"><p className="text-2xl font-semibold">{branches.filter(b => b.active).length}</p><p className="text-xs text-muted-foreground">Active Branches</p></div>
+        </div>
+      </SummaryPanel>
+    </ModuleSummaryLayout>
+  );
+}
+
+// ── Users ─────────────────────────────────────────────────────────────────────
+interface AdminUser { id: string; fullName: string; email: string; role: string; status: 'Active' | 'Inactive' | 'Locked'; lastLogin: string; }
+const SEED_USERS: AdminUser[] = [
+  { id: 'u1', fullName: 'Muhammad Ali', email: 'admin@acme.com', role: 'Finance admin', status: 'Active', lastLogin: today() },
+  { id: 'u2', fullName: 'Sarah Jenkins', email: 'accountant@acme.com', role: 'Senior Accountant', status: 'Active', lastLogin: today() },
+  { id: 'u3', fullName: 'John Doe', email: 'auditor@acme.com', role: 'External Auditor', status: 'Active', lastLogin: today() },
+];
+
+export function UsersView() {
+  const [users, setUsers] = useState<AdminUser[]>(() => load('ab_users', SEED_USERS));
+  const [form, setForm] = useState({ fullName: '', email: '', role: 'Accountant', status: 'Active' as AdminUser['status'] });
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [query, setQuery] = useState('');
+
+  useEffect(() => { persist('ab_users', users); }, [users]);
+
+  const save = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (editingId) setUsers(us => us.map(u => u.id === editingId ? { ...u, ...form } : u));
+    else setUsers(us => [{ id: uid(), ...form, lastLogin: 'Never' }, ...us]);
+    setForm({ fullName: '', email: '', role: 'Accountant', status: 'Active' });
+    setEditingId(null);
+  };
+
+  const filtered = users.filter(u => u.fullName.toLowerCase().includes(query.toLowerCase()) || u.email.toLowerCase().includes(query.toLowerCase()));
+
+  const userStatus = (s: string) => s === 'Active' ? 'secondary' : s === 'Locked' ? 'destructive' : 'outline';
+
+  return (
+    <div className="p-6 max-w-[1400px] mx-auto space-y-4">
+      <PageHeader title="Users" description="Manage system user accounts and access status" />
+      <div className="grid grid-cols-4 gap-4">
+        <StatCard icon={Users} label="Total Users" value={users.length} tone="teal" />
+        <StatCard icon={ShieldCheck} label="Active" value={users.filter(u => u.status === 'Active').length} tone="green" />
+        <StatCard icon={Lock} label="Locked" value={users.filter(u => u.status === 'Locked').length} tone="red" />
+        <StatCard icon={KeyRound} label="Roles Assigned" value={users.reduce((s, u) => s + (u.role ? 1 : 0), 0)} tone="blue" />
+      </div>
+      <div className="grid grid-cols-3 gap-4">
+        <Card className="p-4 col-span-1 space-y-3">
+          <p className="text-sm font-medium flex items-center gap-2">{editingId ? <Pencil className="h-4 w-4" /> : <Plus className="h-4 w-4" />} {editingId ? 'Edit User' : 'Add User'}</p>
+          <form onSubmit={save} className="space-y-3">
+            <FormField label="Full Name" required><Input required value={form.fullName} onChange={e => setForm({ ...form, fullName: e.target.value })} placeholder="Jane Cooper" /></FormField>
+            <FormField label="Email" required><Input required type="email" value={form.email} onChange={e => setForm({ ...form, email: e.target.value })} placeholder="jane@company.com" /></FormField>
+            <FormField label="Role">
+              <Select value={form.role} onValueChange={v => setForm({ ...form, role: v || 'Accountant' })}>
+                <SelectTrigger><SelectValue placeholder="Role" /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="Finance admin">Finance admin</SelectItem>
+                  <SelectItem value="Senior Accountant">Senior Accountant</SelectItem>
+                  <SelectItem value="Accountant">Accountant</SelectItem>
+                  <SelectItem value="External Auditor">External Auditor</SelectItem>
+                  <SelectItem value="Manager">Manager</SelectItem>
+                  <SelectItem value="Viewer">Viewer</SelectItem>
+                </SelectContent>
+              </Select>
+            </FormField>
+            <FormField label="Status">
+              <Select value={form.status} onValueChange={v => setForm({ ...form, status: (v || 'Active') as AdminUser['status'] })}>
+                <SelectTrigger><SelectValue placeholder="Status" /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="Active">Active</SelectItem>
+                  <SelectItem value="Inactive">Inactive</SelectItem>
+                  <SelectItem value="Locked">Locked</SelectItem>
+                </SelectContent>
+              </Select>
+            </FormField>
+            <div className="flex gap-2">
+              <Button type="submit" size="sm"><Save className="h-4 w-4" /> {editingId ? 'Update' : 'Create'}</Button>
+              {editingId && <Button type="button" variant="outline" size="sm" onClick={() => { setEditingId(null); setForm({ fullName: '', email: '', role: 'Accountant', status: 'Active' }); }}>Cancel</Button>}
+            </div>
+          </form>
+        </Card>
+        <Card className="p-4 col-span-2 space-y-3">
+          <div className="flex items-center justify-between">
+            <p className="text-sm font-medium flex items-center gap-2"><Users className="h-4 w-4" /> User Directory</p>
+            <div className="relative w-64"><Search className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" /><Input className="pl-9 h-9 text-xs" placeholder="Search users..." value={query} onChange={e => setQuery(e.target.value)} /></div>
+          </div>
+          <Table>
+            <TableHeader><TableRow><TableHead>Name</TableHead><TableHead>Email</TableHead><TableHead>Role</TableHead><TableHead>Status</TableHead><TableHead>Last Login</TableHead><TableHead></TableHead></TableRow></TableHeader>
+            <TableBody>
+              {filtered.map(u => (
+                <TableRow key={u.id}>
+                  <TableCell className="font-medium">{u.fullName}</TableCell>
+                  <TableCell className="text-muted-foreground">{u.email}</TableCell>
+                  <TableCell>{u.role}</TableCell>
+                  <TableCell><Badge variant={userStatus(u.status) as any}>{u.status}</Badge></TableCell>
+                  <TableCell className="text-muted-foreground">{u.lastLogin}</TableCell>
+                  <TableCell>
+                    <div className="flex gap-1">
+                      <Button variant="ghost" size="icon" title="Edit" onClick={() => { setEditingId(u.id); setForm({ fullName: u.fullName, email: u.email, role: u.role, status: u.status }); }}><Pencil className="h-4 w-4" /></Button>
+                      <Button variant="ghost" size="icon" title="Delete" onClick={() => setUsers(us => us.filter(x => x.id !== u.id))}><Trash2 className="h-4 w-4 text-red-500" /></Button>
+                    </div>
+                  </TableCell>
+                </TableRow>
+              ))}
+              {filtered.length === 0 && <TableRow><TableCell colSpan={6} className="text-center text-muted-foreground py-6">No users found</TableCell></TableRow>}
+            </TableBody>
+          </Table>
+        </Card>
+      </div>
+    </div>
+  );
+}
+
+// ── Roles & Permissions ───────────────────────────────────────────────────────
+interface Role { id: string; name: string; description: string; permissions: string[]; }
+const ALL_PERMISSIONS = ['Dashboard', 'Sales', 'Procurement', 'Banking', 'Accounting', 'Inventory', 'Manufacturing', 'Payroll', 'Field Ops', 'Compliance', 'Projects', 'Analytics', 'Administration'];
+const SEED_ROLES: Role[] = [
+  { id: 'r1', name: 'Finance admin', description: 'Full access across all modules', permissions: [...ALL_PERMISSIONS] },
+  { id: 'r2', name: 'Senior Accountant', description: 'Accounting, banking, and reporting', permissions: ['Dashboard', 'Sales', 'Procurement', 'Banking', 'Accounting', 'Inventory', 'Analytics'] },
+  { id: 'r3', name: 'External Auditor', description: 'Read-only financial review', permissions: ['Dashboard', 'Accounting', 'Analytics', 'Administration'] },
+];
+
+export function RolesPermissionsView() {
+  const [roles, setRoles] = useState<Role[]>(() => load('ab_roles', SEED_ROLES));
+  const [name, setName] = useState('');
+  const [description, setDescription] = useState('');
+  const [selected, setSelected] = useState<string[]>([]);
+  const [editingId, setEditingId] = useState<string | null>(null);
+
+  useEffect(() => { persist('ab_roles', roles); }, [roles]);
+
+  const save = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!name.trim()) return;
+    if (editingId) setRoles(rs => rs.map(r => r.id === editingId ? { ...r, name, description, permissions: selected } : r));
+    else setRoles(rs => [...rs, { id: uid(), name, description, permissions: selected }]);
+    setName(''); setDescription(''); setSelected([]); setEditingId(null);
+  };
+
+  const togglePerm = (p: string) => setSelected(s => s.includes(p) ? s.filter(x => x !== p) : [...s, p]);
+
+  return (
+    <div className="p-6 max-w-[1400px] mx-auto space-y-4">
+      <PageHeader title="Roles & Permissions" description="Define roles and control module-level access" />
+      <div className="grid grid-cols-4 gap-4">
+        <StatCard icon={ShieldCheck} label="Roles" value={roles.length} tone="teal" />
+        <StatCard icon={KeyRound} label="Permission Grants" value={roles.reduce((s, r) => s + r.permissions.length, 0)} tone="blue" />
+        <StatCard icon={Lock} label="Modules Controlled" value={ALL_PERMISSIONS.length} tone="violet" />
+        <StatCard icon={CheckCircle2} label="Full-Access Roles" value={roles.filter(r => r.permissions.length === ALL_PERMISSIONS.length).length} tone="green" />
+      </div>
+      <div className="grid grid-cols-3 gap-4">
+        <Card className="p-4 space-y-3">
+          <p className="text-sm font-medium flex items-center gap-2"><ShieldCheck className="h-4 w-4" /> {editingId ? 'Edit Role' : 'Create Role'}</p>
+          <form onSubmit={save} className="space-y-3">
+            <FormField label="Role Name" required><Input required value={name} onChange={e => setName(e.target.value)} placeholder="e.g. Operations Manager" /></FormField>
+            <FormField label="Description"><Input value={description} onChange={e => setDescription(e.target.value)} placeholder="Scope of this role..." /></FormField>
+            <FormField label="Module Permissions">
+              <div className="grid grid-cols-2 gap-1.5 max-h-48 overflow-y-auto pr-1">
+                {ALL_PERMISSIONS.map(p => (
+                  <label key={p} className="flex items-center gap-2 text-sm border rounded-lg px-2.5 py-1.5 cursor-pointer hover:bg-muted/40">
+                    <input type="checkbox" checked={selected.includes(p)} onChange={() => togglePerm(p)} className="accent-teal-600" />
+                    {p}
+                  </label>
+                ))}
+              </div>
+            </FormField>
+            <div className="flex gap-2">
+              <Button type="submit" size="sm"><Save className="h-4 w-4" /> {editingId ? 'Update' : 'Create'}</Button>
+              {editingId && <Button type="button" variant="outline" size="sm" onClick={() => { setEditingId(null); setName(''); setDescription(''); setSelected([]); }}>Cancel</Button>}
+            </div>
+          </form>
+        </Card>
+        <Card className="p-4 col-span-2 space-y-3">
+          <p className="text-sm font-medium">Role Matrix</p>
+          <div className="space-y-2">
+            {roles.map(r => (
+              <div key={r.id} className="border rounded-lg p-3 space-y-2">
+                <div className="flex items-center justify-between">
+                  <div><p className="font-medium text-sm">{r.name}</p><p className="text-xs text-muted-foreground">{r.description}</p></div>
+                  <div className="flex gap-1">
+                    <Button variant="ghost" size="sm" onClick={() => { setEditingId(r.id); setName(r.name); setDescription(r.description); setSelected(r.permissions); }}><Pencil className="h-3.5 w-3.5" /> Edit</Button>
+                    <Button variant="ghost" size="sm" onClick={() => setRoles(rs => rs.filter(x => x.id !== r.id))}><Trash2 className="h-3.5 w-3.5 text-red-500" /></Button>
+                  </div>
+                </div>
+                <div className="flex flex-wrap gap-1">
+                  {r.permissions.map(p => <Badge key={p} variant="outline">{p}</Badge>)}
+                </div>
+              </div>
+            ))}
+            {roles.length === 0 && <p className="text-sm text-muted-foreground">No roles defined.</p>}
+          </div>
+        </Card>
+      </div>
+    </div>
+  );
+}
+
+// ── Companies & Branches ──────────────────────────────────────────────────────
+export function CompaniesView() {
+  const { entities, fetchCompanies, saveCompany, toggleCompanyStatus } = useCompanyStore();
+  const [form, setForm] = useState({ name: '', code: '', functionalCurrency: 'USD', country: 'US', structure: 'Single', active: true });
+
+  useEffect(() => { fetchCompanies(); }, [fetchCompanies]);
+
+  const save = (e: React.FormEvent) => {
+    e.preventDefault();
+    saveCompany(form).then(() => setForm({ name: '', code: '', functionalCurrency: 'USD', country: 'US', structure: 'Single', active: true }));
+  };
+
+  return (
+    <div className="p-6 max-w-[1400px] mx-auto space-y-4">
+      <PageHeader title="Companies" description="Corporate entities operating on the system" />
+      <div className="grid grid-cols-4 gap-4">
+        <StatCard icon={Building2} label="Companies" value={entities.length} tone="teal" />
+        <StatCard icon={CheckCircle2} label="Active" value={entities.filter(e => e.active).length} tone="green" />
+        <StatCard icon={Globe} label="Countries" value={new Set(entities.map(e => e.country)).size} tone="blue" />
+        <StatCard icon={Coins} label="Currencies" value={new Set(entities.map(e => e.functionalCurrency)).size} tone="violet" />
+      </div>
+      <div className="grid grid-cols-3 gap-4">
+        <Card className="p-4 space-y-3">
+          <p className="text-sm font-medium flex items-center gap-2"><Plus className="h-4 w-4" /> Add Company</p>
+          <form onSubmit={save} className="space-y-3">
+            <FormField label="Company Name" required><Input required value={form.name} onChange={e => setForm({ ...form, name: e.target.value })} placeholder="Acme Corporation" /></FormField>
+            <FormField label="Code"><Input value={form.code} onChange={e => setForm({ ...form, code: e.target.value })} placeholder="ACME" /></FormField>
+            <div className="grid grid-cols-2 gap-3">
+              <FormField label="Currency">
+                <Select value={form.functionalCurrency} onValueChange={v => setForm({ ...form, functionalCurrency: v || 'USD' })}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent><SelectItem value="USD">USD</SelectItem><SelectItem value="GBP">GBP</SelectItem><SelectItem value="EUR">EUR</SelectItem><SelectItem value="PKR">PKR</SelectItem><SelectItem value="AED">AED</SelectItem><SelectItem value="SAR">SAR</SelectItem></SelectContent>
+                </Select>
+              </FormField>
+              <FormField label="Country">
+                <Select value={form.country} onValueChange={v => setForm({ ...form, country: v || 'US' })}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent><SelectItem value="US">US</SelectItem><SelectItem value="UK">UK</SelectItem><SelectItem value="PK">Pakistan</SelectItem><SelectItem value="AE">UAE</SelectItem><SelectItem value="SA">Saudi</SelectItem><SelectItem value="EU">EU</SelectItem></SelectContent>
+                </Select>
+              </FormField>
+            </div>
+            <Button type="submit" size="sm"><Save className="h-4 w-4" /> Add Company</Button>
+          </form>
+        </Card>
+        <Card className="p-4 col-span-2 space-y-3">
+          <p className="text-sm font-medium">Entity Register</p>
+          <Table>
+            <TableHeader><TableRow><TableHead>Name</TableHead><TableHead>Code</TableHead><TableHead>Currency</TableHead><TableHead>Country</TableHead><TableHead>Status</TableHead></TableRow></TableHeader>
+            <TableBody>
+              {entities.map(e => (
+                <TableRow key={e.id}>
+                  <TableCell className="font-medium">{e.name}</TableCell>
+                  <TableCell className="font-mono text-muted-foreground">{e.code}</TableCell>
+                  <TableCell>{e.functionalCurrency}</TableCell>
+                  <TableCell>{e.country}</TableCell>
+                  <TableCell><button onClick={() => toggleCompanyStatus(e.id, !e.active)}><Badge variant={e.active ? 'secondary' : 'outline'}>{e.active ? 'Active' : 'Inactive'}</Badge></button></TableCell>
+                </TableRow>
+              ))}
+              {entities.length === 0 && <TableRow><TableCell colSpan={5} className="text-center text-muted-foreground py-6">No companies configured</TableCell></TableRow>}
+            </TableBody>
+          </Table>
+        </Card>
+      </div>
+    </div>
+  );
+}
+
+interface Branch { id: string; name: string; code: string; city: string; address: string; active: boolean; }
+const SEED_BRANCHES: Branch[] = [
+  { id: 'b1', name: 'Head Office', code: 'HO', city: 'Karachi', address: 'Main Business District', active: true },
+  { id: 'b2', name: 'Lahore Branch', code: 'LH', city: 'Lahore', address: 'Gulberg III', active: true },
+];
+
+export function BranchesView() {
+  const [branches, setBranches] = useState<Branch[]>(() => load('ab_branches', SEED_BRANCHES));
+  const [form, setForm] = useState({ name: '', code: '', city: '', address: '', active: true });
+
+  useEffect(() => { persist('ab_branches', branches); }, [branches]);
+
+  const save = (e: React.FormEvent) => {
+    e.preventDefault();
+    setBranches(bs => [{ id: uid(), ...form }, ...bs]);
+    setForm({ name: '', code: '', city: '', address: '', active: true });
+  };
+
+  return (
+    <div className="p-6 max-w-[1400px] mx-auto space-y-4">
+      <PageHeader title="Branches" description="Physical locations and operating units" />
+      <div className="grid grid-cols-4 gap-4">
+        <StatCard icon={GitBranch} label="Branches" value={branches.length} tone="teal" />
+        <StatCard icon={CheckCircle2} label="Active" value={branches.filter(b => b.active).length} tone="green" />
+        <StatCard icon={Building2} label="Cities" value={new Set(branches.map(b => b.city)).size} tone="blue" />
+        <StatCard icon={Globe} label="Coverage" value={branches.length ? 'Multi-location' : 'None'} tone="violet" />
+      </div>
+      <div className="grid grid-cols-3 gap-4">
+        <Card className="p-4 space-y-3">
+          <p className="text-sm font-medium flex items-center gap-2"><Plus className="h-4 w-4" /> Add Branch</p>
+          <form onSubmit={save} className="space-y-3">
+            <FormField label="Branch Name" required><Input required value={form.name} onChange={e => setForm({ ...form, name: e.target.value })} placeholder="Peshawar Branch" /></FormField>
+            <div className="grid grid-cols-2 gap-3">
+              <FormField label="Code"><Input value={form.code} onChange={e => setForm({ ...form, code: e.target.value })} placeholder="PSH" /></FormField>
+              <FormField label="City"><Input value={form.city} onChange={e => setForm({ ...form, city: e.target.value })} placeholder="Peshawar" /></FormField>
+            </div>
+            <FormField label="Address"><Input value={form.address} onChange={e => setForm({ ...form, address: e.target.value })} placeholder="Street address" /></FormField>
+            <Button type="submit" size="sm"><Save className="h-4 w-4" /> Add Branch</Button>
+          </form>
+        </Card>
+        <Card className="p-4 col-span-2 space-y-3">
+          <p className="text-sm font-medium">Branch Register</p>
+          <Table>
+            <TableHeader><TableRow><TableHead>Name</TableHead><TableHead>Code</TableHead><TableHead>City</TableHead><TableHead>Address</TableHead><TableHead>Status</TableHead><TableHead></TableHead></TableRow></TableHeader>
+            <TableBody>
+              {branches.map(b => (
+                <TableRow key={b.id}>
+                  <TableCell className="font-medium">{b.name}</TableCell>
+                  <TableCell className="font-mono text-muted-foreground">{b.code}</TableCell>
+                  <TableCell>{b.city}</TableCell>
+                  <TableCell className="text-muted-foreground">{b.address}</TableCell>
+                  <TableCell><button onClick={() => setBranches(bs => bs.map(x => x.id === b.id ? { ...x, active: !x.active } : x))}><Badge variant={b.active ? 'secondary' : 'outline'}>{b.active ? 'Active' : 'Inactive'}</Badge></button></TableCell>
+                  <TableCell><Button variant="ghost" size="icon" title="Delete" onClick={() => setBranches(bs => bs.filter(x => x.id !== b.id))}><Trash2 className="h-4 w-4 text-red-500" /></Button></TableCell>
+                </TableRow>
+              ))}
+              {branches.length === 0 && <TableRow><TableCell colSpan={6} className="text-center text-muted-foreground py-6">No branches configured</TableCell></TableRow>}
+            </TableBody>
+          </Table>
+        </Card>
+      </div>
+    </div>
+  );
+}
+
+// ── Approval Workflows ────────────────────────────────────────────────────────
+interface ApprovalWorkflow { id: string; name: string; module: string; approverRole: string; steps: number; active: boolean; }
+const SEED_APPROVALS: ApprovalWorkflow[] = [
+  { id: 'a1', name: 'Invoice Approval', module: 'Sales', approverRole: 'Senior Accountant', steps: 1, active: true },
+  { id: 'a2', name: 'Bill Approval', module: 'Procurement', approverRole: 'Finance admin', steps: 2, active: true },
+  { id: 'a3', name: 'Expense Claim Approval', module: 'Payroll', approverRole: 'Manager', steps: 2, active: true },
+];
+
+export function ApprovalWorkflowsView() {
+  const [flows, setFlows] = useState<ApprovalWorkflow[]>(() => load('ab_approvals', SEED_APPROVALS));
+  const [form, setForm] = useState({ name: '', module: 'Sales', approverRole: 'Manager', steps: 1, active: true });
+
+  useEffect(() => { persist('ab_approvals', flows); }, [flows]);
+
+  const save = (e: React.FormEvent) => {
+    e.preventDefault();
+    setFlows(fl => [{ id: uid(), ...form }, ...fl]);
+    setForm({ name: '', module: 'Sales', approverRole: 'Manager', steps: 1, active: true });
+  };
+
+  return (
+    <div className="p-6 max-w-[1400px] mx-auto space-y-4">
+      <PageHeader title="Approval Workflows" description="Multi-step approval routing for business documents" />
+      <div className="grid grid-cols-4 gap-4">
+        <StatCard icon={CheckCircle2} label="Workflows" value={flows.length} tone="teal" />
+        <StatCard icon={GitBranch} label="Active" value={flows.filter(f => f.active).length} tone="green" />
+        <StatCard icon={ShieldCheck} label="Total Steps" value={flows.reduce((s, f) => s + f.steps, 0)} tone="blue" />
+        <StatCard icon={KeyRound} label="Approver Roles" value={new Set(flows.map(f => f.approverRole)).size} tone="violet" />
+      </div>
+      <div className="grid grid-cols-3 gap-4">
+        <Card className="p-4 space-y-3">
+          <p className="text-sm font-medium flex items-center gap-2"><Plus className="h-4 w-4" /> New Workflow</p>
+          <form onSubmit={save} className="space-y-3">
+            <FormField label="Workflow Name" required><Input required value={form.name} onChange={e => setForm({ ...form, name: e.target.value })} placeholder="Payment Approval" /></FormField>
+            <FormField label="Module">
+              <Select value={form.module} onValueChange={v => setForm({ ...form, module: v || 'Sales' })}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent><SelectItem value="Sales">Sales</SelectItem><SelectItem value="Procurement">Procurement</SelectItem><SelectItem value="Payroll">Payroll</SelectItem><SelectItem value="Banking">Banking</SelectItem><SelectItem value="Projects">Projects</SelectItem><SelectItem value="Field Ops">Field Ops</SelectItem></SelectContent>
+              </Select>
+            </FormField>
+            <FormField label="Approver Role">
+              <Select value={form.approverRole} onValueChange={v => setForm({ ...form, approverRole: v || 'Manager' })}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent><SelectItem value="Manager">Manager</SelectItem><SelectItem value="Senior Accountant">Senior Accountant</SelectItem><SelectItem value="Finance admin">Finance admin</SelectItem><SelectItem value="CFO">CFO</SelectItem></SelectContent>
+              </Select>
+            </FormField>
+            <FormField label="Approval Steps"><Input type="number" min={1} value={form.steps} onChange={e => setForm({ ...form, steps: Number(e.target.value) || 1 })} /></FormField>
+            <Button type="submit" size="sm"><Save className="h-4 w-4" /> Create Workflow</Button>
+          </form>
+        </Card>
+        <Card className="p-4 col-span-2 space-y-3">
+          <p className="text-sm font-medium">Active Workflows</p>
+          <div className="space-y-2">
+            {flows.map(f => (
+              <div key={f.id} className="flex items-center justify-between border rounded-lg p-3">
+                <div><p className="font-medium text-sm">{f.name}</p><p className="text-xs text-muted-foreground">{f.module} · {f.approverRole} · {f.steps} step{f.steps > 1 ? 's' : ''}</p></div>
+                <div className="flex items-center gap-2">
+                  <button onClick={() => setFlows(fl => fl.map(x => x.id === f.id ? { ...x, active: !x.active } : x))}><Badge variant={f.active ? 'secondary' : 'outline'}>{f.active ? 'Active' : 'Paused'}</Badge></button>
+                  <Button variant="ghost" size="icon" onClick={() => setFlows(fl => fl.filter(x => x.id !== f.id))}><Trash2 className="h-4 w-4 text-red-500" /></Button>
+                </div>
+              </div>
+            ))}
+            {flows.length === 0 && <p className="text-sm text-muted-foreground">No workflows defined.</p>}
+          </div>
+        </Card>
+      </div>
+    </div>
+  );
+}
+
+// ── Number Series ─────────────────────────────────────────────────────────────
+interface NumberSeries { id: string; name: string; prefix: string; nextNumber: number; format: string; active: boolean; }
+const SEED_SERIES: NumberSeries[] = [
+  { id: 'n1', name: 'Invoice', prefix: 'INV-', nextNumber: 1001, format: 'INV-0001', active: true },
+  { id: 'n2', name: 'Bill', prefix: 'BILL-', nextNumber: 501, format: 'BILL-0501', active: true },
+  { id: 'n3', name: 'Journal Entry', prefix: 'JE-', nextNumber: 2001, format: 'JE-2001', active: true },
+  { id: 'n4', name: 'Payment Receipt', prefix: 'RCPT-', nextNumber: 301, format: 'RCPT-0301', active: true },
+];
+
+export function NumberSeriesView() {
+  const [series, setSeries] = useState<NumberSeries[]>(() => load('ab_number_series', SEED_SERIES));
+  const [form, setForm] = useState({ name: '', prefix: '', nextNumber: 1, format: '', active: true });
+
+  useEffect(() => { persist('ab_number_series', series); }, [series]);
+
+  const save = (e: React.FormEvent) => {
+    e.preventDefault();
+    const format = `${form.prefix}${String(form.nextNumber).padStart(4, '0')}`;
+    setSeries(ss => [{ id: uid(), ...form, format }, ...ss]);
+    setForm({ name: '', prefix: '', nextNumber: 1, format: '', active: true });
+  };
+
+  return (
+    <div className="p-6 max-w-[1400px] mx-auto space-y-4">
+      <PageHeader title="Number Series" description="Automatic document numbering for transactions" />
+      <div className="grid grid-cols-4 gap-4">
+        <StatCard icon={Hash} label="Series Defined" value={series.length} tone="teal" />
+        <StatCard icon={CheckCircle2} label="Active" value={series.filter(s => s.active).length} tone="green" />
+        <StatCard icon={ScrollText} label="Next Numbers" value={series.reduce((s, x) => s + x.nextNumber, 0)} tone="blue" />
+        <StatCard icon={KeyRound} label="Prefixes" value={new Set(series.map(s => s.prefix)).size} tone="violet" />
+      </div>
+      <div className="grid grid-cols-3 gap-4">
+        <Card className="p-4 space-y-3">
+          <p className="text-sm font-medium flex items-center gap-2"><Plus className="h-4 w-4" /> New Series</p>
+          <form onSubmit={save} className="space-y-3">
+            <FormField label="Series Name" required><Input required value={form.name} onChange={e => setForm({ ...form, name: e.target.value })} placeholder="Credit Note" /></FormField>
+            <div className="grid grid-cols-2 gap-3">
+              <FormField label="Prefix"><Input value={form.prefix} onChange={e => setForm({ ...form, prefix: e.target.value })} placeholder="CN-" /></FormField>
+              <FormField label="Next Number"><Input type="number" min={1} value={form.nextNumber} onChange={e => setForm({ ...form, nextNumber: Number(e.target.value) || 1 })} /></FormField>
+            </div>
+            <div className="border rounded-lg px-3 py-2 text-xs text-muted-foreground">Preview: <span className="font-mono text-foreground">{form.prefix}{String(form.nextNumber).padStart(4, '0')}</span></div>
+            <Button type="submit" size="sm"><Save className="h-4 w-4" /> Add Series</Button>
+          </form>
+        </Card>
+        <Card className="p-4 col-span-2 space-y-3">
+          <p className="text-sm font-medium">Number Series Register</p>
+          <Table>
+            <TableHeader><TableRow><TableHead>Series</TableHead><TableHead>Prefix</TableHead><TableHead>Next Number</TableHead><TableHead>Sample</TableHead><TableHead>Status</TableHead><TableHead></TableHead></TableRow></TableHeader>
+            <TableBody>
+              {series.map(s => (
+                <TableRow key={s.id}>
+                  <TableCell className="font-medium">{s.name}</TableCell>
+                  <TableCell className="font-mono text-muted-foreground">{s.prefix}</TableCell>
+                  <TableCell className="font-mono">{s.nextNumber}</TableCell>
+                  <TableCell className="font-mono text-muted-foreground">{s.format}</TableCell>
+                  <TableCell><button onClick={() => setSeries(ss => ss.map(x => x.id === s.id ? { ...x, active: !x.active } : x))}><Badge variant={s.active ? 'secondary' : 'outline'}>{s.active ? 'Active' : 'Inactive'}</Badge></button></TableCell>
+                  <TableCell><Button variant="ghost" size="icon" onClick={() => setSeries(ss => ss.filter(x => x.id !== s.id))}><Trash2 className="h-4 w-4 text-red-500" /></Button></TableCell>
+                </TableRow>
+              ))}
+              {series.length === 0 && <TableRow><TableCell colSpan={6} className="text-center text-muted-foreground py-6">No number series defined</TableCell></TableRow>}
+            </TableBody>
+          </Table>
+        </Card>
+      </div>
+    </div>
+  );
+}
+
+// ── Currency ──────────────────────────────────────────────────────────────────
+interface Currency { id: string; code: string; name: string; symbol: string; rate: number; base: boolean; active: boolean; }
+const SEED_CURRENCIES: Currency[] = [
+  { id: 'c1', code: 'USD', name: 'US Dollar', symbol: '$', rate: 1, base: true, active: true },
+  { id: 'c2', code: 'GBP', name: 'British Pound', symbol: '£', rate: 0.79, base: false, active: true },
+  { id: 'c3', code: 'EUR', name: 'Euro', symbol: '€', rate: 0.92, base: false, active: true },
+  { id: 'c4', code: 'PKR', name: 'Pakistani Rupee', symbol: '₨', rate: 278.5, base: false, active: true },
+  { id: 'c5', code: 'AED', name: 'UAE Dirham', symbol: 'د.إ', rate: 3.67, base: false, active: true },
+];
+
+export function CurrencyView() {
+  const [currencies, setCurrencies] = useState<Currency[]>(() => load('ab_currencies', SEED_CURRENCIES));
+  const [form, setForm] = useState({ code: '', name: '', symbol: '', rate: 1, active: true });
+
+  useEffect(() => { persist('ab_currencies', currencies); }, [currencies]);
+
+  const save = (e: React.FormEvent) => {
+    e.preventDefault();
+    setCurrencies(cs => [...cs, { id: uid(), ...form, base: false }]);
+    setForm({ code: '', name: '', symbol: '', rate: 1, active: true });
+  };
+
+  const base = currencies.find(c => c.base);
+
+  return (
+    <div className="p-6 max-w-[1400px] mx-auto space-y-4">
+      <PageHeader title="Currency" description="Multi-currency support with base currency conversion" />
+      <div className="grid grid-cols-4 gap-4">
+        <StatCard icon={Coins} label="Currencies" value={currencies.length} tone="teal" />
+        <StatCard icon={Globe} label="Enabled" value={currencies.filter(c => c.active).length} tone="green" />
+        <StatCard icon={Building2} label="Base Currency" value={base?.code || '—'} tone="blue" />
+        <StatCard icon={KeyRound} label="Codes" value={new Set(currencies.map(c => c.code)).size} tone="violet" />
+      </div>
+      <div className="grid grid-cols-3 gap-4">
+        <Card className="p-4 space-y-3">
+          <p className="text-sm font-medium flex items-center gap-2"><Plus className="h-4 w-4" /> Add Currency</p>
+          <form onSubmit={save} className="space-y-3">
+            <FormField label="Currency Code" required><Input required value={form.code} onChange={e => setForm({ ...form, code: e.target.value.toUpperCase() })} placeholder="JPY" /></FormField>
+            <FormField label="Name"><Input value={form.name} onChange={e => setForm({ ...form, name: e.target.value })} placeholder="Japanese Yen" /></FormField>
+            <div className="grid grid-cols-2 gap-3">
+              <FormField label="Symbol"><Input value={form.symbol} onChange={e => setForm({ ...form, symbol: e.target.value })} placeholder="¥" /></FormField>
+              <FormField label={`Rate vs ${base?.code || 'USD'}`}><Input type="number" step="0.0001" min="0.0001" value={form.rate} onChange={e => setForm({ ...form, rate: Number(e.target.value) || 1 })} /></FormField>
+            </div>
+            <Button type="submit" size="sm"><Save className="h-4 w-4" /> Add Currency</Button>
+          </form>
+        </Card>
+        <Card className="p-4 col-span-2 space-y-3">
+          <p className="text-sm font-medium">Exchange Rates</p>
+          <Table>
+            <TableHeader><TableRow><TableHead>Code</TableHead><TableHead>Name</TableHead><TableHead>Symbol</TableHead><TableHead>Rate</TableHead><TableHead>Status</TableHead><TableHead></TableHead></TableRow></TableHeader>
+            <TableBody>
+              {currencies.map(c => (
+                <TableRow key={c.id}>
+                  <TableCell className="font-medium flex items-center gap-2">{c.code} {c.base && <Badge>Base</Badge>}</TableCell>
+                  <TableCell className="text-muted-foreground">{c.name}</TableCell>
+                  <TableCell>{c.symbol}</TableCell>
+                  <TableCell className="font-mono">{c.rate}</TableCell>
+                  <TableCell><button onClick={() => setCurrencies(cs => cs.map(x => x.id === c.id ? { ...x, active: !x.active } : x))}><Badge variant={c.active ? 'secondary' : 'outline'}>{c.active ? 'Active' : 'Inactive'}</Badge></button></TableCell>
+                  <TableCell>{!c.base && <Button variant="ghost" size="icon" onClick={() => setCurrencies(cs => cs.filter(x => x.id !== c.id))}><Trash2 className="h-4 w-4 text-red-500" /></Button>}</TableCell>
+                </TableRow>
+              ))}
+              {currencies.length === 0 && <TableRow><TableCell colSpan={6} className="text-center text-muted-foreground py-6">No currencies configured</TableCell></TableRow>}
+            </TableBody>
+          </Table>
+        </Card>
+      </div>
+    </div>
+  );
+}
+
+// ── Audit Logs ────────────────────────────────────────────────────────────────
+export function AuditLogsView({ activeEntityId }: { activeEntityId?: string }) {
+  const [items, setItems] = useState<AuditTrailItem[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [query, setQuery] = useState('');
+  const [limit, setLimit] = useState(200);
+
+  const load = async () => {
+    setLoading(true);
+    try {
+      const params: Record<string, any> = { limit };
+      if (activeEntityId) params.companyId = activeEntityId;
+      const data = await accountingApi.getAuditTrail(params);
+      setItems(data || []);
+    } catch { setItems([]); }
+    setLoading(false);
+  };
+
+  useEffect(() => { load(); }, [activeEntityId, limit]);
+
+  const filtered = items.filter(i => {
+    if (!query.trim()) return true;
+    const q = query.toLowerCase();
+    return i.entityName.toLowerCase().includes(q) || i.detail.toLowerCase().includes(q) || i.action.toLowerCase().includes(q);
+  });
+
+  const formatTime = (at: string) => new Date(at).toLocaleString(undefined, { dateStyle: 'short', timeStyle: 'short' });
+
+  return (
+    <div className="p-6 max-w-[1400px] mx-auto space-y-4">
+      <PageHeader title="Audit Logs" description="Immutable event trail across all ERP modules" />
+      <div className="grid grid-cols-4 gap-4">
+        <StatCard icon={ScrollText} label="Events" value={items.length} tone="teal" />
+        <StatCard icon={Hash} label="Actions Logged" value={new Set(items.map(i => i.action)).size} tone="blue" />
+        <StatCard icon={Building2} label="Entities Tracked" value={new Set(items.map(i => i.entity)).size} tone="violet" />
+        <StatCard icon={CheckCircle2} label="Integrity" value="Immutable" tone="green" />
+      </div>
+      <Card className="p-4 space-y-3">
+        <div className="flex items-center justify-between">
+          <p className="text-sm font-medium flex items-center gap-2"><ScrollText className="h-4 w-4" /> Event Stream</p>
+          <div className="flex items-center gap-2">
+            <div className="relative w-72"><Search className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" /><Input className="pl-9 h-9 text-xs" placeholder="Search events..." value={query} onChange={e => setQuery(e.target.value)} /></div>
+            <Select value={String(limit)} onValueChange={v => setLimit(Number(v) || 200)}>
+              <SelectTrigger className="w-[110px]"><SelectValue /></SelectTrigger>
+              <SelectContent><SelectItem value="100">100</SelectItem><SelectItem value="200">200</SelectItem><SelectItem value="500">500</SelectItem><SelectItem value="1000">1000</SelectItem></SelectContent>
+            </Select>
+          </div>
+        </div>
+        <Table>
+          <TableHeader><TableRow><TableHead>Timestamp</TableHead><TableHead>Action</TableHead><TableHead>Entity</TableHead><TableHead>Detail</TableHead></TableRow></TableHeader>
+          <TableBody>
+            {loading && <TableRow><TableCell colSpan={4} className="text-center text-muted-foreground py-6">Loading audit events...</TableCell></TableRow>}
+            {!loading && filtered.map((i, idx) => (
+              <TableRow key={idx}>
+                <TableCell className="whitespace-nowrap text-muted-foreground">{formatTime(i.at)}</TableCell>
+                <TableCell><Badge variant="outline">{i.action}</Badge></TableCell>
+                <TableCell className="font-medium">{i.entityName}</TableCell>
+                <TableCell className="text-muted-foreground max-w-md truncate">{i.detail}</TableCell>
+              </TableRow>
+            ))}
+            {!loading && filtered.length === 0 && <TableRow><TableCell colSpan={4} className="text-center text-muted-foreground py-6">No audit events found</TableCell></TableRow>}
+          </TableBody>
+        </Table>
+      </Card>
+    </div>
+  );
+}

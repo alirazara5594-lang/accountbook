@@ -24,8 +24,8 @@ const statusColors: Record<number | string, string> = {
 
 type Tab = 'boms' | 'orders' | 'wip' | 'costing';
 
-export const ManufacturingWorkspace: React.FC<{ activeEntityId: string; entities?: any[] }> = ({ activeEntityId }) => {
-  const [activeTab, setActiveTab] = useState<Tab>('boms');
+export const ManufacturingWorkspace: React.FC<{ activeEntityId: string; entities?: any[]; initialTab?: Tab }> = ({ activeEntityId, initialTab }) => {
+  const [activeTab, setActiveTab] = useState<Tab>(initialTab || 'boms');
   const [toast, setToast] = useState('');
 
   const boms = useManufacturingStore((s) => s.boms);

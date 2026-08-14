@@ -46,6 +46,15 @@ import {
 import {
   ComplianceSummaryView, TaxManagementView, VatSalesTaxView, WithholdingTaxView, TaxReturnsView, EInvoicingView, ComplianceReportsView
 } from './ComplianceViews';
+import {
+  AnalyticsDashboardView, FinancialAnalyticsView, SalesAnalyticsView, ExpenseAnalyticsView, CashFlowAnalyticsView, InventoryAnalyticsView, ForecastingView, AIInsightsView
+} from './AnalyticsViews';
+import {
+  AdministrationSummaryView, UsersView, RolesPermissionsView, CompaniesView, BranchesView, ApprovalWorkflowsView, NumberSeriesView, CurrencyView, AuditLogsView
+} from './AdministrationViews';
+import {
+  ManufacturingSummaryView, ManufacturingWorkspaceView, BillOfMaterialsView, WorkOrdersMfgView, JobCostingView
+} from './ManufacturingViews';
 
 import { SystemAccountMapping } from './components/SystemAccountMapping'
 import { ModuleSummary } from './ModuleSummary'
@@ -265,11 +274,11 @@ export default function App() {
     'Assets & Inventory.Assets & Inventory Workspace': 'assets-inventory',
     'Assets & Inventory.Depreciation Schedule': 'assets-inventory-schedule',
     'Assets & Inventory.Valuation Reports': 'assets-inventory-valuation',
-    'Manufacturing & Production.Summary': 'manufacturing',
-    'Manufacturing & Production.Manufacturing Workspace': 'manufacturing',
-    'Manufacturing & Production.Bill of Materials': 'manufacturing',
-    'Manufacturing & Production.Work Orders': 'manufacturing',
-    'Manufacturing & Production.Job Costing': 'manufacturing',
+    'Manufacturing & Production.Summary': 'mfg-summary',
+    'Manufacturing & Production.Manufacturing Workspace': 'mfg-workspace',
+    'Manufacturing & Production.Bill of Materials': 'mfg-bom',
+    'Manufacturing & Production.Work Orders': 'mfg-orders',
+    'Manufacturing & Production.Job Costing': 'mfg-costing',
     'Payroll & HR.Summary': 'module-summary',
     'Payroll & HR.Employees': 'payroll-employees',
     'Payroll & HR.Attendance': 'payroll-attendance',
@@ -303,11 +312,27 @@ export default function App() {
     'Projects.Project Expenses': 'projects-expenses',
     'Projects.Project Profitability': 'projects-profitability',
     'Projects.Reports': 'projects-reports',
-    'AI & Analytics.Summary': 'module-summary',
-    'Administration.Summary': 'module-summary',
+    'AI & Analytics.Summary': 'analytics-summary',
+    'AI & Analytics.Analytics Dashboard': 'analytics-summary',
+    'AI & Analytics.Financial Analytics': 'analytics-financial',
+    'AI & Analytics.Sales Analytics': 'analytics-sales',
+    'AI & Analytics.Expense Analytics': 'analytics-expense',
+    'AI & Analytics.Cash Flow Analytics': 'analytics-cashflow',
+    'AI & Analytics.Inventory Analytics': 'analytics-inventory',
+    'AI & Analytics.Forecasting': 'analytics-forecast',
+    'AI & Analytics.AI Insights': 'analytics-insights',
+    'Administration.Summary': 'admin-summary',
+    'Administration.Users': 'admin-users',
+    'Administration.Roles & Permissions': 'admin-roles',
+    'Administration.Companies': 'admin-companies',
+    'Administration.Branches': 'admin-branches',
+    'Administration.Approval Workflows': 'admin-approvals',
     'Administration.System Settings': 'settings',
     'Administration.Chart of Accounts Mapping': 'coa-mapping',
+    'Administration.Number Series': 'admin-number-series',
+    'Administration.Currency': 'admin-currency',
     'Administration.Tax Configuration': 'taxes',
+    'Administration.Audit Logs': 'admin-audit',
     'Sales & Customers.Customer Payments': 'customer-payments',
     'Sales & Customers.Customer Statements': 'customer-statements',
     'Sales & Customers.Sales Reports': 'sales-reports'
@@ -424,6 +449,23 @@ export default function App() {
   {activeView === 'field-work-orders' && <WorkOrdersView activeEntityId={activeEntityId} />}
   {activeView === 'field-expenses' && <FieldExpensesView activeEntityId={activeEntityId} />}
   {activeView === 'field-reports' && <FieldReportsView />}
+  {activeView === 'analytics-summary' && <AnalyticsDashboardView />}
+  {activeView === 'analytics-financial' && <FinancialAnalyticsView />}
+  {activeView === 'analytics-sales' && <SalesAnalyticsView />}
+  {activeView === 'analytics-expense' && <ExpenseAnalyticsView />}
+  {activeView === 'analytics-cashflow' && <CashFlowAnalyticsView />}
+  {activeView === 'analytics-inventory' && <InventoryAnalyticsView />}
+  {activeView === 'analytics-forecast' && <ForecastingView />}
+  {activeView === 'analytics-insights' && <AIInsightsView />}
+  {activeView === 'admin-summary' && <AdministrationSummaryView />}
+  {activeView === 'admin-users' && <UsersView />}
+  {activeView === 'admin-roles' && <RolesPermissionsView />}
+  {activeView === 'admin-companies' && <CompaniesView />}
+  {activeView === 'admin-branches' && <BranchesView />}
+  {activeView === 'admin-approvals' && <ApprovalWorkflowsView />}
+  {activeView === 'admin-number-series' && <NumberSeriesView />}
+  {activeView === 'admin-currency' && <CurrencyView />}
+  {activeView === 'admin-audit' && <AuditLogsView activeEntityId={activeEntityId} />}
   {activeView === 'bills' && <VendorBills activeEntityId={activeEntityId} />}
   {activeView === 'vendor-statements' && <VendorStatementsWorkspace activeEntityId={activeEntityId} />}
   {activeView === 'payables-aging' && <PayablesAgingWorkspace activeEntityId={activeEntityId} />}
@@ -434,6 +476,11 @@ export default function App() {
   {activeView === 'assets-inventory-schedule' && <AssetsInventoryWorkspace activeEntityId={activeEntityId} entities={entities} initialTab="schedule" />}
   {activeView === 'assets-inventory-valuation' && <AssetsInventoryWorkspace activeEntityId={activeEntityId} entities={entities} initialTab="valuation" />}
   {activeView === 'manufacturing' && <ManufacturingWorkspace activeEntityId={activeEntityId} entities={entities} />}
+  {activeView === 'mfg-summary' && <ManufacturingSummaryView activeEntityId={activeEntityId} />}
+  {activeView === 'mfg-workspace' && <ManufacturingWorkspaceView activeEntityId={activeEntityId} entities={entities} />}
+  {activeView === 'mfg-bom' && <BillOfMaterialsView activeEntityId={activeEntityId} entities={entities} />}
+  {activeView === 'mfg-orders' && <WorkOrdersMfgView activeEntityId={activeEntityId} entities={entities} />}
+  {activeView === 'mfg-costing' && <JobCostingView activeEntityId={activeEntityId} entities={entities} />}
   {activeView === 'financial-reports' && <FinancialReports accounts={accounts} entries={entries} activeEntityId={activeEntityId} />}
   {activeView === 'general-ledger' && <GeneralLedgerView activeEntityId={activeEntityId} entities={entities as any} />}
   {activeView === 'accounts-receivable' && <AccountsReceivableView activeEntityId={activeEntityId} entities={entities as any} />}
