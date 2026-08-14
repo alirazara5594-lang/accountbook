@@ -1,6 +1,7 @@
 using Zenabook.Api.Models;
 using Zenabook.Api.Data;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Configuration;
 using System.Text.Json;
 
 namespace Zenabook.Api.Services;
@@ -85,6 +86,8 @@ private readonly List<Voucher> _vouchers = [];
     private readonly List<AuditItem> _auditLog = [];
     private readonly Dictionary<Guid, List<AuditItem>> _history = [];
     private readonly object _lock = new();
+    private readonly IConfiguration _config;
+    private readonly PayrollCountry _activeCountry;
 
     private readonly IDbContextFactory<AccountingDbContext>? _dbFactory;
     private sealed record StoredState(
@@ -162,9 +165,12 @@ List<ExpenseClaim>? ExpenseClaims = null,
         List<Currency>? Currencies = null,
         List<AuditItem>? AuditLog = null);
 
-    public AccountingStore(IDbContextFactory<AccountingDbContext>? dbFactory = null)
+    public AccountingStore(IDbContextFactory<AccountingDbContext>? dbFactory = null, IConfiguration? config = null)
     {
         _dbFactory = dbFactory;
+        _config = config ?? new ConfigurationBuilder().Build();
+        var defaultCountry = _config["ERP:ActiveCountry"] ?? "PK";
+        _activeCountry = Enum.Parse<PayrollCountry>(defaultCountry, true);
         if (LoadState()) return;
         var parentEntity = new Company { Name = "Acme Holdings", Code = "ACME", Type = EntityType.Parent };
         _companies.AddRange([parentEntity, new Company { Name = "Acme Services", Code = "ASV", ParentId = parentEntity.Id }, new Company { Name = "Acme Trading", Code = "ATD", ParentId = parentEntity.Id }]);
@@ -4175,6 +4181,15 @@ _bankImports.Clear(); _bankImports.AddRange(state.BankImports ?? []);
         ]);
 
         // ── Tax Slabs: Pakistan 2026–2027 (FBR) ───────────────────────────────
+        // Post-seed: deactivate tax slabs not belonging to the active deployment country
+        // This ensures users only see their own country's tax rules during normal operation
+        Action deactivateForeignSlabs = () =>
+        {
+            foreach (var slab in _taxSlabs)
+            {
+                slab.IsActive = slab.Country == _activeCountry;
+            }
+        };
         _taxSlabs.Add(new SalaryTaxSlab
         {
             Country = PayrollCountry.PK,
@@ -4314,6 +4329,9 @@ _bankImports.Clear(); _bankImports.AddRange(state.BankImports ?? []);
             IsActive = true,
             Brackets = []
         });
+
+        // Deactivate tax slabs for countries other than the active deployment country
+        deactivateForeignSlabs();
 
         // ── Sample Employees (One per country) ────────────────────────────────
         _employees.AddRange([
@@ -4710,6 +4728,8 @@ _bankImports.Clear(); _bankImports.AddRange(state.BankImports ?? []);
     public List<SalaryTaxSlab> GetTaxSlabs(PayrollCountry? country = null, int? taxYear = null, Guid? companyId = null)
     {
         var query = _taxSlabs.AsEnumerable();
+        // Always filter to active deployment country unless explicitly overridden
+        if (!country.HasValue) query = query.Where(s => s.Country == _activeCountry);
         if (country.HasValue) query = query.Where(s => s.Country == country.Value);
         if (taxYear.HasValue) query = query.Where(s => s.TaxYear == taxYear.Value);
         if (companyId.HasValue) query = query.Where(s => s.CompanyId == companyId.Value || s.CompanyId == null);

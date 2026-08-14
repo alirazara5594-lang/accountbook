@@ -28,7 +28,14 @@ var postgresConnection = NormalizePostgresConnectionString(rawConnection);
 if (!string.IsNullOrWhiteSpace(postgresConnection))
     builder.Services.AddDbContextFactory<AccountingDbContext>(options => options.UseNpgsql(postgresConnection));
 
-builder.Services.AddSingleton<AccountingStore>();
+builder.Services.AddSingleton<AccountingStore>(sp =>
+{
+    var dbFactory = sp.GetService<AccountingDbContext>() != null
+        ? sp.GetRequiredService<IDbContextFactory<AccountingDbContext>>()
+        : null;
+    var config = sp.GetRequiredService<IConfiguration>();
+    return new AccountingStore(dbFactory, config);
+});
 
 // JWT Authentication
 builder.Services.AddAuthentication(options =>
@@ -89,11 +96,12 @@ app.UseCors();
 app.UseAuthentication();
 app.UseAuthorization();
 
-app.MapGet("/", () => Results.Ok(new
+app.MapGet("/", (IConfiguration cfg) => Results.Ok(new
 {
     name = "Accountbook Accounting API",
     environment = app.Environment.EnvironmentName,
     status = "running",
+    activeCountry = cfg["ERP:ActiveCountry"] ?? "PK",
     databaseConnected = !string.IsNullOrWhiteSpace(postgresConnection),
     chartOfAccounts = "/api/v1/chart-of-accounts",
     journalEntries = "/api/v1/journal-entries",

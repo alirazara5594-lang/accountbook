@@ -17,6 +17,14 @@ export class ApiError extends Error {
   }
 }
 
+const getToken = (): string | null => {
+  try {
+    return localStorage.getItem('auth_token');
+  } catch {
+    return null;
+  }
+};
+
 export async function apiClient<T = any>(endpoint: string, options: RequestOptions = {}): Promise<T> {
   const { params, headers, body, ...restOptions } = options;
 
@@ -40,6 +48,11 @@ export async function apiClient<T = any>(endpoint: string, options: RequestOptio
     defaultHeaders['Content-Type'] = 'application/json';
   } else if (body && !(body instanceof FormData)) {
     defaultHeaders['Content-Type'] = 'application/json';
+  }
+
+  const token = getToken();
+  if (token) {
+    defaultHeaders['Authorization'] = `Bearer ${token}`;
   }
 
   const response = await fetch(url, {

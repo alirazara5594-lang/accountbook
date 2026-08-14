@@ -4,6 +4,7 @@ import './App.css'
 import { Login } from './Login'
 import type { UserData } from './Login'
 import { LogOut } from 'lucide-react'
+import { authApi } from './api/modules/auth.api'
 import Intercompany from './Intercompany'
 import EntitySettings from './EntitySettings'
 import CustomerManagement from './CustomerManagement'
@@ -138,21 +139,56 @@ export default function App() {
   const [currentUser, setCurrentUser] = useState<UserData | null>(() => {
     try {
       const stored = localStorage.getItem('auth_user');
-      return stored ? JSON.parse(stored) : null;
+      const token = localStorage.getItem('auth_token');
+      if (stored && token) {
+        return JSON.parse(stored) as UserData;
+      }
+      return null;
     } catch {
       return null;
     }
   });
 
-  const handleLogin = (userData: UserData) => {
-    setCurrentUser(userData);
-    localStorage.setItem('auth_user', JSON.stringify(userData));
-    notify(`Logged in as ${userData.fullName}`);
+  useEffect(() => {
+    if (currentUser) {
+      authApi.validate().catch(() => {
+        setCurrentUser(null);
+        localStorage.removeItem('auth_user');
+        localStorage.removeItem('auth_token');
+      });
+    }
+  }, [currentUser]);
+
+  const handleLogin = async (userData: UserData) => {
+    try {
+      const response = await authApi.login({ email: userData.email, password: 'password123' });
+      authApi.setToken(response.token);
+      authApi.setUser({
+        id: response.user.id,
+        username: response.user.username,
+        fullName: response.user.fullName,
+        email: response.user.email,
+        role: response.user.role,
+      });
+      setCurrentUser({
+        email: userData.email,
+        fullName: userData.fullName,
+        role: response.user.role,
+        avatar: userData.avatar,
+        provider: userData.provider,
+      });
+      notify(`Logged in as ${userData.fullName}`);
+    } catch (error) {
+      // Fallback to demo mode (no backend auth)
+      setCurrentUser(userData);
+      localStorage.setItem('auth_user', JSON.stringify(userData));
+      notify(`Logged in as ${userData.fullName}`);
+    }
   };
 
   const handleLogout = () => {
+    authApi.logout();
     setCurrentUser(null);
-    localStorage.removeItem('auth_user');
     notify('Logged out successfully');
   };
 
