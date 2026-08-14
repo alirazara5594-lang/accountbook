@@ -75,6 +75,12 @@ private readonly List<Voucher> _vouchers = [];
     private readonly List<Inspection> _inspections = [];
     private readonly List<FieldWorkOrder> _fieldWorkOrders = [];
     private readonly List<FieldExpense> _fieldExpenses = [];
+    private readonly List<AdminUser> _adminUsers = [];
+    private readonly List<UserRole> _userRoles = [];
+    private readonly List<Branch> _branches = [];
+    private readonly List<ApprovalWorkflow> _approvalWorkflows = [];
+    private readonly List<NumberSeries> _numberSeries = [];
+    private readonly List<Currency> _currencies = [];
     private readonly List<AccountMapping> _mappings = [];
     private readonly List<AuditItem> _auditLog = [];
     private readonly Dictionary<Guid, List<AuditItem>> _history = [];
@@ -148,6 +154,12 @@ List<ExpenseClaim>? ExpenseClaims = null,
         List<Inspection>? Inspections = null,
         List<FieldWorkOrder>? FieldWorkOrders = null,
         List<FieldExpense>? FieldExpenses = null,
+        List<AdminUser>? AdminUsers = null,
+        List<UserRole>? UserRoles = null,
+        List<Branch>? Branches = null,
+        List<ApprovalWorkflow>? ApprovalWorkflows = null,
+        List<NumberSeries>? NumberSeries = null,
+        List<Currency>? Currencies = null,
         List<AuditItem>? AuditLog = null);
 
     public AccountingStore(IDbContextFactory<AccountingDbContext>? dbFactory = null)
@@ -228,6 +240,7 @@ List<ExpenseClaim>? ExpenseClaims = null,
         SeedProjectsData();
         SeedComplianceData();
         SeedFieldOperationsData();
+        SeedAdministrationData();
         Persist();
     }
 
@@ -383,6 +396,12 @@ public IReadOnlyList<EmployeeCompensation> EmployeeCompensations => _employeeCom
     public IReadOnlyList<Inspection> Inspections => _inspections;
     public IReadOnlyList<FieldWorkOrder> FieldWorkOrders => _fieldWorkOrders;
     public IReadOnlyList<FieldExpense> FieldExpenses => _fieldExpenses;
+    public IReadOnlyList<AdminUser> AdminUsers => _adminUsers;
+    public IReadOnlyList<UserRole> UserRoles => _userRoles;
+    public IReadOnlyList<Branch> Branches => _branches;
+    public IReadOnlyList<ApprovalWorkflow> ApprovalWorkflows => _approvalWorkflows;
+    public IReadOnlyList<NumberSeries> NumberSeriesList => _numberSeries;
+    public IReadOnlyList<Currency> Currencies => _currencies;
 
     public string NextReceiptNumber()
     {
@@ -3452,6 +3471,12 @@ _bankImports.Clear(); _bankImports.AddRange(state.BankImports ?? []);
         _inspections.Clear(); _inspections.AddRange(state.Inspections ?? []);
         _fieldWorkOrders.Clear(); _fieldWorkOrders.AddRange(state.FieldWorkOrders ?? []);
         _fieldExpenses.Clear(); _fieldExpenses.AddRange(state.FieldExpenses ?? []);
+        _adminUsers.Clear(); _adminUsers.AddRange(state.AdminUsers ?? []);
+        _userRoles.Clear(); _userRoles.AddRange(state.UserRoles ?? []);
+        _branches.Clear(); _branches.AddRange(state.Branches ?? []);
+        _approvalWorkflows.Clear(); _approvalWorkflows.AddRange(state.ApprovalWorkflows ?? []);
+        _numberSeries.Clear(); _numberSeries.AddRange(state.NumberSeries ?? []);
+        _currencies.Clear(); _currencies.AddRange(state.Currencies ?? []);
         _auditLog.Clear(); _auditLog.AddRange(state.AuditLog ?? []);
         _mappings.Clear(); _mappings.AddRange(state.Mappings ?? []);
         if (state.History != null)
@@ -3466,7 +3491,7 @@ _bankImports.Clear(); _bankImports.AddRange(state.BankImports ?? []);
     {
         if (_dbFactory is null) return;
         using var db = _dbFactory.CreateDbContext();
-        var json = JsonSerializer.Serialize(new StoredState(_accounts, _entries, _history, _templates, _recurringEntries, _journalEvents, _intercompanyAllocations, _companies, _customers, _products, _vendors, _purchaseOrders, _grns, _fixedAssets, _taxAuthorities, _taxCodes, _taxRates, _warehouses, _stockLevels, _stockTransactions, _salesInvoices, _estimates, _boms, _workOrders, _mappings, _salesOrders, _creditNotes, _customerPayments, _vendorPayments, _fundTransfers, _reconciliations, _budgets, _periodCloses, _vouchers, _expenseClaims, _bankImports, _payComponents, _employees, _departments, _positions, _payGrades, _leaveBalances, _leaveRequests, _attendanceRecords, _payruns, _payrunEmployees, _payrunLines, _salarySlips, _holidays, _loanAdvances, _taxSlabs, _employeeCompensations, _projects, _projectPhases, _projectTasks, _timesheets, _projectExpenses, _taxObligations, _taxReturns, _withholdingCertificates, _eInvoices, _surveys, _fieldVisits, _inspections, _fieldWorkOrders, _fieldExpenses, _auditLog));
+        var json = JsonSerializer.Serialize(new StoredState(_accounts, _entries, _history, _templates, _recurringEntries, _journalEvents, _intercompanyAllocations, _companies, _customers, _products, _vendors, _purchaseOrders, _grns, _fixedAssets, _taxAuthorities, _taxCodes, _taxRates, _warehouses, _stockLevels, _stockTransactions, _salesInvoices, _estimates, _boms, _workOrders, _mappings, _salesOrders, _creditNotes, _customerPayments, _vendorPayments, _fundTransfers, _reconciliations, _budgets, _periodCloses, _vouchers, _expenseClaims, _bankImports, _payComponents, _employees, _departments, _positions, _payGrades, _leaveBalances, _leaveRequests, _attendanceRecords, _payruns, _payrunEmployees, _payrunLines, _salarySlips, _holidays, _loanAdvances, _taxSlabs, _employeeCompensations, _projects, _projectPhases, _projectTasks, _timesheets, _projectExpenses, _taxObligations, _taxReturns, _withholdingCertificates, _eInvoices, _surveys, _fieldVisits, _inspections, _fieldWorkOrders, _fieldExpenses, _adminUsers, _userRoles, _branches, _approvalWorkflows, _numberSeries, _currencies, _auditLog));
         var snapshot = db.AccountingStateSnapshots.Find(1);
         if (snapshot is null) db.AccountingStateSnapshots.Add(new AccountingStateSnapshot { Id = 1, Json = json, UpdatedAt = DateTime.UtcNow });
         else { snapshot.Json = json; snapshot.UpdatedAt = DateTime.UtcNow; }
@@ -4001,6 +4026,57 @@ _bankImports.Clear(); _bankImports.AddRange(state.BankImports ?? []);
         ]);
     }
 
+    private void SeedAdministrationData()
+    {
+        var companyId = _companies.FirstOrDefault()?.Id;
+
+        // ── Users ────────────────────────────────────────────────────────────
+        _adminUsers.AddRange([
+            new AdminUser { UserName = "admin", FullName = "Muhammad Ali", Email = "admin@acme.com", Role = "Finance admin", Status = UserStatus.Active, LastLogin = DateTime.UtcNow, CompanyId = companyId },
+            new AdminUser { UserName = "accountant", FullName = "Sarah Jenkins", Email = "accountant@acme.com", Role = "Senior Accountant", Status = UserStatus.Active, LastLogin = DateTime.UtcNow, CompanyId = companyId },
+            new AdminUser { UserName = "auditor", FullName = "John Doe", Email = "auditor@acme.com", Role = "External Auditor", Status = UserStatus.Active, CompanyId = companyId },
+        ]);
+
+        // ── Roles ────────────────────────────────────────────────────────────
+        var allPerms = new List<string> { "Dashboard", "Sales", "Procurement", "Banking", "Accounting", "Inventory", "Manufacturing", "Payroll", "Field Ops", "Compliance", "Projects", "Analytics", "Administration" };
+        _userRoles.AddRange([
+            new UserRole { Name = "Finance admin", Description = "Full access across all modules", Permissions = allPerms, CompanyId = companyId },
+            new UserRole { Name = "Senior Accountant", Description = "Accounting, banking, and reporting", Permissions = new List<string> { "Dashboard", "Sales", "Procurement", "Banking", "Accounting", "Inventory", "Analytics" }, CompanyId = companyId },
+            new UserRole { Name = "External Auditor", Description = "Read-only financial review", Permissions = new List<string> { "Dashboard", "Accounting", "Analytics", "Administration" }, CompanyId = companyId },
+        ]);
+
+        // ── Branches ─────────────────────────────────────────────────────────
+        _branches.AddRange([
+            new Branch { Name = "Head Office", Code = "HO", City = "Karachi", Address = "Main Business District", Active = true, CompanyId = companyId },
+            new Branch { Name = "Lahore Branch", Code = "LH", City = "Lahore", Address = "Gulberg III", Active = true, CompanyId = companyId },
+            new Branch { Name = "Islamabad Branch", Code = "ISB", City = "Islamabad", Address = "Blue Area", Active = true, CompanyId = companyId },
+        ]);
+
+        // ── Approval Workflows ───────────────────────────────────────────────
+        _approvalWorkflows.AddRange([
+            new ApprovalWorkflow { Name = "Invoice Approval", Module = "Sales", ApproverRole = "Senior Accountant", Steps = 1, Active = true, CompanyId = companyId },
+            new ApprovalWorkflow { Name = "Bill Approval", Module = "Procurement", ApproverRole = "Finance admin", Steps = 2, Active = true, CompanyId = companyId },
+            new ApprovalWorkflow { Name = "Expense Claim Approval", Module = "Payroll", ApproverRole = "Manager", Steps = 2, Active = true, CompanyId = companyId },
+        ]);
+
+        // ── Number Series ────────────────────────────────────────────────────
+        _numberSeries.AddRange([
+            new NumberSeries { Name = "Invoice", Prefix = "INV-", NextNumber = 1001, Format = "INV-1001", Active = true, CompanyId = companyId },
+            new NumberSeries { Name = "Bill", Prefix = "BILL-", NextNumber = 501, Format = "BILL-0501", Active = true, CompanyId = companyId },
+            new NumberSeries { Name = "Journal Entry", Prefix = "JE-", NextNumber = 2001, Format = "JE-2001", Active = true, CompanyId = companyId },
+            new NumberSeries { Name = "Payment Receipt", Prefix = "RCPT-", NextNumber = 301, Format = "RCPT-0301", Active = true, CompanyId = companyId },
+        ]);
+
+        // ── Currencies ───────────────────────────────────────────────────────
+        _currencies.AddRange([
+            new Currency { Code = "USD", Name = "US Dollar", Symbol = "$", Rate = 1m, Base = true, Active = true, CompanyId = companyId },
+            new Currency { Code = "GBP", Name = "British Pound", Symbol = "£", Rate = 0.79m, Base = false, Active = true, CompanyId = companyId },
+            new Currency { Code = "EUR", Name = "Euro", Symbol = "€", Rate = 0.92m, Base = false, Active = true, CompanyId = companyId },
+            new Currency { Code = "PKR", Name = "Pakistani Rupee", Symbol = "₨", Rate = 278.5m, Base = false, Active = true, CompanyId = companyId },
+            new Currency { Code = "AED", Name = "UAE Dirham", Symbol = "د.إ", Rate = 3.67m, Base = false, Active = true, CompanyId = companyId },
+        ]);
+    }
+
     private void SeedPayrollData()
     {
         var companyId = _companies.FirstOrDefault()?.Id;
@@ -4098,12 +4174,12 @@ _bankImports.Clear(); _bankImports.AddRange(state.BankImports ?? []);
             new PayComponent { Code = "AE_Gratuity", Name = "End of Service Gratuity", Type = PayComponentType.EmployerContribution, Category = PayComponentCategory.Gratuity_UAE, IsStatutory = true, IsTaxable = false, Country = PayrollCountry.AE, DisplayOrder = 101 },
         ]);
 
-        // ── Tax Slabs: Pakistan 2025 (FBR) ─────────────────────────────────────
+        // ── Tax Slabs: Pakistan 2026–2027 (FBR) ───────────────────────────────
         _taxSlabs.Add(new SalaryTaxSlab
         {
             Country = PayrollCountry.PK,
-            TaxYear = 2025,
-            Name = "Pakistan FBR Salary Tax Slab 2025 (Annual)",
+            TaxYear = 2026,
+            Name = "Pakistan FBR Salary Tax Slab 2026–2027 (Annual)",
             Currency = "PKR",
             FilingStatus = TaxFilingStatus.Single,
             PeriodBasis = "Annual",
@@ -4121,59 +4197,12 @@ _bankImports.Clear(); _bankImports.AddRange(state.BankImports ?? []);
             ]
         });
 
-        // ── Tax Slabs: Pakistan 2026 (FBR - projected) ─────────────────────────
-        _taxSlabs.Add(new SalaryTaxSlab
-        {
-            Country = PayrollCountry.PK,
-            TaxYear = 2026,
-            Name = "Pakistan FBR Salary Tax Slab 2026 (Annual)",
-            Currency = "PKR",
-            FilingStatus = TaxFilingStatus.Single,
-            PeriodBasis = "Annual",
-            StandardDeduction = 0,
-            PersonalAllowance = 0,
-            IsActive = true,
-            Brackets =
-            [
-                new SalaryTaxBracket { FromAmount = 0, ToAmount = 600000, RatePercent = 0, FixedTax = 0, Description = "Up to PKR 600,000 - Exempt" },
-                new SalaryTaxBracket { FromAmount = 600001, ToAmount = 1200000, RatePercent = 5, FixedTax = 0, Description = "PKR 600,001 – 1,200,000 @ 5%" },
-                new SalaryTaxBracket { FromAmount = 1200001, ToAmount = 2200000, RatePercent = 15, FixedTax = 30000, Description = "PKR 1,200,001 – 2,200,000 @ 15%" },
-                new SalaryTaxBracket { FromAmount = 2200001, ToAmount = 3200000, RatePercent = 25, FixedTax = 180000, Description = "PKR 2,200,001 – 3,200,000 @ 25%" },
-                new SalaryTaxBracket { FromAmount = 3200001, ToAmount = 4100000, RatePercent = 30, FixedTax = 430000, Description = "PKR 3,200,001 – 4,100,000 @ 30%" },
-                new SalaryTaxBracket { FromAmount = 4100001, ToAmount = null, RatePercent = 35, FixedTax = 700000, Description = "Above PKR 4,100,000 @ 35%" },
-            ]
-        });
-
-        // ── Tax Slabs: US 2025 (Federal, Single) ──────────────────────────────
-        _taxSlabs.Add(new SalaryTaxSlab
-        {
-            Country = PayrollCountry.US,
-            TaxYear = 2025,
-            Name = "US Federal Income Tax 2025 (Single)",
-            Currency = "USD",
-            FilingStatus = TaxFilingStatus.Single,
-            PeriodBasis = "Annual",
-            StandardDeduction = 15000,
-            PersonalAllowance = 0,
-            IsActive = true,
-            Brackets =
-            [
-                new SalaryTaxBracket { FromAmount = 0, ToAmount = 11925, RatePercent = 10, FixedTax = 0, Description = "10% bracket" },
-                new SalaryTaxBracket { FromAmount = 11925, ToAmount = 48475, RatePercent = 12, FixedTax = 1192.50m, Description = "12% bracket" },
-                new SalaryTaxBracket { FromAmount = 48475, ToAmount = 103350, RatePercent = 22, FixedTax = 5618.50m, Description = "22% bracket" },
-                new SalaryTaxBracket { FromAmount = 103350, ToAmount = 197300, RatePercent = 24, FixedTax = 17688.50m, Description = "24% bracket" },
-                new SalaryTaxBracket { FromAmount = 197300, ToAmount = 250525, RatePercent = 32, FixedTax = 40244.50m, Description = "32% bracket" },
-                new SalaryTaxBracket { FromAmount = 250525, ToAmount = 626350, RatePercent = 35, FixedTax = 57270.50m, Description = "35% bracket" },
-                new SalaryTaxBracket { FromAmount = 626350, ToAmount = null, RatePercent = 37, FixedTax = 188490.50m, Description = "37% bracket" },
-            ]
-        });
-
-        // ── Tax Slabs: US 2026 (Federal, Single) ──────────────────────────────
+        // ── Tax Slabs: US 2026–2027 (Federal, Single) ─────────────────────────
         _taxSlabs.Add(new SalaryTaxSlab
         {
             Country = PayrollCountry.US,
             TaxYear = 2026,
-            Name = "US Federal Income Tax 2026 (Single)",
+            Name = "US Federal Income Tax 2026–2027 (Single)",
             Currency = "USD",
             FilingStatus = TaxFilingStatus.Single,
             PeriodBasis = "Annual",
@@ -4192,26 +4221,7 @@ _bankImports.Clear(); _bankImports.AddRange(state.BankImports ?? []);
             ]
         });
 
-        // ── Tax Slabs: UK 2025/26 ─────────────────────────────────────────────
-        _taxSlabs.Add(new SalaryTaxSlab
-        {
-            Country = PayrollCountry.UK,
-            TaxYear = 2025,
-            Name = "UK Income Tax 2025/26",
-            Currency = "GBP",
-            FilingStatus = TaxFilingStatus.Single,
-            PeriodBasis = "Annual",
-            StandardDeduction = 12570,
-            PersonalAllowance = 12570,
-            IsActive = true,
-            Brackets =
-            [
-                new SalaryTaxBracket { FromAmount = 0, ToAmount = 37700, RatePercent = 20, FixedTax = 0, Description = "Basic Rate (20%)" },
-                new SalaryTaxBracket { FromAmount = 37700, ToAmount = 125140, RatePercent = 40, FixedTax = 7540, Description = "Higher Rate (40%)" },
-                new SalaryTaxBracket { FromAmount = 125140, ToAmount = null, RatePercent = 45, FixedTax = 42516, Description = "Additional Rate (45%)" },
-            ]
-        });
-
+        // ── Tax Slabs: UK 2026/27 ─────────────────────────────────────────────
         _taxSlabs.Add(new SalaryTaxSlab
         {
             Country = PayrollCountry.UK,
@@ -4231,33 +4241,12 @@ _bankImports.Clear(); _bankImports.AddRange(state.BankImports ?? []);
             ]
         });
 
-        // ── Tax Slabs: Canada 2025 (Federal) ──────────────────────────────────
-        _taxSlabs.Add(new SalaryTaxSlab
-        {
-            Country = PayrollCountry.CA,
-            TaxYear = 2025,
-            Name = "Canada Federal Income Tax 2025",
-            Currency = "CAD",
-            FilingStatus = TaxFilingStatus.Single,
-            PeriodBasis = "Annual",
-            StandardDeduction = 15705,
-            PersonalAllowance = 15705,
-            IsActive = true,
-            Brackets =
-            [
-                new SalaryTaxBracket { FromAmount = 0, ToAmount = 55867, RatePercent = 15, FixedTax = 0, Description = "15% bracket" },
-                new SalaryTaxBracket { FromAmount = 55867, ToAmount = 111733, RatePercent = 20.5m, FixedTax = 8380.05m, Description = "20.5% bracket" },
-                new SalaryTaxBracket { FromAmount = 111733, ToAmount = 154906, RatePercent = 26, FixedTax = 19623.58m, Description = "26% bracket" },
-                new SalaryTaxBracket { FromAmount = 154906, ToAmount = 220000, RatePercent = 29, FixedTax = 30858.56m, Description = "29% bracket" },
-                new SalaryTaxBracket { FromAmount = 220000, ToAmount = null, RatePercent = 33, FixedTax = 49727.74m, Description = "33% bracket" },
-            ]
-        });
-
+        // ── Tax Slabs: Canada 2026–2027 (Federal) ─────────────────────────────
         _taxSlabs.Add(new SalaryTaxSlab
         {
             Country = PayrollCountry.CA,
             TaxYear = 2026,
-            Name = "Canada Federal Income Tax 2026",
+            Name = "Canada Federal Income Tax 2026–2027",
             Currency = "CAD",
             FilingStatus = TaxFilingStatus.Single,
             PeriodBasis = "Annual",
@@ -4274,33 +4263,12 @@ _bankImports.Clear(); _bankImports.AddRange(state.BankImports ?? []);
             ]
         });
 
-        // ── Tax Slabs: Germany 2025 ───────────────────────────────────────────
-        _taxSlabs.Add(new SalaryTaxSlab
-        {
-            Country = PayrollCountry.DE,
-            TaxYear = 2025,
-            Name = "Germany Lohnsteuer 2025",
-            Currency = "EUR",
-            FilingStatus = TaxFilingStatus.Single,
-            PeriodBasis = "Annual",
-            StandardDeduction = 12096,
-            PersonalAllowance = 12096,
-            IsActive = true,
-            Brackets =
-            [
-                new SalaryTaxBracket { FromAmount = 0, ToAmount = 12096, RatePercent = 0, FixedTax = 0, Description = "Tax-free allowance" },
-                new SalaryTaxBracket { FromAmount = 12096, ToAmount = 17005, RatePercent = 14, FixedTax = 0, Description = "14% (progression zone)" },
-                new SalaryTaxBracket { FromAmount = 17005, ToAmount = 66760, RatePercent = 24, FixedTax = 1612, Description = "24% bracket" },
-                new SalaryTaxBracket { FromAmount = 66760, ToAmount = 277825, RatePercent = 42, FixedTax = 12568, Description = "42% bracket" },
-                new SalaryTaxBracket { FromAmount = 277825, ToAmount = null, RatePercent = 45, FixedTax = 23129, Description = "45% top rate" },
-            ]
-        });
-
+        // ── Tax Slabs: Germany 2026–2027 ──────────────────────────────────────
         _taxSlabs.Add(new SalaryTaxSlab
         {
             Country = PayrollCountry.DE,
             TaxYear = 2026,
-            Name = "Germany Lohnsteuer 2026",
+            Name = "Germany Lohnsteuer 2026–2027",
             Currency = "EUR",
             FilingStatus = TaxFilingStatus.Single,
             PeriodBasis = "Annual",
@@ -4317,21 +4285,7 @@ _bankImports.Clear(); _bankImports.AddRange(state.BankImports ?? []);
             ]
         });
 
-        // ── Tax Slabs: Saudi Arabia (No income tax, but GOSI config) ──────────
-        _taxSlabs.Add(new SalaryTaxSlab
-        {
-            Country = PayrollCountry.SA,
-            TaxYear = 2025,
-            Name = "Saudi Arabia - No Income Tax (GOSI Only)",
-            Currency = "SAR",
-            FilingStatus = TaxFilingStatus.Single,
-            PeriodBasis = "Annual",
-            StandardDeduction = 0,
-            PersonalAllowance = 0,
-            IsActive = true,
-            Brackets = []
-        });
-
+        // ── Tax Slabs: Saudi Arabia 2026–2027 (No income tax, GOSI only) ─────
         _taxSlabs.Add(new SalaryTaxSlab
         {
             Country = PayrollCountry.SA,
@@ -4346,21 +4300,7 @@ _bankImports.Clear(); _bankImports.AddRange(state.BankImports ?? []);
             Brackets = []
         });
 
-        // ── Tax Slabs: UAE (No income tax, but GPSSA config) ─────────────────
-        _taxSlabs.Add(new SalaryTaxSlab
-        {
-            Country = PayrollCountry.AE,
-            TaxYear = 2025,
-            Name = "UAE - No Income Tax (GPSSA Only)",
-            Currency = "AED",
-            FilingStatus = TaxFilingStatus.Single,
-            PeriodBasis = "Annual",
-            StandardDeduction = 0,
-            PersonalAllowance = 0,
-            IsActive = true,
-            Brackets = []
-        });
-
+        // ── Tax Slabs: UAE 2026–2027 (No income tax, GPSSA only) ─────────────
         _taxSlabs.Add(new SalaryTaxSlab
         {
             Country = PayrollCountry.AE,
@@ -6173,6 +6113,375 @@ _bankImports.Clear(); _bankImports.AddRange(state.BankImports ?? []);
             failedInspections,
             expenses = _fieldExpenses.Count,
             totalExpenses,
+        };
+    }
+
+    #endregion
+
+    #region Administration
+
+    // ── Users ────────────────────────────────────────────────────────────────
+    public List<AdminUser> GetAdminUsers(UserStatus? status = null, string? role = null, Guid? companyId = null)
+    {
+        var query = _adminUsers.AsEnumerable();
+        if (status.HasValue) query = query.Where(u => u.Status == status.Value);
+        if (!string.IsNullOrWhiteSpace(role)) query = query.Where(u => u.Role == role);
+        if (companyId.HasValue) query = query.Where(u => u.CompanyId == companyId.Value);
+        return query.OrderBy(u => u.FullName).ToList();
+    }
+
+    public bool CreateAdminUser(AdminUserRequest request, out AdminUser? user, out string? error)
+    {
+        lock (_lock)
+        {
+            user = null; error = null;
+            if (string.IsNullOrWhiteSpace(request.FullName)) { error = "Full name is required."; return false; }
+            if (string.IsNullOrWhiteSpace(request.Email)) { error = "Email is required."; return false; }
+            if (_adminUsers.Any(u => u.Email.Equals(request.Email, StringComparison.OrdinalIgnoreCase))) { error = "A user with this email already exists."; return false; }
+            user = new AdminUser
+            {
+                UserName = string.IsNullOrWhiteSpace(request.UserName) ? request.Email : request.UserName,
+                FullName = request.FullName.Trim(),
+                Email = request.Email.Trim(),
+                Role = string.IsNullOrWhiteSpace(request.Role) ? "Viewer" : request.Role,
+                Status = request.Status,
+                CompanyId = request.CompanyId,
+            };
+            _adminUsers.Add(user);
+            Persist(); return true;
+        }
+    }
+
+    public bool UpdateAdminUser(Guid id, AdminUserRequest request, out AdminUser? user, out string? error)
+    {
+        lock (_lock)
+        {
+            user = null; error = null;
+            var existing = _adminUsers.FirstOrDefault(u => u.Id == id);
+            if (existing == null) { error = "User not found."; return false; }
+            existing.FullName = request.FullName;
+            existing.Email = request.Email;
+            existing.Role = string.IsNullOrWhiteSpace(request.Role) ? existing.Role : request.Role;
+            existing.Status = request.Status;
+            Persist();
+            user = existing; return true;
+        }
+    }
+
+    public bool SetAdminUserStatus(Guid id, UserStatus status, out AdminUser? user, out string? error)
+    {
+        lock (_lock)
+        {
+            user = null; error = null;
+            var existing = _adminUsers.FirstOrDefault(u => u.Id == id);
+            if (existing == null) { error = "User not found."; return false; }
+            existing.Status = status;
+            Persist();
+            user = existing; return true;
+        }
+    }
+
+    public bool DeleteAdminUser(Guid id, out string? error)
+    {
+        lock (_lock)
+        {
+            error = null;
+            var existing = _adminUsers.FirstOrDefault(u => u.Id == id);
+            if (existing == null) { error = "User not found."; return false; }
+            _adminUsers.Remove(existing);
+            Persist(); return true;
+        }
+    }
+
+    // ── Roles ────────────────────────────────────────────────────────────────
+    public List<UserRole> GetUserRoles(Guid? companyId = null)
+    {
+        var query = _userRoles.AsEnumerable();
+        if (companyId.HasValue) query = query.Where(r => r.CompanyId == companyId.Value);
+        return query.OrderBy(r => r.Name).ToList();
+    }
+
+    public bool CreateUserRole(UserRoleRequest request, out UserRole? role, out string? error)
+    {
+        lock (_lock)
+        {
+            role = null; error = null;
+            if (string.IsNullOrWhiteSpace(request.Name)) { error = "Role name is required."; return false; }
+            role = new UserRole
+            {
+                Name = request.Name.Trim(),
+                Description = request.Description ?? "",
+                Permissions = request.Permissions ?? [],
+                CompanyId = request.CompanyId,
+            };
+            _userRoles.Add(role);
+            Persist(); return true;
+        }
+    }
+
+    public bool UpdateUserRole(Guid id, UserRoleRequest request, out UserRole? role, out string? error)
+    {
+        lock (_lock)
+        {
+            role = null; error = null;
+            var existing = _userRoles.FirstOrDefault(r => r.Id == id);
+            if (existing == null) { error = "Role not found."; return false; }
+            existing.Name = request.Name;
+            existing.Description = request.Description ?? existing.Description;
+            existing.Permissions = request.Permissions ?? existing.Permissions;
+            Persist();
+            role = existing; return true;
+        }
+    }
+
+    public bool DeleteUserRole(Guid id, out string? error)
+    {
+        lock (_lock)
+        {
+            error = null;
+            var existing = _userRoles.FirstOrDefault(r => r.Id == id);
+            if (existing == null) { error = "Role not found."; return false; }
+            _userRoles.Remove(existing);
+            Persist(); return true;
+        }
+    }
+
+    // ── Branches ─────────────────────────────────────────────────────────────
+    public List<Branch> GetBranches(bool? active = null, Guid? companyId = null)
+    {
+        var query = _branches.AsEnumerable();
+        if (active.HasValue) query = query.Where(b => b.Active == active.Value);
+        if (companyId.HasValue) query = query.Where(b => b.CompanyId == companyId.Value);
+        return query.OrderBy(b => b.Name).ToList();
+    }
+
+    public bool CreateBranch(BranchRequest request, out Branch? branch, out string? error)
+    {
+        lock (_lock)
+        {
+            branch = null; error = null;
+            if (string.IsNullOrWhiteSpace(request.Name)) { error = "Branch name is required."; return false; }
+            branch = new Branch
+            {
+                Name = request.Name.Trim(),
+                Code = string.IsNullOrWhiteSpace(request.Code) ? request.Name[..Math.Min(3, request.Name.Length)].ToUpper() : request.Code,
+                City = request.City ?? "",
+                Address = request.Address ?? "",
+                Active = request.Active,
+                CompanyId = request.CompanyId,
+            };
+            _branches.Add(branch);
+            Persist(); return true;
+        }
+    }
+
+    public bool SetBranchStatus(Guid id, bool active, out Branch? branch, out string? error)
+    {
+        lock (_lock)
+        {
+            branch = null; error = null;
+            var existing = _branches.FirstOrDefault(b => b.Id == id);
+            if (existing == null) { error = "Branch not found."; return false; }
+            existing.Active = active;
+            Persist();
+            branch = existing; return true;
+        }
+    }
+
+    public bool DeleteBranch(Guid id, out string? error)
+    {
+        lock (_lock)
+        {
+            error = null;
+            var existing = _branches.FirstOrDefault(b => b.Id == id);
+            if (existing == null) { error = "Branch not found."; return false; }
+            _branches.Remove(existing);
+            Persist(); return true;
+        }
+    }
+
+    // ── Approval Workflows ───────────────────────────────────────────────────
+    public List<ApprovalWorkflow> GetApprovalWorkflows(bool? active = null, Guid? companyId = null)
+    {
+        var query = _approvalWorkflows.AsEnumerable();
+        if (active.HasValue) query = query.Where(w => w.Active == active.Value);
+        if (companyId.HasValue) query = query.Where(w => w.CompanyId == companyId.Value);
+        return query.OrderBy(w => w.Name).ToList();
+    }
+
+    public bool CreateApprovalWorkflow(ApprovalWorkflowRequest request, out ApprovalWorkflow? workflow, out string? error)
+    {
+        lock (_lock)
+        {
+            workflow = null; error = null;
+            if (string.IsNullOrWhiteSpace(request.Name)) { error = "Workflow name is required."; return false; }
+            workflow = new ApprovalWorkflow
+            {
+                Name = request.Name.Trim(),
+                Module = string.IsNullOrWhiteSpace(request.Module) ? "Sales" : request.Module,
+                ApproverRole = string.IsNullOrWhiteSpace(request.ApproverRole) ? "Manager" : request.ApproverRole,
+                Steps = Math.Max(1, request.Steps),
+                Active = request.Active,
+                CompanyId = request.CompanyId,
+            };
+            _approvalWorkflows.Add(workflow);
+            Persist(); return true;
+        }
+    }
+
+    public bool SetApprovalWorkflowStatus(Guid id, bool active, out ApprovalWorkflow? workflow, out string? error)
+    {
+        lock (_lock)
+        {
+            workflow = null; error = null;
+            var existing = _approvalWorkflows.FirstOrDefault(w => w.Id == id);
+            if (existing == null) { error = "Workflow not found."; return false; }
+            existing.Active = active;
+            Persist();
+            workflow = existing; return true;
+        }
+    }
+
+    public bool DeleteApprovalWorkflow(Guid id, out string? error)
+    {
+        lock (_lock)
+        {
+            error = null;
+            var existing = _approvalWorkflows.FirstOrDefault(w => w.Id == id);
+            if (existing == null) { error = "Workflow not found."; return false; }
+            _approvalWorkflows.Remove(existing);
+            Persist(); return true;
+        }
+    }
+
+    // ── Number Series ────────────────────────────────────────────────────────
+    public List<NumberSeries> GetNumberSeries(bool? active = null, Guid? companyId = null)
+    {
+        var query = _numberSeries.AsEnumerable();
+        if (active.HasValue) query = query.Where(n => n.Active == active.Value);
+        if (companyId.HasValue) query = query.Where(n => n.CompanyId == companyId.Value);
+        return query.OrderBy(n => n.Name).ToList();
+    }
+
+    public bool CreateNumberSeries(NumberSeriesRequest request, out NumberSeries? series, out string? error)
+    {
+        lock (_lock)
+        {
+            series = null; error = null;
+            if (string.IsNullOrWhiteSpace(request.Name)) { error = "Series name is required."; return false; }
+            if (request.NextNumber < 1) { error = "Next number must be at least 1."; return false; }
+            series = new NumberSeries
+            {
+                Name = request.Name.Trim(),
+                Prefix = request.Prefix ?? "",
+                NextNumber = request.NextNumber,
+                Format = string.IsNullOrWhiteSpace(request.Format) ? $"{request.Prefix}{request.NextNumber:D4}" : request.Format,
+                Active = request.Active,
+                CompanyId = request.CompanyId,
+            };
+            _numberSeries.Add(series);
+            Persist(); return true;
+        }
+    }
+
+    public bool SetNumberSeriesStatus(Guid id, bool active, out NumberSeries? series, out string? error)
+    {
+        lock (_lock)
+        {
+            series = null; error = null;
+            var existing = _numberSeries.FirstOrDefault(n => n.Id == id);
+            if (existing == null) { error = "Number series not found."; return false; }
+            existing.Active = active;
+            Persist();
+            series = existing; return true;
+        }
+    }
+
+    public bool DeleteNumberSeries(Guid id, out string? error)
+    {
+        lock (_lock)
+        {
+            error = null;
+            var existing = _numberSeries.FirstOrDefault(n => n.Id == id);
+            if (existing == null) { error = "Number series not found."; return false; }
+            _numberSeries.Remove(existing);
+            Persist(); return true;
+        }
+    }
+
+    // ── Currencies ───────────────────────────────────────────────────────────
+    public List<Currency> GetCurrencies(bool? active = null, Guid? companyId = null)
+    {
+        var query = _currencies.AsEnumerable();
+        if (active.HasValue) query = query.Where(c => c.Active == active.Value);
+        if (companyId.HasValue) query = query.Where(c => c.CompanyId == companyId.Value);
+        return query.OrderBy(c => c.Code).ToList();
+    }
+
+    public bool CreateCurrency(CurrencyRequest request, out Currency? currency, out string? error)
+    {
+        lock (_lock)
+        {
+            currency = null; error = null;
+            if (string.IsNullOrWhiteSpace(request.Code)) { error = "Currency code is required."; return false; }
+            if (_currencies.Any(c => c.Code.Equals(request.Code, StringComparison.OrdinalIgnoreCase))) { error = "This currency code already exists."; return false; }
+            if (request.Rate <= 0) { error = "Exchange rate must be positive."; return false; }
+            currency = new Currency
+            {
+                Code = request.Code.ToUpperInvariant(),
+                Name = request.Name ?? "",
+                Symbol = request.Symbol ?? "",
+                Rate = request.Rate,
+                Base = request.Base,
+                Active = request.Active,
+                CompanyId = request.CompanyId,
+            };
+            _currencies.Add(currency);
+            Persist(); return true;
+        }
+    }
+
+    public bool SetCurrencyStatus(Guid id, bool active, out Currency? currency, out string? error)
+    {
+        lock (_lock)
+        {
+            currency = null; error = null;
+            var existing = _currencies.FirstOrDefault(c => c.Id == id);
+            if (existing == null) { error = "Currency not found."; return false; }
+            existing.Active = active;
+            Persist();
+            currency = existing; return true;
+        }
+    }
+
+    public bool DeleteCurrency(Guid id, out string? error)
+    {
+        lock (_lock)
+        {
+            error = null;
+            var existing = _currencies.FirstOrDefault(c => c.Id == id);
+            if (existing == null) { error = "Currency not found."; return false; }
+            _currencies.Remove(existing);
+            Persist(); return true;
+        }
+    }
+
+    public object GetAdministrationDashboard()
+    {
+        return new
+        {
+            users = _adminUsers.Count,
+            activeUsers = _adminUsers.Count(u => u.Status == UserStatus.Active),
+            lockedUsers = _adminUsers.Count(u => u.Status == UserStatus.Locked),
+            roles = _userRoles.Count,
+            permissions = _userRoles.Sum(r => r.Permissions.Count),
+            branches = _branches.Count,
+            activeBranches = _branches.Count(b => b.Active),
+            workflows = _approvalWorkflows.Count,
+            activeWorkflows = _approvalWorkflows.Count(w => w.Active),
+            numberSeries = _numberSeries.Count,
+            currencies = _currencies.Count,
+            baseCurrency = _currencies.FirstOrDefault(c => c.Base)?.Code ?? "USD",
         };
     }
 

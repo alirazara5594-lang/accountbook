@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
-import { useCompanyStore } from './stores';
+import { useCompanyStore, useAdministrationStore } from './stores';
 import { accountingApi, type AuditTrailItem } from './api/modules/accounting.api';
+import type { UserStatus } from './api/modules/administration.api';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card } from '@/components/ui/card';
@@ -15,33 +16,14 @@ import {
   Users, ShieldCheck, Building2, GitBranch, CheckCircle2, Hash, Coins, ScrollText, Plus, Save, Trash2, Pencil, KeyRound, Lock, Globe, Search
 } from 'lucide-react';
 
-const today = () => new Date().toISOString().split('T')[0];
-
-// ── local persistence helpers ─────────────────────────────────────────────────
-function load<T>(key: string, fallback: T): T {
-  try {
-    const raw = localStorage.getItem(key);
-    return raw ? JSON.parse(raw) as T : fallback;
-  } catch { return fallback; }
-}
-
-function persist<T>(key: string, value: T) {
-  localStorage.setItem(key, JSON.stringify(value));
-}
-
-const uid = () => Math.random().toString(36).slice(2, 10);
-
 // ── Summary (module overview) ─────────────────────────────────────────────────
 export function AdministrationSummaryView() {
   const { entities } = useCompanyStore();
+  const { dashboard, users, roles, branches, numberSeries, workflows, currencies, fetchAll } = useAdministrationStore();
   useEffect(() => { useCompanyStore.getState().fetchCompanies(); }, []);
-  const users = load('ab_users', SEED_USERS);
-  const roles = load('ab_roles', SEED_ROLES);
-  const branches = load('ab_branches', SEED_BRANCHES);
-  const series = load('ab_number_series', SEED_SERIES);
+  useEffect(() => { fetchAll(); }, [fetchAll]);
 
   const activeEntities = entities.filter(e => e.active).length;
-  const auditCount = load('ab_audit_count', 0);
 
   return (
     <ModuleSummaryLayout
@@ -56,10 +38,10 @@ export function AdministrationSummaryView() {
     >
       <SummaryPanel icon={CheckCircle2} title="Configuration Status">
         <div className="space-y-2">
-          <div className="flex items-center justify-between border rounded-lg px-3 py-2 text-sm"><span>Number Series</span><Badge variant={series.length ? 'secondary' : 'outline'}>{series.length} defined</Badge></div>
-          <div className="flex items-center justify-between border rounded-lg px-3 py-2 text-sm"><span>Approval Workflows</span><Badge variant="secondary">{load('ab_approvals', SEED_APPROVALS).length} active</Badge></div>
-          <div className="flex items-center justify-between border rounded-lg px-3 py-2 text-sm"><span>Currencies</span><Badge variant="secondary">{load('ab_currencies', SEED_CURRENCIES).length} enabled</Badge></div>
-          <div className="flex items-center justify-between border rounded-lg px-3 py-2 text-sm"><span>Audit Events Logged</span><Badge variant="outline">{auditCount}</Badge></div>
+          <div className="flex items-center justify-between border rounded-lg px-3 py-2 text-sm"><span>Number Series</span><Badge variant={numberSeries.length ? 'secondary' : 'outline'}>{numberSeries.length} defined</Badge></div>
+          <div className="flex items-center justify-between border rounded-lg px-3 py-2 text-sm"><span>Approval Workflows</span><Badge variant="secondary">{workflows.filter(w => w.active).length} active</Badge></div>
+          <div className="flex items-center justify-between border rounded-lg px-3 py-2 text-sm"><span>Currencies</span><Badge variant="secondary">{currencies.filter(c => c.active).length} enabled</Badge></div>
+          <div className="flex items-center justify-between border rounded-lg px-3 py-2 text-sm"><span>Base Currency</span><Badge variant="outline">{dashboard?.baseCurrency ?? '—'}</Badge></div>
         </div>
       </SummaryPanel>
       <SummaryPanel icon={Lock} title="Security Posture">
@@ -74,26 +56,22 @@ export function AdministrationSummaryView() {
   );
 }
 
-// ── Users ─────────────────────────────────────────────────────────────────────
-interface AdminUser { id: string; fullName: string; email: string; role: string; status: 'Active' | 'Inactive' | 'Locked'; lastLogin: string; }
-const SEED_USERS: AdminUser[] = [
-  { id: 'u1', fullName: 'Muhammad Ali', email: 'admin@acme.com', role: 'Finance admin', status: 'Active', lastLogin: today() },
-  { id: 'u2', fullName: 'Sarah Jenkins', email: 'accountant@acme.com', role: 'Senior Accountant', status: 'Active', lastLogin: today() },
-  { id: 'u3', fullName: 'John Doe', email: 'auditor@acme.com', role: 'External Auditor', status: 'Active', lastLogin: today() },
-];
+const ALL_PERMISSIONS = ['Dashboard', 'Sales', 'Procurement', 'Banking', 'Accounting', 'Inventory', 'Manufacturing', 'Payroll', 'Field Ops', 'Compliance', 'Projects', 'Analytics', 'Administration'];
 
+// ── Users ─────────────────────────────────────────────────────────────────────
 export function UsersView() {
-  const [users, setUsers] = useState<AdminUser[]>(() => load('ab_users', SEED_USERS));
-  const [form, setForm] = useState({ fullName: '', email: '', role: 'Accountant', status: 'Active' as AdminUser['status'] });
+  const { users, fetchUsers, createUser, updateUser, deleteUser } = useAdministrationStore();
+  const [form, setForm] = useState({ fullName: '', email: '', role: 'Accountant', status: 'Active' as UserStatus });
   const [editingId, setEditingId] = useState<string | null>(null);
   const [query, setQuery] = useState('');
 
-  useEffect(() => { persist('ab_users', users); }, [users]);
+  useEffect(() => { fetchUsers(); }, [fetchUsers]);
 
-  const save = (e: React.FormEvent) => {
+  const save = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (editingId) setUsers(us => us.map(u => u.id === editingId ? { ...u, ...form } : u));
-    else setUsers(us => [{ id: uid(), ...form, lastLogin: 'Never' }, ...us]);
+    const payload = { userName: form.email, ...form };
+    if (editingId) await updateUser(editingId, payload);
+    else await createUser(payload);
     setForm({ fullName: '', email: '', role: 'Accountant', status: 'Active' });
     setEditingId(null);
   };
@@ -131,7 +109,7 @@ export function UsersView() {
               </Select>
             </FormField>
             <FormField label="Status">
-              <Select value={form.status} onValueChange={v => setForm({ ...form, status: (v || 'Active') as AdminUser['status'] })}>
+              <Select value={form.status} onValueChange={v => setForm({ ...form, status: (v || 'Active') as UserStatus })}>
                 <SelectTrigger><SelectValue placeholder="Status" /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="Active">Active</SelectItem>
@@ -160,11 +138,11 @@ export function UsersView() {
                   <TableCell className="text-muted-foreground">{u.email}</TableCell>
                   <TableCell>{u.role}</TableCell>
                   <TableCell><Badge variant={userStatus(u.status) as any}>{u.status}</Badge></TableCell>
-                  <TableCell className="text-muted-foreground">{u.lastLogin}</TableCell>
+                  <TableCell className="text-muted-foreground">{u.lastLogin ? new Date(u.lastLogin).toLocaleDateString() : 'Never'}</TableCell>
                   <TableCell>
                     <div className="flex gap-1">
                       <Button variant="ghost" size="icon" title="Edit" onClick={() => { setEditingId(u.id); setForm({ fullName: u.fullName, email: u.email, role: u.role, status: u.status }); }}><Pencil className="h-4 w-4" /></Button>
-                      <Button variant="ghost" size="icon" title="Delete" onClick={() => setUsers(us => us.filter(x => x.id !== u.id))}><Trash2 className="h-4 w-4 text-red-500" /></Button>
+                      <Button variant="ghost" size="icon" title="Delete" onClick={() => deleteUser(u.id)}><Trash2 className="h-4 w-4 text-red-500" /></Button>
                     </div>
                   </TableCell>
                 </TableRow>
@@ -179,28 +157,20 @@ export function UsersView() {
 }
 
 // ── Roles & Permissions ───────────────────────────────────────────────────────
-interface Role { id: string; name: string; description: string; permissions: string[]; }
-const ALL_PERMISSIONS = ['Dashboard', 'Sales', 'Procurement', 'Banking', 'Accounting', 'Inventory', 'Manufacturing', 'Payroll', 'Field Ops', 'Compliance', 'Projects', 'Analytics', 'Administration'];
-const SEED_ROLES: Role[] = [
-  { id: 'r1', name: 'Finance admin', description: 'Full access across all modules', permissions: [...ALL_PERMISSIONS] },
-  { id: 'r2', name: 'Senior Accountant', description: 'Accounting, banking, and reporting', permissions: ['Dashboard', 'Sales', 'Procurement', 'Banking', 'Accounting', 'Inventory', 'Analytics'] },
-  { id: 'r3', name: 'External Auditor', description: 'Read-only financial review', permissions: ['Dashboard', 'Accounting', 'Analytics', 'Administration'] },
-];
-
 export function RolesPermissionsView() {
-  const [roles, setRoles] = useState<Role[]>(() => load('ab_roles', SEED_ROLES));
+  const { roles, fetchRoles, createRole, updateRole, deleteRole } = useAdministrationStore();
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
   const [selected, setSelected] = useState<string[]>([]);
   const [editingId, setEditingId] = useState<string | null>(null);
 
-  useEffect(() => { persist('ab_roles', roles); }, [roles]);
+  useEffect(() => { fetchRoles(); }, [fetchRoles]);
 
-  const save = (e: React.FormEvent) => {
+  const save = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!name.trim()) return;
-    if (editingId) setRoles(rs => rs.map(r => r.id === editingId ? { ...r, name, description, permissions: selected } : r));
-    else setRoles(rs => [...rs, { id: uid(), name, description, permissions: selected }]);
+    if (editingId) await updateRole(editingId, { name, description, permissions: selected });
+    else await createRole({ name, description, permissions: selected });
     setName(''); setDescription(''); setSelected([]); setEditingId(null);
   };
 
@@ -246,7 +216,7 @@ export function RolesPermissionsView() {
                   <div><p className="font-medium text-sm">{r.name}</p><p className="text-xs text-muted-foreground">{r.description}</p></div>
                   <div className="flex gap-1">
                     <Button variant="ghost" size="sm" onClick={() => { setEditingId(r.id); setName(r.name); setDescription(r.description); setSelected(r.permissions); }}><Pencil className="h-3.5 w-3.5" /> Edit</Button>
-                    <Button variant="ghost" size="sm" onClick={() => setRoles(rs => rs.filter(x => x.id !== r.id))}><Trash2 className="h-3.5 w-3.5 text-red-500" /></Button>
+                    <Button variant="ghost" size="sm" onClick={() => deleteRole(r.id)}><Trash2 className="h-3.5 w-3.5 text-red-500" /></Button>
                   </div>
                 </div>
                 <div className="flex flex-wrap gap-1">
@@ -329,21 +299,15 @@ export function CompaniesView() {
   );
 }
 
-interface Branch { id: string; name: string; code: string; city: string; address: string; active: boolean; }
-const SEED_BRANCHES: Branch[] = [
-  { id: 'b1', name: 'Head Office', code: 'HO', city: 'Karachi', address: 'Main Business District', active: true },
-  { id: 'b2', name: 'Lahore Branch', code: 'LH', city: 'Lahore', address: 'Gulberg III', active: true },
-];
-
 export function BranchesView() {
-  const [branches, setBranches] = useState<Branch[]>(() => load('ab_branches', SEED_BRANCHES));
+  const { branches, fetchBranches, createBranch, setBranchStatus, deleteBranch } = useAdministrationStore();
   const [form, setForm] = useState({ name: '', code: '', city: '', address: '', active: true });
 
-  useEffect(() => { persist('ab_branches', branches); }, [branches]);
+  useEffect(() => { fetchBranches(); }, [fetchBranches]);
 
-  const save = (e: React.FormEvent) => {
+  const save = async (e: React.FormEvent) => {
     e.preventDefault();
-    setBranches(bs => [{ id: uid(), ...form }, ...bs]);
+    await createBranch(form);
     setForm({ name: '', code: '', city: '', address: '', active: true });
   };
 
@@ -380,8 +344,8 @@ export function BranchesView() {
                   <TableCell className="font-mono text-muted-foreground">{b.code}</TableCell>
                   <TableCell>{b.city}</TableCell>
                   <TableCell className="text-muted-foreground">{b.address}</TableCell>
-                  <TableCell><button onClick={() => setBranches(bs => bs.map(x => x.id === b.id ? { ...x, active: !x.active } : x))}><Badge variant={b.active ? 'secondary' : 'outline'}>{b.active ? 'Active' : 'Inactive'}</Badge></button></TableCell>
-                  <TableCell><Button variant="ghost" size="icon" title="Delete" onClick={() => setBranches(bs => bs.filter(x => x.id !== b.id))}><Trash2 className="h-4 w-4 text-red-500" /></Button></TableCell>
+                  <TableCell><button onClick={() => setBranchStatus(b.id, !b.active)}><Badge variant={b.active ? 'secondary' : 'outline'}>{b.active ? 'Active' : 'Inactive'}</Badge></button></TableCell>
+                  <TableCell><Button variant="ghost" size="icon" title="Delete" onClick={() => deleteBranch(b.id)}><Trash2 className="h-4 w-4 text-red-500" /></Button></TableCell>
                 </TableRow>
               ))}
               {branches.length === 0 && <TableRow><TableCell colSpan={6} className="text-center text-muted-foreground py-6">No branches configured</TableCell></TableRow>}
@@ -394,22 +358,15 @@ export function BranchesView() {
 }
 
 // ── Approval Workflows ────────────────────────────────────────────────────────
-interface ApprovalWorkflow { id: string; name: string; module: string; approverRole: string; steps: number; active: boolean; }
-const SEED_APPROVALS: ApprovalWorkflow[] = [
-  { id: 'a1', name: 'Invoice Approval', module: 'Sales', approverRole: 'Senior Accountant', steps: 1, active: true },
-  { id: 'a2', name: 'Bill Approval', module: 'Procurement', approverRole: 'Finance admin', steps: 2, active: true },
-  { id: 'a3', name: 'Expense Claim Approval', module: 'Payroll', approverRole: 'Manager', steps: 2, active: true },
-];
-
 export function ApprovalWorkflowsView() {
-  const [flows, setFlows] = useState<ApprovalWorkflow[]>(() => load('ab_approvals', SEED_APPROVALS));
+  const { workflows, fetchWorkflows, createWorkflow, setWorkflowStatus, deleteWorkflow } = useAdministrationStore();
   const [form, setForm] = useState({ name: '', module: 'Sales', approverRole: 'Manager', steps: 1, active: true });
 
-  useEffect(() => { persist('ab_approvals', flows); }, [flows]);
+  useEffect(() => { fetchWorkflows(); }, [fetchWorkflows]);
 
-  const save = (e: React.FormEvent) => {
+  const save = async (e: React.FormEvent) => {
     e.preventDefault();
-    setFlows(fl => [{ id: uid(), ...form }, ...fl]);
+    await createWorkflow(form);
     setForm({ name: '', module: 'Sales', approverRole: 'Manager', steps: 1, active: true });
   };
 
@@ -417,10 +374,10 @@ export function ApprovalWorkflowsView() {
     <div className="p-6 max-w-[1400px] mx-auto space-y-4">
       <PageHeader title="Approval Workflows" description="Multi-step approval routing for business documents" />
       <div className="grid grid-cols-4 gap-4">
-        <StatCard icon={CheckCircle2} label="Workflows" value={flows.length} tone="teal" />
-        <StatCard icon={GitBranch} label="Active" value={flows.filter(f => f.active).length} tone="green" />
-        <StatCard icon={ShieldCheck} label="Total Steps" value={flows.reduce((s, f) => s + f.steps, 0)} tone="blue" />
-        <StatCard icon={KeyRound} label="Approver Roles" value={new Set(flows.map(f => f.approverRole)).size} tone="violet" />
+        <StatCard icon={CheckCircle2} label="Workflows" value={workflows.length} tone="teal" />
+        <StatCard icon={GitBranch} label="Active" value={workflows.filter(f => f.active).length} tone="green" />
+        <StatCard icon={ShieldCheck} label="Total Steps" value={workflows.reduce((s, f) => s + f.steps, 0)} tone="blue" />
+        <StatCard icon={KeyRound} label="Approver Roles" value={new Set(workflows.map(f => f.approverRole)).size} tone="violet" />
       </div>
       <div className="grid grid-cols-3 gap-4">
         <Card className="p-4 space-y-3">
@@ -446,16 +403,16 @@ export function ApprovalWorkflowsView() {
         <Card className="p-4 col-span-2 space-y-3">
           <p className="text-sm font-medium">Active Workflows</p>
           <div className="space-y-2">
-            {flows.map(f => (
+            {workflows.map(f => (
               <div key={f.id} className="flex items-center justify-between border rounded-lg p-3">
                 <div><p className="font-medium text-sm">{f.name}</p><p className="text-xs text-muted-foreground">{f.module} · {f.approverRole} · {f.steps} step{f.steps > 1 ? 's' : ''}</p></div>
                 <div className="flex items-center gap-2">
-                  <button onClick={() => setFlows(fl => fl.map(x => x.id === f.id ? { ...x, active: !x.active } : x))}><Badge variant={f.active ? 'secondary' : 'outline'}>{f.active ? 'Active' : 'Paused'}</Badge></button>
-                  <Button variant="ghost" size="icon" onClick={() => setFlows(fl => fl.filter(x => x.id !== f.id))}><Trash2 className="h-4 w-4 text-red-500" /></Button>
+                  <button onClick={() => setWorkflowStatus(f.id, !f.active)}><Badge variant={f.active ? 'secondary' : 'outline'}>{f.active ? 'Active' : 'Paused'}</Badge></button>
+                  <Button variant="ghost" size="icon" onClick={() => deleteWorkflow(f.id)}><Trash2 className="h-4 w-4 text-red-500" /></Button>
                 </div>
               </div>
             ))}
-            {flows.length === 0 && <p className="text-sm text-muted-foreground">No workflows defined.</p>}
+            {workflows.length === 0 && <p className="text-sm text-muted-foreground">No workflows defined.</p>}
           </div>
         </Card>
       </div>
@@ -464,24 +421,16 @@ export function ApprovalWorkflowsView() {
 }
 
 // ── Number Series ─────────────────────────────────────────────────────────────
-interface NumberSeries { id: string; name: string; prefix: string; nextNumber: number; format: string; active: boolean; }
-const SEED_SERIES: NumberSeries[] = [
-  { id: 'n1', name: 'Invoice', prefix: 'INV-', nextNumber: 1001, format: 'INV-0001', active: true },
-  { id: 'n2', name: 'Bill', prefix: 'BILL-', nextNumber: 501, format: 'BILL-0501', active: true },
-  { id: 'n3', name: 'Journal Entry', prefix: 'JE-', nextNumber: 2001, format: 'JE-2001', active: true },
-  { id: 'n4', name: 'Payment Receipt', prefix: 'RCPT-', nextNumber: 301, format: 'RCPT-0301', active: true },
-];
-
 export function NumberSeriesView() {
-  const [series, setSeries] = useState<NumberSeries[]>(() => load('ab_number_series', SEED_SERIES));
+  const { numberSeries, fetchNumberSeries, createNumberSeries, setNumberSeriesStatus, deleteNumberSeries } = useAdministrationStore();
   const [form, setForm] = useState({ name: '', prefix: '', nextNumber: 1, format: '', active: true });
 
-  useEffect(() => { persist('ab_number_series', series); }, [series]);
+  useEffect(() => { fetchNumberSeries(); }, [fetchNumberSeries]);
 
-  const save = (e: React.FormEvent) => {
+  const save = async (e: React.FormEvent) => {
     e.preventDefault();
     const format = `${form.prefix}${String(form.nextNumber).padStart(4, '0')}`;
-    setSeries(ss => [{ id: uid(), ...form, format }, ...ss]);
+    await createNumberSeries({ ...form, format });
     setForm({ name: '', prefix: '', nextNumber: 1, format: '', active: true });
   };
 
@@ -489,10 +438,10 @@ export function NumberSeriesView() {
     <div className="p-6 max-w-[1400px] mx-auto space-y-4">
       <PageHeader title="Number Series" description="Automatic document numbering for transactions" />
       <div className="grid grid-cols-4 gap-4">
-        <StatCard icon={Hash} label="Series Defined" value={series.length} tone="teal" />
-        <StatCard icon={CheckCircle2} label="Active" value={series.filter(s => s.active).length} tone="green" />
-        <StatCard icon={ScrollText} label="Next Numbers" value={series.reduce((s, x) => s + x.nextNumber, 0)} tone="blue" />
-        <StatCard icon={KeyRound} label="Prefixes" value={new Set(series.map(s => s.prefix)).size} tone="violet" />
+        <StatCard icon={Hash} label="Series Defined" value={numberSeries.length} tone="teal" />
+        <StatCard icon={CheckCircle2} label="Active" value={numberSeries.filter(s => s.active).length} tone="green" />
+        <StatCard icon={ScrollText} label="Next Numbers" value={numberSeries.reduce((s, x) => s + x.nextNumber, 0)} tone="blue" />
+        <StatCard icon={KeyRound} label="Prefixes" value={new Set(numberSeries.map(s => s.prefix)).size} tone="violet" />
       </div>
       <div className="grid grid-cols-3 gap-4">
         <Card className="p-4 space-y-3">
@@ -512,17 +461,17 @@ export function NumberSeriesView() {
           <Table>
             <TableHeader><TableRow><TableHead>Series</TableHead><TableHead>Prefix</TableHead><TableHead>Next Number</TableHead><TableHead>Sample</TableHead><TableHead>Status</TableHead><TableHead></TableHead></TableRow></TableHeader>
             <TableBody>
-              {series.map(s => (
+              {numberSeries.map(s => (
                 <TableRow key={s.id}>
                   <TableCell className="font-medium">{s.name}</TableCell>
                   <TableCell className="font-mono text-muted-foreground">{s.prefix}</TableCell>
                   <TableCell className="font-mono">{s.nextNumber}</TableCell>
                   <TableCell className="font-mono text-muted-foreground">{s.format}</TableCell>
-                  <TableCell><button onClick={() => setSeries(ss => ss.map(x => x.id === s.id ? { ...x, active: !x.active } : x))}><Badge variant={s.active ? 'secondary' : 'outline'}>{s.active ? 'Active' : 'Inactive'}</Badge></button></TableCell>
-                  <TableCell><Button variant="ghost" size="icon" onClick={() => setSeries(ss => ss.filter(x => x.id !== s.id))}><Trash2 className="h-4 w-4 text-red-500" /></Button></TableCell>
+                  <TableCell><button onClick={() => setNumberSeriesStatus(s.id, !s.active)}><Badge variant={s.active ? 'secondary' : 'outline'}>{s.active ? 'Active' : 'Inactive'}</Badge></button></TableCell>
+                  <TableCell><Button variant="ghost" size="icon" onClick={() => deleteNumberSeries(s.id)}><Trash2 className="h-4 w-4 text-red-500" /></Button></TableCell>
                 </TableRow>
               ))}
-              {series.length === 0 && <TableRow><TableCell colSpan={6} className="text-center text-muted-foreground py-6">No number series defined</TableCell></TableRow>}
+              {numberSeries.length === 0 && <TableRow><TableCell colSpan={6} className="text-center text-muted-foreground py-6">No number series defined</TableCell></TableRow>}
             </TableBody>
           </Table>
         </Card>
@@ -532,24 +481,15 @@ export function NumberSeriesView() {
 }
 
 // ── Currency ──────────────────────────────────────────────────────────────────
-interface Currency { id: string; code: string; name: string; symbol: string; rate: number; base: boolean; active: boolean; }
-const SEED_CURRENCIES: Currency[] = [
-  { id: 'c1', code: 'USD', name: 'US Dollar', symbol: '$', rate: 1, base: true, active: true },
-  { id: 'c2', code: 'GBP', name: 'British Pound', symbol: '£', rate: 0.79, base: false, active: true },
-  { id: 'c3', code: 'EUR', name: 'Euro', symbol: '€', rate: 0.92, base: false, active: true },
-  { id: 'c4', code: 'PKR', name: 'Pakistani Rupee', symbol: '₨', rate: 278.5, base: false, active: true },
-  { id: 'c5', code: 'AED', name: 'UAE Dirham', symbol: 'د.إ', rate: 3.67, base: false, active: true },
-];
-
 export function CurrencyView() {
-  const [currencies, setCurrencies] = useState<Currency[]>(() => load('ab_currencies', SEED_CURRENCIES));
+  const { currencies, fetchCurrencies, createCurrency, setCurrencyStatus, deleteCurrency } = useAdministrationStore();
   const [form, setForm] = useState({ code: '', name: '', symbol: '', rate: 1, active: true });
 
-  useEffect(() => { persist('ab_currencies', currencies); }, [currencies]);
+  useEffect(() => { fetchCurrencies(); }, [fetchCurrencies]);
 
-  const save = (e: React.FormEvent) => {
+  const save = async (e: React.FormEvent) => {
     e.preventDefault();
-    setCurrencies(cs => [...cs, { id: uid(), ...form, base: false }]);
+    await createCurrency({ ...form, base: false });
     setForm({ code: '', name: '', symbol: '', rate: 1, active: true });
   };
 
@@ -588,8 +528,8 @@ export function CurrencyView() {
                   <TableCell className="text-muted-foreground">{c.name}</TableCell>
                   <TableCell>{c.symbol}</TableCell>
                   <TableCell className="font-mono">{c.rate}</TableCell>
-                  <TableCell><button onClick={() => setCurrencies(cs => cs.map(x => x.id === c.id ? { ...x, active: !x.active } : x))}><Badge variant={c.active ? 'secondary' : 'outline'}>{c.active ? 'Active' : 'Inactive'}</Badge></button></TableCell>
-                  <TableCell>{!c.base && <Button variant="ghost" size="icon" onClick={() => setCurrencies(cs => cs.filter(x => x.id !== c.id))}><Trash2 className="h-4 w-4 text-red-500" /></Button>}</TableCell>
+                  <TableCell><button onClick={() => setCurrencyStatus(c.id, !c.active)}><Badge variant={c.active ? 'secondary' : 'outline'}>{c.active ? 'Active' : 'Inactive'}</Badge></button></TableCell>
+                  <TableCell>{!c.base && <Button variant="ghost" size="icon" onClick={() => deleteCurrency(c.id)}><Trash2 className="h-4 w-4 text-red-500" /></Button>}</TableCell>
                 </TableRow>
               ))}
               {currencies.length === 0 && <TableRow><TableCell colSpan={6} className="text-center text-muted-foreground py-6">No currencies configured</TableCell></TableRow>}
