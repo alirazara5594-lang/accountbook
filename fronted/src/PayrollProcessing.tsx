@@ -5,17 +5,20 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@/components/ui/select';
 import { Label } from '@/components/ui/label';
-import { Plus, Play, CheckCircle2, FileText, Users } from 'lucide-react';
+import { Plus, Play, CheckCircle2, FileText, Users, ArrowLeft, Save } from 'lucide-react';
+
+const EMPTY_FORM = { frequency: 'Monthly', periodStart: '', periodEnd: '', payDate: '', taxYear: 2025 };
 
 export default function PayrollProcessing() {
   const { payruns, employees, fetchPayruns, fetchEmployees, fetchPayrunEmployees, calculatePayrun, postPayrun } = usePayrollStore();
   const [statusFilter, setStatusFilter] = useState('');
-  const [dialogOpen, setDialogOpen] = useState(false);
+  const [view, setView] = useState<'list' | 'form'>('list');
   const [detailDialog, setDetailDialog] = useState<{ open: boolean; payrun: Payrun | null; employees: PayrunEmployee[] }>({ open: false, payrun: null, employees: [] });
-  const [form, setForm] = useState({ frequency: 'Monthly', periodStart: '', periodEnd: '', payDate: '', taxYear: 2025 });
+  const [form, setForm] = useState(EMPTY_FORM);
+  const [saving, setSaving] = useState(false);
 
   useEffect(() => { fetchEmployees(); fetchPayruns(); }, []);
 
@@ -23,14 +26,26 @@ export default function PayrollProcessing() {
   const set = (k: string, v: any) => setForm(f => ({ ...f, [k]: v }));
 
   const handleCalculate = async () => {
-    await calculatePayrun({ ...form, autoPost: false });
-    setDialogOpen(false);
+    setSaving(true);
+    try {
+      await calculatePayrun({ ...form, autoPost: false });
+    } finally {
+      setSaving(false);
+    }
+    setView('list');
+    setForm(EMPTY_FORM);
     fetchPayruns();
   };
 
   const handlePost = async () => {
-    await postPayrun({ ...form, autoPost: true });
-    setDialogOpen(false);
+    setSaving(true);
+    try {
+      await postPayrun({ ...form, autoPost: true });
+    } finally {
+      setSaving(false);
+    }
+    setView('list');
+    setForm(EMPTY_FORM);
     fetchPayruns();
   };
 
@@ -44,6 +59,64 @@ export default function PayrollProcessing() {
   const totalPosted = payruns.filter(p => p.status === 'Posted').length;
   const totalDraft = payruns.filter(p => p.status === 'Draft' || p.status === 'Calculated').length;
 
+  if (view === 'form') {
+    return (
+      <div className="p-6 max-w-[1100px] mx-auto space-y-5">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-4">
+            <Button variant="outline" onClick={() => setView('list')}><ArrowLeft className="mr-1.5 h-4 w-4" /> Back</Button>
+            <div>
+              <h1 className="text-2xl font-bold tracking-tight">New Payrun</h1>
+              <p className="text-sm text-muted-foreground">Configure and run payroll for the selected period</p>
+            </div>
+          </div>
+          <div className="flex gap-2">
+            <Button variant="secondary" onClick={handleCalculate} disabled={saving}>{saving ? 'Calculating...' : 'Calculate Only'}</Button>
+            <Button onClick={handlePost} disabled={saving}><Save className="mr-1.5 h-4 w-4" />{saving ? 'Processing...' : 'Calculate & Post to GL'}</Button>
+          </div>
+        </div>
+
+        <div className="space-y-4">
+          <div className="bg-teal-50 border border-teal-100 rounded-xl p-4">
+            <h4 className="text-sm font-bold text-teal-600 mb-3 flex items-center gap-2 border-l-4 border-teal-400 pl-2 justify-start text-left">Payrun Configuration</h4>
+            <div className="grid grid-cols-3 gap-4">
+              <div><Label>Pay Frequency *</Label><Select value={form.frequency} onValueChange={v => set('frequency', v)}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="Weekly">Weekly</SelectItem><SelectItem value="BiWeekly">Bi-Weekly</SelectItem>
+                  <SelectItem value="SemiMonthly">Semi-Monthly</SelectItem><SelectItem value="Monthly">Monthly</SelectItem>
+                </SelectContent>
+              </Select></div>
+              <div><Label>Tax Year *</Label><Input type="number" value={form.taxYear} onChange={e => set('taxYear', +e.target.value)} placeholder="2026" /></div>
+              <div className="flex items-end pb-1">
+                <Badge variant="secondary" className="text-xs font-normal">{employees.filter(e => e.status === 'Active').length} active employees</Badge>
+              </div>
+            </div>
+          </div>
+
+          <div className="bg-blue-50 border border-blue-100 rounded-xl p-4">
+            <h4 className="text-sm font-bold text-blue-600 mb-3 flex items-center gap-2 border-l-4 border-blue-400 pl-2 justify-start text-left">Pay Period</h4>
+            <div className="grid grid-cols-3 gap-4">
+              <div><Label>Period Start *</Label><Input type="date" value={form.periodStart} onChange={e => set('periodStart', e.target.value)} /></div>
+              <div><Label>Period End *</Label><Input type="date" value={form.periodEnd} onChange={e => set('periodEnd', e.target.value)} /></div>
+              <div><Label>Pay Date *</Label><Input type="date" value={form.payDate} onChange={e => set('payDate', e.target.value)} /></div>
+            </div>
+          </div>
+
+          <div className="bg-amber-50 border border-amber-100 rounded-xl p-3 text-xs text-amber-700">
+            All active employees will be processed. Country-specific income tax, social security, and statutory deductions will be calculated automatically based on the selected tax year slabs.
+          </div>
+        </div>
+
+        <div className="flex items-center justify-end gap-3 border-t pt-4 sticky bottom-0 bg-[#f5f7fa] py-3">
+          <Button variant="outline" onClick={() => setView('list')}>Cancel</Button>
+          <Button variant="secondary" onClick={handleCalculate} disabled={saving}>{saving ? 'Calculating...' : 'Calculate Only'}</Button>
+          <Button onClick={handlePost} disabled={saving}><Save className="mr-1.5 h-4 w-4" />{saving ? 'Processing...' : 'Calculate & Post to GL'}</Button>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="p-6 max-w-[1400px] mx-auto space-y-4">
       <div className="flex items-center justify-between">
@@ -51,7 +124,7 @@ export default function PayrollProcessing() {
           <h1 className="text-2xl font-bold tracking-tight">Payroll Processing</h1>
           <p className="text-sm text-muted-foreground">Calculate, review, and post payroll runs with country-specific statutory deductions</p>
         </div>
-        <Button onClick={() => setDialogOpen(true)}><Plus className="mr-2 h-4 w-4" /> New Payrun</Button>
+        <Button onClick={() => setView('form')}><Plus className="mr-2 h-4 w-4" /> New Payrun</Button>
       </div>
 
       <div className="grid grid-cols-3 gap-4">
@@ -105,46 +178,6 @@ export default function PayrollProcessing() {
           </tbody>
         </table>
       </Card>
-
-      <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-        <DialogContent className="sm:max-w-2xl max-h-[85vh] overflow-y-auto">
-          <DialogHeader><DialogTitle>New Payrun</DialogTitle></DialogHeader>
-          <div className="space-y-4">
-            <div className="bg-teal-50 border border-teal-100 rounded-xl p-4">
-              <h4 className="text-xs font-bold text-teal-600 uppercase tracking-wider mb-3 flex items-center gap-2 border-l-3 border-teal-400 pl-2">Payrun Configuration</h4>
-              <div className="grid grid-cols-3 gap-4">
-                <div><Label>Pay Frequency *</Label><Select value={form.frequency} onValueChange={v => set('frequency', v)}>
-                  <SelectTrigger><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="Weekly">Weekly</SelectItem><SelectItem value="BiWeekly">Bi-Weekly</SelectItem>
-                    <SelectItem value="SemiMonthly">Semi-Monthly</SelectItem><SelectItem value="Monthly">Monthly</SelectItem>
-                  </SelectContent>
-                </Select></div>
-                <div><Label>Tax Year *</Label><Input type="number" value={form.taxYear} onChange={e => set('taxYear', +e.target.value)} placeholder="2026" /></div>
-                <div className="flex items-end pb-1">
-                  <Badge variant="secondary" className="text-xs font-normal">{employees.filter(e => e.status === 'Active').length} active employees</Badge>
-                </div>
-              </div>
-            </div>
-            <div className="bg-blue-50 border border-blue-100 rounded-xl p-4">
-              <h4 className="text-xs font-bold text-blue-600 uppercase tracking-wider mb-3 flex items-center gap-2 border-l-3 border-blue-400 pl-2">Pay Period</h4>
-              <div className="grid grid-cols-3 gap-4">
-                <div><Label>Period Start *</Label><Input type="date" value={form.periodStart} onChange={e => set('periodStart', e.target.value)} /></div>
-                <div><Label>Period End *</Label><Input type="date" value={form.periodEnd} onChange={e => set('periodEnd', e.target.value)} /></div>
-                <div><Label>Pay Date *</Label><Input type="date" value={form.payDate} onChange={e => set('payDate', e.target.value)} /></div>
-              </div>
-            </div>
-            <div className="bg-amber-50 border border-amber-100 rounded-xl p-3 text-xs text-amber-700">
-              All active employees will be processed. Country-specific income tax, social security, and statutory deductions will be calculated automatically based on the selected tax year slabs.
-            </div>
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setDialogOpen(false)}>Cancel</Button>
-            <Button variant="secondary" onClick={handleCalculate}>Calculate Only</Button>
-            <Button onClick={handlePost}>Calculate & Post to GL</Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
 
       <Dialog open={detailDialog.open} onOpenChange={open => setDetailDialog(d => ({ ...d, open }))}>
         <DialogContent className="sm:max-w-2xl max-h-[80vh] overflow-y-auto">
