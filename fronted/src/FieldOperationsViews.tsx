@@ -8,6 +8,7 @@ import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@
 import { FormField } from '@/components/ui/form-field';
 import { PageHeader } from '@/components/ui/page-header';
 import { StatCard } from '@/components/ui/stat-card';
+import { ModuleSummaryLayout, SummaryPanel } from '@/components/module-summary-layout';
 import {
   Plus, ClipboardList, CalendarCheck2, ShieldCheck, Wrench, ReceiptText, Save, CheckCircle2, AlertTriangle, TrendingUp, FileBarChart, Clock3, Wallet
 } from 'lucide-react';
@@ -53,39 +54,47 @@ export function FieldOperationsSummaryView() {
   const totalExpenses = expenses.reduce((s, e) => s + e.amount, 0);
 
   return (
-    <div className="p-6 max-w-[1400px] mx-auto space-y-4">
-      <PageHeader title="Survey & Field Operations" description="Manage surveys, field visits, inspections, field work orders, and expenses" />
-      <div className="grid grid-cols-4 gap-4">
-        <StatCard icon={ClipboardList} label="Active Surveys" value={dashboard?.activeSurveys ?? 0} tone="teal" />
-        <StatCard icon={CalendarCheck2} label="Upcoming Visits" value={dashboard?.upcomingVisits ?? 0} tone="blue" />
-        <StatCard icon={Wrench} label="Open Work Orders" value={dashboard?.openOrders ?? 0} tone="amber" />
-        <StatCard icon={ShieldCheck} label="Pending Inspections" value={dashboard?.pendingInspections ?? 0} tone="violet" />
-        <StatCard icon={TrendingUp} label="Survey Responses" value={responses} tone="green" />
-        <StatCard icon={CheckCircle2} label="Completed Visits" value={dashboard?.completedVisits ?? 0} tone="cyan" />
-        <StatCard icon={AlertTriangle} label="Failed Inspections" value={dashboard?.failedInspections ?? 0} tone="red" />
-        <StatCard icon={ReceiptText} label="Field Expenses" value={money(totalExpenses)} tone="amber" />
-      </div>
-      <div className="grid grid-cols-3 gap-4">
-        <Card className="p-4 space-y-2">
-          <p className="text-sm font-medium flex items-center gap-2"><ClipboardList className="h-4 w-4" /> Surveys</p>
-          <div className="flex justify-between text-sm text-muted-foreground"><span>Total</span><span className="font-medium">{dashboard?.surveys ?? 0}</span></div>
-          <div className="flex justify-between text-sm text-muted-foreground"><span>Active</span><span className="font-medium">{dashboard?.activeSurveys ?? 0}</span></div>
-          <div className="flex justify-between text-sm text-muted-foreground"><span>Responses</span><span className="font-medium">{dashboard?.totalResponses ?? 0}</span></div>
-        </Card>
-        <Card className="p-4 space-y-2">
-          <p className="text-sm font-medium flex items-center gap-2"><CalendarCheck2 className="h-4 w-4" /> Field Visits</p>
-          <div className="flex justify-between text-sm text-muted-foreground"><span>Total</span><span className="font-medium">{dashboard?.visits ?? 0}</span></div>
-          <div className="flex justify-between text-sm text-muted-foreground"><span>Upcoming</span><span className="font-medium">{dashboard?.upcomingVisits ?? 0}</span></div>
-          <div className="flex justify-between text-sm text-muted-foreground"><span>Completed</span><span className="font-medium">{dashboard?.completedVisits ?? 0}</span></div>
-        </Card>
-        <Card className="p-4 space-y-2">
-          <p className="text-sm font-medium flex items-center gap-2"><Wrench className="h-4 w-4" /> Work Orders</p>
-          <div className="flex justify-between text-sm text-muted-foreground"><span>Total</span><span className="font-medium">{dashboard?.workOrders ?? 0}</span></div>
-          <div className="flex justify-between text-sm text-muted-foreground"><span>Open</span><span className="font-medium">{dashboard?.openOrders ?? 0}</span></div>
-          <div className="flex justify-between text-sm text-muted-foreground"><span>Cost to date</span><span className="font-medium">{money(dashboard?.totalOrderCost ?? 0)}</span></div>
-        </Card>
-      </div>
-    </div>
+    <ModuleSummaryLayout
+      title="Survey & Field Operations"
+      description="Manage surveys, field visits, inspections, field work orders, and expenses"
+      stats={[
+        { icon: ClipboardList, label: 'Active Surveys', value: dashboard?.activeSurveys ?? 0, tone: 'teal' },
+        { icon: CalendarCheck2, label: 'Upcoming Visits', value: dashboard?.upcomingVisits ?? 0, tone: 'blue' },
+        { icon: Wrench, label: 'Open Work Orders', value: dashboard?.openOrders ?? 0, tone: 'amber' },
+        { icon: ShieldCheck, label: 'Pending Inspections', value: dashboard?.pendingInspections ?? 0, tone: 'violet' },
+      ]}
+    >
+      <SummaryPanel icon={TrendingUp} title="Performance">
+        <div className="space-y-2">
+          {[
+            { label: 'Survey Responses', value: responses },
+            { label: 'Completed Visits', value: dashboard?.completedVisits ?? 0 },
+            { label: 'Failed Inspections', value: dashboard?.failedInspections ?? 0 },
+            { label: 'Field Expenses', value: money(totalExpenses) },
+          ].map(r => (
+            <div key={r.label} className="flex items-center justify-between border rounded-lg p-3 text-sm">
+              <span className="text-muted-foreground">{r.label}</span>
+              <span className="font-mono font-medium">{r.value}</span>
+            </div>
+          ))}
+        </div>
+      </SummaryPanel>
+      <SummaryPanel icon={Wrench} title="Activity Overview">
+        <div className="space-y-2">
+          {[
+            { label: 'Total Surveys', value: dashboard?.surveys ?? 0 },
+            { label: 'Total Visits', value: dashboard?.visits ?? 0 },
+            { label: 'Total Work Orders', value: dashboard?.workOrders ?? 0 },
+            { label: 'Work Order Cost', value: money(dashboard?.totalOrderCost ?? 0) },
+          ].map(r => (
+            <div key={r.label} className="flex items-center justify-between border rounded-lg p-3 text-sm">
+              <span className="text-muted-foreground">{r.label}</span>
+              <span className="font-mono font-medium">{r.value}</span>
+            </div>
+          ))}
+        </div>
+      </SummaryPanel>
+    </ModuleSummaryLayout>
   );
 }
 

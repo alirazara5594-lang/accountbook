@@ -8,6 +8,7 @@ import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@
 import { FormField } from '@/components/ui/form-field';
 import { PageHeader } from '@/components/ui/page-header';
 import { StatCard } from '@/components/ui/stat-card';
+import { ModuleSummaryLayout, SummaryPanel } from '@/components/module-summary-layout';
 import {
   FolderKanban, Plus, TrendingUp, Wallet, Clock3, CheckCircle2, ArrowLeft, Save, Trash2, User, ListChecks, Timer, ReceiptText, Layers, AlertTriangle, Percent, Banknote, CircleDollarSign
 } from 'lucide-react';
@@ -57,47 +58,49 @@ export function ProjectsSummaryView() {
   const overdue = tasks.filter(t => t.status !== 'Completed' && t.dueDate && t.dueDate < today()).length;
 
   return (
-    <div className="p-6 max-w-[1400px] mx-auto space-y-4">
-      <PageHeader title="Projects" description="Portfolio overview of projects, tasks, timesheets, expenses, and profitability" />
-      <div className="grid grid-cols-4 gap-4">
-        <StatCard icon={FolderKanban} label="Active Projects" value={projects.filter(p => p.status === 'Active').length} tone="teal" />
-        <StatCard icon={Wallet} label="Total Budget" value={money(totalBudget)} tone="blue" />
-        <StatCard icon={CheckCircle2} label="Tasks Completed" value={`${done}/${tasks.length}`} tone="green" />
-        <StatCard icon={AlertTriangle} label="Overdue Tasks" value={overdue} tone="red" />
-        <StatCard icon={Clock3} label="Hours Logged" value={totalHours.toFixed(1)} tone="violet" />
-        <StatCard icon={ReceiptText} label="Total Cost" value={money(totalCost)} tone="amber" />
-        <StatCard icon={TrendingUp} label="Project Margin" value={`${totalBudget > 0 ? Math.round(((totalBudget - totalCost) / totalBudget) * 100) : 0}%`} tone="cyan" />
-        <StatCard icon={Layers} label="Total Projects" value={projects.length} tone="blue" />
-      </div>
-      <div className="grid grid-cols-3 gap-4">
-        {projects.slice(0, 6).map(p => {
-          const pTasks = tasks.filter(t => t.projectId === p.id);
-          const pHours = timesheets.filter(t => t.projectId === p.id).reduce((s, t) => s + t.hours, 0);
-          return (
-            <Card key={p.id} className="hover:shadow-md transition-shadow p-4 space-y-3">
-              <div className="flex items-start justify-between">
-                <div>
-                  <p className="font-mono text-xs text-muted-foreground">{p.projectNumber}</p>
-                  <p className="font-semibold">{p.name}</p>
+    <ModuleSummaryLayout
+      title="Projects"
+      description="Portfolio overview of projects, tasks, timesheets, expenses, and profitability"
+      stats={[
+        { icon: FolderKanban, label: 'Active Projects', value: projects.filter(p => p.status === 'Active').length, tone: 'teal' },
+        { icon: Wallet, label: 'Total Budget', value: money(totalBudget), tone: 'blue' },
+        { icon: CheckCircle2, label: 'Tasks Completed', value: `${done}/${tasks.length}`, tone: 'green' },
+        { icon: AlertTriangle, label: 'Overdue Tasks', value: overdue, tone: 'red' },
+      ]}
+    >
+      <SummaryPanel icon={Clock3} title="Hours & Cost">
+        <div className="space-y-2">
+          {[
+            { label: 'Hours Logged', value: `${totalHours.toFixed(1)}h` },
+            { label: 'Total Cost', value: money(totalCost) },
+            { label: 'Project Margin', value: `${totalBudget > 0 ? Math.round(((totalBudget - totalCost) / totalBudget) * 100) : 0}%` },
+            { label: 'Total Projects', value: projects.length },
+          ].map(r => (
+            <div key={r.label} className="flex items-center justify-between border rounded-lg p-3 text-sm">
+              <span className="text-muted-foreground">{r.label}</span>
+              <span className="font-mono font-medium">{r.value}</span>
+            </div>
+          ))}
+        </div>
+      </SummaryPanel>
+      <SummaryPanel icon={FolderKanban} title="Active Project Portfolio">
+        <div className="space-y-2">
+          {projects.filter(p => p.status !== 'Completed').slice(0, 6).map(p => {
+            const pHours = timesheets.filter(t => t.projectId === p.id).reduce((s, t) => s + t.hours, 0);
+            return (
+              <div key={p.id} className="flex items-center justify-between border rounded-lg p-3 text-sm">
+                <div className="min-w-0">
+                  <p className="font-medium truncate">{p.name}</p>
+                  <p className="text-xs text-muted-foreground">{empName(employees, p.managerId)} · {p.progressPercent}% · {pHours.toFixed(1)}h</p>
                 </div>
                 <Badge variant={projectStatusBadge(p.status) as any}>{p.status}</Badge>
               </div>
-              <p className="text-xs text-muted-foreground line-clamp-2 min-h-[2rem]">{p.description || '—'}</p>
-              <div className="space-y-1.5">
-                <div className="flex justify-between text-xs text-muted-foreground"><span>Progress</span><span className="font-medium">{p.progressPercent}%</span></div>
-                <div className="h-2 bg-muted rounded-full overflow-hidden"><div className="h-full bg-primary rounded-full" style={{ width: `${p.progressPercent}%` }} /></div>
-              </div>
-              <div className="flex justify-between text-xs text-muted-foreground">
-                <span>Budget <span className="font-mono font-medium">{money(p.budget)}</span></span>
-                <span>{pTasks.length} tasks · {pHours.toFixed(1)}h</span>
-              </div>
-              <p className="text-xs text-muted-foreground">Manager: <span className="font-medium">{empName(employees, p.managerId)}</span></p>
-            </Card>
-          );
-        })}
-        {projects.length === 0 && <Card className="p-10 col-span-3 text-center text-muted-foreground">No projects yet.</Card>}
-      </div>
-    </div>
+            );
+          })}
+          {projects.length === 0 && <p className="text-sm text-muted-foreground">No projects yet.</p>}
+        </div>
+      </SummaryPanel>
+    </ModuleSummaryLayout>
   );
 }
 

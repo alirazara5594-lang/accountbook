@@ -8,6 +8,7 @@ import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@
 import { FormField } from '@/components/ui/form-field';
 import { PageHeader } from '@/components/ui/page-header';
 import { StatCard } from '@/components/ui/stat-card';
+import { ModuleSummaryLayout, SummaryPanel } from '@/components/module-summary-layout';
 import {
   Scale, Plus, TrendingUp, AlertTriangle, CheckCircle2, FileText, Send, ShieldCheck, ReceiptText, Landmark, Clock3, Wallet, Save, Building2, BadgeDollarSign
 } from 'lucide-react';
@@ -43,45 +44,39 @@ export function ComplianceSummaryView() {
   const rejected = eInvoices.filter(e => e.status === 'Rejected').length;
 
   return (
-    <div className="p-6 max-w-[1400px] mx-auto space-y-4">
-      <PageHeader title="Government Compliance" description="Tax management, VAT / sales tax, withholding, returns, and e-invoicing across jurisdictions" />
-      <div className="grid grid-cols-4 gap-4">
-        <StatCard icon={AlertTriangle} label="Obligations Due" value={dashboard?.due ?? 0} tone="amber" />
-        <StatCard icon={Scale} label="Total Tax Due" value={money(totalDue)} tone="red" />
-        <StatCard icon={ShieldCheck} label="Validated E-Invoices" value={validated} tone="teal" />
-        <StatCard icon={Wallet} label="Total Withheld" value={money(totalWithheld)} tone="blue" />
-        <StatCard icon={CheckCircle2} label="Obligations Filed" value={dashboard?.filed ?? 0} tone="green" />
-        <StatCard icon={FileText} label="Tax Returns" value={dashboard?.returns ?? 0} tone="violet" />
-        <StatCard icon={Landmark} label="Total Obligations" value={dashboard?.obligations ?? 0} tone="cyan" />
-        <StatCard icon={ReceiptText} label="E-Invoices" value={dashboard?.invoices ?? 0} tone="amber" />
-      </div>
-      <div className="grid grid-cols-2 gap-4">
-        <Card className="p-4 space-y-3">
-          <p className="text-sm font-medium flex items-center gap-2"><Clock3 className="h-4 w-4" /> Upcoming Filing Deadlines</p>
-          <div className="space-y-2">
-            {(dashboard?.upcoming || []).map(u => (
-              <div key={u.id} className="flex items-center justify-between border rounded-lg p-3 text-sm">
-                <div>
-                  <p className="font-medium">{u.obligationNumber} · {u.obligationType}</p>
-                  <p className="text-xs text-muted-foreground">{u.jurisdictionId} · due {u.dueDate}</p>
-                </div>
-                <div className="text-right"><p className="font-mono font-medium">{money(u.amountDue)}</p><Badge variant="outline">Due</Badge></div>
+    <ModuleSummaryLayout
+      title="Government Compliance"
+      description="Tax management, VAT / sales tax, withholding, returns, and e-invoicing across jurisdictions"
+      stats={[
+        { icon: AlertTriangle, label: 'Obligations Due', value: dashboard?.due ?? 0, tone: 'amber' },
+        { icon: Scale, label: 'Total Tax Due', value: money(totalDue), tone: 'red' },
+        { icon: ShieldCheck, label: 'Validated E-Invoices', value: validated, tone: 'teal' },
+        { icon: Wallet, label: 'Total Withheld', value: money(totalWithheld), tone: 'blue' },
+      ]}
+    >
+      <SummaryPanel icon={Clock3} title="Upcoming Filing Deadlines">
+        <div className="space-y-2">
+          {(dashboard?.upcoming || []).map(u => (
+            <div key={u.id} className="flex items-center justify-between border rounded-lg p-3 text-sm">
+              <div>
+                <p className="font-medium">{u.obligationNumber} · {u.obligationType}</p>
+                <p className="text-xs text-muted-foreground">{u.jurisdictionId} · due {u.dueDate}</p>
               </div>
-            ))}
-            {(dashboard?.upcoming || []).length === 0 && <p className="text-sm text-muted-foreground">No upcoming deadlines</p>}
-          </div>
-        </Card>
-        <Card className="p-4 space-y-3">
-          <p className="text-sm font-medium flex items-center gap-2"><TrendingUp className="h-4 w-4" /> Filing Activity</p>
-          <div className="grid grid-cols-2 gap-3">
-            <div className="border rounded-lg p-3 text-center"><p className="text-2xl font-semibold">{validated}</p><p className="text-xs text-muted-foreground">Validated Invoices</p></div>
-            <div className="border rounded-lg p-3 text-center"><p className="text-2xl font-semibold">{rejected}</p><p className="text-xs text-muted-foreground">Rejected Invoices</p></div>
-            <div className="border rounded-lg p-3 text-center"><p className="text-2xl font-semibold">{dashboard?.overdue ?? 0}</p><p className="text-xs text-muted-foreground">Overdue Obligations</p></div>
-            <div className="border rounded-lg p-3 text-center"><p className="text-2xl font-semibold">{dashboard?.pendingInvoices ?? 0}</p><p className="text-xs text-muted-foreground">Submitted Invoices</p></div>
-          </div>
-        </Card>
-      </div>
-    </div>
+              <div className="text-right"><p className="font-mono font-medium">{money(u.amountDue)}</p><Badge variant="outline">Due</Badge></div>
+            </div>
+          ))}
+          {(dashboard?.upcoming || []).length === 0 && <p className="text-sm text-muted-foreground">No upcoming deadlines</p>}
+        </div>
+      </SummaryPanel>
+      <SummaryPanel icon={TrendingUp} title="Filing Activity">
+        <div className="grid grid-cols-2 gap-3">
+          <div className="border rounded-lg p-3 text-center"><p className="text-2xl font-semibold">{validated}</p><p className="text-xs text-muted-foreground">Validated Invoices</p></div>
+          <div className="border rounded-lg p-3 text-center"><p className="text-2xl font-semibold">{rejected}</p><p className="text-xs text-muted-foreground">Rejected Invoices</p></div>
+          <div className="border rounded-lg p-3 text-center"><p className="text-2xl font-semibold">{dashboard?.overdue ?? 0}</p><p className="text-xs text-muted-foreground">Overdue Obligations</p></div>
+          <div className="border rounded-lg p-3 text-center"><p className="text-2xl font-semibold">{dashboard?.pendingInvoices ?? 0}</p><p className="text-xs text-muted-foreground">Submitted Invoices</p></div>
+        </div>
+      </SummaryPanel>
+    </ModuleSummaryLayout>
   );
 }
 

@@ -1,4 +1,6 @@
 import React from 'react';
+import { ModuleSummaryLayout, SummaryPanel } from '@/components/module-summary-layout';
+import { Users, ShoppingBag, Landmark, Scale, Boxes, Wallet, Sparkles, Settings2 } from 'lucide-react';
 
 interface Account {
   id: string;
@@ -30,6 +32,17 @@ const formatCurrency = (val: number) => {
   return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(val);
 };
 
+const MODULE_META: Record<string, { icon: React.ComponentType<{ className?: string }> }> = {
+  'Sales & Customers': { icon: Users },
+  'Procurement': { icon: ShoppingBag },
+  'Banking & Payments': { icon: Landmark },
+  'Accounting': { icon: Scale },
+  'Assets & Inventory': { icon: Boxes },
+  'Payroll & HR': { icon: Wallet },
+  'AI & Analytics': { icon: Sparkles },
+  'Administration': { icon: Settings2 },
+};
+
 export const ModuleSummary: React.FC<ModuleSummaryProps> = ({
   moduleName,
   accounts,
@@ -37,7 +50,6 @@ export const ModuleSummary: React.FC<ModuleSummaryProps> = ({
   setPage,
   openCreateAccount
 }) => {
-  // Calculate dynamic metrics based on current module
   const getMetrics = () => {
     switch (moduleName) {
       case 'Sales & Customers': {
@@ -51,9 +63,9 @@ export const ModuleSummary: React.FC<ModuleSummaryProps> = ({
           .filter(a => a.type === 'Asset' && a.code.startsWith('12'))
           .length;
         return {
-          card1: { title: 'RECEIVABLES LEDGER', val: formatCurrency(receivables), desc: 'Outstanding balances from customers', icon: '⌁', color: 'teal' },
-          card2: { title: 'TOTAL SALES REVENUE', val: formatCurrency(revenue), desc: 'Accrued sales and customer billing', icon: '⌘', color: 'blue' },
-          card3: { title: 'ACTIVE CUSTOMERS', val: String(activeCustomers), desc: 'Approved customer profile records', icon: '👥', color: 'violet' }
+          card1: { title: 'RECEIVABLES LEDGER', val: formatCurrency(receivables), desc: 'Outstanding balances from customers' },
+          card2: { title: 'TOTAL SALES REVENUE', val: formatCurrency(revenue), desc: 'Accrued sales and customer billing' },
+          card3: { title: 'ACTIVE CUSTOMERS', val: String(activeCustomers), desc: 'Approved customer profile records' }
         };
       }
       case 'Procurement': {
@@ -64,9 +76,9 @@ export const ModuleSummary: React.FC<ModuleSummaryProps> = ({
           .filter(a => a.code === '22000')
           .reduce((s, a) => s + a.openingBalance, 0);
         return {
-          card1: { title: 'PAYABLES LEDGER', val: formatCurrency(payables), desc: 'Outstanding balance due to suppliers', icon: '⌁', color: 'violet' },
-          card2: { title: 'GRNI ACCRUALS', val: formatCurrency(grni), desc: 'Goods Received Not Invoiced accruals', icon: '⚙', color: 'blue' },
-          card3: { title: 'TOTAL VENDORS', val: '2', desc: 'Approved vendor profile records', icon: '👥', color: 'teal' }
+          card1: { title: 'PAYABLES LEDGER', val: formatCurrency(payables), desc: 'Outstanding balance due to suppliers' },
+          card2: { title: 'GRNI ACCRUALS', val: formatCurrency(grni), desc: 'Goods Received Not Invoiced accruals' },
+          card3: { title: 'TOTAL VENDORS', val: '2', desc: 'Approved vendor profile records' }
         };
       }
       case 'Banking & Payments': {
@@ -76,9 +88,9 @@ export const ModuleSummary: React.FC<ModuleSummaryProps> = ({
         const count = accounts.filter(a => a.reconciliationEnabled && a.status === 'Active').length;
         const totalEntries = entries.filter(e => e.description.toLowerCase().includes('bank') || e.description.toLowerCase().includes('cash')).length;
         return {
-          card1: { title: 'CASH & EQUIVALENTS', val: formatCurrency(liquid), desc: 'Total liquid bank & cash balances', icon: '⌁', color: 'teal' },
-          card2: { title: 'RECONCILED ACCOUNTS', val: String(count), desc: 'Active bank accounts with audit enabled', icon: '🏛', color: 'blue' },
-          card3: { title: 'BANK JOURNAL ACTIVITY', val: String(totalEntries), desc: 'Bank postings in active period', icon: '⇄', color: 'violet' }
+          card1: { title: 'CASH & EQUIVALENTS', val: formatCurrency(liquid), desc: 'Total liquid bank & cash balances' },
+          card2: { title: 'RECONCILED ACCOUNTS', val: String(count), desc: 'Active bank accounts with audit enabled' },
+          card3: { title: 'BANK JOURNAL ACTIVITY', val: String(totalEntries), desc: 'Bank postings in active period' }
         };
       }
       case 'Accounting': {
@@ -86,9 +98,9 @@ export const ModuleSummary: React.FC<ModuleSummaryProps> = ({
         const liabilitiesCount = accounts.filter(a => a.type === 'Liability').length;
         const equityCount = accounts.filter(a => a.type === 'Equity').length;
         return {
-          card1: { title: 'ASSET LEDGER CODES', val: String(assetsCount), desc: 'Active asset account classifications', icon: '⌘', color: 'teal' },
-          card2: { title: 'LIABILITY LEDGER CODES', val: String(liabilitiesCount), desc: 'Active liability account classifications', icon: '⚙', color: 'blue' },
-          card3: { title: 'EQUITY LEDGER CODES', val: String(equityCount), desc: 'Active equity and reserve accounts', icon: '🏛', color: 'violet' }
+          card1: { title: 'ASSET LEDGER CODES', val: String(assetsCount), desc: 'Active asset account classifications' },
+          card2: { title: 'LIABILITY LEDGER CODES', val: String(liabilitiesCount), desc: 'Active liability account classifications' },
+          card3: { title: 'EQUITY LEDGER CODES', val: String(equityCount), desc: 'Active equity and reserve accounts' }
         };
       }
       case 'Assets & Inventory': {
@@ -102,16 +114,16 @@ export const ModuleSummary: React.FC<ModuleSummaryProps> = ({
           .filter(a => a.code === '15200' || a.name.toLowerCase().includes('depreciation'))
           .reduce((s, a) => s + a.openingBalance, 0);
         return {
-          card1: { title: 'FIXED ASSETS (PPE)', val: formatCurrency(ppe), desc: 'Net book value of fixed assets', icon: '🏛', color: 'teal' },
-          card2: { title: 'INVENTORY VALUE', val: formatCurrency(inventory), desc: 'Valued balance of physical stock', icon: '📦', color: 'blue' },
-          card3: { title: 'ACCUMULATED DEPRECIATION', val: formatCurrency(depreciation), desc: 'Accrued write-downs under IAS 16', icon: '⌁', color: 'violet' }
+          card1: { title: 'FIXED ASSETS (PPE)', val: formatCurrency(ppe), desc: 'Net book value of fixed assets' },
+          card2: { title: 'INVENTORY VALUE', val: formatCurrency(inventory), desc: 'Valued balance of physical stock' },
+          card3: { title: 'ACCUMULATED DEPRECIATION', val: formatCurrency(depreciation), desc: 'Accrued write-downs under IAS 16' }
         };
       }
       default: {
         return {
-          card1: { title: 'ACTIVE MODULE', val: moduleName, desc: 'Selected system operational area', icon: '⌘', color: 'blue' },
-          card2: { title: 'METRIC MONITOR', val: 'Operational', desc: 'Status checks are active and running', icon: '⚙', color: 'teal' },
-          card3: { title: 'GL POSTINGS', val: String(entries.length), desc: 'System journal entries recorded', icon: '⇄', color: 'violet' }
+          card1: { title: 'ACTIVE MODULE', val: moduleName, desc: 'Selected system operational area' },
+          card2: { title: 'METRIC MONITOR', val: 'Operational', desc: 'Status checks are active and running' },
+          card3: { title: 'GL POSTINGS', val: String(entries.length), desc: 'System journal entries recorded' }
         };
       }
     }
@@ -122,108 +134,40 @@ export const ModuleSummary: React.FC<ModuleSummaryProps> = ({
   const renderWorkflows = () => {
     switch (moduleName) {
       case 'Sales & Customers':
-        return (
-          <>
-            <button onClick={() => setPage('Sales & Customers.Customers')} className="nav" style={{ padding: '12px', border: '1px solid #e3e8ef', borderRadius: '8px', background: '#fff', textAlign: 'left', width: '100%', cursor: 'pointer' }}>
-              <strong>Add New Customer</strong>
-              <p style={{ fontSize: '11px', color: '#8d9aad', marginTop: '4px' }}>Register customer contact details, tax identification numbers, and credit terms.</p>
-            </button>
-            <button onClick={() => setPage('Sales & Customers.Sales Workspace')} className="nav" style={{ padding: '12px', border: '1px solid #e3e8ef', borderRadius: '8px', background: '#fff', textAlign: 'left', width: '100%', cursor: 'pointer' }}>
-              <strong>Sales Invoicing & Ledger</strong>
-              <p style={{ fontSize: '11px', color: '#8d9aad', marginTop: '4px' }}>Issue billing statements, record local VAT/sales tax, and trace balances due.</p>
-            </button>
-          </>
-        );
+        return [
+          { label: 'Add New Customer', desc: 'Register customer contact details, tax identification numbers, and credit terms.', page: 'Sales & Customers.Customers' },
+          { label: 'Sales Invoicing & Ledger', desc: 'Issue billing statements, record local VAT/sales tax, and trace balances due.', page: 'Sales & Customers.Sales Workspace' },
+        ];
       case 'Procurement':
-        return (
-          <>
-            <button onClick={() => setPage('Procurement.Vendors')} className="nav" style={{ padding: '12px', border: '1px solid #e3e8ef', borderRadius: '8px', background: '#fff', textAlign: 'left', width: '100%', cursor: 'pointer' }}>
-              <strong>Add New Vendor</strong>
-              <p style={{ fontSize: '11px', color: '#8d9aad', marginTop: '4px' }}>Register supplier credentials, base billing currencies, and payment terms.</p>
-            </button>
-            <button onClick={() => setPage('Procurement.Procurement Workspace')} className="nav" style={{ padding: '12px', border: '1px solid #e3e8ef', borderRadius: '8px', background: '#fff', textAlign: 'left', width: '100%', cursor: 'pointer' }}>
-              <strong>Procurement Workspace</strong>
-              <p style={{ fontSize: '11px', color: '#8d9aad', marginTop: '4px' }}>Generate Purchase Orders, post Goods Receipt Notes (GRN), and verify vendor invoices.</p>
-            </button>
-          </>
-        );
+        return [
+          { label: 'Add New Vendor', desc: 'Register supplier credentials, base billing currencies, and payment terms.', page: 'Procurement.Vendors' },
+          { label: 'Procurement Workspace', desc: 'Generate Purchase Orders, post Goods Receipt Notes (GRN), and verify vendor invoices.', page: 'Procurement.Procurement Workspace' },
+        ];
       case 'Banking & Payments':
-        return (
-          <>
-            <button onClick={() => setPage('Accounting.Journal Entries')} className="nav" style={{ padding: '12px', border: '1px solid #e3e8ef', borderRadius: '8px', background: '#fff', textAlign: 'left', width: '100%', cursor: 'pointer' }}>
-              <strong>Record Bank Transaction</strong>
-              <p style={{ fontSize: '11px', color: '#8d9aad', marginTop: '4px' }}>Record bank deposits, external transfers, or cash receipts and disbursements.</p>
-            </button>
-            <button onClick={() => setPage('Accounting.Financial Reports')} className="nav" style={{ padding: '12px', border: '1px solid #e3e8ef', borderRadius: '8px', background: '#fff', textAlign: 'left', width: '100%', cursor: 'pointer' }}>
-              <strong>Cash Flow Statements</strong>
-              <p style={{ fontSize: '11px', color: '#8d9aad', marginTop: '4px' }}>Inspect the Statement of Cash Flows matching cash movements to core activities.</p>
-            </button>
-          </>
-        );
+        return [
+          { label: 'Record Bank Transaction', desc: 'Record bank deposits, external transfers, or cash receipts and disbursements.', page: 'Accounting.Journal Entries' },
+          { label: 'Cash Flow Statements', desc: 'Inspect the Statement of Cash Flows matching cash movements to core activities.', page: 'Accounting.Financial Reports' },
+        ];
       case 'Accounting':
-        return (
-          <>
-            <button onClick={openCreateAccount} className="nav" style={{ padding: '12px', border: '1px solid #e3e8ef', borderRadius: '8px', background: '#fff', textAlign: 'left', width: '100%', cursor: 'pointer' }}>
-              <strong>New Account Code</strong>
-              <p style={{ fontSize: '11px', color: '#8d9aad', marginTop: '4px' }}>Add new accounts using standard 5-digit sequences under appropriate subgroups.</p>
-            </button>
-            <button onClick={() => setPage('Accounting.Journal Entries')} className="nav" style={{ padding: '12px', border: '1px solid #e3e8ef', borderRadius: '8px', background: '#fff', textAlign: 'left', width: '100%', cursor: 'pointer' }}>
-              <strong>New Journal Entry</strong>
-              <p style={{ fontSize: '11px', color: '#8d9aad', marginTop: '4px' }}>Post custom double-entry General Ledger transactions with balanced debits and credits.</p>
-            </button>
-            <button onClick={() => setPage('Accounting.General Ledger')} className="nav" style={{ padding: '12px', border: '1px solid #e3e8ef', borderRadius: '8px', background: '#fff', textAlign: 'left', width: '100%', cursor: 'pointer' }}>
-              <strong>General Ledger</strong>
-              <p style={{ fontSize: '11px', color: '#8d9aad', marginTop: '4px' }}>Posting-level register of all journal lines from posted entries.</p>
-            </button>
-            <button onClick={() => setPage('Accounting.Accounts Receivable')} className="nav" style={{ padding: '12px', border: '1px solid #e3e8ef', borderRadius: '8px', background: '#fff', textAlign: 'left', width: '100%', cursor: 'pointer' }}>
-              <strong>Accounts Receivable</strong>
-              <p style={{ fontSize: '11px', color: '#8d9aad', marginTop: '4px' }}>Aged customer trade receivables by due date (IFRS 9).</p>
-            </button>
-            <button onClick={() => setPage('Accounting.Accounts Payable')} className="nav" style={{ padding: '12px', border: '1px solid #e3e8ef', borderRadius: '8px', background: '#fff', textAlign: 'left', width: '100%', cursor: 'pointer' }}>
-              <strong>Accounts Payable</strong>
-              <p style={{ fontSize: '11px', color: '#8d9aad', marginTop: '4px' }}>Aged vendor trade payables by due date (IAS 37).</p>
-            </button>
-            <button onClick={() => setPage('Accounting.Tax Accounting')} className="nav" style={{ padding: '12px', border: '1px solid #e3e8ef', borderRadius: '8px', background: '#fff', textAlign: 'left', width: '100%', cursor: 'pointer' }}>
-              <strong>Tax Accounting</strong>
-              <p style={{ fontSize: '11px', color: '#8d9aad', marginTop: '4px' }}>Multi-jurisdiction VAT, GST, Sales Tax & WHT (UK, USA, PK, EU, UAE, KSA, CA).</p>
-            </button>
-            <button onClick={() => setPage('Accounting.Budgets')} className="nav" style={{ padding: '12px', border: '1px solid #e3e8ef', borderRadius: '8px', background: '#fff', textAlign: 'left', width: '100%', cursor: 'pointer' }}>
-              <strong>Budgets</strong>
-              <p style={{ fontSize: '11px', color: '#8d9aad', marginTop: '4px' }}>Annual budgets by account for variance analysis against actuals.</p>
-            </button>
-            <button onClick={() => setPage('Accounting.Financial Reports')} className="nav" style={{ padding: '12px', border: '1px solid #e3e8ef', borderRadius: '8px', background: '#fff', textAlign: 'left', width: '100%', cursor: 'pointer' }}>
-              <strong>Financial Reporting</strong>
-              <p style={{ fontSize: '11px', color: '#8d9aad', marginTop: '4px' }}>Verify compliance reporting including Balance Sheets and Profit & Loss reports.</p>
-            </button>
-            <button onClick={() => setPage('Accounting.Period Closing')} className="nav" style={{ padding: '12px', border: '1px solid #e3e8ef', borderRadius: '8px', background: '#fff', textAlign: 'left', width: '100%', cursor: 'pointer' }}>
-              <strong>Period Closing</strong>
-              <p style={{ fontSize: '11px', color: '#8d9aad', marginTop: '4px' }}>Close accounting periods to lock books against prior-period postings.</p>
-            </button>
-            <button onClick={() => setPage('Accounting.Audit Trail')} className="nav" style={{ padding: '12px', border: '1px solid #e3e8ef', borderRadius: '8px', background: '#fff', textAlign: 'left', width: '100%', cursor: 'pointer' }}>
-              <strong>Audit Trail</strong>
-              <p style={{ fontSize: '11px', color: '#8d9aad', marginTop: '4px' }}>Immutable event log across the ERP (IAS 8 audit evidence).</p>
-            </button>
-          </>
-        );
+        return [
+          { label: 'New Account Code', desc: 'Add new accounts using standard 5-digit sequences under appropriate subgroups.', page: '', openAccount: true },
+          { label: 'New Journal Entry', desc: 'Post custom double-entry General Ledger transactions with balanced debits and credits.', page: 'Accounting.Journal Entries' },
+          { label: 'General Ledger', desc: 'Posting-level register of all journal lines from posted entries.', page: 'Accounting.General Ledger' },
+          { label: 'Accounts Receivable', desc: 'Aged customer trade receivables by due date (IFRS 9).', page: 'Accounting.Accounts Receivable' },
+          { label: 'Accounts Payable', desc: 'Aged vendor trade payables by due date (IAS 37).', page: 'Accounting.Accounts Payable' },
+          { label: 'Tax Accounting', desc: 'Multi-jurisdiction VAT, GST, Sales Tax & WHT (UK, USA, PK, EU, UAE, KSA, CA).', page: 'Accounting.Tax Accounting' },
+          { label: 'Budgets', desc: 'Annual budgets by account for variance analysis against actuals.', page: 'Accounting.Budgets' },
+          { label: 'Financial Reporting', desc: 'Verify compliance reporting including Balance Sheets and Profit & Loss reports.', page: 'Accounting.Financial Reports' },
+          { label: 'Period Closing', desc: 'Close accounting periods to lock books against prior-period postings.', page: 'Accounting.Period Closing' },
+          { label: 'Audit Trail', desc: 'Immutable event log across the ERP (IAS 8 audit evidence).', page: 'Accounting.Audit Trail' },
+        ];
       case 'Assets & Inventory':
-        return (
-          <>
-            <button onClick={() => setPage('Assets & Inventory.Assets & Inventory Workspace')} className="nav" style={{ padding: '12px', border: '1px solid #e3e8ef', borderRadius: '8px', background: '#fff', textAlign: 'left', width: '100%', cursor: 'pointer' }}>
-              <strong>Inventory Workspace</strong>
-              <p style={{ fontSize: '11px', color: '#8d9aad', marginTop: '4px' }}>Manage physical warehousing locations, calculate values, and post adjustments.</p>
-            </button>
-            <button onClick={() => setPage('Accounting.Fixed Assets')} className="nav" style={{ padding: '12px', border: '1px solid #e3e8ef', borderRadius: '8px', background: '#fff', textAlign: 'left', width: '100%', cursor: 'pointer' }}>
-              <strong>Fixed Asset Register</strong>
-              <p style={{ fontSize: '11px', color: '#8d9aad', marginTop: '4px' }}>Record assets, trigger depreciation schedules, and manage disposal entries.</p>
-            </button>
-          </>
-        );
+        return [
+          { label: 'Inventory Workspace', desc: 'Manage physical warehousing locations, calculate values, and post adjustments.', page: 'Assets & Inventory.Assets & Inventory Workspace' },
+          { label: 'Fixed Asset Register', desc: 'Record assets, trigger depreciation schedules, and manage disposal entries.', page: 'Accounting.Fixed Assets' },
+        ];
       default:
-        return (
-          <div className="empty" style={{ padding: '20px 0', textAlign: 'center' }}>
-            No specific actions configured for this module. Use the sub-menus in the sidebar to navigate.
-          </div>
-        );
+        return [];
     }
   };
 
@@ -245,94 +189,43 @@ export const ModuleSummary: React.FC<ModuleSummaryProps> = ({
   };
 
   const subItems = getSubList();
+  const workflows = renderWorkflows();
+  const meta = MODULE_META[moduleName] || { icon: Scale };
+  const Icon = meta.icon;
 
   return (
-    <div style={{ height: 'calc(100vh - 170px)', display: 'flex', flexDirection: 'column', gap: '20px', overflow: 'hidden' }}>
-      {/* Metrics Row (Unified with Dashboard theme) */}
-      <section className="stats" style={{ marginBottom: 0 }}>
-        <article>
-          <span className={`stat-icon ${metrics.card1.color}`}>{metrics.card1.icon}</span>
-          <div>
-            <small>{metrics.card1.title}</small>
-            <h2>{metrics.card1.val}</h2>
-            <p>{metrics.card1.desc}</p>
-          </div>
-        </article>
-        <article>
-          <span className={`stat-icon ${metrics.card2.color}`}>{metrics.card2.icon}</span>
-          <div>
-            <small>{metrics.card2.title}</small>
-            <h2>{metrics.card2.val}</h2>
-            <p>{metrics.card2.desc}</p>
-          </div>
-        </article>
-        <article>
-          <span className={`stat-icon ${metrics.card3.color}`}>{metrics.card3.icon}</span>
-          <div>
-            <small>{metrics.card3.title}</small>
-            <h2>{metrics.card3.val}</h2>
-            <p>{metrics.card3.desc}</p>
-          </div>
-        </article>
-      </section>
-
-      {/* Details Row (Compact and fitted on page) */}
-      <section className="grid" style={{ flex: 1, minHeight: 0 }}>
-        {/* Left Hand: Workflows */}
-        <div className="panel" style={{ display: 'flex', flexDirection: 'column', gap: '14px', height: '100%', overflowY: 'auto' }}>
-          <div className="panel-head" style={{ marginBottom: '5px' }}>
-            <div>
-              <h3>Workflows & Actions</h3>
-              <p>Quick shortcuts to manage this module</p>
-            </div>
-          </div>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-            {renderWorkflows()}
-          </div>
+    <ModuleSummaryLayout
+      title={moduleName}
+      description="Module overview with key metrics, quick workflows, and direct navigation"
+      stats={[
+        { icon: Icon, label: metrics.card1.title, value: metrics.card1.val, tone: 'teal' },
+        { icon: Icon, label: metrics.card2.title, value: metrics.card2.val, tone: 'blue' },
+        { icon: Icon, label: metrics.card3.title, value: metrics.card3.val, tone: 'violet' },
+        { icon: Icon, label: 'GL POSTINGS', value: entries.length, tone: 'cyan' },
+      ]}
+    >
+      <SummaryPanel icon={Icon} title="Workflows & Actions">
+        <div className="space-y-2">
+          {workflows.map(w => (
+            <button key={w.label} onClick={() => w.openAccount ? openCreateAccount() : setPage(w.page)} className="w-full text-left border rounded-lg p-3 hover:bg-muted/40 transition-colors cursor-pointer">
+              <p className="font-medium text-sm">{w.label}</p>
+              <p className="text-xs text-muted-foreground mt-0.5">{w.desc}</p>
+            </button>
+          ))}
+          {workflows.length === 0 && <p className="text-sm text-muted-foreground">Use the sub-menus in the sidebar to navigate.</p>}
         </div>
-
-        {/* Right Hand: Submenu list */}
-        <div className="panel" style={{ display: 'flex', flexDirection: 'column', height: '100%', overflowY: 'auto' }}>
-          <div className="panel-head" style={{ marginBottom: '10px' }}>
-            <div>
-              <h3>Available Sub-sections</h3>
-              <p>Direct navigation list</p>
-            </div>
-          </div>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-            {subItems.map(item => (
-              <button
-                key={item}
-                onClick={() => setPage(`${moduleName}.${item}`)}
-                className="nav"
-                style={{
-                  padding: '10px 14px',
-                  borderRadius: '8px',
-                  border: '1px solid #edf0f4',
-                  background: '#f8fafc',
-                  color: '#2d3748',
-                  fontSize: '13px',
-                  display: 'flex',
-                  justifyContent: 'space-between',
-                  alignItems: 'center',
-                  fontWeight: 600,
-                  cursor: 'pointer',
-                  width: '100%',
-                  margin: '2px 0'
-                }}
-              >
-                <span>• {item}</span>
-                <span style={{ color: '#176f76' }}>View →</span>
-              </button>
-            ))}
-            {subItems.length === 0 && (
-              <div className="empty" style={{ padding: '20px 0', textAlign: 'center' }}>
-                Navigate using the sidebar menu items.
-              </div>
-            )}
-          </div>
+      </SummaryPanel>
+      <SummaryPanel icon={Icon} title="Available Sub-sections">
+        <div className="space-y-1.5">
+          {subItems.map(item => (
+            <button key={item} onClick={() => setPage(`${moduleName}.${item}`)} className="w-full flex items-center justify-between border rounded-lg px-3 py-2.5 text-sm hover:bg-muted/40 transition-colors cursor-pointer">
+              <span className="font-medium">• {item}</span>
+              <span className="text-primary">View →</span>
+            </button>
+          ))}
+          {subItems.length === 0 && <p className="text-sm text-muted-foreground">Navigate using the sidebar menu items.</p>}
         </div>
-      </section>
-    </div>
+      </SummaryPanel>
+    </ModuleSummaryLayout>
   );
 };
