@@ -3,7 +3,7 @@ import { journalsApi } from './api/modules/journals.api';
 import type { Account } from './api/modules/coa.api';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
-import { Send, CheckCircle2, Zap } from 'lucide-react';
+import { Send, CheckCircle2, Zap, Save, Clock } from 'lucide-react';
 import { DataToolbar } from '@/components/ui/data-toolbar';
 
 interface Journal {
@@ -51,7 +51,7 @@ export const JournalEntriesView: React.FC<JournalEntriesViewProps> = ({ accounts
     onEntriesChange(data as unknown as Journal[]);
   };
 
-  const handlePost = async (e: React.FormEvent) => {
+  const handlePost = async (e: React.FormEvent, action: 'draft' | 'submit' | 'post' = 'post') => {
     e.preventDefault();
     setError('');
     if (totals.debit !== totals.credit) { setError('Entry must balance (debits = credits).'); return; }
@@ -62,12 +62,17 @@ export const JournalEntriesView: React.FC<JournalEntriesViewProps> = ({ accounts
     }
     setSaving(true);
     try {
-      await journalsApi.postJournalEntry({
+      const created = await journalsApi.postJournalEntry({
         date: journal.date,
         reference: journal.reference,
         description: journal.description,
         lines: journal.lines.map(l => ({ accountId: l.accountId, debit: Number(l.debit || 0), credit: Number(l.credit || 0) })),
       });
+      if (action === 'submit') {
+        await journalsApi.submit(created.id, 'Submitted for approval');
+      } else if (action === 'post') {
+        await journalsApi.post(created.id, 'Posted to general ledger');
+      }
       setJournal({ date: new Date().toISOString().slice(0, 10), reference: '', description: '', lines: [{ accountId: '', debit: '', credit: '' }, { accountId: '', debit: '', credit: '' }] });
       await refresh();
     } catch (err: any) {
@@ -161,7 +166,9 @@ export const JournalEntriesView: React.FC<JournalEntriesViewProps> = ({ accounts
             <span>Credits <b>{new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(totals.credit)}</b></span>
             {totals.debit !== totals.credit && <em style={{ marginLeft: 12, color: '#ef4444' }}>Entry must balance</em>}
           </div>
-          <button className="primary btn-finalize" disabled={totals.debit !== totals.credit || saving}>{saving ? 'Posting…' : 'Post entry'}</button>
+          <button type="button" className="secondary btn-draft" onClick={(e) => handlePost(e, 'draft')} disabled={saving}><Save className="w-4 h-4 mr-1.5" /> Save as Draft</button>
+          <button type="button" className="secondary btn-draft" onClick={(e) => handlePost(e, 'submit')} disabled={saving}><Clock className="w-4 h-4 mr-1.5" /> Submit for Approval</button>
+          <button type="submit" className="primary btn-finalize" disabled={totals.debit !== totals.credit || saving}>{saving ? 'Posting…' : 'Post Entry'}</button>
         </div>
       </form>
 

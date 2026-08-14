@@ -38,6 +38,7 @@ export const BudgetsView: React.FC<BudgetsViewProps> = ({ activeEntityId, entiti
     periodType: 'Monthly' as BudgetInput['periodType'],
     status: 'Draft' as BudgetInput['status'],
   });
+  const [varianceModal, setVarianceModal] = useState<{ budget: BudgetRecord; variance: any } | null>(null);
 
   const load = async () => {
     setLoading(true);
@@ -130,6 +131,18 @@ export const BudgetsView: React.FC<BudgetsViewProps> = ({ activeEntityId, entiti
       await load();
     } catch (err: any) {
       setError(err?.data?.error || err?.message || 'Failed to delete budget.');
+    }
+  };
+
+  const openVariance = async (b: BudgetRecord) => {
+    try {
+      const variance = await accountingApi.getBudgetVariance(activeEntityId, b.fiscalYear);
+      const match = variance.find((v: any) => v.Id === b.id);
+      if (match) {
+        setVarianceModal({ budget: b, variance: match });
+      }
+    } catch (err: any) {
+      setError(err?.data?.error || err?.message || 'Failed to load variance.');
     }
   };
 
@@ -229,6 +242,9 @@ export const BudgetsView: React.FC<BudgetsViewProps> = ({ activeEntityId, entiti
                 </TableCell>
                 <TableCell className="py-3 pr-4">
                   <div className="flex items-center justify-end gap-1.5">
+                    <Button size="icon" variant="ghost" onClick={() => openVariance(b)} className="h-7 w-7" title="View Variance">
+                      <Target className="w-3.5 h-3.5" />
+                    </Button>
                     <Button size="icon" variant="ghost" onClick={() => openEdit(b)} className="h-7 w-7" title="Edit">
                       <Pencil className="w-3.5 h-3.5" />
                     </Button>
@@ -288,12 +304,83 @@ export const BudgetsView: React.FC<BudgetsViewProps> = ({ activeEntityId, entiti
               </div>
             </div>
             <div className="modal-footer">
-              <button type="button" className="secondary" onClick={() => setIsModalOpen(false)}>Cancel</button>
-              <button type="submit" className="primary" disabled={saving}>{saving ? 'Saving…' : editing ? 'Update Budget' : 'Create Budget'}</button>
+              <button type="button" className="secondary btn-cancel" onClick={() => setIsModalOpen(false)}>Cancel</button>
+              <button type="submit" className="primary btn-finalize" disabled={saving}>{saving ? 'Saving…' : editing ? 'Update Budget' : 'Create Budget'}</button>
             </div>
           </form>
+        </div>
+      )}
+
+      {varianceModal && (
+        <div className="overlay">
+          <div className="modal" style={{ maxWidth: '900px', maxHeight: '90vh', overflow: 'auto' }}>
+            <div className="modal-head">
+              <div>
+                <p className="eyebrow">BUDGETING</p>
+                <h2>Variance Analysis — {varianceModal.budget.budgetName} (FY{varianceModal.budget.fiscalYear})</h2>
+              </div>
+              <button type="button" className="close" onClick={() => setVarianceModal(null)}>×</button>
+            </div>
+            <div style={{ padding: '20px 24px' }}>
+              <div className="grid grid-cols-4 gap-4 mb-4">
+                <div className="bg-white border border-slate-200 rounded-xl p-4">
+                  <div className="text-xs font-semibold text-slate-500 uppercase">Budgeted</div>
+                  <div className="text-xl font-bold text-slate-800">{varianceModal.variance.BudgetAmount.toLocaleString(undefined, { minimumFractionDigits: 2 })}</div>
+                </div>
+                <div className="bg-white border border-slate-200 rounded-xl p-4">
+                  <div className="text-xs font-semibold text-slate-500 uppercase">Actual</div>
+                  <div className="text-xl font-bold text-slate-800">{varianceModal.variance.ActualAmount.toLocaleString(undefined, { minimumFractionDigits: 2 })}</div>
+                </div>
+                <div className="bg-white border border-slate-200 rounded-xl p-4">
+                  <div className="text-xs font-semibold text-slate-500 uppercase">Variance</div>
+                  <div className={`text-xl font-bold ${varianceModal.variance.Variance >= 0 ? 'text-rose-600' : 'text-emerald-600'}`}>
+                    {varianceModal.variance.Variance.toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                  </div>
+                </div>
+                <div className="bg-white border border-slate-200 rounded-xl p-4">
+                  <div className="text-xs font-semibold text-slate-500 uppercase">Variance %</div>
+                  <div className={`text-xl font-bold ${varianceModal.variance.VariancePct >= 0 ? 'text-rose-600' : 'text-emerald-600'}`}>
+                    {varianceModal.variance.VariancePct.toFixed(2)}%
+                  </div>
+                </div>
+              </div>
+
+              <Table>
+                <TableHeader className="bg-slate-50 border-b border-slate-200">
+                  <TableRow>
+                    <TableHead className="text-[11px] font-bold text-slate-500 uppercase tracking-wider pl-4">Period</TableHead>
+                    <TableHead className="text-right text-[11px] font-bold text-slate-500 uppercase tracking-wider">Budget</TableHead>
+                    <TableHead className="text-right text-[11px] font-bold text-slate-500 uppercase tracking-wider">Actual</TableHead>
+                    <TableHead className="text-right text-[11px] font-bold text-slate-500 uppercase tracking-wider">Variance</TableHead>
+                    <TableHead className="text-right text-[11px] font-bold text-slate-500 uppercase tracking-wider">Variance %</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody className="divide-y divide-slate-100">
+                  {varianceModal.variance.PeriodActuals.map((p: any) => (
+                    <TableRow key={p.Period}>
+                      <TableCell className="py-3 pl-4 font-mono text-xs text-slate-600">
+                        {varianceModal.budget.periodType === 'Monthly' ? `Month ${p.Period}` :
+                         varianceModal.budget.periodType === 'Quarterly' ? `Q${p.Period}` : 'Annual'}
+                      </TableCell>
+                      <TableCell className="py-3 text-right font-mono text-xs">{p.Budget.toLocaleString(undefined, { minimumFractionDigits: 2 })}</TableCell>
+                      <TableCell className="py-3 text-right font-mono text-xs">{p.Actual.toLocaleString(undefined, { minimumFractionDigits: 2 })}</TableCell>
+                      <TableCell className="py-3 text-right font-mono text-xs">{p.Variance.toLocaleString(undefined, { minimumFractionDigits: 2 })}</TableCell>
+                      <TableCell className="py-3 text-right font-mono text-xs">
+                        {p.Budget !== 0 ? ((p.Variance / p.Budget) * 100).toFixed(2) : 0}%
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+            <div className="modal-footer">
+              <button type="button" className="secondary btn-cancel" onClick={() => setVarianceModal(null)}>Close</button>
+            </div>
+          </div>
         </div>
       )}
     </div>
   );
 };
+
+export const money = (v: number) => new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(v);

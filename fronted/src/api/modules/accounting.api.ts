@@ -79,4 +79,8 @@ export const accountingApi = {
 
   getAuditTrail: async (params?: Record<string, any>): Promise<AuditTrailItem[]> =>
     apiClient('/audit-trail', { params }),
+
+  getBudgetVariance: async (companyId?: string, fiscalYear?: number): Promise<any[]> => {
+    return apiClient('/budgets/variance', { params: { companyId, fiscalYear } });
+  },
 };

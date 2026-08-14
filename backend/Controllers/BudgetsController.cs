@@ -33,6 +33,69 @@ public class BudgetsController(AccountingStore store) : ControllerBase
         return Ok(query);
     }
 
+    [HttpGet("variance")]
+    public IActionResult GetVariance([FromQuery] Guid? companyId, [FromQuery] int fiscalYear)
+    {
+        var budgets = store.Budgets
+            .Where(b => companyId == null || b.CompanyId == companyId)
+            .Where(b => b.FiscalYear == fiscalYear)
+            .ToList();
+
+        var results = budgets.Select(b =>
+        {
+            var account = store.Accounts.FirstOrDefault(a => a.Id == b.AccountId);
+            var actual = 0m;
+            var periodAmounts = new Dictionary<int, decimal>();
+
+            // Split annual budget by period type
+            var periods = b.PeriodType == BudgetPeriodType.Monthly ? 12
+                : b.PeriodType == BudgetPeriodType.Quarterly ? 4 : 1;
+            var perPeriodBudget = b.Amount / periods;
+
+            // Calculate actual from posted journal entries for this account
+            foreach (var entry in store.Entries.Where(e => e.Status == JournalStatus.Posted))
+            {
+                if (entry.CompanyId != b.CompanyId) continue;
+                if (!DateOnly.TryParse(entry.Date.ToString("yyyy-MM-dd"), out var entryDate)) continue;
+                if (entryDate.Year != fiscalYear) continue;
+
+                var period = b.PeriodType == BudgetPeriodType.Monthly ? entryDate.Month
+                    : b.PeriodType == BudgetPeriodType.Quarterly ? (entryDate.Month - 1) / 3 + 1
+                    : 1;
+
+                foreach (var line in entry.Lines.Where(l => l.AccountId == b.AccountId))
+                {
+                    actual += line.Debit - line.Credit;
+                    periodAmounts[period] = periodAmounts.GetValueOrDefault(period) + line.Debit - line.Credit;
+                }
+            }
+
+            var variance = actual - b.Amount;
+            var variancePct = b.Amount != 0 ? (variance / b.Amount) * 100 : 0;
+
+            return new
+            {
+                b.Id,
+                b.BudgetName,
+                b.AccountId,
+                AccountCode = account?.Code,
+                AccountName = account?.Name,
+                b.FiscalYear,
+                PeriodType = b.PeriodType.ToString(),
+                BudgetAmount = b.Amount,
+                ActualAmount = actual,
+                Variance = variance,
+                VariancePct = Math.Round(variancePct, 2),
+                PerPeriodBudget = perPeriodBudget,
+                PeriodActuals = periodAmounts
+                    .OrderBy(kv => kv.Key)
+                    .Select(kv => new { Period = kv.Key, Actual = kv.Value, Budget = perPeriodBudget, Variance = kv.Value - perPeriodBudget })
+            };
+        });
+
+        return Ok(results);
+    }
+
     [HttpPost]
     public IActionResult Create(BudgetRequest request)
     {

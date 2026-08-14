@@ -704,6 +704,32 @@ function AccountModal({ form, setForm, accounts, editing, close, save }: { form:
     return subtypesMap[initialType]?.[0] || '';
   });
 
+  // Deep-link support: read URL params on mount to prefill form
+  useEffect(() => {
+    if (editing) return;
+    const params = new URLSearchParams(window.location.search);
+    if (params.has('type')) {
+      const type = params.get('type');
+      if (type && accountTypes.includes(type as AccountType)) field('type', type);
+    }
+    if (params.has('subtype')) {
+      const st = params.get('subtype');
+      const newSubtypes = subtypesMap[form.type] || [];
+      if (st && newSubtypes.includes(st)) setSubtype(st);
+    }
+    if (params.has('parent')) {
+      const parentCode = params.get('parent');
+      if (parentCode) {
+        const parent = accounts.find(a => a.code === parentCode);
+        if (parent) field('parentId', parent.id);
+      }
+    }
+    if (params.has('name')) {
+      const name = params.get('name');
+      if (name) field('name', name);
+    }
+  }, []);
+
   const fetchNextCode = async (type: string, parentId?: string) => {
     if (editing) return;
     try {
