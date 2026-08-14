@@ -102,10 +102,10 @@ export default function AttendanceTracker() {
       </Card>
 
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-        <DialogContent className="sm:max-w-lg">
+        <DialogContent className="sm:max-w-2xl max-h-[85vh] overflow-y-auto">
           <DialogHeader><DialogTitle>Record Attendance</DialogTitle></DialogHeader>
-          <div className="grid grid-cols-2 gap-4">
-            <div className="col-span-2"><Label>Employee *</Label><Select value={form.employeeId} onValueChange={v => set('employeeId', v)}>
+          <div className="grid grid-cols-3 gap-4">
+            <div className="col-span-3"><Label>Employee *</Label><Select value={form.employeeId} onValueChange={v => set('employeeId', v)}>
               <SelectTrigger><SelectValue placeholder="Select employee" /></SelectTrigger>
               <SelectContent>{employees.filter(e => e.status === 'Active').map(e => <SelectItem key={e.id} value={e.id}>{e.firstName} {e.lastName}</SelectItem>)}</SelectContent>
             </Select></div>
@@ -118,11 +118,13 @@ export default function AttendanceTracker() {
                 <SelectItem value="OnLeave">On Leave</SelectItem><SelectItem value="Holiday">Holiday</SelectItem>
               </SelectContent>
             </Select></div>
+            <div></div>
             <div><Label>Clock In</Label><Input type="time" value={form.clockIn} onChange={e => set('clockIn', e.target.value)} /></div>
             <div><Label>Clock Out</Label><Input type="time" value={form.clockOut} onChange={e => set('clockOut', e.target.value)} /></div>
             <div><Label>Break Start</Label><Input type="time" value={form.breakStart} onChange={e => set('breakStart', e.target.value)} /></div>
             <div><Label>Break End</Label><Input type="time" value={form.breakEnd} onChange={e => set('breakEnd', e.target.value)} /></div>
-            <div className="col-span-2"><Label>Notes</Label><Input value={form.notes} onChange={e => set('notes', e.target.value)} placeholder="Optional notes..." /></div>
+            <div></div>
+            <div className="col-span-3"><Label>Notes</Label><Input value={form.notes} onChange={e => set('notes', e.target.value)} placeholder="Optional notes..." /></div>
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setDialogOpen(false)}>Cancel</Button>

@@ -107,8 +107,8 @@ export default function PayrollProcessing() {
       </Card>
 
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-        <DialogContent className="sm:max-w-lg">
-          <DialogHeader><DialogTitle>New Payroll Run</DialogTitle></DialogHeader>
+        <DialogContent className="sm:max-w-2xl max-h-[85vh] overflow-y-auto">
+          <DialogHeader><DialogTitle>New Payrun</DialogTitle></DialogHeader>
           <div className="grid grid-cols-2 gap-4">
             <div><Label>Pay Frequency *</Label><Select value={form.frequency} onValueChange={v => set('frequency', v)}>
               <SelectTrigger><SelectValue /></SelectTrigger>
@@ -117,7 +117,7 @@ export default function PayrollProcessing() {
                 <SelectItem value="SemiMonthly">Semi-Monthly</SelectItem><SelectItem value="Monthly">Monthly</SelectItem>
               </SelectContent>
             </Select></div>
-            <div><Label>Tax Year</Label><Input type="number" value={form.taxYear} onChange={e => set('taxYear', parseInt(e.target.value) || 2025)} /></div>
+            <div><Label>Tax Year *</Label><Input type="number" value={form.taxYear} onChange={e => set('taxYear', +e.target.value)} placeholder="2026" /></div>
             <div><Label>Period Start *</Label><Input type="date" value={form.periodStart} onChange={e => set('periodStart', e.target.value)} /></div>
             <div><Label>Period End *</Label><Input type="date" value={form.periodEnd} onChange={e => set('periodEnd', e.target.value)} /></div>
             <div className="col-span-2"><Label>Pay Date *</Label><Input type="date" value={form.payDate} onChange={e => set('payDate', e.target.value)} /></div>

@@ -105,27 +105,27 @@ export default function LoansAdvancesView() {
       </Card>
 
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-        <DialogContent className="sm:max-w-lg">
+        <DialogContent className="sm:max-w-2xl max-h-[85vh] overflow-y-auto">
           <DialogHeader><DialogTitle>New Loan / Advance</DialogTitle></DialogHeader>
           <div className="grid grid-cols-2 gap-4">
             <div className="col-span-2"><Label>Employee *</Label><Select value={form.employeeId} onValueChange={v => set('employeeId', v)}>
               <SelectTrigger><SelectValue placeholder="Select employee" /></SelectTrigger>
               <SelectContent>{employees.filter(e => e.status === 'Active').map(e => <SelectItem key={e.id} value={e.id}>{e.firstName} {e.lastName}</SelectItem>)}</SelectContent>
             </Select></div>
-            <div><Label>Loan Number *</Label><Input value={form.loanNumber} onChange={e => set('loanNumber', e.target.value)} placeholder="LA-001" /></div>
-            <div><Label>Loan Type</Label><Select value={form.loanType} onValueChange={v => set('loanType', v)}>
+            <div><Label>Loan Number *</Label><Input value={form.loanNumber} onChange={e => set('loanNumber', e.target.value)} placeholder="LN-001" /></div>
+            <div><Label>Loan Type *</Label><Select value={form.loanType} onValueChange={v => set('loanType', v)}>
               <SelectTrigger><SelectValue /></SelectTrigger>
               <SelectContent>
-                <SelectItem value="Salary Advance">Salary Advance</SelectItem><SelectItem value="Personal Loan">Personal Loan</SelectItem>
-                <SelectItem value="Car Loan">Car Loan</SelectItem><SelectItem value="Housing Loan">Housing Loan</SelectItem>
-                <SelectItem value="Education Loan">Education Loan</SelectItem>
+                <SelectItem value="SalaryAdvance">Salary Advance</SelectItem><SelectItem value="PersonalLoan">Personal Loan</SelectItem>
+                <SelectItem value="EmergencyLoan">Emergency Loan</SelectItem><SelectItem value="TravelAdvance">Travel Advance</SelectItem>
+                <SelectItem value="EquipmentLoan">Equipment Loan</SelectItem>
               </SelectContent>
             </Select></div>
-            <div><Label>Principal Amount *</Label><Input type="number" value={form.principalAmount} onChange={e => set('principalAmount', e.target.value)} /></div>
-            <div><Label>Interest Rate (%)</Label><Input type="number" step="0.1" value={form.interestRate} onChange={e => set('interestRate', e.target.value)} /></div>
-            <div><Label>Total Installments</Label><Input type="number" value={form.totalInstallments} onChange={e => set('totalInstallments', e.target.value)} /></div>
-            <div><Label>Installment Amount</Label><Input type="number" value={form.installmentAmount} onChange={e => set('installmentAmount', e.target.value)} /></div>
-            <div className="col-span-2"><Label>Start Date</Label><Input type="date" value={form.startDate} onChange={e => set('startDate', e.target.value)} /></div>
+            <div><Label>Principal Amount *</Label><Input type="number" value={form.principalAmount} onChange={e => set('principalAmount', +e.target.value)} /></div>
+            <div><Label>Annual Interest Rate %</Label><Input type="number" value={form.interestRate} onChange={e => set('interestRate', +e.target.value)} step="0.1" /></div>
+            <div><Label>Number of Installments *</Label><Input type="number" value={form.totalInstallments} onChange={e => set('totalInstallments', +e.target.value)} /></div>
+            <div><Label>Installment Amount *</Label><Input type="number" value={form.installmentAmount} onChange={e => set('installmentAmount', +e.target.value)} /></div>
+            <div className="col-span-2"><Label>Disbursement Date *</Label><Input type="date" value={form.startDate} onChange={e => set('startDate', e.target.value)} /></div>
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setDialogOpen(false)}>Cancel</Button>

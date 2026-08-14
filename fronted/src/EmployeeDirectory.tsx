@@ -158,7 +158,7 @@ export default function EmployeeDirectory() {
       </Card>
 
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-        <DialogContent className="sm:max-w-2xl max-h-[85vh] overflow-y-auto">
+        <DialogContent className="sm:max-w-3xl max-h-[85vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>{editing ? `Edit Employee — ${editing.firstName} ${editing.lastName}` : 'New Employee'}</DialogTitle>
           </DialogHeader>

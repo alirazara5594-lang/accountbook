@@ -123,7 +123,7 @@ export default function LeaveManagement() {
       </Card>
 
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-        <DialogContent className="sm:max-w-lg">
+        <DialogContent className="sm:max-w-2xl max-h-[85vh] overflow-y-auto">
           <DialogHeader><DialogTitle>New Leave Request</DialogTitle></DialogHeader>
           <div className="grid grid-cols-2 gap-4">
             <div className="col-span-2"><Label>Employee *</Label><Select value={form.employeeId} onValueChange={v => set('employeeId', v)}>
@@ -152,7 +152,7 @@ export default function LeaveManagement() {
       </Dialog>
 
       <Dialog open={actionDialog.open} onOpenChange={open => setActionDialog(d => ({ ...d, open }))}>
-        <DialogContent className="sm:max-w-md">
+        <DialogContent className="sm:max-w-lg">
           <DialogHeader>
             <DialogTitle className={actionDialog.action === 'Approved' ? 'text-green-600' : 'text-red-600'}>
               {actionDialog.action === 'Approved' ? 'Approve Leave' : 'Reject Leave'}
