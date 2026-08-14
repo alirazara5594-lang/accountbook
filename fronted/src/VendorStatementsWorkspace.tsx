@@ -19,7 +19,13 @@ function VendorStatementsWorkspace({ activeEntityId }: VendorStatementsProps) {
   const fmt = (n?: number) => (n != null ? n.toLocaleString() : '0.00');
 
   const exportHeaders = ['Vendor', 'Vendor Number', 'Total Purchases', 'Unpaid Invoices', 'Status'];
-  const exportRows = vendors.map((v: any) => [v.name, v.vendorNumber || '', 0, 0, v.status]);
+  const exportRows = vendors.map((v: any) => [
+    v.name,
+    v.vendorNumber || '',
+    v.totalPurchases != null ? `$${fmt(v.totalPurchases)}` : '-',
+    v.unpaidInvoices != null ? `$${fmt(v.unpaidInvoices)}` : '-',
+    v.status,
+  ]);
 
   return (
     <section className="workspace-card">
@@ -46,7 +52,7 @@ function VendorStatementsWorkspace({ activeEntityId }: VendorStatementsProps) {
             </div>
             <div className="stat-card">
               <h3>Total Purchases</h3>
-              <h2>${fmt(0)}</h2>
+              <h2>{vendors.some((v: any) => v.totalPurchases != null) ? `$${fmt(vendors.reduce((sum: number, v: any) => sum + (v.totalPurchases || 0), 0))}` : '— Not tracked'}</h2>
             </div>
           </div>
           <table className="glass-table">
@@ -65,8 +71,8 @@ function VendorStatementsWorkspace({ activeEntityId }: VendorStatementsProps) {
                 <tr key={idx}>
                   <td>{v.name}</td>
                   <td>{v.vendorNumber || '—'}</td>
-                  <td>${fmt(0)}</td>
-                  <td>${fmt(0)}</td>
+                <td>{v.totalPurchases != null ? `$${fmt(v.totalPurchases)}` : '—'}</td>
+                <td>{v.unpaidInvoices != null ? `$${fmt(v.unpaidInvoices)}` : '—'}</td>
                   <td>
                     <span className={`px-2 py-1 rounded-full text-xs font-semibold ${
                       v.status === 'Active' ? 'bg-emerald-50 text-emerald-600' :

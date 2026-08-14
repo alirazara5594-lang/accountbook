@@ -75,10 +75,13 @@ export const ModuleSummary: React.FC<ModuleSummaryProps> = ({
         const grni = accounts
           .filter(a => a.code === '22000')
           .reduce((s, a) => s + a.openingBalance, 0);
+        const totalVendors = accounts
+          .filter(a => a.code.startsWith('21') || a.name.toLowerCase().includes('payable'))
+          .length;
         return {
           card1: { title: 'PAYABLES LEDGER', val: formatCurrency(payables), desc: 'Outstanding balance due to suppliers' },
           card2: { title: 'GRNI ACCRUALS', val: formatCurrency(grni), desc: 'Goods Received Not Invoiced accruals' },
-          card3: { title: 'TOTAL VENDORS', val: '2', desc: 'Approved vendor profile records' }
+          card3: { title: 'TOTAL VENDORS', val: String(totalVendors), desc: 'Approved vendor profile records' }
         };
       }
       case 'Banking & Payments': {
