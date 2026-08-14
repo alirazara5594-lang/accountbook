@@ -24,6 +24,14 @@ public class FixedAssetsController : ControllerBase
         return Ok(query);
     }
 
+    [HttpPost("{id}/run-depreciation")]
+    public IActionResult RunDepreciation(Guid id, [FromBody] DepreciationRequest request)
+    {
+        if (!_store.RunDepreciation(id, request.DepreciationExpenseAccountId, request.AccumulatedDepreciationAccountId, out var error))
+            return BadRequest(new { error });
+        return Ok(new { message = "Depreciation posted to the general ledger." });
+    }
+
     [HttpPost("{id}/dispose")]
     public IActionResult DisposeAsset(Guid id, [FromBody] AssetDisposalRequest request)
     {
@@ -32,5 +40,7 @@ public class FixedAssetsController : ControllerBase
         return Ok(new { message = "Asset disposed and journal posted." });
     }
 }
+
+public record DepreciationRequest(Guid? DepreciationExpenseAccountId, Guid? AccumulatedDepreciationAccountId);
 
 public record AssetDisposalRequest(DateOnly DisposalDate, decimal Proceeds, Guid? AssetAccountId, Guid? AccumDeprAccountId, Guid? GainLossAccountId, Guid? CashAccountId);
