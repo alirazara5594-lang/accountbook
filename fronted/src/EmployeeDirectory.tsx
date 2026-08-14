@@ -8,7 +8,7 @@ import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@/components/ui/select';
 import { Label } from '@/components/ui/label';
-import { Plus, Pencil, UserX, MapPin, Building2, Briefcase, Shield, Globe, CreditCard } from 'lucide-react';
+import { Plus, Pencil, UserX, MapPin, Building2, Briefcase, Shield, Globe, CreditCard, GraduationCap, ArrowLeft, ArrowRight, Save } from 'lucide-react';
 
 const COUNTRY_OPTIONS = [
   { value: 'US', label: 'United States' }, { value: 'CA', label: 'Canada' }, { value: 'UK', label: 'United Kingdom' },
@@ -24,7 +24,18 @@ const EMPTY_FORM = {
   employmentType: 'FullTime', payFrequency: 'Monthly', status: 'Active', hireDate: '', probationEndDate: '', terminationDate: '',
   managerId: '', departmentId: '', positionId: '', payGradeId: '', basicSalary: 0, currency: 'USD',
   taxFilingStatus: 'Single', taxExemptions: 0, additionalTaxWithholding: 0, emergencyContactName: '', emergencyContactPhone: '', emergencyContactRelation: '',
+  highestDegree: '', institution: '', fieldOfStudy: '', graduationYear: '', skills: '', certifications: '',
 };
+
+const TABS = [
+  { key: 'personal', label: 'Personal Info' },
+  { key: 'employment', label: 'Employment' },
+  { key: 'education', label: 'Education' },
+  { key: 'bank', label: 'Bank Details' },
+  { key: 'tax', label: 'Tax Info' },
+] as const;
+
+type TabKey = typeof TABS[number]['key'];
 
 export default function EmployeeDirectory() {
   const { employees, departments, positions, payGrades, fetchEmployees, fetchDepartments, fetchPositions, fetchPayGrades, createEmployee, updateEmployee, setEmployeeStatus } = usePayrollStore();
@@ -34,7 +45,7 @@ export default function EmployeeDirectory() {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editing, setEditing] = useState<Employee | null>(null);
   const [form, setForm] = useState(EMPTY_FORM);
-  const [tab, setTab] = useState<'personal' | 'employment' | 'bank' | 'tax'>('personal');
+  const [tab, setTab] = useState<TabKey>('personal');
 
   useEffect(() => { fetchEmployees(); fetchDepartments(); fetchPositions(); fetchPayGrades(); }, []);
 
@@ -61,6 +72,8 @@ export default function EmployeeDirectory() {
       additionalTaxWithholding: emp.additionalTaxWithholding || 0,
       emergencyContactName: emp.emergencyContactName, emergencyContactPhone: emp.emergencyContactPhone,
       emergencyContactRelation: emp.emergencyContactRelation,
+      highestDegree: (emp as any).highestDegree || '', institution: (emp as any).institution || '', fieldOfStudy: (emp as any).fieldOfStudy || '',
+      graduationYear: (emp as any).graduationYear || '', skills: (emp as any).skills || '', certifications: (emp as any).certifications || '',
     });
     setTab('personal');
     setDialogOpen(true);
@@ -82,6 +95,15 @@ export default function EmployeeDirectory() {
 
   const getDeptName = (id?: string) => departments.find(d => d.id === id)?.name || '-';
   const getPosName = (id?: string) => positions.find(p => p.id === id)?.name || '-';
+
+  const goToNext = () => {
+    const idx = TABS.findIndex(t => t.key === tab);
+    if (idx < TABS.length - 1) setTab(TABS[idx + 1].key);
+  };
+  const goToPrev = () => {
+    const idx = TABS.findIndex(t => t.key === tab);
+    if (idx > 0) setTab(TABS[idx - 1].key);
+  };
 
   return (
     <div className="p-6 max-w-[1400px] mx-auto space-y-4">
@@ -164,21 +186,21 @@ export default function EmployeeDirectory() {
       </Card>
 
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-        <DialogContent className="sm:max-w-3xl max-h-[90vh] overflow-hidden pr-12">
+        <DialogContent className="sm:max-w-4xl max-h-[90vh] overflow-hidden pr-12">
           <DialogHeader className="pr-8">
             <DialogTitle>{editing ? `Edit Employee — ${editing.firstName} ${editing.lastName}` : 'New Employee'}</DialogTitle>
           </DialogHeader>
 
-          <div className="flex gap-1 border-b mb-3">
-            {(['personal', 'employment', 'bank', 'tax'] as const).map(t => (
-              <button key={t} onClick={() => setTab(t)}
-                className={`px-5 py-2.5 text-sm font-semibold rounded-t-lg border-b-2 transition-all ${tab === t ? 'border-[#176f76] text-[#176f76] bg-[#e1f8f4]/50' : 'border-transparent text-muted-foreground hover:text-foreground hover:bg-muted/30'}`}>
-                {t === 'personal' ? 'Personal Info' : t === 'employment' ? 'Employment' : t === 'bank' ? 'Bank Details' : 'Tax Info'}
+          <div className="flex border-b mb-3 rounded-t-xl overflow-hidden">
+            {TABS.map((t, i) => (
+              <button key={t.key} onClick={() => setTab(t.key)}
+                className={`flex-1 px-2 py-3 text-sm font-semibold border-b-2 transition-all ${tab === t.key ? 'border-[#176f76] text-[#176f76] bg-[#e1f8f4]/50' : 'border-transparent text-muted-foreground hover:text-foreground hover:bg-muted/30'}`}>
+                <span className="text-xs font-bold text-muted-foreground/60 mr-1.5">{i + 1}.</span>{t.label}
               </button>
             ))}
           </div>
 
-          <div className="overflow-y-auto max-h-[calc(90vh-160px)] pr-1">
+          <div className="overflow-y-auto max-h-[calc(90vh-190px)] pr-1">
             {tab === 'personal' && (
               <div className="space-y-3">
                 <div className="bg-slate-50 border border-slate-100 rounded-xl p-3">
@@ -298,6 +320,34 @@ export default function EmployeeDirectory() {
               </div>
             )}
 
+            {tab === 'education' && (
+              <div className="space-y-3">
+                <div className="bg-indigo-50 border border-indigo-100 rounded-xl p-3">
+                  <h4 className="text-xs font-bold text-indigo-600 uppercase tracking-wider mb-2 flex items-center gap-2 border-l-3 border-indigo-400 pl-2"><GraduationCap className="h-3.5 w-3.5" /> Academic Qualification</h4>
+                  <div className="grid grid-cols-3 gap-3">
+                    <div><Label>Highest Degree</Label><Select value={form.highestDegree} onValueChange={v => v !== null && set('highestDegree', v)}>
+                      <SelectTrigger><SelectValue placeholder="Select degree" /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="HighSchool">High School</SelectItem><SelectItem value="Diploma">Diploma</SelectItem>
+                        <SelectItem value="Associate">Associate Degree</SelectItem><SelectItem value="Bachelor">Bachelor's</SelectItem>
+                        <SelectItem value="Master">Master's</SelectItem><SelectItem value="Doctorate">Doctorate / PhD</SelectItem>
+                      </SelectContent>
+                    </Select></div>
+                    <div><Label>Field of Study</Label><Input value={form.fieldOfStudy} onChange={e => set('fieldOfStudy', e.target.value)} placeholder="Computer Science" /></div>
+                    <div><Label>Graduation Year</Label><Input type="number" value={form.graduationYear} onChange={e => set('graduationYear', e.target.value)} placeholder="2020" /></div>
+                    <div className="col-span-3"><Label>Institution</Label><Input value={form.institution} onChange={e => set('institution', e.target.value)} placeholder="University / College name" /></div>
+                  </div>
+                </div>
+                <div className="bg-sky-50 border border-sky-100 rounded-xl p-3">
+                  <h4 className="text-xs font-bold text-sky-600 uppercase tracking-wider mb-2 flex items-center gap-2 border-l-3 border-sky-400 pl-2"><Shield className="h-3.5 w-3.5" /> Skills & Certifications</h4>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="col-span-2"><Label>Skills</Label><Input value={form.skills} onChange={e => set('skills', e.target.value)} placeholder="JavaScript, Leadership, SAP..." /></div>
+                    <div className="col-span-2"><Label>Certifications</Label><Input value={form.certifications} onChange={e => set('certifications', e.target.value)} placeholder="PMP, CFA, AWS Certified..." /></div>
+                  </div>
+                </div>
+              </div>
+            )}
+
             {tab === 'bank' && (
               <div className="bg-blue-50 border border-blue-100 rounded-xl p-3">
                 <h4 className="text-xs font-bold text-blue-600 uppercase tracking-wider mb-2 flex items-center gap-2 border-l-3 border-blue-400 pl-2">Bank Account Details</h4>
@@ -331,9 +381,15 @@ export default function EmployeeDirectory() {
             )}
           </div>
 
-          <DialogFooter className="border-t pt-3 mt-2">
-            <Button variant="outline" onClick={() => setDialogOpen(false)}>Cancel</Button>
-            <Button onClick={handleSubmit}>{editing ? 'Update Employee' : 'Create Employee'}</Button>
+          <DialogFooter className="border-t pt-3 mt-2 flex items-center justify-between">
+            <div className="flex gap-2">
+              <Button variant="outline" onClick={() => setDialogOpen(false)}>Cancel</Button>
+              <Button variant="ghost" onClick={goToPrev} disabled={tab === 'personal'}><ArrowLeft className="mr-1.5 h-4 w-4" /> Back</Button>
+            </div>
+            <div className="flex gap-2">
+              <Button variant="secondary" onClick={handleSubmit}><Save className="mr-1.5 h-4 w-4" />{editing ? 'Save' : 'Create Employee'}</Button>
+              {tab !== 'tax' && <Button onClick={goToNext}>Next: {TABS[TABS.findIndex(t => t.key === tab) + 1].label} <ArrowRight className="ml-1.5 h-4 w-4" /></Button>}
+            </div>
           </DialogFooter>
         </DialogContent>
       </Dialog>
