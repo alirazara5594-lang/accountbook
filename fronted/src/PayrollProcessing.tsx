@@ -13,7 +13,7 @@ import { PageHeader } from '@/components/ui/page-header';
 import { StatCard } from '@/components/ui/stat-card';
 import { Plus, Play, CheckCircle2, FileText, Users, ArrowLeft, Save, Settings2, CalendarRange, Info } from 'lucide-react';
 
-const EMPTY_FORM = { frequency: 'Monthly', periodStart: '', periodEnd: '', payDate: '', taxYear: 2025 };
+const EMPTY_FORM = { frequency: 'Monthly', periodStart: '', periodEnd: '', payDate: '', taxYear: 2026 };
 
 export default function PayrollProcessing() {
   const { payruns, employees, fetchPayruns, fetchEmployees, fetchPayrunEmployees, calculatePayrun, postPayrun } = usePayrollStore();

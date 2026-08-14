@@ -490,7 +490,8 @@ function TaxSlabsList({ slabs, onEdit, onDelete }: {
         <select className="filter-select" value={yearFilter} onChange={e => setYearFilter(e.target.value)}>
           <option value="">All Years</option>
           <option value="2025">2025</option>
-          <option value="2026">2026</option>
+          <option value="2026">2026 (2026-2027)</option>
+          <option value="2027">2027</option>
         </select>
       </div>
       <div className="table-container">
