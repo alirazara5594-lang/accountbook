@@ -351,15 +351,19 @@ export const ProcurementWorkspace: React.FC<{ activeEntityId: string; entities?:
       </div>
 
       {/* Tabs Bar */}
-      <div className="flex border border-gray-200 gap-0.5 bg-gray-50/80 p-1 rounded-xl overflow-x-auto">
-        {tabsList.map(t => (
-          <button
-            key={t.id}
-            onClick={() => setActiveTab(t.id)}
-            className={`flex items-center gap-1 px-2.5 py-1.5 rounded-lg font-semibold text-[11px] whitespace-nowrap transition-all ${activeTab === t.id ? 'bg-white text-blue-700 shadow-xs border border-gray-200/60 font-bold' : 'text-gray-600 hover:text-gray-900 hover:bg-gray-100/60'}`}
-          >
-            <span>{t.icon}</span> {t.label}
-          </button>
+      <div className="flex items-center border border-gray-200 gap-0 bg-gray-50/80 p-1 rounded-xl">
+        {tabsList.map((t, i) => (
+          <React.Fragment key={t.id}>
+            <button
+              onClick={() => setActiveTab(t.id)}
+              className={`flex items-center gap-1 px-2 py-1 rounded-lg font-semibold text-[10px] whitespace-nowrap transition-all ${activeTab === t.id ? 'bg-white text-blue-700 shadow-xs border border-gray-200/60 font-bold' : 'text-gray-600 hover:text-gray-900 hover:bg-gray-100/60'}`}
+            >
+              <span className="text-[10px]">{t.icon}</span> {t.label}
+            </button>
+            {i < tabsList.length - 1 && (
+              <span className="text-gray-400 text-[9px] px-0.5 select-none">→</span>
+            )}
+          </React.Fragment>
         ))}
       </div>
 
