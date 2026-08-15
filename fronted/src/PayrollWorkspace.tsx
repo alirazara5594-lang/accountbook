@@ -153,9 +153,11 @@ function EmployeeList({ employees, departments, positions, onEdit, onStatusChang
                 <td className="num">{emp.currency} {emp.basicSalary.toLocaleString()}</td>
                 <td><span className="badge" style={{ background: statusColors[emp.status] || '#6b7280' }}>{emp.status}</span></td>
                 <td>
-                  <button className="btn btn-sm" onClick={() => onEdit(emp)}>Edit</button>
-                  {emp.status === 'Active' && <button className="btn btn-sm btn-warn" onClick={() => onStatusChange(emp.id, 'OnLeave')}>Set On Leave</button>}
-                  {emp.status !== 'Terminated' && <button className="btn btn-sm btn-danger" onClick={() => onStatusChange(emp.id, 'Terminated')}>Terminate</button>}
+                  <div className="cell-actions">
+                    <button className="btn btn-sm" onClick={() => onEdit(emp)}>Edit</button>
+                    {emp.status === 'Active' && <button className="btn btn-sm btn-warn" onClick={() => onStatusChange(emp.id, 'OnLeave')}>Set On Leave</button>}
+                    {emp.status !== 'Terminated' && <button className="btn btn-sm btn-danger" onClick={() => onStatusChange(emp.id, 'Terminated')}>Terminate</button>}
+                  </div>
                 </td>
               </tr>
             ))}
@@ -186,8 +188,10 @@ function DepartmentsList({ departments, positions, onEdit, onDelete, onEditPosit
                 <td>{d.description}</td>
                 <td>{positions.filter(p => p.departmentId === d.id).length}</td>
                 <td>
-                  <button className="btn btn-sm" onClick={() => onEdit(d)}>Edit</button>
-                  <button className="btn btn-sm btn-danger" onClick={() => onDelete(d.id)}>Delete</button>
+                  <div className="cell-actions">
+                    <button className="btn btn-sm" onClick={() => onEdit(d)}>Edit</button>
+                    <button className="btn btn-sm btn-danger" onClick={() => onDelete(d.id)}>Delete</button>
+                  </div>
                 </td>
               </tr>
             ))}
@@ -206,8 +210,10 @@ function DepartmentsList({ departments, positions, onEdit, onDelete, onEditPosit
                 <td>{departments.find(d => d.id === p.departmentId)?.name || '-'}</td>
                 <td className="num">{p.minSalary.toLocaleString()} - {p.maxSalary.toLocaleString()}</td>
                 <td>
-                  <button className="btn btn-sm" onClick={() => onEditPosition(p)}>Edit</button>
-                  <button className="btn btn-sm btn-danger" onClick={() => onDeletePosition(p.id)}>Delete</button>
+                  <div className="cell-actions">
+                    <button className="btn btn-sm" onClick={() => onEditPosition(p)}>Edit</button>
+                    <button className="btn btn-sm btn-danger" onClick={() => onDeletePosition(p.id)}>Delete</button>
+                  </div>
                 </td>
               </tr>
             ))}
@@ -289,10 +295,10 @@ function LeaveList({ requests, employees, onAction }: {
                 <td><span className="badge" style={{ background: statusColors[lr.status] || '#6b7280' }}>{lr.status}</span></td>
                 <td>
                   {lr.status === 'Pending' && (
-                    <>
+                    <div className="cell-actions">
                       <button className="btn btn-sm btn-primary" onClick={() => onAction(lr.id, 'Approved')}>Approve</button>
                       <button className="btn btn-sm btn-danger" onClick={() => onAction(lr.id, 'Rejected')}>Reject</button>
-                    </>
+                    </div>
                   )}
                 </td>
               </tr>
@@ -393,8 +399,10 @@ function SalarySlipDetail({ slip, onBack }: { slip: SalarySlip; onBack: () => vo
   return (
     <div className="salary-slip-container">
       <div className="no-print" style={{ marginBottom: '1rem' }}>
-        <button className="btn" onClick={onBack}>← Back to List</button>
-        <button className="btn btn-primary" onClick={handlePrint} style={{ marginLeft: '0.5rem' }}>🖨️ Print / Save PDF</button>
+        <div className="cell-actions">
+          <button className="btn" onClick={onBack}>← Back to List</button>
+          <button className="btn btn-primary" onClick={handlePrint}>🖨️ Print / Save PDF</button>
+        </div>
       </div>
 
       <div className="salary-slip" id="salary-slip-printable">
@@ -507,8 +515,10 @@ function TaxSlabsList({ slabs, onEdit, onDelete }: {
                 <td className="num">{s.currency} {s.standardDeduction.toLocaleString()}</td>
                 <td><span className="badge" style={{ background: s.isActive ? '#16a34a' : '#6b7280' }}>{s.isActive ? 'Active' : 'Inactive'}</span></td>
                 <td>
-                  <button className="btn btn-sm" onClick={() => onEdit(s)}>Edit</button>
-                  <button className="btn btn-sm btn-danger" onClick={() => onDelete(s.id)}>Delete</button>
+                  <div className="cell-actions">
+                    <button className="btn btn-sm" onClick={() => onEdit(s)}>Edit</button>
+                    <button className="btn btn-sm btn-danger" onClick={() => onDelete(s.id)}>Delete</button>
+                  </div>
                 </td>
               </tr>
             ))}

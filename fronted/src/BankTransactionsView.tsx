@@ -75,7 +75,7 @@ export const BankTransactionsView: React.FC<{ activeEntityId: string; entities: 
         </div>
       </div>
 
-      <div className="flex items-center justify-between p-3 bg-slate-50 border border-slate-200 rounded-xl">
+      <div className="flex flex-wrap items-center justify-between gap-3 p-3 bg-slate-50 border border-slate-200 rounded-xl">
         <div className="relative w-80">
           <Search className="absolute left-3 top-2.5 h-4 w-4 text-slate-400" />
           <Input

@@ -40,7 +40,7 @@ export const PurchaseReportsView: React.FC<{ activeEntityId: string; entities: E
         {cards.map(([label, count, value]) => <Card key={label as string}><CardHeader className="pb-2"><CardTitle className="text-xs font-semibold text-slate-500 uppercase">{label}</CardTitle></CardHeader><CardContent><div className="text-2xl font-bold text-slate-900">{count}</div><div className="text-xs text-slate-500">{value}</div></CardContent></Card>)}
       </div>
 
-      <div className="flex items-center justify-between p-3 bg-slate-50 border border-slate-200 rounded-xl">
+      <div className="flex flex-wrap items-center justify-between gap-3 p-3 bg-slate-50 border border-slate-200 rounded-xl">
         <div className="relative w-80"><Search className="absolute left-3 top-2.5 h-4 w-4 text-slate-400" /><Input className="pl-9 h-9 text-xs" placeholder="Search vendors..." value={query} onChange={e => setQuery(e.target.value)} /></div>
         <DataToolbar exportFileName="purchase-reports" exportSheetName="Vendor Spend" exportTitle="Purchase Reports" exportHeaders={['Vendor', 'Bills', 'Total Billed', 'Paid', 'Due']} exportRows={exportRows} />
       </div>

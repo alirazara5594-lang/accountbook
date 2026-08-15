@@ -71,7 +71,7 @@ export const ExpenseClaimsView: React.FC<{ activeEntityId: string; entities: Ent
         </form>
       )}
 
-      <div className="flex items-center justify-between p-3 bg-slate-50 border border-slate-200 rounded-xl">
+      <div className="flex flex-wrap items-center justify-between gap-3 p-3 bg-slate-50 border border-slate-200 rounded-xl">
         <div className="relative w-80"><Search className="absolute left-3 top-2.5 h-4 w-4 text-slate-400" /><Input className="pl-9 h-9 text-xs" placeholder="Search claims..." value={query} onChange={e => setQuery(e.target.value)} /></div>
         <DataToolbar exportFileName="expense-claims" exportSheetName="Expense Claims" exportTitle="Expense Claims" exportHeaders={['Claim #', 'Date', 'Employee', 'Department', 'Amount', 'Currency', 'Status', 'Notes']} exportRows={exportRows} />
       </div>
