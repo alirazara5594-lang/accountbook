@@ -208,37 +208,16 @@ export const SalesOrdersWorkspace: React.FC<SalesOrdersWorkspaceProps> = ({ acti
   });
 
   return (
-    <div className="space-y-6 max-w-7xl mx-auto font-sans pb-12">
-      {/* Top Metrics Cards */}
-      <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
-        {[
-          { label: 'Total Orders', val: metrics.total, desc: 'Registered confirmations' },
-          { label: 'Draft Orders', val: metrics.draft, desc: 'Requires confirmation', color: 'text-gray-500' },
-          { label: 'Pending Delivery', val: metrics.confirmed, desc: 'Confirmed sales order', color: 'text-blue-600' },
-          { label: 'Invoiced Orders', val: metrics.invoiced, desc: 'Invoiced to client', color: 'text-emerald-600' },
-          { label: 'Active Value', val: money(metrics.totalVal), desc: 'Excluding cancelled' }
-        ].map((card, idx) => (
-          <div key={idx} className="bg-white border border-slate-200 rounded-xl p-3 shadow-xs">
-            <span className="text-[9px] font-bold text-slate-400 uppercase tracking-wider block">{card.label}</span>
-            <h4 className={`text-base font-extrabold mt-1 truncate ${card.color || 'text-slate-800'}`}>{card.val}</h4>
-            <span className="text-[9px] text-slate-400 block mt-0.5">{card.desc}</span>
-          </div>
-        ))}
-      </div>
-
-      {/* Toolbar */}
-      <div className="flex flex-col md:flex-row items-center justify-between gap-3.5 p-3.5 bg-slate-50 border border-slate-200/80 rounded-2xl shadow-xs">
-        <div className="relative w-80">
-          <Search className="absolute left-3.5 top-3 h-3.5 w-3.5 text-slate-400" />
-          <input
-            placeholder="Search order no, customer, ref..."
-            value={query}
-            onChange={e => setQuery(e.target.value)}
-            className="w-full pl-9 pr-4 h-10 bg-white border border-slate-200 rounded-xl text-xs outline-none focus:border-slate-400"
-          />
+    <div className="p-4 max-w-7xl mx-auto space-y-4">
+      {/* Top Header */}
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-3 bg-white p-3 rounded-xl border border-gray-200 shadow-sm">
+        <div>
+          <h1 className="text-base font-bold text-slate-900 tracking-tight flex items-center gap-2">
+            <span className="text-lg">📦</span> Sales Orders
+          </h1>
+          <p className="text-[10px] text-slate-500 mt-0.5">Manage sales orders, confirmations, and delivery tracking.</p>
         </div>
-
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-1.5 shrink-0">
           <DataToolbar
             exportFileName="sales-orders"
             exportSheetName="Sales Orders"
@@ -249,19 +228,64 @@ export const SalesOrdersWorkspace: React.FC<SalesOrdersWorkspaceProps> = ({ acti
             exportTotals={[{ label: 'Active Value', value: metrics.totalVal }]}
             onRefresh={() => loadData()}
           />
-
           <button
             onClick={() => setShowForm(true)}
-            className="h-10 px-4 gap-1.5 text-xs font-bold text-white bg-[#143e2b] hover:bg-[#0c2a1d] rounded-xl shadow-xs flex items-center transition-colors cursor-pointer"
+            className="h-8 px-2.5 bg-blue-600 hover:bg-blue-700 text-white text-[11px] font-semibold rounded-lg shrink-0 whitespace-nowrap flex items-center gap-1"
           >
-            <Plus className="w-4 h-4" />
-            New Sales Order
+            <Plus className="w-3.5 h-3.5" /> New Order
           </button>
         </div>
       </div>
 
-      {/* Table grid */}
-      <div className="bg-white border border-slate-200 rounded-2xl overflow-hidden shadow-xs">
+      {/* KPI Cards */}
+      <section className="stats">
+        <article>
+          <span className="stat-icon blue"><span className="text-sm">📋</span></span>
+          <div>
+            <small>TOTAL ORDERS</small>
+            <h2>{metrics.total}</h2>
+            <p>Registered confirmations</p>
+          </div>
+        </article>
+        <article>
+          <span className="stat-icon teal"><span className="text-sm">📝</span></span>
+          <div>
+            <small>DRAFT ORDERS</small>
+            <h2>{metrics.draft}</h2>
+            <p>Requires confirmation</p>
+          </div>
+        </article>
+        <article>
+          <span className="stat-icon violet"><span className="text-sm">🚚</span></span>
+          <div>
+            <small>PENDING DELIVERY</small>
+            <h2>{metrics.confirmed}</h2>
+            <p>Confirmed sales order</p>
+          </div>
+        </article>
+        <article>
+          <span className="stat-icon blue"><span className="text-sm">✅</span></span>
+          <div>
+            <small>INVOICED ORDERS</small>
+            <h2>{metrics.invoiced}</h2>
+            <p>Invoiced to client</p>
+          </div>
+        </article>
+      </section>
+
+      {/* Search & Table */}
+      <div className="bg-white border border-slate-200 rounded-xl shadow-xs overflow-hidden">
+        <div className="p-3 border-b border-slate-200 bg-slate-50/50">
+          <div className="relative w-72">
+            <Search className="absolute left-3 top-2 h-4 w-4 text-slate-400" />
+            <input
+              placeholder="Search order no, customer, ref..."
+              value={query}
+              onChange={e => setQuery(e.target.value)}
+              className="w-full pl-9 pr-3 h-8 bg-white border border-slate-200 rounded-lg text-xs outline-none focus:border-slate-400"
+            />
+          </div>
+        </div>
         <table className="w-full text-sm">
           <thead className="bg-slate-50/80 border-b border-slate-200">
             <tr>
