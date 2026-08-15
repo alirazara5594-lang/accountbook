@@ -192,7 +192,7 @@ export function ProjectsListView({ activeEntityId }: { activeEntityId?: string }
         <StatCard icon={CheckCircle2} label="Completed" value={projects.filter(p => p.status === 'Completed').length} tone="green" />
         <StatCard icon={AlertTriangle} label="On Hold" value={projects.filter(p => p.status === 'OnHold').length} tone="amber" />
       </div>
-      <div className="flex gap-3 items-center">
+      <div className="flex flex-wrap gap-3 items-center">
         <Input className="w-[240px]" placeholder="Search projects..." value={filter} onChange={e => setFilter(e.target.value)} />
         <Select value={statusFilter} onValueChange={v => v !== null && setStatusFilter(v)}>
           <SelectTrigger className="w-[160px]"><SelectValue placeholder="All Statuses" /></SelectTrigger>

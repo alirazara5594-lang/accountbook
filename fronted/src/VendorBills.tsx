@@ -163,7 +163,7 @@ export const VendorBills: React.FC<{ activeEntityId: string }> = ({ activeEntity
           </h1>
           <p className="text-gray-500 text-xs mt-1">Direct supplier liability creation or procurement-linked 3-way match invoices.</p>
         </div>
-        <div className="flex gap-2">
+        <div className="flex flex-wrap gap-2">
           <DataToolbar
             query={query}
             setQuery={setQuery}

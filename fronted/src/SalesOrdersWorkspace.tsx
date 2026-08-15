@@ -584,7 +584,7 @@ export const SalesOrdersWorkspace: React.FC<SalesOrdersWorkspaceProps> = ({ acti
         <div className="overlay">
           <div className="modal" >
             <div className="modal-head">
-              <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
                 <span className="p-2 bg-emerald-50 rounded-xl text-emerald-800">
                   <Shield className="w-5 h-5" />
                 </span>

@@ -126,7 +126,7 @@ export const FundTransfersView: React.FC<{ activeEntityId: string; entities: Ent
           <h1 className="text-2xl font-bold text-slate-900 tracking-tight mt-1">Inter-Account Fund Transfers</h1>
           <p className="text-xs text-slate-500">Internal liquidity bank-to-bank and cash vault transfers for {currentEntity?.name || 'Active Entity'}. Transfers post a Dr Target / Cr Source journal.</p>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           <DataToolbar
             query={query}
             setQuery={setQuery}

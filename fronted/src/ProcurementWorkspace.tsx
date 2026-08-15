@@ -317,7 +317,7 @@ export const ProcurementWorkspace: React.FC<{ activeEntityId: string; entities?:
           </h1>
           <p className="text-gray-500 text-xs mt-1">Full 8-Step Procurement Lifecycle, GRN Destination Routing, Quotation Award & 3-Way Match Validation.</p>
         </div>
-        <div className="flex gap-2 items-center">
+        <div className="flex flex-wrap gap-2 items-center">
           <DataToolbar
             exportFileName="procurement-lifecycle"
             exportSheetName="Procurement Lifecycle"

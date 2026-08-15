@@ -378,7 +378,7 @@ export const EstimatesAndQuotes: React.FC<{ activeEntityId: string }> = ({ activ
           <h1 className="text-3xl font-bold text-gray-900 tracking-tight">Estimates & Quotes</h1>
           <p className="text-gray-500 text-sm mt-1">Create quotes for customers and convert accepted ones into Sales Invoices.</p>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           <DataToolbar
             query={query}
             setQuery={setQuery}

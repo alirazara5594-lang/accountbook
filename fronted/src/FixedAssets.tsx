@@ -172,17 +172,17 @@ export const FixedAssets: React.FC<{activeEntityId: string}> = ({activeEntityId}
       {error && <p className="text-xs text-rose-600 bg-rose-50 border border-rose-200 rounded-lg px-3 py-2">{error}</p>}
 
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-        <div className="p-4 bg-white border border-slate-200 rounded-xl shadow-xs">
+        <div className="p-3 bg-white border border-slate-200 rounded-xl shadow-xs">
           <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Active Asset Cost</p>
-          <p className="text-xl font-bold text-slate-900 font-mono mt-1">{money(totalCost)}</p>
+          <p className="text-lg font-bold text-slate-900 font-mono mt-0.5">{money(totalCost)}</p>
         </div>
-        <div className="p-4 bg-indigo-50 border border-indigo-200 rounded-xl shadow-xs">
+        <div className="p-3 bg-indigo-50 border border-indigo-200 rounded-xl shadow-xs">
           <p className="text-[10px] font-bold text-indigo-600 uppercase tracking-wider">Accumulated Depreciation</p>
-          <p className="text-xl font-bold text-indigo-800 font-mono mt-1">- {money(totalDepr)}</p>
+          <p className="text-lg font-bold text-indigo-800 font-mono mt-0.5">- {money(totalDepr)}</p>
         </div>
-        <div className="p-4 bg-emerald-50 border border-emerald-200 rounded-xl shadow-xs">
+        <div className="p-3 bg-emerald-50 border border-emerald-200 rounded-xl shadow-xs">
           <p className="text-[10px] font-bold text-emerald-600 uppercase tracking-wider">Net Book Value</p>
-          <p className="text-xl font-bold text-emerald-800 font-mono mt-1">{money(totalValue)}</p>
+          <p className="text-lg font-bold text-emerald-800 font-mono mt-0.5">{money(totalValue)}</p>
         </div>
       </div>
 

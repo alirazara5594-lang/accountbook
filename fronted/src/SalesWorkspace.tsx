@@ -148,9 +148,9 @@ const SalesInvoicesTab: React.FC<{ activeEntityId: string }> = ({ activeEntityId
     <div className="space-y-4">
       {toast && <div className="px-4 py-2 bg-green-50 border border-green-200 text-green-800 rounded-xl text-sm">{toast}</div>}
 
-      <div className="flex justify-between items-center">
+      <div className="flex flex-wrap justify-between items-center">
         <h2 className="text-xl font-bold text-gray-900">Sales Invoices</h2>
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           <DataToolbar
             query={query}
             setQuery={setQuery}

@@ -455,7 +455,7 @@ export default function App() {
   {activeView === 'sales-summary' && <SalesSummaryView activeEntityId={activeEntityId} setPage={setPage} />}
   {activeView === 'procurement-summary' && <ProcurementSummaryView activeEntityId={activeEntityId} setPage={setPage} />}
   {activeView === 'banking-summary' && <BankingSummaryView activeEntityId={activeEntityId} setPage={setPage} />}
-  {activeView === 'accounting-summary' && <AccountingSummaryView accounts={accounts} entries={entries} setPage={setPage} openCreateAccount={openCreate} />}
+  {activeView === 'accounting-summary' && <AccountingSummaryView accounts={accounts} entries={entries} setPage={setPage} />}
   {activeView === 'assets-inventory-summary' && <AssetsInventorySummaryView activeEntityId={activeEntityId} setPage={setPage} />}
   {activeView === 'payroll-summary' && <PayrollSummaryView activeEntityId={activeEntityId} setPage={setPage} />}
   {activeView === 'customers' && <CustomerManagement entities={entities as any} activeEntityId={activeEntityId} notify={notify} />}

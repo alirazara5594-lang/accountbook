@@ -23,7 +23,7 @@ export const DebitNotes: React.FC<{ activeEntityId: string; entities?: any[] }> 
           </h1>
           <p className="text-gray-500 text-xs mt-1">Record vendor debit notes, track expenses, and manage payment obligations.</p>
         </div>
-        <div className="flex gap-2">
+        <div className="flex flex-wrap gap-2">
           <DataToolbar
             exportFileName="debit-notes"
             exportSheetName="Debit Notes"

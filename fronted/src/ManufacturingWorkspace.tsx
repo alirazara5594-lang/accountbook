@@ -177,7 +177,7 @@ export const ManufacturingWorkspace: React.FC<{ activeEntityId: string; entities
           <h1 className="text-2xl font-bold text-gray-900 tracking-tight">Manufacturing & Production Workspace</h1>
           <p className="text-gray-500 text-sm mt-1">Manage BOM recipes, work orders, WIP material issues, and IAS 2 job costing.</p>
         </div>
-        <div className="flex gap-2">
+        <div className="flex flex-wrap gap-2">
           <DataToolbar
             exportFileName="manufacturing-boms"
             exportSheetName="BOM Recipes"

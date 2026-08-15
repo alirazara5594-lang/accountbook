@@ -323,7 +323,7 @@ export default function EmployeeDirectory() {
         actions={<Button onClick={openCreate}><Plus className="mr-2 h-4 w-4" /> Add Employee</Button>}
       />
 
-      <div className="flex gap-3 items-center">
+      <div className="flex flex-wrap gap-3 items-center">
         <div className="relative flex-1 max-w-sm">
           <Input placeholder="Search by name, number, or email..." value={search} onChange={e => setSearch(e.target.value)} className="pl-9" />
         </div>

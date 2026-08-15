@@ -121,7 +121,7 @@ export const PeriodClosingView: React.FC<PeriodClosingViewProps> = ({ activeEnti
             postings into prior periods (IAS 1 cut-off, IFRS going-concern period review).
           </p>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           <DataToolbar
             query={query}
             setQuery={setQuery}

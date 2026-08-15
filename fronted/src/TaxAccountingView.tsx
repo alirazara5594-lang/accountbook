@@ -229,7 +229,7 @@ export const TaxAccountingView: React.FC<TaxAccountingViewProps> = ({ activeEnti
         <section className="bg-gradient-to-br from-indigo-50 via-white to-white border border-indigo-100 rounded-xl p-5 shadow-xs">
           <div className="flex items-start justify-between gap-4">
             <div>
-              <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
                 <Globe2 className="w-4 h-4 text-indigo-600" />
                 <h2 className="text-sm font-bold text-slate-900">{current.flag} {current.name} — {current.regime} Regime</h2>
               </div>

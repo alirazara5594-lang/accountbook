@@ -677,7 +677,7 @@ export const ChartOfAccounts: React.FC<ChartOfAccountsProps> = ({
           <h1 className="text-xl font-bold text-slate-900 tracking-tight">Chart of Accounts Summary</h1>
           <p className="text-xs text-slate-500 mt-1">View and manage all your chart of accounts</p>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           <DataToolbar
             exportFileName={`Zenabook_ChartOfAccounts_${new Date().toISOString().slice(0, 10)}`}
             exportSheetName="Chart of Accounts"

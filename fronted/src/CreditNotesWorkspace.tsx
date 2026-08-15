@@ -68,7 +68,7 @@ function CreditNotesWorkspace() {
     <div className="credit-notes-workspace glass">
       <header className="workspace-header">
         <h2>Credit Notes</h2>
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           <DataToolbar
             query={query}
             setQuery={setQuery}

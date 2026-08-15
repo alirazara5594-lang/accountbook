@@ -168,7 +168,7 @@ function CustomerPaymentsWorkspace() {
     <section className="workspace-card">
       <header className="workspace-header">
         <h2>Customer Payments</h2>
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           <DataToolbar
             query={query}
             setQuery={setQuery}
