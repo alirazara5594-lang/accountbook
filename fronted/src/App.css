@@ -153,3 +153,260 @@ main{padding:40px 48px;width:calc(100% - 258px);max-width:1450px;margin:0 auto}h
   .slip-employee-info { padding: 12px 24px; }
   .slip-footer { padding: 12px 24px; }
 }
+
+/* Onboarding Wizard */
+.onboarding-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.6);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
+
+.onboarding-card {
+  background: #fff;
+  border-radius: 16px;
+  width: 100%;
+  max-width: 600px;
+  max-height: 85vh;
+  overflow-y: auto;
+  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.3);
+  display: flex;
+  flex-direction: column;
+}
+
+.onboarding-header {
+  padding: 24px 28px 20px;
+  border-bottom: 1px solid #e3e8ef;
+}
+
+.onboarding-header .brand {
+  font-size: 22px;
+}
+
+.progress-bar {
+  height: 4px;
+  background: #e3e8ef;
+  border-radius: 2px;
+  margin: 12px 0 6px;
+  overflow: hidden;
+}
+
+.progress-fill {
+  height: 100%;
+  background: #0d9488;
+  border-radius: 2px;
+  transition: width 0.3s ease;
+}
+
+.onboarding-subtitle {
+  font-size: 13px;
+  color: #64748b;
+}
+
+.onboarding-body {
+  padding: 24px 28px;
+  flex: 1;
+}
+
+.step h2 {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 20px;
+  margin-bottom: 12px;
+}
+
+.step-desc {
+  font-size: 13px;
+  color: #64748b;
+  margin-bottom: 20px;
+}
+
+.country-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  margin-bottom: 20px;
+}
+
+.country-option {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 12px;
+  border: 1px solid #e3e8ef;
+  border-radius: 8px;
+  background: #fff;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  font-size: 13px;
+}
+
+.country-option:hover {
+  border-color: #0d9488;
+  background: #f0fdfa;
+}
+
+.country-option.selected {
+  border-color: #0d9488;
+  background: #ecf7f5;
+}
+
+.country-option .flag {
+  font-size: 16px;
+}
+
+.modules-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  margin-bottom: 20px;
+}
+
+.module-option {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  padding: 14px 10px;
+  border: 1px solid #e3e8ef;
+  border-radius: 10px;
+  background: #fff;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  text-align: center;
+}
+
+.module-option:hover {
+  border-color: #0d9488;
+  background: #f0fdfa;
+}
+
+.module-option.selected {
+  border-color: #0d9488;
+  background: #ecf7f5;
+}
+
+.module-option span {
+  font-size: 13px;
+  font-weight: 600;
+  color: #1e293b;
+}
+
+.module-option small {
+  font-size: 11px;
+  color: #64748b;
+}
+
+.currency-input, .company-input {
+  margin-bottom: 16px;
+}
+
+.currency-input label, .company-input label {
+  display: block;
+  font-size: 11px;
+  font-weight: 700;
+  color: #64748b;
+  margin-bottom: 6px;
+  letter-spacing: 0.7px;
+}
+
+.currency-field {
+  width: 100%;
+  padding: 10px 12px;
+  border: 1px solid #e3e8ef;
+  border-radius: 8px;
+  font-size: 16px;
+  font-weight: 600;
+  text-align: center;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+}
+
+.company-field {
+  width: 100%;
+  padding: 10px 14px;
+  border: 1px solid #e3e8ef;
+  border-radius: 8px;
+  font-size: 14px;
+}
+
+.summary {
+  background: #f8fafc;
+  border-radius: 10px;
+  padding: 16px;
+  margin-bottom: 16px;
+}
+
+.summary-row {
+  display: flex;
+  justify-content: space-between;
+  padding: 8px 0;
+  border-bottom: 1px solid #e3e8ef;
+  font-size: 13px;
+}
+
+.summary-row:last-child {
+  border-bottom: none;
+}
+
+.summary-row strong {
+  color: #0d9488;
+}
+
+.step-footer {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  padding-top: 12px;
+  border-top: 1px solid #e3e8ef;
+}
+
+.btn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 10px 18px;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.btn-primary {
+  background: #0d9488;
+  color: #fff;
+  border: 1px solid #0d9488;
+}
+
+.btn-primary:hover {
+  background: #0b7d75;
+}
+
+.btn-primary:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.btn-success {
+  background: #16a34a;
+  border-color: #16a34a;
+}
+
+.btn-success:hover {
+  background: #15803d;
+}
+
+.btn-secondary {
+  background: #f1f5f9;
+  color: #475569;
+  border: 1px solid #e3e8ef;
+}
+
+.btn-secondary:hover {
+  background: #e2e8f0;
+}

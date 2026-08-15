@@ -3,6 +3,7 @@ import type { FormEvent } from 'react'
 import './App.css'
 import { Login } from './Login'
 import type { UserData } from './Login'
+import OnboardingWizard from './components/OnboardingWizard'
 import { LogOut } from 'lucide-react'
 import { authApi } from './api/modules/auth.api'
 import Intercompany from './Intercompany'
@@ -160,6 +161,13 @@ export default function App() {
     }
   }, [currentUser]);
 
+  // Track if onboarding is needed (for non-admin demo accounts)
+  const needsOnboarding = (email: string) => {
+    if (email === 'admin@acme.com') return false; // Admin gets instant access
+    // Check if user has completed onboarding
+    return !localStorage.getItem('onboarding_complete');
+  };
+
   const handleLogin = async (userData: UserData) => {
     try {
       const response = await authApi.login({ email: userData.email, password: 'password123' });
@@ -178,11 +186,25 @@ export default function App() {
         avatar: userData.avatar,
         provider: userData.provider,
       });
+      localStorage.setItem('auth_user', JSON.stringify({
+        email: userData.email,
+        fullName: userData.fullName,
+        role: response.user.role,
+        avatar: userData.avatar,
+        provider: userData.provider,
+      }));
       notify(`Logged in as ${userData.fullName}`);
     } catch (error) {
       // Fallback to demo mode (no backend auth)
-      setCurrentUser(userData);
-      localStorage.setItem('auth_user', JSON.stringify(userData));
+      const user = {
+        email: userData.email,
+        fullName: userData.fullName,
+        role: userData.role,
+        avatar: userData.avatar,
+        provider: userData.provider,
+      };
+      setCurrentUser(user);
+      localStorage.setItem('auth_user', JSON.stringify(user));
       notify(`Logged in as ${userData.fullName}`);
     }
   };
@@ -380,6 +402,14 @@ export default function App() {
 
   if (!currentUser) {
     return <Login onLogin={handleLogin} />;
+  }
+
+  // Non-admin demo users must complete onboarding first
+  if (needsOnboarding(currentUser.email)) {
+    return <OnboardingWizard currentUser={currentUser} onComplete={() => {
+      localStorage.setItem('onboarding_complete', 'true');
+      window.location.reload();
+    }} />;
   }
 
   return <div className="app"><aside><div className="brand"><b>account</b><span>book</span></div><div className="company"><div className="avatar">AC</div><div><strong>{activeEntity?.name || 'Select entity'}</strong><small>Active accounting books</small></div></div>

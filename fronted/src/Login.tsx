@@ -166,6 +166,11 @@ export function Login({ onLogin }: LoginProps) {
     setSuccess(null);
   };
 
+  // Instant login for admin account (first demo user)
+  const handleInstantLogin = (user: UserData) => {
+    completeLogin(user);
+  };
+
   const handleGoogle = () => {
     setError(null);
     setSuccess(null);
@@ -345,21 +350,26 @@ export function Login({ onLogin }: LoginProps) {
           <div className="demo-accounts">
             <div className="demo-title">Demo User Accounts</div>
             <div className="demo-grid">
-              {DEMO_USERS.map((user) => (
-                <button
-                  key={user.email}
-                  type="button"
-                  className="demo-btn"
-                  onClick={() => handleQuickSelect(user)}
-                  disabled={isLoading}
-                >
-                  <div className="demo-info">
-                    <span className="demo-name">{user.fullName}</span>
-                    <span className="demo-role">{user.role}</span>
-                  </div>
-                  <span className="demo-cred">{user.email.split('@')[0]}</span>
-                </button>
-              ))}
+              {DEMO_USERS.map((user) => {
+                const isAdmin = user.email === 'admin@acme.com'
+                return (
+                  <button
+                    key={user.email}
+                    type="button"
+                    className={`demo-btn ${isAdmin ? 'instant' : ''}`}
+                    onClick={() => isAdmin ? handleInstantLogin(user) : handleQuickSelect(user)}
+                    disabled={isLoading}
+                  >
+                    <div className="demo-info">
+                      <span className="demo-name">{user.fullName}</span>
+                      <span className="demo-role">{user.role}</span>
+                    </div>
+                    <span className="demo-cred">
+                      {isAdmin ? 'Click to login' : user.email.split('@')[0]}
+                    </span>
+                  </button>
+                )
+              })}
             </div>
           </div>
         )}

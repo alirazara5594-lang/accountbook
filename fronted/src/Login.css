@@ -344,6 +344,17 @@
   color: #ffffff;
 }
 
+.demo-btn.instant {
+  background: rgba(85, 216, 197, 0.1);
+  border-color: rgba(85, 216, 197, 0.5);
+  color: #ffffff;
+}
+
+.demo-btn.instant:hover {
+  background: rgba(85, 216, 197, 0.2);
+  box-shadow: 0 0 20px rgba(85, 216, 197, 0.3);
+}
+
 .demo-info {
   display: flex;
   flex-direction: column;
