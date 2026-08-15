@@ -370,15 +370,17 @@ export const EstimatesAndQuotes: React.FC<{ activeEntityId: string }> = ({ activ
   ]);
 
   return (
-    <div className="p-8 max-w-7xl mx-auto space-y-6">
+    <div className="p-4 max-w-7xl mx-auto space-y-4">
       {toast && <div className="fixed top-6 right-6 z-50 px-5 py-3 bg-green-600 text-white rounded-2xl shadow-lg text-sm font-medium">{toast}</div>}
 
-      <div className="flex justify-between items-center">
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-3 bg-white p-3 rounded-xl border border-gray-200 shadow-sm">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900 tracking-tight">Estimates & Quotes</h1>
-          <p className="text-gray-500 text-sm mt-1">Create quotes for customers and convert accepted ones into Sales Invoices.</p>
+          <h1 className="text-base font-bold text-gray-900 tracking-tight flex items-center gap-2">
+            <span className="text-lg">📋</span> Estimates & Quotes
+          </h1>
+          <p className="text-gray-500 text-[10px] mt-0.5">Create quotes for customers and convert accepted ones into Sales Invoices.</p>
         </div>
-        <div className="flex flex-wrap items-center gap-2">
+        <div className="flex items-center gap-1.5 shrink-0">
           <DataToolbar
             query={query}
             setQuery={setQuery}
@@ -393,28 +395,39 @@ export const EstimatesAndQuotes: React.FC<{ activeEntityId: string }> = ({ activ
             onRefresh={() => fetchData()}
           />
           <button onClick={() => setShowForm(true)}
-            className="px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-xl shadow-sm shadow-blue-600/20 transition-all active:scale-95">
+            className="h-8 px-2.5 bg-blue-600 hover:bg-blue-700 text-white text-[11px] font-semibold rounded-lg shrink-0 whitespace-nowrap">
             + New Estimate
           </button>
         </div>
       </div>
 
       {/* KPI Cards */}
-      <div className="grid grid-cols-3 gap-3">
-        {[
-          { label: 'Total Pipeline Value', value: money(totalValue), color: 'text-blue-600', icon: '💰' },
-          { label: 'Accepted Quotes', value: accepted, color: 'text-green-600', icon: '✅' },
-          { label: 'Awaiting Response', value: pending, color: 'text-orange-600', icon: '⏳' },
-        ].map(c => (
-          <div key={c.label} className="bg-white border border-gray-200 rounded-xl p-3 flex items-center gap-3 shadow-sm">
-            <span className="text-xl">{c.icon}</span>
-            <div className="min-w-0">
-              <p className="text-[10px] text-gray-500 uppercase tracking-wider">{c.label}</p>
-              <p className={`text-lg font-bold ${c.color} mt-0.5`}>{c.value}</p>
-            </div>
+      <section className="stats">
+        <article>
+          <span className="stat-icon blue"><span className="text-sm">💰</span></span>
+          <div>
+            <small>TOTAL PIPELINE VALUE</small>
+            <h2>{money(totalValue)}</h2>
+            <p>Estimated revenue</p>
           </div>
-        ))}
-      </div>
+        </article>
+        <article>
+          <span className="stat-icon teal"><span className="text-sm">✅</span></span>
+          <div>
+            <small>ACCEPTED QUOTES</small>
+            <h2>{accepted}</h2>
+            <p>Ready to convert</p>
+          </div>
+        </article>
+        <article>
+          <span className="stat-icon violet"><span className="text-sm">⏳</span></span>
+          <div>
+            <small>AWAITING RESPONSE</small>
+            <h2>{pending}</h2>
+            <p>Pending customer review</p>
+          </div>
+        </article>
+      </section>
 
       {/* New Estimate Form */}
       {showForm && (
