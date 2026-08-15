@@ -26,6 +26,7 @@ import { LeaseAccounting } from './Accounting.Leases';
 import CreditNotesWorkspace from './CreditNotesWorkspace';
 import CustomerPaymentsWorkspace from './CustomerPaymentsWorkspace';
 import CustomerStatementsWorkspace from './CustomerStatementsWorkspace';
+import CustomerAgingWorkspace from './CustomerAgingWorkspace';
 import SalesReportsWorkspace from './SalesReportsWorkspace';
 import VendorStatementsWorkspace from './VendorStatementsWorkspace';
 import PayablesAgingWorkspace from './PayablesAgingWorkspace';
@@ -93,7 +94,7 @@ const blank = { code: '', name: '', type: 'Asset' as AccountType, parentId: '', 
 
 const NAVIGATION = [
   { name: 'Overview', icon: '▦', items: [] },
-  { name: 'Sales & Customers', icon: '☖', items: ['Customers', 'Products & Services', 'Sales Workspace', 'Estimates & Quotes', 'Sales Orders', 'Credit Notes', 'Customer Payments', 'Customer Statements', 'Sales Reports'] },
+  { name: 'Sales & Customers', icon: '☖', items: ['Customers', 'Products & Services', 'Sales Workspace', 'Estimates & Quotes', 'Sales Orders', 'Credit Notes', 'Customer Payments', 'Customer Statements', 'Customer Aging', 'Sales Reports'] },
   { name: 'Procurement', icon: '⇡', items: ['Vendors', 'Procurement Workspace', 'Bills', 'Debit Notes', 'Expense Claims', 'Vendor Payments', 'Vendor Statements', 'Payables Aging', 'Purchase Reports'] },
   { name: 'Banking & Payments', icon: '🏛', items: ['Bank Accounts', 'Cash Accounts', 'Bank Connection', 'Bank Import', 'Transactions', 'Bank Reconciliation', 'Voucher Management', 'Fund Transfers', 'Cash Flow Statements'] },
               { name: 'Accounting', icon: '⌘', items: ['Chart of Accounts', 'Journal Entries', 'Fixed Assets', 'General Ledger', 'Accounts Receivable', 'Accounts Payable', 'Tax Accounting', 'Budgets', 'Financial Reports', 'Period Closing', 'Audit Trail', 'Intercompany Allocations', 'Lease Accounting'] },
@@ -407,6 +408,7 @@ export default function App() {
     'Administration.Audit Logs': 'admin-audit',
     'Sales & Customers.Customer Payments': 'customer-payments',
     'Sales & Customers.Customer Statements': 'customer-statements',
+    'Sales & Customers.Customer Aging': 'customer-aging',
     'Sales & Customers.Sales Reports': 'sales-reports'
   }
   const activeView = activeViewMap[page] || 'placeholder'
@@ -578,6 +580,7 @@ export default function App() {
   {activeView === 'lease-accounting' && <LeaseAccounting activeEntityId={activeEntityId} />}
   {activeView === 'customer-payments' && <CustomerPaymentsWorkspace />}
   {activeView === 'customer-statements' && <CustomerStatementsWorkspace activeEntityId={activeEntityId} />}
+  {activeView === 'customer-aging' && <CustomerAgingWorkspace activeEntityId={activeEntityId} />}
   {activeView === 'sales-reports' && <SalesReportsWorkspace activeEntityId={activeEntityId} />}
   {activeView === 'placeholder' && <div style={{ padding: 40, textAlign: 'center', color: '#666' }}><span style={{ fontSize: 48, opacity: 0.2, display: 'block', marginBottom: 20 }}>🏗</span><h3>Under Construction</h3><p>This module ({module}) is part of the layout but not yet developed.</p></div>}
   </main>{modal && <AccountModal form={form} setForm={setForm} accounts={accounts} editing={editing} close={() => setModal(false)} save={saveAccount} />}{toast && <div className="toast">✓ {toast}</div>}</div>
