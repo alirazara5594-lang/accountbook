@@ -136,22 +136,22 @@ export const LeaseAccounting: React.FC<LeaseProps> = ({ activeEntityId }) => {
       )}
 
       {/* Stats Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-        <div className="bg-white p-4 rounded-lg border border-gray-200">
-          <div className="text-sm text-gray-500">Total Leases</div>
-          <div className="text-2xl font-bold">{leases.length}</div>
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+        <div className="bg-white p-3 rounded-xl border border-gray-200">
+          <div className="text-[11px] text-gray-500 font-medium uppercase tracking-wider">Total Leases</div>
+          <div className="text-lg font-bold mt-0.5">{leases.length}</div>
         </div>
-        <div className="bg-white p-4 rounded-lg border border-gray-200">
-          <div className="text-sm text-gray-500">Finance Leases</div>
-          <div className="text-2xl font-bold text-blue-600">{leases.filter(l => l.type === 'FinanceLease').length}</div>
+        <div className="bg-white p-3 rounded-xl border border-gray-200">
+          <div className="text-[11px] text-gray-500 font-medium uppercase tracking-wider">Finance Leases</div>
+          <div className="text-lg font-bold text-blue-600 mt-0.5">{leases.filter(l => l.type === 'FinanceLease').length}</div>
         </div>
-        <div className="bg-white p-4 rounded-lg border border-gray-200">
-          <div className="text-sm text-gray-500">Operating Leases</div>
-          <div className="text-2xl font-bold text-violet-600">{leases.filter(l => l.type === 'OperatingLease').length}</div>
+        <div className="bg-white p-3 rounded-xl border border-gray-200">
+          <div className="text-[11px] text-gray-500 font-medium uppercase tracking-wider">Operating Leases</div>
+          <div className="text-lg font-bold text-violet-600 mt-0.5">{leases.filter(l => l.type === 'OperatingLease').length}</div>
         </div>
-        <div className="bg-white p-4 rounded-lg border border-gray-200">
-          <div className="text-sm text-gray-500">Total Liability</div>
-          <div className="text-2xl font-bold text-teal-600">{fmt(leases.reduce((sum, l) => sum + l.balanceSheetLiability, 0))}</div>
+        <div className="bg-white p-3 rounded-xl border border-gray-200">
+          <div className="text-[11px] text-gray-500 font-medium uppercase tracking-wider">Total Liability</div>
+          <div className="text-lg font-bold text-teal-600 mt-0.5">{fmt(leases.reduce((sum, l) => sum + l.balanceSheetLiability, 0))}</div>
         </div>
       </div>
 

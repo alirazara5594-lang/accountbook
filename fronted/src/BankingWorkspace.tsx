@@ -434,55 +434,55 @@ export const BankingWorkspace: React.FC<BankingWorkspaceProps> = ({ subView, act
       </div>
 
       {/* KPI Summary Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3">
         <Card className="bg-white border-slate-200 shadow-xs">
-          <CardContent className="p-4 flex items-center gap-3">
-            <div className="p-3 bg-emerald-50 rounded-xl text-emerald-600 border border-emerald-100">
-              <Wallet className="w-5 h-5" />
+          <CardContent className="p-3 flex items-center gap-2.5">
+            <div className="p-2 bg-emerald-50 rounded-lg text-emerald-600 border border-emerald-100">
+              <Wallet className="w-4 h-4" />
             </div>
-            <div>
-              <p className="text-xs font-medium text-slate-500">Total Liquid Reserves</p>
-              <h3 className="text-lg font-bold text-slate-900">PKR 6,475,000</h3>
-              <p className="text-[11px] text-emerald-600 font-medium">Across 4 active accounts</p>
+            <div className="min-w-0">
+              <p className="text-[10px] font-semibold uppercase tracking-wider text-slate-500">Total Liquid Reserves</p>
+              <h3 className="text-base font-bold text-slate-900">PKR 6,475,000</h3>
+              <p className="text-[10px] text-emerald-600 font-medium">Across 4 active accounts</p>
             </div>
           </CardContent>
         </Card>
 
         <Card className="bg-white border-slate-200 shadow-xs">
-          <CardContent className="p-4 flex items-center gap-3">
-            <div className="p-3 bg-indigo-50 rounded-xl text-indigo-600 border border-indigo-100">
-              <Zap className="w-5 h-5" />
+          <CardContent className="p-3 flex items-center gap-2.5">
+            <div className="p-2 bg-indigo-50 rounded-lg text-indigo-600 border border-indigo-100">
+              <Zap className="w-4 h-4" />
             </div>
-            <div>
-              <p className="text-xs font-medium text-slate-500">Live Bank Connections</p>
-              <h3 className="text-lg font-bold text-slate-900">2 Accounts Active</h3>
-              <p className="text-[11px] text-indigo-600 font-medium">HBL & Standard Chartered feeds</p>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card className="bg-white border-slate-200 shadow-xs">
-          <CardContent className="p-4 flex items-center gap-3">
-            <div className="p-3 bg-amber-50 rounded-xl text-amber-600 border border-amber-100">
-              <Clock className="w-5 h-5" />
-            </div>
-            <div>
-              <p className="text-xs font-medium text-slate-500">Pending Reconciliation</p>
-              <h3 className="text-lg font-bold text-slate-900">1 Bank Account</h3>
-              <p className="text-[11px] text-amber-600 font-medium">Meezan Bank needs review</p>
+            <div className="min-w-0">
+              <p className="text-[10px] font-semibold uppercase tracking-wider text-slate-500">Live Bank Connections</p>
+              <h3 className="text-base font-bold text-slate-900">2 Accounts Active</h3>
+              <p className="text-[10px] text-indigo-600 font-medium">HBL & Standard Chartered feeds</p>
             </div>
           </CardContent>
         </Card>
 
         <Card className="bg-white border-slate-200 shadow-xs">
-          <CardContent className="p-4 flex items-center gap-3">
-            <div className="p-3 bg-blue-50 rounded-xl text-blue-600 border border-blue-100">
-              <DollarSign className="w-5 h-5" />
+          <CardContent className="p-3 flex items-center gap-2.5">
+            <div className="p-2 bg-amber-50 rounded-lg text-amber-600 border border-amber-100">
+              <Clock className="w-4 h-4" />
             </div>
-            <div>
-              <p className="text-xs font-medium text-slate-500">Foreign Currency Reserves</p>
-              <h3 className="text-lg font-bold text-slate-900">$62,500.00 USD</h3>
-              <p className="text-[11px] text-blue-600 font-medium">Global SCB USD Account</p>
+            <div className="min-w-0">
+              <p className="text-[10px] font-semibold uppercase tracking-wider text-slate-500">Pending Reconciliation</p>
+              <h3 className="text-base font-bold text-slate-900">1 Bank Account</h3>
+              <p className="text-[10px] text-amber-600 font-medium">Meezan Bank needs review</p>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card className="bg-white border-slate-200 shadow-xs">
+          <CardContent className="p-3 flex items-center gap-2.5">
+            <div className="p-2 bg-blue-50 rounded-lg text-blue-600 border border-blue-100">
+              <DollarSign className="w-4 h-4" />
+            </div>
+            <div className="min-w-0">
+              <p className="text-[10px] font-semibold uppercase tracking-wider text-slate-500">Foreign Currency Reserves</p>
+              <h3 className="text-base font-bold text-slate-900">$62,500.00 USD</h3>
+              <p className="text-[10px] text-blue-600 font-medium">Global SCB USD Account</p>
             </div>
           </CardContent>
         </Card>

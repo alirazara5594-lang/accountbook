@@ -210,7 +210,7 @@ export const SalesOrdersWorkspace: React.FC<SalesOrdersWorkspaceProps> = ({ acti
   return (
     <div className="space-y-6 max-w-7xl mx-auto font-sans pb-12">
       {/* Top Metrics Cards */}
-      <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+      <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
         {[
           { label: 'Total Orders', val: metrics.total, desc: 'Registered confirmations' },
           { label: 'Draft Orders', val: metrics.draft, desc: 'Requires confirmation', color: 'text-gray-500' },
@@ -218,10 +218,10 @@ export const SalesOrdersWorkspace: React.FC<SalesOrdersWorkspaceProps> = ({ acti
           { label: 'Invoiced Orders', val: metrics.invoiced, desc: 'Invoiced to client', color: 'text-emerald-600' },
           { label: 'Active Value', val: money(metrics.totalVal), desc: 'Excluding cancelled' }
         ].map((card, idx) => (
-          <div key={idx} className="bg-white border border-slate-200 rounded-2xl p-4 shadow-xs">
-            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">{card.label}</span>
+          <div key={idx} className="bg-white border border-slate-200 rounded-xl p-3 shadow-xs">
+            <span className="text-[9px] font-bold text-slate-400 uppercase tracking-wider block">{card.label}</span>
             <h4 className={`text-base font-extrabold mt-1 truncate ${card.color || 'text-slate-800'}`}>{card.val}</h4>
-            <span className="text-[9px] text-slate-400 block mt-1">{card.desc}</span>
+            <span className="text-[9px] text-slate-400 block mt-0.5">{card.desc}</span>
           </div>
         ))}
       </div>

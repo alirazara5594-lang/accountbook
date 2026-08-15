@@ -242,55 +242,55 @@ export const BankAccountsView: React.FC<BankAccountsViewProps> = ({ activeEntity
       </div>
 
       {/* KPI Cards Bar */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3">
         <Card className="bg-white border-slate-200 shadow-xs">
-          <CardContent className="p-4 flex items-center gap-3">
-            <div className="p-3 bg-emerald-50 rounded-xl text-emerald-600 border border-emerald-100">
-              <Building2 className="w-5 h-5" />
+          <CardContent className="p-3 flex items-center gap-2.5">
+            <div className="p-2 bg-emerald-50 rounded-lg text-emerald-600 border border-emerald-100">
+              <Building2 className="w-4 h-4" />
             </div>
-            <div>
-              <p className="text-xs font-medium text-slate-500">Total Commercial Bank Accounts</p>
-              <h3 className="text-lg font-bold text-slate-900">{bankAccounts.length} Active Accounts</h3>
-              <p className="text-[11px] text-emerald-600 font-medium">Commercial & Corporate Banks</p>
+            <div className="min-w-0">
+              <p className="text-[10px] font-semibold uppercase tracking-wider text-slate-500">Total Commercial Bank Accounts</p>
+              <h3 className="text-base font-bold text-slate-900">{bankAccounts.length} Active Accounts</h3>
+              <p className="text-[10px] text-emerald-600 font-medium">Commercial & Corporate Banks</p>
             </div>
           </CardContent>
         </Card>
 
         <Card className="bg-white border-slate-200 shadow-xs">
-          <CardContent className="p-4 flex items-center gap-3">
-            <div className="p-3 bg-blue-50 rounded-xl text-blue-600 border border-blue-100">
-              <Globe className="w-5 h-5" />
+          <CardContent className="p-3 flex items-center gap-2.5">
+            <div className="p-2 bg-blue-50 rounded-lg text-blue-600 border border-blue-100">
+              <Globe className="w-4 h-4" />
             </div>
-            <div>
-              <p className="text-xs font-medium text-slate-500">PKR Liquid Reserves</p>
-              <h3 className="text-lg font-bold text-slate-900">{formatCurrency(totalPKR, 'PKR')}</h3>
-              <p className="text-[11px] text-blue-600 font-medium">HBL & Meezan Bank Accounts</p>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card className="bg-white border-slate-200 shadow-xs">
-          <CardContent className="p-4 flex items-center gap-3">
-            <div className="p-3 bg-indigo-50 rounded-xl text-indigo-600 border border-indigo-100">
-              <FileText className="w-5 h-5" />
-            </div>
-            <div>
-              <p className="text-xs font-medium text-slate-500">USD Foreign Reserves</p>
-              <h3 className="text-lg font-bold text-slate-900">{formatCurrency(totalUSD, 'USD')}</h3>
-              <p className="text-[11px] text-indigo-600 font-medium">Standard Chartered US Trade</p>
+            <div className="min-w-0">
+              <p className="text-[10px] font-semibold uppercase tracking-wider text-slate-500">PKR Liquid Reserves</p>
+              <h3 className="text-base font-bold text-slate-900">{formatCurrency(totalPKR, 'PKR')}</h3>
+              <p className="text-[10px] text-blue-600 font-medium">HBL & Meezan Bank Accounts</p>
             </div>
           </CardContent>
         </Card>
 
         <Card className="bg-white border-slate-200 shadow-xs">
-          <CardContent className="p-4 flex items-center gap-3">
-            <div className="p-3 bg-amber-50 rounded-xl text-amber-600 border border-amber-100">
-              <CheckCircle2 className="w-5 h-5" />
+          <CardContent className="p-3 flex items-center gap-2.5">
+            <div className="p-2 bg-indigo-50 rounded-lg text-indigo-600 border border-indigo-100">
+              <FileText className="w-4 h-4" />
             </div>
-            <div>
-              <p className="text-xs font-medium text-slate-500">Statement Reconciled Status</p>
-              <h3 className="text-lg font-bold text-slate-900">{bankAccounts.filter(a => a.reconciledStatus === 'Reconciled').length} of {bankAccounts.length} Reconciled</h3>
-              <p className="text-[11px] text-amber-600 font-medium">{bankAccounts.length - bankAccounts.filter(a => a.reconciledStatus === 'Reconciled').length} Account Pending Sync</p>
+            <div className="min-w-0">
+              <p className="text-[10px] font-semibold uppercase tracking-wider text-slate-500">USD Foreign Reserves</p>
+              <h3 className="text-base font-bold text-slate-900">{formatCurrency(totalUSD, 'USD')}</h3>
+              <p className="text-[10px] text-indigo-600 font-medium">Standard Chartered US Trade</p>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card className="bg-white border-slate-200 shadow-xs">
+          <CardContent className="p-3 flex items-center gap-2.5">
+            <div className="p-2 bg-amber-50 rounded-lg text-amber-600 border border-amber-100">
+              <CheckCircle2 className="w-4 h-4" />
+            </div>
+            <div className="min-w-0">
+              <p className="text-[10px] font-semibold uppercase tracking-wider text-slate-500">Statement Reconciled Status</p>
+              <h3 className="text-base font-bold text-slate-900">{bankAccounts.filter(a => a.reconciledStatus === 'Reconciled').length} of {bankAccounts.length} Reconciled</h3>
+              <p className="text-[10px] text-amber-600 font-medium">{bankAccounts.length - bankAccounts.filter(a => a.reconciledStatus === 'Reconciled').length} Account Pending Sync</p>
             </div>
           </CardContent>
         </Card>

@@ -22,13 +22,13 @@ export function ModuleSummaryLayout({ title, description, actions, stats, childr
   return (
     <div className="p-6 max-w-[1400px] mx-auto space-y-4">
       <PageHeader title={title} description={description} actions={actions} />
-      <div className="grid grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
         {stats.map((s, i) => (
           <StatCard key={i} icon={s.icon} label={s.label} value={s.value} tone={s.tone} />
         ))}
       </div>
       {children && (
-        <div className="grid grid-cols-2 gap-4">{children}</div>
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">{children}</div>
       )}
     </div>
   );

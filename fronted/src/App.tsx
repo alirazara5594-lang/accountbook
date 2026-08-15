@@ -61,6 +61,7 @@ import {
 
 import { SystemAccountMapping } from './components/SystemAccountMapping'
 import { ModuleSummary } from './ModuleSummary'
+import { SalesSummaryView, ProcurementSummaryView, BankingSummaryView, AccountingSummaryView, AssetsInventorySummaryView, PayrollSummaryView } from './MainModuleSummaries'
 import { BankAccountsView } from './BankAccountsView'
 import { CashAccountsView } from './CashAccountsView'
 import { BankConnectionView } from './BankConnectionView'
@@ -300,14 +301,14 @@ export default function App() {
   const activeViewMap: Record<string, string> = {
     'Overview.Dashboard': 'dashboard',
     'Overview.Summary': 'dashboard',
-    'Sales & Customers.Summary': 'module-summary',
+    'Sales & Customers.Summary': 'sales-summary',
     'Sales & Customers.Customers': 'customers',
     'Sales & Customers.Products & Services': 'products',
     'Sales & Customers.Sales Workspace': 'sales-workspace',
     'Sales & Customers.Estimates & Quotes': 'estimates-quotes',
     'Sales & Customers.Sales Orders': 'sales-orders',
     'Sales & Customers.Credit Notes': 'credit-notes',
-    'Procurement.Summary': 'module-summary',
+    'Procurement.Summary': 'procurement-summary',
     'Procurement.Vendors': 'vendors',
     'Procurement.Bills': 'bills',
     'Procurement.Debit Notes': 'debit-notes',
@@ -317,7 +318,7 @@ export default function App() {
     'Procurement.Payables Aging': 'payables-aging',
     'Procurement.Expense Claims': 'expense-claims',
     'Procurement.Purchase Reports': 'purchase-reports',
-    'Banking & Payments.Summary': 'module-summary',
+    'Banking & Payments.Summary': 'banking-summary',
     'Banking & Payments.Bank Accounts': 'bank-accounts',
     'Banking & Payments.Cash Accounts': 'cash-accounts',
     'Banking & Payments.Bank Connection': 'bank-connection',
@@ -327,7 +328,7 @@ export default function App() {
     'Banking & Payments.Voucher Management': 'vouchers-workspace',
     'Banking & Payments.Fund Transfers': 'fund-transfers',
     'Banking & Payments.Cash Flow Statements': 'cash-flow-statements',
-    'Accounting.Summary': 'module-summary',
+    'Accounting.Summary': 'accounting-summary',
     'Accounting.Chart of Accounts': 'accounts',
     'Accounting.Journal Entries': 'journal',
     'Accounting.Fixed Assets': 'fixed-assets',
@@ -341,7 +342,7 @@ export default function App() {
     'Accounting.Audit Trail': 'audit-trail',
     'Accounting.Lease Accounting': 'lease-accounting',
     'Accounting.Intercompany Allocations': 'intercompany',
-    'Assets & Inventory.Summary': 'module-summary',
+    'Assets & Inventory.Summary': 'assets-inventory-summary',
     'Assets & Inventory.Assets & Inventory Workspace': 'assets-inventory',
     'Assets & Inventory.Depreciation Schedule': 'assets-inventory-schedule',
     'Assets & Inventory.Valuation Reports': 'assets-inventory-valuation',
@@ -350,7 +351,7 @@ export default function App() {
     'Manufacturing & Production.Bill of Materials': 'mfg-bom',
     'Manufacturing & Production.Work Orders': 'mfg-orders',
     'Manufacturing & Production.Job Costing': 'mfg-costing',
-    'Payroll & HR.Summary': 'module-summary',
+    'Payroll & HR.Summary': 'payroll-summary',
     'Payroll & HR.Employees': 'payroll-employees',
     'Payroll & HR.Attendance': 'payroll-attendance',
     'Payroll & HR.Leave': 'payroll-leave',
@@ -451,6 +452,12 @@ export default function App() {
   </nav><div className="bottom"><div className="user"><div className="avatar small">{currentUser?.avatar}</div><div style={{ flex: 1, minWidth: 0 }}><strong style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{currentUser?.fullName}</strong><small style={{ display: 'block', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{currentUser?.role}</small></div><button onClick={handleLogout} title="Sign Out" style={{ background: 'transparent', border: 'none', color: '#aebed0', cursor: 'pointer', padding: '6px', display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'color 0.2s ease', flexShrink: 0 }} onMouseEnter={(e) => (e.currentTarget.style.color = '#fca5a5')} onMouseLeave={(e) => (e.currentTarget.style.color = '#aebed0')}><LogOut size={16} /></button></div></div></aside><main><header><div><p className="eyebrow">{group.toUpperCase()}</p><h1>{module}</h1></div><label className="entity-picker">Working in<select value={activeEntityId} onChange={e => setActiveEntityId(e.target.value)}>{entities.map(x => <option key={x.id} value={x.id}>{x.name}{x.code ? ` · ${x.code}` : ''}</option>)}</select></label>{activeView === 'journal' && <button className="primary" onClick={() => document.getElementById('journal-form')?.scrollIntoView({ behavior: 'smooth' })}>＋ New entry</button>}</header>
   {activeView === 'dashboard' && <DashboardOverview accounts={accounts} entries={entries} setPage={setPage} activeEntityId={activeEntityId} />}
   {activeView === 'module-summary' && <ModuleSummary moduleName={group} accounts={accounts} entries={entries} setPage={setPage} openCreateAccount={openCreate} />}
+  {activeView === 'sales-summary' && <SalesSummaryView activeEntityId={activeEntityId} setPage={setPage} />}
+  {activeView === 'procurement-summary' && <ProcurementSummaryView activeEntityId={activeEntityId} setPage={setPage} />}
+  {activeView === 'banking-summary' && <BankingSummaryView activeEntityId={activeEntityId} setPage={setPage} />}
+  {activeView === 'accounting-summary' && <AccountingSummaryView accounts={accounts} entries={entries} setPage={setPage} openCreateAccount={openCreate} />}
+  {activeView === 'assets-inventory-summary' && <AssetsInventorySummaryView activeEntityId={activeEntityId} setPage={setPage} />}
+  {activeView === 'payroll-summary' && <PayrollSummaryView activeEntityId={activeEntityId} setPage={setPage} />}
   {activeView === 'customers' && <CustomerManagement entities={entities as any} activeEntityId={activeEntityId} notify={notify} />}
   {activeView === 'accounts' && (
     <ChartOfAccounts accounts={accounts} edit={openEdit} status={toggleStatus} openCreate={openCreate} setParentIdForNew={(parentId) => setForm(f => ({ ...f, parentId }))} reloadAccounts={load} />

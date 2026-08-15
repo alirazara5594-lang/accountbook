@@ -169,15 +169,15 @@ const SalesInvoicesTab: React.FC<{ activeEntityId: string }> = ({ activeEntityId
       </div>
 
       {/* Summary Cards */}
-      <div className="grid grid-cols-3 gap-4">
+      <div className="grid grid-cols-3 gap-3">
         {[
           { label: 'Total Outstanding', value: money(invoices.filter((i: any) => i.status !== 2 && i.status !== 3).reduce((s: number, i: any) => s + (i.amountDue || 0), 0)), color: 'text-blue-600' },
           { label: 'Paid This Period', value: money(invoices.filter((i: any) => i.status === 2).reduce((s: number, i: any) => s + (i.totalAmount || 0), 0)), color: 'text-green-600' },
           { label: 'Draft Invoices', value: invoices.filter((i: any) => i.status === 0).length, color: 'text-orange-600' },
         ].map(c => (
-          <div key={c.label} className="bg-white border border-gray-200 rounded-2xl p-4">
-            <p className="text-xs text-gray-500 uppercase tracking-wide">{c.label}</p>
-            <p className={`text-2xl font-bold ${c.color} mt-1`}>{c.value}</p>
+          <div key={c.label} className="bg-white border border-gray-200 rounded-xl p-3">
+            <p className="text-[10px] text-gray-500 uppercase tracking-wider">{c.label}</p>
+            <p className={`text-lg font-bold ${c.color} mt-0.5`}>{c.value}</p>
           </div>
         ))}
       </div>

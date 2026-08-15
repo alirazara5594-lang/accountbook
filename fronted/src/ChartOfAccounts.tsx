@@ -702,66 +702,66 @@ export const ChartOfAccounts: React.FC<ChartOfAccountsProps> = ({
       </div>
 
       {/* 2. KPI Summary Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
         {/* Card 1: Total Accounts */}
-        <div className="bg-white border border-slate-200 rounded-2xl p-4 shadow-xs flex items-center gap-4">
-          <div className="p-3 bg-blue-50 text-blue-600 rounded-xl">
-            <FileText className="w-5 h-5" />
+        <div className="bg-white border border-slate-200 rounded-xl p-3 shadow-xs flex items-center gap-2.5">
+          <div className="p-2 bg-blue-50 text-blue-600 rounded-lg">
+            <FileText className="w-4 h-4" />
           </div>
-          <div>
-            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Total Accounts</span>
-            <span className="text-xl font-bold text-slate-800 mt-1 block">{accounts.length}</span>
-            <span className="text-[10px] text-slate-500 font-medium block mt-0.5">All accounts</span>
+          <div className="min-w-0">
+            <span className="text-[9px] font-bold text-slate-400 uppercase tracking-wider block">Total Accounts</span>
+            <span className="text-base font-bold text-slate-800 mt-0.5 block">{accounts.length}</span>
+            <span className="text-[9px] text-slate-500 font-medium block">All accounts</span>
           </div>
         </div>
 
         {/* Card 2: Active Accounts */}
-        <div className="bg-white border border-slate-200 rounded-2xl p-4 shadow-xs flex items-center gap-4">
-          <div className="p-3 bg-emerald-50 text-emerald-600 rounded-xl">
-            <CheckCircle className="w-5 h-5" />
+        <div className="bg-white border border-slate-200 rounded-xl p-3 shadow-xs flex items-center gap-2.5">
+          <div className="p-2 bg-emerald-50 text-emerald-600 rounded-lg">
+            <CheckCircle className="w-4 h-4" />
           </div>
-          <div>
-            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Active Accounts</span>
-            <span className="text-xl font-bold text-slate-800 mt-1 block">{accounts.filter(a => a.status === 'Active').length}</span>
-            <span className="text-[10px] text-emerald-600 font-bold block mt-0.5">
+          <div className="min-w-0">
+            <span className="text-[9px] font-bold text-slate-400 uppercase tracking-wider block">Active Accounts</span>
+            <span className="text-base font-bold text-slate-800 mt-0.5 block">{accounts.filter(a => a.status === 'Active').length}</span>
+            <span className="text-[9px] text-emerald-600 font-bold block">
               {accounts.length ? ((accounts.filter(a => a.status === 'Active').length / accounts.length) * 100).toFixed(2) : 0}% of total
             </span>
           </div>
         </div>
 
         {/* Card 3: Header Accounts */}
-        <div className="bg-white border border-slate-200 rounded-2xl p-4 shadow-xs flex items-center gap-4">
-          <div className="p-3 bg-indigo-50 text-indigo-600 rounded-xl">
-            <FolderOpen className="w-5 h-5" />
+        <div className="bg-white border border-slate-200 rounded-xl p-3 shadow-xs flex items-center gap-2.5">
+          <div className="p-2 bg-indigo-50 text-indigo-600 rounded-lg">
+            <FolderOpen className="w-4 h-4" />
           </div>
-          <div>
-            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Header Accounts</span>
-            <span className="text-xl font-bold text-slate-800 mt-1 block">{accounts.filter(a => !a.isPosting).length}</span>
-            <span className="text-[10px] text-slate-500 font-medium block mt-0.5">Top level accounts</span>
+          <div className="min-w-0">
+            <span className="text-[9px] font-bold text-slate-400 uppercase tracking-wider block">Header Accounts</span>
+            <span className="text-base font-bold text-slate-800 mt-0.5 block">{accounts.filter(a => !a.isPosting).length}</span>
+            <span className="text-[9px] text-slate-500 font-medium block">Top level accounts</span>
           </div>
         </div>
 
         {/* Card 4: Detail Accounts */}
-        <div className="bg-white border border-slate-200 rounded-2xl p-4 shadow-xs flex items-center gap-4">
-          <div className="p-3 bg-amber-50 text-amber-600 rounded-xl">
-            <Folder className="w-5 h-5" />
+        <div className="bg-white border border-slate-200 rounded-xl p-3 shadow-xs flex items-center gap-2.5">
+          <div className="p-2 bg-amber-50 text-amber-600 rounded-lg">
+            <Folder className="w-4 h-4" />
           </div>
-          <div>
-            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Detail Accounts</span>
-            <span className="text-xl font-bold text-slate-800 mt-1 block">{accounts.filter(a => a.isPosting).length}</span>
-            <span className="text-[10px] text-slate-500 font-medium block mt-0.5">Sub accounts</span>
+          <div className="min-w-0">
+            <span className="text-[9px] font-bold text-slate-400 uppercase tracking-wider block">Detail Accounts</span>
+            <span className="text-base font-bold text-slate-800 mt-0.5 block">{accounts.filter(a => a.isPosting).length}</span>
+            <span className="text-[9px] text-slate-500 font-medium block">Sub accounts</span>
           </div>
         </div>
 
         {/* Card 5: Inactive Accounts */}
-        <div className="bg-white border border-slate-200 rounded-2xl p-4 shadow-xs flex items-center gap-4">
-          <div className="p-3 bg-rose-50 text-rose-600 rounded-xl">
-            <Lock className="w-5 h-5" />
+        <div className="bg-white border border-slate-200 rounded-xl p-3 shadow-xs flex items-center gap-2.5">
+          <div className="p-2 bg-rose-50 text-rose-600 rounded-lg">
+            <Lock className="w-4 h-4" />
           </div>
-          <div>
-            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Inactive Accounts</span>
-            <span className="text-xl font-bold text-slate-800 mt-1 block">{accounts.filter(a => a.status === 'Inactive').length}</span>
-            <span className="text-[10px] text-rose-600 font-bold block mt-0.5">
+          <div className="min-w-0">
+            <span className="text-[9px] font-bold text-slate-400 uppercase tracking-wider block">Inactive Accounts</span>
+            <span className="text-base font-bold text-slate-800 mt-0.5 block">{accounts.filter(a => a.status === 'Inactive').length}</span>
+            <span className="text-[9px] text-rose-600 font-bold block">
               {accounts.length ? ((accounts.filter(a => a.status === 'Inactive').length / accounts.length) * 100).toFixed(2) : 0}% of total
             </span>
           </div>

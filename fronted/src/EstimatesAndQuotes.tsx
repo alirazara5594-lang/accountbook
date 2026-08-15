@@ -400,17 +400,17 @@ export const EstimatesAndQuotes: React.FC<{ activeEntityId: string }> = ({ activ
       </div>
 
       {/* KPI Cards */}
-      <div className="grid grid-cols-3 gap-4">
+      <div className="grid grid-cols-3 gap-3">
         {[
           { label: 'Total Pipeline Value', value: money(totalValue), color: 'text-blue-600', icon: '💰' },
           { label: 'Accepted Quotes', value: accepted, color: 'text-green-600', icon: '✅' },
           { label: 'Awaiting Response', value: pending, color: 'text-orange-600', icon: '⏳' },
         ].map(c => (
-          <div key={c.label} className="bg-white border border-gray-200 rounded-2xl p-4 flex items-center gap-4 shadow-sm">
-            <span className="text-3xl">{c.icon}</span>
-            <div>
-              <p className="text-xs text-gray-500 uppercase tracking-wide">{c.label}</p>
-              <p className={`text-2xl font-bold ${c.color} mt-0.5`}>{c.value}</p>
+          <div key={c.label} className="bg-white border border-gray-200 rounded-xl p-3 flex items-center gap-3 shadow-sm">
+            <span className="text-xl">{c.icon}</span>
+            <div className="min-w-0">
+              <p className="text-[10px] text-gray-500 uppercase tracking-wider">{c.label}</p>
+              <p className={`text-lg font-bold ${c.color} mt-0.5`}>{c.value}</p>
             </div>
           </div>
         ))}

@@ -174,42 +174,42 @@ export const CashAccountsView: React.FC<CashAccountsViewProps> = ({ activeEntity
       {loading && <p className="text-xs text-slate-500">Loading cash accounts…</p>}
       {error && <p className="text-xs text-rose-600">{error}</p>}
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
         <Card className="bg-white border-slate-200 shadow-xs">
-          <CardContent className="p-4 flex items-center gap-3">
-            <div className="p-3 bg-emerald-50 rounded-xl text-emerald-600 border border-emerald-100">
-              <Wallet className="w-5 h-5" />
+          <CardContent className="p-3 flex items-center gap-2.5">
+            <div className="p-2 bg-emerald-50 rounded-lg text-emerald-600 border border-emerald-100">
+              <Wallet className="w-4 h-4" />
             </div>
-            <div>
-              <p className="text-xs font-medium text-slate-500">Total Cash Accounts</p>
-              <h3 className="text-lg font-bold text-slate-900">{cashAccounts.length} Active Registers</h3>
-              <p className="text-[11px] text-emerald-600 font-medium">Head Office & Regional Tills</p>
+            <div className="min-w-0">
+              <p className="text-[10px] font-semibold uppercase tracking-wider text-slate-500">Total Cash Accounts</p>
+              <h3 className="text-base font-bold text-slate-900">{cashAccounts.length} Active Registers</h3>
+              <p className="text-[10px] text-emerald-600 font-medium">Head Office & Regional Tills</p>
             </div>
           </CardContent>
         </Card>
 
         <Card className="bg-white border-slate-200 shadow-xs">
-          <CardContent className="p-4 flex items-center gap-3">
-            <div className="p-3 bg-blue-50 rounded-xl text-blue-600 border border-blue-100">
-              <CheckCircle2 className="w-5 h-5" />
+          <CardContent className="p-3 flex items-center gap-2.5">
+            <div className="p-2 bg-blue-50 rounded-lg text-blue-600 border border-blue-100">
+              <CheckCircle2 className="w-4 h-4" />
             </div>
-            <div>
-              <p className="text-xs font-medium text-slate-500">PKR Petty Cash Reserves</p>
-              <h3 className="text-lg font-bold text-slate-900">{formatCurrency(cashAccounts.filter(a => a.currency === 'PKR').reduce((s, a) => s + a.balance, 0), 'PKR')}</h3>
-              <p className="text-[11px] text-blue-600 font-medium font-mono">On-hand registers</p>
+            <div className="min-w-0">
+              <p className="text-[10px] font-semibold uppercase tracking-wider text-slate-500">PKR Petty Cash Reserves</p>
+              <h3 className="text-base font-bold text-slate-900">{formatCurrency(cashAccounts.filter(a => a.currency === 'PKR').reduce((s, a) => s + a.balance, 0), 'PKR')}</h3>
+              <p className="text-[10px] text-blue-600 font-medium font-mono">On-hand registers</p>
             </div>
           </CardContent>
         </Card>
 
         <Card className="bg-white border-slate-200 shadow-xs">
-          <CardContent className="p-4 flex items-center gap-3">
-            <div className="p-3 bg-indigo-50 rounded-xl text-indigo-600 border border-indigo-100">
-              <ArrowLeftRight className="w-5 h-5" />
+          <CardContent className="p-3 flex items-center gap-2.5">
+            <div className="p-2 bg-indigo-50 rounded-lg text-indigo-600 border border-indigo-100">
+              <ArrowLeftRight className="w-4 h-4" />
             </div>
-            <div>
-              <p className="text-xs font-medium text-slate-500">Foreign Currency Reserve</p>
-              <h3 className="text-lg font-bold text-slate-900">{formatCurrency(cashAccounts.filter(a => a.currency !== 'PKR').reduce((s, a) => s + a.balance, 0), 'USD')}</h3>
-              <p className="text-[11px] text-indigo-600 font-medium">Non-PKR vaults</p>
+            <div className="min-w-0">
+              <p className="text-[10px] font-semibold uppercase tracking-wider text-slate-500">Foreign Currency Reserve</p>
+              <h3 className="text-base font-bold text-slate-900">{formatCurrency(cashAccounts.filter(a => a.currency !== 'PKR').reduce((s, a) => s + a.balance, 0), 'USD')}</h3>
+              <p className="text-[10px] text-indigo-600 font-medium">Non-PKR vaults</p>
             </div>
           </CardContent>
         </Card>

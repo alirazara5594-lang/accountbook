@@ -187,18 +187,18 @@ export const VendorBills: React.FC<{ activeEntityId: string }> = ({ activeEntity
       </div>
 
       {/* Summary KPI Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
         <Card className="border-gray-200">
-          <CardHeader className="pb-2"><CardTitle className="text-xs text-gray-500 uppercase">Total Outstanding Bills</CardTitle></CardHeader>
-          <CardContent><p className="text-2xl font-bold text-gray-900">{money(totalOutstanding)}</p></CardContent>
+          <CardHeader className="pb-1"><CardTitle className="text-[10px] text-gray-500 uppercase tracking-wider">Total Outstanding Bills</CardTitle></CardHeader>
+          <CardContent><p className="text-lg font-bold text-gray-900">{money(totalOutstanding)}</p></CardContent>
         </Card>
         <Card className="border-gray-200">
-          <CardHeader className="pb-2"><CardTitle className="text-xs text-gray-500 uppercase">Recorded Supplier Invoices</CardTitle></CardHeader>
-          <CardContent><p className="text-2xl font-bold text-blue-600">{bills.length} Vendor Bills</p></CardContent>
+          <CardHeader className="pb-1"><CardTitle className="text-[10px] text-gray-500 uppercase tracking-wider">Recorded Supplier Invoices</CardTitle></CardHeader>
+          <CardContent><p className="text-lg font-bold text-blue-600">{bills.length} Vendor Bills</p></CardContent>
         </Card>
         <Card className="border-gray-200">
-          <CardHeader className="pb-2"><CardTitle className="text-xs text-gray-500 uppercase">3-Way Match Verification</CardTitle></CardHeader>
-          <CardContent><p className="text-2xl font-bold text-emerald-600">Active Audit Engine</p></CardContent>
+          <CardHeader className="pb-1"><CardTitle className="text-[10px] text-gray-500 uppercase tracking-wider">3-Way Match Verification</CardTitle></CardHeader>
+          <CardContent><p className="text-lg font-bold text-emerald-600">Active Audit Engine</p></CardContent>
         </Card>
       </div>
 

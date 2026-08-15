@@ -97,17 +97,17 @@ export const AccountsPayableView: React.FC<AccountsPayableViewProps> = ({ active
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-        <div className="p-4 bg-white border border-slate-200 rounded-xl shadow-xs">
+        <div className="p-3 bg-white border border-slate-200 rounded-xl shadow-xs">
           <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Total Payable</p>
-          <p className="text-xl font-bold text-slate-900 font-mono mt-1">{totalDue.toLocaleString(undefined, { minimumFractionDigits: 2 })}</p>
+          <p className="text-lg font-bold text-slate-900 font-mono mt-0.5">{totalDue.toLocaleString(undefined, { minimumFractionDigits: 2 })}</p>
         </div>
-        <div className="p-4 bg-emerald-50 border border-emerald-200 rounded-xl shadow-xs">
+        <div className="p-3 bg-emerald-50 border border-emerald-200 rounded-xl shadow-xs">
           <p className="text-[10px] font-bold text-emerald-600 uppercase tracking-wider">Current (Not Yet Due)</p>
-          <p className="text-xl font-bold text-emerald-800 font-mono mt-1">{current.toLocaleString(undefined, { minimumFractionDigits: 2 })}</p>
+          <p className="text-lg font-bold text-emerald-800 font-mono mt-0.5">{current.toLocaleString(undefined, { minimumFractionDigits: 2 })}</p>
         </div>
-        <div className="p-4 bg-rose-50 border border-rose-200 rounded-xl shadow-xs">
+        <div className="p-3 bg-rose-50 border border-rose-200 rounded-xl shadow-xs">
           <p className="text-[10px] font-bold text-rose-600 uppercase tracking-wider">Past Due</p>
-          <p className="text-xl font-bold text-rose-800 font-mono mt-1">{pastDue.toLocaleString(undefined, { minimumFractionDigits: 2 })}</p>
+          <p className="text-lg font-bold text-rose-800 font-mono mt-0.5">{pastDue.toLocaleString(undefined, { minimumFractionDigits: 2 })}</p>
         </div>
       </div>
 
