@@ -75,6 +75,14 @@ public class IntercompanyAllocationsController(AccountingStore store) : Controll
     [HttpPatch("{id:guid}/status")]
     public IActionResult SetStatus(Guid id, IntercompanyStatusRequest request) => store.SetIntercompanyStatus(id, request.Status, out var error)
         ? NoContent() : BadRequest(new { message = error });
+
+    [HttpPost("{id:guid}/process")]
+    public IActionResult ProcessAllocation(Guid id, [FromQuery] DateOnly? asOfDate = null)
+    {
+        if (!store.ProcessIntercompanyAllocation(id, asOfDate ?? DateOnly.FromDateTime(DateTime.Today), out var entry, out var error))
+            return BadRequest(new { message = error });
+        return Ok(entry);
+    }
 }
 
 [ApiController]

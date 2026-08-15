@@ -276,6 +276,7 @@ List<ExpenseClaim>? ExpenseClaims = null,
         Seed("12000", "Accounts Receivable", AccountType.Asset, currentAssets.Id, true, 0, false);
         Seed("12100", "Allowance for Doubtful Accounts", AccountType.ContraAsset, currentAssets.Id, true, 0, false);
         Seed("12200", "Withholding Tax Receivable", AccountType.Asset, currentAssets.Id, true, 0, false);
+        Seed("12300", "Intercompany Receivable", AccountType.Asset, currentAssets.Id, true, 0, false);
         Seed("13000", "Inventory Asset", AccountType.Asset, currentAssets.Id, true, 0, false);
         Seed("14000", "Prepaid Expenses", AccountType.Asset, currentAssets.Id, true, 0, false);
         
@@ -295,6 +296,8 @@ List<ExpenseClaim>? ExpenseClaims = null,
         Seed("22000", "Tax Payable", AccountType.Liability, currentLiabilities.Id, true, 0, false);
         Seed("22100", "Withholding Tax Payable", AccountType.Liability, currentLiabilities.Id, true, 0, false);
         Seed("21600", "Lease Liability", AccountType.Liability, currentLiabilities.Id, true, 0, false);
+        Seed("21700", "Intercompany Clearing", AccountType.Liability, currentLiabilities.Id, true, 0, false);
+        Seed("21800", "Overhead Allocation Payable", AccountType.Liability, currentLiabilities.Id, true, 0, false);
         Seed("23000", "Deferred Revenue", AccountType.Liability, currentLiabilities.Id, true, 0, false);
 
         // 3. Equity (Structural Headers: System = True; Leaf Posting: System = False)
@@ -323,6 +326,8 @@ List<ExpenseClaim>? ExpenseClaims = null,
         Seed("61200", "Salaries & Wages Expense", AccountType.Expense, operatingExpenses.Id, true, 0, false);
         Seed("61300", "Depreciation Expense", AccountType.Expense, operatingExpenses.Id, true, 0, false);
         Seed("61400", "Bad Debt Expense", AccountType.Expense, operatingExpenses.Id, true, 0, false);
+        Seed("61500", "Intercompany Allocations", AccountType.Expense, operatingExpenses.Id, true, 0, false);
+        Seed("61600", "Overhead Allocation", AccountType.Expense, operatingExpenses.Id, true, 0, false);
     }
 
     public IReadOnlyList<Account> Accounts
@@ -3335,6 +3340,56 @@ public IReadOnlyList<EmployeeCompensation> EmployeeCompensations => _employeeCom
     public JournalTemplate AddTemplate(JournalTemplateRequest request) { var template = new JournalTemplate { Name = request.Name, Description = request.Description, TransactionType = request.TransactionType, CurrencyCode = request.CurrencyCode, Lines = request.Lines }; _templates.Add(template); Persist(); return template; }
     public bool CreateIntercompanyAllocation(IntercompanyAllocationRequest request, out IntercompanyAllocation? allocation, out string? error) { allocation = new IntercompanyAllocation { Name = request.Name.Trim(), SourceCompanyId = request.SourceCompanyId, Category = request.Category.Trim(), Description = request.Description?.Trim(), Frequency = request.Frequency, Rate = request.Rate, Quantity = request.Quantity, StartDate = request.StartDate, EndDate = request.EndDate, Recipients = request.Recipients }; _intercompanyAllocations.Add(allocation); Persist(); error = null; return true; }
     public bool SetIntercompanyStatus(Guid id, IntercompanyAllocationStatus status, out string? error) { var allocation = _intercompanyAllocations.FirstOrDefault(x => x.Id == id); if (allocation is null) { error = "Intercompany allocation not found."; return false; } allocation.Status = status; allocation.UpdatedAt = DateTime.UtcNow; Persist(); error = null; return true; }
+
+    public bool ProcessIntercompanyAllocation(Guid id, DateOnly asOfDate, out JournalEntry? entry, out string? error)
+    {
+        entry = null;
+        var allocation = _intercompanyAllocations.FirstOrDefault(x => x.Id == id);
+        if (allocation is null)
+        {
+            error = "Intercompany allocation not found.";
+            return false;
+        }
+        if (allocation.Status != IntercompanyAllocationStatus.Active)
+        {
+            error = "Allocation must be Active to process.";
+            return false;
+        }
+
+        var totalAmount = allocation.Rate * allocation.Quantity;
+        var lines = new List<JournalLine>
+        {
+            new(allocation.SourceCompanyId, totalAmount, 0, $"{allocation.Name} - {asOfDate:yyyy-MM-dd}", CompanyId: allocation.SourceCompanyId)
+        };
+
+        foreach (var recipient in allocation.Recipients)
+        {
+            var recipientAmount = totalAmount * recipient.SharePercent / 100;
+            lines.Add(new(
+                recipient.CompanyId,
+                0,
+                recipientAmount,
+                $"{allocation.Name} allocated to recipient - {asOfDate:yyyy-MM-dd}",
+                CompanyId: recipient.CompanyId
+            ));
+        }
+
+        var journal = new JournalEntry
+        {
+            Date = asOfDate,
+            Reference = allocation.Name,
+            Description = $"Intercompany Allocation: {allocation.Name}",
+            Lines = lines,
+            TransactionType = TransactionType.InterCompany,
+            CompanyId = allocation.SourceCompanyId,
+            Status = JournalStatus.Posted
+        };
+        _entries.Add(journal);
+        Persist();
+        entry = journal;
+        error = null;
+        return true;
+    }
     
     private bool ValidateJournal(JournalEntryRequest request, out string? error)
     {
@@ -3644,6 +3699,11 @@ _bankImports.Clear(); _bankImports.AddRange(state.BankImports ?? []);
                 "Right of Use Asset" => "15110",
                 "Lease Liability" => "21600",
                 "Interest Expense" => "61400",
+                "Intercompany Receivable" => "12300",
+                "Intercompany Clearing" => "21700",
+                "Intercompany Allocations" => "61500",
+                "Overhead Allocation" => "61600",
+                "Overhead Allocation Payable" => "21800",
                 _ => null
             };
 

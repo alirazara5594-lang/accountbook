@@ -13,6 +13,14 @@ export interface IntercompanyAllocation {
   recipients: { companyId: string; sharePercent: number }[];
 }
 
+export interface JournalEntry {
+  id: string;
+  date: string;
+  description: string;
+  lines: { accountId: string; amount: number; type: string; description?: string }[];
+  status: string;
+}
+
 export const intercompanyApi = {
   getAllocations: async (): Promise<IntercompanyAllocation[]> => {
     return apiClient<IntercompanyAllocation[]>('/intercompany-allocations');
@@ -22,6 +30,19 @@ export const intercompanyApi = {
     return apiClient<IntercompanyAllocation>('/intercompany-allocations', {
       method: 'POST',
       body: data,
+    });
+  },
+
+  setStatus: async (id: string, status: string): Promise<IntercompanyAllocation> => {
+    return apiClient<IntercompanyAllocation>(`/intercompany-allocations/${id}/status`, {
+      method: 'PUT',
+      body: { Status: status },
+    });
+  },
+
+  processAllocation: async (id: string): Promise<JournalEntry> => {
+    return apiClient<JournalEntry>(`/intercompany-allocations/${id}/process`, {
+      method: 'POST',
     });
   },
 };

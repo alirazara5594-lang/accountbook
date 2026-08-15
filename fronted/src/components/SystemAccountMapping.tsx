@@ -62,6 +62,15 @@ export const SystemAccountMapping: React.FC<SystemAccountMappingProps> = ({ acco
     rouAssetAccountId: '',
     leaseLiabilityAccountId: '',
     interestExpenseAccountId: '',
+
+    // Intercompany mappings
+    icReceivableAccountId: '',
+    icClearingAccountId: '',
+    icAllocationExpenseId: '',
+
+    // Overhead allocation mappings
+    overheadAllocationExpenseId: '',
+    overheadAllocationPayableId: '',
   });
 
   // Load mappings from store, fallback to seed accounts by code
@@ -107,6 +116,13 @@ export const SystemAccountMapping: React.FC<SystemAccountMappingProps> = ({ acco
       const leaseLiabilityMap = activeMappings.find(m => m.mappingKey === 'Lease Liability');
       const interestExpMap = activeMappings.find(m => m.mappingKey === 'Interest Expense');
 
+      // Intercompany & overhead allocation mappings
+      const icRecMap = activeMappings.find(m => m.mappingKey === 'Intercompany Receivable');
+      const icClearingMap = activeMappings.find(m => m.mappingKey === 'Intercompany Clearing');
+      const icAllocExpMap = activeMappings.find(m => m.mappingKey === 'Intercompany Allocations');
+      const overheadAllocExpMap = activeMappings.find(m => m.mappingKey === 'Overhead Allocation');
+      const overheadAllocPayMap = activeMappings.find(m => m.mappingKey === 'Overhead Allocation Payable');
+
       const arSeed = accounts.find(a => a.code === '12000');
       const apSeed = accounts.find(a => a.code === '21100');
       const taxSeed = accounts.find(a => a.code === '22000');
@@ -145,6 +161,13 @@ export const SystemAccountMapping: React.FC<SystemAccountMappingProps> = ({ acco
       const leaseLiabilitySeed = accounts.find(a => a.code === '21600');
       const interestExpSeed = accounts.find(a => a.code === '61400');
 
+      // Intercompany & overhead allocation seed accounts
+      const icRecSeed = accounts.find(a => a.code === '12300');
+      const icClearingSeed = accounts.find(a => a.code === '21700');
+      const icAllocExpSeed = accounts.find(a => a.code === '61500');
+      const overheadAllocExpSeed = accounts.find(a => a.code === '61600');
+      const overheadAllocPaySeed = accounts.find(a => a.code === '21800');
+
       setMappings({
         arAccountId: arMap?.accountId || arSeed?.id || '',
         apAccountId: apMap?.accountId || apSeed?.id || '',
@@ -179,10 +202,16 @@ export const SystemAccountMapping: React.FC<SystemAccountMappingProps> = ({ acco
         directLaborAccountId: laborMap?.accountId || laborSeed?.id || '',
         manufacturingOverheadAccountId: overheadMap?.accountId || overheadSeed?.id || '',
          grniAccrualAccountId: grniMap?.accountId || grniSeed?.id || '',
-         rouAssetAccountId: rouMap?.accountId || rouSeed?.id || '',
-         leaseLiabilityAccountId: leaseLiabilityMap?.accountId || leaseLiabilitySeed?.id || '',
-         interestExpenseAccountId: interestExpMap?.accountId || interestExpSeed?.id || '',
-       });
+          rouAssetAccountId: rouMap?.accountId || rouSeed?.id || '',
+          leaseLiabilityAccountId: leaseLiabilityMap?.accountId || leaseLiabilitySeed?.id || '',
+          interestExpenseAccountId: interestExpMap?.accountId || interestExpSeed?.id || '',
+
+          icReceivableAccountId: icRecMap?.accountId || icRecSeed?.id || '',
+          icClearingAccountId: icClearingMap?.accountId || icClearingSeed?.id || '',
+          icAllocationExpenseId: icAllocExpMap?.accountId || icAllocExpSeed?.id || '',
+          overheadAllocationExpenseId: overheadAllocExpMap?.accountId || overheadAllocExpSeed?.id || '',
+          overheadAllocationPayableId: overheadAllocPayMap?.accountId || overheadAllocPaySeed?.id || '',
+        });
     };
 
     load();
@@ -229,6 +258,13 @@ export const SystemAccountMapping: React.FC<SystemAccountMappingProps> = ({ acco
       if (mappings.rouAssetAccountId) await saveMapping('Right of Use Asset', mappings.rouAssetAccountId);
       if (mappings.leaseLiabilityAccountId) await saveMapping('Lease Liability', mappings.leaseLiabilityAccountId);
       if (mappings.interestExpenseAccountId) await saveMapping('Interest Expense', mappings.interestExpenseAccountId);
+
+      // Intercompany & overhead allocation mappings
+      if (mappings.icReceivableAccountId) await saveMapping('Intercompany Receivable', mappings.icReceivableAccountId);
+      if (mappings.icClearingAccountId) await saveMapping('Intercompany Clearing', mappings.icClearingAccountId);
+      if (mappings.icAllocationExpenseId) await saveMapping('Intercompany Allocations', mappings.icAllocationExpenseId);
+      if (mappings.overheadAllocationExpenseId) await saveMapping('Overhead Allocation', mappings.overheadAllocationExpenseId);
+      if (mappings.overheadAllocationPayableId) await saveMapping('Overhead Allocation Payable', mappings.overheadAllocationPayableId);
 
       notify('✓ Centralized account mappings saved in the database!');
       close();
@@ -277,6 +313,13 @@ export const SystemAccountMapping: React.FC<SystemAccountMappingProps> = ({ acco
       const leaseLiabilitySeed = accounts.find(a => a.code === '21600');
       const interestExpSeed = accounts.find(a => a.code === '61400');
 
+      // Intercompany & overhead allocation seed accounts
+      const icRecSeed = accounts.find(a => a.code === '12300');
+      const icClearingSeed = accounts.find(a => a.code === '21700');
+      const icAllocExpSeed = accounts.find(a => a.code === '61500');
+      const overheadAllocExpSeed = accounts.find(a => a.code === '61600');
+      const overheadAllocPaySeed = accounts.find(a => a.code === '21800');
+
       setMappings({
         arAccountId: arSeed?.id || '',
         apAccountId: apSeed?.id || '',
@@ -316,6 +359,13 @@ export const SystemAccountMapping: React.FC<SystemAccountMappingProps> = ({ acco
         rouAssetAccountId: rouSeed?.id || '',
         leaseLiabilityAccountId: leaseLiabilitySeed?.id || '',
         interestExpenseAccountId: interestExpSeed?.id || '',
+
+        // Intercompany & overhead allocation mappings
+        icReceivableAccountId: icRecSeed?.id || '',
+        icClearingAccountId: icClearingSeed?.id || '',
+        icAllocationExpenseId: icAllocExpSeed?.id || '',
+        overheadAllocationExpenseId: overheadAllocExpSeed?.id || '',
+        overheadAllocationPayableId: overheadAllocPaySeed?.id || '',
       });
       notify('✓ Mappings reset to defaults.');
     }
@@ -823,7 +873,69 @@ export const SystemAccountMapping: React.FC<SystemAccountMappingProps> = ({ acco
           </div>
         </div>
 
-        {/* Global Taxes & Withholding Tax (WHT) Configuration */}
+        {/* Intercompany & Overhead Allocation Mappings */}
+        <div className="bg-white border border-slate-200 rounded-2xl p-5 shadow-xs space-y-4">
+          <h3 className="text-sm font-bold text-slate-800 border-b border-slate-100 pb-2 flex items-center gap-1.5">
+            <span>🔗</span> Intercompany & Overhead Allocation Accounts
+          </h3>
+          <div className="mapping-grid">
+            <div>
+              <label className="block text-xs font-semibold text-slate-700 mb-1.5">Intercompany Receivable Account</label>
+              <select
+                value={mappings.icReceivableAccountId}
+                onChange={e => setMappings(prev => ({ ...prev, icReceivableAccountId: e.target.value }))}
+                className="w-full h-10 border border-slate-200 rounded-lg px-3 py-2 text-sm bg-white focus:border-slate-400 outline-none transition-colors"
+              >
+                <option value="">-- Choose Asset Account --</option>
+                {assetAccounts.map(a => (<option key={a.id} value={a.id}>{a.code} — {a.name}</option>))}
+              </select>
+            </div>
+            <div>
+              <label className="block text-xs font-semibold text-slate-700 mb-1.5">Intercompany Clearing Account</label>
+              <select
+                value={mappings.icClearingAccountId}
+                onChange={e => setMappings(prev => ({ ...prev, icClearingAccountId: e.target.value }))}
+                className="w-full h-10 border border-slate-200 rounded-lg px-3 py-2 text-sm bg-white focus:border-slate-400 outline-none transition-colors"
+              >
+                <option value="">-- Choose Liability Account --</option>
+                {liabilityAccounts.map(a => (<option key={a.id} value={a.id}>{a.code} — {a.name}</option>))}
+              </select>
+            </div>
+            <div>
+              <label className="block text-xs font-semibold text-slate-700 mb-1.5">Intercompany Allocation Expense</label>
+              <select
+                value={mappings.icAllocationExpenseId}
+                onChange={e => setMappings(prev => ({ ...prev, icAllocationExpenseId: e.target.value }))}
+                className="w-full h-10 border border-slate-200 rounded-lg px-3 py-2 text-sm bg-white focus:border-slate-400 outline-none transition-colors"
+              >
+                <option value="">-- Choose Expense Account --</option>
+                {expenseAccounts.map(a => (<option key={a.id} value={a.id}>{a.code} — {a.name}</option>))}
+              </select>
+            </div>
+            <div>
+              <label className="block text-xs font-semibold text-slate-700 mb-1.5">Overhead Allocation Expense</label>
+              <select
+                value={mappings.overheadAllocationExpenseId}
+                onChange={e => setMappings(prev => ({ ...prev, overheadAllocationExpenseId: e.target.value }))}
+                className="w-full h-10 border border-slate-200 rounded-lg px-3 py-2 text-sm bg-white focus:border-slate-400 outline-none transition-colors"
+              >
+                <option value="">-- Choose Expense Account --</option>
+                {expenseAccounts.map(a => (<option key={a.id} value={a.id}>{a.code} — {a.name}</option>))}
+              </select>
+            </div>
+            <div>
+              <label className="block text-xs font-semibold text-slate-700 mb-1.5">Overhead Allocation Payable</label>
+              <select
+                value={mappings.overheadAllocationPayableId}
+                onChange={e => setMappings(prev => ({ ...prev, overheadAllocationPayableId: e.target.value }))}
+                className="w-full h-10 border border-slate-200 rounded-lg px-3 py-2 text-sm bg-white focus:border-slate-400 outline-none transition-colors"
+              >
+                <option value="">-- Choose Liability Account --</option>
+                {liabilityAccounts.map(a => (<option key={a.id} value={a.id}>{a.code} — {a.name}</option>))}
+              </select>
+            </div>
+          </div>
+        </div>
         <div className="bg-white border border-slate-200 rounded-2xl p-5 shadow-xs space-y-4">
           <h3 className="text-sm font-bold text-slate-800 border-b border-slate-100 pb-2 flex items-center gap-1.5">
             <span>🏛️</span> Tax & Withholding (WHT) Defaults
