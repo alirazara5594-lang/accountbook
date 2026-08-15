@@ -88,14 +88,13 @@ export const BankReconciliationView: React.FC<{ activeEntityId: string; entities
   };
 
   return (
-    <div className="space-y-6 font-sans text-slate-800 p-2 md:p-6">
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 border-b border-slate-200 pb-4">
+    <div className="space-y-4 font-sans text-slate-800 p-2 md:p-6">
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-3 bg-white p-3 rounded-xl border border-gray-200 shadow-sm">
         <div>
-          <div className="flex items-center gap-2 text-xs text-slate-500 uppercase tracking-wider font-semibold">
-            <RefreshCw className="w-4 h-4 text-emerald-600" /> Banking & Payments
-          </div>
-          <h1 className="text-2xl font-bold text-slate-900 tracking-tight mt-1">Bank Statement Reconciliation Engine</h1>
-          <p className="text-xs text-slate-500">Match General Ledger balances against bank statement records for {currentEntity?.name || 'Active Entity'}. GL balance is computed from posted journal entries.</p>
+          <h1 className="text-base font-bold text-slate-900 tracking-tight flex items-center gap-2">
+            <RefreshCw className="w-4 h-4 text-emerald-600" /> Bank Reconciliation
+          </h1>
+          <p className="text-[10px] text-slate-500 mt-0.5">Match General Ledger balances against bank statement records for {currentEntity?.name || 'Active Entity'}.</p>
         </div>
       </div>
 

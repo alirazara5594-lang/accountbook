@@ -115,12 +115,15 @@ export const LeaseAccounting: React.FC<LeaseProps> = ({ activeEntityId }) => {
   };
 
   return (
-    <div className="p-6 space-y-6">
-      <div className="flex justify-between items-center">
-        <h1 className="text-2xl font-bold text-gray-900">Lease Accounting</h1>
-        <Button onClick={() => setShowForm(true)}>
-          <Plus className="h-4 w-4 mr-2" /> New Lease
-        </Button>
+    <div className="p-4 space-y-4">
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-3 bg-white p-3 rounded-xl border border-gray-200 shadow-sm">
+        <h1 className="text-base font-bold text-gray-900 flex items-center gap-2">
+          <span className="text-lg">📋</span> Lease Accounting
+        </h1>
+        <button onClick={() => setShowForm(true)}
+          className="h-8 px-2.5 bg-blue-600 hover:bg-blue-700 text-white text-[11px] font-semibold rounded-lg shrink-0 whitespace-nowrap flex items-center gap-1">
+          <Plus className="h-3.5 w-3.5" /> New Lease
+        </button>
       </div>
 
       {error && (

@@ -96,11 +96,13 @@ export default function SalarySlipsView() {
   }
 
   return (
-    <div className="p-6 max-w-[1400px] mx-auto space-y-4">
-      <div className="flex items-center justify-between">
+    <div className="p-4 max-w-[1400px] mx-auto space-y-4">
+      <div className="flex items-center justify-between bg-white p-3 rounded-xl border border-gray-200 shadow-sm">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight">Salary Slips</h1>
-          <p className="text-sm text-muted-foreground">View and print salary slips for processed payruns</p>
+          <h1 className="text-base font-bold tracking-tight flex items-center gap-2">
+            <span className="text-lg">💰</span> Salary Slips
+          </h1>
+          <p className="text-[10px] text-muted-foreground mt-0.5">View and print salary slips for processed payruns</p>
         </div>
       </div>
 

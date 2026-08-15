@@ -1,5 +1,4 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { DataToolbar } from '@/components/ui/data-toolbar';
@@ -29,16 +28,26 @@ export const PurchaseReportsView: React.FC<{ activeEntityId: string; entities: E
   ];
 
   return (
-    <div className="space-y-6 font-sans text-slate-800 p-2 md:p-6">
-      <div className="border-b border-slate-200 pb-4">
-        <div className="flex items-center gap-2 text-xs text-slate-500 uppercase tracking-wider font-semibold"><BarChart3 className="w-4 h-4 text-blue-600" /> Procurement</div>
-        <h1 className="text-2xl font-bold text-slate-900 mt-1">Purchase Reports</h1>
-        <p className="text-xs text-slate-500">Purchase orders, vendor bills, payments, and AP exposure for {currentEntity?.name || 'Active Entity'}.</p>
+    <div className="space-y-4 font-sans text-slate-800 p-2 md:p-6">
+      <div className="bg-white p-3 rounded-xl border border-gray-200 shadow-sm">
+        <h1 className="text-base font-bold text-slate-900 flex items-center gap-2">
+          <BarChart3 className="w-4 h-4 text-blue-600" /> Purchase Reports
+        </h1>
+        <p className="text-[10px] text-slate-500 mt-0.5">Purchase orders, vendor bills, payments, and AP exposure for {currentEntity?.name || 'Active Entity'}.</p>
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3">
-        {cards.map(([label, count, value]) => <Card key={label as string}><CardHeader className="pb-1"><CardTitle className="text-[10px] font-semibold text-slate-500 uppercase tracking-wider">{label}</CardTitle></CardHeader><CardContent><div className="text-lg font-bold text-slate-900">{count}</div><div className="text-[11px] text-slate-500">{value}</div></CardContent></Card>)}
-      </div>
+      <section className="stats">
+        {cards.map(([label, count, value]) => (
+          <article key={label as string}>
+            <span className="stat-icon blue"><span className="text-sm">📊</span></span>
+            <div>
+              <small>{(label as string).toUpperCase()}</small>
+              <h2>{count}</h2>
+              <p>{value}</p>
+            </div>
+          </article>
+        ))}
+      </section>
 
       <div className="flex flex-wrap items-center justify-between gap-3 p-3 bg-slate-50 border border-slate-200 rounded-xl">
         <div className="relative w-80"><Search className="absolute left-3 top-2.5 h-4 w-4 text-slate-400" /><Input className="pl-9 h-9 text-xs" placeholder="Search vendors..." value={query} onChange={e => setQuery(e.target.value)} /></div>

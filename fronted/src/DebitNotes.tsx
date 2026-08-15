@@ -1,5 +1,4 @@
 import React, { useState } from 'react';
-import { Button } from '@/components/ui/button';
 import { DataToolbar } from '@/components/ui/data-toolbar';
 
 type Tab = 'dn' | 'ec' | 'pn' | 'sr';
@@ -15,15 +14,15 @@ export const DebitNotes: React.FC<{ activeEntityId: string; entities?: any[] }> 
   ];
 
   return (
-    <div className="p-6 max-w-7xl mx-auto space-y-5">
-      <div className="flex justify-between items-center bg-white p-5 rounded-2xl border border-gray-200 shadow-sm">
+    <div className="p-4 max-w-7xl mx-auto space-y-4">
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-3 bg-white p-3 rounded-xl border border-gray-200 shadow-sm">
         <div>
-          <h1 className="text-xl font-bold text-gray-900 tracking-tight flex items-center gap-2">
-            <span>📝</span> Debit Notes Management
+          <h1 className="text-base font-bold text-gray-900 tracking-tight flex items-center gap-2">
+            <span className="text-lg">📝</span> Debit Notes
           </h1>
-          <p className="text-gray-500 text-xs mt-1">Record vendor debit notes, track expenses, and manage payment obligations.</p>
+          <p className="text-gray-500 text-[10px] mt-0.5">Record vendor debit notes, track expenses, and manage payment obligations.</p>
         </div>
-        <div className="flex flex-wrap gap-2">
+        <div className="flex items-center gap-1.5 shrink-0">
           <DataToolbar
             exportFileName="debit-notes"
             exportSheetName="Debit Notes"
@@ -32,7 +31,10 @@ export const DebitNotes: React.FC<{ activeEntityId: string; entities?: any[] }> 
             exportHeaders={['Debit Note Number', 'Vendor', 'Date', 'Total Amount', 'Status']}
             exportRows={[]}
           />
-          <Button variant="outline" size="sm" onClick={() => setActiveTab('dn')}>+ New Debit Note</Button>
+          <button onClick={() => setActiveTab('dn')}
+            className="h-8 px-2.5 bg-blue-600 hover:bg-blue-700 text-white text-[11px] font-semibold rounded-lg shrink-0 whitespace-nowrap">
+            + New Debit Note
+          </button>
         </div>
       </div>
 

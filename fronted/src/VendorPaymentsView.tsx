@@ -175,20 +175,18 @@ export const VendorPaymentsView: React.FC<VendorPaymentsViewProps> = ({ activeEn
   };
 
   return (
-    <div className="space-y-6 font-sans text-slate-800 p-2 md:p-6">
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 border-b border-slate-200 pb-4">
+    <div className="space-y-4 font-sans text-slate-800 p-2 md:p-6">
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-3 bg-white p-3 rounded-xl border border-gray-200 shadow-sm">
         <div>
-          <div className="flex items-center gap-2 text-xs text-slate-500 uppercase tracking-wider font-semibold">
-            <Send className="w-4 h-4 text-emerald-600" /> Procurement & Payments
-          </div>
-          <h1 className="text-2xl font-bold text-slate-900 tracking-tight mt-1">Vendor Payments</h1>
-          <p className="text-xs text-slate-500">
-            Outgoing supplier disbursements via Wire, ACH, SWIFT, Cheque, RTGS, and Credit Card for {currentEntity?.name || 'Active Entity'}.
-            Payments post a Dr Accounts Payable / Cr Bank journal.
+          <h1 className="text-base font-bold text-slate-900 tracking-tight flex items-center gap-2">
+            <Send className="w-4 h-4 text-emerald-600" /> Vendor Payments
+          </h1>
+          <p className="text-[10px] text-slate-500 mt-0.5">
+            Outgoing supplier disbursements via Wire, ACH, SWIFT, Cheque, RTGS for {currentEntity?.name || 'Active Entity'}.
           </p>
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 shrink-0">
           <DataToolbar
             exportFileName="vendor-payments"
             exportSheetName="Vendor Payments"

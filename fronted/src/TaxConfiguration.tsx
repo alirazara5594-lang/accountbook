@@ -50,11 +50,13 @@ export const TaxConfiguration: React.FC = () => {
   });
 
   return (
-    <div className="p-8 max-w-[1200px] mx-auto animate-fade-in">
-      <div className="flex justify-between items-center mb-8">
+    <div className="p-4 max-w-[1200px] mx-auto animate-fade-in space-y-4">
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-3 bg-white p-3 rounded-xl border border-gray-200 shadow-sm">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900 tracking-tight">Tax Configuration</h1>
-          <p className="text-gray-500 mt-1">Manage global tax authorities, VAT, GST, and Sales Tax codes</p>
+          <h1 className="text-base font-bold text-gray-900 tracking-tight flex items-center gap-2">
+            <span className="text-lg">📋</span> Tax Configuration
+          </h1>
+          <p className="text-gray-500 text-[10px] mt-0.5">Manage global tax authorities, VAT, GST, and Sales Tax codes</p>
         </div>
         <DataToolbar
           exportFileName="tax-configuration"
@@ -67,12 +69,12 @@ export const TaxConfiguration: React.FC = () => {
         />
       </div>
 
-      <div className="bg-blue-50/50 p-4 rounded-xl border border-blue-100 mb-8 flex gap-3 text-sm text-blue-800">
-        <span className="text-blue-500">🌍</span>
+      <div className="bg-blue-50/50 p-3 rounded-xl border border-blue-100 flex gap-2 text-[11px] text-blue-800">
+        <span className="text-blue-500 text-sm">🌍</span>
         <p><strong>Global Compliance Active:</strong> Default tax codes have been seeded for UK (HMRC), US (IRS), Canada (CRA), UAE (FTA), Saudi Arabia (ZATCA), and Pakistan (FBR).</p>
       </div>
 
-      <div className="grid grid-cols-1 gap-8">
+      <div className="grid grid-cols-1 gap-4">
         <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
           <div className="p-6 border-b border-gray-100">
             <h2 className="text-lg font-semibold text-gray-900">Tax Authorities</h2>

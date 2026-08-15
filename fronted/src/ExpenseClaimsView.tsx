@@ -45,14 +45,18 @@ export const ExpenseClaimsView: React.FC<{ activeEntityId: string; entities: Ent
   };
 
   return (
-    <div className="space-y-6 font-sans text-slate-800 p-2 md:p-6">
-      <div className="flex flex-col md:flex-row justify-between gap-4 border-b border-slate-200 pb-4">
+    <div className="space-y-4 font-sans text-slate-800 p-2 md:p-6">
+      <div className="flex flex-col md:flex-row justify-between gap-3 bg-white p-3 rounded-xl border border-gray-200 shadow-sm">
         <div>
-          <div className="flex items-center gap-2 text-xs text-slate-500 uppercase tracking-wider font-semibold"><ReceiptText className="w-4 h-4 text-emerald-600" /> Procurement</div>
-          <h1 className="text-2xl font-bold text-slate-900 mt-1">Expense Claims</h1>
-          <p className="text-xs text-slate-500">Employee reimbursement claims for {currentEntity?.name || 'Active Entity'}.</p>
+          <h1 className="text-base font-bold text-slate-900 flex items-center gap-2">
+            <ReceiptText className="w-4 h-4 text-emerald-600" /> Expense Claims
+          </h1>
+          <p className="text-[10px] text-slate-500 mt-0.5">Employee reimbursement claims for {currentEntity?.name || 'Active Entity'}.</p>
         </div>
-        <Button size="sm" onClick={() => setShowForm(v => !v)} className="h-9 gap-1.5 text-xs"><Plus className="w-4 h-4" /> New Claim</Button>
+        <button onClick={() => setShowForm(v => !v)}
+          className="h-8 px-2.5 bg-emerald-600 hover:bg-emerald-700 text-white text-[11px] font-semibold rounded-lg shrink-0 whitespace-nowrap flex items-center gap-1">
+          <Plus className="w-3.5 h-3.5" /> New Claim
+        </button>
       </div>
 
       {showForm && (

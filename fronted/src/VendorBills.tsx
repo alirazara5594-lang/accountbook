@@ -1,7 +1,5 @@
 import React, { useState, useEffect } from 'react';
 import { useProcurementStore, useVendorsStore, useProductsStore, useCoaStore } from './stores';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
 import { DataToolbar } from '@/components/ui/data-toolbar';
 
 function money(amount: number, currency = 'USD') {
@@ -153,17 +151,17 @@ export const VendorBills: React.FC<{ activeEntityId: string }> = ({ activeEntity
   });
 
   return (
-    <div className="p-6 max-w-7xl mx-auto space-y-6">
+    <div className="p-4 max-w-7xl mx-auto space-y-4">
       {toast && <div className="fixed top-6 right-6 z-50 px-5 py-3 bg-emerald-600 text-white rounded-2xl shadow-lg text-sm font-medium">{toast}</div>}
 
-      <div className="flex justify-between items-center bg-white p-5 rounded-2xl border border-gray-200 shadow-sm">
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-3 bg-white p-3 rounded-xl border border-gray-200 shadow-sm">
         <div>
-          <h1 className="text-xl font-bold text-gray-900 tracking-tight flex items-center gap-2">
-            <span>💳</span> Vendor Bills & Supplier Invoices
+          <h1 className="text-base font-bold text-gray-900 tracking-tight flex items-center gap-2">
+            <span className="text-lg">💳</span> Vendor Bills & Supplier Invoices
           </h1>
-          <p className="text-gray-500 text-xs mt-1">Direct supplier liability creation or procurement-linked 3-way match invoices.</p>
+          <p className="text-gray-500 text-[10px] mt-0.5">Direct supplier liability creation or procurement-linked 3-way match invoices.</p>
         </div>
-        <div className="flex flex-wrap gap-2">
+        <div className="flex items-center gap-1.5 shrink-0">
           <DataToolbar
             query={query}
             setQuery={setQuery}
@@ -177,30 +175,44 @@ export const VendorBills: React.FC<{ activeEntityId: string }> = ({ activeEntity
             exportTotals={[{ label: 'Total Outstanding', value: totalOutstanding }]}
             onRefresh={() => { fetchBills(activeEntityId); fetchOrders(activeEntityId); }}
           />
-          <Button variant="outline" className="text-blue-600 border-blue-200 hover:bg-blue-50" onClick={() => handleOpenModal(null, 'direct')}>
-            ⚡ Direct Bill Entry
-          </Button>
-          <Button className="bg-emerald-600 hover:bg-emerald-700 text-white font-medium" onClick={() => handleOpenModal(null, 'procurement')}>
-            📜 Procurement PO Bill
-          </Button>
+          <button onClick={() => handleOpenModal(null, 'direct')}
+            className="h-8 px-2.5 bg-white border border-gray-200 hover:bg-gray-50 text-gray-700 text-[11px] font-semibold rounded-lg shrink-0 whitespace-nowrap">
+            ⚡ Direct Bill
+          </button>
+          <button onClick={() => handleOpenModal(null, 'procurement')}
+            className="h-8 px-2.5 bg-emerald-600 hover:bg-emerald-700 text-white text-[11px] font-semibold rounded-lg shrink-0 whitespace-nowrap">
+            📜 PO Bill
+          </button>
         </div>
       </div>
 
       {/* Summary KPI Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-        <Card className="border-gray-200">
-          <CardHeader className="pb-1"><CardTitle className="text-[10px] text-gray-500 uppercase tracking-wider">Total Outstanding Bills</CardTitle></CardHeader>
-          <CardContent><p className="text-lg font-bold text-gray-900">{money(totalOutstanding)}</p></CardContent>
-        </Card>
-        <Card className="border-gray-200">
-          <CardHeader className="pb-1"><CardTitle className="text-[10px] text-gray-500 uppercase tracking-wider">Recorded Supplier Invoices</CardTitle></CardHeader>
-          <CardContent><p className="text-lg font-bold text-blue-600">{bills.length} Vendor Bills</p></CardContent>
-        </Card>
-        <Card className="border-gray-200">
-          <CardHeader className="pb-1"><CardTitle className="text-[10px] text-gray-500 uppercase tracking-wider">3-Way Match Verification</CardTitle></CardHeader>
-          <CardContent><p className="text-lg font-bold text-emerald-600">Active Audit Engine</p></CardContent>
-        </Card>
-      </div>
+      <section className="stats">
+        <article>
+          <span className="stat-icon blue"><span className="text-sm">💰</span></span>
+          <div>
+            <small>TOTAL OUTSTANDING BILLS</small>
+            <h2>{money(totalOutstanding)}</h2>
+            <p>Amount due to suppliers</p>
+          </div>
+        </article>
+        <article>
+          <span className="stat-icon teal"><span className="text-sm">📄</span></span>
+          <div>
+            <small>SUPPLIER INVOICES</small>
+            <h2>{bills.length}</h2>
+            <p>Vendor bills recorded</p>
+          </div>
+        </article>
+        <article>
+          <span className="stat-icon violet"><span className="text-sm">✅</span></span>
+          <div>
+            <small>3-WAY MATCH</small>
+            <h2>Active</h2>
+            <p>Audit engine running</p>
+          </div>
+        </article>
+      </section>
 
       {/* Table */}
       <div className="bg-white border border-gray-200 rounded-2xl shadow-sm overflow-hidden">
@@ -239,9 +251,9 @@ export const VendorBills: React.FC<{ activeEntityId: string }> = ({ activeEntity
                   <td className="py-3 px-4 text-right font-bold text-emerald-700 text-base">{money(total, bill.currencyCode || 'USD')}</td>
                   <td className="py-3 px-4 text-center">
                     {bill.purchaseOrderId ? (
-                      <Button size="sm" variant="outline" className="text-blue-600 border-blue-200 hover:bg-blue-50" onClick={() => inspectMatch(bill.purchaseOrderId)}>
+                      <button className="h-7 px-2 text-[11px] font-semibold text-blue-600 border border-blue-200 hover:bg-blue-50 rounded-lg" onClick={() => inspectMatch(bill.purchaseOrderId)}>
                         Inspect Match
-                      </Button>
+                      </button>
                     ) : (
                       <span className="text-xs text-gray-400">Direct AP Posted</span>
                     )}

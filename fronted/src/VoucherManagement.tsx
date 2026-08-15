@@ -3,7 +3,6 @@ import { useFormDraft } from './hooks/useFormDraft';
 import { useVendorsStore, useCustomersStore, useVouchersStore, useBankingStore } from './stores';
 import type { FormEvent } from 'react';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Search, Download, Plus, CheckCircle2, Layers, Send, ArrowDownLeft, Wallet, Building2, BookOpen } from 'lucide-react';
 import type { Entity } from './EntitySettings';
@@ -263,36 +262,27 @@ export const VoucherManagement: React.FC<VoucherManagementProps> = ({ activeEnti
   };
 
   return (
-    <div className="space-y-6 font-sans text-slate-800 p-2 md:p-6">
+    <div className="space-y-4 font-sans text-slate-800 p-2 md:p-6">
       {/* Top Header */}
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 border-b border-slate-200 pb-4">
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-3 bg-white p-3 rounded-xl border border-gray-200 shadow-sm">
         <div>
-          <div className="flex items-center gap-2 text-xs text-slate-500 uppercase tracking-wider font-semibold">
-            <Layers className="w-4 h-4 text-emerald-600" /> Banking & Payments
-          </div>
-          <h1 className="text-2xl font-bold text-slate-900 tracking-tight mt-1">Voucher Management</h1>
-          <p className="text-xs text-slate-500">
+          <h1 className="text-base font-bold text-slate-900 tracking-tight flex items-center gap-2">
+            <Layers className="w-4 h-4 text-emerald-600" /> Voucher Management
+          </h1>
+          <p className="text-[10px] text-slate-500 mt-0.5">
             Select a Voucher Type below to open its dedicated data entry form for {currentEntity?.name || 'Active Entity'}.
           </p>
         </div>
 
-        <div className="flex items-center gap-2">
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={handleExportCSV}
-            className="h-9 gap-1.5 text-xs font-semibold text-slate-700 bg-white border-slate-200 shadow-xs"
-          >
-            <Download className="w-4 h-4 text-slate-500" /> Export CSV
-          </Button>
-
-          <Button
-            size="sm"
-            onClick={() => openVoucherModal('BPV')}
-            className="h-9 px-4 gap-1.5 text-xs font-semibold text-white bg-[#143e2b] hover:bg-[#0f3222] shadow-xs"
-          >
-            <Plus className="w-4 h-4" /> Add Voucher
-          </Button>
+        <div className="flex items-center gap-1.5 shrink-0">
+          <button onClick={handleExportCSV}
+            className="h-8 px-2.5 bg-white border border-gray-200 hover:bg-gray-50 text-gray-700 text-[11px] font-semibold rounded-lg shrink-0 whitespace-nowrap flex items-center gap-1">
+            <Download className="w-3.5 h-3.5 text-slate-500" /> CSV
+          </button>
+          <button onClick={() => openVoucherModal('BPV')}
+            className="h-8 px-2.5 bg-[#143e2b] hover:bg-[#0f3222] text-white text-[11px] font-semibold rounded-lg shrink-0 whitespace-nowrap flex items-center gap-1">
+            <Plus className="w-3.5 h-3.5" /> Add Voucher
+          </button>
         </div>
       </div>
 

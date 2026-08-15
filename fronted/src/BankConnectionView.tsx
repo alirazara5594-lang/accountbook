@@ -13,14 +13,18 @@ export const BankConnectionView: React.FC<{ activeEntityId: string; entities: En
   useEffect(() => { fetchConnections(activeEntityId); }, [activeEntityId]);
 
   return (
-    <div className="space-y-6 font-sans text-slate-800 p-2 md:p-6">
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 border-b border-slate-200 pb-4">
+    <div className="space-y-4 font-sans text-slate-800 p-2 md:p-6">
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-3 bg-white p-3 rounded-xl border border-gray-200 shadow-sm">
         <div>
-          <div className="flex items-center gap-2 text-xs text-slate-500 uppercase tracking-wider font-semibold"><Link2 className="w-4 h-4 text-indigo-600" /> Banking & Payments</div>
-          <h1 className="text-2xl font-bold text-slate-900 tracking-tight mt-1">Live Bank Feed Connections</h1>
-          <p className="text-xs text-slate-500">Backend-driven bank feed status for {currentEntity?.name || 'Active Entity'}.</p>
+          <h1 className="text-base font-bold text-slate-900 tracking-tight flex items-center gap-2">
+            <Link2 className="w-4 h-4 text-indigo-600" /> Live Bank Feed Connections
+          </h1>
+          <p className="text-[10px] text-slate-500 mt-0.5">Backend-driven bank feed status for {currentEntity?.name || 'Active Entity'}.</p>
         </div>
-        <Button size="sm" onClick={() => fetchConnections(activeEntityId)} className="h-9 px-4 text-xs font-semibold text-white bg-indigo-600 hover:bg-indigo-700"><Zap className="w-4 h-4 mr-1.5" /> Refresh Connections</Button>
+        <button onClick={() => fetchConnections(activeEntityId)}
+          className="h-8 px-2.5 bg-indigo-600 hover:bg-indigo-700 text-white text-[11px] font-semibold rounded-lg shrink-0 whitespace-nowrap flex items-center gap-1">
+          <Zap className="w-3.5 h-3.5" /> Refresh
+        </button>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">

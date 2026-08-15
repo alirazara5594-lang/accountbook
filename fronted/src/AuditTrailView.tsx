@@ -59,19 +59,17 @@ export const AuditTrailView: React.FC<AuditTrailViewProps> = ({ activeEntityId, 
   };
 
   return (
-    <div className="space-y-6 font-sans text-slate-800 p-2 md:p-6">
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 border-b border-slate-200 pb-4">
+    <div className="space-y-4 font-sans text-slate-800 p-2 md:p-6">
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-3 bg-white p-3 rounded-xl border border-gray-200 shadow-sm">
         <div>
-          <div className="flex items-center gap-2 text-xs text-slate-500 uppercase tracking-wider font-semibold">
-            <ScrollText className="w-4 h-4 text-indigo-600" /> Accounting & Finance
-          </div>
-          <h1 className="text-2xl font-bold text-slate-900 tracking-tight mt-1">Audit Trail</h1>
-          <p className="text-xs text-slate-500">
-            Immutable event log across the ERP for {currentEntity?.name || 'Active Entity'} — account changes,
-            journal lifecycle events and system actions (IAS 8 / audit evidence requirements).
+          <h1 className="text-base font-bold text-slate-900 tracking-tight flex items-center gap-2">
+            <ScrollText className="w-4 h-4 text-indigo-600" /> Audit Trail
+          </h1>
+          <p className="text-[10px] text-slate-500 mt-0.5">
+            Immutable event log across the ERP for {currentEntity?.name || 'Active Entity'} (IAS 8 / audit evidence).
           </p>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 shrink-0">
           <DataToolbar
             exportFileName="audit-trail"
             exportSheetName="Audit Trail"

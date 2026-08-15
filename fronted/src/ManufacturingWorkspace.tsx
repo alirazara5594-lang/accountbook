@@ -169,15 +169,17 @@ export const ManufacturingWorkspace: React.FC<{ activeEntityId: string; entities
   const exportWoRows = workOrders.map(wo => [wo.workOrderNumber, wo.finishedProductName, wo.quantityToProduce, wo.quantityProduced || 0, wo.unitCost, wo.totalCost, String(wo.status)]);
 
   return (
-    <div className="p-8 max-w-7xl mx-auto space-y-6">
+    <div className="p-4 max-w-7xl mx-auto space-y-4">
       {toast && <div className="fixed top-6 right-6 z-50 px-5 py-3 bg-emerald-600 text-white rounded-2xl shadow-lg text-sm font-medium">{toast}</div>}
 
-      <div className="flex justify-between items-center">
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-3 bg-white p-3 rounded-xl border border-gray-200 shadow-sm">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900 tracking-tight">Manufacturing & Production Workspace</h1>
-          <p className="text-gray-500 text-sm mt-1">Manage BOM recipes, work orders, WIP material issues, and IAS 2 job costing.</p>
+          <h1 className="text-base font-bold text-gray-900 tracking-tight flex items-center gap-2">
+            <span className="text-lg">🏭</span> Manufacturing & Production
+          </h1>
+          <p className="text-gray-500 text-[10px] mt-0.5">Manage BOM recipes, work orders, WIP material issues, and IAS 2 job costing.</p>
         </div>
-        <div className="flex flex-wrap gap-2">
+        <div className="flex items-center gap-1.5 shrink-0">
           <DataToolbar
             exportFileName="manufacturing-boms"
             exportSheetName="BOM Recipes"
@@ -195,8 +197,14 @@ export const ManufacturingWorkspace: React.FC<{ activeEntityId: string; entities
             exportRows={exportWoRows}
             onRefresh={() => fetchAllManufacturing(activeEntityId)}
           />
-          <Button variant="outline" onClick={() => setShowBomModal(true)}>+ New BOM Recipe</Button>
-          <Button className="bg-emerald-600 hover:bg-emerald-700 text-white" onClick={() => setShowWoModal(true)}>+ New Work Order</Button>
+          <button onClick={() => setShowBomModal(true)}
+            className="h-8 px-2.5 bg-white border border-gray-200 hover:bg-gray-50 text-gray-700 text-[11px] font-semibold rounded-lg shrink-0 whitespace-nowrap">
+            + New BOM
+          </button>
+          <button onClick={() => setShowWoModal(true)}
+            className="h-8 px-2.5 bg-emerald-600 hover:bg-emerald-700 text-white text-[11px] font-semibold rounded-lg shrink-0 whitespace-nowrap">
+            + New Work Order
+          </button>
         </div>
       </div>
 

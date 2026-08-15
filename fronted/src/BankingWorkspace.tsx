@@ -370,15 +370,14 @@ export const BankingWorkspace: React.FC<BankingWorkspaceProps> = ({ subView, act
   ]);
 
   return (
-    <div className="space-y-6 font-sans text-slate-800 p-2 md:p-6">
+    <div className="space-y-4 font-sans text-slate-800 p-2 md:p-6">
       {/* Top Header & Quick Actions */}
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 border-b border-slate-200 pb-4">
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-3 bg-white p-3 rounded-xl border border-gray-200 shadow-sm">
         <div>
-          <div className="flex items-center gap-2 text-xs text-slate-500 uppercase tracking-wider font-semibold">
-            <Building2 className="w-4 h-4 text-emerald-600" /> Banking & Treasury Operations
-          </div>
-          <h1 className="text-2xl font-bold text-slate-900 tracking-tight mt-1">Banking & Payments Workspace</h1>
-          <p className="text-xs text-slate-500">
+          <h1 className="text-base font-bold text-slate-900 tracking-tight flex items-center gap-2">
+            <Building2 className="w-4 h-4 text-emerald-600" /> Banking & Payments
+          </h1>
+          <p className="text-[10px] text-slate-500 mt-0.5">
             Manage bank accounts, cash registers, live bank feeds, statement imports, vendor payments & customer receipts for {currentEntity?.name || 'Active Entity'}.
           </p>
         </div>

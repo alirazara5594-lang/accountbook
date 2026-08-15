@@ -174,19 +174,17 @@ export const TaxAccountingView: React.FC<TaxAccountingViewProps> = ({ activeEnti
   ];
 
   return (
-    <div className="space-y-6 font-sans text-slate-800 p-2 md:p-6">
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 border-b border-slate-200 pb-4">
+    <div className="space-y-4 font-sans text-slate-800 p-2 md:p-6">
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-3 bg-white p-3 rounded-xl border border-gray-200 shadow-sm">
         <div>
-          <div className="flex items-center gap-2 text-xs text-slate-500 uppercase tracking-wider font-semibold">
-            <Percent className="w-4 h-4 text-indigo-600" /> Accounting & Finance
-          </div>
-          <h1 className="text-2xl font-bold text-slate-900 tracking-tight mt-1">Tax Accounting</h1>
-          <p className="text-xs text-slate-500">
-            Multi-jurisdiction VAT / Sales Tax / GST configuration for {currentEntity?.name || 'Active Entity'}
-            — UK, USA, Pakistan, Europe, UAE, Saudi Arabia & Canada (IAS 12 income taxes, IAS 37 provisions, IFRS 15).
+          <h1 className="text-base font-bold text-slate-900 tracking-tight flex items-center gap-2">
+            <Percent className="w-4 h-4 text-indigo-600" /> Tax Accounting
+          </h1>
+          <p className="text-[10px] text-slate-500 mt-0.5">
+            Multi-jurisdiction VAT / Sales Tax / GST for {currentEntity?.name || 'Active Entity'} (IAS 12, IAS 37, IFRS 15).
           </p>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 shrink-0">
           <DataToolbar
             query={query}
             setQuery={setQuery}

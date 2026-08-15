@@ -23,9 +23,14 @@ export const BankImportView: React.FC<{ activeEntityId: string; entities: Entity
   };
 
   return (
-    <div className="space-y-6 font-sans text-slate-800 p-2 md:p-6">
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 border-b border-slate-200 pb-4">
-        <div><div className="flex items-center gap-2 text-xs text-slate-500 uppercase tracking-wider font-semibold"><UploadCloud className="w-4 h-4 text-emerald-600" /> Banking & Payments</div><h1 className="text-2xl font-bold text-slate-900 tracking-tight mt-1">Bank Statement Import</h1><p className="text-xs text-slate-500">Record imported electronic bank statements for {currentEntity?.name || 'Active Entity'}.</p></div>
+    <div className="space-y-4 font-sans text-slate-800 p-2 md:p-6">
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-3 bg-white p-3 rounded-xl border border-gray-200 shadow-sm">
+        <div>
+          <h1 className="text-base font-bold text-slate-900 tracking-tight flex items-center gap-2">
+            <UploadCloud className="w-4 h-4 text-emerald-600" /> Bank Statement Import
+          </h1>
+          <p className="text-[10px] text-slate-500 mt-0.5">Record imported electronic bank statements for {currentEntity?.name || 'Active Entity'}.</p>
+        </div>
       </div>
 
       <Card className="bg-white border-slate-200"><CardHeader className="pb-3 border-b border-slate-200"><CardTitle className="text-base font-bold text-slate-900">Upload Electronic Bank Statement</CardTitle><CardDescription className="text-xs text-slate-500">Import history is stored in the backend and can be used during reconciliation.</CardDescription></CardHeader>
