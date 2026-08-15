@@ -153,10 +153,19 @@ export default function App() {
 
   useEffect(() => {
     if (currentUser) {
-      authApi.validate().catch(() => {
-        setCurrentUser(null);
-        localStorage.removeItem('auth_user');
-        localStorage.removeItem('auth_token');
+      const token = authApi.getToken();
+      // Demo-mode sessions (no real JWT) are never validated against the backend.
+      if (!token || token === 'demo-mode') return;
+      authApi.validate().catch((err) => {
+        // Only log out on an explicit auth rejection (401/403). If the backend
+        // is unreachable (network error), keep the session in demo mode.
+        const status = err && typeof err.status === 'number' ? err.status : 0;
+        if (status >= 400 && status < 500) {
+          setCurrentUser(null);
+          localStorage.removeItem('auth_user');
+          localStorage.removeItem('auth_token');
+          localStorage.removeItem('ab_demo_mode');
+        }
       });
     }
   }, [currentUser]);
@@ -203,6 +212,8 @@ export default function App() {
         avatar: userData.avatar,
         provider: userData.provider,
       };
+      authApi.setToken('demo-mode');
+      localStorage.setItem('ab_demo_mode', 'true');
       setCurrentUser(user);
       localStorage.setItem('auth_user', JSON.stringify(user));
       notify(`Logged in as ${userData.fullName}`);
@@ -211,6 +222,7 @@ export default function App() {
 
   const handleLogout = () => {
     authApi.logout();
+    localStorage.removeItem('ab_demo_mode');
     setCurrentUser(null);
     notify('Logged out successfully');
   };
