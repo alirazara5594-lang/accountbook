@@ -116,7 +116,7 @@ export function DataToolbar({
               className="gap-2 cursor-pointer"
               onClick={() => downloadPDF(exportTitle || exportFileName || 'Report', exportSubtitle || '', exportHeaders!, exportRows!, exportTotals)}
             >
-              <Printer className="w-4 h-4" /> PDF (Print)
+              <Printer className="w-4 h-4" /> PDF
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>

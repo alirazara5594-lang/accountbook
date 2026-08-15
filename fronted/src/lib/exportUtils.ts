@@ -1,6 +1,8 @@
 // Shared export & upload utilities for list views.
-// Dependency-free: CSV via Blob, Excel via an HTML-table workbook (.xls)
-// that Excel/Sheets open natively, and PDF via a print-optimised window.
+// CSV via Blob, Excel via HTML-table workbook (.xls), PDF via jsPDF.
+
+import jsPDF from 'jspdf';
+import autoTable from 'jspdf-autotable';
 
 export type ExportRow = (string | number | boolean | null | undefined)[];
 
@@ -39,36 +41,59 @@ export function downloadExcel(filename: string, _sheetName: string, headers: str
   triggerDownload(html, `${base}.xls`, 'application/vnd.ms-excel;charset=utf-8;');
 }
 
-/** Opens a print-optimised window; user picks "Save as PDF" in the print dialog. */
+/** Generates a real .pdf file and downloads it directly. */
 export function downloadPDF(title: string, subtitle: string, headers: string[], rows: ExportRow[], totals?: { label: string; value: unknown }[]) {
-  const esc = (v: unknown) => strip(v)
-    .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
-  const head = headers.map(h => `<th>${esc(h)}</th>`).join('');
-  const body = rows.map(r => `<tr>${r.map(c => `<td${typeof c === 'number' ? ' class="num"' : ''}>${esc(c)}</td>`).join('')}</tr>`).join('');
-  const totalRows = (totals || []).map(t => `<tr><td colspan="${Math.max(1, headers.length - 1)}" class="tot-label">${esc(t.label)}</td><td class="tot-value num">${esc(t.value)}</td></tr>`).join('');
-  const w = window.open('', '_blank', 'width=900,height=700');
-  if (!w) return;
-  w.document.write(`<!doctype html><html><head><title>${esc(title)}</title><style>
-    * { box-sizing: border-box; }
-    body { font-family: 'Segoe UI', Arial, sans-serif; color: #1e293b; margin: 28px; }
-    h1 { font-size: 20px; margin: 0 0 2px; color: #143e2b; }
-    p { font-size: 12px; color: #64748b; margin: 0 0 18px; }
-    table { width: 100%; border-collapse: collapse; font-size: 11px; }
-    th { background: #143e2b; color: #fff; text-align: left; padding: 7px 10px; }
-    td { border: 1px solid #cbd5e1; padding: 6px 10px; }
-    td.num, th { font-variant-numeric: tabular-nums; }
-    td.num { text-align: right; }
-    tfoot td { font-weight: 700; background: #f1f5f9; border-top: 2px solid #143e2b; }
-    .tot-label { text-align: right; }
-    .meta { display:flex; justify-content:space-between; font-size:11px; color:#64748b; margin-bottom:14px; }
-    @media print { body { margin: 12mm; } }
-  </style></head><body>
-    <h1>${esc(title)}</h1><p>${esc(subtitle)}</p>
-    <div class="meta"><span>Generated: ${new Date().toLocaleString()}</span><span>Zenabook</span></div>
-    <table><thead><tr>${head}</tr></thead><tbody>${body}</tbody><tfoot>${totalRows}</tfoot></table>
-    <script>window.onload = function(){ setTimeout(function(){ window.print(); }, 250); };<\/script>
-  </body></html>`);
-  w.document.close();
+  const doc = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4' });
+
+  // Header
+  doc.setFontSize(18);
+  doc.setTextColor(20, 62, 43);
+  doc.text(title, 14, 16);
+
+  // Subtitle
+  doc.setFontSize(10);
+  doc.setTextColor(100, 116, 139);
+  doc.text(subtitle, 14, 22);
+
+  // Date
+  doc.setFontSize(8);
+  doc.text(`Generated: ${new Date().toLocaleString()}`, 14, 27);
+
+  // Table
+  const bodyRows = rows.map(r => r.map(c => (c === null || c === undefined) ? '' : String(c)));
+  autoTable(doc, {
+    startY: 30,
+    head: [headers],
+    body: bodyRows,
+    styles: { fontSize: 7, cellPadding: 2 },
+    headStyles: { fillColor: [20, 62, 43], textColor: 255, fontStyle: 'bold' },
+    alternateRowStyles: { fillColor: [241, 245, 249] },
+    margin: { left: 14, right: 14 },
+  });
+
+  // Totals
+  if (totals && totals.length > 0) {
+    const finalY = (doc as any).lastAutoTable?.finalY || 30;
+    let y = finalY + 6;
+    doc.setFontSize(9);
+    doc.setFont('helvetica', 'bold');
+    totals.forEach(t => {
+      doc.text(`${t.label}: ${strip(t.value)}`, 14, y);
+      y += 5;
+    });
+  }
+
+  // Footer
+  const pageCount = doc.getNumberOfPages();
+  for (let i = 1; i <= pageCount; i++) {
+    doc.setPage(i);
+    doc.setFontSize(7);
+    doc.setTextColor(150);
+    doc.text(`Page ${i} of ${pageCount}`, doc.internal.pageSize.getWidth() - 30, doc.internal.pageSize.getHeight() - 8);
+  }
+
+  const base = title.replace(/[^a-zA-Z0-9-_ ]/g, '').replace(/\s+/g, '_').toLowerCase() || 'report';
+  doc.save(`${base}.pdf`);
 }
 
 export interface UploadedFile {
