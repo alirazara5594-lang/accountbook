@@ -33,10 +33,10 @@ export function ManufacturingSummaryView({ activeEntityId: _activeEntityId }: { 
     >
       <SummaryPanel icon={Layers} title="Production Pipeline">
         <div className="grid grid-cols-2 gap-3">
-          <div className="border rounded-lg p-3 text-center"><p className="text-2xl font-semibold">{workOrders.length}</p><p className="text-xs text-muted-foreground">Total Orders</p></div>
-          <div className="border rounded-lg p-3 text-center"><p className="text-2xl font-semibold">{inProgress}</p><p className="text-xs text-muted-foreground">Active WIP</p></div>
-          <div className="border rounded-lg p-3 text-center"><p className="text-2xl font-semibold">{boms.reduce((s, b) => s + (b.lines?.length || 0), 0)}</p><p className="text-xs text-muted-foreground">Recipe Lines</p></div>
-          <div className="border rounded-lg p-3 text-center"><p className="text-2xl font-semibold">{new Set(boms.map(b => b.finishedProductName)).size}</p><p className="text-xs text-muted-foreground">Finished Goods</p></div>
+          <div className="border rounded-lg p-2.5 text-center"><p className="text-base font-bold">{workOrders.length}</p><p className="text-[10px] text-muted-foreground">Total Orders</p></div>
+          <div className="border rounded-lg p-2.5 text-center"><p className="text-base font-bold">{inProgress}</p><p className="text-[10px] text-muted-foreground">Active WIP</p></div>
+          <div className="border rounded-lg p-2.5 text-center"><p className="text-base font-bold">{boms.reduce((s, b) => s + (b.lines?.length || 0), 0)}</p><p className="text-[10px] text-muted-foreground">Recipe Lines</p></div>
+          <div className="border rounded-lg p-2.5 text-center"><p className="text-base font-bold">{new Set(boms.map(b => b.finishedProductName)).size}</p><p className="text-[10px] text-muted-foreground">Finished Goods</p></div>
         </div>
       </SummaryPanel>
       <SummaryPanel icon={Wallet} title="Cost Position">

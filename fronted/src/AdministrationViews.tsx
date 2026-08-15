@@ -46,10 +46,10 @@ export function AdministrationSummaryView() {
       </SummaryPanel>
       <SummaryPanel icon={Lock} title="Security Posture">
         <div className="grid grid-cols-2 gap-3">
-          <div className="border rounded-lg p-3 text-center"><p className="text-2xl font-semibold">{users.filter(u => u.status === 'Active').length}</p><p className="text-xs text-muted-foreground">Active Users</p></div>
-          <div className="border rounded-lg p-3 text-center"><p className="text-2xl font-semibold">{users.filter(u => u.status === 'Locked').length}</p><p className="text-xs text-muted-foreground">Locked Accounts</p></div>
-          <div className="border rounded-lg p-3 text-center"><p className="text-2xl font-semibold">{roles.reduce((s, r) => s + r.permissions.length, 0)}</p><p className="text-xs text-muted-foreground">Total Permissions</p></div>
-          <div className="border rounded-lg p-3 text-center"><p className="text-2xl font-semibold">{branches.filter(b => b.active).length}</p><p className="text-xs text-muted-foreground">Active Branches</p></div>
+          <div className="border rounded-lg p-2.5 text-center"><p className="text-base font-bold">{users.filter(u => u.status === 'Active').length}</p><p className="text-[10px] text-muted-foreground">Active Users</p></div>
+          <div className="border rounded-lg p-2.5 text-center"><p className="text-base font-bold">{users.filter(u => u.status === 'Locked').length}</p><p className="text-[10px] text-muted-foreground">Locked Accounts</p></div>
+          <div className="border rounded-lg p-2.5 text-center"><p className="text-base font-bold">{roles.reduce((s, r) => s + r.permissions.length, 0)}</p><p className="text-[10px] text-muted-foreground">Total Permissions</p></div>
+          <div className="border rounded-lg p-2.5 text-center"><p className="text-base font-bold">{branches.filter(b => b.active).length}</p><p className="text-[10px] text-muted-foreground">Active Branches</p></div>
         </div>
       </SummaryPanel>
     </ModuleSummaryLayout>

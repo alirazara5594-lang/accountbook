@@ -120,31 +120,31 @@ export const BankReconciliationView: React.FC<{ activeEntityId: string; entities
             </select>
           </div>
         </CardHeader>
-        <CardContent className="p-6 space-y-6">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 bg-slate-50 p-4 rounded-xl border border-slate-200">
+        <CardContent className="p-4 space-y-4">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-3 bg-slate-50 p-3 rounded-xl border border-slate-200">
             <div>
-              <p className="text-xs font-medium text-slate-500">General Ledger Book Balance</p>
-              <p className="text-lg font-bold text-slate-900">{loading ? '…' : currentGl === null ? '—' : formatCurrency(currentGl)}</p>
+              <p className="text-[10px] font-medium text-slate-500">General Ledger Book Balance</p>
+              <p className="text-sm font-bold text-slate-900">{loading ? '…' : currentGl === null ? '—' : formatCurrency(currentGl)}</p>
             </div>
             <div>
-              <p className="text-xs font-medium text-slate-500">Bank Statement Balance</p>
+              <p className="text-[10px] font-medium text-slate-500">Bank Statement Balance</p>
               <Input
                 type="number"
                 value={statementBalance}
                 onChange={e => setStatementBalance(e.target.value)}
                 placeholder="0.00"
-                className="h-8 w-44 mt-1 font-mono text-xs font-bold text-slate-900 border-slate-300"
+                className="h-7 w-40 mt-1 font-mono text-[10px] font-bold text-slate-900 border-slate-300"
               />
               <Input
                 type="date"
                 value={statementDate}
                 onChange={e => setStatementDate(e.target.value)}
-                className="h-8 w-44 mt-2 font-mono text-xs text-slate-700 border-slate-300"
+                className="h-7 w-40 mt-1.5 font-mono text-[10px] text-slate-700 border-slate-300"
               />
             </div>
             <div>
-              <p className="text-xs font-medium text-slate-500">Unreconciled Difference</p>
-              <p className={`text-lg font-bold ${Math.abs(diff) === 0 ? 'text-emerald-600' : 'text-rose-600'}`}>
+              <p className="text-[10px] font-medium text-slate-500">Unreconciled Difference</p>
+              <p className={`text-sm font-bold ${Math.abs(diff) === 0 ? 'text-emerald-600' : 'text-rose-600'}`}>
                 {Number.isFinite(statementValue) ? formatCurrency(diff) : '—'}
               </p>
             </div>

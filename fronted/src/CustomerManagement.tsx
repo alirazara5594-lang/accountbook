@@ -234,7 +234,7 @@ export default function CustomerManagement({
       <section className="stats">
         <article>
           <span className="stat-icon blue">
-            <Users className="w-5 h-5" />
+            <Users className="w-4 h-4" />
           </span>
           <div>
             <small>TOTAL CUSTOMERS</small>
@@ -244,7 +244,7 @@ export default function CustomerManagement({
         </article>
         <article>
           <span className="stat-icon teal">
-            <CreditCard className="w-5 h-5" />
+            <CreditCard className="w-4 h-4" />
           </span>
           <div>
             <small>TOTAL CREDIT LIMIT</small>
@@ -254,7 +254,7 @@ export default function CustomerManagement({
         </article>
         <article>
           <span className="stat-icon violet">
-            <UserCheck className="w-5 h-5" />
+            <UserCheck className="w-4 h-4" />
           </span>
           <div>
             <small>AVG PAYMENT TERMS</small>

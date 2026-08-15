@@ -179,10 +179,10 @@ export function AnalyticsDashboardView() {
       </SummaryPanel>
       <SummaryPanel icon={Sparkles} title="Module Activity">
         <div className="grid grid-cols-2 gap-3">
-          <div className="border rounded-lg p-3 text-center"><p className="text-2xl font-semibold">{d.projectsList.length}</p><p className="text-xs text-muted-foreground">Projects</p></div>
-          <div className="border rounded-lg p-3 text-center"><p className="text-2xl font-semibold">{d.openProjects}</p><p className="text-xs text-muted-foreground">Active Projects</p></div>
-          <div className="border rounded-lg p-3 text-center"><p className="text-2xl font-semibold">{d.fieldCounts.surveys}</p><p className="text-xs text-muted-foreground">Field Surveys</p></div>
-          <div className="border rounded-lg p-3 text-center"><p className="text-2xl font-semibold">{d.obligationsDue}</p><p className="text-xs text-muted-foreground">Tax Obligations Due</p></div>
+          <div className="border rounded-lg p-2.5 text-center"><p className="text-base font-bold">{d.projectsList.length}</p><p className="text-[10px] text-muted-foreground">Projects</p></div>
+          <div className="border rounded-lg p-2.5 text-center"><p className="text-base font-bold">{d.openProjects}</p><p className="text-[10px] text-muted-foreground">Active Projects</p></div>
+          <div className="border rounded-lg p-2.5 text-center"><p className="text-base font-bold">{d.fieldCounts.surveys}</p><p className="text-[10px] text-muted-foreground">Field Surveys</p></div>
+          <div className="border rounded-lg p-2.5 text-center"><p className="text-base font-bold">{d.obligationsDue}</p><p className="text-[10px] text-muted-foreground">Tax Obligations Due</p></div>
         </div>
       </SummaryPanel>
     </ModuleSummaryLayout>
@@ -434,8 +434,8 @@ export function InventoryAnalyticsView() {
           </div>
           <p className="text-sm font-medium flex items-center gap-2 mt-4"><Scale className="h-4 w-4" /> Asset Depreciation Status</p>
           <div className="grid grid-cols-2 gap-3">
-            <div className="border rounded-lg p-3 text-center"><p className="text-2xl font-semibold">{d.assets.length}</p><p className="text-xs text-muted-foreground">Assets Registered</p></div>
-            <div className="border rounded-lg p-3 text-center"><p className="text-2xl font-semibold">{d.assets.filter(a => a.status === 'Active').length}</p><p className="text-xs text-muted-foreground">Active</p></div>
+            <div className="border rounded-lg p-2.5 text-center"><p className="text-base font-bold">{d.assets.length}</p><p className="text-[10px] text-muted-foreground">Assets Registered</p></div>
+            <div className="border rounded-lg p-2.5 text-center"><p className="text-base font-bold">{d.assets.filter(a => a.status === 'Active').length}</p><p className="text-[10px] text-muted-foreground">Active</p></div>
           </div>
         </Card>
       </div>

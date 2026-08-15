@@ -92,7 +92,7 @@ const accountTypes: AccountType[] = ['Asset', 'Liability', 'Equity', 'Revenue', 
 const blank = { code: '', name: '', type: 'Asset' as AccountType, parentId: '', openingBalance: '0', reconciliationEnabled: false, ifrsTag: '', gaapTag: '', isSystem: false, subtype: '', currency: 'USD', taxCategory: '', allowManualJournal: true, description: '', status: 'Active' }
 
 const NAVIGATION = [
-  { name: 'Overview', icon: '▦', items: ['Dashboard'] },
+  { name: 'Overview', icon: '▦', items: [] },
   { name: 'Sales & Customers', icon: '☖', items: ['Customers', 'Products & Services', 'Sales Workspace', 'Estimates & Quotes', 'Sales Orders', 'Credit Notes', 'Customer Payments', 'Customer Statements', 'Sales Reports'] },
   { name: 'Procurement', icon: '⇡', items: ['Vendors', 'Procurement Workspace', 'Bills', 'Debit Notes', 'Expense Claims', 'Vendor Payments', 'Vendor Statements', 'Payables Aging', 'Purchase Reports'] },
   { name: 'Banking & Payments', icon: '🏛', items: ['Bank Accounts', 'Cash Accounts', 'Bank Connection', 'Bank Import', 'Transactions', 'Bank Reconciliation', 'Voucher Management', 'Fund Transfers', 'Cash Flow Statements'] },
@@ -432,7 +432,7 @@ export default function App() {
         <div className="nav-group" key={group.name}>
           <button className={'nav nav-group-toggle ' + (page.startsWith(group.name + '.') ? 'active' : '')} onClick={() => handleGroupClick(group.name)}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 13 }}><span>{group.icon}</span>{group.name}</div>
-            <span className="chevron">{isOpen ? '▾' : '▸'}</span>
+            {group.items.length > 0 && <span className="chevron">{isOpen ? '▾' : '▸'}</span>}
           </button>
           {isOpen && (
             <div className="nav-sub-list">

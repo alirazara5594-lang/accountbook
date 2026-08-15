@@ -70,10 +70,10 @@ export function ComplianceSummaryView() {
       </SummaryPanel>
       <SummaryPanel icon={TrendingUp} title="Filing Activity">
         <div className="grid grid-cols-2 gap-3">
-          <div className="border rounded-lg p-3 text-center"><p className="text-2xl font-semibold">{validated}</p><p className="text-xs text-muted-foreground">Validated Invoices</p></div>
-          <div className="border rounded-lg p-3 text-center"><p className="text-2xl font-semibold">{rejected}</p><p className="text-xs text-muted-foreground">Rejected Invoices</p></div>
-          <div className="border rounded-lg p-3 text-center"><p className="text-2xl font-semibold">{dashboard?.overdue ?? 0}</p><p className="text-xs text-muted-foreground">Overdue Obligations</p></div>
-          <div className="border rounded-lg p-3 text-center"><p className="text-2xl font-semibold">{dashboard?.pendingInvoices ?? 0}</p><p className="text-xs text-muted-foreground">Submitted Invoices</p></div>
+          <div className="border rounded-lg p-2.5 text-center"><p className="text-base font-bold">{validated}</p><p className="text-[10px] text-muted-foreground">Validated Invoices</p></div>
+          <div className="border rounded-lg p-2.5 text-center"><p className="text-base font-bold">{rejected}</p><p className="text-[10px] text-muted-foreground">Rejected Invoices</p></div>
+          <div className="border rounded-lg p-2.5 text-center"><p className="text-base font-bold">{dashboard?.overdue ?? 0}</p><p className="text-[10px] text-muted-foreground">Overdue Obligations</p></div>
+          <div className="border rounded-lg p-2.5 text-center"><p className="text-base font-bold">{dashboard?.pendingInvoices ?? 0}</p><p className="text-[10px] text-muted-foreground">Submitted Invoices</p></div>
         </div>
       </SummaryPanel>
     </ModuleSummaryLayout>

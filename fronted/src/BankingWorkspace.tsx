@@ -659,31 +659,31 @@ export const BankingWorkspace: React.FC<BankingWorkspaceProps> = ({ subView, act
             </CardHeader>
             <CardContent className="pt-6 space-y-6">
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <div className="p-4 bg-slate-50 border border-slate-200 rounded-xl space-y-2">
+                <div className="p-3 bg-slate-50 border border-slate-200 rounded-xl space-y-1.5">
                   <div className="flex items-center gap-2">
-                    <Building className="w-5 h-5 text-emerald-600" />
-                    <h4 className="text-xs font-bold text-slate-800">Habib Bank Limited (HBL)</h4>
+                    <Building className="w-4 h-4 text-emerald-600" />
+                    <h4 className="text-[11px] font-bold text-slate-800">Habib Bank Limited (HBL)</h4>
                   </div>
-                  <p className="text-[11px] text-slate-500">Status: <span className="font-semibold text-emerald-600">Connected & Syncing</span></p>
-                  <p className="text-[11px] text-slate-400">Last sync: Today at 02:15 AM</p>
+                  <p className="text-[10px] text-slate-500">Status: <span className="font-semibold text-emerald-600">Connected & Syncing</span></p>
+                  <p className="text-[10px] text-slate-400">Last sync: Today at 02:15 AM</p>
                 </div>
 
-                <div className="p-4 bg-slate-50 border border-slate-200 rounded-xl space-y-2">
+                <div className="p-3 bg-slate-50 border border-slate-200 rounded-xl space-y-1.5">
                   <div className="flex items-center gap-2">
-                    <Building className="w-5 h-5 text-indigo-600" />
-                    <h4 className="text-xs font-bold text-slate-800">Standard Chartered USA</h4>
+                    <Building className="w-4 h-4 text-indigo-600" />
+                    <h4 className="text-[11px] font-bold text-slate-800">Standard Chartered USA</h4>
                   </div>
-                  <p className="text-[11px] text-slate-500">Status: <span className="font-semibold text-indigo-600">Connected</span></p>
-                  <p className="text-[11px] text-slate-400">Last sync: Today at 01:45 AM</p>
+                  <p className="text-[10px] text-slate-500">Status: <span className="font-semibold text-indigo-600">Connected</span></p>
+                  <p className="text-[10px] text-slate-400">Last sync: Today at 01:45 AM</p>
                 </div>
 
-                <div className="p-4 border border-dashed border-slate-300 rounded-xl flex flex-col items-center justify-center text-center p-6 bg-slate-50/50">
-                  <Link2 className="w-6 h-6 text-slate-400 mb-1" />
-                  <p className="text-xs font-semibold text-slate-700">Connect New Bank Feed</p>
+                <div className="p-3 border border-dashed border-slate-300 rounded-xl flex flex-col items-center justify-center text-center bg-slate-50/50">
+                  <Link2 className="w-5 h-5 text-slate-400 mb-1" />
+                  <p className="text-[10px] font-semibold text-slate-700">Connect New Bank Feed</p>
                   <Button
                     size="sm"
                     onClick={() => setIsConnectBankModalOpen(true)}
-                    className="mt-2 h-8 text-xs bg-indigo-600 hover:bg-indigo-700 text-white"
+                    className="mt-1.5 h-7 text-[10px] bg-indigo-600 hover:bg-indigo-700 text-white"
                   >
                     + Connect Institution
                   </Button>

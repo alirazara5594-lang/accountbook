@@ -208,7 +208,7 @@ export default function VendorManagement({ activeEntityId, notify }: { entities:
       {/* Stats */}
       <section className="stats">
         <article>
-          <span className="stat-icon blue"><Building2 className="w-5 h-5" /></span>
+          <span className="stat-icon blue"><Building2 className="w-4 h-4" /></span>
           <div>
             <small>TOTAL VENDORS</small>
             <h2>{stats.total}</h2>
@@ -216,7 +216,7 @@ export default function VendorManagement({ activeEntityId, notify }: { entities:
           </div>
         </article>
         <article>
-          <span className="stat-icon teal"><Users className="w-5 h-5" /></span>
+          <span className="stat-icon teal"><Users className="w-4 h-4" /></span>
           <div>
             <small>ACTIVE VENDORS</small>
             <h2>{stats.active}</h2>
@@ -224,7 +224,7 @@ export default function VendorManagement({ activeEntityId, notify }: { entities:
           </div>
         </article>
         <article>
-          <span className="stat-icon violet"><Wallet className="w-5 h-5" /></span>
+          <span className="stat-icon violet"><Wallet className="w-4 h-4" /></span>
           <div>
             <small>OUTSTANDING PAYABLES</small>
             <h2>$0.00</h2>

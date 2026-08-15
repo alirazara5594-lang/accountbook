@@ -304,10 +304,10 @@ export const ManufacturingWorkspace: React.FC<{ activeEntityId: string; entities
       {/* ─── TAB 3: WIP & Material Issues ───────────────────────────────────── */}
       {activeTab === 'wip' && (
         <div className="space-y-6">
-          <div className="bg-white border border-gray-200 rounded-2xl p-6 shadow-sm flex justify-between items-center">
+          <div className="bg-white border border-gray-200 rounded-2xl p-4 shadow-sm flex justify-between items-center">
             <div>
-              <p className="text-sm font-medium text-gray-500 uppercase tracking-wider">Active Work-In-Progress (WIP) Balance</p>
-              <p className="text-3xl font-bold text-yellow-600 mt-1">
+              <p className="text-xs font-medium text-gray-500 uppercase tracking-wider">Active Work-In-Progress (WIP) Balance</p>
+              <p className="text-xl font-bold text-yellow-600 mt-1">
                 {money(workOrders.filter(w => String(w.status) === 'InProgress' || String(w.status) === '2').reduce((s, w) => s + (w.totalMaterialCost || 0), 0))}
               </p>
             </div>

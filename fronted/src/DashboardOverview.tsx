@@ -260,29 +260,29 @@ export function DashboardOverview({ accounts, entries: _entries, setPage, active
       {/* ── ROW 1 — 4 KPI CARDS ── */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
         {[
-          { label: 'Total Revenue',   value: money(totalRevenue), sub: `vs last month ${money(totalRevenue * 0.89)}`, icon: <TrendingUp size={20} />,    color: C.blue,    trend: '+12.5%', up: true },
-          { label: 'Total Expenses',  value: money(totalExpense), sub: `vs last month ${money(totalExpense * 0.92)}`, icon: <CreditCard size={20} />,   color: C.rose,    trend: '-8.3%',  up: false },
-          { label: 'Net Profit',      value: money(netIncome),    sub: `vs last month ${money(netIncome * 0.87)}`,   icon: <DollarSign size={20} />,   color: C.emerald, trend: '+15.7%', up: true },
-          { label: 'Cash & Bank',     value: money(bankAndCash),  sub: `As of ${fmtDate(new Date().toISOString())}`, icon: <PiggyBank size={20} />,    color: C.violet,  trend: '',       up: true },
+          { label: 'Total Revenue',   value: money(totalRevenue), sub: `vs last month ${money(totalRevenue * 0.89)}`, icon: <TrendingUp size={16} />,    color: C.blue,    trend: '+12.5%', up: true },
+          { label: 'Total Expenses',  value: money(totalExpense), sub: `vs last month ${money(totalExpense * 0.92)}`, icon: <CreditCard size={16} />,   color: C.rose,    trend: '-8.3%',  up: false },
+          { label: 'Net Profit',      value: money(netIncome),    sub: `vs last month ${money(netIncome * 0.87)}`,   icon: <DollarSign size={16} />,   color: C.emerald, trend: '+15.7%', up: true },
+          { label: 'Cash & Bank',     value: money(bankAndCash),  sub: `As of ${fmtDate(new Date().toISOString())}`, icon: <PiggyBank size={16} />,    color: C.violet,  trend: '',       up: true },
         ].map((c, i) => (
-          <div key={i} className="rounded-xl p-4 flex items-center gap-4"
+          <div key={i} className="rounded-xl p-3 flex items-center gap-3"
                style={{ background: C.card, border: `1px solid ${C.bdr}` }}>
-            <div className="w-12 h-12 rounded-xl flex items-center justify-center shrink-0"
+            <div className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0"
                  style={{ background: `${c.color}22`, color: c.color, border: `1px solid ${c.color}44` }}>
               {c.icon}
             </div>
             <div className="min-w-0 flex-1">
-              <div className="flex items-center gap-2">
-                <p className="text-[11px] font-medium" style={{ color: C.muted }}>{c.label}</p>
+              <div className="flex items-center gap-1.5">
+                <p className="text-[10px] font-semibold" style={{ color: C.muted }}>{c.label}</p>
                 {c.trend && (
-                  <span className="inline-flex items-center gap-0.5 text-[10px] font-bold"
+                  <span className="inline-flex items-center gap-0.5 text-[9px] font-bold"
                         style={{ color: c.up ? C.emerald : C.rose }}>
-                    {c.up ? <TrendingUp size={10} /> : <TrendingDown size={10} />} {c.trend}
+                    {c.up ? <TrendingUp size={9} /> : <TrendingDown size={9} />} {c.trend}
                   </span>
                 )}
               </div>
-              <p className="text-xl font-extrabold mt-0.5" style={{ color: C.white }}>{c.value}</p>
-              <p className="text-[10px] mt-0.5" style={{ color: C.dim }}>{c.sub}</p>
+              <p className="text-base font-bold mt-0.5" style={{ color: C.white }}>{c.value}</p>
+              <p className="text-[9px] mt-0.5" style={{ color: C.dim }}>{c.sub}</p>
             </div>
           </div>
         ))}

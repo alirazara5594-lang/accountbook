@@ -218,7 +218,7 @@ export default function ProductsAndServices({ entities, activeEntityId, notify }
       {/* Stats */}
       <section className="stats">
         <article>
-          <span className="stat-icon blue"><Package className="w-5 h-5" /></span>
+          <span className="stat-icon blue"><Package className="w-4 h-4" /></span>
           <div>
             <small>TOTAL ITEMS</small>
             <h2>{stats.total}</h2>
@@ -226,7 +226,7 @@ export default function ProductsAndServices({ entities, activeEntityId, notify }
           </div>
         </article>
         <article>
-          <span className="stat-icon teal"><Archive className="w-5 h-5" /></span>
+          <span className="stat-icon teal"><Archive className="w-4 h-4" /></span>
           <div>
             <small>PHYSICAL GOODS</small>
             <h2>{stats.physical}</h2>
@@ -234,7 +234,7 @@ export default function ProductsAndServices({ entities, activeEntityId, notify }
           </div>
         </article>
         <article>
-          <span className="stat-icon violet"><Wrench className="w-5 h-5" /></span>
+          <span className="stat-icon violet"><Wrench className="w-4 h-4" /></span>
           <div>
             <small>SERVICES</small>
             <h2>{stats.services}</h2>
