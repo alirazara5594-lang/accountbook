@@ -400,7 +400,7 @@ export const ManufacturingWorkspace: React.FC<{ activeEntityId: string; entities
             </div>
             <div className="space-y-4 text-sm">
               <div>
-                <label className="block font-medium text-gray-700 mb-1">Finished Product *</label>
+                <label className="block font-medium text-gray-700 mb-1">* Finished Product</label>
                 <select className="w-full border rounded-xl p-2.5" value={bomForm.finishedProductId} onChange={e => setBomForm({ ...bomForm, finishedProductId: e.target.value })}>
                   <option value="">-- Select Finished Item --</option>
                   {finishedProducts.map(p => <option key={p.id} value={p.id}>{p.name} ({p.code})</option>)}
@@ -419,7 +419,7 @@ export const ManufacturingWorkspace: React.FC<{ activeEntityId: string; entities
 
               <div className="border-t pt-3 space-y-2">
                 <div className="flex justify-between items-center">
-                  <p className="font-bold text-gray-800 text-xs uppercase tracking-wider">Raw Material Ingredients *</p>
+                  <p className="font-bold text-gray-800 text-xs uppercase tracking-wider">* Raw Material Ingredients</p>
                   <Button size="sm" variant="outline" onClick={addBomLine}>+ Add Material</Button>
                 </div>
                 {bomLines.map((l, i) => (
@@ -453,7 +453,7 @@ export const ManufacturingWorkspace: React.FC<{ activeEntityId: string; entities
             </div>
             <div className="space-y-4 text-sm">
               <div>
-                <label className="block font-medium text-gray-700 mb-1">Select BOM Recipe *</label>
+                <label className="block font-medium text-gray-700 mb-1">* Select BOM Recipe</label>
                 <select className="w-full border rounded-xl p-2.5" value={woForm.bomId} onChange={e => setWoForm({ ...woForm, bomId: e.target.value })}>
                   <option value="">-- Select Recipe --</option>
                   {boms.map(b => <option key={b.id} value={b.id}>{b.finishedProductName} ({b.bomNumber})</option>)}
@@ -461,14 +461,14 @@ export const ManufacturingWorkspace: React.FC<{ activeEntityId: string; entities
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block font-medium text-gray-700 mb-1">Raw Material Warehouse *</label>
+                  <label className="block font-medium text-gray-700 mb-1">* Raw Material Warehouse</label>
                   <select className="w-full border rounded-xl p-2" value={woForm.rawMaterialWarehouseId} onChange={e => setWoForm({ ...woForm, rawMaterialWarehouseId: e.target.value })}>
                     <option value="">-- Select Source --</option>
                     {warehouses.map(w => <option key={w.id} value={w.id}>{w.name}</option>)}
                   </select>
                 </div>
                 <div>
-                  <label className="block font-medium text-gray-700 mb-1">Finished Goods Warehouse *</label>
+                  <label className="block font-medium text-gray-700 mb-1">* Finished Goods Warehouse</label>
                   <select className="w-full border rounded-xl p-2" value={woForm.finishedGoodsWarehouseId} onChange={e => setWoForm({ ...woForm, finishedGoodsWarehouseId: e.target.value })}>
                     <option value="">-- Select Target --</option>
                     {warehouses.map(w => <option key={w.id} value={w.id}>{w.name}</option>)}
@@ -476,7 +476,7 @@ export const ManufacturingWorkspace: React.FC<{ activeEntityId: string; entities
                 </div>
               </div>
               <div>
-                <label className="block font-medium text-gray-700 mb-1">Target Production Quantity *</label>
+                <label className="block font-medium text-gray-700 mb-1">* Target Production Quantity</label>
                 <Input type="number" value={woForm.quantityToProduce} onChange={e => setWoForm({ ...woForm, quantityToProduce: e.target.value })} />
               </div>
             </div>
@@ -499,7 +499,7 @@ export const ManufacturingWorkspace: React.FC<{ activeEntityId: string; entities
             <div className="space-y-4 text-sm">
               <p className="text-xs text-gray-500">Entering production completion details will automatically post Finished Goods to Warehouse and record IAS 2 Unit Cost.</p>
               <div>
-                <label className="block font-medium text-gray-700 mb-1">Actual Quantity Produced *</label>
+                <label className="block font-medium text-gray-700 mb-1">* Actual Quantity Produced</label>
                 <Input type="number" value={completeForm.actualProducedQty} onChange={e => setCompleteForm({ ...completeForm, actualProducedQty: e.target.value })} />
               </div>
               <div className="grid grid-cols-2 gap-4">

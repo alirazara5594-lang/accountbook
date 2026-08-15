@@ -373,7 +373,7 @@ export const SalesOrdersWorkspace: React.FC<SalesOrdersWorkspaceProps> = ({ acti
 
             <div className="form-grid">
               <label>
-                Customer *
+                * Customer
                 <select 
                   required 
                   value={form.customerId} 

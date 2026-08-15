@@ -141,8 +141,8 @@ const AssetRegister: React.FC<{ activeEntityId: string; accounts: any[] }> = ({ 
               <p className="text-sm font-semibold text-blue-600 bg-blue-50/50 p-3 rounded-xl border border-blue-100">Monthly depreciation amount: {money(((deprModal.purchasePrice - (deprModal.salvageValue||0)) / deprModal.usefulLifeYears) / 12)}</p>
               
               <div className="form-grid" style={{ gridTemplateColumns: '1fr' }}>
-                <AccSelect value={deprForm.expenseAccId} onChange={(v: string) => setDeprForm(f => ({...f, expenseAccId: v}))} accounts={accounts} label="Depreciation Expense Account *" filter={(a: any) => a.type === 'Expense'} />
-                <AccSelect value={deprForm.accumAccId} onChange={(v: string) => setDeprForm(f => ({...f, accumAccId: v}))} accounts={accounts} label="Accumulated Depreciation Account *" filter={(a: any) => a.type === 'ContraAsset' || a.name?.toLowerCase().includes('depreciation')} />
+                <AccSelect value={deprForm.expenseAccId} onChange={(v: string) => setDeprForm(f => ({...f, expenseAccId: v}))} accounts={accounts} label="* Depreciation Expense Account" filter={(a: any) => a.type === 'Expense'} />
+                <AccSelect value={deprForm.accumAccId} onChange={(v: string) => setDeprForm(f => ({...f, accumAccId: v}))} accounts={accounts} label="* Accumulated Depreciation Account" filter={(a: any) => a.type === 'ContraAsset' || a.name?.toLowerCase().includes('depreciation')} />
                 <label>
                   Useful Life (years)
                   <input type="number" value={deprForm.usefulLifeYears} onChange={(e) => setDeprForm((f) => ({ ...f, usefulLifeYears: parseInt(e.target.value) || 3 }))} min="1" style={{ width: '100%' }} />
@@ -185,9 +185,9 @@ const AssetRegister: React.FC<{ activeEntityId: string; accounts: any[] }> = ({ 
                   Proceeds Received
                   <input type="number" value={dispForm.proceeds} onChange={e => setDispForm(f => ({...f, proceeds: e.target.value}))} />
                 </label>
-                <AccSelect value={dispForm.assetAccId} onChange={(v: string) => setDispForm(f => ({...f, assetAccId: v}))} accounts={accounts} label="Asset GL Account (to clear) *" filter={(a: any) => a.type === 'Asset'} />
-                <AccSelect value={dispForm.accumAccId} onChange={(v: string) => setDispForm(f => ({...f, accumAccId: v}))} accounts={accounts} label="Accumulated Depreciation Account (to clear) *" filter={(a: any) => a.type === 'ContraAsset' || a.name?.toLowerCase().includes('depreciation')} />
-                <AccSelect value={dispForm.gainLossAccId} onChange={(v: string) => setDispForm(f => ({...f, gainLossAccId: v}))} accounts={accounts} label="Gain/Loss on Disposal Account *" filter={(a: any) => a.type === 'Revenue' || a.type === 'Expense'} />
+                <AccSelect value={dispForm.assetAccId} onChange={(v: string) => setDispForm(f => ({...f, assetAccId: v}))} accounts={accounts} label="* Asset GL Account (to clear)" filter={(a: any) => a.type === 'Asset'} />
+                <AccSelect value={dispForm.accumAccId} onChange={(v: string) => setDispForm(f => ({...f, accumAccId: v}))} accounts={accounts} label="* Accumulated Depreciation Account (to clear)" filter={(a: any) => a.type === 'ContraAsset' || a.name?.toLowerCase().includes('depreciation')} />
+                <AccSelect value={dispForm.gainLossAccId} onChange={(v: string) => setDispForm(f => ({...f, gainLossAccId: v}))} accounts={accounts} label="* Gain/Loss on Disposal Account" filter={(a: any) => a.type === 'Revenue' || a.type === 'Expense'} />
                 <AccSelect value={dispForm.cashAccId} onChange={(v: string) => setDispForm(f => ({...f, cashAccId: v}))} accounts={accounts} label="Cash Account for Proceeds (optional)" filter={(a: any) => a.type === 'Asset' && a.reconciliationEnabled} />
               </div>
             </div>
@@ -241,7 +241,7 @@ const Warehouses: React.FC<{ activeEntityId: string }> = ({ activeEntityId }) =>
             </div>
             <div className="form-grid">
               <label>
-                Warehouse Name *
+                * Warehouse Name
                 <input value={name} onChange={e => setName(e.target.value)} placeholder="e.g. Main Distribution Center" required />
               </label>
               <label>

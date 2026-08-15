@@ -202,7 +202,7 @@ function CustomerPaymentsWorkspace() {
               {formError && <p className="error" style={{ gridColumn: '1 / -1', color: '#c25c5c', fontSize: 13, marginBottom: 10 }}>{formError}</p>}
 
               <label style={{ gridColumn: '1 / -1' }}>
-                Customer *
+                * Customer
                 <select required value={formData.customerId} onChange={e => onCustomerChange(e.target.value)}>
                   <option value="">— Select Customer —</option>
                   {customers.map(c => (
@@ -224,7 +224,7 @@ function CustomerPaymentsWorkspace() {
               </label>
 
               <label>
-                Payment Date *
+                * Payment Date
                 <input
                   required
                   type="date"
@@ -234,7 +234,7 @@ function CustomerPaymentsWorkspace() {
               </label>
 
               <label>
-                Amount Received *
+                * Amount Received
                 <input
                   required
                   type="number" step="0.01" min="0" placeholder="0.00"
@@ -244,7 +244,7 @@ function CustomerPaymentsWorkspace() {
               </label>
 
               <label>
-                Payment Method *
+                * Payment Method
                 <select value={formData.paymentMethod} onChange={e => onMethodChange(e.target.value)}>
                   {PAYMENT_METHODS.map(m => (
                     <option key={m.value} value={m.value}>
@@ -255,7 +255,7 @@ function CustomerPaymentsWorkspace() {
               </label>
 
               <label style={{ gridColumn: '1 / -1' }}>
-                Deposit To *
+                * Deposit To
                 <span className="hint" style={{ fontSize: 10, color: '#8d9aad', fontWeight: 'normal', marginLeft: 4 }}>
                   {NEEDS_BANK_ACCOUNT.includes(formData.paymentMethod)
                     ? ' (Select the bank account receiving funds)'

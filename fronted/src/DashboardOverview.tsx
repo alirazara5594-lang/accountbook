@@ -1,6 +1,11 @@
 import { useEffect, useState } from 'react';
 import type { ReactNode } from 'react';
 import {
+  Wallet, HandCoins, CreditCard, Package, TrendingUp, TrendingDown,
+  Users, Landmark, Calculator, Boxes, Factory, Truck, MapPin, Scale, Hammer, Settings,
+  ArrowUpRight, Building2, Globe2, ShieldCheck,
+} from 'lucide-react';
+import {
   useSalesStore,
   useCustomersStore,
   useProcurementStore,
@@ -31,14 +36,31 @@ function num(n: number) {
   return new Intl.NumberFormat('en-US').format(n || 0);
 }
 
-function Donut({ segments, size = 72, thickness = 9 }: { segments: { value: number; color: string }[]; size?: number; thickness?: number }) {
+function Sparkline({ points, color = '#34d399', width = 84, height = 28 }: { points: number[]; color?: string; width?: number; height?: number }) {
+  if (!points.length) return <div style={{ width, height }} />;
+  const max = Math.max(...points, 1);
+  const min = Math.min(...points, 0);
+  const range = max - min || 1;
+  const step = width / (points.length - 1 || 1);
+  const coords = points.map((p, i) => `${(i * step).toFixed(1)},${(height - ((p - min) / range) * (height - 4) - 2).toFixed(1)}`);
+  const area = `0,${height} ${coords.join(' ')} ${width},${height}`;
+  return (
+    <svg width={width} height={height} viewBox={`0 0 ${width} ${height}`} className="shrink-0">
+      <polygon points={area} fill={color} opacity="0.12" />
+      <polyline points={coords.join(' ')} fill="none" stroke={color} strokeWidth="1.5" strokeLinejoin="round" />
+      <circle cx={coords[coords.length - 1].split(',')[0]} cy={coords[coords.length - 1].split(',')[1]} r="2" fill={color} />
+    </svg>
+  );
+}
+
+function Donut({ segments, size = 84, thickness = 10 }: { segments: { value: number; color: string }[]; size?: number; thickness?: number }) {
   const total = segments.reduce((s, x) => s + (x.value || 0), 0) || 1;
   const r = (size - thickness) / 2;
   const circ = 2 * Math.PI * r;
   let offset = 0;
   return (
     <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`} className="shrink-0">
-      <circle cx={size / 2} cy={size / 2} r={r} fill="none" stroke="#2e4a74" strokeWidth={thickness} />
+      <circle cx={size / 2} cy={size / 2} r={r} fill="none" stroke="#22395c" strokeWidth={thickness} />
       {segments.map((s, i) => {
         const frac = (s.value || 0) / total;
         const dash = frac * circ;
@@ -60,13 +82,13 @@ function Donut({ segments, size = 72, thickness = 9 }: { segments: { value: numb
         return el;
       })}
       <text x="50%" y="50%" dominantBaseline="central" textAnchor="middle" fill="#fff" fontSize={size * 0.16} fontWeight={700}>
-        {Math.round((total === 1 ? 0 : total) / 1)}
+        {Math.round(total)}
       </text>
     </svg>
   );
 }
 
-function Bars({ data, height = 56 }: { data: { label: string; value: number; color?: string }[]; height?: number }) {
+function Bars({ data, height = 64 }: { data: { label: string; value: number; color?: string }[]; height?: number }) {
   const max = Math.max(...data.map((d) => d.value), 1);
   return (
     <div className="flex items-end gap-1.5" style={{ height }}>
@@ -81,27 +103,10 @@ function Bars({ data, height = 56 }: { data: { label: string; value: number; col
             }}
             title={`${d.label}: ${d.value}`}
           />
-          <span className="text-[7px] text-[#9db3cd] truncate w-full text-center leading-tight">{d.label}</span>
+          <span className="text-[7px] text-[#9db3cd] truncate w-full text-center leading-tight mt-0.5">{d.label}</span>
         </div>
       ))}
     </div>
-  );
-}
-
-function Sparkline({ points, color = '#34d399', width = 90, height = 24 }: { points: number[]; color?: string; width?: number; height?: number }) {
-  if (!points.length) return <div style={{ width, height }} />;
-  const max = Math.max(...points, 1);
-  const min = Math.min(...points, 0);
-  const range = max - min || 1;
-  const step = width / (points.length - 1 || 1);
-  const coords = points.map((p, i) => `${(i * step).toFixed(1)},${(height - ((p - min) / range) * (height - 4) - 2).toFixed(1)}`);
-  const area = `0,${height} ${coords.join(' ')} ${width},${height}`;
-  return (
-    <svg width={width} height={height} viewBox={`0 0 ${width} ${height}`} className="shrink-0">
-      <polygon points={area} fill={color} opacity="0.12" />
-      <polyline points={coords.join(' ')} fill="none" stroke={color} strokeWidth="1.5" strokeLinejoin="round" />
-      <circle cx={coords[coords.length - 1].split(',')[0]} cy={coords[coords.length - 1].split(',')[1]} r="2" fill={color} />
-    </svg>
   );
 }
 
@@ -147,6 +152,7 @@ export function DashboardOverview({ accounts, entries, setPage, activeEntityId }
   const { taxCodes, fetchAllTaxData } = useTaxStore();
 
   const [loading, setLoading] = useState(true);
+  const [today] = useState(() => new Date().toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' }));
 
   useEffect(() => {
     Promise.all([
@@ -219,9 +225,23 @@ export function DashboardOverview({ accounts, entries, setPage, activeEntityId }
   const cDash = complianceStore.dashboard;
   const aDash = adminStore.dashboard;
 
+  const liquidity = cashBal + bankBal;
+  const netIncome = totalRevenue - totalExpense;
+
+  // ---- Top financial KPIs ----
+  const financialKpis = [
+    { label: 'Cash & Bank', value: money(liquidity), color: '#34d399', icon: <Wallet size={16} />, trend: +3.2, pts: [12, 14, 13, 16, 18, 17, 20] },
+    { label: 'Receivables', value: money(arBal), color: '#22d3ee', icon: <HandCoins size={16} />, trend: +1.8, pts: [8, 9, 11, 10, 13, 14, 16] },
+    { label: 'Payables', value: money(apBal), color: '#fbbf24', icon: <CreditCard size={16} />, trend: -0.4, pts: [6, 7, 6, 9, 8, 10, 12] },
+    { label: 'Inventory', value: money(invBal), color: '#a78bfa', icon: <Package size={16} />, trend: +2.1, pts: [10, 12, 11, 13, 12, 14, 15] },
+    { label: 'Revenue', value: money(totalRevenue), color: '#4ade80', icon: <TrendingUp size={16} />, trend: +5.6, pts: [5, 7, 6, 9, 11, 10, 14] },
+    { label: 'Net Income', value: money(netIncome), color: '#f87171', icon: <TrendingDown size={16} />, trend: +1.9, pts: [4, 5, 7, 6, 8, 9, 11] },
+  ];
+
+  // ---- Module registry ----
   const modules: {
     name: string;
-    icon: string;
+    icon: ReactNode;
     page: string;
     color: string;
     kpis: { label: string; value: string }[];
@@ -232,7 +252,7 @@ export function DashboardOverview({ accounts, entries, setPage, activeEntityId }
   }[] = [
     {
       name: 'Sales & Customers',
-      icon: '☖',
+      icon: <Users size={20} />,
       page: 'Sales & Customers.Sales Workspace',
       color: MODULE_COLORS['Sales & Customers'],
       kpis: [
@@ -255,7 +275,7 @@ export function DashboardOverview({ accounts, entries, setPage, activeEntityId }
     },
     {
       name: 'Procurement',
-      icon: '⇡',
+      icon: <Truck size={20} />,
       page: 'Procurement.Procurement Workspace',
       color: MODULE_COLORS.Procurement,
       kpis: [
@@ -278,7 +298,7 @@ export function DashboardOverview({ accounts, entries, setPage, activeEntityId }
     },
     {
       name: 'Banking & Payments',
-      icon: '🏛',
+      icon: <Landmark size={20} />,
       page: 'Banking & Payments.Bank Accounts',
       color: MODULE_COLORS['Banking & Payments'],
       kpis: [
@@ -299,7 +319,7 @@ export function DashboardOverview({ accounts, entries, setPage, activeEntityId }
     },
     {
       name: 'Accounting',
-      icon: '⌘',
+      icon: <Calculator size={20} />,
       page: 'Accounting.Chart of Accounts',
       color: MODULE_COLORS.Accounting,
       kpis: [
@@ -316,12 +336,12 @@ export function DashboardOverview({ accounts, entries, setPage, activeEntityId }
           ]}
         />
       ),
-      stat: money(totalRevenue - totalExpense),
+      stat: money(netIncome),
       statLabel: 'Net Income',
     },
     {
       name: 'Assets & Inventory',
-      icon: '📦',
+      icon: <Boxes size={20} />,
       page: 'Assets & Inventory.Assets & Inventory Workspace',
       color: MODULE_COLORS['Assets & Inventory'],
       kpis: [
@@ -343,7 +363,7 @@ export function DashboardOverview({ accounts, entries, setPage, activeEntityId }
     },
     {
       name: 'Manufacturing & Production',
-      icon: '⚙️',
+      icon: <Factory size={20} />,
       page: 'Manufacturing & Production.Manufacturing Workspace',
       color: MODULE_COLORS['Manufacturing & Production'],
       kpis: [
@@ -365,7 +385,7 @@ export function DashboardOverview({ accounts, entries, setPage, activeEntityId }
     },
     {
       name: 'Payroll & HR',
-      icon: '👥',
+      icon: <Users size={20} />,
       page: 'Payroll & HR.Employees',
       color: MODULE_COLORS['Payroll & HR'],
       kpis: [
@@ -387,7 +407,7 @@ export function DashboardOverview({ accounts, entries, setPage, activeEntityId }
     },
     {
       name: 'Survey & Field Operations',
-      icon: '📍',
+      icon: <MapPin size={20} />,
       page: 'Survey & Field Operations.Surveys',
       color: MODULE_COLORS['Survey & Field Operations'],
       kpis: [
@@ -409,7 +429,7 @@ export function DashboardOverview({ accounts, entries, setPage, activeEntityId }
     },
     {
       name: 'Government Compliance',
-      icon: '⚖',
+      icon: <Scale size={20} />,
       page: 'Government Compliance.Tax Management',
       color: MODULE_COLORS['Government Compliance'],
       kpis: [
@@ -431,7 +451,7 @@ export function DashboardOverview({ accounts, entries, setPage, activeEntityId }
     },
     {
       name: 'Projects',
-      icon: '🏗',
+      icon: <Hammer size={20} />,
       page: 'Projects.Projects',
       color: MODULE_COLORS.Projects,
       kpis: [
@@ -453,7 +473,7 @@ export function DashboardOverview({ accounts, entries, setPage, activeEntityId }
     },
     {
       name: 'Administration',
-      icon: '⚙',
+      icon: <Settings size={20} />,
       page: 'Administration.Users',
       color: MODULE_COLORS.Administration,
       kpis: [
@@ -476,66 +496,80 @@ export function DashboardOverview({ accounts, entries, setPage, activeEntityId }
     },
   ];
 
+  const pulse = [
+    { label: 'Open Sales', value: num(openInvoices), color: '#22d3ee', icon: <HandCoins size={14} /> },
+    { label: 'Open POs', value: num(openOrders), color: '#fbbf24', icon: <Truck size={14} /> },
+    { label: 'Bank Txns', value: num(transactions.length), color: '#34d399', icon: <Landmark size={14} /> },
+    { label: 'Leave Pending', value: num(pendingLeave), color: '#f472b6', icon: <Users size={14} /> },
+    { label: 'Active Projects', value: num(activeProjects), color: '#818cf8', icon: <Hammer size={14} /> },
+    { label: 'Low Stock Items', value: num(lowStock), color: '#f87171', icon: <Boxes size={14} /> },
+  ];
+
   return (
-    <div className="space-y-6 font-sans select-none">
-      {/* Hero banner */}
-      <div className="relative overflow-hidden rounded-3xl border border-[#2e4a74] bg-gradient-to-br from-[#1d3454] via-[#17294a] to-[#14233f] p-7">
-        <div className="absolute -top-24 -right-24 w-72 h-72 rounded-full bg-[#55d8c5]/10 blur-3xl pointer-events-none" />
-        <div className="absolute -bottom-32 -left-16 w-80 h-80 rounded-full bg-[#55d8c5]/10 blur-3xl pointer-events-none" />
-        <div className="relative flex flex-col sm:flex-row sm:items-end justify-between gap-4">
-          <div>
-            <div className="flex items-center gap-2 mb-3">
-              <span className="w-2 h-2 rounded-full bg-[#55d8c5] shadow-[0_0_10px_rgba(85,216,197,0.9)] animate-pulse" />
-              <span className="text-[10px] font-bold uppercase tracking-[0.25em] text-[#c3d3e5]">Zenabook ERP — Command Center</span>
-            </div>
-            <h2 className="text-2xl font-extrabold tracking-tight text-white">Enterprise Overview</h2>
-            <p className="text-xs text-[#c3d3e5] mt-1.5 max-w-xl">Live cross-module KPIs across the entire ERP. Click any module card to drill into its submodules.</p>
-          </div>
-          <div className="flex items-center gap-3">
-            {loading && (
-              <span className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg bg-[#22395c] border border-[#2e4a74] text-[10px] text-[#dce7f2] uppercase tracking-widest">
-                <svg className="animate-spin h-3 w-3 text-[#55d8c5]" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" className="opacity-25" /><path fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z" /></svg>
-                Syncing modules
-              </span>
-            )}
-            <button
-              onClick={() => setPage('Accounting.Chart of Accounts')}
-              className="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold bg-gradient-to-r from-[#55d8c5]/25 to-[#55d8c5]/15 text-[#55d8c5] border border-[#55d8c5]/40 hover:border-[#55d8c5]/70 hover:from-[#55d8c5]/35 hover:to-[#55d8c5]/25 transition-all"
-            >
-              Manage Accounts Tree <span className="text-[#55d8c5]">→</span>
-            </button>
-          </div>
+    <div className="space-y-5 font-sans select-none">
+      {/* Page header */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+        <div>
+          <h1 className="text-xl font-extrabold tracking-tight text-white">Dashboard Summary</h1>
+          <p className="text-xs text-[#c3d3e5] mt-1 flex items-center gap-2">
+            <Globe2 size={12} className="text-[#55d8c5]" />
+            Consolidated overview of all modules · {today}
+          </p>
+        </div>
+        <div className="flex items-center gap-2">
+          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-[#1a3054] border border-[#2e4a74] text-[10px] text-[#c3d3e5]">
+            <Building2 size={12} className="text-[#55d8c5]" /> {num(accounts.length)} accounts
+          </span>
+          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-[#1a3054] border border-[#2e4a74] text-[10px] text-[#c3d3e5]">
+            <ShieldCheck size={12} className="text-[#55d8c5]" /> {num(entries.length)} entries
+          </span>
+          {loading && (
+            <span className="inline-flex items-center gap-2 px-2.5 py-1 rounded-lg bg-[#22395c] border border-[#2e4a74] text-[10px] text-[#dce7f2] uppercase tracking-widest">
+              <svg className="animate-spin h-3 w-3 text-[#55d8c5]" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" className="opacity-25" /><path fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z" /></svg>
+              Syncing
+            </span>
+          )}
         </div>
       </div>
 
       {/* Financial KPI strip */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-6 gap-3">
-        {[
-          { label: 'Cash & Bank', value: money(cashBal + bankBal), color: '#34d399', pts: [12, 14, 13, 16, 18, 17, 20] },
-          { label: 'Receivables', value: money(arBal), color: '#22d3ee', pts: [8, 9, 11, 10, 13, 14, 16] },
-          { label: 'Payables', value: money(apBal), color: '#fbbf24', pts: [6, 7, 6, 9, 8, 10, 12] },
-          { label: 'Inventory', value: money(invBal), color: '#a78bfa', pts: [10, 12, 11, 13, 12, 14, 15] },
-          { label: 'Revenue', value: money(totalRevenue), color: '#4ade80', pts: [5, 7, 6, 9, 11, 10, 14] },
-          { label: 'Expenses', value: money(totalExpense), color: '#f87171', pts: [4, 5, 7, 6, 8, 9, 11] },
-        ].map((k) => (
-          <div key={k.label} className="relative bg-[#1a3054] border border-[#2e4a74] rounded-2xl p-4 flex flex-col justify-between min-h-[100px] overflow-hidden group hover:border-[#55d8c5]/50 transition-colors">
-            <div className="absolute inset-x-0 top-0 h-0.5" style={{ background: `linear-gradient(90deg, ${k.color}99, transparent)` }} />
-            <div className="flex items-center justify-between gap-2">
-              <span className="text-[10px] font-semibold text-[#d3e0ee] uppercase tracking-widest">{k.label}</span>
-              <Sparkline points={k.pts} color={k.color} />
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-3">
+        {financialKpis.map((k) => (
+          <div key={k.label} className="relative bg-[#1a3054] border border-[#2e4a74] rounded-2xl p-4 overflow-hidden group hover:border-[#55d8c5]/50 hover:-translate-y-0.5 transition-all">
+            <div className="absolute inset-x-0 top-0 h-1" style={{ background: `linear-gradient(90deg, ${k.color}, transparent)` }} />
+            <div className="flex items-start justify-between mb-2">
+              <span
+                className="w-8 h-8 rounded-lg flex items-center justify-center"
+                style={{ background: `${k.color}22`, color: k.color, border: `1px solid ${k.color}44` }}
+              >
+                {k.icon}
+              </span>
+              <span
+                className="inline-flex items-center gap-0.5 text-[9px] font-bold px-1.5 py-0.5 rounded-md"
+                style={{ background: `${k.color}1a`, color: k.color }}
+              >
+                {k.trend > 0 ? <TrendingUp size={10} /> : <TrendingDown size={10} />}
+                {Math.abs(k.trend)}%
+              </span>
             </div>
-            <span className="text-lg font-bold text-white mt-1">{k.value}</span>
+            <div className="flex items-end justify-between gap-2">
+              <div className="min-w-0">
+                <p className="text-[10px] font-semibold text-[#d3e0ee] uppercase tracking-widest mb-0.5">{k.label}</p>
+                <p className="text-lg font-bold text-white truncate">{k.value}</p>
+              </div>
+              <Sparkline points={k.pts} color={k.color} width={64} height={28} />
+            </div>
           </div>
         ))}
       </div>
 
       {/* Accounting equation banner */}
-      <div className="grid grid-cols-1 lg:grid-cols-4 gap-3">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
         {[
           { label: 'Total Assets', value: money(totalAssets), color: '#22d3ee' },
           { label: 'Total Liabilities', value: money(totalLiabilities), color: '#f87171' },
           { label: 'Total Equity', value: money(totalEquity), color: '#34d399' },
-          { label: 'Net Income', value: money(totalRevenue - totalExpense), color: '#a78bfa' },
+          { label: 'Net Income', value: money(netIncome), color: '#a78bfa' },
         ].map((x) => (
           <div key={x.label} className="bg-[#1a3054] border border-[#2e4a74] rounded-2xl p-4 flex items-center justify-between">
             <span className="text-[10px] font-semibold text-[#d3e0ee] uppercase tracking-widest">{x.label}</span>
@@ -556,7 +590,7 @@ export function DashboardOverview({ accounts, entries, setPage, activeEntityId }
             <div className="flex items-center justify-between mb-4">
               <div className="flex items-center gap-3">
                 <span
-                  className="w-10 h-10 rounded-xl flex items-center justify-center text-lg"
+                  className="w-10 h-10 rounded-xl flex items-center justify-center"
                   style={{ background: `${m.color}22`, color: m.color, border: `1px solid ${m.color}44`, boxShadow: `0 0 18px ${m.color}26` }}
                 >
                   {m.icon}
@@ -564,7 +598,7 @@ export function DashboardOverview({ accounts, entries, setPage, activeEntityId }
                 <div>
                   <h3 className="text-sm font-bold text-white uppercase tracking-wide">{m.name}</h3>
                   <span className="text-[10px] text-[#9db3cd] group-hover:text-[#55d8c5] transition-colors inline-flex items-center gap-1">
-                    Open module <span className="group-hover:translate-x-0.5 transition-transform">→</span>
+                    Open module <ArrowUpRight size={10} className="group-hover:translate-x-0.5 transition-transform" />
                   </span>
                 </div>
               </div>
@@ -598,17 +632,12 @@ export function DashboardOverview({ accounts, entries, setPage, activeEntityId }
           <span className="w-1.5 h-1.5 rounded-full bg-[#55d8c5] shadow-[0_0_8px_rgba(85,216,197,0.8)]" /> Operational Pulse
         </h3>
         <div className="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-6 gap-3">
-          {[
-            { label: 'Open Sales', value: num(openInvoices), color: '#22d3ee' },
-            { label: 'Open POs', value: num(openOrders), color: '#fbbf24' },
-            { label: 'Bank Txn Today', value: num(transactions.length), color: '#34d399' },
-            { label: 'Leave Pending', value: num(pendingLeave), color: '#f472b6' },
-            { label: 'Active Projects', value: num(activeProjects), color: '#818cf8' },
-            { label: 'Low Stock Items', value: num(lowStock), color: '#f87171' },
-          ].map((x) => (
+          {pulse.map((x) => (
             <div key={x.label} className="bg-[#1e3a61] border border-[#2e4a74] rounded-xl p-3 text-center hover:border-[#55d8c5]/50 transition-colors">
-              <p className="text-xl font-bold font-mono" style={{ color: x.color }}>{x.value}</p>
-              <p className="text-[10px] font-medium text-[#d3e0ee] uppercase tracking-wider mt-0.5">{x.label}</p>
+              <div className="flex items-center justify-center gap-1.5 text-[9px] uppercase tracking-wider mb-1" style={{ color: x.color }}>
+                {x.icon} {x.label}
+              </div>
+              <p className="text-xl font-bold font-mono text-white">{x.value}</p>
             </div>
           ))}
         </div>

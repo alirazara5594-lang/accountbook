@@ -196,7 +196,7 @@ const SalesInvoicesTab: React.FC<{ activeEntityId: string }> = ({ activeEntityId
 
             <div className="form-grid">
               <label>
-                Customer *
+                * Customer
                 <select value={form.customerId} onChange={e => setForm(f => ({...f, customerId: e.target.value}))}>
                   <option value="">-- Select customer --</option>
                   {customers.map((c: any) => <option key={c.id} value={c.id}>{c.name}</option>)}
@@ -383,14 +383,14 @@ const SalesInvoicesTab: React.FC<{ activeEntityId: string }> = ({ activeEntityId
               <p className="text-xs text-gray-500 mt-1">This will post: <strong>Dr Accounts Receivable / Cr Revenue</strong> and automatically reduce stock for Physical products.</p>
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Accounts Receivable Account *</label>
+              <label className="block text-sm font-medium text-gray-700 mb-1">* Accounts Receivable Account</label>
               <select value={postForm.arAccId} onChange={e => setPostForm(f => ({...f, arAccId: e.target.value}))} className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm">
                 <option value="">-- Select AR account --</option>
                 {accounts.filter((a: any) => a.type === 'Asset').map((a: any) => <option key={a.id} value={a.id}>{a.code} - {a.name}</option>)}
               </select>
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Revenue Account *</label>
+              <label className="block text-sm font-medium text-gray-700 mb-1">* Revenue Account</label>
               <select value={postForm.revenueAccId} onChange={e => setPostForm(f => ({...f, revenueAccId: e.target.value}))} className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm">
                 <option value="">-- Select revenue account --</option>
                 {accounts.filter((a: any) => a.type === 'Revenue').map((a: any) => <option key={a.id} value={a.id}>{a.code} - {a.name}</option>)}

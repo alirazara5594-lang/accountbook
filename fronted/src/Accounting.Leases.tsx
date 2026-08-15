@@ -306,12 +306,12 @@ export const LeaseAccounting: React.FC<LeaseProps> = ({ activeEntityId }) => {
               <div className="space-y-4">
                 <div>
                   <h4 className="font-medium mb-2">Lease Details</h4>
-                  <label className="block text-sm mb-1">Lease Number *</label>
+                  <label className="block text-sm mb-1">* Lease Number</label>
                   <input className="w-full border border-gray-300 rounded px-3 py-2 text-sm"
                     value={form.leaseNumber} onChange={e => setForm(f => ({ ...f, leaseNumber: e.target.value }))}
                     placeholder="e.g. LEASE-2024-001" required />
                   
-                  <label className="block text-sm mb-1 mt-3">Counterparty (Landlord) *</label>
+                  <label className="block text-sm mb-1 mt-3">* Counterparty (Landlord)</label>
                   <input className="w-full border border-gray-300 rounded px-3 py-2 text-sm"
                     value={form.counterparty} onChange={e => setForm(f => ({ ...f, counterparty: e.target.value }))}
                     placeholder="Company or individual name" required />
@@ -331,11 +331,11 @@ export const LeaseAccounting: React.FC<LeaseProps> = ({ activeEntityId }) => {
                     <option value="OperatingLease">Operating Lease (Straight-line)</option>
                   </select>
                   
-                  <label className="block text-sm mb-1 mt-3">Start Date *</label>
+                  <label className="block text-sm mb-1 mt-3">* Start Date</label>
                   <input type="date" className="w-full border border-gray-300 rounded px-3 py-2 text-sm"
                     value={form.startDate} onChange={e => setForm(f => ({ ...f, startDate: e.target.value }))} required />
                   
-                  <label className="block text-sm mb-1 mt-3">End Date *</label>
+                  <label className="block text-sm mb-1 mt-3">* End Date</label>
                   <input type="date" className="w-full border border-gray-300 rounded px-3 py-2 text-sm"
                     value={form.endDate} onChange={e => setForm(f => ({ ...f, endDate: e.target.value }))} required />
                   
@@ -347,7 +347,7 @@ export const LeaseAccounting: React.FC<LeaseProps> = ({ activeEntityId }) => {
 
                 <div>
                   <h4 className="font-medium mb-2">Financials</h4>
-                  <label className="block text-sm mb-1">Monthly Rent *</label>
+                  <label className="block text-sm mb-1">* Monthly Rent</label>
                   <input type="number" className="w-full border border-gray-300 rounded px-3 py-2 text-sm"
                     value={form.monthlyRent} onChange={e => setForm(f => ({ ...f, monthlyRent: parseFloat(e.target.value) || 0 }))}
                     min={0} step={0.01} required />

@@ -131,7 +131,7 @@ function CreditNotesWorkspace() {
             <h3>Create Credit Note</h3>
             <form onSubmit={handleCreate} className="modal-form">
               <label>
-                Company *
+                * Company
                 <select required value={form.companyId} onChange={(e) => setForm({ ...form, companyId: e.target.value })}>
                   <option value="">-- Select Company --</option>
                   {companies.map(c => (
@@ -140,7 +140,7 @@ function CreditNotesWorkspace() {
                 </select>
               </label>
               <label>
-                Customer *
+                * Customer
                 <select required value={form.customerId} onChange={(e) => setForm({ ...form, customerId: e.target.value })}>
                   <option value="">-- Select Customer --</option>
                   {customers.map(c => (
@@ -149,15 +149,15 @@ function CreditNotesWorkspace() {
                 </select>
               </label>
               <label>
-                Date *
+                * Date
                 <input type="date" required value={form.creditNoteDate} onChange={(e) => setForm({ ...form, creditNoteDate: e.target.value })} />
               </label>
               <label>
-                Reason / Notes
+                * Reason / Notes
                 <input required value={form.notes} onChange={(e) => setForm({ ...form, notes: e.target.value })} />
               </label>
               <label>
-                Amount
+                * Amount
                 <input type="number" step="0.01" required value={form.amount} onChange={(e) => setForm({ ...form, amount: Number(e.target.value) })} />
               </label>
               <label>

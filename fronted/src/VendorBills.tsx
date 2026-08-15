@@ -314,7 +314,7 @@ export const VendorBills: React.FC<{ activeEntityId: string }> = ({ activeEntity
 
             <div className="form-grid">
               <label>
-                Vendor / Supplier Name *
+                * Vendor / Supplier Name
                 <select required value={billForm.vendorId} onChange={e => setBillForm({ ...billForm, vendorId: e.target.value })}>
                   <option value="">-- Select Vendor --</option>
                   {vendors.map(v => (
@@ -326,7 +326,7 @@ export const VendorBills: React.FC<{ activeEntityId: string }> = ({ activeEntity
               </label>
 
               <label>
-                Supplier Invoice Number *
+                * Supplier Invoice Number
                 <input
                   required
                   placeholder="e.g. INV-SUPP-9982"
@@ -346,7 +346,7 @@ export const VendorBills: React.FC<{ activeEntityId: string }> = ({ activeEntity
 
               {entryMode === 'procurement' ? (
                 <label>
-                  Linked Purchase Order *
+                  * Linked Purchase Order
                   <select value={billForm.purchaseOrderId} onChange={e => setBillForm({ ...billForm, purchaseOrderId: e.target.value })}>
                     <option value="">-- Select Purchase Order --</option>
                     {orders.map(p => (
@@ -364,7 +364,7 @@ export const VendorBills: React.FC<{ activeEntityId: string }> = ({ activeEntity
               )}
 
               <label>
-                Invoice / Bill Date *
+                * Invoice / Bill Date
                 <input
                   type="date"
                   required
@@ -374,7 +374,7 @@ export const VendorBills: React.FC<{ activeEntityId: string }> = ({ activeEntity
               </label>
 
               <label>
-                Due Date *
+                * Due Date
                 <input
                   type="date"
                   required

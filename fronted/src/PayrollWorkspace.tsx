@@ -618,13 +618,13 @@ function PayrollModal({ type, item, store, onClose }: { type: string; item: any;
         <div className="modal-body">
           {type === 'employee' && (
             <div className="form-grid">
-              <div><label className={labelClass}>First Name *</label><input className={inputClass} value={form.firstName || ''} onChange={e => set('firstName', e.target.value)} /></div>
-              <div><label className={labelClass}>Last Name *</label><input className={inputClass} value={form.lastName || ''} onChange={e => set('lastName', e.target.value)} /></div>
+              <div><label className={labelClass}>* First Name</label><input className={inputClass} value={form.firstName || ''} onChange={e => set('firstName', e.target.value)} /></div>
+              <div><label className={labelClass}>* Last Name</label><input className={inputClass} value={form.lastName || ''} onChange={e => set('lastName', e.target.value)} /></div>
               <div><label className={labelClass}>Email</label><input className={inputClass} value={form.email || ''} onChange={e => set('email', e.target.value)} /></div>
               <div><label className={labelClass}>Country</label><select className={inputClass} value={form.country || 'US'} onChange={e => set('country', e.target.value)}>
                 {Object.entries(countryLabels).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
               </select></div>
-              <div><label className={labelClass}>Basic Salary *</label><input className={inputClass} type="number" value={form.basicSalary || 0} onChange={e => set('basicSalary', parseFloat(e.target.value) || 0)} /></div>
+              <div><label className={labelClass}>* Basic Salary</label><input className={inputClass} type="number" value={form.basicSalary || 0} onChange={e => set('basicSalary', parseFloat(e.target.value) || 0)} /></div>
               <div><label className={labelClass}>Currency</label><input className={inputClass} value={form.currency || 'USD'} onChange={e => set('currency', e.target.value)} /></div>
               <div><label className={labelClass}>Hire Date</label><input className={inputClass} type="date" value={form.hireDate || ''} onChange={e => set('hireDate', e.target.value)} /></div>
               <div><label className={labelClass}>Pay Frequency</label><select className={inputClass} value={form.payFrequency || 'Monthly'} onChange={e => set('payFrequency', e.target.value)}>
@@ -634,15 +634,15 @@ function PayrollModal({ type, item, store, onClose }: { type: string; item: any;
           )}
           {type === 'department' && (
             <div className="form-grid">
-              <div><label className={labelClass}>Code *</label><input className={inputClass} value={form.code || ''} onChange={e => set('code', e.target.value)} /></div>
-              <div><label className={labelClass}>Name *</label><input className={inputClass} value={form.name || ''} onChange={e => set('name', e.target.value)} /></div>
+              <div><label className={labelClass}>* Code</label><input className={inputClass} value={form.code || ''} onChange={e => set('code', e.target.value)} /></div>
+              <div><label className={labelClass}>* Name</label><input className={inputClass} value={form.name || ''} onChange={e => set('name', e.target.value)} /></div>
               <div style={{ gridColumn: '1 / -1' }}><label className={labelClass}>Description</label><input className={inputClass} value={form.description || ''} onChange={e => set('description', e.target.value)} /></div>
             </div>
           )}
           {type === 'position' && (
             <div className="form-grid">
-              <div><label className={labelClass}>Code *</label><input className={inputClass} value={form.code || ''} onChange={e => set('code', e.target.value)} /></div>
-              <div><label className={labelClass}>Name *</label><input className={inputClass} value={form.name || ''} onChange={e => set('name', e.target.value)} /></div>
+              <div><label className={labelClass}>* Code</label><input className={inputClass} value={form.code || ''} onChange={e => set('code', e.target.value)} /></div>
+              <div><label className={labelClass}>* Name</label><input className={inputClass} value={form.name || ''} onChange={e => set('name', e.target.value)} /></div>
               <div><label className={labelClass}>Min Salary</label><input className={inputClass} type="number" value={form.minSalary || 0} onChange={e => set('minSalary', parseFloat(e.target.value) || 0)} /></div>
               <div><label className={labelClass}>Max Salary</label><input className={inputClass} type="number" value={form.maxSalary || 0} onChange={e => set('maxSalary', parseFloat(e.target.value) || 0)} /></div>
             </div>
@@ -653,7 +653,7 @@ function PayrollModal({ type, item, store, onClose }: { type: string; item: any;
                 {Object.entries(countryLabels).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
               </select></div>
               <div><label className={labelClass}>Tax Year</label><input className={inputClass} type="number" value={form.taxYear || 2025} onChange={e => set('taxYear', parseInt(e.target.value) || 2025)} /></div>
-              <div><label className={labelClass}>Name *</label><input className={inputClass} value={form.name || ''} onChange={e => set('name', e.target.value)} /></div>
+              <div><label className={labelClass}>* Name</label><input className={inputClass} value={form.name || ''} onChange={e => set('name', e.target.value)} /></div>
               <div><label className={labelClass}>Currency</label><input className={inputClass} value={form.currency || 'USD'} onChange={e => set('currency', e.target.value)} /></div>
               <div><label className={labelClass}>Standard Deduction</label><input className={inputClass} type="number" value={form.standardDeduction || 0} onChange={e => set('standardDeduction', parseFloat(e.target.value) || 0)} /></div>
             </div>

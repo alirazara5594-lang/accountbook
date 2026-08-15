@@ -755,7 +755,7 @@ export const ProcurementWorkspace: React.FC<{ activeEntityId: string; entities?:
             </div>
             <div className="space-y-4 text-sm">
               <div>
-                <label className="block font-medium text-gray-700 mb-1">Select Vendor *</label>
+                <label className="block font-medium text-gray-700 mb-1">* Select Vendor</label>
                 <select className="w-full border rounded-xl p-2.5" value={quoteForm.vendorId} onChange={e => setQuoteForm({ ...quoteForm, vendorId: e.target.value })}>
                   <option value="">-- Select Vendor --</option>
                   {vendors.map(v => <option key={v.id} value={v.id}>{v.name}</option>)}
@@ -798,7 +798,7 @@ export const ProcurementWorkspace: React.FC<{ activeEntityId: string; entities?:
                   <Input value={grnForm.deliveryChallanNumber} onChange={e => setGrnForm({ ...grnForm, deliveryChallanNumber: e.target.value })} />
                 </div>
                 <div>
-                  <label className="block font-medium text-gray-700 mb-1">Target Warehouse *</label>
+                  <label className="block font-medium text-gray-700 mb-1">* Target Warehouse</label>
                   <select className="w-full border rounded-xl p-2.5" value={grnForm.targetWarehouseId} onChange={e => setGrnForm({ ...grnForm, targetWarehouseId: e.target.value })}>
                     {warehouses.map(w => <option key={w.id} value={w.id}>{w.name}</option>)}
                   </select>
@@ -852,7 +852,7 @@ export const ProcurementWorkspace: React.FC<{ activeEntityId: string; entities?:
 
             <div className="form-grid">
               <label>
-                Select Vendor *
+                * Select Vendor
                 <select required value={billForm.vendorId} onChange={e => setBillForm({ ...billForm, vendorId: e.target.value })}>
                   <option value="">-- Select Vendor --</option>
                   {vendors.map(v => <option key={v.id} value={v.id}>{v.name}</option>)}
@@ -860,7 +860,7 @@ export const ProcurementWorkspace: React.FC<{ activeEntityId: string; entities?:
               </label>
 
               <label>
-                Supplier Invoice Number *
+                * Supplier Invoice Number
                 <input required placeholder="e.g. INV-2026-991" value={billForm.vendorInvoiceNumber} onChange={e => setBillForm({ ...billForm, vendorInvoiceNumber: e.target.value })} />
               </label>
 
@@ -873,12 +873,12 @@ export const ProcurementWorkspace: React.FC<{ activeEntityId: string; entities?:
               </label>
 
               <label>
-                Bill Date *
+                * Bill Date
                 <input type="date" required value={billForm.date} onChange={e => setBillForm({ ...billForm, date: e.target.value })} />
               </label>
 
               <label>
-                Due Date *
+                * Due Date
                 <input type="date" required value={billForm.dueDate} onChange={e => setBillForm({ ...billForm, dueDate: e.target.value })} />
               </label>
 
@@ -967,7 +967,7 @@ export const ProcurementWorkspace: React.FC<{ activeEntityId: string; entities?:
             </div>
             <div className="space-y-4 text-sm">
               <div>
-                <label className="block font-medium text-gray-700 mb-1">Product *</label>
+                <label className="block font-medium text-gray-700 mb-1">* Product</label>
                 <select className="w-full border rounded-xl p-2.5" value={transferForm.productId} onChange={e => setTransferForm({ ...transferForm, productId: e.target.value })}>
                   <option value="">-- Select Item --</option>
                   {products.map(p => <option key={p.id} value={p.id}>{p.name} ({p.code})</option>)}
@@ -975,14 +975,14 @@ export const ProcurementWorkspace: React.FC<{ activeEntityId: string; entities?:
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block font-medium text-gray-700 mb-1">Source Warehouse *</label>
+                  <label className="block font-medium text-gray-700 mb-1">* Source Warehouse</label>
                   <select className="w-full border rounded-xl p-2" value={transferForm.sourceWarehouseId} onChange={e => setTransferForm({ ...transferForm, sourceWarehouseId: e.target.value })}>
                     <option value="">-- Select Source --</option>
                     {warehouses.map(w => <option key={w.id} value={w.id}>{w.name}</option>)}
                   </select>
                 </div>
                 <div>
-                  <label className="block font-medium text-gray-700 mb-1">Target Warehouse *</label>
+                  <label className="block font-medium text-gray-700 mb-1">* Target Warehouse</label>
                   <select className="w-full border rounded-xl p-2" value={transferForm.destinationWarehouseId} onChange={e => setTransferForm({ ...transferForm, destinationWarehouseId: e.target.value })}>
                     <option value="">-- Select Target --</option>
                     {warehouses.map(w => <option key={w.id} value={w.id}>{w.name}</option>)}
