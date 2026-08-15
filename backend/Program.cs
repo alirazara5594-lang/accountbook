@@ -30,9 +30,7 @@ if (!string.IsNullOrWhiteSpace(postgresConnection))
 
 builder.Services.AddSingleton<AccountingStore>(sp =>
 {
-    var dbFactory = sp.GetService<AccountingDbContext>() != null
-        ? sp.GetRequiredService<IDbContextFactory<AccountingDbContext>>()
-        : null;
+    var dbFactory = sp.GetService<IDbContextFactory<AccountingDbContext>>();
     var config = sp.GetRequiredService<IConfiguration>();
     return new AccountingStore(dbFactory, config);
 });
