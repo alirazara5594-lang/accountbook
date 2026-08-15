@@ -145,12 +145,12 @@ const SalesInvoicesTab: React.FC<{ activeEntityId: string }> = ({ activeEntityId
   const totalDue = invoices.filter((i: any) => i.status !== 2 && i.status !== 3).reduce((s: number, i: any) => s + (i.amountDue || 0), 0);
 
   return (
-    <div className="space-y-4">
-      {toast && <div className="px-4 py-2 bg-green-50 border border-green-200 text-green-800 rounded-xl text-sm">{toast}</div>}
+    <div className="space-y-3">
+      {toast && <div className="px-3 py-1.5 bg-green-50 border border-green-200 text-green-800 rounded-lg text-[11px]">{toast}</div>}
 
-      <div className="flex flex-wrap justify-between items-center">
-        <h2 className="text-xl font-bold text-gray-900">Sales Invoices</h2>
-        <div className="flex flex-wrap items-center gap-2">
+      <div className="flex flex-wrap justify-between items-center gap-2">
+        <h2 className="text-sm font-bold text-gray-900">Sales Invoices</h2>
+        <div className="flex items-center gap-1.5">
           <DataToolbar
             query={query}
             setQuery={setQuery}
@@ -164,23 +164,37 @@ const SalesInvoicesTab: React.FC<{ activeEntityId: string }> = ({ activeEntityId
             exportTotals={[{ label: 'Total Outstanding', value: totalDue }]}
             onRefresh={() => fetchData()}
           />
-          <button onClick={() => setShowForm(true)} className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-xl">+ New Invoice</button>
+          <button onClick={() => setShowForm(true)} className="h-8 px-2.5 bg-blue-600 hover:bg-blue-700 text-white text-[11px] font-semibold rounded-lg shrink-0 whitespace-nowrap">+ New Invoice</button>
         </div>
       </div>
 
       {/* Summary Cards */}
-      <div className="grid grid-cols-3 gap-3">
-        {[
-          { label: 'Total Outstanding', value: money(invoices.filter((i: any) => i.status !== 2 && i.status !== 3).reduce((s: number, i: any) => s + (i.amountDue || 0), 0)), color: 'text-blue-600' },
-          { label: 'Paid This Period', value: money(invoices.filter((i: any) => i.status === 2).reduce((s: number, i: any) => s + (i.totalAmount || 0), 0)), color: 'text-green-600' },
-          { label: 'Draft Invoices', value: invoices.filter((i: any) => i.status === 0).length, color: 'text-orange-600' },
-        ].map(c => (
-          <div key={c.label} className="bg-white border border-gray-200 rounded-xl p-3">
-            <p className="text-[10px] text-gray-500 uppercase tracking-wider">{c.label}</p>
-            <p className={`text-lg font-bold ${c.color} mt-0.5`}>{c.value}</p>
+      <section className="stats">
+        <article>
+          <span className="stat-icon blue"><span className="text-sm">💰</span></span>
+          <div>
+            <small>TOTAL OUTSTANDING</small>
+            <h2>{money(invoices.filter((i: any) => i.status !== 2 && i.status !== 3).reduce((s: number, i: any) => s + (i.amountDue || 0), 0))}</h2>
+            <p>Amount due from customers</p>
           </div>
-        ))}
-      </div>
+        </article>
+        <article>
+          <span className="stat-icon teal"><span className="text-sm">✅</span></span>
+          <div>
+            <small>PAID THIS PERIOD</small>
+            <h2>{money(invoices.filter((i: any) => i.status === 2).reduce((s: number, i: any) => s + (i.totalAmount || 0), 0))}</h2>
+            <p>Collections received</p>
+          </div>
+        </article>
+        <article>
+          <span className="stat-icon violet"><span className="text-sm">📝</span></span>
+          <div>
+            <small>DRAFT INVOICES</small>
+            <h2>{invoices.filter((i: any) => i.status === 0).length}</h2>
+            <p>Awaiting posting</p>
+          </div>
+        </article>
+      </section>
 
       {/* New Invoice Form */}
       {showForm && (
@@ -427,18 +441,22 @@ export const SalesWorkspace: React.FC<{ activeEntityId: string; entities: any[] 
   ];
 
   return (
-    <div className="p-8 max-w-7xl mx-auto space-y-6">
-      <div>
-        <h1 className="text-3xl font-bold text-gray-900 tracking-tight">Sales Workspace</h1>
-        <p className="text-gray-500 text-sm mt-1">Manage customers, invoices, and track your receivables. Posting invoices automatically updates stock levels.</p>
-      </div>
-      <div className="flex space-x-1 bg-gray-100/50 p-1 rounded-xl w-fit border border-gray-200/50">
-        {tabs.map(t => (
-          <button key={t.id} onClick={() => setActiveTab(t.id)}
-            className={`px-4 py-2 rounded-lg text-sm font-medium transition-all flex items-center gap-2 ${activeTab === t.id ? 'bg-white text-blue-600 shadow-sm border border-gray-200' : 'text-gray-500 hover:text-gray-900 hover:bg-gray-200/50'}`}>
-            <span>{t.icon}</span> {t.label}
-          </button>
-        ))}
+    <div className="p-4 max-w-7xl mx-auto space-y-4">
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-3 bg-white p-3 rounded-xl border border-gray-200 shadow-sm">
+        <div>
+          <h1 className="text-base font-bold text-gray-900 tracking-tight flex items-center gap-2">
+            <span className="text-lg">🧾</span> Sales Workspace
+          </h1>
+          <p className="text-gray-500 text-[10px] mt-0.5">Manage customers, invoices, and track your receivables. Posting invoices automatically updates stock levels.</p>
+        </div>
+        <div className="flex items-center gap-1.5 shrink-0">
+          {tabs.map(t => (
+            <button key={t.id} onClick={() => setActiveTab(t.id)}
+              className={`flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-[11px] font-semibold whitespace-nowrap transition-all ${activeTab === t.id ? 'bg-blue-50 text-blue-700 border border-blue-200' : 'text-gray-600 hover:text-gray-900 hover:bg-gray-100'}`}>
+              <span className="text-[10px]">{t.icon}</span> {t.label}
+            </button>
+          ))}
+        </div>
       </div>
       <div>
         {activeTab === 'invoices' && <SalesInvoicesTab activeEntityId={activeEntityId} />}

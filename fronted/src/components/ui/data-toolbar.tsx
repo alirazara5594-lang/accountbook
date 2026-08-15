@@ -59,24 +59,24 @@ export function DataToolbar({
   };
 
   return (
-    <div className="flex flex-wrap items-center gap-2">
+    <div className="flex items-center gap-1.5">
       {setQuery && (
-        <div className="relative w-64">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+        <div className="relative">
+          <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-400 pointer-events-none" />
           <Input
             value={query || ''}
             onChange={e => setQuery(e.target.value)}
             placeholder={searchPlaceholder}
-            className="pl-9 h-9 bg-white border border-slate-200 rounded-lg text-xs"
+            className="pl-7 h-7 w-48 bg-white border border-slate-200 rounded-lg text-[11px] placeholder:text-slate-400"
           />
           {query ? (
             <button
               type="button"
               onClick={() => setQuery('')}
-              className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
+              className="absolute right-1.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
               aria-label="Clear search"
             >
-              <X className="h-3.5 w-3.5" />
+              <X className="h-3 w-3" />
             </button>
           ) : null}
         </div>
@@ -85,38 +85,38 @@ export function DataToolbar({
       {children}
 
       {onRefresh && (
-        <Button size="sm" variant="outline" onClick={onRefresh} className="h-9 px-3 gap-1.5 text-xs font-semibold">
-          <RefreshCw className="w-4 h-4" /> Refresh
+        <Button size="sm" variant="outline" onClick={onRefresh} className="h-7 px-2 gap-1 text-[11px] font-semibold">
+          <RefreshCw className="w-3.5 h-3.5" /> Refresh
         </Button>
       )}
 
       {canExport && (
         <DropdownMenu>
           <DropdownMenuTrigger
-            className="inline-flex shrink-0 items-center justify-center rounded-lg border border-slate-200 bg-white h-9 px-3 gap-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-50 outline-none"
+            className="inline-flex shrink-0 items-center justify-center rounded-lg border border-slate-200 bg-white h-7 px-2 gap-1 text-[11px] font-semibold text-slate-700 hover:bg-slate-50 outline-none"
           >
-            <Download className="w-4 h-4" /> Export
+            <Download className="w-3.5 h-3.5" /> Export
           </DropdownMenuTrigger>
-          <DropdownMenuContent className="w-44">
-            <DropdownMenuLabel>Download as</DropdownMenuLabel>
+          <DropdownMenuContent className="w-40">
+            <DropdownMenuLabel className="text-[10px]">Download as</DropdownMenuLabel>
             <DropdownMenuSeparator />
             <DropdownMenuItem
-              className="gap-2 cursor-pointer"
+              className="gap-2 cursor-pointer text-[11px]"
               onClick={() => downloadCSV(exportFileName || 'export', exportHeaders!, exportRows!)}
             >
-              <FileText className="w-4 h-4" /> CSV
+              <FileText className="w-3.5 h-3.5" /> CSV
             </DropdownMenuItem>
             <DropdownMenuItem
-              className="gap-2 cursor-pointer"
+              className="gap-2 cursor-pointer text-[11px]"
               onClick={() => downloadExcel(exportFileName || 'export', exportSheetName || 'Sheet1', exportHeaders!, exportRows!)}
             >
-              <FileSpreadsheet className="w-4 h-4" /> Excel (.xls)
+              <FileSpreadsheet className="w-3.5 h-3.5" /> Excel (.xls)
             </DropdownMenuItem>
             <DropdownMenuItem
-              className="gap-2 cursor-pointer"
+              className="gap-2 cursor-pointer text-[11px]"
               onClick={() => downloadPDF(exportTitle || exportFileName || 'Report', exportSubtitle || '', exportHeaders!, exportRows!, exportTotals)}
             >
-              <Printer className="w-4 h-4" /> PDF
+              <Printer className="w-3.5 h-3.5" /> PDF
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
@@ -135,7 +135,7 @@ export function DataToolbar({
             size="sm"
             variant="outline"
             onClick={() => fileRef.current?.click()}
-            className="h-9 px-3 gap-1.5 text-xs font-semibold"
+            className="h-7 px-2 gap-1 text-[11px] font-semibold"
           >
             <UploadCloud className="w-4 h-4" /> {uploadLabel}
           </Button>
