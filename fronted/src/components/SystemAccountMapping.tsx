@@ -57,6 +57,11 @@ export const SystemAccountMapping: React.FC<SystemAccountMappingProps> = ({ acco
     directLaborAccountId: '',
     manufacturingOverheadAccountId: '',
     grniAccrualAccountId: '',
+
+    // Lease Accounting mappings
+    rouAssetAccountId: '',
+    leaseLiabilityAccountId: '',
+    interestExpenseAccountId: '',
   });
 
   // Load mappings from store, fallback to seed accounts by code
@@ -98,6 +103,9 @@ export const SystemAccountMapping: React.FC<SystemAccountMappingProps> = ({ acco
       const laborMap = activeMappings.find(m => m.mappingKey === 'Direct Labor');
       const overheadMap = activeMappings.find(m => m.mappingKey === 'Manufacturing Overhead');
       const grniMap = activeMappings.find(m => m.mappingKey === 'GRNI Accrual');
+      const rouMap = activeMappings.find(m => m.mappingKey === 'Right of Use Asset');
+      const leaseLiabilityMap = activeMappings.find(m => m.mappingKey === 'Lease Liability');
+      const interestExpMap = activeMappings.find(m => m.mappingKey === 'Interest Expense');
 
       const arSeed = accounts.find(a => a.code === '12000');
       const apSeed = accounts.find(a => a.code === '21100');
@@ -132,6 +140,11 @@ export const SystemAccountMapping: React.FC<SystemAccountMappingProps> = ({ acco
       const overheadSeed = accounts.find(a => a.code === '61100');
       const grniSeed = accounts.find(a => a.code === '21200');
 
+      // Lease Accounting seed accounts
+      const rouSeed = accounts.find(a => a.code === '15110');
+      const leaseLiabilitySeed = accounts.find(a => a.code === '21600');
+      const interestExpSeed = accounts.find(a => a.code === '61400');
+
       setMappings({
         arAccountId: arMap?.accountId || arSeed?.id || '',
         apAccountId: apMap?.accountId || apSeed?.id || '',
@@ -165,8 +178,11 @@ export const SystemAccountMapping: React.FC<SystemAccountMappingProps> = ({ acco
         finishedGoodsAccountId: fgMap?.accountId || fgSeed?.id || '',
         directLaborAccountId: laborMap?.accountId || laborSeed?.id || '',
         manufacturingOverheadAccountId: overheadMap?.accountId || overheadSeed?.id || '',
-        grniAccrualAccountId: grniMap?.accountId || grniSeed?.id || '',
-      });
+         grniAccrualAccountId: grniMap?.accountId || grniSeed?.id || '',
+         rouAssetAccountId: rouMap?.accountId || rouSeed?.id || '',
+         leaseLiabilityAccountId: leaseLiabilityMap?.accountId || leaseLiabilitySeed?.id || '',
+         interestExpenseAccountId: interestExpMap?.accountId || interestExpSeed?.id || '',
+       });
     };
 
     load();
@@ -208,6 +224,11 @@ export const SystemAccountMapping: React.FC<SystemAccountMappingProps> = ({ acco
       if (mappings.directLaborAccountId) await saveMapping('Direct Labor', mappings.directLaborAccountId);
       if (mappings.manufacturingOverheadAccountId) await saveMapping('Manufacturing Overhead', mappings.manufacturingOverheadAccountId);
       if (mappings.grniAccrualAccountId) await saveMapping('GRNI Accrual', mappings.grniAccrualAccountId);
+
+      // Lease Accounting mappings
+      if (mappings.rouAssetAccountId) await saveMapping('Right of Use Asset', mappings.rouAssetAccountId);
+      if (mappings.leaseLiabilityAccountId) await saveMapping('Lease Liability', mappings.leaseLiabilityAccountId);
+      if (mappings.interestExpenseAccountId) await saveMapping('Interest Expense', mappings.interestExpenseAccountId);
 
       notify('✓ Centralized account mappings saved in the database!');
       close();
@@ -291,11 +312,13 @@ export const SystemAccountMapping: React.FC<SystemAccountMappingProps> = ({ acco
   };
 
   // Filter accounts for dropdown lists
-  const arAccounts = accounts.filter(a => a.type === 'Asset' || a.type === 'ContraAsset');
-  const apAccounts = accounts.filter(a => a.type === 'Liability' || a.type === 'ContraLiability');
-  const taxAccounts = accounts.filter(a => a.type === 'Liability');
-  const revenueAccounts = accounts.filter(a => a.type === 'Revenue' || a.type === 'ContraRevenue');
-  const expenseAccounts = accounts.filter(a => a.type === 'Expense' || a.type === 'ContraExpense');
+      const arAccounts = accounts.filter(a => a.type === 'Asset' || a.type === 'ContraAsset');
+      const apAccounts = accounts.filter(a => a.type === 'Liability' || a.type === 'ContraLiability');
+      const taxAccounts = accounts.filter(a => a.type === 'Liability');
+      const revenueAccounts = accounts.filter(a => a.type === 'Revenue' || a.type === 'ContraRevenue');
+      const expenseAccounts = accounts.filter(a => a.type === 'Expense' || a.type === 'ContraExpense');
+      const assetAccounts = accounts.filter(a => a.type === 'Asset' || a.type === 'ContraAsset');
+      const liabilityAccounts = accounts.filter(a => a.type === 'Liability' || a.type === 'ContraLiability');
 
   return (
     <div className="space-y-6 max-w-4xl mx-auto font-sans">
@@ -731,6 +754,58 @@ export const SystemAccountMapping: React.FC<SystemAccountMappingProps> = ({ acco
               >
                 <option value="">-- Choose GRNI Account --</option>
                 {apAccounts.map(a => (
+                  <option key={a.id} value={a.id}>{a.code} — {a.name}</option>
+                ))}
+              </select>
+            </div>
+          </div>
+
+          {/* Lease Accounting Configuration */}
+          <div className="bg-white border border-slate-200 rounded-2xl p-5 shadow-xs space-y-4">
+            <h3 className="text-sm font-bold text-slate-800 border-b border-slate-100 pb-2 flex items-center gap-1.5">
+              <span>🏢</span> Lease Accounting Defaults
+            </h3>
+            <div>
+              <label className="block text-xs font-semibold text-slate-700 mb-1.5">
+                Right-of-Use Asset Account
+              </label>
+              <select
+                value={mappings.rouAssetAccountId}
+                onChange={e => setMappings(prev => ({ ...prev, rouAssetAccountId: e.target.value }))}
+                className="w-full h-10 border border-slate-200 rounded-lg px-3 py-2 text-sm bg-white focus:border-slate-400 outline-none transition-colors"
+              >
+                <option value="">-- Choose Asset Account --</option>
+                {assetAccounts.map(a => (
+                  <option key={a.id} value={a.id}>{a.code} — {a.name}</option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <label className="block text-xs font-semibold text-slate-700 mb-1.5">
+                Lease Liability Account
+              </label>
+              <select
+                value={mappings.leaseLiabilityAccountId}
+                onChange={e => setMappings(prev => ({ ...prev, leaseLiabilityAccountId: e.target.value }))}
+                className="w-full h-10 border border-slate-200 rounded-lg px-3 py-2 text-sm bg-white focus:border-slate-400 outline-none transition-colors"
+              >
+                <option value="">-- Choose Liability Account --</option>
+                {liabilityAccounts.map(a => (
+                  <option key={a.id} value={a.id}>{a.code} — {a.name}</option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <label className="block text-xs font-semibold text-slate-700 mb-1.5">
+                Interest Expense Account
+              </label>
+              <select
+                value={mappings.interestExpenseAccountId}
+                onChange={e => setMappings(prev => ({ ...prev, interestExpenseAccountId: e.target.value }))}
+                className="w-full h-10 border border-slate-200 rounded-lg px-3 py-2 text-sm bg-white focus:border-slate-400 outline-none transition-colors"
+              >
+                <option value="">-- Choose Expense Account --</option>
+                {expenseAccounts.map(a => (
                   <option key={a.id} value={a.id}>{a.code} — {a.name}</option>
                 ))}
               </select>

@@ -21,6 +21,7 @@ import { SalesOrdersWorkspace } from './SalesOrdersWorkspace'
 import { ManufacturingWorkspace } from './ManufacturingWorkspace'
 import { ChartOfAccounts } from './ChartOfAccounts'
 import { FinancialReports } from './FinancialReports';
+import { LeaseAccounting } from './Accounting.Leases';
 import CreditNotesWorkspace from './CreditNotesWorkspace';
 import CustomerPaymentsWorkspace from './CustomerPaymentsWorkspace';
 import CustomerStatementsWorkspace from './CustomerStatementsWorkspace';
@@ -94,7 +95,7 @@ const NAVIGATION = [
   { name: 'Sales & Customers', icon: '☖', items: ['Customers', 'Products & Services', 'Sales Workspace', 'Estimates & Quotes', 'Sales Orders', 'Credit Notes', 'Customer Payments', 'Customer Statements', 'Sales Reports'] },
   { name: 'Procurement', icon: '⇡', items: ['Vendors', 'Procurement Workspace', 'Bills', 'Debit Notes', 'Expense Claims', 'Vendor Payments', 'Vendor Statements', 'Payables Aging', 'Purchase Reports'] },
   { name: 'Banking & Payments', icon: '🏛', items: ['Bank Accounts', 'Cash Accounts', 'Bank Connection', 'Bank Import', 'Transactions', 'Bank Reconciliation', 'Voucher Management', 'Fund Transfers', 'Cash Flow Statements'] },
-  { name: 'Accounting', icon: '⌘', items: ['Chart of Accounts', 'Journal Entries', 'Fixed Assets', 'General Ledger', 'Accounts Receivable', 'Accounts Payable', 'Tax Accounting', 'Budgets', 'Financial Reports', 'Period Closing', 'Audit Trail', 'Intercompany Allocations'] },
+              { name: 'Accounting', icon: '⌘', items: ['Chart of Accounts', 'Journal Entries', 'Fixed Assets', 'General Ledger', 'Accounts Receivable', 'Accounts Payable', 'Tax Accounting', 'Budgets', 'Financial Reports', 'Period Closing', 'Audit Trail', 'Intercompany Allocations', 'Lease Accounting'] },
   { name: 'Assets & Inventory', icon: '📦', items: ['Assets & Inventory Workspace', 'Depreciation Schedule', 'Valuation Reports'] },
   { name: 'Manufacturing & Production', icon: '⚙️', items: ['Manufacturing Workspace', 'Bill of Materials', 'Work Orders', 'Job Costing'] },
   { name: 'Payroll & HR', icon: '👥', items: ['Employees', 'Attendance', 'Leave', 'Payroll', 'Salary', 'Loans & Advances', 'HR Reports'] },
@@ -305,6 +306,7 @@ export default function App() {
     'Accounting.Financial Reports': 'financial-reports',
     'Accounting.Period Closing': 'period-closing',
     'Accounting.Audit Trail': 'audit-trail',
+    'Accounting.Lease Accounting': 'lease-accounting',
     'Accounting.Intercompany Allocations': 'intercompany',
     'Assets & Inventory.Summary': 'module-summary',
     'Assets & Inventory.Assets & Inventory Workspace': 'assets-inventory',
@@ -525,6 +527,7 @@ export default function App() {
   {activeView === 'budgets' && <BudgetsView activeEntityId={activeEntityId} entities={entities as any} />}
   {activeView === 'period-closing' && <PeriodClosingView activeEntityId={activeEntityId} entities={entities as any} />}
   {activeView === 'audit-trail' && <AuditTrailView activeEntityId={activeEntityId} entities={entities as any} />}
+  {activeView === 'lease-accounting' && <LeaseAccounting activeEntityId={activeEntityId} />}
   {activeView === 'customer-payments' && <CustomerPaymentsWorkspace />}
   {activeView === 'customer-statements' && <CustomerStatementsWorkspace activeEntityId={activeEntityId} />}
   {activeView === 'sales-reports' && <SalesReportsWorkspace activeEntityId={activeEntityId} />}
