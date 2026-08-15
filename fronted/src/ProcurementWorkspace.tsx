@@ -296,28 +296,28 @@ export const ProcurementWorkspace: React.FC<{ activeEntityId: string; entities?:
   };
 
   const tabsList: { id: Tab; label: string; icon: string }[] = [
-    { id: 'pr', label: 'Purchase Requests', icon: '📋' },
-    { id: 'rfq', label: 'RFQs & Quotes', icon: '📩' },
-    { id: 'compare', label: 'Quotation Comparison', icon: '⚖️' },
-    { id: 'po', label: 'Purchase Orders', icon: '📜' },
-    { id: 'grn', label: 'GRN Receiving', icon: '📦' },
-    { id: 'bills', label: 'Vendor Bills & Invoices', icon: '💳' },
-    { id: 'matching', label: '3-Way Match', icon: '🔍' },
-    { id: 'transfers', label: 'Stock Transfers', icon: '🔄' },
+    { id: 'pr', label: 'PR', icon: '📋' },
+    { id: 'rfq', label: 'RFQs', icon: '📩' },
+    { id: 'compare', label: 'Compare', icon: '⚖️' },
+    { id: 'po', label: 'POs', icon: '📜' },
+    { id: 'grn', label: 'GRN', icon: '📦' },
+    { id: 'bills', label: 'Bills', icon: '💳' },
+    { id: 'matching', label: '3-Way', icon: '🔍' },
+    { id: 'transfers', label: 'Transfers', icon: '🔄' },
   ];
 
   return (
-    <div className="p-6 max-w-7xl mx-auto space-y-5">
+    <div className="p-4 max-w-7xl mx-auto space-y-4">
       {toast && <div className="fixed top-6 right-6 z-50 px-5 py-3 bg-emerald-600 text-white rounded-2xl shadow-lg text-sm font-medium">{toast}</div>}
 
-      <div className="flex justify-between items-center bg-white p-5 rounded-2xl border border-gray-200 shadow-sm">
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-3 bg-white p-3 rounded-xl border border-gray-200 shadow-sm">
         <div>
-          <h1 className="text-xl font-bold text-gray-900 tracking-tight flex items-center gap-2">
-            <span>🛒</span> Enterprise Procurement Workspace
+          <h1 className="text-base font-bold text-gray-900 tracking-tight flex items-center gap-2">
+            <span className="text-lg">🛒</span> Enterprise Procurement Workspace
           </h1>
-          <p className="text-gray-500 text-xs mt-1">Full 8-Step Procurement Lifecycle, GRN Destination Routing, Quotation Award & 3-Way Match Validation.</p>
+          <p className="text-gray-500 text-[10px] mt-0.5">Full 8-Step Procurement Lifecycle, GRN Destination Routing, Quotation Award & 3-Way Match Validation.</p>
         </div>
-        <div className="flex flex-wrap gap-2 items-center">
+        <div className="flex items-center gap-1.5 shrink-0">
           <DataToolbar
             exportFileName="procurement-lifecycle"
             exportSheetName="Procurement Lifecycle"
@@ -345,18 +345,18 @@ export const ProcurementWorkspace: React.FC<{ activeEntityId: string; entities?:
             ]}
             onRefresh={() => fetchAllProcurement(activeEntityId)}
           />
-          <Button variant="outline" size="sm" onClick={() => setShowPrModal(true)}>+ New Purchase Request</Button>
-          <Button size="sm" className="bg-blue-600 hover:bg-blue-700 text-white" onClick={() => setShowTransferModal(true)}>+ Warehouse Transfer</Button>
+          <Button variant="outline" size="sm" onClick={() => setShowPrModal(true)} className="h-8 px-2.5 text-[11px] font-semibold shrink-0 whitespace-nowrap">+ New Purchase Request</Button>
+          <Button size="sm" className="h-8 px-2.5 text-[11px] font-semibold bg-blue-600 hover:bg-blue-700 text-white shrink-0 whitespace-nowrap" onClick={() => setShowTransferModal(true)}>+ Warehouse Transfer</Button>
         </div>
       </div>
 
       {/* Tabs Bar */}
-      <div className="flex border border-gray-200 gap-1 bg-gray-50/80 p-1.5 rounded-2xl overflow-x-auto">
+      <div className="flex border border-gray-200 gap-0.5 bg-gray-50/80 p-1 rounded-xl overflow-x-auto">
         {tabsList.map(t => (
           <button
             key={t.id}
             onClick={() => setActiveTab(t.id)}
-            className={`flex items-center gap-1.5 px-3.5 py-2 rounded-xl font-semibold text-xs whitespace-nowrap transition-all ${activeTab === t.id ? 'bg-white text-blue-700 shadow-xs border border-gray-200/60 font-bold' : 'text-gray-600 hover:text-gray-900 hover:bg-gray-100/60'}`}
+            className={`flex items-center gap-1 px-2.5 py-1.5 rounded-lg font-semibold text-[11px] whitespace-nowrap transition-all ${activeTab === t.id ? 'bg-white text-blue-700 shadow-xs border border-gray-200/60 font-bold' : 'text-gray-600 hover:text-gray-900 hover:bg-gray-100/60'}`}
           >
             <span>{t.icon}</span> {t.label}
           </button>
