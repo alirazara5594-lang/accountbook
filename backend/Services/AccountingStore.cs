@@ -281,6 +281,7 @@ List<ExpenseClaim>? ExpenseClaims = null,
         
         var nonCurrentAssets = Seed("15000", "Non-Current Assets", AccountType.Asset, assets.Id);
         Seed("15100", "Fixed Assets", AccountType.Asset, nonCurrentAssets.Id, true, 0, false);
+        Seed("15110", "Right of Use Asset", AccountType.Asset, nonCurrentAssets.Id, true, 0, false);
         Seed("15200", "Accumulated Depreciation", AccountType.ContraAsset, nonCurrentAssets.Id, true, 0, false);
 
         // 2. Liabilities (Structural Headers: System = True; Leaf Posting: System = False)
@@ -293,6 +294,7 @@ List<ExpenseClaim>? ExpenseClaims = null,
         Seed("21500", "Pension Fund Payable", AccountType.Liability, currentLiabilities.Id, true, 0, false);
         Seed("22000", "Tax Payable", AccountType.Liability, currentLiabilities.Id, true, 0, false);
         Seed("22100", "Withholding Tax Payable", AccountType.Liability, currentLiabilities.Id, true, 0, false);
+        Seed("21600", "Lease Liability", AccountType.Liability, currentLiabilities.Id, true, 0, false);
         Seed("23000", "Deferred Revenue", AccountType.Liability, currentLiabilities.Id, true, 0, false);
 
         // 3. Equity (Structural Headers: System = True; Leaf Posting: System = False)
@@ -3486,7 +3488,8 @@ _bankImports.Clear(); _bankImports.AddRange(state.BankImports ?? []);
         _approvalWorkflows.Clear(); _approvalWorkflows.AddRange(state.ApprovalWorkflows ?? []);
         _numberSeries.Clear(); _numberSeries.AddRange(state.NumberSeries ?? []);
         _currencies.Clear(); _currencies.AddRange(state.Currencies ?? []);
-        _auditLog.Clear(); _auditLog.AddRange(state.AuditLog ?? []);
+            _auditLog.Clear(); _auditLog.AddRange(state.AuditLog ?? []);
+            _leases.Clear(); _leases.AddRange(state.Leases ?? []);
         _mappings.Clear(); _mappings.AddRange(state.Mappings ?? []);
         if (state.History != null)
         {
@@ -3631,12 +3634,16 @@ _bankImports.Clear(); _bankImports.AddRange(state.BankImports ?? []);
                 "Purchases" => "61100",
                 "Payroll Expense" => "61200",
                 "Depreciation Expense" => "61300",
+                "Finance Costs" => "61400",
                 "Raw Materials Inventory" => "13000",
                 "Work in Progress" => "13000",
                 "Finished Goods Inventory" => "13000",
                 "Direct Labor" => "61200",
                 "Manufacturing Overhead" => "61100",
                 "Gain/Loss on Disposal" => "51000",
+                "Right of Use Asset" => "15110",
+                "Lease Liability" => "21600",
+                "Interest Expense" => "61400",
                 _ => null
             };
 
@@ -3708,6 +3715,7 @@ _bankImports.Clear(); _bankImports.AddRange(state.BankImports ?? []);
             _employeeCompensations.Clear();
             _auditLog.Clear();
             _mappings.Clear();
+            _leases.Clear();
 
             // Re-seed Companies
             var parentEntity = new Company { Name = "Acme Holdings", Code = "ACME", Type = EntityType.Parent };
@@ -6524,7 +6532,7 @@ _bankImports.Clear(); _bankImports.AddRange(state.BankImports ?? []);
         error = null;
         try
         {
-            var term = request.TermMonths ?? (int)((request.EndDate - request.StartDate).TotalDays / 30.44);
+            var term = request.TermMonths ?? (int)((request.EndDate.Year - request.StartDate.Year) * 12 + request.EndDate.Month - request.StartDate.Month);
             var pv = CalculateLeasePresentValue(request.MonthlyRent, request.AnnualEscalationRate, term, request.Type);
             
             lease = new LeaseAgreement
@@ -6593,7 +6601,7 @@ _bankImports.Clear(); _bankImports.AddRange(state.BankImports ?? []);
             Date = asOfDate,
             Reference = $"LEASE-{lease.LeaseNumber}-{asOfDate:yyyyMM}",
             Description = $"Monthly lease accrual for {lease.Counterparty} ({lease.PropertyDescription})",
-            TransactionType = TransactionType.Leasing,
+            TransactionType = TransactionType.Lease,
             CompanyId = lease.CompanyId,
             Lines = new List<JournalLine>(),
             Status = JournalStatus.Posted

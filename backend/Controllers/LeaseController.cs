@@ -31,7 +31,7 @@ public class LeaseController : ControllerBase
     {
         if (!_store.GetLeaseSchedule(id, months, out var schedule, out var error))
             return BadRequest(new { error });
-        return Ok(schedule);
+        return Ok(schedule!);
     }
 
     [HttpPost("{id}/post-accrual")]
@@ -39,24 +39,6 @@ public class LeaseController : ControllerBase
     {
         if (!_store.PostLeaseAccrual(id, asOfDate ?? DateOnly.FromDateTime(DateTime.Today), out var entry, out var error))
             return BadRequest(new { error });
-        return Ok(entry);
+        return Ok(entry!);
     }
 }
-
-public record LeaseRequest(
-    [Required] string LeaseNumber,
-    [Required] string Counterparty,
-    LeaseType Type,
-    [Required] string PropertyDescription,
-    decimal InitialValue,
-    decimal MonthlyRent,
-    decimal AnnualEscalationRate,
-    DateOnly StartDate,
-    DateOnly EndDate,
-    int? TermMonths,
-    Guid? AssetAccountId,
-    Guid? LiabilityAccountId,
-    Guid? InterestAccountId,
-    Guid? CashAccountId,
-    Guid? CompanyId
-);

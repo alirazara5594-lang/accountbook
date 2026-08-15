@@ -62,7 +62,7 @@ public class AccountMapping
 public record AccountMappingRequest(string MappingKey, Guid AccountId);
 public record StatusRequest(AccountStatus Status, string? Reason);
 public enum JournalStatus { Draft, Submitted, Approved, Posted, Reversed, Rejected }
-public enum TransactionType { Sales, Purchase, Payment, Receipt, Adjustment, Transfer, Payroll, Depreciation, Accrual, Prepayment, Tax, Loan, Inventory, WriteOff, InterCompany, Other }
+public enum TransactionType { Sales, Purchase, Payment, Receipt, Adjustment, Transfer, Payroll, Depreciation, Accrual, Prepayment, Tax, Loan, Inventory, WriteOff, InterCompany, Lease, Other }
 public enum RecurrenceFrequency { Daily, Weekly, Monthly, Quarterly, Yearly }
 public record JournalLineRequest(Guid AccountId, decimal Debit, decimal Credit, string? Memo, string? Comment = null, string? CurrencyCode = null, decimal? ExchangeRate = null, Guid? CompanyId = null);
 public record JournalEntryRequest(DateOnly Date, string Reference, string Description, List<JournalLineRequest> Lines, TransactionType TransactionType = TransactionType.Other, string CurrencyCode = "USD", decimal ExchangeRate = 1m, Guid? CompanyId = null, Guid? CounterpartyCompanyId = null, DateOnly? ReversalDate = null, bool AutoReverse = false, string? TemplateId = null, long? Version = null);
