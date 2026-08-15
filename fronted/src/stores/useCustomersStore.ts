@@ -22,8 +22,9 @@ export const useCustomersStore = create<CustomersState>((set, get) => ({
     set({ loading: true, error: null });
     try {
       const customers = await customersApi.getCustomers(companyId);
-      set({ customers, loading: false });
-      return customers;
+      const unique = customers.filter((c, i, arr) => arr.findIndex(x => x.id === c.id) === i);
+      set({ customers: unique, loading: false });
+      return unique;
     } catch (err: any) {
       set({ error: err.message || 'Failed to load customers', loading: false });
       return [];

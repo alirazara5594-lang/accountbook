@@ -22,8 +22,9 @@ export const useVendorsStore = create<VendorsState>((set, get) => ({
     set({ loading: true, error: null });
     try {
       const vendors = await vendorsApi.getVendors(companyId);
-      set({ vendors, loading: false });
-      return vendors;
+      const unique = vendors.filter((v, i, arr) => arr.findIndex(x => x.id === v.id) === i);
+      set({ vendors: unique, loading: false });
+      return unique;
     } catch (err: any) {
       set({ error: err.message || 'Failed to load vendors', loading: false });
       return [];
