@@ -1,4 +1,5 @@
 import { apiClient } from '../client';
+import type { JournalEntry } from './journals.api';
 
 export interface IntercompanyAllocation {
   id: string;
@@ -11,14 +12,6 @@ export interface IntercompanyAllocation {
   status: string;
   endDate?: string | null;
   recipients: { companyId: string; sharePercent: number }[];
-}
-
-export interface JournalEntry {
-  id: string;
-  date: string;
-  description: string;
-  lines: { accountId: string; amount: number; type: string; description?: string }[];
-  status: string;
 }
 
 export const intercompanyApi = {
