@@ -272,6 +272,11 @@ export const SystemAccountMapping: React.FC<SystemAccountMappingProps> = ({ acco
       const overheadSeed = accounts.find(a => a.code === '61100');
       const grniSeed = accounts.find(a => a.code === '21200');
 
+      // Lease Accounting seed accounts
+      const rouSeed = accounts.find(a => a.code === '15110');
+      const leaseLiabilitySeed = accounts.find(a => a.code === '21600');
+      const interestExpSeed = accounts.find(a => a.code === '61400');
+
       setMappings({
         arAccountId: arSeed?.id || '',
         apAccountId: apSeed?.id || '',
@@ -306,6 +311,11 @@ export const SystemAccountMapping: React.FC<SystemAccountMappingProps> = ({ acco
         directLaborAccountId: laborSeed?.id || '',
         manufacturingOverheadAccountId: overheadSeed?.id || '',
         grniAccrualAccountId: grniSeed?.id || '',
+
+        // Lease Accounting mappings
+        rouAssetAccountId: rouSeed?.id || '',
+        leaseLiabilityAccountId: leaseLiabilitySeed?.id || '',
+        interestExpenseAccountId: interestExpSeed?.id || '',
       });
       notify('✓ Mappings reset to defaults.');
     }
