@@ -1,9 +1,8 @@
 import { useEffect, useMemo, useState } from 'react'
 import type { FormEvent } from 'react'
-import { Building2, Mail, Phone, Search, ShieldAlert, UserCheck, UserX, Users, CreditCard, MapPin, Pencil, Trash2 } from 'lucide-react'
+import { Search, ShieldAlert, UserCheck, Users, CreditCard, Pencil, Trash2 } from 'lucide-react'
 
 import { Button } from '@/components/ui/button'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { DataToolbar } from '@/components/ui/data-toolbar'
 import type { Entity } from './EntitySettings'
 import { useCustomersStore } from './stores'
@@ -325,114 +324,79 @@ export default function CustomerManagement({
       </div>
 
 
-      {/* Customer Cards List */}
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+      {/* Customer Table */}
+      <div className="bg-white border border-slate-200 rounded-xl overflow-hidden shadow-sm">
+        <div className="px-4 py-2.5 border-b border-slate-200 bg-slate-50">
+          <p className="text-xs font-semibold text-slate-700">{filteredCustomers.length} customer{filteredCustomers.length !== 1 ? 's' : ''}</p>
+        </div>
+
         {loading ? (
-          <div className="col-span-full py-12 text-center text-muted-foreground">Loading customers...</div>
+          <div className="py-12 text-center text-xs text-slate-500">Loading customers...</div>
         ) : filteredCustomers.length === 0 ? (
-          <div className="col-span-full py-12 text-center text-muted-foreground border rounded-xl bg-card">
-            No customers found matching your criteria.
-          </div>
+          <div className="py-12 text-center text-xs text-slate-500">No customers found matching your criteria.</div>
         ) : (
-          filteredCustomers.map(customer => {
-            const comp = customer.companyId ? companyMap.get(customer.companyId) : null
-            return (
-              <Card key={customer.id} className="relative flex flex-col justify-between hover:shadow-md transition-shadow">
-                <CardHeader className="pb-3">
-                  <div className="flex items-start justify-between gap-2">
-                    <div>
-                      <span className="text-xs font-semibold px-2 py-0.5 rounded bg-muted text-muted-foreground">
-                        {customer.customerNumber}
-                      </span>
-                      <CardTitle className="mt-1 text-base font-bold text-foreground">{customer.name}</CardTitle>
-                    </div>
-                    <span
-                      className={`text-xs px-2.5 py-1 rounded-full font-medium ${
-                        customer.status === 'Active'
-                          ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400'
-                          : customer.status === 'Blocked'
-                          ? 'bg-rose-500/10 text-rose-600 dark:text-rose-400'
-                          : 'bg-amber-500/10 text-amber-600 dark:text-amber-400'
-                      }`}
-                    >
-                      {customer.status}
-                    </span>
-                  </div>
-                  <CardDescription className="flex items-center gap-1 mt-1 text-xs">
-                    <Building2 className="w-3.5 h-3.5 text-muted-foreground" />
-                    {comp ? `${comp.name} (${comp.code || 'Entity'})` : 'Global / Group Customer'}
-                  </CardDescription>
-                </CardHeader>
-
-                <CardContent className="space-y-2 text-xs text-muted-foreground pb-4">
-                  {customer.email && (
-                    <div className="flex items-center gap-2">
-                      <Mail className="w-3.5 h-3.5" />
-                      <span className="truncate">{customer.email}</span>
-                    </div>
-                  )}
-                  {customer.phone && (
-                    <div className="flex items-center gap-2">
-                      <Phone className="w-3.5 h-3.5" />
-                      <span>{customer.phone}</span>
-                    </div>
-                  )}
-                  {(customer.city || customer.country) && (
-                    <div className="flex items-center gap-2">
-                      <MapPin className="w-3.5 h-3.5" />
-                      <span>{[customer.city, customer.state, customer.country].filter(Boolean).join(', ')}</span>
-                    </div>
-                  )}
-
-                  <div className="pt-3 border-t grid grid-cols-2 gap-2 text-foreground">
-                    <div>
-                      <small className="text-muted-foreground block text-[10px] uppercase font-semibold">Credit Limit</small>
-                      <span className="font-semibold">{money(customer.creditLimit, customer.currencyCode)}</span>
-                    </div>
-                    <div>
-                      <small className="text-muted-foreground block text-[10px] uppercase font-semibold">Payment Terms</small>
-                      <span className="font-semibold">Net {customer.paymentTermsDays} Days</span>
-                    </div>
-                  </div>
-
-                  {/* Actions */}
-                  <div className="pt-3 flex items-center justify-between gap-1">
-                    <div className="flex gap-1">
-                      <Button variant="outline" size="sm" onClick={() => openEditModal(customer)}>
-                        <Pencil className="w-3.5 h-3.5" /> Edit
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => handleDelete(customer)}
-                        className="text-rose-600 hover:text-rose-700 hover:bg-rose-50 dark:hover:bg-rose-950/20"
-                      >
-                        <Trash2 className="w-3.5 h-3.5" />
-                      </Button>
-                    </div>
-
-                    <div className="flex gap-1">
-                      {customer.status !== 'Active' && (
-                        <Button variant="ghost" size="sm" onClick={() => handleStatusChange(customer, 'Active')} title="Activate">
-                          <UserCheck className="w-3.5 h-3.5 text-emerald-600" />
-                        </Button>
-                      )}
-                      {customer.status !== 'Inactive' && (
-                        <Button variant="ghost" size="sm" onClick={() => handleStatusChange(customer, 'Inactive')} title="Deactivate">
-                          <UserX className="w-3.5 h-3.5 text-amber-600" />
-                        </Button>
-                      )}
-                      {customer.status !== 'Blocked' && (
-                        <Button variant="ghost" size="sm" onClick={() => handleStatusChange(customer, 'Blocked')} title="Block Account">
-                          <ShieldAlert className="w-3.5 h-3.5 text-rose-600" />
-                        </Button>
-                      )}
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-            )
-          })
+          <div className="overflow-x-auto">
+            <table className="w-full text-xs">
+              <thead>
+                <tr className="border-b border-slate-200 bg-slate-50/80">
+                  <th className="text-left px-3 py-2 font-semibold text-slate-600">Number</th>
+                  <th className="text-left px-3 py-2 font-semibold text-slate-600">Name</th>
+                  <th className="text-left px-3 py-2 font-semibold text-slate-600">Company</th>
+                  <th className="text-left px-3 py-2 font-semibold text-slate-600">Email</th>
+                  <th className="text-left px-3 py-2 font-semibold text-slate-600">Phone</th>
+                  <th className="text-left px-3 py-2 font-semibold text-slate-600">Location</th>
+                  <th className="text-right px-3 py-2 font-semibold text-slate-600">Credit Limit</th>
+                  <th className="text-center px-3 py-2 font-semibold text-slate-600">Terms</th>
+                  <th className="text-center px-3 py-2 font-semibold text-slate-600">Status</th>
+                  <th className="text-right px-3 py-2 font-semibold text-slate-600">Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {filteredCustomers.map(customer => {
+                  const comp = customer.companyId ? companyMap.get(customer.companyId) : null
+                  return (
+                    <tr key={customer.id} className="border-b border-slate-100 hover:bg-slate-50/50 transition-colors">
+                      <td className="px-3 py-2 font-mono font-semibold text-slate-700">{customer.customerNumber}</td>
+                      <td className="px-3 py-2 font-semibold text-slate-900">{customer.name}</td>
+                      <td className="px-3 py-2 text-slate-600">{comp ? comp.name : '—'}</td>
+                      <td className="px-3 py-2 text-slate-600">{customer.email || '—'}</td>
+                      <td className="px-3 py-2 text-slate-600">{customer.phone || '—'}</td>
+                      <td className="px-3 py-2 text-slate-600">{[customer.city, customer.country].filter(Boolean).join(', ') || '—'}</td>
+                      <td className="px-3 py-2 text-right font-mono font-semibold text-slate-900">{money(customer.creditLimit, customer.currencyCode)}</td>
+                      <td className="px-3 py-2 text-center text-slate-600">Net {customer.paymentTermsDays}d</td>
+                      <td className="px-3 py-2 text-center">
+                        <span className={`inline-block px-2 py-0.5 rounded-full text-[10px] font-semibold ${
+                          customer.status === 'Active' ? 'bg-emerald-50 text-emerald-700' :
+                          customer.status === 'Blocked' ? 'bg-rose-50 text-rose-700' :
+                          'bg-amber-50 text-amber-700'
+                        }`}>{customer.status}</span>
+                      </td>
+                      <td className="px-3 py-2 text-right">
+                        <div className="flex items-center justify-end gap-0.5">
+                          <Button variant="ghost" size="sm" onClick={() => openEditModal(customer)} className="h-7 w-7 p-0">
+                            <Pencil className="w-3.5 h-3.5" />
+                          </Button>
+                          <Button variant="ghost" size="sm" onClick={() => handleDelete(customer)} className="h-7 w-7 p-0 text-rose-600 hover:text-rose-700">
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </Button>
+                          {customer.status !== 'Active' && (
+                            <Button variant="ghost" size="sm" onClick={() => handleStatusChange(customer, 'Active')} className="h-7 w-7 p-0" title="Activate">
+                              <UserCheck className="w-3.5 h-3.5 text-emerald-600" />
+                            </Button>
+                          )}
+                          {customer.status !== 'Blocked' && (
+                            <Button variant="ghost" size="sm" onClick={() => handleStatusChange(customer, 'Blocked')} className="h-7 w-7 p-0" title="Block">
+                              <ShieldAlert className="w-3.5 h-3.5 text-rose-600" />
+                            </Button>
+                          )}
+                        </div>
+                      </td>
+                    </tr>
+                  )
+                })}
+              </tbody>
+            </table>
+          </div>
         )}
       </div>
 
