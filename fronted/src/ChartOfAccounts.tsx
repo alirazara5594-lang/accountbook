@@ -772,7 +772,7 @@ export const ChartOfAccounts: React.FC<ChartOfAccountsProps> = ({
       <div className="flex flex-wrap items-center gap-3 p-4 bg-slate-50 border border-slate-200/80 rounded-2xl shadow-xs">
         {/* Search */}
         <div className="relative flex-1 min-w-[200px]">
-          <Search className="absolute left-3.5 top-3.5 h-3.5 w-3.5 text-slate-400" />
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400 pointer-events-none" />
           <Input
             placeholder="Search accounts..."
             value={query}
@@ -1128,7 +1128,7 @@ export const ChartOfAccounts: React.FC<ChartOfAccountsProps> = ({
 
             {/* Search */}
             <div className="relative mb-4">
-              <Search className="absolute left-3.5 top-3 h-3.5 w-3.5 text-slate-400" />
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400 pointer-events-none" />
               <Input
                 placeholder="Search by reference, memo, date..."
                 value={glSearchQuery}

@@ -3,7 +3,7 @@ import type { ReactNode } from 'react';
 import {
   Wallet, HandCoins, CreditCard, Package, TrendingUp, TrendingDown,
   Users, Landmark, Calculator, Boxes, Factory, Truck, MapPin, Scale, Hammer, Settings,
-  ArrowUpRight, Building2, Globe2, ShieldCheck,
+  ArrowUpRight, Building2, Globe2, ShieldCheck, Receipt, FileText, AlertTriangle, Banknote,
 } from 'lucide-react';
 import {
   useSalesStore,
@@ -36,7 +36,29 @@ function num(n: number) {
   return new Intl.NumberFormat('en-US').format(n || 0);
 }
 
-function Sparkline({ points, color = '#34d399', width = 84, height = 28 }: { points: number[]; color?: string; width?: number; height?: number }) {
+function fmtDate(d?: string) {
+  if (!d) return '—';
+  const dt = new Date(d);
+  if (isNaN(dt.getTime())) return '—';
+  return dt.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+}
+
+function agingBucket(dueDate?: string): string {
+  if (!dueDate) return 'Current';
+  const days = Math.ceil((new Date(dueDate).getTime() - Date.now()) / 86400000);
+  if (days < 0) {
+    const o = Math.abs(days);
+    if (o <= 30) return '1-30';
+    if (o <= 60) return '31-60';
+    if (o <= 90) return '61-90';
+    return '90+';
+  }
+  return 'Current';
+}
+
+const AGING_BUCKETS = ['Current', '1-30', '31-60', '61-90', '90+'];
+
+function Sparkline({ points, color = '#55d8c5', width = 84, height = 28 }: { points: number[]; color?: string; width?: number; height?: number }) {
   if (!points.length) return <div style={{ width, height }} />;
   const max = Math.max(...points, 1);
   const min = Math.min(...points, 0);
@@ -110,6 +132,32 @@ function Bars({ data, height = 64 }: { data: { label: string; value: number; col
   );
 }
 
+// Grouped AR vs AP aging bars, one pair per aging bucket
+function AgingBars({ ar, ap, height = 120 }: { ar: Record<string, number>; ap: Record<string, number>; height?: number }) {
+  const max = Math.max(...AGING_BUCKETS.map((b) => Math.max(ar[b] || 0, ap[b] || 0)), 1);
+  return (
+    <div className="flex items-end justify-between gap-2" style={{ height }}>
+      {AGING_BUCKETS.map((b) => (
+        <div key={b} className="flex flex-col items-center flex-1 min-w-0 h-full justify-end">
+          <div className="flex items-end gap-1 h-full">
+            <div
+              className="w-3.5 rounded-t"
+              style={{ height: `${Math.max(((ar[b] || 0) / max) * 100, 3)}%`, background: 'linear-gradient(180deg, #22d3ee66, #22d3ee)' }}
+              title={`AR ${b}: ${money(ar[b] || 0)}`}
+            />
+            <div
+              className="w-3.5 rounded-t"
+              style={{ height: `${Math.max(((ap[b] || 0) / max) * 100, 3)}%`, background: 'linear-gradient(180deg, #fbbf2466, #fbbf24)' }}
+              title={`AP ${b}: ${money(ap[b] || 0)}`}
+            />
+          </div>
+          <span className="text-[8px] text-[#9db3cd] truncate w-full text-center leading-tight mt-1">{b}</span>
+        </div>
+      ))}
+    </div>
+  );
+}
+
 const MODULE_COLORS: Record<string, string> = {
   'Sales & Customers': '#22d3ee',
   Procurement: '#fbbf24',
@@ -123,6 +171,19 @@ const MODULE_COLORS: Record<string, string> = {
   Projects: '#818cf8',
   Administration: '#94a3b8',
   'AI & Analytics': '#c084fc',
+};
+
+const STATUS_COLORS: Record<string, string> = {
+  Draft: '#94a3b8',
+  Open: '#22d3ee',
+  Sent: '#22d3ee',
+  Pending: '#fbbf24',
+  Approved: '#34d399',
+  Paid: '#34d399',
+  Overdue: '#f87171',
+  Received: '#34d399',
+  Completed: '#34d399',
+  Cancelled: '#64748b',
 };
 
 export function DashboardOverview({ accounts, entries, setPage, activeEntityId }: DashboardOverviewProps) {
@@ -176,8 +237,6 @@ export function DashboardOverview({ accounts, entries, setPage, activeEntityId }
   // ---- Financial KPIs from chart of accounts ----
   const cashBal = accounts.filter((a) => a.code.startsWith('111')).reduce((s, a) => s + Math.abs(a.openingBalance), 0);
   const bankBal = accounts.filter((a) => a.code.startsWith('112')).reduce((s, a) => s + Math.abs(a.openingBalance), 0);
-  const arBal = accounts.filter((a) => a.code.startsWith('12000') || a.code.startsWith('12001')).reduce((s, a) => s + Math.abs(a.openingBalance), 0);
-  const apBal = accounts.filter((a) => a.code.startsWith('21000')).reduce((s, a) => s + Math.abs(a.openingBalance), 0);
   const invBal = accounts.filter((a) => a.code.startsWith('13000')).reduce((s, a) => s + Math.abs(a.openingBalance), 0);
   const faBal = accounts.filter((a) => a.code.startsWith('15100')).reduce((s, a) => s + Math.abs(a.openingBalance), 0);
   const totalRevenue = accounts.filter((a) => a.type === 'Revenue' || a.type === 'ContraRevenue').reduce((s, a) => s + a.openingBalance, 0);
@@ -189,14 +248,35 @@ export function DashboardOverview({ accounts, entries, setPage, activeEntityId }
   // ---- Sales derived ----
   const totalInvoiced = invoices.reduce((s, i) => s + (i.totalAmount || 0), 0);
   const collected = invoices.reduce((s, i) => s + (i.paidAmount || 0), 0);
-  const openInvoices = invoices.filter((i) => (i.amountDue || 0) > 0).length;
+  const openInvoices = invoices.filter((i) => (i.amountDue || 0) > 0);
+  const unpaidInvoices = openInvoices.length;
+  const overdueInvoices = openInvoices.filter((i) => new Date(i.dueDate).getTime() < Date.now()).length;
   const receiptTotal = receipts.reduce((s, r) => s + (r.amount || 0), 0);
 
-  // ---- Procurement derived ----
+  // ---- Procurement / bills derived ----
   const orderValue = orders.reduce((s, o: any) => s + (o.totalAmount || o.total || 0), 0);
   const openOrders = orders.filter((o: any) => ['Open', 'Pending', 'Approved'].includes(o.status)).length;
   const billTotal = bills.reduce((s, b: any) => s + (b.totalAmount || b.total || 0), 0);
   const paidBills = bills.filter((b: any) => b.status === 'Paid').length;
+  const unpaidBillsArr = (bills as any[]).filter((b) => (b.amountDue ?? (b.status !== 'Paid' ? b.totalAmount ?? b.total ?? 0 : 0)) > 0);
+
+  // ---- AR / AP aging ----
+  const arAging: Record<string, number> = {};
+  AGING_BUCKETS.forEach((b) => (arAging[b] = 0));
+  openInvoices.forEach((i) => {
+    const b = agingBucket(i.dueDate);
+    arAging[b] = (arAging[b] || 0) + (i.amountDue || 0);
+  });
+
+  const apAging: Record<string, number> = {};
+  AGING_BUCKETS.forEach((b) => (apAging[b] = 0));
+  unpaidBillsArr.forEach((b) => {
+    const bucket = agingBucket(b.dueDate);
+    const due = b.amountDue ?? ((b.totalAmount ?? b.total ?? 0) - (b.amountPaid ?? 0));
+    apAging[bucket] = (apAging[bucket] || 0) + due;
+  });
+  const arOverdueTotal = arAging['1-30'] + arAging['31-60'] + arAging['61-90'] + arAging['90+'];
+  const apOverdueTotal = apAging['1-30'] + apAging['31-60'] + apAging['61-90'] + apAging['90+'];
 
   // ---- Banking derived ----
   const bankTotal = bankAccounts.reduce((s, a) => s + (a.balance ?? a.openingBalance ?? 0), 0);
@@ -227,15 +307,19 @@ export function DashboardOverview({ accounts, entries, setPage, activeEntityId }
 
   const liquidity = cashBal + bankBal;
   const netIncome = totalRevenue - totalExpense;
+  const bankAndCash = bankTotal + cashTotal;
+  const totalBillsDue = apAging['Current'] + apOverdueTotal;
 
-  // ---- Top financial KPIs ----
-  const financialKpis = [
+  // ---- Scorecard strip ----
+  const scorecards = [
     { label: 'Cash & Bank', value: money(liquidity), color: '#34d399', icon: <Wallet size={16} />, trend: +3.2, pts: [12, 14, 13, 16, 18, 17, 20] },
-    { label: 'Receivables', value: money(arBal), color: '#22d3ee', icon: <HandCoins size={16} />, trend: +1.8, pts: [8, 9, 11, 10, 13, 14, 16] },
-    { label: 'Payables', value: money(apBal), color: '#fbbf24', icon: <CreditCard size={16} />, trend: -0.4, pts: [6, 7, 6, 9, 8, 10, 12] },
-    { label: 'Inventory', value: money(invBal), color: '#a78bfa', icon: <Package size={16} />, trend: +2.1, pts: [10, 12, 11, 13, 12, 14, 15] },
+    { label: 'Invoiced', value: money(totalInvoiced), color: '#22d3ee', icon: <Receipt size={16} />, trend: +4.1, pts: [8, 9, 11, 10, 13, 14, 16] },
+    { label: 'Collected', value: money(collected), color: '#34d399', icon: <Banknote size={16} />, trend: +2.7, pts: [7, 9, 8, 10, 12, 11, 14] },
+    { label: 'Outstanding AR', value: money(arAging['Current'] + arOverdueTotal), color: '#22d3ee', icon: <HandCoins size={16} />, trend: +1.2, pts: [6, 7, 6, 9, 8, 10, 12] },
+    { label: 'Outstanding AP', value: money(totalBillsDue), color: '#fbbf24', icon: <CreditCard size={16} />, trend: -0.8, pts: [5, 6, 8, 7, 9, 8, 10] },
     { label: 'Revenue', value: money(totalRevenue), color: '#4ade80', icon: <TrendingUp size={16} />, trend: +5.6, pts: [5, 7, 6, 9, 11, 10, 14] },
-    { label: 'Net Income', value: money(netIncome), color: '#f87171', icon: <TrendingDown size={16} />, trend: +1.9, pts: [4, 5, 7, 6, 8, 9, 11] },
+    { label: 'Net Income', value: money(netIncome), color: '#a78bfa', icon: <TrendingDown size={16} />, trend: +1.9, pts: [4, 5, 7, 6, 8, 9, 11] },
+    { label: 'Inventory', value: money(invBal), color: '#a78bfa', icon: <Package size={16} />, trend: +2.1, pts: [10, 12, 11, 13, 12, 14, 15] },
   ];
 
   // ---- Module registry ----
@@ -257,14 +341,14 @@ export function DashboardOverview({ accounts, entries, setPage, activeEntityId }
       color: MODULE_COLORS['Sales & Customers'],
       kpis: [
         { label: 'Customers', value: num(customers.length) },
-        { label: 'Open Invoices', value: num(openInvoices) },
+        { label: 'Open Invoices', value: num(unpaidInvoices) },
         { label: 'Estimates', value: num(estimates.length) },
       ],
       chart: (
         <Bars
           data={[
             { label: 'Draft', value: invoices.filter((i) => i.status === 'Draft').length, color: '#475569' },
-            { label: 'Open', value: openInvoices, color: '#0ea5e9' },
+            { label: 'Open', value: unpaidInvoices, color: '#0ea5e9' },
             { label: 'Paid', value: invoices.filter((i) => (i.amountDue ?? 0) <= 0).length, color: '#10b981' },
           ]}
         />
@@ -314,7 +398,7 @@ export function DashboardOverview({ accounts, entries, setPage, activeEntityId }
           ]}
         />
       ),
-      stat: money(bankTotal + cashTotal),
+      stat: money(bankAndCash),
       statLabel: 'Liquidity',
     },
     {
@@ -497,11 +581,11 @@ export function DashboardOverview({ accounts, entries, setPage, activeEntityId }
   ];
 
   const pulse = [
-    { label: 'Open Sales', value: num(openInvoices), color: '#22d3ee', icon: <HandCoins size={14} /> },
+    { label: 'Open Sales', value: num(unpaidInvoices), color: '#22d3ee', icon: <HandCoins size={14} /> },
+    { label: 'Overdue AR', value: num(overdueInvoices), color: '#f87171', icon: <AlertTriangle size={14} /> },
     { label: 'Open POs', value: num(openOrders), color: '#fbbf24', icon: <Truck size={14} /> },
     { label: 'Bank Txns', value: num(transactions.length), color: '#34d399', icon: <Landmark size={14} /> },
     { label: 'Leave Pending', value: num(pendingLeave), color: '#f472b6', icon: <Users size={14} /> },
-    { label: 'Active Projects', value: num(activeProjects), color: '#818cf8', icon: <Hammer size={14} /> },
     { label: 'Low Stock Items', value: num(lowStock), color: '#f87171', icon: <Boxes size={14} /> },
   ];
 
@@ -510,10 +594,10 @@ export function DashboardOverview({ accounts, entries, setPage, activeEntityId }
       {/* Page header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
-          <h1 className="text-xl font-extrabold tracking-tight text-white">Dashboard Summary</h1>
+          <h1 className="text-xl font-extrabold tracking-tight text-white">Billing & Financial Dashboard</h1>
           <p className="text-xs text-[#c3d3e5] mt-1 flex items-center gap-2">
             <Globe2 size={12} className="text-[#55d8c5]" />
-            Consolidated overview of all modules · {today}
+            Accounts receivable · accounts payable · bank summary · {today}
           </p>
         </div>
         <div className="flex items-center gap-2">
@@ -532,9 +616,9 @@ export function DashboardOverview({ accounts, entries, setPage, activeEntityId }
         </div>
       </div>
 
-      {/* Financial KPI strip */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-3">
-        {financialKpis.map((k) => (
+      {/* Scorecard strip */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-8 gap-3">
+        {scorecards.map((k) => (
           <div key={k.label} className="relative bg-[#1a3054] border border-[#2e4a74] rounded-2xl p-4 overflow-hidden group hover:border-[#55d8c5]/50 hover:-translate-y-0.5 transition-all">
             <div className="absolute inset-x-0 top-0 h-1" style={{ background: `linear-gradient(90deg, ${k.color}, transparent)` }} />
             <div className="flex items-start justify-between mb-2">
@@ -557,10 +641,182 @@ export function DashboardOverview({ accounts, entries, setPage, activeEntityId }
                 <p className="text-[10px] font-semibold text-[#d3e0ee] uppercase tracking-widest mb-0.5">{k.label}</p>
                 <p className="text-lg font-bold text-white truncate">{k.value}</p>
               </div>
-              <Sparkline points={k.pts} color={k.color} width={64} height={28} />
+              <Sparkline points={k.pts} color={k.color} width={48} height={26} />
             </div>
           </div>
         ))}
+      </div>
+
+      {/* AR / AP aging + bank summary */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+        {/* Aging by due period */}
+        <div className="lg:col-span-2 bg-[#1a3054] border border-[#2e4a74] rounded-2xl p-5">
+          <div className="flex items-center justify-between mb-1">
+            <h3 className="text-sm font-bold uppercase tracking-wider text-white flex items-center gap-2">
+              <span className="w-1.5 h-1.5 rounded-full bg-[#55d8c5] shadow-[0_0_8px_rgba(85,216,197,0.8)]" /> Aging by Due Period
+            </h3>
+            <span className="text-[10px] text-[#9db3cd] uppercase tracking-widest">Invoices vs Bills</span>
+          </div>
+          <div className="flex items-center gap-4 mb-3">
+            <span className="inline-flex items-center gap-1.5 text-[10px] text-[#c3d3e5]"><span className="w-2.5 h-2.5 rounded-sm bg-[#22d3ee]" /> AR Receivables</span>
+            <span className="inline-flex items-center gap-1.5 text-[10px] text-[#c3d3e5]"><span className="w-2.5 h-2.5 rounded-sm bg-[#fbbf24]" /> AP Payables</span>
+            <span className="ml-auto inline-flex items-center gap-1 text-[10px] text-[#9db3cd]">
+              <AlertTriangle size={11} className="text-[#f87171]" /> {num(overdueInvoices)} overdue invoices
+            </span>
+          </div>
+          <AgingBars ar={arAging} ap={apAging} />
+          <div className="grid grid-cols-2 gap-3 mt-4">
+            <div className="bg-[#1e3a61] border border-[#2e4a74] rounded-xl p-3 flex items-center justify-between">
+              <span className="text-[10px] font-semibold text-[#d3e0ee] uppercase tracking-wider">AR Overdue</span>
+              <span className="text-sm font-bold text-[#22d3ee]">{money(arOverdueTotal)}</span>
+            </div>
+            <div className="bg-[#1e3a61] border border-[#2e4a74] rounded-xl p-3 flex items-center justify-between">
+              <span className="text-[10px] font-semibold text-[#d3e0ee] uppercase tracking-wider">AP Overdue</span>
+              <span className="text-sm font-bold text-[#fbbf24]">{money(apOverdueTotal)}</span>
+            </div>
+          </div>
+        </div>
+
+        {/* Bank summary */}
+        <div className="bg-[#1a3054] border border-[#2e4a74] rounded-2xl p-5 flex flex-col">
+          <h3 className="text-sm font-bold uppercase tracking-wider text-white flex items-center gap-2 mb-1">
+            <span className="w-1.5 h-1.5 rounded-full bg-[#34d399] shadow-[0_0_8px_rgba(52,211,153,0.8)]" /> Bank Summary
+          </h3>
+          <span className="text-[10px] text-[#9db3cd] uppercase tracking-widest mb-3">Available cash vs bills due</span>
+          <div className="space-y-2 flex-1">
+            {bankAccounts.slice(0, 5).map((a) => (
+              <div key={a.id} className="flex items-center justify-between bg-[#1e3a61] border border-[#2e4a74] rounded-lg px-3 py-2">
+                <span className="text-[11px] text-[#c3d3e5] truncate flex items-center gap-2">
+                  <Landmark size={12} className="text-[#55d8c5] shrink-0" /> {a.name || a.bankName || 'Bank account'}
+                </span>
+                <span className="text-xs font-bold text-white font-mono">{money(a.balance ?? a.openingBalance ?? 0)}</span>
+              </div>
+            ))}
+            {bankAccounts.length === 0 && (
+              <p className="text-[11px] text-[#9db3cd] text-center py-4">No bank accounts configured.</p>
+            )}
+          </div>
+          <div className="mt-3 grid grid-cols-2 gap-3">
+            <div className="bg-[#1e3a61] border border-[#2e4a74] rounded-xl p-3">
+              <span className="text-[9px] font-semibold text-[#d3e0ee] uppercase tracking-wider block">Bank & Cash</span>
+              <span className="text-base font-bold text-[#34d399]">{money(bankAndCash)}</span>
+            </div>
+            <div className="bg-[#1e3a61] border border-[#2e4a74] rounded-xl p-3">
+              <span className="text-[9px] font-semibold text-[#d3e0ee] uppercase tracking-wider block">Bills Due</span>
+              <span className="text-base font-bold text-[#fbbf24]">{money(totalBillsDue)}</span>
+            </div>
+          </div>
+          <div className="mt-3 rounded-xl p-3 border" style={{ background: bankAndCash >= totalBillsDue ? 'rgba(52,211,153,0.08)' : 'rgba(248,113,113,0.08)', borderColor: bankAndCash >= totalBillsDue ? '#34d39966' : '#f8717166' }}>
+            <span className="text-[9px] font-semibold uppercase tracking-wider block" style={{ color: bankAndCash >= totalBillsDue ? '#34d399' : '#f87171' }}>
+              {bankAndCash >= totalBillsDue ? 'Adequate to cover bills' : 'Coverage shortfall'}
+            </span>
+            <span className="text-xs text-[#c3d3e5]">Available cash covers <b className="text-white">{(bankAndCash / (totalBillsDue || 1)) * 100 >= 0 ? Math.min((bankAndCash / (totalBillsDue || 1)) * 100, 999).toFixed(0) : 0}%</b> of outstanding bills.</span>
+          </div>
+        </div>
+      </div>
+
+      {/* Unpaid invoices & bills tables */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        {/* Unpaid invoices */}
+        <div className="bg-[#1a3054] border border-[#2e4a74] rounded-2xl p-5">
+          <div className="flex items-center justify-between mb-3">
+            <h3 className="text-sm font-bold uppercase tracking-wider text-white flex items-center gap-2">
+              <Receipt size={14} className="text-[#22d3ee]" /> Unpaid Invoices
+            </h3>
+            <button onClick={() => setPage('Sales & Customers.Sales Workspace')} className="inline-flex items-center gap-1 text-[10px] text-[#55d8c5] hover:underline uppercase tracking-wider">
+              View all <ArrowUpRight size={11} />
+            </button>
+          </div>
+          {openInvoices.length === 0 ? (
+            <p className="text-[11px] text-[#9db3cd] text-center py-6">No outstanding invoices.</p>
+          ) : (
+            <div className="max-h-56 overflow-auto">
+              <table className="w-full text-left">
+                <thead className="text-[9px] text-[#9db3cd] uppercase tracking-wider border-b border-[#2e4a74]">
+                  <tr>
+                    <th className="py-1.5 pr-2">Number</th>
+                    <th className="py-1.5 pr-2">Customer</th>
+                    <th className="py-1.5 pr-2">Due Date</th>
+                    <th className="py-1.5 pr-2">Amount Due</th>
+                    <th className="py-1.5">Status</th>
+                  </tr>
+                </thead>
+                <tbody className="text-[11px]">
+                  {openInvoices.slice(0, 8).map((i) => {
+                    const overdue = new Date(i.dueDate).getTime() < Date.now();
+                    return (
+                      <tr key={i.id} className="border-b border-[#2e4a74]/50">
+                        <td className="py-1.5 pr-2 text-white font-mono">{i.invoiceNumber}</td>
+                        <td className="py-1.5 pr-2 text-[#c3d3e5] truncate max-w-[110px]">{i.customerName || '—'}</td>
+                        <td className="py-1.5 pr-2 text-[#c3d3e5]">{fmtDate(i.dueDate)}</td>
+                        <td className="py-1.5 pr-2 text-white font-mono font-semibold">{money(i.amountDue)}</td>
+                        <td className="py-1.5">
+                          <span
+                            className="inline-flex items-center gap-1 text-[9px] font-bold px-1.5 py-0.5 rounded-md"
+                            style={{ color: overdue ? '#f87171' : STATUS_COLORS[i.status] || '#22d3ee', background: `${overdue ? '#f87171' : STATUS_COLORS[i.status] || '#22d3ee'}1a` }}
+                          >
+                            {overdue && <AlertTriangle size={9} />} {overdue ? 'Overdue' : i.status || 'Open'}
+                          </span>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
+
+        {/* Unpaid bills */}
+        <div className="bg-[#1a3054] border border-[#2e4a74] rounded-2xl p-5">
+          <div className="flex items-center justify-between mb-3">
+            <h3 className="text-sm font-bold uppercase tracking-wider text-white flex items-center gap-2">
+              <FileText size={14} className="text-[#fbbf24]" /> Unpaid Bills
+            </h3>
+            <button onClick={() => setPage('Procurement.Procurement Workspace')} className="inline-flex items-center gap-1 text-[10px] text-[#55d8c5] hover:underline uppercase tracking-wider">
+              View all <ArrowUpRight size={11} />
+            </button>
+          </div>
+          {unpaidBillsArr.length === 0 ? (
+            <p className="text-[11px] text-[#9db3cd] text-center py-6">No outstanding bills.</p>
+          ) : (
+            <div className="max-h-56 overflow-auto">
+              <table className="w-full text-left">
+                <thead className="text-[9px] text-[#9db3cd] uppercase tracking-wider border-b border-[#2e4a74]">
+                  <tr>
+                    <th className="py-1.5 pr-2">Number</th>
+                    <th className="py-1.5 pr-2">Vendor</th>
+                    <th className="py-1.5 pr-2">Due Date</th>
+                    <th className="py-1.5 pr-2">Amount Due</th>
+                    <th className="py-1.5">Status</th>
+                  </tr>
+                </thead>
+                <tbody className="text-[11px]">
+                  {unpaidBillsArr.slice(0, 8).map((b: any) => {
+                    const due = b.amountDue ?? ((b.totalAmount ?? b.total ?? 0) - (b.amountPaid ?? 0));
+                    const overdue = new Date(b.dueDate).getTime() < Date.now();
+                    return (
+                      <tr key={b.id || b.billNumber} className="border-b border-[#2e4a74]/50">
+                        <td className="py-1.5 pr-2 text-white font-mono">{b.billNumber || b.number || '—'}</td>
+                        <td className="py-1.5 pr-2 text-[#c3d3e5] truncate max-w-[110px]">{b.vendorName || '—'}</td>
+                        <td className="py-1.5 pr-2 text-[#c3d3e5]">{fmtDate(b.dueDate)}</td>
+                        <td className="py-1.5 pr-2 text-white font-mono font-semibold">{money(due)}</td>
+                        <td className="py-1.5">
+                          <span
+                            className="inline-flex items-center gap-1 text-[9px] font-bold px-1.5 py-0.5 rounded-md"
+                            style={{ color: overdue ? '#f87171' : STATUS_COLORS[b.status] || '#fbbf24', background: `${overdue ? '#f87171' : STATUS_COLORS[b.status] || '#fbbf24'}1a` }}
+                          >
+                            {overdue && <AlertTriangle size={9} />} {overdue ? 'Overdue' : b.status || 'Open'}
+                          </span>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
       </div>
 
       {/* Accounting equation banner */}
