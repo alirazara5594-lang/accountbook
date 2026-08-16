@@ -561,8 +561,6 @@ export default function App() {
   {activeView === 'taxes' && <TaxConfiguration />}
   {activeView === 'fixed-assets' && <FixedAssets activeEntityId={activeEntityId} />}
   {activeView === 'assets-inventory' && <AssetsInventoryWorkspace activeEntityId={activeEntityId} entities={entities} />}
-  {activeView === 'assets-inventory-schedule' && <AssetsInventoryWorkspace activeEntityId={activeEntityId} entities={entities} initialTab="schedule" />}
-  {activeView === 'assets-inventory-valuation' && <AssetsInventoryWorkspace activeEntityId={activeEntityId} entities={entities} initialTab="valuation" />}
   {activeView === 'manufacturing' && <ManufacturingWorkspace activeEntityId={activeEntityId} entities={entities} />}
   {activeView === 'mfg-summary' && <ManufacturingSummaryView activeEntityId={activeEntityId} />}
   {activeView === 'mfg-workspace' && <ManufacturingWorkspaceView activeEntityId={activeEntityId} entities={entities} />}

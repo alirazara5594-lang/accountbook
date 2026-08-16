@@ -3357,19 +3357,46 @@ public IReadOnlyList<EmployeeCompensation> EmployeeCompensations => _employeeCom
         }
 
         var totalAmount = allocation.Rate * allocation.Quantity;
-        var lines = new List<JournalLine>
-        {
-            new(allocation.SourceCompanyId, totalAmount, 0, $"{allocation.Name} - {asOfDate:yyyy-MM-dd}", CompanyId: allocation.SourceCompanyId)
-        };
 
+        // Resolve Chart of Accounts via Account Mapping
+        var intercompanyReceivable = GetMappedAccount("Intercompany Receivable");
+        var intercompanyClearing = GetMappedAccount("Intercompany Clearing");
+        var intercompanyAllocations = GetMappedAccount("Intercompany Allocations");
+
+        var lines = new List<JournalLine>();
+
+        // Source company: Debit Intercompany Receivable, Credit Intercompany Allocations
+        lines.Add(new JournalLine(
+            intercompanyReceivable,
+            totalAmount,
+            0,
+            $"{allocation.Name} — receivable from recipients ({asOfDate:yyyy-MM-dd})",
+            CompanyId: allocation.SourceCompanyId
+        ));
+        lines.Add(new JournalLine(
+            intercompanyAllocations,
+            0,
+            totalAmount,
+            $"{allocation.Name} — cost allocation recovery ({asOfDate:yyyy-MM-dd})",
+            CompanyId: allocation.SourceCompanyId
+        ));
+
+        // Each recipient: Debit Intercompany Allocations, Credit Intercompany Clearing
         foreach (var recipient in allocation.Recipients)
         {
             var recipientAmount = totalAmount * recipient.SharePercent / 100;
-            lines.Add(new(
-                recipient.CompanyId,
+            lines.Add(new JournalLine(
+                intercompanyAllocations,
+                recipientAmount,
+                0,
+                $"{allocation.Name} — allocated expense ({recipient.SharePercent}%) ({asOfDate:yyyy-MM-dd})",
+                CompanyId: recipient.CompanyId
+            ));
+            lines.Add(new JournalLine(
+                intercompanyClearing,
                 0,
                 recipientAmount,
-                $"{allocation.Name} allocated to recipient - {asOfDate:yyyy-MM-dd}",
+                $"{allocation.Name} — payable to {_companies.FirstOrDefault(c => c.Id == allocation.SourceCompanyId)?.Name ?? "Source Company"} ({asOfDate:yyyy-MM-dd})",
                 CompanyId: recipient.CompanyId
             ));
         }

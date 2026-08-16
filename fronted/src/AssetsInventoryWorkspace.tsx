@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useAssetsInventoryStore, useCoaStore, useProductsStore } from './stores';
 import { DataToolbar } from '@/components/ui/data-toolbar';
 function money(v: number) { return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(v); }
@@ -423,122 +423,8 @@ const StockTransactionsView: React.FC<{ activeEntityId: string; warehouses: any[
   );
 };
 
-// ─── 5. Depreciation Schedule ─────────────────────────────────────────────────
-const DepreciationSchedule: React.FC<{ activeEntityId: string }> = ({ activeEntityId }) => {
-  const assets = useAssetsInventoryStore((s) => s.assets as any[]);
-  const loading = useAssetsInventoryStore((s) => s.loading);
-  const fetchFixedAssets = useAssetsInventoryStore((s) => s.fetchFixedAssets);
-
-  const months = useMemo(() => Array.from({ length: 12 }, (_, i) => { const d = new Date(); d.setMonth(d.getMonth() + i); return d.toLocaleDateString('en-US', { month: 'short', year: '2-digit' }); }), []);
-
-  useEffect(() => { fetchFixedAssets(activeEntityId); }, [activeEntityId]);
-
-  const activeAssets = assets.filter(a => a.status === 0 || a.status === 'Active');
-  const monthlyDepr = (a: any) => Math.round((((a.purchasePrice || a.cost || 0) - (a.salvageValue || 0)) / (a.usefulLifeYears || 3)) / 12 * 100) / 100;
-
-  return (
-    <div className="space-y-4">
-      <h2 className="text-xl font-bold text-gray-900">Depreciation Schedule (Next 12 Months)</h2>
-      <div className="bg-white border border-gray-200 rounded-2xl shadow-sm overflow-x-auto">
-        <table className="w-full text-left text-sm">
-          <thead className="bg-gray-50 text-gray-500 border-b border-gray-100 text-xs uppercase tracking-wider">
-            <tr>
-              <th className="py-3 px-4 sticky left-0 bg-gray-50">Asset</th>
-              <th className="py-3 px-4 text-right">NBV Today</th>
-              {months.map(m => <th key={m} className="py-3 px-3 text-right whitespace-nowrap">{m}</th>)}
-              <th className="py-3 px-4 text-right">Total</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-gray-50">
-            {activeAssets.map(a => {
-              const monthly = monthlyDepr(a);
-              const cost = a.purchasePrice || a.cost || 0;
-              const remaining = (cost - (a.salvageValue||0)) - (a.accumulatedDepreciation||0);
-              return (
-                <tr key={a.id} className="hover:bg-gray-50/60">
-                  <td className="py-3 px-4 font-medium text-gray-900 sticky left-0 bg-white">{a.name}</td>
-                  <td className="py-3 px-4 text-right font-semibold text-emerald-700">{money(cost - (a.accumulatedDepreciation||0))}</td>
-                  {months.map((m, i) => {
-                    const used = monthly * i;
-                    const amt = Math.min(monthly, Math.max(0, remaining - used));
-                    return <td key={m} className={`py-3 px-3 text-right text-xs ${amt > 0 ? 'text-orange-600' : 'text-gray-300'}`}>{amt > 0 ? money(amt) : '—'}</td>;
-                  })}
-                  <td className="py-3 px-4 text-right font-semibold">{money(Math.min(monthly * 12, remaining))}</td>
-                </tr>
-              );
-            })}
-            {!loading && activeAssets.length === 0 && <tr><td colSpan={15} className="py-8 text-center text-gray-400">No active assets to schedule.</td></tr>}
-            {activeAssets.length > 0 && (
-              <tr className="bg-gray-50 font-semibold">
-                <td className="py-3 px-4">Total</td>
-                <td className="py-3 px-4 text-right text-emerald-700">{money(activeAssets.reduce((s, a) => s + (a.purchasePrice || a.cost || 0) - (a.accumulatedDepreciation||0), 0))}</td>
-                {months.map((m, i) => { const total = activeAssets.reduce((s, a) => { const rem = ((a.purchasePrice || a.cost || 0)-(a.salvageValue||0))-(a.accumulatedDepreciation||0); const used = monthlyDepr(a)*i; return s + Math.min(monthlyDepr(a), Math.max(0, rem-used)); }, 0); return <td key={m} className="py-3 px-3 text-right text-xs text-orange-700">{total > 0 ? money(total) : '—'}</td>; })}
-                <td className="py-3 px-4 text-right">{money(activeAssets.reduce((s,a) => s + Math.min(monthlyDepr(a)*12, ((a.purchasePrice || a.cost || 0)-(a.salvageValue||0))-(a.accumulatedDepreciation||0)), 0))}</td>
-              </tr>
-            )}
-          </tbody>
-        </table>
-      </div>
-    </div>
-  );
-};
-
-// ─── 6. Stock Valuation Report ────────────────────────────────────────────────
-const StockValuationReport: React.FC<{ activeEntityId: string }> = ({ activeEntityId }) => {
-  const levels = useAssetsInventoryStore((s) => s.stockLevels as any[]);
-  const loading = useAssetsInventoryStore((s) => s.loading);
-  const fetchStockLevels = useAssetsInventoryStore((s) => s.fetchStockLevels);
-
-  useEffect(() => { fetchStockLevels(activeEntityId); }, [activeEntityId]);
-
-  const byWarehouse = useMemo(() => {
-    const map: Record<string, { name: string; items: any[]; total: number }> = {};
-    levels.forEach(l => {
-      const key = l.warehouseId || 'default';
-      if (!map[key]) map[key] = { name: l.warehouseName || 'Warehouse', items: [], total: 0 };
-      map[key].items.push(l);
-      map[key].total += l.totalValue || 0;
-    });
-    return Object.values(map);
-  }, [levels]);
-
-  const grandTotal = levels.reduce((s, l) => s + (l.totalValue || 0), 0);
-
-  return (
-    <div className="space-y-6">
-      <div className="flex justify-between items-center">
-        <h2 className="text-xl font-bold text-gray-900">Stock Valuation Report</h2>
-        <div className="text-right"><p className="text-xs text-gray-500 uppercase tracking-wide">Grand Total</p><p className="text-3xl font-bold text-blue-600">{money(grandTotal)}</p></div>
-      </div>
-      {byWarehouse.map(wh => (
-        <div key={wh.name} className="bg-white border border-gray-200 rounded-2xl shadow-sm overflow-hidden">
-          <div className="px-4 py-3 bg-gray-50 border-b border-gray-100 flex justify-between items-center">
-            <h3 className="font-semibold text-gray-900">🏭 {wh.name}</h3>
-            <span className="font-bold text-blue-600">{money(wh.total)}</span>
-          </div>
-          <table className="w-full text-left text-sm">
-            <thead className="text-gray-500 border-b border-gray-100 text-xs uppercase tracking-wider">
-              <tr><th className="py-2 px-4">Product</th><th className="py-2 px-4">Code</th><th className="py-2 px-4 text-right">Qty</th><th className="py-2 px-4 text-right">Avg. Cost</th><th className="py-2 px-4 text-right">Value</th></tr>
-            </thead>
-            <tbody className="divide-y divide-gray-50">
-              {wh.items.map(l => (<tr key={l.id} className="hover:bg-gray-50/60">
-                <td className="py-2 px-4 font-medium text-gray-900">{l.productName}</td>
-                <td className="py-2 px-4 font-mono text-xs text-gray-400">{l.productCode}</td>
-                <td className="py-2 px-4 text-right">{l.quantityOnHand}</td>
-                <td className="py-2 px-4 text-right text-gray-500">{money(l.movingAverageCost)}</td>
-                <td className="py-2 px-4 text-right font-semibold text-blue-700">{money(l.totalValue)}</td>
-              </tr>))}
-            </tbody>
-          </table>
-        </div>
-      ))}
-      {!loading && byWarehouse.length === 0 && <div className="py-16 text-center text-gray-400">No inventory data. Process a GRN to populate the valuation report.</div>}
-    </div>
-  );
-};
-
 // ─── Master Workspace ─────────────────────────────────────────────────────────
-type Tab = 'assets' | 'warehouses' | 'stock' | 'transactions' | 'schedule' | 'valuation';
+type Tab = 'assets' | 'warehouses' | 'stock' | 'transactions';
 
 export const AssetsInventoryWorkspace: React.FC<{ activeEntityId: string; entities: any[]; initialTab?: Tab }> = ({ activeEntityId, initialTab }) => {
   const [activeTab, setActiveTab] = useState<Tab>(initialTab || 'assets');
@@ -562,8 +448,6 @@ export const AssetsInventoryWorkspace: React.FC<{ activeEntityId: string; entiti
     { id: 'warehouses', label: 'Warehouses', icon: '🏭' },
     { id: 'stock', label: 'Stock Levels', icon: '📦' },
     { id: 'transactions', label: 'Stock Transactions', icon: '🔄' },
-    { id: 'schedule', label: 'Depreciation Schedule', icon: '📅' },
-    { id: 'valuation', label: 'Valuation Report', icon: '📊' },
   ];
 
   return (
@@ -589,8 +473,6 @@ export const AssetsInventoryWorkspace: React.FC<{ activeEntityId: string; entiti
         {activeTab === 'warehouses' && <Warehouses activeEntityId={activeEntityId} />}
         {activeTab === 'stock' && <StockLevels activeEntityId={activeEntityId} />}
         {activeTab === 'transactions' && <StockTransactionsView activeEntityId={activeEntityId} warehouses={warehouses} products={products} />}
-        {activeTab === 'schedule' && <DepreciationSchedule activeEntityId={activeEntityId} />}
-        {activeTab === 'valuation' && <StockValuationReport activeEntityId={activeEntityId} />}
       </div>
     </div>
   );
