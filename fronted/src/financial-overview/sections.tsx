@@ -106,7 +106,7 @@ function Spark({ points, color }: { points: number[]; color: string }) {
             <stop offset="100%" stopColor={color} stopOpacity={0} />
           </linearGradient>
         </defs>
-        <Area type="monotone" dataKey="v" stroke={color} strokeWidth={1.5} fill={`url(#spark-${color.replace('#', '')})`} />
+        <Area type="monotone" dataKey="v" stroke={color} strokeWidth={1.5} fill={`url(#spark-${color.replace('#', '')})`} isAnimationActive={false} />
       </AreaChart>
     </ResponsiveContainer>
   );
@@ -225,7 +225,7 @@ export function KpiStrip({ data, currency }: { data: FinancialData; currency: Cu
   ];
 
   return (
-    <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+    <div className="grid grid-cols-4 gap-3">
       {cards.map((k, i) => (
         <div key={i} className="bg-white rounded-xl border border-gray-200 shadow-sm px-3 pt-2.5 pb-2 relative overflow-hidden">
           <div className="flex items-center justify-between gap-2">
@@ -319,9 +319,9 @@ export function PerformancePanel({ data, currency }: { data: FinancialData; curr
               tickFormatter={(value: unknown) => `${(Number(value) / 1000).toFixed(0)}k`}
             />
             <Tooltip formatter={(value: unknown) => money(Number(value), currency)} contentStyle={tooltipStyle} />
-            <Bar dataKey="revenue" fill="#2563eb" radius={[3, 3, 0, 0]} name="Revenue" />
-            <Bar dataKey="expense" fill="#fb7185" radius={[3, 3, 0, 0]} name="Expenses" />
-            <Line type="monotone" dataKey="profit" stroke="#10b981" strokeWidth={2} dot={{ r: 2 }} name="Profit" />
+            <Bar dataKey="revenue" fill="#2563eb" radius={[3, 3, 0, 0]} name="Revenue" isAnimationActive={false} />
+            <Bar dataKey="expense" fill="#fb7185" radius={[3, 3, 0, 0]} name="Expenses" isAnimationActive={false} />
+            <Line type="monotone" dataKey="profit" stroke="#10b981" strokeWidth={2} dot={{ r: 2 }} name="Profit" isAnimationActive={false} />
           </ComposedChart>
         </ResponsiveContainer>
       )}
@@ -352,7 +352,7 @@ export function CashFlowPanel({ data, currency }: { data: FinancialData; currenc
         <div className="flex items-center gap-3">
           <ResponsiveContainer width="55%" height={130}>
             <PieChart>
-              <Pie data={data.cashFlowSplit} dataKey="value" nameKey="name" innerRadius={34} outerRadius={54} paddingAngle={2}>
+              <Pie data={data.cashFlowSplit} dataKey="value" nameKey="name" innerRadius={34} outerRadius={54} paddingAngle={2} isAnimationActive={false}>
                 {data.cashFlowSplit.map((_, i) => (
                   <Cell key={i} fill={CHART_COLORS[i % CHART_COLORS.length]} />
                 ))}
@@ -506,7 +506,7 @@ function Donut({ data, currency, colors }: { data: SliceDatum[]; currency: Curre
     <div className="flex items-center gap-2">
       <ResponsiveContainer width="52%" height={120}>
         <PieChart>
-          <Pie data={data} dataKey="value" nameKey="name" innerRadius={30} outerRadius={50} paddingAngle={2}>
+          <Pie data={data} dataKey="value" nameKey="name" innerRadius={30} outerRadius={50} paddingAngle={2} isAnimationActive={false}>
             {data.map((_, i) => (
               <Cell key={i} fill={colors[i % colors.length]} />
             ))}
@@ -755,7 +755,7 @@ export function SalesPanel({
             tickFormatter={(value: unknown) => `${(Number(value) / 1000).toFixed(0)}k`}
           />
           <Tooltip formatter={(value: unknown) => money(Number(value), currency)} contentStyle={tooltipStyle} />
-          <Bar dataKey="amount" fill="#10b981" radius={[3, 3, 0, 0]} name="Sales" />
+          <Bar dataKey="amount" fill="#10b981" radius={[3, 3, 0, 0]} name="Sales" isAnimationActive={false} />
         </BarChart>
       </ResponsiveContainer>
       <div className="mt-2 pt-2 border-t border-gray-100">
@@ -808,7 +808,7 @@ export function PurchasePanel({
             tickFormatter={(value: unknown) => `${(Number(value) / 1000).toFixed(0)}k`}
           />
           <Tooltip formatter={(value: unknown) => money(Number(value), currency)} contentStyle={tooltipStyle} />
-          <Bar dataKey="amount" fill="#f59e0b" radius={[3, 3, 0, 0]} name="Purchases" />
+          <Bar dataKey="amount" fill="#f59e0b" radius={[3, 3, 0, 0]} name="Purchases" isAnimationActive={false} />
         </BarChart>
       </ResponsiveContainer>
       <div className="mt-2 pt-2 border-t border-gray-100">

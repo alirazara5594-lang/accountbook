@@ -3,12 +3,8 @@ import {
   LayoutDashboard,
   ShieldCheck,
   RefreshCw,
-  Bell,
-  Settings,
   Calendar,
-  Globe,
   ChevronDown,
-  Building2,
   Layers,
 } from 'lucide-react';
 import { useCompanyStore } from '../stores';
@@ -35,7 +31,7 @@ import {
   ControlBar,
   QuickAdd,
 } from './sections';
-import { currentFiscalYear, type CurrencyCode } from './format';
+import { currentFiscalYear } from './format';
 
 export interface FinancialOverviewProps {
   accounts: AccountLike[];
@@ -49,10 +45,8 @@ const selectCls =
 
 export function FinancialOverview({ accounts, entries, setPage, activeEntityId }: FinancialOverviewProps) {
   const entities = useCompanyStore((s) => s.entities);
-  const setActiveEntityId = useCompanyStore((s) => s.setActiveEntityId);
 
   const [fyYear, setFyYear] = useState<number>(() => currentFiscalYear());
-  const [currency, setCurrency] = useState<CurrencyCode>('USD');
   const [range, setRange] = useState<'This FY' | 'Last FY' | '2 FYs Back'>('This FY');
 
   const data = useFinancialData(accounts, entries, activeEntityId, fyYear);
@@ -75,7 +69,7 @@ export function FinancialOverview({ accounts, entries, setPage, activeEntityId }
             </div>
             <div className="min-w-0">
               <div className="flex items-center gap-2">
-                <h1 className="text-base font-black tracking-tight text-gray-900 leading-tight truncate">Financial Overview</h1>
+                <h1 className="text-base font-black tracking-tight leading-tight truncate" style={{ color: '#2fb8a6' }}>Financial Overview</h1>
                 <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md bg-emerald-50 border border-emerald-200 text-[9px] font-black text-emerald-700">
                   <ShieldCheck className="w-2.5 h-2.5" /> LIVE
                 </span>
@@ -90,19 +84,6 @@ export function FinancialOverview({ accounts, entries, setPage, activeEntityId }
             <button onClick={data.refresh} className="inline-flex items-center gap-1 h-7 px-2 rounded-lg border border-slate-200 bg-white text-[11px] font-semibold text-slate-600 hover:bg-slate-50">
               <RefreshCw className={`w-3.5 h-3.5 ${data.loading ? 'animate-spin text-blue-600' : ''}`} /> Refresh
             </button>
-            <button className="relative w-7 h-7 rounded-lg border border-slate-200 bg-white text-slate-500 hover:bg-slate-50 flex items-center justify-center" aria-label="Notifications">
-              <Bell className="w-3.5 h-3.5" />
-              <span className="absolute -top-0.5 -right-0.5 w-2 h-2 rounded-full bg-rose-500 border border-white" />
-            </button>
-            <button className="w-7 h-7 rounded-lg border border-slate-200 bg-white text-slate-500 hover:bg-slate-50 flex items-center justify-center" aria-label="Settings">
-              <Settings className="w-3.5 h-3.5" />
-            </button>
-            <div className="flex items-center gap-1.5 pl-1.5 border-l border-slate-100">
-              <span className="text-[11px] font-bold text-slate-700">{activeEntity?.name?.slice(0, 2) || 'AB'}</span>
-              <div className="w-7 h-7 rounded-full bg-indigo-100 border border-indigo-200 text-indigo-700 flex items-center justify-center text-[10px] font-black">
-                {activeEntity?.name?.slice(0, 2)?.toUpperCase() || 'AB'}
-              </div>
-            </div>
             <button className="h-7 px-2 rounded-lg bg-slate-900 text-white text-[11px] font-bold hover:bg-slate-700">Customize</button>
           </div>
         </div>
@@ -125,45 +106,6 @@ export function FinancialOverview({ accounts, entries, setPage, activeEntityId }
             </span>
           </label>
 
-          <label className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wide text-slate-400">
-            <Building2 className="w-3 h-3" /> Company
-            <select
-              value={activeEntityId || ''}
-              onChange={(e) => setActiveEntityId(e.target.value)}
-              className={selectCls}
-            >
-              {entities.length === 0 && <option value="">No companies</option>}
-              {entities.map((c) => (
-                <option key={c.id} value={c.id}>
-                  {c.name}
-                </option>
-              ))}
-            </select>
-          </label>
-
-          <label className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wide text-slate-400">
-            Branch
-            <select className={selectCls} defaultValue="all">
-              <option value="all">All Branches</option>
-              {entities.map((c) => (
-                <option key={c.id} value={c.id}>
-                  {c.name}
-                </option>
-              ))}
-            </select>
-          </label>
-
-          <label className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wide text-slate-400">
-            <Globe className="w-3 h-3" /> Currency
-            <select value={currency} onChange={(e) => setCurrency(e.target.value as CurrencyCode)} className={selectCls}>
-              <option>USD</option>
-              <option>PKR</option>
-              <option>GBP</option>
-              <option>EUR</option>
-              <option>AED</option>
-            </select>
-          </label>
-
           <div className="flex-1" />
           <span className="inline-flex items-center gap-1 text-[10px] font-semibold text-slate-400">
             <ChevronDown className="w-3 h-3" /> Consolidated view
@@ -178,38 +120,38 @@ export function FinancialOverview({ accounts, entries, setPage, activeEntityId }
       )}
 
       {/* ── KPI Cards ── */}
-      <KpiStrip data={data} currency={currency} />
+      <KpiStrip data={data} currency="USD" />
 
       {/* ── Row 1: Performance + Cash flow ── */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-3">
-        <PerformancePanel data={data} currency={currency} />
-        <CashFlowPanel data={data} currency={currency} />
+        <PerformancePanel data={data} currency="USD" />
+        <CashFlowPanel data={data} currency="USD" />
       </div>
 
       {/* ── Row 2: P&L + Equation + Attention ── */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-3">
-        <ProfitLossPanel data={data} currency={currency} />
-        <EquationPanel data={data} currency={currency} />
+        <ProfitLossPanel data={data} currency="USD" />
+        <EquationPanel data={data} currency="USD" />
         <AttentionPanel data={data} setPage={setPage} />
       </div>
 
       {/* ── Row 3: Receivables + Payables + Inventory ── */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-3">
-        <ReceivablesPanel data={data} currency={currency} setPage={setPage} />
-        <PayablesPanel data={data} currency={currency} setPage={setPage} />
-        <InventoryPanel data={data} currency={currency} setPage={setPage} />
+        <ReceivablesPanel data={data} currency="USD" setPage={setPage} />
+        <PayablesPanel data={data} currency="USD" setPage={setPage} />
+        <InventoryPanel data={data} currency="USD" setPage={setPage} />
       </div>
 
       {/* ── Row 4: Transactions + Sales + Purchase ── */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-3">
-        <TransactionsPanel data={data} currency={currency} />
-        <SalesPanel data={data} currency={currency} setPage={setPage} />
-        <PurchasePanel data={data} currency={currency} setPage={setPage} />
+        <TransactionsPanel data={data} currency="USD" />
+        <SalesPanel data={data} currency="USD" setPage={setPage} />
+        <PurchasePanel data={data} currency="USD" setPage={setPage} />
       </div>
 
       {/* ── Row 5: Top expenses + Profitability + Control bar ── */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-3">
-        <TopExpensesPanel data={data} currency={currency} setPage={setPage} />
+        <TopExpensesPanel data={data} currency="USD" setPage={setPage} />
         <ProfitabilityPanel data={data} />
         <ControlBar data={data} setPage={setPage} />
       </div>
