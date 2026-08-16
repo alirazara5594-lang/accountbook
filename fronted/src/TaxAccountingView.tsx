@@ -24,21 +24,12 @@ const JURISDICTION_COUNTRY: Record<string, string[]> = {
 
 const COUNTRY_TO_JURISDICTION: Record<string, string> = {
   'united kingdom': 'UK',
-  'gb': 'UK',
   'united states': 'USA',
-  'us': 'USA',
   'pakistan': 'PK',
-  'pk': 'PK',
   'european union': 'EU',
-  'eu': 'EU',
   'united arab emirates': 'UAE',
-  'ae': 'UAE',
   'saudi arabia': 'SA',
-  'sa': 'SA',
   'canada': 'CA',
-  'ca': 'CA',
-  'germany': 'EU',
-  'de': 'EU',
 };
 
 export const TaxAccountingView: React.FC<TaxAccountingViewProps> = ({ activeEntityId, entities }) => {

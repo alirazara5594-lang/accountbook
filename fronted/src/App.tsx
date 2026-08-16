@@ -526,12 +526,12 @@ export default function App() {
   {activeView === 'projects-profitability' && <ProjectProfitabilityView activeEntityId={activeEntityId} />}
   {activeView === 'projects-reports' && <ProjectsReportsView activeEntityId={activeEntityId} />}
   {activeView === 'compliance-summary' && <ComplianceSummaryView />}
-  {activeView === 'compliance-tax' && <TaxManagementView activeEntityId={activeEntityId} />}
-  {activeView === 'compliance-vat' && <VatSalesTaxView activeEntityId={activeEntityId} />}
+  {activeView === 'compliance-tax' && <TaxManagementView activeEntityId={activeEntityId} entities={entities as any} />}
+  {activeView === 'compliance-vat' && <VatSalesTaxView activeEntityId={activeEntityId} entities={entities as any} />}
   {activeView === 'compliance-withholding' && <WithholdingTaxView activeEntityId={activeEntityId} />}
-  {activeView === 'compliance-returns' && <TaxReturnsView activeEntityId={activeEntityId} />}
+  {activeView === 'compliance-returns' && <TaxReturnsView activeEntityId={activeEntityId} entities={entities as any} />}
   {activeView === 'compliance-einvoicing' && <EInvoicingView activeEntityId={activeEntityId} />}
-  {activeView === 'compliance-reports' && <ComplianceReportsView activeEntityId={activeEntityId} />}
+  {activeView === 'compliance-reports' && <ComplianceReportsView activeEntityId={activeEntityId} entities={entities as any} />}
   {activeView === 'field-summary' && <FieldOperationsSummaryView />}
   {activeView === 'field-surveys' && <SurveysView activeEntityId={activeEntityId} />}
   {activeView === 'field-visits' && <FieldVisitsView activeEntityId={activeEntityId} />}

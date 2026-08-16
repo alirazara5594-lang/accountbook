@@ -11,8 +11,7 @@ import {
   FinancialPositionBar,
   QuickAdd,
 } from './sections';
-import { currentFiscalYear, money, type CurrencyCode } from './format';
-import { useCompanyStore } from '../stores/useCompanyStore';
+import { currentFiscalYear, money } from './format';
 
 export interface FinancialOverviewProps {
   accounts: AccountLike[];
@@ -25,8 +24,6 @@ const PERIOD_OPTIONS = ['This FY', 'Last FY', '2 FYs Back'] as const;
 const VIEWS = ['Consolidated', 'Branch View', 'Department View'] as const;
 
 export function FinancialOverview({ accounts, entries, setPage, activeEntityId }: FinancialOverviewProps) {
-  const activeEntity = useCompanyStore((s) => s.entities.find(e => e.id === activeEntityId));
-  const currency: CurrencyCode = (activeEntity?.functionalCurrency as CurrencyCode) || 'USD';
   const [fyYear, setFyYear] = useState<number>(() => currentFiscalYear());
   const [period, setPeriod] = useState<'This FY' | 'Last FY' | '2 FYs Back'>('This FY');
   const [view, setView] = useState<'Consolidated' | 'Branch View' | 'Department View'>('Consolidated');
@@ -159,13 +156,13 @@ export function FinancialOverview({ accounts, entries, setPage, activeEntityId }
       </div>
 
       {/* ── Accounting Equation (full width) ── */}
-      <AccountingEquation data={data} currency={currency} />
+      <AccountingEquation data={data} currency="USD" />
 
       {/* ── Row: P&L Trend + Cash Flow + Account Balances ── */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-3">
-        <ProfitLossTrend data={data} currency={currency} />
-        <CashFlowSummary data={data} currency={currency} />
-        <AccountBalances data={data} currency={currency} />
+        <ProfitLossTrend data={data} currency="USD" />
+        <CashFlowSummary data={data} currency="USD" />
+        <AccountBalances data={data} currency="USD" />
       </div>
 
       {/* ── Row: Receivables Aging + Payables Aging ── */}
@@ -176,7 +173,7 @@ export function FinancialOverview({ accounts, entries, setPage, activeEntityId }
           avgDays={data.avgDaysOutstanding}
           avgLabel="Avg. Days Outstanding"
           aging={data.arAging}
-          currency={currency}
+          currency="USD"
         />
         <AgingCard
           title="Payables Aging"
@@ -184,16 +181,16 @@ export function FinancialOverview({ accounts, entries, setPage, activeEntityId }
           avgDays={data.avgDaysPayable}
           avgLabel="Avg. Days Payable"
           aging={data.apAging}
-          currency={currency}
+          currency="USD"
         />
       </div>
 
       {/* ── Financial Position Summary Bar ── */}
-      <FinancialPositionBar data={data} currency={currency} />
+      <FinancialPositionBar data={data} currency="USD" />
 
       {/* ── Footer ── */}
       <div className="flex items-center justify-between text-xs text-gray-400 pt-2 pb-4">
-        <span>All amounts are in {currency}</span>
+        <span>All amounts are in USD</span>
         <div className="flex items-center gap-3">
           <span>Last updated: {data.asOf}</span>
           <button onClick={data.refresh} className="flex items-center gap-1 text-gray-500 hover:text-gray-700">

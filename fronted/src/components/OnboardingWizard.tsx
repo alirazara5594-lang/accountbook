@@ -1,7 +1,6 @@
 import { useState } from 'react'
 import { ChevronLeft, ChevronRight, Globe, CheckCircle2, Package, BarChart3, Users, Settings } from 'lucide-react'
 import type { UserData } from '../Login'
-import { useCompanyStore } from '../stores/useCompanyStore'
 
 type Step = 'country' | 'modules' | 'currency' | 'confirm'
 
@@ -36,8 +35,6 @@ export default function OnboardingWizard({ currentUser, onComplete }: {
   const [selectedModules, setSelectedModules] = useState<Set<string>>(new Set(['accounting', 'sales', 'purchasing', 'inventory']))
   const [currency, setCurrency] = useState('PKR')
   const [companyName, setCompanyName] = useState('')
-  const [saving, setSaving] = useState(false)
-  const saveCompany = useCompanyStore((s) => s.saveCompany)
 
   const currentCountry = COUNTRIES.find(c => c.code === country)
 
@@ -56,37 +53,17 @@ export default function OnboardingWizard({ currentUser, onComplete }: {
   const handleModulesNext = () => setStep('currency')
   const handleCurrencyNext = () => setStep('confirm')
 
-  const handleFinish = async () => {
-    setSaving(true)
-    try {
-      const name = companyName || `${currentCountry?.name || 'My'} Branch`
-      const created = await saveCompany({
-        name,
-        code: currentCountry?.code || 'XX',
-        country: currentCountry?.name || 'Pakistan',
-        functionalCurrency: currency,
-        structure: 'Branch',
-        active: true,
-      })
-
-      const config = {
-        companyName: name,
-        country: currentCountry?.code || 'PK',
-        companyId: created.id,
-        modules: Array.from(selectedModules),
-        currency,
-        completedAt: new Date().toISOString(),
-      }
-      localStorage.setItem('erp_setup', JSON.stringify(config))
-      localStorage.setItem('active_entity_id', created.id)
-      localStorage.setItem('onboarding_complete', 'true')
-      onComplete()
-    } catch (err) {
-      console.error('Failed to create company:', err)
-      alert('Failed to create company. Please try again.')
-    } finally {
-      setSaving(false)
+  const handleFinish = () => {
+    const config = {
+      companyName: companyName || `${currentCountry?.name || 'My'} Branch`,
+      country,
+      modules: Array.from(selectedModules),
+      currency,
+      completedAt: new Date().toISOString(),
     }
+    localStorage.setItem('erp_setup', JSON.stringify(config))
+    localStorage.setItem('onboarding_complete', 'true')
+    onComplete()
   }
 
   const progress = { country: 1, modules: 2, currency: 3, confirm: 4 }
@@ -215,8 +192,8 @@ export default function OnboardingWizard({ currentUser, onComplete }: {
                 <button className="btn btn-secondary" onClick={() => setStep('currency')}>
                   <ChevronLeft size={16} /> Back
                 </button>
-                <button className="btn btn-primary btn-success" onClick={handleFinish} disabled={saving}>
-                  {saving ? 'Setting up…' : 'Enter Dashboard'} <ChevronRight size={16} />
+                <button className="btn btn-primary btn-success" onClick={handleFinish}>
+                  Enter Dashboard <ChevronRight size={16} />
                 </button>
               </div>
             </div>

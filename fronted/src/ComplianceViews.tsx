@@ -1,6 +1,5 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useComplianceStore } from './stores';
-import { useCompanyStore } from './stores/useCompanyStore';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card } from '@/components/ui/card';
@@ -22,22 +21,20 @@ const CERT_TYPES = ['Payment', 'Contract', 'Salary', 'Interest', 'Royalty'];
 
 const COUNTRY_TO_JURISDICTION: Record<string, string> = {
   'united kingdom': 'UK',
-  'gb': 'UK',
   'united states': 'USA',
-  'us': 'USA',
   'pakistan': 'PK',
-  'pk': 'PK',
   'european union': 'EU',
-  'eu': 'EU',
   'united arab emirates': 'UAE',
-  'ae': 'UAE',
   'saudi arabia': 'SA',
-  'sa': 'SA',
   'canada': 'CA',
-  'ca': 'CA',
-  'germany': 'EU',
-  'de': 'EU',
 };
+
+type ComplianceEntity = { id: string; country?: string };
+
+function getJurisdictionForEntity(entity?: ComplianceEntity): string | null {
+  if (!entity?.country) return null;
+  return COUNTRY_TO_JURISDICTION[entity.country.toLowerCase()] || null;
+}
 
 const obligationBadge = (s: string) =>
   s === 'Paid' ? 'secondary' : s === 'Filed' ? 'outline' : s === 'Overdue' ? 'destructive' : 'default';
@@ -101,27 +98,27 @@ export function ComplianceSummaryView() {
 }
 
 // ── Tax Management ────────────────────────────────────────────────────────────
-export function TaxManagementView({ activeEntityId }: { activeEntityId?: string }) {
-  const store = useComplianceStore();
-  const entity = useCompanyStore((s) => s.entities.find(e => e.id === activeEntityId));
-  const jurisdictionId = COUNTRY_TO_JURISDICTION[(entity?.country || '').toLowerCase()] || '';
-
-  useEffect(() => { store.fetchAll(); }, []);
-  const { obligations } = store;
-  const filteredObligations = jurisdictionId ? obligations.filter(o => o.jurisdictionId === jurisdictionId) : obligations;
+export function TaxManagementView({ activeEntityId, entities }: { activeEntityId?: string; entities?: any[] }) {
+  const { obligations } = useComplianceData();
+  const activeEntity = entities?.find(e => e.id === activeEntityId);
+  const jurisdiction = getJurisdictionForEntity(activeEntity as ComplianceEntity);
+  const filteredObligations = useMemo(
+    () => obligations.filter(o => !jurisdiction || o.jurisdictionId === jurisdiction),
+    [obligations, jurisdiction]
+  );
   const totalDue = filteredObligations.filter(o => o.status === 'Due' || o.status === 'Overdue').reduce((s, o) => s + (o.amountDue - o.amountPaid), 0);
 
   return (
     <div className="p-6 max-w-[1400px] mx-auto space-y-4">
-      <PageHeader title="Tax Management" description={`Monitor tax obligations for ${entity?.country || 'all jurisdictions'}`} />
+      <PageHeader title="Tax Management" description={`Monitor tax obligations and liability${jurisdiction ? ` for ${jurisdiction}` : ' across jurisdictions'}`} />
       <div className="grid grid-cols-4 gap-4">
-        <StatCard icon={Landmark} label="Jurisdictions" value={jurisdictionId ? 1 : JURISDICTIONS.length} tone="teal" />
+        <StatCard icon={Landmark} label="Jurisdictions" value={jurisdiction ? 1 : JURISDICTIONS.length} tone="teal" />
         <StatCard icon={Scale} label="Total Obligations" value={filteredObligations.length} tone="blue" />
         <StatCard icon={AlertTriangle} label="Due / Overdue" value={filteredObligations.filter(o => o.status === 'Due' || o.status === 'Overdue').length} tone="amber" />
         <StatCard icon={Wallet} label="Amount Due" value={money(totalDue)} tone="red" />
       </div>
       <div className="grid grid-cols-4 gap-4">
-        {(jurisdictionId ? [jurisdictionId] : JURISDICTIONS).map(j => {
+        {(jurisdiction ? [jurisdiction] : JURISDICTIONS).map(j => {
           const jOblig = filteredObligations.filter(o => o.jurisdictionId === j);
           const jDue = jOblig.filter(o => o.status === 'Due' || o.status === 'Overdue').reduce((s, o) => s + (o.amountDue - o.amountPaid), 0);
           const jFiled = jOblig.filter(o => o.status === 'Filed' || o.status === 'Paid').length;
@@ -144,16 +141,23 @@ export function TaxManagementView({ activeEntityId }: { activeEntityId?: string 
 }
 
 // ── VAT / Sales Tax ───────────────────────────────────────────────────────────
-export function VatSalesTaxView({ activeEntityId }: { activeEntityId?: string }) {
+export function VatSalesTaxView({ activeEntityId, entities }: { activeEntityId?: string; entities?: any[] }) {
   const { obligations, createObligation, setObligationStatus } = useComplianceData();
+  const activeEntity = entities?.find(e => e.id === activeEntityId);
+  const jurisdiction = getJurisdictionForEntity(activeEntity as ComplianceEntity);
   const [showForm, setShowForm] = useState(false);
-  const [form, setForm] = useState(EMPTY_OBLIGATION);
+  const [form, setForm] = useState({ ...EMPTY_OBLIGATION, jurisdictionId: jurisdiction || 'UK' });
   const [saving, setSaving] = useState(false);
-  const [filter, setFilter] = useState('');
+  const [filter, setFilter] = useState(jurisdiction || '');
   const setF = (k: string, v: any) => setForm(f => ({ ...f, [k]: v }));
 
-  const vatObligations = obligations.filter(o => o.obligationType === 'VAT' || o.obligationType === 'Sales Tax');
-  const filtered = vatObligations.filter(o => !filter || o.jurisdictionId === filter);
+  const vatObligations = useMemo(
+    () => obligations.filter(o => (o.obligationType === 'VAT' || o.obligationType === 'Sales Tax') && (!jurisdiction || o.jurisdictionId === jurisdiction)),
+    [obligations, jurisdiction]
+  );
+  const filtered = useMemo(() => {
+    return vatObligations.filter(o => !filter || o.jurisdictionId === filter);
+  }, [vatObligations, filter]);
   const due = vatObligations.filter(o => o.status === 'Due' || o.status === 'Overdue').reduce((s, o) => s + (o.amountDue - o.amountPaid), 0);
 
   const save = async () => {
@@ -164,14 +168,14 @@ export function VatSalesTaxView({ activeEntityId }: { activeEntityId?: string })
         periodStart: form.periodStart, periodEnd: form.periodEnd, dueDate: form.dueDate,
         amountDue: Number(form.amountDue) || 0, notes: form.notes || null, companyId: activeEntityId || null,
       });
-      setForm(EMPTY_OBLIGATION);
+      setForm({ ...EMPTY_OBLIGATION, jurisdictionId: jurisdiction || 'UK' });
       setShowForm(false);
     } finally { setSaving(false); }
   };
 
   return (
     <div className="p-6 max-w-[1400px] mx-auto space-y-4">
-      <PageHeader title="VAT / Sales Tax" description="Manage value-added and sales tax obligations" actions={<Button onClick={() => setShowForm(v => !v)}><Plus className="mr-2 h-4 w-4" /> New Obligation</Button>} />
+      <PageHeader title="VAT / Sales Tax" description={`Manage value-added and sales tax obligations${jurisdiction ? ` for ${jurisdiction}` : ''}`} actions={<Button onClick={() => setShowForm(v => !v)}><Plus className="mr-2 h-4 w-4" /> New Obligation</Button>} />
       <div className="grid grid-cols-4 gap-4">
         <StatCard icon={Scale} label="VAT / Sales Obligations" value={vatObligations.length} tone="blue" />
         <StatCard icon={Wallet} label="Amount Due" value={money(due)} tone="amber" />
@@ -183,7 +187,7 @@ export function VatSalesTaxView({ activeEntityId }: { activeEntityId?: string })
           <div className="grid grid-cols-12 gap-3 items-end">
             <div className="col-span-2"><FormField label="Jurisdiction"><Select value={form.jurisdictionId} onValueChange={v => v !== null && setF('jurisdictionId', v)}>
               <SelectTrigger><SelectValue /></SelectTrigger>
-              <SelectContent>{JURISDICTIONS.map(j => <SelectItem key={j} value={j}>{j}</SelectItem>)}</SelectContent>
+              <SelectContent>{(jurisdiction ? [jurisdiction] : JURISDICTIONS).map(j => <SelectItem key={j} value={j}>{j}</SelectItem>)}</SelectContent>
             </Select></FormField></div>
             <div className="col-span-2"><FormField label="Type"><Select value={form.obligationType} onValueChange={v => v !== null && setF('obligationType', v)}>
               <SelectTrigger><SelectValue /></SelectTrigger>
@@ -198,14 +202,15 @@ export function VatSalesTaxView({ activeEntityId }: { activeEntityId?: string })
         </Card>
       )}
       <div className="flex gap-3 items-center">
-        <Select value={filter} onValueChange={v => v !== null && setFilter(v)}>
-          <SelectTrigger className="w-[180px]"><SelectValue placeholder="All Jurisdictions" /></SelectTrigger>
-          <SelectContent>
-            <SelectItem value="">All Jurisdictions</SelectItem>
-            {JURISDICTIONS.map(j => <SelectItem key={j} value={j}>{j}</SelectItem>)}
-          </SelectContent>
-        </Select>
-      </div>
+        {!jurisdiction && (
+          <Select value={filter} onValueChange={v => v !== null && setFilter(v)}>
+            <SelectTrigger className="w-[180px]"><SelectValue placeholder="All Jurisdictions" /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="">All Jurisdictions</SelectItem>
+              {JURISDICTIONS.map(j => <SelectItem key={j} value={j}>{j}</SelectItem>)}
+            </SelectContent>
+          </Select>
+        )}</div>
       <Card className="overflow-hidden">
         <table className="w-full text-sm">
           <thead>
@@ -252,7 +257,7 @@ export function VatSalesTaxView({ activeEntityId }: { activeEntityId?: string })
 export function WithholdingTaxView({ activeEntityId }: { activeEntityId?: string }) {
   const { withholding, createWithholding } = useComplianceData();
   const [showForm, setShowForm] = useState(false);
-  const [form, setForm] = useState(EMPTY_CERT);
+  const [form, setForm] = useState({ ...EMPTY_CERT });
   const [saving, setSaving] = useState(false);
   const setF = (k: string, v: any) => setForm(f => ({ ...f, [k]: v }));
 
@@ -266,7 +271,7 @@ export function WithholdingTaxView({ activeEntityId }: { activeEntityId?: string
         ratePercent: Number(form.ratePercent) || 0, grossAmount: Number(form.grossAmount) || 0,
         periodStart: form.periodStart, periodEnd: form.periodEnd, status: form.status, companyId: activeEntityId || null,
       });
-      setForm(EMPTY_CERT);
+      setForm({ ...EMPTY_CERT });
       setShowForm(false);
     } finally { setSaving(false); }
   };
@@ -336,30 +341,40 @@ export function WithholdingTaxView({ activeEntityId }: { activeEntityId?: string
 }
 
 // ── Tax Returns ───────────────────────────────────────────────────────────────
-export function TaxReturnsView({ activeEntityId: _activeEntityId }: { activeEntityId?: string }) {
+export function TaxReturnsView({ activeEntityId, entities }: { activeEntityId?: string; entities?: any[] }) {
   const { returns, fileReturn } = useComplianceData();
-  const [filter, setFilter] = useState('');
-  const filtered = returns.filter(r => !filter || r.jurisdictionId === filter);
-  const totalNet = returns.reduce((s, r) => s + r.netTax, 0);
+  const activeEntity = entities?.find(e => e.id === activeEntityId);
+  const jurisdiction = getJurisdictionForEntity(activeEntity as ComplianceEntity);
+  const filteredReturns = useMemo(
+    () => returns.filter(r => !jurisdiction || r.jurisdictionId === jurisdiction),
+    [returns, jurisdiction]
+  );
+  const [filter, setFilter] = useState(jurisdiction || '');
+  const displayReturns = useMemo(() => {
+    return filteredReturns.filter(r => !filter || r.jurisdictionId === filter);
+  }, [filteredReturns, filter]);
+  const totalNet = filteredReturns.reduce((s, r) => s + r.netTax, 0);
 
   return (
     <div className="p-6 max-w-[1400px] mx-auto space-y-4">
-      <PageHeader title="Tax Returns" description="Prepare and file tax returns across jurisdictions" />
+      <PageHeader title="Tax Returns" description={`Prepare and file tax returns${jurisdiction ? ` for ${jurisdiction}` : ''}`} />
       <div className="grid grid-cols-4 gap-4">
-        <StatCard icon={FileText} label="Total Returns" value={returns.length} tone="blue" />
-        <StatCard icon={CheckCircle2} label="Filed" value={returns.filter(r => r.status === 'Filed').length} tone="green" />
-        <StatCard icon={Clock3} label="Draft" value={returns.filter(r => r.status === 'Draft').length} tone="amber" />
+        <StatCard icon={FileText} label="Total Returns" value={filteredReturns.length} tone="blue" />
+        <StatCard icon={CheckCircle2} label="Filed" value={filteredReturns.filter(r => r.status === 'Filed').length} tone="green" />
+        <StatCard icon={Clock3} label="Draft" value={filteredReturns.filter(r => r.status === 'Draft').length} tone="amber" />
         <StatCard icon={Wallet} label="Net Tax" value={money(totalNet)} tone="violet" />
       </div>
-      <div className="flex gap-3 items-center">
-        <Select value={filter} onValueChange={v => v !== null && setFilter(v)}>
-          <SelectTrigger className="w-[180px]"><SelectValue placeholder="All Jurisdictions" /></SelectTrigger>
-          <SelectContent>
-            <SelectItem value="">All Jurisdictions</SelectItem>
-            {JURISDICTIONS.map(j => <SelectItem key={j} value={j}>{j}</SelectItem>)}
-          </SelectContent>
-        </Select>
-      </div>
+      {!jurisdiction && (
+        <div className="flex gap-3 items-center">
+          <Select value={filter} onValueChange={v => v !== null && setFilter(v)}>
+            <SelectTrigger className="w-[180px]"><SelectValue placeholder="All Jurisdictions" /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="">All Jurisdictions</SelectItem>
+              {JURISDICTIONS.map(j => <SelectItem key={j} value={j}>{j}</SelectItem>)}
+            </SelectContent>
+          </Select>
+        </div>
+      )}
       <Card className="overflow-hidden">
         <table className="w-full text-sm">
           <thead>
@@ -376,7 +391,7 @@ export function TaxReturnsView({ activeEntityId: _activeEntityId }: { activeEnti
             </tr>
           </thead>
           <tbody>
-            {filtered.map(r => (
+            {displayReturns.map(r => (
               <tr key={r.id} className="border-b hover:bg-muted/30 transition-colors">
                 <td className="p-3 font-mono font-medium">{r.returnNumber}</td>
                 <td className="p-3"><Badge variant="outline">{r.jurisdictionId}</Badge></td>
@@ -391,7 +406,7 @@ export function TaxReturnsView({ activeEntityId: _activeEntityId }: { activeEnti
                 </td>
               </tr>
             ))}
-            {filtered.length === 0 && <tr><td colSpan={9} className="p-8 text-center text-muted-foreground">No tax returns found</td></tr>}
+            {displayReturns.length === 0 && <tr><td colSpan={9} className="p-8 text-center text-muted-foreground">No tax returns found</td></tr>}
           </tbody>
         </table>
       </Card>
@@ -494,30 +509,40 @@ export function EInvoicingView({ activeEntityId }: { activeEntityId?: string }) 
 }
 
 // ── Compliance Reports ────────────────────────────────────────────────────────
-export function ComplianceReportsView({ activeEntityId: _activeEntityId }: { activeEntityId?: string }) {
+export function ComplianceReportsView({ activeEntityId, entities }: { activeEntityId?: string; entities?: any[] }) {
   const { dashboard, obligations, returns, withholding, eInvoices } = useComplianceData();
-  const totalDue = obligations.filter(o => o.status === 'Due' || o.status === 'Overdue').reduce((s, o) => s + (o.amountDue - o.amountPaid), 0);
+  const activeEntity = entities?.find(e => e.id === activeEntityId);
+  const jurisdiction = getJurisdictionForEntity(activeEntity as ComplianceEntity);
+  const filteredObligations = useMemo(
+    () => obligations.filter(o => !jurisdiction || o.jurisdictionId === jurisdiction),
+    [obligations, jurisdiction]
+  );
+  const filteredReturns = useMemo(
+    () => returns.filter(r => !jurisdiction || r.jurisdictionId === jurisdiction),
+    [returns, jurisdiction]
+  );
+  const totalDue = filteredObligations.filter(o => o.status === 'Due' || o.status === 'Overdue').reduce((s, o) => s + (o.amountDue - o.amountPaid), 0);
   const totalWithheld = withholding.reduce((s, c) => s + c.withheldAmount, 0);
   const validated = eInvoices.filter(e => e.status === 'Validated').length;
 
   return (
     <div className="p-6 max-w-[1400px] mx-auto space-y-4">
-      <PageHeader title="Compliance Reports" description="Compliance posture and reporting across jurisdictions" />
+      <PageHeader title="Compliance Reports" description={`Compliance posture and reporting${jurisdiction ? ` for ${jurisdiction}` : ' across jurisdictions'}`} />
       <div className="grid grid-cols-4 gap-4">
         <StatCard icon={Scale} label="Total Tax Due" value={money(totalDue)} tone="red" />
         <StatCard icon={Wallet} label="Total Withheld" value={money(totalWithheld)} tone="blue" />
         <StatCard icon={ShieldCheck} label="Validated E-Invoices" value={validated} tone="teal" />
-        <StatCard icon={Building2} label="Jurisdictions Active" value={JURISDICTIONS.filter(j => obligations.some(o => o.jurisdictionId === j)).length} tone="violet" />
+        <StatCard icon={Building2} label="Jurisdictions Active" value={jurisdiction ? 1 : JURISDICTIONS.filter(j => obligations.some(o => o.jurisdictionId === j)).length} tone="violet" />
       </div>
       <div className="grid grid-cols-2 gap-4">
         <Card className="p-4 space-y-3">
           <p className="text-sm font-medium flex items-center gap-2"><FileText className="h-4 w-4" /> Obligation Status Breakdown</p>
           <div className="space-y-2">
             {[
-              { label: 'Due', value: obligations.filter(o => o.status === 'Due').length, tone: 'amber' },
-              { label: 'Overdue', value: obligations.filter(o => o.status === 'Overdue').length, tone: 'red' },
-              { label: 'Filed', value: obligations.filter(o => o.status === 'Filed').length, tone: 'blue' },
-              { label: 'Paid', value: obligations.filter(o => o.status === 'Paid').length, tone: 'green' },
+              { label: 'Due', value: filteredObligations.filter(o => o.status === 'Due').length, tone: 'amber' },
+              { label: 'Overdue', value: filteredObligations.filter(o => o.status === 'Overdue').length, tone: 'red' },
+              { label: 'Filed', value: filteredObligations.filter(o => o.status === 'Filed').length, tone: 'blue' },
+              { label: 'Paid', value: filteredObligations.filter(o => o.status === 'Paid').length, tone: 'green' },
             ].map(r => (
               <div key={r.label} className="flex items-center justify-between border rounded-lg p-3 text-sm">
                 <span className="text-muted-foreground">{r.label}</span>
@@ -530,8 +555,8 @@ export function ComplianceReportsView({ activeEntityId: _activeEntityId }: { act
           <p className="text-sm font-medium flex items-center gap-2"><TrendingUp className="h-4 w-4" /> Filing Performance</p>
           <div className="space-y-2">
             {[
-              { label: 'Returns Filed', value: returns.filter(r => r.status === 'Filed').length },
-              { label: 'Returns Draft', value: returns.filter(r => r.status === 'Draft').length },
+              { label: 'Returns Filed', value: filteredReturns.filter(r => r.status === 'Filed').length },
+              { label: 'Returns Draft', value: filteredReturns.filter(r => r.status === 'Draft').length },
               { label: 'E-Invoices Submitted', value: dashboard?.pendingInvoices ?? 0 },
               { label: 'E-Invoices Validated', value: validated },
             ].map(r => (
