@@ -122,7 +122,11 @@ export interface FinancialData {
     roe: number;
     currentRatio: number;
     quickRatio: number;
+    equityRatio: number;
+    debtToEquity: number;
   };
+  avgDaysOutstanding: number;
+  avgDaysPayable: number;
   // Alerts + controls
   alerts: AlertItem[];
   controls: {
@@ -462,6 +466,7 @@ export function useFinancialData(
       .slice(0, 6);
 
     // ── Profitability ──
+    const equity = totalEquity + netIncome;
     const profitability = {
       grossMargin: totalRevenue > 0 ? (grossProfit / totalRevenue) * 100 : 0,
       netMargin: totalRevenue > 0 ? (netIncome / totalRevenue) * 100 : 0,
@@ -469,7 +474,20 @@ export function useFinancialData(
       roe: totalEquity > 0 ? (netIncome / totalEquity) * 100 : 0,
       currentRatio: totalLiabilities > 0 ? totalAssets / totalLiabilities : 0,
       quickRatio: totalLiabilities > 0 ? (totalAssets - stockValue) / totalLiabilities : 0,
+      equityRatio: totalAssets > 0 ? (equity / totalAssets) * 100 : 0,
+      debtToEquity: equity > 0 ? totalLiabilities / equity : 0,
     };
+
+    // ── Avg days for aging ──
+    const agingMidpoints = [0, 15, 45, 75, 105];
+    const arTotalVal = arAging.reduce((s, a) => s + a.value, 0);
+    const avgDaysOutstanding = arTotalVal > 0
+      ? arAging.reduce((s, a, i) => s + a.value * agingMidpoints[i], 0) / arTotalVal
+      : 0;
+    const apTotalVal = apAging.reduce((s, a) => s + a.value, 0);
+    const avgDaysPayable = apTotalVal > 0
+      ? apAging.reduce((s, a, i) => s + a.value * agingMidpoints[i], 0) / apTotalVal
+      : 0;
 
     // ── Accounting equation ──
     const difference = totalAssets - (totalLiabilities + totalEquity + netIncome);
@@ -647,6 +665,8 @@ export function useFinancialData(
       poStatus,
       topExpenses,
       profitability,
+      avgDaysOutstanding: Math.round(avgDaysOutstanding),
+      avgDaysPayable: Math.round(avgDaysPayable),
       alerts: alerts.slice(0, 7),
       controls,
       counts,

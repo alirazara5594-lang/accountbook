@@ -83,8 +83,8 @@ function SalesReportsWorkspace({ activeEntityId }: Props) {
       </div>
 
       {/* KPI Stats */}
-      <section className="stats">
-        <article>
+      <div className="grid grid-cols-4 gap-2.5">
+        <article className="bg-white border border-gray-200 rounded-xl p-3 flex items-center gap-3">
           <span className="stat-icon blue"><DollarSign className="w-4 h-4" /></span>
           <div>
             <small>TOTAL REVENUE</small>
@@ -92,7 +92,7 @@ function SalesReportsWorkspace({ activeEntityId }: Props) {
             <p>Gross sales this period</p>
           </div>
         </article>
-        <article>
+        <article className="bg-white border border-gray-200 rounded-xl p-3 flex items-center gap-3">
           <span className="stat-icon teal"><TrendingUp className="w-4 h-4" /></span>
           <div>
             <small>GROSS PROFIT</small>
@@ -100,7 +100,7 @@ function SalesReportsWorkspace({ activeEntityId }: Props) {
             <p>{metrics.grossMargin.toFixed(1)}% margin</p>
           </div>
         </article>
-        <article>
+        <article className="bg-white border border-gray-200 rounded-xl p-3 flex items-center gap-3">
           <span className="stat-icon violet"><FileText className="w-4 h-4" /></span>
           <div>
             <small>NET INCOME</small>
@@ -108,7 +108,7 @@ function SalesReportsWorkspace({ activeEntityId }: Props) {
             <p>After expenses</p>
           </div>
         </article>
-        <article>
+        <article className="bg-white border border-gray-200 rounded-xl p-3 flex items-center gap-3">
           <span className="stat-icon blue"><BarChart3 className="w-4 h-4" /></span>
           <div>
             <small>AVG INVOICE</small>
@@ -116,11 +116,7 @@ function SalesReportsWorkspace({ activeEntityId }: Props) {
             <p>{metrics.totalInvoices} invoices total</p>
           </div>
         </article>
-      </section>
-
-      {/* Secondary Stats */}
-      <section className="stats">
-        <article>
+        <article className="bg-white border border-gray-200 rounded-xl p-3 flex items-center gap-3">
           <span className="stat-icon teal"><TrendingUp className="w-4 h-4" /></span>
           <div>
             <small>COLLECTED</small>
@@ -128,7 +124,7 @@ function SalesReportsWorkspace({ activeEntityId }: Props) {
             <p>Paid invoices</p>
           </div>
         </article>
-        <article>
+        <article className="bg-white border border-gray-200 rounded-xl p-3 flex items-center gap-3">
           <span className="stat-icon blue"><DollarSign className="w-4 h-4" /></span>
           <div>
             <small>OUTSTANDING</small>
@@ -136,7 +132,7 @@ function SalesReportsWorkspace({ activeEntityId }: Props) {
             <p>Amount due</p>
           </div>
         </article>
-        <article>
+        <article className="bg-white border border-gray-200 rounded-xl p-3 flex items-center gap-3">
           <span className="stat-icon violet"><FileText className="w-4 h-4" /></span>
           <div>
             <small>DRAFT INVOICES</small>
@@ -144,7 +140,7 @@ function SalesReportsWorkspace({ activeEntityId }: Props) {
             <p>Awaiting posting</p>
           </div>
         </article>
-        <article>
+        <article className="bg-white border border-gray-200 rounded-xl p-3 flex items-center gap-3">
           <span className="stat-icon blue"><TrendingDown className="w-4 h-4" /></span>
           <div>
             <small>COGS</small>
@@ -152,7 +148,7 @@ function SalesReportsWorkspace({ activeEntityId }: Props) {
             <p>Cost of goods sold</p>
           </div>
         </article>
-      </section>
+      </div>
 
       {/* Charts Row */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">

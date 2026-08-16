@@ -1,37 +1,17 @@
-import { useState } from 'react';
+import { useState, useRef, useEffect } from 'react';
+import { Calendar, ChevronDown, Filter, RefreshCw, DollarSign, TrendingDown, TrendingUp, Users, CreditCard, Wallet, X, Check } from 'lucide-react';
+import { useFinancialData, type AccountLike, type JournalLike } from './useFinancialData';
 import {
-  LayoutDashboard,
-  ShieldCheck,
-  RefreshCw,
-  Calendar,
-  ChevronDown,
-  Layers,
-} from 'lucide-react';
-import { useCompanyStore } from '../stores';
-import {
-  useFinancialData,
-  type AccountLike,
-  type JournalLike,
-} from './useFinancialData';
-import {
-  KpiStrip,
-  PerformancePanel,
-  CashFlowPanel,
-  ProfitLossPanel,
-  EquationPanel,
-  AttentionPanel,
-  ReceivablesPanel,
-  PayablesPanel,
-  InventoryPanel,
-  TransactionsPanel,
-  SalesPanel,
-  PurchasePanel,
-  TopExpensesPanel,
-  ProfitabilityPanel,
-  ControlBar,
+  KPICard,
+  AccountingEquation,
+  ProfitLossTrend,
+  CashFlowSummary,
+  AccountBalances,
+  AgingCard,
+  FinancialPositionBar,
   QuickAdd,
 } from './sections';
-import { currentFiscalYear } from './format';
+import { currentFiscalYear, money } from './format';
 
 export interface FinancialOverviewProps {
   accounts: AccountLike[];
@@ -40,76 +20,125 @@ export interface FinancialOverviewProps {
   activeEntityId?: string;
 }
 
-const selectCls =
-  'h-7 text-[11px] font-semibold border border-slate-200 rounded-lg bg-white text-slate-600 px-2 outline-none cursor-pointer hover:border-slate-300';
+const PERIOD_OPTIONS = ['This FY', 'Last FY', '2 FYs Back'] as const;
+const VIEWS = ['Consolidated', 'Branch View', 'Department View'] as const;
 
 export function FinancialOverview({ accounts, entries, setPage, activeEntityId }: FinancialOverviewProps) {
-  const entities = useCompanyStore((s) => s.entities);
-
   const [fyYear, setFyYear] = useState<number>(() => currentFiscalYear());
-  const [range, setRange] = useState<'This FY' | 'Last FY' | '2 FYs Back'>('This FY');
+  const [period, setPeriod] = useState<'This FY' | 'Last FY' | '2 FYs Back'>('This FY');
+  const [view, setView] = useState<'Consolidated' | 'Branch View' | 'Department View'>('Consolidated');
+  const [periodOpen, setPeriodOpen] = useState(false);
+  const [filterOpen, setFilterOpen] = useState(false);
+  const periodRef = useRef<HTMLDivElement>(null);
+  const filterRef = useRef<HTMLDivElement>(null);
 
   const data = useFinancialData(accounts, entries, activeEntityId, fyYear);
 
-  const handleRange = (r: 'This FY' | 'Last FY' | '2 FYs Back') => {
-    setRange(r);
-    setFyYear(currentFiscalYear() - (r === 'This FY' ? 0 : r === 'Last FY' ? 1 : 2));
+  const handlePeriod = (p: 'This FY' | 'Last FY' | '2 FYs Back') => {
+    setPeriod(p);
+    setFyYear(currentFiscalYear() - (p === 'This FY' ? 0 : p === 'Last FY' ? 1 : 2));
+    setPeriodOpen(false);
   };
 
-  const activeEntity = entities.find((e) => e.id === activeEntityId);
+  // Close dropdowns on outside click
+  useEffect(() => {
+    const handler = (e: MouseEvent) => {
+      if (periodRef.current && !periodRef.current.contains(e.target as Node)) setPeriodOpen(false);
+      if (filterRef.current && !filterRef.current.contains(e.target as Node)) setFilterOpen(false);
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, []);
+
+  const kpis = [
+    { label: 'Total Revenue', value: money(data.revenue, 'USD'), delta: data.kpiDeltas.revenue, icon: DollarSign, iconBg: '#dcfce7', iconColor: '#10b981' },
+    { label: 'Total Expenses', value: money(data.revenue - data.netProfit, 'USD'), delta: null, icon: TrendingDown, iconBg: '#fee2e2', iconColor: '#ef4444' },
+    { label: 'Net Profit', value: money(data.netProfit, 'USD'), delta: data.kpiDeltas.netProfit, icon: TrendingUp, iconBg: '#dbeafe', iconColor: '#3b82f6' },
+    { label: 'Accounts Receivable', value: money(data.arTotal, 'USD'), delta: null, icon: Users, iconBg: '#ffedd5', iconColor: '#f97316' },
+    { label: 'Accounts Payable', value: money(data.apTotal, 'USD'), delta: null, icon: CreditCard, iconBg: '#f3e8ff', iconColor: '#8b5cf6' },
+    { label: 'Cash & Bank Balance', value: money(data.cashBank, 'USD'), delta: data.kpiDeltas.cashBank, icon: Wallet, iconBg: '#ccfbf1', iconColor: '#14b8a6' },
+  ];
 
   return (
     <div className="w-full font-sans space-y-3">
       {/* ── Header ── */}
-      <div className="bg-white rounded-xl border border-gray-200 shadow-sm px-4 py-3">
-        <div className="flex items-center justify-between gap-3 flex-wrap">
-          <div className="flex items-center gap-3 min-w-0">
-            <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-blue-600 to-indigo-700 text-white flex items-center justify-center shrink-0 shadow-sm">
-              <LayoutDashboard className="w-4 h-4" />
-            </div>
-            <div className="min-w-0">
-              <div className="flex items-center gap-2">
-                <h1 className="text-base font-black tracking-tight leading-tight truncate" style={{ color: '#2fb8a6' }}>Financial Overview</h1>
-                <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md bg-emerald-50 border border-emerald-200 text-[9px] font-black text-emerald-700">
-                  <ShieldCheck className="w-2.5 h-2.5" /> LIVE
-                </span>
-              </div>
-              <p className="text-[11px] text-slate-500 truncate">
-                Executive dashboard · {activeEntity?.name || 'All entities'} · updated {data.asOf}
-              </p>
-            </div>
-          </div>
-
-          <div className="flex items-center gap-1.5 flex-wrap">
-            <button onClick={data.refresh} className="inline-flex items-center gap-1 h-7 px-2 rounded-lg border border-slate-200 bg-white text-[11px] font-semibold text-slate-600 hover:bg-slate-50">
-              <RefreshCw className={`w-3.5 h-3.5 ${data.loading ? 'animate-spin text-blue-600' : ''}`} /> Refresh
-            </button>
-            <button className="h-7 px-2 rounded-lg bg-slate-900 text-white text-[11px] font-bold hover:bg-slate-700">Customize</button>
-          </div>
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-2xl font-bold text-gray-900">Financial Overview</h1>
+          <p className="text-sm text-gray-500">Real-time summary of your company's financial performance</p>
         </div>
+        <div className="flex items-center gap-2">
+          {/* Period dropdown */}
+          <div ref={periodRef} className="relative">
+            <button
+              onClick={() => { setPeriodOpen(!periodOpen); setFilterOpen(false); }}
+              className="flex items-center gap-2 px-3 py-2 border border-gray-200 rounded-lg text-sm text-gray-600 hover:bg-gray-50"
+            >
+              <Calendar className="w-4 h-4" />
+              {period}
+              <ChevronDown className="w-4 h-4" />
+            </button>
+            {periodOpen && (
+              <div className="absolute right-0 mt-1 bg-white border border-gray-200 rounded-xl shadow-xl w-56 z-50 py-1">
+                <div className="px-3 py-2 text-[10px] font-black uppercase tracking-wide text-gray-400 border-b border-gray-100">
+                  Select Period
+                </div>
+                {PERIOD_OPTIONS.map((p) => (
+                  <button
+                    key={p}
+                    onClick={() => handlePeriod(p)}
+                    className="w-full text-left px-3 py-2 text-sm font-medium text-gray-700 hover:bg-blue-50 hover:text-blue-800 flex items-center justify-between transition-colors"
+                  >
+                    {p}
+                    {period === p && <Check className="w-4 h-4 text-blue-600" />}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
 
-        {/* Filters */}
-        <div className="mt-3 pt-3 border-t border-slate-100 flex items-center gap-2 flex-wrap">
-          <label className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wide text-slate-400">
-            <Calendar className="w-3 h-3" /> Period
-            <select value={range} onChange={(e) => handleRange(e.target.value as 'This FY' | 'Last FY' | '2 FYs Back')} className={selectCls}>
-              <option>This FY</option>
-              <option>Last FY</option>
-              <option>2 FYs Back</option>
-            </select>
-          </label>
-
-          <label className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wide text-slate-400">
-            FY {fyYear}
-            <span className="inline-flex items-center gap-1 h-7 px-2 rounded-lg bg-slate-50 border border-slate-200 text-[11px] font-bold text-slate-700">
-              <Layers className="w-3 h-3 text-indigo-500" /> Jul {fyYear - 1} – Jun {fyYear}
-            </span>
-          </label>
-
-          <div className="flex-1" />
-          <span className="inline-flex items-center gap-1 text-[10px] font-semibold text-slate-400">
-            <ChevronDown className="w-3 h-3" /> Consolidated view
-          </span>
+          {/* Filter dropdown */}
+          <div ref={filterRef} className="relative">
+            <button
+              onClick={() => { setFilterOpen(!filterOpen); setPeriodOpen(false); }}
+              className="flex items-center gap-2 px-3 py-2 border border-gray-200 rounded-lg text-sm text-gray-600 hover:bg-gray-50"
+            >
+              <Filter className="w-4 h-4" />
+              Filter
+              <ChevronDown className="w-4 h-4" />
+            </button>
+            {filterOpen && (
+              <div className="absolute right-0 mt-1 bg-white border border-gray-200 rounded-xl shadow-xl w-64 z-50 p-4 space-y-4">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-black uppercase tracking-wide text-gray-400">Filters</span>
+                  <button onClick={() => setFilterOpen(false)}>
+                    <X className="w-3.5 h-3.5 text-gray-400 hover:text-gray-600" />
+                  </button>
+                </div>
+                <div>
+                  <label className="text-[11px] font-semibold text-gray-500 mb-1.5 block">View</label>
+                  <div className="space-y-1">
+                    {VIEWS.map((v) => (
+                      <button
+                        key={v}
+                        onClick={() => setView(v)}
+                        className="w-full text-left px-2.5 py-1.5 text-xs font-medium text-gray-700 rounded-lg hover:bg-blue-50 hover:text-blue-800 flex items-center justify-between transition-colors"
+                      >
+                        {v}
+                        {view === v && <Check className="w-3.5 h-3.5 text-blue-600" />}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+                <div>
+                  <label className="text-[11px] font-semibold text-gray-500 mb-1.5 block">Currency</label>
+                  <div className="px-2.5 py-1.5 text-xs font-medium text-gray-700 bg-gray-50 rounded-lg border border-gray-200">
+                    USD
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
         </div>
       </div>
 
@@ -119,41 +148,55 @@ export function FinancialOverview({ accounts, entries, setPage, activeEntityId }
         </div>
       )}
 
-      {/* ── KPI Cards ── */}
-      <KpiStrip data={data} currency="USD" />
-
-      {/* ── Row 1: Performance + Cash flow ── */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-3">
-        <PerformancePanel data={data} currency="USD" />
-        <CashFlowPanel data={data} currency="USD" />
+      {/* ── KPI Cards (6 cols) ── */}
+      <div className="grid grid-cols-6 gap-2.5">
+        {kpis.map((kpi) => (
+          <KPICard key={kpi.label} {...kpi} />
+        ))}
       </div>
 
-      {/* ── Row 2: P&L + Equation + Attention ── */}
+      {/* ── Accounting Equation (full width) ── */}
+      <AccountingEquation data={data} currency="USD" />
+
+      {/* ── Row: P&L Trend + Cash Flow + Account Balances ── */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-3">
-        <ProfitLossPanel data={data} currency="USD" />
-        <EquationPanel data={data} currency="USD" />
-        <AttentionPanel data={data} setPage={setPage} />
+        <ProfitLossTrend data={data} currency="USD" />
+        <CashFlowSummary data={data} currency="USD" />
+        <AccountBalances data={data} currency="USD" />
       </div>
 
-      {/* ── Row 3: Receivables + Payables + Inventory ── */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-3">
-        <ReceivablesPanel data={data} currency="USD" setPage={setPage} />
-        <PayablesPanel data={data} currency="USD" setPage={setPage} />
-        <InventoryPanel data={data} currency="USD" setPage={setPage} />
+      {/* ── Row: Receivables Aging + Payables Aging ── */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
+        <AgingCard
+          title="Receivables Aging"
+          total={data.arTotal}
+          avgDays={data.avgDaysOutstanding}
+          avgLabel="Avg. Days Outstanding"
+          aging={data.arAging}
+          currency="USD"
+        />
+        <AgingCard
+          title="Payables Aging"
+          total={data.apTotal}
+          avgDays={data.avgDaysPayable}
+          avgLabel="Avg. Days Payable"
+          aging={data.apAging}
+          currency="USD"
+        />
       </div>
 
-      {/* ── Row 4: Transactions + Sales + Purchase ── */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-3">
-        <TransactionsPanel data={data} currency="USD" />
-        <SalesPanel data={data} currency="USD" setPage={setPage} />
-        <PurchasePanel data={data} currency="USD" setPage={setPage} />
-      </div>
+      {/* ── Financial Position Summary Bar ── */}
+      <FinancialPositionBar data={data} currency="USD" />
 
-      {/* ── Row 5: Top expenses + Profitability + Control bar ── */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-3">
-        <TopExpensesPanel data={data} currency="USD" setPage={setPage} />
-        <ProfitabilityPanel data={data} />
-        <ControlBar data={data} setPage={setPage} />
+      {/* ── Footer ── */}
+      <div className="flex items-center justify-between text-xs text-gray-400 pt-2 pb-4">
+        <span>All amounts are in USD</span>
+        <div className="flex items-center gap-3">
+          <span>Last updated: {data.asOf}</span>
+          <button onClick={data.refresh} className="flex items-center gap-1 text-gray-500 hover:text-gray-700">
+            <RefreshCw className={`w-3.5 h-3.5 ${data.loading ? 'animate-spin' : ''}`} /> Refresh
+          </button>
+        </div>
       </div>
 
       <QuickAdd setPage={setPage} />
