@@ -116,7 +116,7 @@ public class Company
     public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
 }
 public enum EntityType { Parent, Subsidiary, Branch, JointVenture, Associate }
-public record CompanyRequest(string Name, string? Code, string? LegalName, EntityType Type, Guid? ParentId, string Country, string CurrencyCode, Guid? TaxAuthorityId);
+public record CompanyRequest(string Name, string? Code, string? LegalName, EntityType? Type, Guid? ParentId, string? Country, string? CurrencyCode, string? FunctionalCurrency, Guid? TaxAuthorityId);
 public record CompanyStatusRequest(bool Active);
 
 public enum IntercompanyChargeFrequency { OneTime, Hourly, Weekly, Monthly, Quarterly, Yearly }
