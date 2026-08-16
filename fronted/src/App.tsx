@@ -82,7 +82,7 @@ import { PeriodClosingView } from './PeriodClosingView'
 import { AuditTrailView } from './AuditTrailView'
 import { JournalEntriesView } from './JournalEntriesView'
 import { useCoaStore, useJournalsStore, useCompanyStore, useIntercompanyStore } from './stores'
-import { DashboardOverview } from './DashboardOverview'
+import { FinancialOverview } from './financial-overview/FinancialOverview'
 
 import type { Account } from './api/modules/coa.api'
 type AccountType = 'Asset' | 'Liability' | 'Equity' | 'Revenue' | 'Expense' | 'ContraAsset' | 'ContraLiability' | 'ContraEquity' | 'ContraRevenue' | 'ContraExpense'
@@ -452,7 +452,7 @@ export default function App() {
       );
     })}
   </nav><div className="bottom"><div className="user"><div className="avatar small">{currentUser?.avatar}</div><div style={{ flex: 1, minWidth: 0 }}><strong style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{currentUser?.fullName}</strong><small style={{ display: 'block', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{currentUser?.role}</small></div><button onClick={handleLogout} title="Sign Out" style={{ background: 'transparent', border: 'none', color: '#aebed0', cursor: 'pointer', padding: '6px', display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'color 0.2s ease', flexShrink: 0 }} onMouseEnter={(e) => (e.currentTarget.style.color = '#fca5a5')} onMouseLeave={(e) => (e.currentTarget.style.color = '#aebed0')}><LogOut size={16} /></button></div></div></aside><main><header><div><p className="eyebrow">{group.toUpperCase()}</p><h1>{module}</h1></div><label className="entity-picker">Working in<select value={activeEntityId} onChange={e => setActiveEntityId(e.target.value)}>{entities.map(x => <option key={x.id} value={x.id}>{x.name}{x.code ? ` · ${x.code}` : ''}</option>)}</select></label>{activeView === 'journal' && <button className="primary" onClick={() => document.getElementById('journal-form')?.scrollIntoView({ behavior: 'smooth' })}>＋ New entry</button>}</header>
-  {activeView === 'dashboard' && <DashboardOverview accounts={accounts} entries={entries} setPage={setPage} activeEntityId={activeEntityId} />}
+  {activeView === 'dashboard' && <FinancialOverview accounts={accounts} entries={entries} setPage={setPage} activeEntityId={activeEntityId} />}
   {activeView === 'module-summary' && <ModuleSummary moduleName={group} accounts={accounts} entries={entries} setPage={setPage} openCreateAccount={openCreate} />}
   {activeView === 'sales-summary' && <SalesSummaryView activeEntityId={activeEntityId} setPage={setPage} />}
   {activeView === 'procurement-summary' && <ProcurementSummaryView activeEntityId={activeEntityId} setPage={setPage} />}
