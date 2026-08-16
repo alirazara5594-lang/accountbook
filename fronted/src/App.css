@@ -475,3 +475,70 @@ main{padding:24px 32px;width:calc(100% - 258px);max-width:1450px;margin:0 auto}h
 tbody td {
   vertical-align: middle;
 }
+
+/* Intercompany – Recipient companies section */
+.recipient-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin: 18px 0 10px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--color-border);
+}
+.recipient-head b {
+  font-size: 13px;
+  color: var(--color-text-strong);
+}
+.recipient-head span {
+  font-size: 11px;
+  color: var(--color-text-muted);
+  font-weight: 600;
+}
+.recipient-row {
+  display: grid;
+  grid-template-columns: 1fr 100px 140px auto;
+  gap: 10px;
+  align-items: center;
+  padding: 8px 0;
+  border-bottom: 1px solid #f1f5f9;
+}
+.recipient-row:last-of-type {
+  border-bottom: none;
+}
+.recipient-row select,
+.recipient-row input {
+  padding: 7px 10px;
+  border: 1px solid var(--color-border);
+  border-radius: 6px;
+  font-size: 12px;
+  color: var(--color-text);
+  background: #fff;
+}
+.recipient-row select:focus,
+.recipient-row input:focus {
+  outline: none;
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 2px rgb(20 96 107 / .1);
+}
+.recipient-row span {
+  font-size: 12px;
+  color: var(--color-text-muted);
+  font-weight: 500;
+  text-align: right;
+}
+.recipient-row .btn-icon {
+  width: 28px;
+  height: 28px;
+  display: grid;
+  place-items: center;
+  border: none;
+  background: transparent;
+  color: #94a3b8;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all .15s ease;
+}
+.recipient-row .btn-icon:hover {
+  background: #fee2e2;
+  color: #dc2626;
+}
