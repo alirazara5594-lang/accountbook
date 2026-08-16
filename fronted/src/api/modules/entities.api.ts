@@ -3,12 +3,14 @@ import { apiClient } from '../client';
 export interface Entity {
   id: string;
   name: string;
-  code: string;
-  functionalCurrency: string;
+  code?: string;
+  legalName?: string;
+  type?: string;
+  parentId?: string;
   country: string;
-  structure: string;
+  currencyCode?: string;
+  functionalCurrency?: string;
   active: boolean;
-  parentId?: string | null;
   taxAuthorityId?: string | null;
   taxId?: string;
   fiscalYearEnd?: string;

@@ -235,13 +235,13 @@ export function RolesPermissionsView() {
 // ── Companies & Branches ──────────────────────────────────────────────────────
 export function CompaniesView() {
   const { entities, fetchCompanies, saveCompany, toggleCompanyStatus } = useCompanyStore();
-  const [form, setForm] = useState({ name: '', code: '', functionalCurrency: 'USD', country: 'US', structure: 'Single', active: true });
+  const [form, setForm] = useState({ name: '', code: '', currencyCode: 'USD', country: 'United States', type: 'Subsidiary' as string, active: true });
 
   useEffect(() => { fetchCompanies(); }, [fetchCompanies]);
 
   const save = (e: React.FormEvent) => {
     e.preventDefault();
-    saveCompany(form).then(() => setForm({ name: '', code: '', functionalCurrency: 'USD', country: 'US', structure: 'Single', active: true }));
+    saveCompany(form).then(() => setForm({ name: '', code: '', currencyCode: 'USD', country: 'United States', type: 'Subsidiary', active: true }));
   };
 
   return (
@@ -251,7 +251,7 @@ export function CompaniesView() {
         <StatCard icon={Building2} label="Companies" value={entities.length} tone="teal" />
         <StatCard icon={CheckCircle2} label="Active" value={entities.filter(e => e.active).length} tone="green" />
         <StatCard icon={Globe} label="Countries" value={new Set(entities.map(e => e.country)).size} tone="blue" />
-        <StatCard icon={Coins} label="Currencies" value={new Set(entities.map(e => e.functionalCurrency)).size} tone="violet" />
+        <StatCard icon={Coins} label="Currencies" value={new Set(entities.map(e => e.currencyCode || e.functionalCurrency)).size} tone="violet" />
       </div>
       <div className="grid grid-cols-3 gap-4">
         <Card className="p-4 space-y-3">
@@ -261,15 +261,15 @@ export function CompaniesView() {
             <FormField label="Code"><Input value={form.code} onChange={e => setForm({ ...form, code: e.target.value })} placeholder="ACME" /></FormField>
             <div className="grid grid-cols-2 gap-3">
               <FormField label="Currency">
-                <Select value={form.functionalCurrency} onValueChange={v => setForm({ ...form, functionalCurrency: v || 'USD' })}>
+                <Select value={form.currencyCode} onValueChange={v => setForm({ ...form, currencyCode: v || 'USD' })}>
                   <SelectTrigger><SelectValue /></SelectTrigger>
                   <SelectContent><SelectItem value="USD">USD</SelectItem><SelectItem value="GBP">GBP</SelectItem><SelectItem value="EUR">EUR</SelectItem><SelectItem value="PKR">PKR</SelectItem><SelectItem value="AED">AED</SelectItem><SelectItem value="SAR">SAR</SelectItem></SelectContent>
                 </Select>
               </FormField>
               <FormField label="Country">
-                <Select value={form.country} onValueChange={v => setForm({ ...form, country: v || 'US' })}>
+                <Select value={form.country} onValueChange={v => setForm({ ...form, country: v || 'United States' })}>
                   <SelectTrigger><SelectValue /></SelectTrigger>
-                  <SelectContent><SelectItem value="US">US</SelectItem><SelectItem value="UK">UK</SelectItem><SelectItem value="PK">Pakistan</SelectItem><SelectItem value="AE">UAE</SelectItem><SelectItem value="SA">Saudi</SelectItem><SelectItem value="EU">EU</SelectItem></SelectContent>
+                  <SelectContent><SelectItem value="United States">United States</SelectItem><SelectItem value="United Kingdom">United Kingdom</SelectItem><SelectItem value="Pakistan">Pakistan</SelectItem><SelectItem value="United Arab Emirates">United Arab Emirates</SelectItem><SelectItem value="Saudi Arabia">Saudi Arabia</SelectItem><SelectItem value="European Union">European Union</SelectItem><SelectItem value="Canada">Canada</SelectItem></SelectContent>
                 </Select>
               </FormField>
             </div>
@@ -285,7 +285,7 @@ export function CompaniesView() {
                 <TableRow key={e.id}>
                   <TableCell className="font-medium">{e.name}</TableCell>
                   <TableCell className="font-mono text-muted-foreground">{e.code}</TableCell>
-                  <TableCell>{e.functionalCurrency}</TableCell>
+                  <TableCell>{e.currencyCode || e.functionalCurrency}</TableCell>
                   <TableCell>{e.country}</TableCell>
                   <TableCell><button onClick={() => toggleCompanyStatus(e.id, !e.active)}><Badge variant={e.active ? 'secondary' : 'outline'}>{e.active ? 'Active' : 'Inactive'}</Badge></button></TableCell>
                 </TableRow>

@@ -176,8 +176,9 @@ export default function App() {
   // Track if onboarding is needed (for non-admin demo accounts)
   const needsOnboarding = (email: string) => {
     if (email === 'admin@acme.com') return false; // Admin gets instant access
-    // Check if user has completed onboarding
-    return !localStorage.getItem('onboarding_complete');
+    // Check if THIS user has completed onboarding
+    const key = `onboarding_complete_${email}`;
+    return !localStorage.getItem(key);
   };
 
   const handleLogin = async (userData: UserData) => {

@@ -3118,13 +3118,23 @@ public IReadOnlyList<EmployeeCompensation> EmployeeCompensations => _employeeCom
     public bool CreateCompany(CompanyRequest request, out Company? company, out string? error)
     {
         company = null; error = null;
-        company = new Company { Name = request.Name.Trim(), Code = request.Code?.Trim(), LegalName = request.LegalName?.Trim(), Type = request.Type, ParentId = request.ParentId, Country = request.Country.Trim(), CurrencyCode = request.CurrencyCode.Trim().ToUpperInvariant(), TaxAuthorityId = request.TaxAuthorityId }; _companies.Add(company); Persist(); return true;
+        if (string.IsNullOrWhiteSpace(request.Name)) { error = "Company name is required."; return false; }
+        var name = request.Name.Trim();
+        var code = request.Code?.Trim();
+        var legalName = request.LegalName?.Trim();
+        var type = request.Type ?? EntityType.Subsidiary;
+        var country = !string.IsNullOrWhiteSpace(request.Country) ? request.Country.Trim() : "United States";
+        var currency = !string.IsNullOrWhiteSpace(request.CurrencyCode) ? request.CurrencyCode.Trim().ToUpperInvariant()
+            : !string.IsNullOrWhiteSpace(request.FunctionalCurrency) ? request.FunctionalCurrency.Trim().ToUpperInvariant()
+            : "USD";
+        company = new Company { Name = name, Code = code, LegalName = legalName, Type = type, ParentId = request.ParentId, Country = country, CurrencyCode = currency, TaxAuthorityId = request.TaxAuthorityId }; _companies.Add(company); Persist(); return true;
     }
     public bool UpdateCompany(Guid id, CompanyRequest request, out Company? company, out string? error)
     {
         company = _companies.FirstOrDefault(x => x.Id == id); error = null;
         if (company is null) { error = "Entity not found."; return false; }
-        company.Name = request.Name.Trim(); company.Code = request.Code?.Trim(); company.LegalName = request.LegalName?.Trim(); company.Type = request.Type; company.ParentId = request.ParentId; company.Country = request.Country.Trim(); company.CurrencyCode = request.CurrencyCode.Trim().ToUpperInvariant(); company.TaxAuthorityId = request.TaxAuthorityId; company.UpdatedAt = DateTime.UtcNow; Persist(); return true;
+        if (string.IsNullOrWhiteSpace(request.Name)) { error = "Company name is required."; return false; }
+        company.Name = request.Name.Trim(); company.Code = request.Code?.Trim(); company.LegalName = request.LegalName?.Trim(); company.Type = request.Type ?? company.Type; company.ParentId = request.ParentId; company.Country = !string.IsNullOrWhiteSpace(request.Country) ? request.Country.Trim() : company.Country; company.CurrencyCode = !string.IsNullOrWhiteSpace(request.CurrencyCode) ? request.CurrencyCode.Trim().ToUpperInvariant() : !string.IsNullOrWhiteSpace(request.FunctionalCurrency) ? request.FunctionalCurrency.Trim().ToUpperInvariant() : company.CurrencyCode; company.TaxAuthorityId = request.TaxAuthorityId; company.UpdatedAt = DateTime.UtcNow; Persist(); return true;
     }
     public bool SetCompanyStatus(Guid id, bool active, out string? error) { var company = _companies.FirstOrDefault(x => x.Id == id); error = null; if (company is null) { error = "Entity not found."; return false; } company.Active = active; company.UpdatedAt = DateTime.UtcNow; Persist(); return true; }
     
