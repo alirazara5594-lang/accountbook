@@ -22,6 +22,25 @@ const JURISDICTION_COUNTRY: Record<string, string[]> = {
   CA: ['Canada'],
 };
 
+const COUNTRY_TO_JURISDICTION: Record<string, string> = {
+  'united kingdom': 'UK',
+  'gb': 'UK',
+  'united states': 'USA',
+  'us': 'USA',
+  'pakistan': 'PK',
+  'pk': 'PK',
+  'european union': 'EU',
+  'eu': 'EU',
+  'united arab emirates': 'UAE',
+  'ae': 'UAE',
+  'saudi arabia': 'SA',
+  'sa': 'SA',
+  'canada': 'CA',
+  'ca': 'CA',
+  'germany': 'EU',
+  'de': 'EU',
+};
+
 export const TaxAccountingView: React.FC<TaxAccountingViewProps> = ({ activeEntityId, entities }) => {
   const currentEntity = entities.find(e => e.id === activeEntityId);
   const [jurisdictions, setJurisdictions] = useState<TaxJurisdiction[]>([]);
@@ -62,6 +81,15 @@ export const TaxAccountingView: React.FC<TaxAccountingViewProps> = ({ activeEnti
   };
 
   useEffect(() => { load(); }, []);
+
+  useEffect(() => {
+    if (currentEntity?.country) {
+      const jurisdictionId = COUNTRY_TO_JURISDICTION[currentEntity.country.toLowerCase()];
+      if (jurisdictionId) {
+        setSelectedJurisdiction(jurisdictionId);
+      }
+    }
+  }, [currentEntity?.country]);
 
   const current = jurisdictions.find(j => j.id === selectedJurisdiction) || jurisdictions[0];
 
@@ -206,17 +234,15 @@ export const TaxAccountingView: React.FC<TaxAccountingViewProps> = ({ activeEnti
         </div>
       </div>
 
-      {/* Jurisdiction selector */}
-      <div className="flex flex-wrap gap-2">
-        {jurisdictions.map(j => (
-          <button
-            key={j.id}
-            onClick={() => setSelectedJurisdiction(j.id)}
-            className={`px-4 py-2 rounded-xl text-xs font-bold border transition-all ${selectedJurisdiction === j.id ? 'bg-[#143e2b] text-white border-[#143e2b] shadow-sm' : 'bg-white text-slate-700 border-slate-200 hover:border-slate-300'}`}
-          >
-            <span className="mr-1.5">{j.flag}</span>{j.name}
-          </button>
-        ))}
+      {/* Jurisdiction label */}
+      <div className="flex items-center gap-2 px-1">
+        <Globe2 className="w-3.5 h-3.5 text-indigo-600" />
+        <span className="text-xs font-bold text-slate-700">
+          {current?.flag} {current?.name} Tax Jurisdiction
+        </span>
+        <span className="text-[10px] text-slate-400 ml-1">
+          (Based on {currentEntity?.name || 'Company'}'s country: {currentEntity?.country || 'Not set'})
+        </span>
       </div>
 
       {loading && <p className="text-xs text-slate-500">Loading tax configuration…</p>}

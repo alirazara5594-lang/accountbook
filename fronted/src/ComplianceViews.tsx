@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useComplianceStore } from './stores';
+import { useCompanyStore } from './stores/useCompanyStore';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card } from '@/components/ui/card';
@@ -18,6 +19,25 @@ const today = () => new Date().toISOString().split('T')[0];
 
 const JURISDICTIONS = ['UK', 'USA', 'PK', 'EU', 'UAE', 'SA', 'CA'];
 const CERT_TYPES = ['Payment', 'Contract', 'Salary', 'Interest', 'Royalty'];
+
+const COUNTRY_TO_JURISDICTION: Record<string, string> = {
+  'united kingdom': 'UK',
+  'gb': 'UK',
+  'united states': 'USA',
+  'us': 'USA',
+  'pakistan': 'PK',
+  'pk': 'PK',
+  'european union': 'EU',
+  'eu': 'EU',
+  'united arab emirates': 'UAE',
+  'ae': 'UAE',
+  'saudi arabia': 'SA',
+  'sa': 'SA',
+  'canada': 'CA',
+  'ca': 'CA',
+  'germany': 'EU',
+  'de': 'EU',
+};
 
 const obligationBadge = (s: string) =>
   s === 'Paid' ? 'secondary' : s === 'Filed' ? 'outline' : s === 'Overdue' ? 'destructive' : 'default';
@@ -81,22 +101,28 @@ export function ComplianceSummaryView() {
 }
 
 // ── Tax Management ────────────────────────────────────────────────────────────
-export function TaxManagementView({ activeEntityId: _activeEntityId }: { activeEntityId?: string }) {
-  const { obligations } = useComplianceData();
-  const totalDue = obligations.filter(o => o.status === 'Due' || o.status === 'Overdue').reduce((s, o) => s + (o.amountDue - o.amountPaid), 0);
+export function TaxManagementView({ activeEntityId }: { activeEntityId?: string }) {
+  const store = useComplianceStore();
+  const entity = useCompanyStore((s) => s.entities.find(e => e.id === activeEntityId));
+  const jurisdictionId = COUNTRY_TO_JURISDICTION[(entity?.country || '').toLowerCase()] || '';
+
+  useEffect(() => { store.fetchAll(); }, []);
+  const { obligations } = store;
+  const filteredObligations = jurisdictionId ? obligations.filter(o => o.jurisdictionId === jurisdictionId) : obligations;
+  const totalDue = filteredObligations.filter(o => o.status === 'Due' || o.status === 'Overdue').reduce((s, o) => s + (o.amountDue - o.amountPaid), 0);
 
   return (
     <div className="p-6 max-w-[1400px] mx-auto space-y-4">
-      <PageHeader title="Tax Management" description="Monitor tax obligations and liability across jurisdictions" />
+      <PageHeader title="Tax Management" description={`Monitor tax obligations for ${entity?.country || 'all jurisdictions'}`} />
       <div className="grid grid-cols-4 gap-4">
-        <StatCard icon={Landmark} label="Jurisdictions" value={JURISDICTIONS.length} tone="teal" />
-        <StatCard icon={Scale} label="Total Obligations" value={obligations.length} tone="blue" />
-        <StatCard icon={AlertTriangle} label="Due / Overdue" value={obligations.filter(o => o.status === 'Due' || o.status === 'Overdue').length} tone="amber" />
+        <StatCard icon={Landmark} label="Jurisdictions" value={jurisdictionId ? 1 : JURISDICTIONS.length} tone="teal" />
+        <StatCard icon={Scale} label="Total Obligations" value={filteredObligations.length} tone="blue" />
+        <StatCard icon={AlertTriangle} label="Due / Overdue" value={filteredObligations.filter(o => o.status === 'Due' || o.status === 'Overdue').length} tone="amber" />
         <StatCard icon={Wallet} label="Amount Due" value={money(totalDue)} tone="red" />
       </div>
       <div className="grid grid-cols-4 gap-4">
-        {JURISDICTIONS.map(j => {
-          const jOblig = obligations.filter(o => o.jurisdictionId === j);
+        {(jurisdictionId ? [jurisdictionId] : JURISDICTIONS).map(j => {
+          const jOblig = filteredObligations.filter(o => o.jurisdictionId === j);
           const jDue = jOblig.filter(o => o.status === 'Due' || o.status === 'Overdue').reduce((s, o) => s + (o.amountDue - o.amountPaid), 0);
           const jFiled = jOblig.filter(o => o.status === 'Filed' || o.status === 'Paid').length;
           return (

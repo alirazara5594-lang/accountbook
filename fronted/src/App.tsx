@@ -18,7 +18,6 @@ import { AssetsInventoryWorkspace } from './AssetsInventoryWorkspace'
 import DepreciationRun from './DepreciationRun'
 import DepreciationSchedule from './DepreciationSchedule'
 import ValuationReport from './ValuationReport'
-import { TaxConfiguration } from './TaxConfiguration'
 import { SalesWorkspace } from './SalesWorkspace'
 import { EstimatesAndQuotes } from './EstimatesAndQuotes'
 import { SalesOrdersWorkspace } from './SalesOrdersWorkspace'
@@ -100,7 +99,7 @@ const NAVIGATION = [
   { name: 'Sales & Customers', icon: '☖', items: ['Customers', 'Products & Services', 'Sales Workspace', 'Estimates & Quotes', 'Sales Orders', 'Credit Notes', 'Customer Payments', 'Customer Statements', 'Customer Aging', 'Sales Reports'] },
   { name: 'Procurement', icon: '⇡', items: ['Vendors', 'Procurement Workspace', 'Bills', 'Debit Notes', 'Expense Claims', 'Vendor Payments', 'Vendor Statements', 'Payables Aging', 'Purchase Reports'] },
   { name: 'Banking & Payments', icon: '🏛', items: ['Bank Accounts', 'Cash Accounts', 'Bank Connection', 'Bank Import', 'Transactions', 'Bank Reconciliation', 'Voucher Management', 'Fund Transfers', 'Cash Flow Statements'] },
-              { name: 'Accounting', icon: '⌘', items: ['Chart of Accounts', 'Journal Entries', 'Fixed Assets', 'General Ledger', 'Accounts Receivable', 'Accounts Payable', 'Tax Accounting', 'Budgets', 'Financial Reports', 'Period Closing', 'Audit Trail', 'Intercompany Allocations', 'Lease Accounting'] },
+              { name: 'Accounting', icon: '⌘', items: ['Chart of Accounts', 'Journal Entries', 'Fixed Assets', 'General Ledger', 'Accounts Receivable', 'Accounts Payable', 'Budgets', 'Financial Reports', 'Period Closing', 'Audit Trail', 'Intercompany Allocations', 'Lease Accounting'] },
   { name: 'Assets & Inventory', icon: '📦', items: ['Assets & Inventory Workspace', 'Depreciation Run', 'Depreciation Schedule', 'Valuation Reports'] },
   { name: 'Manufacturing & Production', icon: '⚙️', items: ['Manufacturing Workspace', 'Bill of Materials', 'Work Orders', 'Job Costing'] },
   { name: 'Payroll & HR', icon: '👥', items: ['Employees', 'Attendance', 'Leave', 'Payroll', 'Salary', 'Loans & Advances', 'HR Reports'] },
@@ -108,7 +107,7 @@ const NAVIGATION = [
   { name: 'Government Compliance', icon: '⚖', items: ['Tax Management', 'VAT / Sales Tax', 'Withholding Tax', 'Tax Returns', 'E-Invoicing', 'Compliance Reports'] },
   { name: 'Projects', icon: '🏗', items: ['Projects', 'Project Planning', 'Tasks', 'Project Budget', 'Project Costing', 'Timesheets', 'Project Billing', 'Project Expenses', 'Project Profitability', 'Reports'] },
   { name: 'AI & Analytics', icon: '✨', items: ['Analytics Dashboard', 'Financial Analytics', 'Sales Analytics', 'Expense Analytics', 'Cash Flow Analytics', 'Inventory Analytics', 'Forecasting', 'AI Insights'] },
-  { name: 'Administration', icon: '⚙', items: ['Users', 'Roles & Permissions', 'Companies', 'Branches', 'Approval Workflows', 'System Settings', 'Chart of Accounts Mapping', 'Number Series', 'Currency', 'Tax Configuration', 'Audit Logs'] }
+  { name: 'Administration', icon: '⚙', items: ['Users', 'Roles & Permissions', 'Companies', 'Branches', 'Approval Workflows', 'System Settings', 'Chart of Accounts Mapping', 'Number Series', 'Currency', 'Tax Accounting', 'Audit Logs'] }
 ];
 
 export default function App() {
@@ -339,7 +338,7 @@ export default function App() {
     'Accounting.General Ledger': 'general-ledger',
     'Accounting.Accounts Receivable': 'accounts-receivable',
     'Accounting.Accounts Payable': 'accounts-payable',
-    'Accounting.Tax Accounting': 'tax-accounting',
+    'Administration.Tax Accounting': 'tax-accounting',
     'Accounting.Budgets': 'budgets',
     'Accounting.Financial Reports': 'financial-reports',
     'Accounting.Period Closing': 'period-closing',
@@ -408,7 +407,6 @@ export default function App() {
     'Administration.Chart of Accounts Mapping': 'coa-mapping',
     'Administration.Number Series': 'admin-number-series',
     'Administration.Currency': 'admin-currency',
-    'Administration.Tax Configuration': 'taxes',
     'Administration.Audit Logs': 'admin-audit',
     'Sales & Customers.Customer Payments': 'customer-payments',
     'Sales & Customers.Customer Statements': 'customer-statements',
@@ -562,7 +560,7 @@ export default function App() {
   {activeView === 'vendor-statements' && <VendorStatementsWorkspace activeEntityId={activeEntityId} />}
   {activeView === 'payables-aging' && <PayablesAgingWorkspace activeEntityId={activeEntityId} />}
   {activeView === 'debit-notes' && <DebitNotes activeEntityId={activeEntityId} entities={entities as any} />}
-  {activeView === 'taxes' && <TaxConfiguration />}
+  {activeView === 'taxes' && <TaxAccountingView activeEntityId={activeEntityId} entities={entities as any} />}
   {activeView === 'fixed-assets' && <FixedAssets activeEntityId={activeEntityId} />}
   {activeView === 'assets-inventory' && <AssetsInventoryWorkspace activeEntityId={activeEntityId} entities={entities} />}
   {activeView === 'depreciation-run' && <DepreciationRun activeEntityId={activeEntityId} />}
