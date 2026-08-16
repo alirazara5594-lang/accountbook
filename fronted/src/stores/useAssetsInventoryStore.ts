@@ -9,6 +9,7 @@ import {
 
 interface AssetsInventoryState {
   assets: FixedAsset[];
+  fixedAssets: FixedAsset[];
   warehouses: Warehouse[];
   stockLevels: StockLevel[];
   stockTransactions: StockTransaction[];
@@ -17,6 +18,7 @@ interface AssetsInventoryState {
 
   fetchFixedAssets: (companyId?: string) => Promise<FixedAsset[]>;
   runDepreciation: (id: string, expenseAccId: string, accumAccId: string) => Promise<any>;
+  runBatchDepreciation: (asOfDate?: string) => Promise<any>;
   disposeAsset: (id: string, data: any) => Promise<any>;
 
   fetchWarehouses: (companyId?: string) => Promise<Warehouse[]>;
@@ -31,6 +33,7 @@ interface AssetsInventoryState {
 
 export const useAssetsInventoryStore = create<AssetsInventoryState>((set, get) => ({
   assets: [],
+  fixedAssets: [],
   warehouses: [],
   stockLevels: [],
   stockTransactions: [],
@@ -40,7 +43,7 @@ export const useAssetsInventoryStore = create<AssetsInventoryState>((set, get) =
   fetchFixedAssets: async (companyId?: string) => {
     try {
       const assets = await assetsInventoryApi.getFixedAssets(companyId);
-      set({ assets });
+      set({ assets, fixedAssets: assets });
       return assets;
     } catch {
       return [];
@@ -49,6 +52,12 @@ export const useAssetsInventoryStore = create<AssetsInventoryState>((set, get) =
 
   runDepreciation: async (id: string, expenseAccId: string, accumAccId: string) => {
     const res = await assetsInventoryApi.runDepreciation(id, expenseAccId, accumAccId);
+    await get().fetchFixedAssets();
+    return res;
+  },
+
+  runBatchDepreciation: async (asOfDate?: string) => {
+    const res = await assetsInventoryApi.runBatchDepreciation(asOfDate);
     await get().fetchFixedAssets();
     return res;
   },

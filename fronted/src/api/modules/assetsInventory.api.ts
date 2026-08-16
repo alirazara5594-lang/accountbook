@@ -16,6 +16,17 @@ export interface FixedAsset {
   companyId?: string;
 }
 
+export interface DepreciationRunResult {
+  assetId: string;
+  assetTag: string;
+  assetName: string;
+  amountPosted: number;
+  status: string;
+  cost: number;
+  accumulatedDepreciation: number;
+  netBookValue: number;
+}
+
 export interface Warehouse {
   id: string;
   name: string;
@@ -60,6 +71,13 @@ export const assetsInventoryApi = {
     return apiClient(`/fixed-assets/${id}/run-depreciation`, {
       method: 'POST',
       body: { depreciationExpenseAccountId: expenseAccId, accumulatedDepreciationAccountId: accumAccId },
+    });
+  },
+
+  runBatchDepreciation: async (asOfDate?: string): Promise<{ message: string; results: DepreciationRunResult[] }> => {
+    return apiClient('/fixedassets/run-batch-depreciation', {
+      method: 'POST',
+      params: { asOfDate },
     });
   },
 

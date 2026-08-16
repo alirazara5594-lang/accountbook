@@ -652,6 +652,8 @@ public class FixedAsset
     public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
 }
 
+public record DepreciationRunResult(Guid AssetId, string AssetTag, string AssetName, decimal AmountPosted, string Status, decimal Cost, decimal AccumulatedDepreciation, decimal NetBookValue);
+
 public class Warehouse
 {
     public Guid Id { get; init; } = Guid.NewGuid();

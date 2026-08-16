@@ -32,6 +32,14 @@ public class FixedAssetsController : ControllerBase
         return Ok(new { message = "Depreciation posted to the general ledger." });
     }
 
+    [HttpPost("run-batch-depreciation")]
+    public IActionResult RunBatchDepreciation([FromQuery] DateOnly? asOfDate)
+    {
+        if (!_store.RunBatchDepreciation(asOfDate, out var results, out var error))
+            return BadRequest(new { error });
+        return Ok(new { message = $"Depreciation posted for {results.Count} assets.", results });
+    }
+
     [HttpPost("{id}/dispose")]
     public IActionResult DisposeAsset(Guid id, [FromBody] AssetDisposalRequest request)
     {
@@ -44,3 +52,5 @@ public class FixedAssetsController : ControllerBase
 public record DepreciationRequest(Guid? DepreciationExpenseAccountId, Guid? AccumulatedDepreciationAccountId);
 
 public record AssetDisposalRequest(DateOnly DisposalDate, decimal Proceeds, Guid? AssetAccountId, Guid? AccumDeprAccountId, Guid? GainLossAccountId, Guid? CashAccountId);
+
+public record DepreciationRunResult(Guid AssetId, string AssetTag, string AssetName, decimal AmountPosted, string Status, decimal Cost, decimal AccumulatedDepreciation, decimal NetBookValue);

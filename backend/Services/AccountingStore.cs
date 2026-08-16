@@ -2491,6 +2491,78 @@ public IReadOnlyList<EmployeeCompensation> EmployeeCompensations => _employeeCom
             return true;
         }
     }
+
+    // Batch Depreciation Run — processes all active assets for one month
+    public bool RunBatchDepreciation(DateOnly? asOfDate, out List<DepreciationRunResult> results, out string? error)
+    {
+        results = new List<DepreciationRunResult>();
+        error = null;
+        lock (_lock)
+        {
+            var expAccId = GetMappedAccount("Depreciation Expense");
+            var accumAccId = GetMappedAccount("Accumulated Depreciation");
+            if (expAccId == Guid.Empty || accumAccId == Guid.Empty)
+            {
+                error = "Depreciation Expense or Accumulated Depreciation account is not mapped. Configure it under Administration → Chart of Accounts Mapping.";
+                return false;
+            }
+
+            var runDate = asOfDate ?? DateOnly.FromDateTime(DateTime.Today);
+            var activeAssets = _fixedAssets.Where(a => a.Status == AssetStatus.Active).ToList();
+
+            if (activeAssets.Count == 0)
+            {
+                error = "No active assets found to depreciate.";
+                return false;
+            }
+
+            foreach (var asset in activeAssets)
+            {
+                var annualDepreciation = (asset.PurchasePrice - asset.SalvageValue) / asset.UsefulLifeYears;
+                var monthlyDepreciation = Math.Round(annualDepreciation / 12, 2);
+
+                if (monthlyDepreciation <= 0)
+                {
+                    results.Add(new DepreciationRunResult(asset.Id, asset.AssetTag, asset.Name, 0, "No depreciation to post", asset.PurchasePrice, asset.AccumulatedDepreciation, asset.PurchasePrice - asset.AccumulatedDepreciation));
+                    continue;
+                }
+
+                var remainingDepreciable = (asset.PurchasePrice - asset.SalvageValue) - asset.AccumulatedDepreciation;
+                if (monthlyDepreciation > remainingDepreciable)
+                {
+                    monthlyDepreciation = remainingDepreciable;
+                    asset.Status = AssetStatus.Depreciated;
+                }
+
+                asset.AccumulatedDepreciation += monthlyDepreciation;
+                asset.UpdatedAt = DateTime.UtcNow;
+
+                var journalEntry = new JournalEntry
+                {
+                    Date = runDate,
+                    Reference = $"DEP-{asset.AssetTag}",
+                    Description = $"Monthly depreciation for {asset.Name}",
+                    TransactionType = TransactionType.Depreciation,
+                    CompanyId = asset.CompanyId,
+                    Lines =
+                    [
+                        new JournalLine(expAccId, monthlyDepreciation, 0, $"Depreciation: {asset.Name}", null, null, 1, asset.CompanyId),
+                        new JournalLine(accumAccId, 0, monthlyDepreciation, $"Accum. Depr: {asset.Name}", null, null, 1, asset.CompanyId)
+                    ],
+                    Status = JournalStatus.Posted
+                };
+                _entries.Add(journalEntry);
+
+                results.Add(new DepreciationRunResult(
+                    asset.Id, asset.AssetTag, asset.Name, monthlyDepreciation, "Posted",
+                    asset.PurchasePrice, asset.AccumulatedDepreciation, asset.PurchasePrice - asset.AccumulatedDepreciation
+                ));
+            }
+
+            Persist();
+            return true;
+        }
+    }
     
     // ─── Estimates & Quotes ───────────────────────────────────────────────────
     public bool CreateEstimate(EstimateRequest request, out Estimate? estimate, out string? error)

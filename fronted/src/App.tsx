@@ -15,6 +15,9 @@ import { ProcurementWorkspace } from './ProcurementWorkspace'
 import { VendorBills } from './VendorBills'
 import { FixedAssets } from './FixedAssets'
 import { AssetsInventoryWorkspace } from './AssetsInventoryWorkspace'
+import DepreciationRun from './DepreciationRun'
+import DepreciationSchedule from './DepreciationSchedule'
+import ValuationReport from './ValuationReport'
 import { TaxConfiguration } from './TaxConfiguration'
 import { SalesWorkspace } from './SalesWorkspace'
 import { EstimatesAndQuotes } from './EstimatesAndQuotes'
@@ -98,7 +101,7 @@ const NAVIGATION = [
   { name: 'Procurement', icon: '⇡', items: ['Vendors', 'Procurement Workspace', 'Bills', 'Debit Notes', 'Expense Claims', 'Vendor Payments', 'Vendor Statements', 'Payables Aging', 'Purchase Reports'] },
   { name: 'Banking & Payments', icon: '🏛', items: ['Bank Accounts', 'Cash Accounts', 'Bank Connection', 'Bank Import', 'Transactions', 'Bank Reconciliation', 'Voucher Management', 'Fund Transfers', 'Cash Flow Statements'] },
               { name: 'Accounting', icon: '⌘', items: ['Chart of Accounts', 'Journal Entries', 'Fixed Assets', 'General Ledger', 'Accounts Receivable', 'Accounts Payable', 'Tax Accounting', 'Budgets', 'Financial Reports', 'Period Closing', 'Audit Trail', 'Intercompany Allocations', 'Lease Accounting'] },
-  { name: 'Assets & Inventory', icon: '📦', items: ['Assets & Inventory Workspace', 'Depreciation Schedule', 'Valuation Reports'] },
+  { name: 'Assets & Inventory', icon: '📦', items: ['Assets & Inventory Workspace', 'Depreciation Run', 'Depreciation Schedule', 'Valuation Reports'] },
   { name: 'Manufacturing & Production', icon: '⚙️', items: ['Manufacturing Workspace', 'Bill of Materials', 'Work Orders', 'Job Costing'] },
   { name: 'Payroll & HR', icon: '👥', items: ['Employees', 'Attendance', 'Leave', 'Payroll', 'Salary', 'Loans & Advances', 'HR Reports'] },
   { name: 'Survey & Field Operations', icon: '📍', items: ['Surveys', 'Field Visits', 'Inspections', 'Work Orders', 'Field Expenses', 'Field Reports'] },
@@ -345,8 +348,9 @@ export default function App() {
     'Accounting.Intercompany Allocations': 'intercompany',
     'Assets & Inventory.Summary': 'assets-inventory-summary',
     'Assets & Inventory.Assets & Inventory Workspace': 'assets-inventory',
-    'Assets & Inventory.Depreciation Schedule': 'assets-inventory-schedule',
-    'Assets & Inventory.Valuation Reports': 'assets-inventory-valuation',
+    'Assets & Inventory.Depreciation Run': 'depreciation-run',
+    'Assets & Inventory.Depreciation Schedule': 'depreciation-schedule',
+    'Assets & Inventory.Valuation Reports': 'valuation-report',
     'Manufacturing & Production.Summary': 'mfg-summary',
     'Manufacturing & Production.Manufacturing Workspace': 'mfg-workspace',
     'Manufacturing & Production.Bill of Materials': 'mfg-bom',
@@ -561,6 +565,9 @@ export default function App() {
   {activeView === 'taxes' && <TaxConfiguration />}
   {activeView === 'fixed-assets' && <FixedAssets activeEntityId={activeEntityId} />}
   {activeView === 'assets-inventory' && <AssetsInventoryWorkspace activeEntityId={activeEntityId} entities={entities} />}
+  {activeView === 'depreciation-run' && <DepreciationRun activeEntityId={activeEntityId} />}
+  {activeView === 'depreciation-schedule' && <DepreciationSchedule activeEntityId={activeEntityId} />}
+  {activeView === 'valuation-report' && <ValuationReport activeEntityId={activeEntityId} />}
   {activeView === 'manufacturing' && <ManufacturingWorkspace activeEntityId={activeEntityId} entities={entities} />}
   {activeView === 'mfg-summary' && <ManufacturingSummaryView activeEntityId={activeEntityId} />}
   {activeView === 'mfg-workspace' && <ManufacturingWorkspaceView activeEntityId={activeEntityId} entities={entities} />}
