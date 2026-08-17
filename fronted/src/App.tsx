@@ -86,6 +86,8 @@ import { JournalEntriesView } from './JournalEntriesView'
 import { useCoaStore, useJournalsStore, useCompanyStore, useIntercompanyStore } from './stores'
 import { FinancialOverview } from './financial-overview/FinancialOverview'
 
+import { NAVIGATION } from './navigation'
+import TopHeader from './components/TopHeader'
 import type { Account } from './api/modules/coa.api'
 type AccountType = 'Asset' | 'Liability' | 'Equity' | 'Revenue' | 'Expense' | 'ContraAsset' | 'ContraLiability' | 'ContraEquity' | 'ContraRevenue' | 'ContraExpense'
 type Journal = { id: string; date: string; reference: string; description: string; status?: string; lines: { accountId: string; debit: number; credit: number }[] }
@@ -93,22 +95,6 @@ type Allocation = { id: string; name: string; sourceCompanyId: string; category:
 
 const accountTypes: AccountType[] = ['Asset', 'Liability', 'Equity', 'Revenue', 'Expense', 'ContraAsset', 'ContraLiability', 'ContraEquity', 'ContraRevenue', 'ContraExpense']
 const blank = { code: '', name: '', type: 'Asset' as AccountType, parentId: '', openingBalance: '0', reconciliationEnabled: false, ifrsTag: '', gaapTag: '', isSystem: false, subtype: '', currency: 'USD', taxCategory: '', allowManualJournal: true, description: '', status: 'Active' }
-
-const NAVIGATION = [
-  { name: 'Overview', icon: '▦', items: [], moduleId: 'overview' },
-  { name: 'Sales & Customers', icon: '☖', items: ['Customers', 'Products & Services', 'Sales Workspace', 'Estimates & Quotes', 'Sales Orders', 'Credit Notes', 'Customer Payments', 'Customer Statements', 'Customer Aging', 'Sales Reports'], moduleId: 'sales' },
-  { name: 'Procurement', icon: '⇡', items: ['Vendors', 'Procurement Workspace', 'Bills', 'Debit Notes', 'Expense Claims', 'Vendor Payments', 'Vendor Statements', 'Payables Aging', 'Purchase Reports'], moduleId: 'procurement' },
-  { name: 'Banking & Payments', icon: '🏛', items: ['Bank Accounts', 'Cash Accounts', 'Bank Connection', 'Bank Import', 'Transactions', 'Bank Reconciliation', 'Voucher Management', 'Fund Transfers', 'Cash Flow Statements'], moduleId: 'banking' },
-  { name: 'Accounting', icon: '⌘', items: ['Chart of Accounts', 'Journal Entries', 'Fixed Assets', 'General Ledger', 'Accounts Receivable', 'Accounts Payable', 'Budgets', 'Financial Reports', 'Period Closing', 'Audit Trail', 'Intercompany Allocations', 'Lease Accounting'], moduleId: 'accounting' },
-  { name: 'Assets & Inventory', icon: '📦', items: ['Assets & Inventory Workspace', 'Depreciation Run', 'Depreciation Schedule', 'Valuation Reports'], moduleId: 'assets' },
-  { name: 'Manufacturing & Production', icon: '⚙️', items: ['Manufacturing Workspace', 'Bill of Materials', 'Work Orders', 'Job Costing'], moduleId: 'manufacturing' },
-  { name: 'Payroll & HR', icon: '👥', items: ['Employees', 'Attendance', 'Leave', 'Payroll', 'Salary', 'Loans & Advances', 'HR Reports'], moduleId: 'payroll' },
-  { name: 'Survey & Field Operations', icon: '📍', items: ['Surveys', 'Field Visits', 'Inspections', 'Work Orders', 'Field Expenses', 'Field Reports'], moduleId: 'field' },
-  { name: 'Government Compliance', icon: '⚖', items: ['Tax Management', 'VAT / Sales Tax', 'Withholding Tax', 'Tax Returns', 'E-Invoicing', 'Compliance Reports'], moduleId: 'compliance' },
-  { name: 'Projects', icon: '🏗', items: ['Projects', 'Project Planning', 'Tasks', 'Project Budget', 'Project Costing', 'Timesheets', 'Project Billing', 'Project Expenses', 'Project Profitability', 'Reports'], moduleId: 'projects' },
-  { name: 'AI & Analytics', icon: '✨', items: ['Analytics Dashboard', 'Financial Analytics', 'Sales Analytics', 'Expense Analytics', 'Cash Flow Analytics', 'Inventory Analytics', 'Forecasting', 'AI Insights'], moduleId: 'analytics' },
-  { name: 'Administration', icon: '⚙', items: ['Users', 'Roles & Permissions', 'Companies', 'Branches', 'Approval Workflows', 'System Settings', 'Chart of Accounts Mapping', 'Number Series', 'Currency', 'Tax Accounting', 'Audit Logs'], moduleId: 'administration' }
-];
 
 export default function App() {
   const [page, setPage] = useState<string>(() => {
@@ -512,7 +498,7 @@ export default function App() {
         </div>
       );
     })}
-  </nav><div className="bottom"><div className="user"><div className="avatar small">{currentUser?.avatar}</div><div style={{ flex: 1, minWidth: 0 }}><strong style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{currentUser?.fullName}</strong><small style={{ display: 'block', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{currentUser?.role}</small></div><button onClick={handleLogout} title="Sign Out" style={{ background: 'transparent', border: 'none', color: '#aebed0', cursor: 'pointer', padding: '6px', display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'color 0.2s ease', flexShrink: 0 }} onMouseEnter={(e) => (e.currentTarget.style.color = '#fca5a5')} onMouseLeave={(e) => (e.currentTarget.style.color = '#aebed0')}><LogOut size={16} /></button></div></div></aside><main><header><div><p className="eyebrow">{group.toUpperCase()}</p><h1>{module}</h1></div><label className="entity-picker">Working in<select value={activeEntityId} onChange={e => setActiveEntityId(e.target.value)}>{entities.map(x => <option key={x.id} value={x.id}>{x.name}{x.code ? ` · ${x.code}` : ''}</option>)}</select></label>{activeView === 'journal' && <button className="primary" onClick={() => document.getElementById('journal-form')?.scrollIntoView({ behavior: 'smooth' })}>＋ New entry</button>}</header>
+  </nav><div className="bottom"><div className="user"><div className="avatar small">{currentUser?.avatar}</div><div style={{ flex: 1, minWidth: 0 }}><strong style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{currentUser?.fullName}</strong><small style={{ display: 'block', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{currentUser?.role}</small></div><button onClick={handleLogout} title="Sign Out" style={{ background: 'transparent', border: 'none', color: '#aebed0', cursor: 'pointer', padding: '6px', display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'color 0.2s ease', flexShrink: 0 }} onMouseEnter={(e) => (e.currentTarget.style.color = '#fca5a5')} onMouseLeave={(e) => (e.currentTarget.style.color = '#aebed0')}><LogOut size={16} /></button></div></div></aside><div className="main-col"><TopHeader currentUser={currentUser} entities={entities} onSelectEntity={setActiveEntityId} page={page} setPage={setPage} accounts={accounts} notify={notify} onLogout={handleLogout} /><main><header className="page-head"><div><p className="eyebrow">{group.toUpperCase()}</p><h1>{module}</h1></div><div style={{ display: 'flex', alignItems: 'flex-end', gap: 12 }}><label className="entity-picker">Working in<select value={activeEntityId} onChange={e => setActiveEntityId(e.target.value)}>{entities.map(x => <option key={x.id} value={x.id}>{x.name}{x.code ? ` · ${x.code}` : ''}</option>)}</select></label>{activeView === 'journal' && <button className="primary" onClick={() => document.getElementById('journal-form')?.scrollIntoView({ behavior: 'smooth' })}>＋ New entry</button>}</div></header>
   {activeView === 'dashboard' && <FinancialOverview accounts={accounts} entries={entries} setPage={setPage} activeEntityId={activeEntityId} />}
   {activeView === 'module-summary' && <ModuleSummary moduleName={group} accounts={accounts} entries={entries} setPage={setPage} openCreateAccount={openCreate} />}
   {activeView === 'sales-summary' && <SalesSummaryView activeEntityId={activeEntityId} setPage={setPage} />}
@@ -645,7 +631,7 @@ export default function App() {
   {activeView === 'customer-aging' && <CustomerAgingWorkspace activeEntityId={activeEntityId} />}
   {activeView === 'sales-reports' && <SalesReportsWorkspace activeEntityId={activeEntityId} />}
   {activeView === 'placeholder' && <div style={{ padding: 40, textAlign: 'center', color: '#666' }}><span style={{ fontSize: 48, opacity: 0.2, display: 'block', marginBottom: 20 }}>🏗</span><h3>Under Construction</h3><p>This module ({module}) is part of the layout but not yet developed.</p></div>}
-  </main>{modal && <AccountModal form={form} setForm={setForm} accounts={accounts} editing={editing} close={() => setModal(false)} save={saveAccount} />}{toast && <div className="toast">✓ {toast}</div>}</div>
+  </main></div>{modal && <AccountModal form={form} setForm={setForm} accounts={accounts} editing={editing} close={() => setModal(false)} save={saveAccount} />}{toast && <div className="toast">✓ {toast}</div>}</div>
 }
 
 function SettingsHome({ openEntities, openMappings, onReset }: { openEntities: () => void; openMappings: () => void; onReset: () => void }) { 
