@@ -2,7 +2,7 @@
 
 import { create } from 'zustand';
 
-export type CurrencyCode = 'USD' | 'PKR' | 'GBP' | 'EUR' | 'AED' | 'SAR' | 'CAD';
+export type CurrencyCode = 'USD' | 'PKR' | 'GBP' | 'EUR' | 'AED' | 'SAR' | 'CAD' | 'AUD';
 
 const SYMBOLS: Record<string, string> = {
   USD: '$',
@@ -12,6 +12,7 @@ const SYMBOLS: Record<string, string> = {
   AED: 'AED ',
   SAR: 'SAR ',
   CAD: 'CAD ',
+  AUD: 'A$',
 };
 
 const LOCALES: Record<string, string> = {
@@ -22,6 +23,7 @@ const LOCALES: Record<string, string> = {
   AED: 'ar-AE',
   SAR: 'ar-SA',
   CAD: 'en-CA',
+  AUD: 'en-AU',
 };
 
 interface ActiveCurrencyState {
@@ -30,15 +32,15 @@ interface ActiveCurrencyState {
 }
 
 export const useActiveCurrencyStore = create<ActiveCurrencyState>((set) => ({
-  code: typeof window !== 'undefined' ? localStorage.getItem('active_currency') || 'USD' : 'USD',
+  code: typeof window !== 'undefined' ? localStorage.getItem('active_currency') || 'PKR' : 'PKR',
   setCode: (code) => set({ code: code.toUpperCase() }),
 }));
 
 export function getActiveCurrency(): string {
   try {
-    return localStorage.getItem('active_currency') || 'USD';
+    return localStorage.getItem('active_currency') || 'PKR';
   } catch {
-    return 'USD';
+    return 'PKR';
   }
 }
 

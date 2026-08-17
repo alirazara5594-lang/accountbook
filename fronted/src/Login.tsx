@@ -195,8 +195,11 @@ export function Login({ onLogin }: LoginProps) {
       <div className="login-card">
         <div className="login-header">
           <div className="login-logo">
-            <b>account</b><span>book</span>
+            <b>AC</b><span>FIN</span>
           </div>
+          <p style={{ fontSize: '11px', color: '#64748b', margin: '-4px 0 10px', fontWeight: 500, letterSpacing: '0.3px' }}>
+            Accounting & Financial Intelligence Network
+          </p>
           <p className="login-subtitle">
             {mode === 'signin'
               ? 'Sign in to your multi-entity ERP dashboard'
@@ -334,7 +337,7 @@ export function Login({ onLogin }: LoginProps) {
         <div className="auth-switch">
           {mode === 'signin' ? (
             <span>
-              New to accountbook?{' '}
+              New to ACFIN?{' '}
               <button type="button" className="auth-switch-link" onClick={() => { setMode('signup'); setError(null); setSuccess(null); }}>
                 Create an account
               </button>

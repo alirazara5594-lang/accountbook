@@ -38,7 +38,8 @@ export default function OnboardingWizard({ currentUser }: {
     <div className="onboarding-overlay">
       <div className="onboarding-card">
         <div className="onboarding-header">
-          <div className="brand"><b>account</b><span>book</span></div>
+          <div className="brand"><b>AC</b><span>FIN</span></div>
+          <p style={{ fontSize: '11px', color: '#64748b', margin: '-8px 0 8px', fontWeight: 500 }}>Accounting & Financial Intelligence Network</p>
           <p className="onboarding-subtitle">Welcome, {currentUser.fullName}. Select your country to configure tax rules.</p>
         </div>
 

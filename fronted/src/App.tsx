@@ -427,15 +427,6 @@ export default function App() {
   const activeView = activeViewMap[page] || 'placeholder'
   const [group, module] = page.split('.')
 
-  if (!currentUser) {
-    return <Login onLogin={handleLogin} />;
-  }
-
-  // Non-admin demo users must complete onboarding first
-  if (needsOnboarding(currentUser.email)) {
-    return <OnboardingWizard currentUser={currentUser} />;
-  }
-
   const [showEntityMenu, setShowEntityMenu] = useState(false);
   const entityMenuRef = useRef<HTMLDivElement>(null);
 
@@ -451,12 +442,21 @@ export default function App() {
     }
   }, [showEntityMenu]);
 
+  if (!currentUser) {
+    return <Login onLogin={handleLogin} />;
+  }
+
+  // Non-admin demo users must complete onboarding first
+  if (needsOnboarding(currentUser.email)) {
+    return <OnboardingWizard currentUser={currentUser} />;
+  }
+
   const handleEntitySwitch = (entityId: string) => {
     setActiveEntityId(entityId);
     setShowEntityMenu(false);
   };
 
-  return <div className="app"><aside><div className="brand"><b>account</b><span>book</span></div>
+  return <div className="app"><aside><div className="brand"><b>AC</b><span>FIN</span></div><small style={{ fontSize: '9px', color: 'rgba(255,255,255,0.5)', margin: '-32px 12px 32px', display: 'block', letterSpacing: '0.5px' }}>Accounting & Financial Intelligence Network</small>
     <div className="company" style={{ position: 'relative' }} ref={entityMenuRef}>
       <button
         onClick={() => setShowEntityMenu(!showEntityMenu)}

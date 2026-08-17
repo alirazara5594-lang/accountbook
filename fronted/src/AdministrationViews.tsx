@@ -252,8 +252,8 @@ const ALL_MODULES = [
 export function CompaniesView() {
   const { entities, fetchCompanies, saveCompany, toggleCompanyStatus } = useCompanyStore();
   const getInitialForm = () => {
-    const savedCountry = localStorage.getItem('onboarding_country_name') || 'United States';
-    const savedCurrency = localStorage.getItem('active_currency') || 'USD';
+    const savedCountry = localStorage.getItem('onboarding_country_name') || 'Pakistan';
+    const savedCurrency = localStorage.getItem('active_currency') || 'PKR';
     return { name: '', code: '', currencyCode: savedCurrency, country: savedCountry, type: 'Subsidiary' as string, active: true, modules: ALL_MODULES.map(m => m.id) };
   };
   const [form, setForm] = useState(getInitialForm);
@@ -265,7 +265,7 @@ export function CompaniesView() {
     await saveCompany(form);
     localStorage.removeItem('onboarding_country');
     localStorage.removeItem('onboarding_country_name');
-    setForm({ name: '', code: '', currencyCode: 'USD', country: 'United States', type: 'Subsidiary', active: true, modules: ALL_MODULES.map(m => m.id) });
+    setForm({ name: '', code: '', currencyCode: 'PKR', country: 'Pakistan', type: 'Subsidiary', active: true, modules: ALL_MODULES.map(m => m.id) });
   };
 
   const toggleModule = (id: string) => {
@@ -294,13 +294,13 @@ export function CompaniesView() {
               <FormField label="Currency">
                 <Select value={form.currencyCode} onValueChange={v => setForm({ ...form, currencyCode: v || 'USD' })}>
                   <SelectTrigger><SelectValue /></SelectTrigger>
-                  <SelectContent><SelectItem value="USD">USD</SelectItem><SelectItem value="GBP">GBP</SelectItem><SelectItem value="EUR">EUR</SelectItem><SelectItem value="PKR">PKR</SelectItem><SelectItem value="AED">AED</SelectItem><SelectItem value="SAR">SAR</SelectItem></SelectContent>
+                  <SelectContent><SelectItem value="PKR">PKR</SelectItem><SelectItem value="USD">USD</SelectItem><SelectItem value="GBP">GBP</SelectItem><SelectItem value="EUR">EUR</SelectItem><SelectItem value="AED">AED</SelectItem><SelectItem value="SAR">SAR</SelectItem><SelectItem value="CAD">CAD</SelectItem><SelectItem value="AUD">AUD</SelectItem></SelectContent>
                 </Select>
               </FormField>
               <FormField label="Country">
                 <Select value={form.country} onValueChange={v => setForm({ ...form, country: v || 'United States' })}>
                   <SelectTrigger><SelectValue /></SelectTrigger>
-                  <SelectContent><SelectItem value="United States">United States</SelectItem><SelectItem value="United Kingdom">United Kingdom</SelectItem><SelectItem value="Pakistan">Pakistan</SelectItem><SelectItem value="United Arab Emirates">United Arab Emirates</SelectItem><SelectItem value="Saudi Arabia">Saudi Arabia</SelectItem><SelectItem value="European Union">European Union</SelectItem><SelectItem value="Canada">Canada</SelectItem></SelectContent>
+                  <SelectContent><SelectItem value="Pakistan">Pakistan</SelectItem><SelectItem value="United States">United States</SelectItem><SelectItem value="United Kingdom">United Kingdom</SelectItem><SelectItem value="United Arab Emirates">United Arab Emirates</SelectItem><SelectItem value="Saudi Arabia">Saudi Arabia</SelectItem><SelectItem value="European Union">European Union</SelectItem><SelectItem value="Canada">Canada</SelectItem><SelectItem value="Australia">Australia</SelectItem><SelectItem value="Germany">Germany</SelectItem></SelectContent>
                 </Select>
               </FormField>
             </div>
