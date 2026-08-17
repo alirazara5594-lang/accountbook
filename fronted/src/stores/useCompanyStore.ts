@@ -16,7 +16,7 @@ interface CompanyState {
 }
 
 function syncCurrencyFromEntity(entity?: Entity) {
-  const code = entity?.currencyCode || entity?.functionalCurrency || 'USD';
+  const code = entity?.currencyCode || entity?.functionalCurrency || 'PKR';
   setActiveCurrency(code);
 }
 

@@ -2,6 +2,8 @@ import { useState, useEffect } from 'react';
 import { useCompanyStore, useAdministrationStore } from './stores';
 import { accountingApi, type AuditTrailItem } from './api/modules/accounting.api';
 import type { UserStatus } from './api/modules/administration.api';
+import type { Entity } from './api/modules/entities.api';
+import { setActiveCurrency } from './lib/currency';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card } from '@/components/ui/card';
@@ -250,22 +252,45 @@ const ALL_MODULES = [
 ];
 
 export function CompaniesView() {
-  const { entities, fetchCompanies, saveCompany, toggleCompanyStatus } = useCompanyStore();
+  const { entities, activeEntityId, fetchCompanies, saveCompany, toggleCompanyStatus, setActiveEntityId } = useCompanyStore();
   const getInitialForm = () => {
     const savedCountry = localStorage.getItem('onboarding_country_name') || 'Pakistan';
     const savedCurrency = localStorage.getItem('active_currency') || 'PKR';
     return { name: '', code: '', currencyCode: savedCurrency, country: savedCountry, type: 'Subsidiary' as string, active: true, modules: ALL_MODULES.map(m => m.id) };
   };
   const [form, setForm] = useState(getInitialForm);
+  const [editingId, setEditingId] = useState<string | null>(null);
 
   useEffect(() => { fetchCompanies(); }, [fetchCompanies]);
 
   const save = async (e: React.FormEvent) => {
     e.preventDefault();
-    await saveCompany(form);
+    await saveCompany(form, editingId ?? undefined);
     localStorage.removeItem('onboarding_country');
     localStorage.removeItem('onboarding_country_name');
-    setForm({ name: '', code: '', currencyCode: 'PKR', country: 'Pakistan', type: 'Subsidiary', active: true, modules: ALL_MODULES.map(m => m.id) });
+    if (editingId && editingId === activeEntityId) {
+      setActiveCurrency(form.currencyCode);
+    }
+    setEditingId(null);
+    setForm(getInitialForm());
+  };
+
+  const startEdit = (e: Entity) => {
+    setEditingId(e.id);
+    setForm({
+      name: e.name,
+      code: e.code || '',
+      currencyCode: e.currencyCode || e.functionalCurrency || 'PKR',
+      country: e.country || 'Pakistan',
+      type: e.type || 'Subsidiary',
+      active: e.active,
+      modules: e.modules?.length ? e.modules : ALL_MODULES.map(m => m.id),
+    });
+  };
+
+  const cancelEdit = () => {
+    setEditingId(null);
+    setForm(getInitialForm());
   };
 
   const toggleModule = (id: string) => {
@@ -286,7 +311,7 @@ export function CompaniesView() {
       </div>
       <div className="grid grid-cols-3 gap-4">
         <Card className="p-4 space-y-3">
-          <p className="text-sm font-medium flex items-center gap-2"><Plus className="h-4 w-4" /> Add Company</p>
+          <p className="text-sm font-medium flex items-center gap-2">{editingId ? <Pencil className="h-4 w-4" /> : <Plus className="h-4 w-4" />} {editingId ? 'Edit Company' : 'Add Company'}</p>
           <form onSubmit={save} className="space-y-3">
             <FormField label="Company Name" required><Input required value={form.name} onChange={e => setForm({ ...form, name: e.target.value })} placeholder="Acme Corporation" /></FormField>
             <FormField label="Code"><Input value={form.code} onChange={e => setForm({ ...form, code: e.target.value })} placeholder="ACME" /></FormField>
@@ -314,7 +339,10 @@ export function CompaniesView() {
                 ))}
               </div>
             </FormField>
-            <Button type="submit" size="sm"><Save className="h-4 w-4" /> Add Company</Button>
+            <div className="flex items-center gap-2">
+              <Button type="submit" size="sm"><Save className="h-4 w-4" /> {editingId ? 'Save Changes' : 'Add Company'}</Button>
+              {editingId && <Button type="button" variant="ghost" size="sm" onClick={cancelEdit}>Cancel</Button>}
+            </div>
           </form>
         </Card>
 <Card className="p-4 col-span-2 space-y-3">
@@ -323,16 +351,22 @@ export function CompaniesView() {
             <TableHeader><TableRow><TableHead>Name</TableHead><TableHead>Code</TableHead><TableHead>Currency</TableHead><TableHead>Country</TableHead><TableHead>Status</TableHead><TableHead>Actions</TableHead></TableRow></TableHeader>
             <TableBody>
               {entities.map(e => (
-                <TableRow key={e.id}>
-                  <TableCell className="font-medium">{e.name}</TableCell>
+                <TableRow key={e.id} className={e.id === activeEntityId ? 'bg-teal-50/60' : ''}>
+                  <TableCell className="font-medium">{e.name}{e.id === activeEntityId && <Badge variant="secondary" className="ml-2">Working in</Badge>}</TableCell>
                   <TableCell className="font-mono text-muted-foreground">{e.code}</TableCell>
                   <TableCell>{e.currencyCode || e.functionalCurrency}</TableCell>
                   <TableCell>{e.country}</TableCell>
                   <TableCell><Badge variant={e.active ? 'secondary' : 'outline'}>{e.active ? 'Active' : 'Inactive'}</Badge></TableCell>
                   <TableCell>
-                    <Button variant="ghost" size="sm" onClick={() => toggleCompanyStatus(e.id, !e.active)}>
-                      {e.active ? 'Deactivate' : 'Activate'}
-                    </Button>
+                    <div className="flex items-center gap-1">
+                      {e.id !== activeEntityId && (
+                        <Button variant="outline" size="sm" onClick={() => setActiveEntityId(e.id)} title="Switch working company and its currency">Use</Button>
+                      )}
+                      <Button variant="ghost" size="sm" onClick={() => startEdit(e)} title="Edit company"><Pencil className="h-3.5 w-3.5" /></Button>
+                      <Button variant="ghost" size="sm" onClick={() => toggleCompanyStatus(e.id, !e.active)}>
+                        {e.active ? 'Deactivate' : 'Activate'}
+                      </Button>
+                    </div>
                   </TableCell>
                 </TableRow>
               ))}

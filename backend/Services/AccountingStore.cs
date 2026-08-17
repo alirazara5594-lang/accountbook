@@ -174,8 +174,18 @@ List<ExpenseClaim>? ExpenseClaims = null,
         var defaultCountry = _config["ERP:ActiveCountry"] ?? "PK";
         _activeCountry = Enum.Parse<PayrollCountry>(defaultCountry, true);
         if (LoadState()) return;
-        var parentEntity = new Company { Name = "Acme Holdings", Code = "ACME", Type = EntityType.Parent };
-        _companies.AddRange([parentEntity, new Company { Name = "Acme Services", Code = "ASV", ParentId = parentEntity.Id }, new Company { Name = "Acme Trading", Code = "ATD", ParentId = parentEntity.Id }]);
+        var (parentCountry, parentCurrency) = _activeCountry switch
+        {
+            PayrollCountry.PK => ("Pakistan", "PKR"),
+            PayrollCountry.UK => ("United Kingdom", "GBP"),
+            PayrollCountry.CA => ("Canada", "CAD"),
+            PayrollCountry.DE => ("Germany", "EUR"),
+            PayrollCountry.SA => ("Saudi Arabia", "SAR"),
+            PayrollCountry.AE => ("United Arab Emirates", "AED"),
+            _ => ("United States", "USD"),
+        };
+        var parentEntity = new Company { Name = "Acme Holdings", Code = "ACME", Type = EntityType.Parent, Country = parentCountry, CurrencyCode = parentCurrency };
+        _companies.AddRange([parentEntity, new Company { Name = "Acme Services", Code = "ASV", ParentId = parentEntity.Id, Country = parentCountry, CurrencyCode = parentCurrency }, new Company { Name = "Acme Trading", Code = "ATD", ParentId = parentEntity.Id, Country = parentCountry, CurrencyCode = parentCurrency }]);
 
         SeedAccounts();
 
@@ -3591,6 +3601,29 @@ public IReadOnlyList<EmployeeCompensation> EmployeeCompensations => _employeeCom
         _journalEvents.Clear(); _journalEvents.AddRange(state.Events ?? []);
         _intercompanyAllocations.Clear(); _intercompanyAllocations.AddRange(state.IntercompanyAllocations ?? []);
         _companies.Clear(); _companies.AddRange(state.Companies ?? [new Company { Name = "Acme Holdings", Code = "ACME", Type = EntityType.Parent }, new Company { Name = "Acme Services", Code = "ASV" }, new Company { Name = "Acme Trading", Code = "ATD" }]);
+        // Migration: correct legacy seed companies (created without explicit country/currency) to the active deployment country/currency
+        if (_companies.Count > 0)
+        {
+            var (activeCountryName, activeCurrency) = _activeCountry switch
+            {
+                PayrollCountry.PK => ("Pakistan", "PKR"),
+                PayrollCountry.UK => ("United Kingdom", "GBP"),
+                PayrollCountry.CA => ("Canada", "CAD"),
+                PayrollCountry.DE => ("Germany", "EUR"),
+                PayrollCountry.SA => ("Saudi Arabia", "SAR"),
+                PayrollCountry.AE => ("United Arab Emirates", "AED"),
+                _ => ("United States", "USD"),
+            };
+            foreach (var company in _companies)
+            {
+                var isLegacySeed = company.Code is "ACME" or "ASV" or "ATD";
+                if (!isLegacySeed) continue;
+                if (string.IsNullOrWhiteSpace(company.Country) || company.Country == "United States")
+                    company.Country = activeCountryName;
+                if (string.IsNullOrWhiteSpace(company.CurrencyCode) || company.CurrencyCode == "USD")
+                    company.CurrencyCode = activeCurrency;
+            }
+        }
         _customers.Clear(); _customers.AddRange(state.Customers ?? []);
         _products.Clear(); _products.AddRange(state.Products ?? []);
         _vendors.Clear(); _vendors.AddRange(state.Vendors ?? []);
