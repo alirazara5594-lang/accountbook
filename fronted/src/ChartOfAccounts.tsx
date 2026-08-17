@@ -9,6 +9,7 @@ import {
   FileText, Shield, PieChart, ArrowRight, Eye, Calendar, User, CheckCircle
 } from 'lucide-react';
 import { DataToolbar } from '@/components/ui/data-toolbar';
+import { money, getActiveCurrency } from '@/lib/currency';
 
 import { type Account } from './api/modules/coa.api';
 type AccountType = string;
@@ -22,8 +23,9 @@ interface ChartOfAccountsProps {
   reloadAccounts?: () => void;
 }
 
-const formatCurrency = (val: number, currency = 'USD') => {
-  const formatted = new Intl.NumberFormat('en-US', { style: 'currency', currency }).format(Math.abs(val));
+const formatCurrency = (val: number, currency?: string) => {
+  const cur = (currency || getActiveCurrency()).toUpperCase();
+  const formatted = money(Math.abs(val), cur);
   return val < 0 ? `(${formatted})` : formatted; // GAAP standard parentheses for negative balances
 };
 
@@ -1070,16 +1072,16 @@ export const ChartOfAccounts: React.FC<ChartOfAccountsProps> = ({
                     </TableCell>
                   )}
                   <TableCell className="py-3 text-right font-mono text-xs text-slate-600">
-                    {formatCurrency(row.opening, 'USD')}
+                    {formatCurrency(row.opening)}
                   </TableCell>
                   <TableCell className="py-3 text-right font-mono text-xs text-emerald-600 font-semibold">
-                    {formatCurrency(row.debits, 'USD')}
+                    {formatCurrency(row.debits)}
                   </TableCell>
                   <TableCell className="py-3 text-right font-mono text-xs text-rose-600 font-semibold">
-                    {formatCurrency(row.credits, 'USD')}
+                    {formatCurrency(row.credits)}
                   </TableCell>
                   <TableCell className="py-3 text-right font-mono text-xs font-extrabold text-slate-900 pr-4">
-                    {formatCurrency(row.current, 'USD')}
+                    {formatCurrency(row.current)}
                   </TableCell>
                 </TableRow>
               ))}
@@ -1121,7 +1123,7 @@ export const ChartOfAccounts: React.FC<ChartOfAccountsProps> = ({
               ].map(card => (
                 <div key={card.label} className="bg-slate-50 border border-slate-200/80 rounded-xl p-3.5">
                   <span className="text-[9px] font-bold text-slate-400 uppercase tracking-wide">{card.label}</span>
-                  <p className={`text-sm font-bold font-mono mt-1 ${card.color}`}>{formatCurrency(card.val, 'USD')}</p>
+                  <p className={`text-sm font-bold font-mono mt-1 ${card.color}`}>{formatCurrency(card.val)}</p>
                 </div>
               ))}
             </div>
@@ -1158,7 +1160,7 @@ export const ChartOfAccounts: React.FC<ChartOfAccountsProps> = ({
                     <TableCell className="py-2.5 font-sans">Initial pre-seeded opening register balance</TableCell>
                     <TableCell className="py-2.5 text-right">—</TableCell>
                     <TableCell className="py-2.5 text-right">—</TableCell>
-                    <TableCell className="py-2.5 text-right font-bold">{formatCurrency(glAccount.openingBalance, 'USD')}</TableCell>
+                    <TableCell className="py-2.5 text-right font-bold">{formatCurrency(glAccount.openingBalance)}</TableCell>
                     <TableCell className="py-2.5 text-center">—</TableCell>
                   </TableRow>
                   {filteredGLLines.map((line, idx) => (
@@ -1166,9 +1168,9 @@ export const ChartOfAccounts: React.FC<ChartOfAccountsProps> = ({
                       <TableCell className="py-2.5 text-slate-500">{line.date}</TableCell>
                       <TableCell className="py-2.5 font-bold text-slate-700">{line.reference}</TableCell>
                       <TableCell className="py-2.5 font-sans text-slate-600 max-w-[200px] truncate" title={line.description}>{line.description}</TableCell>
-                      <TableCell className="py-2.5 text-right text-emerald-600 font-semibold">{line.debit > 0 ? formatCurrency(line.debit, 'USD') : '—'}</TableCell>
-                      <TableCell className="py-2.5 text-right text-rose-600 font-semibold">{line.credit > 0 ? formatCurrency(line.credit, 'USD') : '—'}</TableCell>
-                      <TableCell className="py-2.5 text-right font-bold text-slate-800">{formatCurrency(line.runningBalance, 'USD')}</TableCell>
+                      <TableCell className="py-2.5 text-right text-emerald-600 font-semibold">{line.debit > 0 ? formatCurrency(line.debit) : '—'}</TableCell>
+                      <TableCell className="py-2.5 text-right text-rose-600 font-semibold">{line.credit > 0 ? formatCurrency(line.credit) : '—'}</TableCell>
+                      <TableCell className="py-2.5 text-right font-bold text-slate-800">{formatCurrency(line.runningBalance)}</TableCell>
                       <TableCell className="py-2.5 text-center">
                         <button
                           onClick={() => setActiveSourceTx(line.entry)}
@@ -1456,7 +1458,7 @@ export const ChartOfAccounts: React.FC<ChartOfAccountsProps> = ({
           {/* Assets Box */}
           <div className="bg-blue-50/40 border border-blue-100 rounded-xl p-4 text-center">
             <span className="text-[10px] font-bold text-blue-500 uppercase tracking-wider block">Total Assets</span>
-            <p className="text-xl font-extrabold text-blue-900 mt-1 font-mono">{formatCurrency(categoryTotals.Asset, 'USD')}</p>
+            <p className="text-xl font-extrabold text-blue-900 mt-1 font-mono">{formatCurrency(categoryTotals.Asset)}</p>
           </div>
 
           {/* Equals Operator and status indicator */}
@@ -1472,7 +1474,7 @@ export const ChartOfAccounts: React.FC<ChartOfAccountsProps> = ({
                   ⚠ Equation Out of Balance
                 </span>
                 <span className="text-[10px] text-rose-500 block mt-1 font-semibold font-mono">
-                  Diff: {formatCurrency(categoryTotals.Asset - (categoryTotals.Liability + categoryTotals.Equity), 'USD')}
+                  Diff: {formatCurrency(categoryTotals.Asset - (categoryTotals.Liability + categoryTotals.Equity))}
                 </span>
               </div>
             )}
@@ -1481,11 +1483,11 @@ export const ChartOfAccounts: React.FC<ChartOfAccountsProps> = ({
           {/* Liabilities + Equity Box */}
           <div className="bg-slate-50 border border-slate-200 rounded-xl p-4 text-center">
             <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block">Liabilities + Equity</span>
-            <p className="text-xl font-extrabold text-slate-800 mt-1 font-mono">{formatCurrency(categoryTotals.Liability + categoryTotals.Equity, 'USD')}</p>
+            <p className="text-xl font-extrabold text-slate-800 mt-1 font-mono">{formatCurrency(categoryTotals.Liability + categoryTotals.Equity)}</p>
             <div className="flex items-center justify-center gap-3 mt-1.5 text-[10px] text-slate-500 font-semibold">
-              <span>L: {formatCurrency(categoryTotals.Liability, 'USD')}</span>
+              <span>L: {formatCurrency(categoryTotals.Liability)}</span>
               <span>+</span>
-              <span>E: {formatCurrency(categoryTotals.Equity, 'USD')}</span>
+              <span>E: {formatCurrency(categoryTotals.Equity)}</span>
             </div>
           </div>
         </div>

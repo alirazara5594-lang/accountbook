@@ -11,7 +11,8 @@ import {
   FinancialPositionBar,
   QuickAdd,
 } from './sections';
-import { currentFiscalYear, money } from './format';
+import { currentFiscalYear, money, type CurrencyCode } from './format';
+import { getActiveCurrency } from '../lib/currency';
 
 export interface FinancialOverviewProps {
   accounts: AccountLike[];
@@ -33,6 +34,7 @@ export function FinancialOverview({ accounts, entries, setPage, activeEntityId }
   const filterRef = useRef<HTMLDivElement>(null);
 
   const data = useFinancialData(accounts, entries, activeEntityId, fyYear);
+  const currency = getActiveCurrency() as CurrencyCode;
 
   const handlePeriod = (p: 'This FY' | 'Last FY' | '2 FYs Back') => {
     setPeriod(p);
@@ -51,12 +53,12 @@ export function FinancialOverview({ accounts, entries, setPage, activeEntityId }
   }, []);
 
   const kpis = [
-    { label: 'Total Revenue', value: money(data.revenue, 'USD'), delta: data.kpiDeltas.revenue, icon: DollarSign, iconBg: '#dcfce7', iconColor: '#10b981' },
-    { label: 'Total Expenses', value: money(data.revenue - data.netProfit, 'USD'), delta: null, icon: TrendingDown, iconBg: '#fee2e2', iconColor: '#ef4444' },
-    { label: 'Net Profit', value: money(data.netProfit, 'USD'), delta: data.kpiDeltas.netProfit, icon: TrendingUp, iconBg: '#dbeafe', iconColor: '#3b82f6' },
-    { label: 'Accounts Receivable', value: money(data.arTotal, 'USD'), delta: null, icon: Users, iconBg: '#ffedd5', iconColor: '#f97316' },
-    { label: 'Accounts Payable', value: money(data.apTotal, 'USD'), delta: null, icon: CreditCard, iconBg: '#f3e8ff', iconColor: '#8b5cf6' },
-    { label: 'Cash & Bank Balance', value: money(data.cashBank, 'USD'), delta: data.kpiDeltas.cashBank, icon: Wallet, iconBg: '#ccfbf1', iconColor: '#14b8a6' },
+    { label: 'Total Revenue', value: money(data.revenue, currency), delta: data.kpiDeltas.revenue, icon: DollarSign, iconBg: '#dcfce7', iconColor: '#10b981' },
+    { label: 'Total Expenses', value: money(data.revenue - data.netProfit, currency), delta: null, icon: TrendingDown, iconBg: '#fee2e2', iconColor: '#ef4444' },
+    { label: 'Net Profit', value: money(data.netProfit, currency), delta: data.kpiDeltas.netProfit, icon: TrendingUp, iconBg: '#dbeafe', iconColor: '#3b82f6' },
+    { label: 'Accounts Receivable', value: money(data.arTotal, currency), delta: null, icon: Users, iconBg: '#ffedd5', iconColor: '#f97316' },
+    { label: 'Accounts Payable', value: money(data.apTotal, currency), delta: null, icon: CreditCard, iconBg: '#f3e8ff', iconColor: '#8b5cf6' },
+    { label: 'Cash & Bank Balance', value: money(data.cashBank, currency), delta: data.kpiDeltas.cashBank, icon: Wallet, iconBg: '#ccfbf1', iconColor: '#14b8a6' },
   ];
 
   return (
@@ -133,7 +135,7 @@ export function FinancialOverview({ accounts, entries, setPage, activeEntityId }
                 <div>
                   <label className="text-[11px] font-semibold text-gray-500 mb-1.5 block">Currency</label>
                   <div className="px-2.5 py-1.5 text-xs font-medium text-gray-700 bg-gray-50 rounded-lg border border-gray-200">
-                    USD
+                    {currency}
                   </div>
                 </div>
               </div>
@@ -156,13 +158,13 @@ export function FinancialOverview({ accounts, entries, setPage, activeEntityId }
       </div>
 
       {/* ── Accounting Equation (full width) ── */}
-      <AccountingEquation data={data} currency="USD" />
+      <AccountingEquation data={data} currency={currency} />
 
       {/* ── Row: P&L Trend + Cash Flow + Account Balances ── */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-3">
-        <ProfitLossTrend data={data} currency="USD" />
-        <CashFlowSummary data={data} currency="USD" />
-        <AccountBalances data={data} currency="USD" />
+        <ProfitLossTrend data={data} currency={currency} />
+        <CashFlowSummary data={data} currency={currency} />
+        <AccountBalances data={data} currency={currency} />
       </div>
 
       {/* ── Row: Receivables Aging + Payables Aging ── */}
@@ -173,7 +175,7 @@ export function FinancialOverview({ accounts, entries, setPage, activeEntityId }
           avgDays={data.avgDaysOutstanding}
           avgLabel="Avg. Days Outstanding"
           aging={data.arAging}
-          currency="USD"
+          currency={currency}
         />
         <AgingCard
           title="Payables Aging"
@@ -181,16 +183,16 @@ export function FinancialOverview({ accounts, entries, setPage, activeEntityId }
           avgDays={data.avgDaysPayable}
           avgLabel="Avg. Days Payable"
           aging={data.apAging}
-          currency="USD"
+          currency={currency}
         />
       </div>
 
       {/* ── Financial Position Summary Bar ── */}
-      <FinancialPositionBar data={data} currency="USD" />
+      <FinancialPositionBar data={data} currency={currency} />
 
       {/* ── Footer ── */}
       <div className="flex items-center justify-between text-xs text-gray-400 pt-2 pb-4">
-        <span>All amounts are in USD</span>
+        <span>All amounts are in {currency}</span>
         <div className="flex items-center gap-3">
           <span>Last updated: {data.asOf}</span>
           <button onClick={data.refresh} className="flex items-center gap-1 text-gray-500 hover:text-gray-700">

@@ -3,6 +3,7 @@ import { useReportsStore } from './stores/useReportsStore';
 import { useSalesStore } from './stores';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, Legend } from 'recharts';
 import { BarChart3, DollarSign, TrendingUp, TrendingDown, FileText, Download } from 'lucide-react';
+import { money, moneyCompact } from './lib/currency';
 
 type Props = { activeEntityId: string };
 
@@ -16,7 +17,7 @@ function SalesReportsWorkspace({ activeEntityId }: Props) {
     fetchInvoices(activeEntityId);
   }, [activeEntityId]);
 
-  const fmt = (n?: number) => new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(n || 0);
+  const fmt = (n?: number) => money(n || 0);
 
   // Compute sales metrics from invoices
   const metrics = useMemo(() => {
@@ -160,7 +161,7 @@ function SalesReportsWorkspace({ activeEntityId }: Props) {
               <BarChart data={monthlyData}>
                 <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
                 <XAxis dataKey="month" tick={{ fontSize: 10 }} stroke="#94a3b8" />
-                <YAxis tick={{ fontSize: 10 }} stroke="#94a3b8" tickFormatter={(v) => `$${(v / 1000).toFixed(0)}k`} />
+                <YAxis tick={{ fontSize: 10 }} stroke="#94a3b8" tickFormatter={(v: number) => moneyCompact(v)} />
                 <Tooltip formatter={(value) => fmt(Number(value))} contentStyle={{ fontSize: 11, borderRadius: 8 }} />
                 <Bar dataKey="sales" fill="#3b82f6" radius={[4, 4, 0, 0]} name="Sales" />
                 <Bar dataKey="paid" fill="#10b981" radius={[4, 4, 0, 0]} name="Paid" />

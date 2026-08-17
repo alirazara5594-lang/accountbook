@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button'
 import { DataToolbar } from '@/components/ui/data-toolbar'
 
 import { useVendorsStore, useCoaStore } from './stores'
+import { money } from './lib/currency'
 
 export type VendorStatus = 'Active' | 'Inactive' | 'Blocked'
 
@@ -226,7 +227,7 @@ export default function VendorManagement({ activeEntityId, notify }: { entities:
           <span className="stat-icon violet"><Wallet className="w-4 h-4" /></span>
           <div>
             <small>OUTSTANDING PAYABLES</small>
-            <h2>$0.00</h2>
+            <h2>{money(0)}</h2>
             <p>Bills awaiting payment</p>
           </div>
         </article>

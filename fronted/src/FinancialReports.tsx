@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { CheckCircle, AlertTriangle, Calendar } from 'lucide-react';
 import { DataToolbar } from '@/components/ui/data-toolbar';
+import { money } from '@/lib/currency';
 
 import { type Account } from './api/modules/coa.api';
 type AccountType = string;
@@ -33,7 +34,7 @@ interface FinancialReportsProps {
 }
 
 const formatCurrency = (val: number) => {
-  return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(val);
+  return money(val);
 };
 
 export const FinancialReports: React.FC<FinancialReportsProps> = ({

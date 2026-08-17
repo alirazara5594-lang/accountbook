@@ -5,6 +5,7 @@ import { DataToolbar } from '@/components/ui/data-toolbar';
 import { BarChart3, Search } from 'lucide-react';
 import type { Entity } from './EntitySettings';
 import { reportsApi } from './api/modules/reports.api';
+import { money as fmtMoney } from './lib/currency';
 
 export const PurchaseReportsView: React.FC<{ activeEntityId: string; entities: Entity[] }> = ({ activeEntityId, entities }) => {
   const currentEntity = entities.find(e => e.id === activeEntityId);
@@ -18,7 +19,7 @@ export const PurchaseReportsView: React.FC<{ activeEntityId: string; entities: E
   const vendorSpend = report?.vendorSpend || [];
   const filtered = useMemo(() => vendorSpend.filter((v: any) => !query.trim() || v.vendorName.toLowerCase().includes(query.toLowerCase())), [vendorSpend, query]);
   const exportRows = filtered.map((v: any) => [v.vendorName, v.billCount, v.totalBilled, v.amountPaid, v.amountDue]);
-  const money = (v: number) => new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(v || 0);
+  const money = (v: number) => fmtMoney(v);
 
   const cards = [
     ['Purchase Orders', report?.totalPurchaseOrders || 0, money(report?.purchaseOrderValue)],

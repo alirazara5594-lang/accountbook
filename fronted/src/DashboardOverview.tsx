@@ -13,7 +13,7 @@ import {
   useManufacturingStore, usePayrollStore, useFieldOperationsStore, useComplianceStore,
   useProjectsStore, useAdministrationStore, useTaxStore,
 } from './stores';
-import { money } from './lib/currency';
+import { money, moneyCompact } from './lib/currency';
 
 interface DashboardOverviewProps {
   accounts: { code: string; name: string; type: string; openingBalance: number; status?: string }[];
@@ -236,7 +236,7 @@ export function DashboardOverview({ accounts, entries: _entries, setPage, active
               <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" vertical={false} />
               <XAxis dataKey="period" tick={{ fontSize: 9, fill: '#64748b' }} axisLine={false} tickLine={false} />
               <YAxis tick={{ fontSize: 9, fill: '#64748b' }} axisLine={false} tickLine={false}
-                     tickFormatter={(v: any) => `$${(Number(v) / 1000).toFixed(0)}k`} />
+                     tickFormatter={(v: any) => moneyCompact(Number(v))} />
               <Tooltip formatter={(v: any) => money(Number(v))} contentStyle={{ borderRadius: 8, fontSize: 10 }} />
               <Area type="monotone" dataKey="revenue" stroke="#2563eb" strokeWidth={2} fill="url(#revGrad)" name="Revenue" />
               <Area type="monotone" dataKey="profit" stroke="#10b981" strokeWidth={2} fill="url(#profGrad)" name="Net Profit" />
@@ -295,7 +295,7 @@ export function DashboardOverview({ accounts, entries: _entries, setPage, active
               <CartesianGrid strokeDasharray="3 3" stroke="#f8fafc" vertical={false} />
               <XAxis dataKey="name" tick={{ fontSize: 9, fill: '#64748b' }} axisLine={false} tickLine={false} />
               <YAxis tick={{ fontSize: 9, fill: '#64748b' }} axisLine={false} tickLine={false}
-                     tickFormatter={(v: any) => `$${(Number(v) / 1000).toFixed(0)}k`} />
+                     tickFormatter={(v: any) => moneyCompact(Number(v))} />
               <Tooltip formatter={(v: any) => money(Number(v))} contentStyle={{ borderRadius: 8, fontSize: 10 }} />
               <Bar dataKey="ar" fill="#10b981" radius={[3, 3, 0, 0]} name="AR" />
               <Bar dataKey="ap" fill="#f43f5e" radius={[3, 3, 0, 0]} name="AP" />

@@ -5,6 +5,7 @@ import { customersApi, type Customer } from './api/modules/customers.api';
 import { apiClient } from './api/client';
 import { useCompanyStore } from './stores';
 import { DataToolbar } from '@/components/ui/data-toolbar';
+import { money } from '@/lib/currency';
 import { Plus, X, DollarSign, Receipt, Building2, Clock } from 'lucide-react';
 
 const PAYMENT_METHODS = [
@@ -199,7 +200,7 @@ function CustomerPaymentsWorkspace() {
           <span className="stat-icon blue"><DollarSign className="w-4 h-4" /></span>
           <div>
             <small>TOTAL RECEIVED</small>
-            <h2>{new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(totalReceived)}</h2>
+            <h2>{money(totalReceived)}</h2>
             <p>All recorded payments</p>
           </div>
         </article>
@@ -264,7 +265,7 @@ function CustomerPaymentsWorkspace() {
                 <td className="py-2.5 px-4 font-medium text-gray-900">{p.customerName || p.customerId}</td>
                 <td className="py-2.5 px-4 text-gray-600">{p.invoiceNumber || '—'}</td>
                 <td className="py-2.5 px-4 text-right font-bold text-gray-900">
-                  {new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(p.amount || 0)}
+                  {money(p.amount || 0)}
                 </td>
                 <td className="py-2.5 px-4">
                   <span className="px-2 py-0.5 bg-gray-100 text-gray-600 rounded text-[10px] font-semibold">

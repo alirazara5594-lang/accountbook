@@ -59,3 +59,13 @@ export function money(v: number, currency?: string): string {
   const formatted = new Intl.NumberFormat(locale, { maximumFractionDigits: 0 }).format(Math.round(v || 0));
   return symbol.endsWith(' ') ? `${symbol}${formatted}` : `${symbol}${formatted}`;
 }
+
+export function moneyCompact(v: number, currency?: string): string {
+  const cur = (currency || getActiveCurrency()).toUpperCase();
+  const symbol = SYMBOLS[cur] || cur + ' ';
+  const abs = Math.abs(v || 0);
+  if (abs >= 1000000000) return `${symbol}${(v / 1000000000).toFixed(1).replace(/\.0$/, '')}B`;
+  if (abs >= 1000000) return `${symbol}${(v / 1000000).toFixed(1).replace(/\.0$/, '')}M`;
+  if (abs >= 1000) return `${symbol}${(v / 1000).toFixed(1).replace(/\.0$/, '')}k`;
+  return `${symbol}${Math.round(v || 0).toLocaleString()}`;
+}

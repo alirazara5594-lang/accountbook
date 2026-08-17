@@ -4,6 +4,7 @@ import { useCustomersStore } from './stores';
 import { salesApi, type Invoice } from './api/modules/sales.api';
 import { useCustomerPaymentsStore } from './stores/useCustomerPaymentsStore';
 import { Users, DollarSign, TrendingUp, FileText, Download, ArrowLeft, Receipt } from 'lucide-react';
+import { money } from './lib/currency';
 import jsPDF from 'jspdf';
 import 'jspdf-autotable';
 
@@ -41,7 +42,7 @@ function CustomerStatementsWorkspace({ activeEntityId }: Props) {
     }
   }, [selectedCustomer, activeEntityId]);
 
-  const fmt = (n?: number) => new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(n || 0);
+  const fmt = (n?: number) => money(n || 0);
 
   const balances = useMemo(() => incomeStatement?.customerBalances || [], [incomeStatement]);
 

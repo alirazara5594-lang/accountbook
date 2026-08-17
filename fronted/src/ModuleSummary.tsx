@@ -1,5 +1,6 @@
 import React from 'react';
 import { ModuleSummaryLayout, SummaryPanel } from '@/components/module-summary-layout';
+import { money } from '@/lib/currency';
 import { Users, ShoppingBag, Landmark, Scale, Boxes, Wallet, Sparkles, Settings2 } from 'lucide-react';
 
 interface Account {
@@ -29,7 +30,7 @@ interface ModuleSummaryProps {
 }
 
 const formatCurrency = (val: number) => {
-  return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(val);
+  return money(val);
 };
 
 const MODULE_META: Record<string, { icon: React.ComponentType<{ className?: string }> }> = {

@@ -5,6 +5,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Button } from '@/components/ui/button';
 import { Send, CheckCircle2, Zap, Save, Clock } from 'lucide-react';
 import { DataToolbar } from '@/components/ui/data-toolbar';
+import { money } from '@/lib/currency';
 
 interface Journal {
   id: string;
@@ -162,8 +163,8 @@ export const JournalEntriesView: React.FC<JournalEntriesViewProps> = ({ accounts
         <button type="button" className="text-button" onClick={() => setJournal({ ...journal, lines: [...journal.lines, { accountId: '', debit: '', credit: '' }] })}>＋ Add line</button>
         <div className="modal-footer">
           <div style={{ flex: 1 }}>
-            <span>Debits <b>{new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(totals.debit)}</b></span>
-            <span>Credits <b>{new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(totals.credit)}</b></span>
+            <span>Debits <b>{money(totals.debit)}</b></span>
+            <span>Credits <b>{money(totals.credit)}</b></span>
             {totals.debit !== totals.credit && <em style={{ marginLeft: 12, color: '#ef4444' }}>Entry must balance</em>}
           </div>
           <button type="button" className="secondary btn-draft" onClick={(e) => handlePost(e, 'draft')} disabled={saving}><Save className="w-4 h-4 mr-1.5" /> Save as Draft</button>

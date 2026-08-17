@@ -21,6 +21,7 @@ import {
   Clock
 } from 'lucide-react';
 import { DataToolbar } from '@/components/ui/data-toolbar';
+import { getActiveCurrency } from '@/lib/currency';
 import type { Entity } from './EntitySettings';
 
 type PaymentMode = 'ACH' | 'Wire Transfer' | 'Cheque / Pay Order' | 'SWIFT' | 'RTGS' | 'Credit Card' | 'Direct Debit' | 'Online Banking';
@@ -241,8 +242,8 @@ export const BankingWorkspace: React.FC<BankingWorkspaceProps> = ({ subView, act
   const [statementBalance, setStatementBalance] = useState('4500000');
   const selectedReconAccount = bankAccounts.find(b => b.id === reconAccountId) || bankAccounts[0];
 
-  const formatMoney = (amount: number, curr = 'USD') => {
-    const formatted = new Intl.NumberFormat('en-US', { style: 'currency', currency: curr, maximumFractionDigits: 2 }).format(Math.abs(amount));
+const formatMoney = (amount: number, curr?: string) => {
+const formatted = new Intl.NumberFormat('en-US', { style: 'currency', currency: curr || getActiveCurrency(), maximumFractionDigits: 2 }).format(Math.abs(amount));
     return amount < 0 ? `-${formatted}` : formatted;
   };
 
@@ -480,7 +481,7 @@ export const BankingWorkspace: React.FC<BankingWorkspaceProps> = ({ subView, act
             </div>
             <div className="min-w-0">
               <p className="text-[10px] font-semibold uppercase tracking-wider text-slate-500">Foreign Currency Reserves</p>
-              <h3 className="text-base font-bold text-slate-900">$62,500.00 USD</h3>
+              <h3 className="text-base font-bold text-slate-900">{formatMoney(bankAccounts.filter(a => a.currency === 'USD').reduce((s, a) => s + a.balance, 0), 'USD')} USD</h3>
               <p className="text-[10px] text-blue-600 font-medium">Global SCB USD Account</p>
             </div>
           </CardContent>

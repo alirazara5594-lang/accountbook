@@ -3,6 +3,7 @@ import { useSalesStore, useCustomersStore } from './stores';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell } from 'recharts';
 import { Users, DollarSign, AlertTriangle, Clock, FileSpreadsheet, FileText, ArrowLeft, Search } from 'lucide-react';
 import { downloadExcel } from './lib/exportUtils';
+import { money, moneyCompact } from './lib/currency';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 
@@ -41,7 +42,7 @@ function CustomerAgingWorkspace({ activeEntityId }: Props) {
     fetchCustomers(activeEntityId);
   }, [activeEntityId]);
 
-  const fmt = (n?: number) => new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(n || 0);
+  const fmt = (n?: number) => money(n || 0);
 
   // Compute aging per customer
   const customerAging = useMemo(() => {
@@ -463,7 +464,7 @@ function CustomerAgingWorkspace({ activeEntityId }: Props) {
         <ResponsiveContainer width="100%" height={200}>
           <BarChart data={chartData} layout="vertical">
             <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
-            <XAxis type="number" tick={{ fontSize: 10 }} stroke="#94a3b8" tickFormatter={(v) => `$${(v / 1000).toFixed(0)}k`} />
+            <XAxis type="number" tick={{ fontSize: 10 }} stroke="#94a3b8" tickFormatter={(v: number) => moneyCompact(v)} />
             <YAxis type="category" dataKey="name" tick={{ fontSize: 10 }} stroke="#94a3b8" width={80} />
             <Tooltip formatter={(value) => fmt(Number(value))} contentStyle={{ fontSize: 11, borderRadius: 8 }} />
             <Bar dataKey="value" radius={[0, 4, 4, 0]}>

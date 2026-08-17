@@ -2,6 +2,7 @@ import React, { useEffect, useState, useMemo } from 'react';
 import { useCreditNotesStore } from './stores/useCreditNotesStore';
 import { useCustomersStore, useCompanyStore } from './stores';
 import { DataToolbar } from '@/components/ui/data-toolbar';
+import { money } from '@/lib/currency';
 import { Plus, X, Send, Trash2, FileText } from 'lucide-react';
 
 function CreditNotesWorkspace() {
@@ -130,7 +131,7 @@ function CreditNotesWorkspace() {
           <span className="stat-icon blue"><span className="text-sm">💰</span></span>
           <div>
             <small>TOTAL CREDIT VALUE</small>
-            <h2>{new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(totalCredit)}</h2>
+            <h2>{money(totalCredit)}</h2>
             <p>Outstanding credit</p>
           </div>
         </article>
@@ -156,7 +157,7 @@ function CreditNotesWorkspace() {
                 <td className="py-2.5 px-4 font-medium text-gray-900">{cn.customerId}</td>
                 <td className="py-2.5 px-4 text-gray-600">{cn.notes || '—'}</td>
                 <td className="py-2.5 px-4 text-right font-bold text-gray-900">
-                  {cn.totalAmount.toLocaleString(undefined, { style: 'currency', currency: 'USD' })}
+                  {money(cn.totalAmount)}
                 </td>
                 <td className="py-2.5 px-4 text-center">
                   <span className={`px-2 py-0.5 rounded-full text-[10px] font-semibold ${
@@ -316,15 +317,15 @@ function CreditNotesWorkspace() {
               <div className="p-3 bg-gray-50 rounded-lg border border-gray-200">
                 <div className="flex justify-between text-xs">
                   <span className="text-gray-500">Subtotal</span>
-                  <span className="font-semibold">{new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(form.amount || 0)}</span>
+                  <span className="font-semibold">{money(form.amount || 0)}</span>
                 </div>
                 <div className="flex justify-between text-xs mt-1">
                   <span className="text-gray-500">Tax</span>
-                  <span className="font-semibold">{new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(form.tax || 0)}</span>
+                  <span className="font-semibold">{money(form.tax || 0)}</span>
                 </div>
                 <div className="flex justify-between text-xs mt-2 pt-2 border-t border-gray-200">
                   <span className="font-bold text-gray-700">Total Credit</span>
-                  <span className="font-bold text-blue-600">{new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format((form.amount || 0) + (form.tax || 0))}</span>
+                  <span className="font-bold text-blue-600">{money((form.amount || 0) + (form.tax || 0))}</span>
                 </div>
               </div>
 

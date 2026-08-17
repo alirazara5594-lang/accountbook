@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { leasesApi, type LeaseAgreement, type LeaseScheduleResponse } from './api/modules/leases.api';
 import { Button } from '@/components/ui/button';
 import { Plus } from 'lucide-react';
+import { money } from '@/lib/currency';
 
 interface LeaseProps {
   activeEntityId: string;
@@ -61,7 +62,7 @@ export const LeaseAccounting: React.FC<LeaseProps> = ({ activeEntityId }) => {
     fetchLeases();
   }, [activeEntityId]);
 
-  const fmt = (n?: number) => n != null ? `$${Number(n).toLocaleString()}` : '—';
+  const fmt = (n?: number) => n != null ? money(n) : '—';
 
   const saveLease = async (e: React.FormEvent) => {
     e.preventDefault();
