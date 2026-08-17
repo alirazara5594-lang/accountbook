@@ -259,6 +259,16 @@ export default function App() {
   }
 
   useEffect(() => { load() }, [])
+
+  // After onboarding, if no company exists, redirect to Companies setup
+  useEffect(() => {
+    if (currentUser && currentUser.email !== 'admin@acme.com') {
+      const key = `onboarding_complete_${currentUser.email}`;
+      if (localStorage.getItem(key) && entities.length === 0 && page !== 'Administration.Companies') {
+        setPage('Administration.Companies');
+      }
+    }
+  }, [currentUser, entities, page])
   const openCreate = async () => { setEditing(null); setForm(blank); setModal(true) }
   const openEdit = (a: Account) => { setEditing(a); setForm({ code: a.code, name: a.name, type: a.type as AccountType, parentId: a.parentId || '', openingBalance: String(a.openingBalance), reconciliationEnabled: a.reconciliationEnabled, ifrsTag: a.ifrsTag || '', gaapTag: a.gaapTag || '', isSystem: a.isSystem, subtype: a.subtype || '', currency: a.currency || 'USD', taxCategory: a.taxCategory || '', allowManualJournal: a.allowManualJournal !== false, description: a.description || '', status: a.status || 'Active' }); setModal(true) }
 

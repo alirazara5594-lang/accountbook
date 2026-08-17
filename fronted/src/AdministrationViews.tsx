@@ -235,13 +235,22 @@ export function RolesPermissionsView() {
 // ── Companies & Branches ──────────────────────────────────────────────────────
 export function CompaniesView() {
   const { entities, fetchCompanies, saveCompany, toggleCompanyStatus } = useCompanyStore();
-  const [form, setForm] = useState({ name: '', code: '', currencyCode: 'USD', country: 'United States', type: 'Subsidiary' as string, active: true });
+  const getInitialForm = () => {
+    const savedCountry = localStorage.getItem('onboarding_country_name') || 'United States';
+    const savedCurrency = localStorage.getItem('active_currency') || 'USD';
+    return { name: '', code: '', currencyCode: savedCurrency, country: savedCountry, type: 'Subsidiary' as string, active: true };
+  };
+  const [form, setForm] = useState(getInitialForm);
 
   useEffect(() => { fetchCompanies(); }, [fetchCompanies]);
 
-  const save = (e: React.FormEvent) => {
+  const save = async (e: React.FormEvent) => {
     e.preventDefault();
-    saveCompany(form).then(() => setForm({ name: '', code: '', currencyCode: 'USD', country: 'United States', type: 'Subsidiary', active: true }));
+    await saveCompany(form);
+    // Clear onboarding country flags after company is created
+    localStorage.removeItem('onboarding_country');
+    localStorage.removeItem('onboarding_country_name');
+    setForm({ name: '', code: '', currencyCode: 'USD', country: 'United States', type: 'Subsidiary', active: true });
   };
 
   return (

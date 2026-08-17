@@ -6,7 +6,7 @@ export type CurrencyCode = 'USD' | 'PKR' | 'GBP' | 'EUR' | 'AED' | 'SAR' | 'CAD'
 
 const SYMBOLS: Record<string, string> = {
   USD: '$',
-  PKR: 'Rs ',
+  PKR: 'PKR ',
   GBP: '\u00a3',
   EUR: '\u20ac',
   AED: 'AED ',
