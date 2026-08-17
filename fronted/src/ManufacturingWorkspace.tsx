@@ -4,10 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { DataToolbar } from '@/components/ui/data-toolbar';
-
-function money(amount: number) {
-  return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(amount || 0);
-}
+import { money } from './lib/currency';
 
 const statusColors: Record<number | string, string> = {
   0: 'bg-gray-100 text-gray-700',

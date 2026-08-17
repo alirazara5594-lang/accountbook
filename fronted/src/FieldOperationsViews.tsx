@@ -12,8 +12,8 @@ import { ModuleSummaryLayout, SummaryPanel } from '@/components/module-summary-l
 import {
   Plus, ClipboardList, CalendarCheck2, ShieldCheck, Wrench, ReceiptText, Save, CheckCircle2, AlertTriangle, TrendingUp, FileBarChart, Clock3, Wallet
 } from 'lucide-react';
+import { money } from './lib/currency';
 
-const money = (v: number) => new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 }).format(v || 0);
 const today = () => new Date().toISOString().split('T')[0];
 
 const SURVEY_CATEGORIES = ['Customer Satisfaction', 'Quality', 'Market Research', 'Employee Engagement', 'Compliance', 'Product Feedback'];

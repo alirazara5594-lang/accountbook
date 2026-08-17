@@ -1,10 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useProcurementStore, useVendorsStore, useProductsStore, useCoaStore } from './stores';
 import { DataToolbar } from '@/components/ui/data-toolbar';
-
-function money(amount: number, currency = 'USD') {
-  return new Intl.NumberFormat('en-US', { style: 'currency', currency }).format(amount || 0);
-}
+import { money } from './lib/currency';
 
 export const VendorBills: React.FC<{ activeEntityId: string }> = ({ activeEntityId }) => {
   const bills = useProcurementStore((s) => s.bills);

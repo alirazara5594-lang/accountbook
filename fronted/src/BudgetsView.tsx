@@ -3,6 +3,7 @@ import { accountingApi, type BudgetRecord, type BudgetInput } from './api/module
 import { useCoaStore } from './stores';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
+import { money } from './lib/currency';
 import { Input } from '@/components/ui/input';
 import { Search, Plus, Pencil, Trash2, Target } from 'lucide-react';
 import { DataToolbar } from '@/components/ui/data-toolbar';
@@ -380,5 +381,3 @@ export const BudgetsView: React.FC<BudgetsViewProps> = ({ activeEntityId, entiti
     </div>
   );
 };
-
-export const money = (v: number) => new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(v);

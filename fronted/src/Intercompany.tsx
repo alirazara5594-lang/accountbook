@@ -4,10 +4,10 @@ import { useCompanyStore, useIntercompanyStore } from './stores'
 import { DataToolbar } from '@/components/ui/data-toolbar'
 import { intercompanyApi } from './api/modules/intercompany.api'
 import { Trash2 } from 'lucide-react'
+import { money } from './lib/currency'
 
 type Company = { id: string; name: string; code?: string }
 type Allocation = { id: string; name: string; sourceCompanyId: string; category: string; frequency: string; rate: number; quantity: number; status: string; recipients: { companyId: string; sharePercent: number }[] }
-const money = (value: number) => new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(value)
 
 export default function Intercompany({ allocations, reload, notify }: { allocations: Allocation[]; reload: () => void; notify: (message: string) => void }) {
   const templates = [

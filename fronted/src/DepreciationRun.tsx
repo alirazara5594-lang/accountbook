@@ -3,7 +3,7 @@ import { Play, CheckCircle2, AlertCircle, RefreshCw, Calendar, Building2, Trendi
 import { useAssetsInventoryStore, useCoaStore } from './stores'
 import type { DepreciationRunResult } from './api/modules/assetsInventory.api'
 
-const money = (v: number) => new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(v)
+import { money } from './lib/currency';
 
 export default function DepreciationRun({ activeEntityId }: { activeEntityId: string }) {
   const assets = useAssetsInventoryStore((s) => s.fixedAssets as any[])

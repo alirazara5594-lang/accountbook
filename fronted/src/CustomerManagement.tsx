@@ -68,9 +68,7 @@ const blankForm = (): CustomerForm => ({
   companyId: ''
 })
 
-function money(amount: number, currency = 'USD') {
-  return new Intl.NumberFormat('en-US', { style: 'currency', currency }).format(amount)
-}
+import { money } from './lib/currency';
 
 export default function CustomerManagement({
   entities,

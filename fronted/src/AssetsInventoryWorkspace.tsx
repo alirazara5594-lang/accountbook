@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useAssetsInventoryStore, useCoaStore, useProductsStore } from './stores';
 import { DataToolbar } from '@/components/ui/data-toolbar';
-function money(v: number) { return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(v); }
+import { money } from './lib/currency';
 
 // ─── Shared Select ───────────────────────────────────────────────────────────
 const AccSelect = ({ value, onChange, accounts, label, filter }: any) => (

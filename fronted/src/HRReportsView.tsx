@@ -7,13 +7,12 @@ import { PageHeader } from '@/components/ui/page-header';
 import { StatCard } from '@/components/ui/stat-card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Users, CalendarCheck2, HeartPulse, Banknote, Wallet, TrendingUp, Globe2, Building2, AlertTriangle, UserCheck } from 'lucide-react';
+import { money } from './lib/currency';
 
 const COUNTRY_OPTIONS: Record<string, string> = {
   US: 'United States', CA: 'Canada', UK: 'United Kingdom', DE: 'Germany', FR: 'France', NL: 'Netherlands',
   BE: 'Belgium', ES: 'Spain', IT: 'Italy', PL: 'Poland', PK: 'Pakistan', SA: 'Saudi Arabia', AE: 'UAE',
 };
-
-const money = (v: number) => new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 }).format(v || 0);
 
 export default function HRReportsView() {
   const { employees, departments, leaveRequests, attendanceRecords, payruns, salarySlips, loans, fetchAll } = usePayrollStore();

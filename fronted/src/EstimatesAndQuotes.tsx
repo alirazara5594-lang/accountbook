@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { useSalesStore, useCustomersStore, useProductsStore } from './stores';
 import { DataToolbar } from '@/components/ui/data-toolbar';
-const money = (v: number) => new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(v);
+import { money } from './lib/currency';
 
 const statusColors: Record<number, string> = {
   0: 'bg-gray-100 text-gray-600',

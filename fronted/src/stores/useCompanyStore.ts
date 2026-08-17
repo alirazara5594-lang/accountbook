@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import { entitiesApi, type Entity } from '../api/modules/entities.api';
+import { setActiveCurrency } from '../lib/currency';
 
 interface CompanyState {
   entities: Entity[];
@@ -12,6 +13,11 @@ interface CompanyState {
   saveCompany: (data: any, id?: string) => Promise<Entity>;
   toggleCompanyStatus: (id: string, active: boolean) => Promise<void>;
   getActiveEntity: () => Entity | undefined;
+}
+
+function syncCurrencyFromEntity(entity?: Entity) {
+  const code = entity?.currencyCode || entity?.functionalCurrency || 'USD';
+  setActiveCurrency(code);
 }
 
 export const useCompanyStore = create<CompanyState>((set, get) => ({
@@ -32,6 +38,8 @@ export const useCompanyStore = create<CompanyState>((set, get) => ({
 
         if (newActive) {
           localStorage.setItem('active_entity_id', newActive);
+          const activeEntity = companies.find((c) => c.id === newActive);
+          syncCurrencyFromEntity(activeEntity);
         }
 
         return {
@@ -50,6 +58,8 @@ export const useCompanyStore = create<CompanyState>((set, get) => ({
   setActiveEntityId: (id: string) => {
     localStorage.setItem('active_entity_id', id);
     set({ activeEntityId: id });
+    const entity = get().entities.find((e) => e.id === id);
+    syncCurrencyFromEntity(entity);
   },
 
   saveCompany: async (data: any, id?: string) => {

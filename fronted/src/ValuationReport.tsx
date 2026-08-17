@@ -1,8 +1,7 @@
 import { useEffect, useMemo } from 'react'
 import { Package, Warehouse, Download, DollarSign } from 'lucide-react'
 import { useAssetsInventoryStore } from './stores'
-
-const money = (v: number) => new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(v)
+import { money } from './lib/currency'
 
 export default function ValuationReport({ activeEntityId }: { activeEntityId: string }) {
   const levels = useAssetsInventoryStore((s) => s.stockLevels as any[])

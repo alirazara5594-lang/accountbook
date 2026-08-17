@@ -21,8 +21,8 @@ import {
   useAssetsInventoryStore,
   usePayrollStore,
 } from './stores';
+import { money } from './lib/currency';
 
-const money = (v: number) => new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 }).format(v || 0);
 const num = (n: number) => new Intl.NumberFormat('en-US').format(n || 0);
 
 const C = {

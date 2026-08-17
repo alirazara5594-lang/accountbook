@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Zap, Trash2, Wallet } from 'lucide-react';
 import { DataToolbar } from '@/components/ui/data-toolbar';
+import { money } from './lib/currency';
 
 interface FixedAsset {
   id: string;
@@ -24,10 +25,6 @@ interface FixedAsset {
   assetAccountId?: string;
   accumulatedDepreciationAccountId?: string;
   depreciationExpenseAccountId?: string;
-}
-
-function money(amount: number) {
-  return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(amount);
 }
 
 const isActive = (a: FixedAsset) => a.status === 0 || (a.status as any) === 'Active';

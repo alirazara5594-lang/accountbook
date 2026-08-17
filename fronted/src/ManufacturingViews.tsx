@@ -3,8 +3,7 @@ import { useManufacturingStore } from './stores';
 import { ModuleSummaryLayout, SummaryPanel } from '@/components/module-summary-layout';
 import { ManufacturingWorkspace } from './ManufacturingWorkspace';
 import { ClipboardList, Factory, Package, TrendingUp, AlertTriangle, Wallet, Layers } from 'lucide-react';
-
-const money = (v: number) => new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 }).format(v || 0);
+import { money } from './lib/currency';
 
 function useMfgData() {
   const store = useManufacturingStore();

@@ -13,6 +13,7 @@ import {
   useManufacturingStore, usePayrollStore, useFieldOperationsStore, useComplianceStore,
   useProjectsStore, useAdministrationStore, useTaxStore,
 } from './stores';
+import { money } from './lib/currency';
 
 interface DashboardOverviewProps {
   accounts: { code: string; name: string; type: string; openingBalance: number; status?: string }[];
@@ -21,9 +22,6 @@ interface DashboardOverviewProps {
   activeEntityId?: string;
 }
 
-function money(v: number) {
-  return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 }).format(v || 0);
-}
 function num(n: number) {
   return new Intl.NumberFormat('en-US').format(n || 0);
 }

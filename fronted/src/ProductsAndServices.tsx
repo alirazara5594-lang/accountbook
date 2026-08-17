@@ -7,6 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { DataToolbar } from '@/components/ui/data-toolbar'
 
 import { useProductsStore, useCoaStore, useTaxStore } from './stores'
+import { money } from './lib/currency'
 
 export type ProductType = 'Physical' | 'Service' | 'NonInventory' | 'Bundle'
 export type ProductStatus = 'Active' | 'Inactive' | 'Discontinued'
@@ -74,10 +75,6 @@ const blankForm = (): ProductForm => ({
   expenseAccountId: '',
   assetAccountId: ''
 })
-
-function money(amount: number) {
-  return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(amount)
-}
 
 export default function ProductsAndServices({ entities, activeEntityId, notify }: { entities?: any[], activeEntityId?: string, notify: (msg: string) => void }) {
   const products = useProductsStore((s: any) => s.products as Product[])

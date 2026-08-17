@@ -2,7 +2,7 @@ import { useEffect, useMemo } from 'react'
 import { Calendar, Building2, TrendingDown, Download } from 'lucide-react'
 import { useAssetsInventoryStore } from './stores'
 
-const money = (v: number) => new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(v)
+import { money } from './lib/currency';
 
 export default function DepreciationSchedule({ activeEntityId }: { activeEntityId: string }) {
   const assets = useAssetsInventoryStore((s) => s.fixedAssets as any[])

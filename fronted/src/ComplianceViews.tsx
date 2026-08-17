@@ -13,7 +13,7 @@ import {
   Scale, Plus, TrendingUp, AlertTriangle, CheckCircle2, FileText, Send, ShieldCheck, ReceiptText, Landmark, Clock3, Wallet, Save, Building2, BadgeDollarSign
 } from 'lucide-react';
 
-const money = (v: number) => new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 }).format(v || 0);
+import { money } from './lib/currency';
 const today = () => new Date().toISOString().split('T')[0];
 
 const JURISDICTIONS = ['UK', 'USA', 'PK', 'EU', 'UAE', 'SA', 'CA'];

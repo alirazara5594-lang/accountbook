@@ -13,7 +13,7 @@ import {
   ResponsiveContainer, AreaChart as RAreaChart, Area as RArea, BarChart as RBarChart, Bar as RBar, LineChart as RLineChart, Line as RLine, PieChart as RPieChart, Pie as RPie, Cell as RCell, XAxis as RXAxis, YAxis as RYAxis, CartesianGrid as RCartesianGrid, Tooltip as RTooltip, Legend as RLegend
 } from 'recharts';
 
-const money = (v: number) => new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 }).format(v || 0);
+import { money } from './lib/currency';
 const today = () => new Date().toISOString().split('T')[0];
 const monthKey = (d: string) => d.slice(0, 7);
 const MONTH_LABELS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];

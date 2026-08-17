@@ -4,10 +4,7 @@ import { DataToolbar } from '@/components/ui/data-toolbar';
 import { 
   Plus, Shield, Search, Calendar, Eye, XCircle, ArrowRight 
 } from 'lucide-react';
-
-function money(v: number) { 
-  return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(v); 
-}
+import { money } from './lib/currency';
 
 const statusColors: Record<string, string> = {
   Draft: 'bg-gray-100 text-gray-600 border-gray-200',

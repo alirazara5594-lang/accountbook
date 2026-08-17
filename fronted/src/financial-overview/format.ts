@@ -1,21 +1,11 @@
 // Shared formatting helpers + types for the Financial Overview dashboard.
 // All values are computed from the live ERP stores / APIs (no hardcoded figures).
 
-export type CurrencyCode = 'USD' | 'PKR' | 'GBP' | 'EUR' | 'AED';
+import { money as _money, type CurrencyCode } from '../lib/currency';
 
-const SYMBOLS: Record<CurrencyCode, string> = {
-  USD: '$',
-  PKR: 'Rs ',
-  GBP: '£',
-  EUR: '€',
-  AED: 'AED ',
-};
+export type { CurrencyCode };
 
-export function money(v: number, currency: CurrencyCode = 'USD'): string {
-  const symbol = SYMBOLS[currency] || '$';
-  const formatted = new Intl.NumberFormat('en-US', { maximumFractionDigits: 0 }).format(Math.round(v || 0));
-  return symbol.endsWith(' ') ? `${symbol}${formatted}` : `${symbol}${formatted}`;
-}
+export const money = _money;
 
 export function num(n: number): string {
   return new Intl.NumberFormat('en-US').format(n || 0);

@@ -12,8 +12,8 @@ import { ModuleSummaryLayout, SummaryPanel } from '@/components/module-summary-l
 import {
   FolderKanban, Plus, TrendingUp, Wallet, Clock3, CheckCircle2, ArrowLeft, Save, Trash2, User, ListChecks, Timer, ReceiptText, Layers, AlertTriangle, Percent, Banknote, CircleDollarSign
 } from 'lucide-react';
+import { money } from './lib/currency';
 
-const money = (v: number) => new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 }).format(v || 0);
 const today = () => new Date().toISOString().split('T')[0];
 
 const STATUS_OPTIONS = ['Planning', 'Active', 'OnHold', 'Completed', 'Cancelled'];
