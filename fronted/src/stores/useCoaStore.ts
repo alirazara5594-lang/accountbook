@@ -1,6 +1,8 @@
 import { create } from 'zustand';
 import { coaApi, type Account, type AccountMapping } from '../api/modules/coa.api';
 
+const isDemoMode = () => typeof window !== 'undefined' && localStorage.getItem('ab_demo_mode') === 'true';
+
 interface CoaState {
   accounts: Account[];
   mappings: AccountMapping[];
@@ -105,10 +107,20 @@ export const useCoaStore = create<CoaState>((set, get) => ({
   resetDatabase: async () => {
     set({ loading: true, error: null });
     try {
+      if (isDemoMode()) {
+        // In demo mode the backend may be unreachable; reset local state only.
+        set({ accounts: [], mappings: [], loading: false });
+        return;
+      }
       await coaApi.resetDatabase();
       await get().fetchAccounts();
       set({ loading: false });
     } catch (err: any) {
+      // Even if the backend call fails, allow the demo flow to proceed.
+      if (isDemoMode()) {
+        set({ accounts: [], mappings: [], loading: false });
+        return;
+      }
       set({ error: err.message || 'Failed to reset database', loading: false });
       throw err;
     }

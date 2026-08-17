@@ -1,5 +1,7 @@
 // Global currency helper - reads from localStorage so all views use the active entity's currency.
 
+import { create } from 'zustand';
+
 export type CurrencyCode = 'USD' | 'PKR' | 'GBP' | 'EUR' | 'AED' | 'SAR' | 'CAD';
 
 const SYMBOLS: Record<string, string> = {
@@ -22,6 +24,16 @@ const LOCALES: Record<string, string> = {
   CAD: 'en-CA',
 };
 
+interface ActiveCurrencyState {
+  code: string;
+  setCode: (code: string) => void;
+}
+
+export const useActiveCurrencyStore = create<ActiveCurrencyState>((set) => ({
+  code: typeof window !== 'undefined' ? localStorage.getItem('active_currency') || 'USD' : 'USD',
+  setCode: (code) => set({ code: code.toUpperCase() }),
+}));
+
 export function getActiveCurrency(): string {
   try {
     return localStorage.getItem('active_currency') || 'USD';
@@ -31,9 +43,11 @@ export function getActiveCurrency(): string {
 }
 
 export function setActiveCurrency(code: string) {
+  const upper = code.toUpperCase();
   try {
-    localStorage.setItem('active_currency', code.toUpperCase());
+    localStorage.setItem('active_currency', upper);
   } catch { /* noop */ }
+  useActiveCurrencyStore.getState().setCode(upper);
 }
 
 export function money(v: number, currency?: string): string {
