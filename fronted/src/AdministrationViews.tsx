@@ -233,12 +233,28 @@ export function RolesPermissionsView() {
 }
 
 // ── Companies & Branches ──────────────────────────────────────────────────────
+const ALL_MODULES = [
+  { id: 'overview', name: 'Overview' },
+  { id: 'sales', name: 'Sales & Customers' },
+  { id: 'procurement', name: 'Procurement' },
+  { id: 'banking', name: 'Banking & Payments' },
+  { id: 'accounting', name: 'Accounting' },
+  { id: 'assets', name: 'Assets & Inventory' },
+  { id: 'manufacturing', name: 'Manufacturing' },
+  { id: 'payroll', name: 'Payroll & HR' },
+  { id: 'field', name: 'Survey & Field Operations' },
+  { id: 'compliance', name: 'Government Compliance' },
+  { id: 'projects', name: 'Projects' },
+  { id: 'analytics', name: 'AI & Analytics' },
+  { id: 'administration', name: 'Administration' },
+];
+
 export function CompaniesView() {
   const { entities, fetchCompanies, saveCompany, toggleCompanyStatus } = useCompanyStore();
   const getInitialForm = () => {
     const savedCountry = localStorage.getItem('onboarding_country_name') || 'United States';
     const savedCurrency = localStorage.getItem('active_currency') || 'USD';
-    return { name: '', code: '', currencyCode: savedCurrency, country: savedCountry, type: 'Subsidiary' as string, active: true };
+    return { name: '', code: '', currencyCode: savedCurrency, country: savedCountry, type: 'Subsidiary' as string, active: true, modules: ALL_MODULES.map(m => m.id) };
   };
   const [form, setForm] = useState(getInitialForm);
 
@@ -247,10 +263,16 @@ export function CompaniesView() {
   const save = async (e: React.FormEvent) => {
     e.preventDefault();
     await saveCompany(form);
-    // Clear onboarding country flags after company is created
     localStorage.removeItem('onboarding_country');
     localStorage.removeItem('onboarding_country_name');
-    setForm({ name: '', code: '', currencyCode: 'USD', country: 'United States', type: 'Subsidiary', active: true });
+    setForm({ name: '', code: '', currencyCode: 'USD', country: 'United States', type: 'Subsidiary', active: true, modules: ALL_MODULES.map(m => m.id) });
+  };
+
+  const toggleModule = (id: string) => {
+    setForm(f => ({
+      ...f,
+      modules: f.modules.includes(id) ? f.modules.filter(m => m !== id) : [...f.modules, id]
+    }));
   };
 
   return (
@@ -282,13 +304,23 @@ export function CompaniesView() {
                 </Select>
               </FormField>
             </div>
+            <FormField label="Modules">
+              <div className="grid grid-cols-2 gap-1.5 max-h-48 overflow-y-auto pr-1">
+                {ALL_MODULES.map(m => (
+                  <label key={m.id} className="flex items-center gap-2 text-sm border rounded-lg px-2.5 py-1.5 cursor-pointer hover:bg-muted/40">
+                    <input type="checkbox" checked={form.modules.includes(m.id)} onChange={() => toggleModule(m.id)} className="accent-teal-600" />
+                    {m.name}
+                  </label>
+                ))}
+              </div>
+            </FormField>
             <Button type="submit" size="sm"><Save className="h-4 w-4" /> Add Company</Button>
           </form>
         </Card>
-        <Card className="p-4 col-span-2 space-y-3">
+<Card className="p-4 col-span-2 space-y-3">
           <p className="text-sm font-medium">Entity Register</p>
           <Table>
-            <TableHeader><TableRow><TableHead>Name</TableHead><TableHead>Code</TableHead><TableHead>Currency</TableHead><TableHead>Country</TableHead><TableHead>Status</TableHead></TableRow></TableHeader>
+            <TableHeader><TableRow><TableHead>Name</TableHead><TableHead>Code</TableHead><TableHead>Currency</TableHead><TableHead>Country</TableHead><TableHead>Status</TableHead><TableHead>Actions</TableHead></TableRow></TableHeader>
             <TableBody>
               {entities.map(e => (
                 <TableRow key={e.id}>
@@ -296,10 +328,15 @@ export function CompaniesView() {
                   <TableCell className="font-mono text-muted-foreground">{e.code}</TableCell>
                   <TableCell>{e.currencyCode || e.functionalCurrency}</TableCell>
                   <TableCell>{e.country}</TableCell>
-                  <TableCell><button onClick={() => toggleCompanyStatus(e.id, !e.active)}><Badge variant={e.active ? 'secondary' : 'outline'}>{e.active ? 'Active' : 'Inactive'}</Badge></button></TableCell>
+                  <TableCell><Badge variant={e.active ? 'secondary' : 'outline'}>{e.active ? 'Active' : 'Inactive'}</Badge></TableCell>
+                  <TableCell>
+                    <Button variant="ghost" size="sm" onClick={() => toggleCompanyStatus(e.id, !e.active)}>
+                      {e.active ? 'Deactivate' : 'Activate'}
+                    </Button>
+                  </TableCell>
                 </TableRow>
               ))}
-              {entities.length === 0 && <TableRow><TableCell colSpan={5} className="text-center text-muted-foreground py-6">No companies configured</TableCell></TableRow>}
+              {entities.length === 0 && <TableRow><TableCell colSpan={6} className="text-center text-muted-foreground py-6">No companies configured</TableCell></TableRow>}
             </TableBody>
           </Table>
         </Card>

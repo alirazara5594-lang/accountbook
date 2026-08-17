@@ -10,6 +10,7 @@ export interface Entity {
   country: string;
   currencyCode?: string;
   functionalCurrency?: string;
+  modules?: string[];
   active: boolean;
   taxAuthorityId?: string | null;
   taxId?: string;

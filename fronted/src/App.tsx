@@ -1,4 +1,4 @@
-import { useEffect, useState, useMemo } from 'react'
+import { useEffect, useState, useMemo, useRef } from 'react'
 import type { FormEvent } from 'react'
 import './App.css'
 import { Login } from './Login'
@@ -95,19 +95,19 @@ const accountTypes: AccountType[] = ['Asset', 'Liability', 'Equity', 'Revenue', 
 const blank = { code: '', name: '', type: 'Asset' as AccountType, parentId: '', openingBalance: '0', reconciliationEnabled: false, ifrsTag: '', gaapTag: '', isSystem: false, subtype: '', currency: 'USD', taxCategory: '', allowManualJournal: true, description: '', status: 'Active' }
 
 const NAVIGATION = [
-  { name: 'Overview', icon: '▦', items: [] },
-  { name: 'Sales & Customers', icon: '☖', items: ['Customers', 'Products & Services', 'Sales Workspace', 'Estimates & Quotes', 'Sales Orders', 'Credit Notes', 'Customer Payments', 'Customer Statements', 'Customer Aging', 'Sales Reports'] },
-  { name: 'Procurement', icon: '⇡', items: ['Vendors', 'Procurement Workspace', 'Bills', 'Debit Notes', 'Expense Claims', 'Vendor Payments', 'Vendor Statements', 'Payables Aging', 'Purchase Reports'] },
-  { name: 'Banking & Payments', icon: '🏛', items: ['Bank Accounts', 'Cash Accounts', 'Bank Connection', 'Bank Import', 'Transactions', 'Bank Reconciliation', 'Voucher Management', 'Fund Transfers', 'Cash Flow Statements'] },
-              { name: 'Accounting', icon: '⌘', items: ['Chart of Accounts', 'Journal Entries', 'Fixed Assets', 'General Ledger', 'Accounts Receivable', 'Accounts Payable', 'Budgets', 'Financial Reports', 'Period Closing', 'Audit Trail', 'Intercompany Allocations', 'Lease Accounting'] },
-  { name: 'Assets & Inventory', icon: '📦', items: ['Assets & Inventory Workspace', 'Depreciation Run', 'Depreciation Schedule', 'Valuation Reports'] },
-  { name: 'Manufacturing & Production', icon: '⚙️', items: ['Manufacturing Workspace', 'Bill of Materials', 'Work Orders', 'Job Costing'] },
-  { name: 'Payroll & HR', icon: '👥', items: ['Employees', 'Attendance', 'Leave', 'Payroll', 'Salary', 'Loans & Advances', 'HR Reports'] },
-  { name: 'Survey & Field Operations', icon: '📍', items: ['Surveys', 'Field Visits', 'Inspections', 'Work Orders', 'Field Expenses', 'Field Reports'] },
-  { name: 'Government Compliance', icon: '⚖', items: ['Tax Management', 'VAT / Sales Tax', 'Withholding Tax', 'Tax Returns', 'E-Invoicing', 'Compliance Reports'] },
-  { name: 'Projects', icon: '🏗', items: ['Projects', 'Project Planning', 'Tasks', 'Project Budget', 'Project Costing', 'Timesheets', 'Project Billing', 'Project Expenses', 'Project Profitability', 'Reports'] },
-  { name: 'AI & Analytics', icon: '✨', items: ['Analytics Dashboard', 'Financial Analytics', 'Sales Analytics', 'Expense Analytics', 'Cash Flow Analytics', 'Inventory Analytics', 'Forecasting', 'AI Insights'] },
-  { name: 'Administration', icon: '⚙', items: ['Users', 'Roles & Permissions', 'Companies', 'Branches', 'Approval Workflows', 'System Settings', 'Chart of Accounts Mapping', 'Number Series', 'Currency', 'Tax Accounting', 'Audit Logs'] }
+  { name: 'Overview', icon: '▦', items: [], moduleId: 'overview' },
+  { name: 'Sales & Customers', icon: '☖', items: ['Customers', 'Products & Services', 'Sales Workspace', 'Estimates & Quotes', 'Sales Orders', 'Credit Notes', 'Customer Payments', 'Customer Statements', 'Customer Aging', 'Sales Reports'], moduleId: 'sales' },
+  { name: 'Procurement', icon: '⇡', items: ['Vendors', 'Procurement Workspace', 'Bills', 'Debit Notes', 'Expense Claims', 'Vendor Payments', 'Vendor Statements', 'Payables Aging', 'Purchase Reports'], moduleId: 'procurement' },
+  { name: 'Banking & Payments', icon: '🏛', items: ['Bank Accounts', 'Cash Accounts', 'Bank Connection', 'Bank Import', 'Transactions', 'Bank Reconciliation', 'Voucher Management', 'Fund Transfers', 'Cash Flow Statements'], moduleId: 'banking' },
+  { name: 'Accounting', icon: '⌘', items: ['Chart of Accounts', 'Journal Entries', 'Fixed Assets', 'General Ledger', 'Accounts Receivable', 'Accounts Payable', 'Budgets', 'Financial Reports', 'Period Closing', 'Audit Trail', 'Intercompany Allocations', 'Lease Accounting'], moduleId: 'accounting' },
+  { name: 'Assets & Inventory', icon: '📦', items: ['Assets & Inventory Workspace', 'Depreciation Run', 'Depreciation Schedule', 'Valuation Reports'], moduleId: 'assets' },
+  { name: 'Manufacturing & Production', icon: '⚙️', items: ['Manufacturing Workspace', 'Bill of Materials', 'Work Orders', 'Job Costing'], moduleId: 'manufacturing' },
+  { name: 'Payroll & HR', icon: '👥', items: ['Employees', 'Attendance', 'Leave', 'Payroll', 'Salary', 'Loans & Advances', 'HR Reports'], moduleId: 'payroll' },
+  { name: 'Survey & Field Operations', icon: '📍', items: ['Surveys', 'Field Visits', 'Inspections', 'Work Orders', 'Field Expenses', 'Field Reports'], moduleId: 'field' },
+  { name: 'Government Compliance', icon: '⚖', items: ['Tax Management', 'VAT / Sales Tax', 'Withholding Tax', 'Tax Returns', 'E-Invoicing', 'Compliance Reports'], moduleId: 'compliance' },
+  { name: 'Projects', icon: '🏗', items: ['Projects', 'Project Planning', 'Tasks', 'Project Budget', 'Project Costing', 'Timesheets', 'Project Billing', 'Project Expenses', 'Project Profitability', 'Reports'], moduleId: 'projects' },
+  { name: 'AI & Analytics', icon: '✨', items: ['Analytics Dashboard', 'Financial Analytics', 'Sales Analytics', 'Expense Analytics', 'Cash Flow Analytics', 'Inventory Analytics', 'Forecasting', 'AI Insights'], moduleId: 'analytics' },
+  { name: 'Administration', icon: '⚙', items: ['Users', 'Roles & Permissions', 'Companies', 'Branches', 'Approval Workflows', 'System Settings', 'Chart of Accounts Mapping', 'Number Series', 'Currency', 'Tax Accounting', 'Audit Logs'], moduleId: 'administration' }
 ];
 
 export default function App() {
@@ -436,9 +436,60 @@ export default function App() {
     return <OnboardingWizard currentUser={currentUser} />;
   }
 
-  return <div className="app"><aside><div className="brand"><b>account</b><span>book</span></div><div className="company"><div className="avatar">AC</div><div><strong>{activeEntity?.name || 'Select entity'}</strong><small>Active accounting books</small></div></div>
+  const [showEntityMenu, setShowEntityMenu] = useState(false);
+  const entityMenuRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (entityMenuRef.current && !entityMenuRef.current.contains(e.target as Node)) {
+        setShowEntityMenu(false);
+      }
+    };
+    if (showEntityMenu) {
+      document.addEventListener('mousedown', handleClickOutside);
+      return () => document.removeEventListener('mousedown', handleClickOutside);
+    }
+  }, [showEntityMenu]);
+
+  const handleEntitySwitch = (entityId: string) => {
+    setActiveEntityId(entityId);
+    setShowEntityMenu(false);
+  };
+
+  return <div className="app"><aside><div className="brand"><b>account</b><span>book</span></div>
+    <div className="company" style={{ position: 'relative' }} ref={entityMenuRef}>
+      <button
+        onClick={() => setShowEntityMenu(!showEntityMenu)}
+        style={{ background: 'none', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 10, padding: 0, width: '100%', textAlign: 'left' }}
+      >
+        <div className="avatar">AC</div>
+        <div>
+          <strong>{activeEntity?.name || 'Select entity'}</strong>
+          <small>Active accounting books</small>
+        </div>
+      </button>
+      {showEntityMenu && entities.length > 0 && (
+        <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, background: '#1e293b', border: '1px solid #334155', borderRadius: 8, zIndex: 1000, marginTop: 4, maxHeight: 300, overflowY: 'auto' }}>
+          {entities.filter(e => e.active).map(e => (
+            <button
+              key={e.id}
+              onClick={() => handleEntitySwitch(e.id)}
+              style={{
+                display: 'block', width: '100%', padding: '10px 14px', background: e.id === activeEntityId ? '#334155' : 'transparent',
+                border: 'none', cursor: 'pointer', textAlign: 'left', color: 'white', fontSize: 13
+              }}
+              onMouseEnter={ev => { if (e.id !== activeEntityId) ev.currentTarget.style.background = '#475569' }}
+              onMouseLeave={ev => { if (e.id !== activeEntityId) ev.currentTarget.style.background = 'transparent' }}
+            >
+              <div style={{ fontWeight: 600 }}>{e.name}</div>
+              <div style={{ fontSize: 11, opacity: 0.6 }}>{e.currencyCode || e.functionalCurrency} · {e.country}</div>
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
   <nav>
-    {NAVIGATION.map(group => {
+    {NAVIGATION.filter(group => !activeEntity?.modules || activeEntity.modules.length === 0 || activeEntity.modules.includes(group.moduleId)).map(group => {
       const isOpen = openGroups.includes(group.name);
       return (
         <div className="nav-group" key={group.name}>
