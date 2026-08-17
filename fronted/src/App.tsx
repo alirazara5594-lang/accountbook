@@ -423,10 +423,7 @@ export default function App() {
 
   // Non-admin demo users must complete onboarding first
   if (needsOnboarding(currentUser.email)) {
-    return <OnboardingWizard currentUser={currentUser} onComplete={() => {
-      localStorage.setItem('onboarding_complete', 'true');
-      window.location.reload();
-    }} />;
+    return <OnboardingWizard currentUser={currentUser} />;
   }
 
   return <div className="app"><aside><div className="brand"><b>account</b><span>book</span></div><div className="company"><div className="avatar">AC</div><div><strong>{activeEntity?.name || 'Select entity'}</strong><small>Active accounting books</small></div></div>

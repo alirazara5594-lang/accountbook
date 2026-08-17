@@ -28,9 +28,8 @@ const ALL_MODULES = [
   { id: 'banking', name: 'Banking & Reconciliation', icon: BarChart3, description: 'Bank feeds, reconciliation, payments' },
 ]
 
-export default function OnboardingWizard({ currentUser, onComplete }: {
+export default function OnboardingWizard({ currentUser }: {
   currentUser: UserData
-  onComplete: () => void
 }) {
   const [step, setStep] = useState<Step>('country')
   const [country, setCountry] = useState('PK')
@@ -56,6 +55,10 @@ export default function OnboardingWizard({ currentUser, onComplete }: {
 
   const handleModulesNext = () => setStep('currency')
   const handleCurrencyNext = () => setStep('confirm')
+
+  const onComplete = () => {
+    window.location.reload()
+  }
 
   const handleFinish = async () => {
     setSaving(true)
