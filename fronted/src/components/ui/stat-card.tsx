@@ -29,8 +29,8 @@ function StatCard({ icon: Icon, label, value, tone = "teal", className, ...props
         <Icon className="size-4" />
       </span>
       <div className="min-w-0">
-        <p className={cn("truncate text-lg font-bold leading-tight", t.value)}>{value}</p>
-        <p className="truncate text-[11px] text-muted-foreground">{label}</p>
+        <p className={cn("truncate text-base font-bold leading-tight", t.value)}>{value}</p>
+        <p className="truncate text-[10px] text-muted-foreground">{label}</p>
       </div>
     </Card>
   )

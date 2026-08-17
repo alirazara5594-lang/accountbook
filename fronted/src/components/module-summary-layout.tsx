@@ -37,8 +37,8 @@ export function ModuleSummaryLayout({ title, description, actions, stats, childr
 export function SummaryPanel({ icon, title, children }: { icon: React.ComponentType<{ className?: string }>; title: string; children: React.ReactNode }) {
   const Icon = icon;
   return (
-    <Card className="p-4 space-y-3">
-      <p className="text-sm font-medium flex items-center gap-2"><Icon className="h-4 w-4" /> {title}</p>
+    <Card className="p-3 space-y-2">
+      <p className="text-xs font-medium flex items-center gap-1.5"><Icon className="h-3.5 w-3.5" /> {title}</p>
       {children}
     </Card>
   );
