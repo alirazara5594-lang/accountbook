@@ -24,12 +24,12 @@ const tones = {
 function StatCard({ icon: Icon, label, value, tone = "teal", className, ...props }: StatCardProps) {
   const t = tones[tone]
   return (
-    <Card className={cn("flex items-center gap-3 p-3", className)} {...props}>
-      <span className={cn("flex size-9 shrink-0 items-center justify-center rounded-lg", t.chip)}>
-        <Icon className="size-4" />
+    <Card className={cn("flex items-center gap-2.5 p-3", className)} {...props}>
+      <span className={cn("flex size-8 shrink-0 items-center justify-center rounded-lg", t.chip)}>
+        <Icon className="size-3.5" />
       </span>
       <div className="min-w-0">
-        <p className={cn("truncate text-base font-bold leading-tight", t.value)}>{value}</p>
+        <p className={cn("truncate text-sm font-bold leading-tight", t.value)}>{value}</p>
         <p className="truncate text-[10px] text-muted-foreground">{label}</p>
       </div>
     </Card>

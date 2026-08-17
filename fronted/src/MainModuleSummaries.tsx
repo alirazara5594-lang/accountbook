@@ -272,7 +272,7 @@ export function ProcurementSummaryView({ activeEntityId, setPage }: { activeEnti
           { label: 'Open POs', value: num(openOrders), icon: <Truck size={14} />, color: C.emerald },
           { label: 'Open Requests', value: num(openRequests), icon: <ClipboardList size={14} />, color: C.violet },
         ].map((c, i) => (
-          <div key={i} className="rounded-xl p-2.5 flex items-center gap-2.5" style={{ background: C.card, border: `1px solid ${C.bdr}` }}>
+          <div key={i} className="rounded-xl p-3 flex items-center gap-2.5" style={{ background: C.card, border: `1px solid ${C.bdr}` }}>
             <div className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0"
                  style={{ background: `${c.color}22`, color: c.color, border: `1px solid ${c.color}44` }}>{c.icon}</div>
             <div className="min-w-0">
@@ -407,7 +407,7 @@ export function BankingSummaryView({ activeEntityId, setPage }: { activeEntityId
           { label: 'Total Liquidity', value: money(bankTotal + cashTotal), icon: <DollarSign size={14} />, color: C.cyan },
           { label: 'Fund Transfers', value: `${num(transfers.length)} · ${money(transferTotal)}`, icon: <ArrowUpRight size={14} />, color: C.violet },
         ].map((c, i) => (
-          <div key={i} className="rounded-xl p-2.5 flex items-center gap-2.5" style={{ background: C.card, border: `1px solid ${C.bdr}` }}>
+          <div key={i} className="rounded-xl p-3 flex items-center gap-2.5" style={{ background: C.card, border: `1px solid ${C.bdr}` }}>
             <div className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0"
                  style={{ background: `${c.color}22`, color: c.color, border: `1px solid ${c.color}44` }}>{c.icon}</div>
             <div className="min-w-0">
@@ -531,12 +531,12 @@ export function AccountingSummaryView({ accounts, entries, setPage }: {
           { label: 'Equity Accounts', value: countBy('Equity'), icon: <Layers size={14} />, color: C.emerald },
           { label: 'Journal Entries', value: num(entries.length), icon: <ClipboardList size={14} />, color: C.violet },
         ].map((c, i) => (
-          <div key={i} className="rounded-xl p-3 flex items-center gap-3" style={{ background: C.card, border: `1px solid ${C.bdr}` }}>
-            <div className="w-10 h-10 rounded-lg flex items-center justify-center shrink-0"
+          <div key={i} className="rounded-xl p-3 flex items-center gap-2.5" style={{ background: C.card, border: `1px solid ${C.bdr}` }}>
+            <div className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0"
                  style={{ background: `${c.color}22`, color: c.color, border: `1px solid ${c.color}44` }}>{c.icon}</div>
             <div className="min-w-0">
-              <p className="text-[10px] font-medium" style={{ color: C.muted }}>{c.label}</p>
-              <p className="text-base font-extrabold" style={{ color: C.white }}>{c.value}</p>
+              <p className="text-[10px] font-semibold" style={{ color: C.muted }}>{c.label}</p>
+              <p className="text-sm font-bold truncate" style={{ color: C.white }}>{c.value}</p>
             </div>
           </div>
         ))}
@@ -658,12 +658,12 @@ export function AssetsInventorySummaryView({ activeEntityId, setPage }: { active
           { label: 'Stock Items', value: num(stockLevels.length), icon: <Package size={14} />, color: C.emerald },
           { label: 'Low Stock', value: num(lowStock), icon: <AlertTriangle size={14} />, color: lowStock > 0 ? C.rose : C.emerald },
         ].map((c, i) => (
-          <div key={i} className="rounded-xl p-3 flex items-center gap-3" style={{ background: C.card, border: `1px solid ${C.bdr}` }}>
-            <div className="w-10 h-10 rounded-lg flex items-center justify-center shrink-0"
+          <div key={i} className="rounded-xl p-3 flex items-center gap-2.5" style={{ background: C.card, border: `1px solid ${C.bdr}` }}>
+            <div className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0"
                  style={{ background: `${c.color}22`, color: c.color, border: `1px solid ${c.color}44` }}>{c.icon}</div>
             <div className="min-w-0">
-              <p className="text-[10px] font-medium" style={{ color: C.muted }}>{c.label}</p>
-              <p className="text-base font-extrabold" style={{ color: C.white }}>{c.value}</p>
+              <p className="text-[10px] font-semibold" style={{ color: C.muted }}>{c.label}</p>
+              <p className="text-sm font-bold truncate" style={{ color: C.white }}>{c.value}</p>
             </div>
           </div>
         ))}
@@ -791,12 +791,12 @@ export function PayrollSummaryView({ setPage }: { activeEntityId?: string; setPa
           { label: 'Gross Payroll', value: money(totalBasic), icon: <DollarSign size={14} />, color: C.violet },
           { label: 'Pending Leave', value: num(pendingLeave), icon: <CalendarDays size={14} />, color: pendingLeave > 0 ? C.amber : C.emerald },
         ].map((c, i) => (
-          <div key={i} className="rounded-xl p-3 flex items-center gap-3" style={{ background: C.card, border: `1px solid ${C.bdr}` }}>
-            <div className="w-10 h-10 rounded-lg flex items-center justify-center shrink-0"
+          <div key={i} className="rounded-xl p-3 flex items-center gap-2.5" style={{ background: C.card, border: `1px solid ${C.bdr}` }}>
+            <div className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0"
                  style={{ background: `${c.color}22`, color: c.color, border: `1px solid ${c.color}44` }}>{c.icon}</div>
             <div className="min-w-0">
-              <p className="text-[10px] font-medium" style={{ color: C.muted }}>{c.label}</p>
-              <p className="text-base font-extrabold" style={{ color: C.white }}>{c.value}</p>
+              <p className="text-[10px] font-semibold" style={{ color: C.muted }}>{c.label}</p>
+              <p className="text-sm font-bold truncate" style={{ color: C.white }}>{c.value}</p>
             </div>
           </div>
         ))}

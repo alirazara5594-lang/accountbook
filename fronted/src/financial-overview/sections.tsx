@@ -64,12 +64,12 @@ function KPICard({
   iconColor: string;
 }) {
   return (
-    <div className="bg-white rounded-xl border border-gray-200 px-3 py-2.5 flex items-center gap-2.5">
+    <div className="bg-white rounded-xl border border-gray-200 p-3 flex items-center gap-2.5">
       <div
-        className="w-8 h-8 rounded-full flex items-center justify-center shrink-0"
+        className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0"
         style={{ backgroundColor: iconBg }}
       >
-        <Icon className="w-4 h-4" style={{ color: iconColor }} />
+        <Icon className="w-3.5 h-3.5" style={{ color: iconColor }} />
       </div>
       <div className="min-w-0 flex-1">
         <span className="text-[10px] text-gray-500 font-medium leading-none block truncate">{label}</span>

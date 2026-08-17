@@ -4,8 +4,8 @@
 */
 :root {
   /* ─── Brand colors ─── */
-  --color-primary: #14606b;
-  --color-primary-hover: #0f505a;
+  --color-primary: #0d9488;
+  --color-primary-hover: #0f766e;
   --color-primary-foreground: #ffffff;
   --color-secondary: #e6f2f3;
   --color-secondary-hover: #d4e9ea;
@@ -73,7 +73,7 @@
   --input: var(--color-border);
   --ring: var(--color-primary);
   --radius: var(--radius-md);
-  --chart-1: #14606b;
+  --chart-1: #0d9488;
   --chart-2: #2fb8a6;
   --chart-3: #2563eb;
   --chart-4: #b45309;
@@ -104,7 +104,7 @@
   --color-secondary-foreground: #bfe8e3;
   --color-accent: #2fb8a6;
   --color-accent-foreground: #0e3b3d;
-  --color-primary-hover: #2a8fa1;
+  --color-primary-hover: #0f766e;
 
   /* shadcn/ui semantic tokens (dark) */
   --background: var(--color-background);
@@ -113,8 +113,8 @@
   --card-foreground: var(--color-text);
   --popover: var(--color-surface);
   --popover-foreground: var(--color-text);
-  --primary: #2aa0b4;
-  --primary-foreground: #06181c;
+  --primary: #0d9488;
+  --primary-foreground: #ffffff;
   --secondary: var(--color-secondary);
   --secondary-foreground: var(--color-secondary-foreground);
   --muted: var(--color-surface-muted);
@@ -126,8 +126,8 @@
   --ring: var(--color-primary);
   --sidebar: var(--color-surface);
   --sidebar-foreground: var(--color-text);
-  --sidebar-primary: #2aa0b4;
-  --sidebar-primary-foreground: #06181c;
+  --sidebar-primary: #0d9488;
+  --sidebar-primary-foreground: #ffffff;
   --sidebar-accent: var(--color-surface-muted);
   --sidebar-accent-foreground: var(--color-text);
   --sidebar-border: var(--color-border);
