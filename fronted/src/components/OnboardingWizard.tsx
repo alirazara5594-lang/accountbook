@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { ChevronLeft, ChevronRight, Globe, CheckCircle2, Package, BarChart3, Users, Settings } from 'lucide-react'
 import type { UserData } from '../Login'
 import { useCompanyStore } from '../stores'
+import { setActiveCurrency } from '../lib/currency'
 
 type Step = 'country' | 'modules' | 'currency' | 'confirm'
 
@@ -58,13 +59,15 @@ export default function OnboardingWizard({ currentUser, onComplete }: {
 
   const handleFinish = async () => {
     setSaving(true)
+    const finalCurrency = (currency || currentCountry?.currency || 'USD').toUpperCase()
+    setActiveCurrency(finalCurrency)
     try {
       await saveCompanyStore({
         name: companyName.trim() || `${currentCountry?.name || 'My'} Company`,
         code: (companyName.trim() || currentCountry?.name || 'CMP').slice(0, 4).toUpperCase(),
         country: currentCountry?.name || 'United States',
-        currencyCode: currency || currentCountry?.currency || 'USD',
-        functionalCurrency: currency || currentCountry?.currency || 'USD',
+        currencyCode: finalCurrency,
+        functionalCurrency: finalCurrency,
         type: 'Parent',
       })
     } catch (err) {
