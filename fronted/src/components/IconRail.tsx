@@ -34,12 +34,12 @@ export default function IconRail({ activePage, onNavigate, modules, currentUser,
                 onClick={() => onNavigate(`${group.name}.Summary`)}
               >
                 <Icon className="rail-icon" size={18} strokeWidth={1.8} />
-                <span className="rail-label">{group.name.split(' ')[0]}</span>
+                <span className="rail-label">{group.label.split(' ')[0]}</span>
               </button>
               <div className="rail-flyout">
                 <div className="flyout-title">
                   <Icon className="flyout-module-icon" size={15} strokeWidth={1.9} />
-                  {group.name}
+                  {group.label}
                 </div>
                 <button
                   className={'flyout-item' + (activePage === `${group.name}.Summary` || activePage === 'Overview.Dashboard' && group.name === 'Overview' ? ' active' : '')}

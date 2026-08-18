@@ -145,6 +145,7 @@ export default function TopHeader(props: Props) {
   ];
 
   const [groupName, itemName] = page.split('.');
+  const groupLabel = NAVIGATION.find(g => g.name === groupName)?.label || groupName || 'Overview';
 
   const dropdownBase: React.CSSProperties = {
     position: 'absolute',
@@ -169,7 +170,7 @@ export default function TopHeader(props: Props) {
           </div>
           <div style={{ width: 1, height: 20, background: M.border }} />
           <div style={{ fontSize: 12, color: M.muted, whiteSpace: 'nowrap', fontWeight: 500, flexShrink: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis' }}>
-            <span style={{ color: M.text, fontWeight: 600 }}>{groupName || 'Overview'}</span>
+            <span style={{ color: M.text, fontWeight: 600 }}>{groupLabel}</span>
             {itemName && itemName !== 'Summary' && itemName !== 'Dashboard' && <><span style={{ margin: '0 4px', color: M.muted }}>/</span><span>{itemName}</span></>}
           </div>
         </div>

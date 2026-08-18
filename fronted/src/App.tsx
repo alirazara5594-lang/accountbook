@@ -423,7 +423,7 @@ export default function App() {
         <span className="module-icon">{(() => { const MIcon = activeGroup?.icon; return MIcon ? <MIcon size={20} strokeWidth={1.8} /> : '▦'; })()}</span>
         <div>
           <p className="eyebrow">MODULE</p>
-          <h1>{group}</h1>
+          <h1>{activeGroup?.label || group}</h1>
         </div>
       </div>
       <div className="module-actions">
