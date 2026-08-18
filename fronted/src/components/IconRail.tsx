@@ -79,12 +79,12 @@ export default function IconRail({ activePage, onNavigate, modules, currentUser,
       </nav>
 
       <div className="rail-footer">
-        <button className="rail-logout" title="Sign out" onClick={onLogout}>
-          <LogOut size={14} />
-        </button>
         <div className="rail-user avatar small" title={currentUser.fullName}>
           {currentUser.avatar}
         </div>
+        <button className="rail-logout" title="Sign out" onClick={onLogout}>
+          <LogOut size={14} />
+        </button>
       </div>
     </aside>
   );
