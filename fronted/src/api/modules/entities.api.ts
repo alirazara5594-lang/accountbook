@@ -19,7 +19,7 @@ export interface Entity {
 
 export const entitiesApi = {
   getCompanies: async (): Promise<Entity[]> => {
-    return apiClient<Entity[]>('/companies');
+    return apiClient<Entity[]>('/companies', { params: { includeInactive: true } });
   },
 
   saveCompany: async (entityData: any, id?: string): Promise<Entity> => {
@@ -35,6 +35,12 @@ export const entitiesApi = {
     return apiClient(`/companies/${id}/status`, {
       method: 'PATCH',
       body: { active },
+    });
+  },
+
+  deleteCompany: async (id: string): Promise<void> => {
+    return apiClient(`/companies/${id}`, {
+      method: 'DELETE',
     });
   },
 };

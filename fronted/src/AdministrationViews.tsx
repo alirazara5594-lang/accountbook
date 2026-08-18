@@ -15,8 +15,10 @@ import { StatCard } from '@/components/ui/stat-card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { ModuleSummaryLayout, SummaryPanel } from '@/components/module-summary-layout';
 import {
-  Users, ShieldCheck, Building2, GitBranch, CheckCircle2, Hash, Coins, ScrollText, Plus, Save, Trash2, Pencil, KeyRound, Lock, Globe, Search
+  Users, ShieldCheck, Building2, GitBranch, CheckCircle2, Hash, Coins, ScrollText, Plus, Save, Trash2, Pencil, KeyRound, Lock, Globe, Search,
+  MoreHorizontal, Power, RotateCcw
 } from 'lucide-react';
+import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator } from '@/components/ui/dropdown-menu';
 
 // ── Summary (module overview) ─────────────────────────────────────────────────
 export function AdministrationSummaryView() {
@@ -252,7 +254,7 @@ const ALL_MODULES = [
 ];
 
 export function CompaniesView() {
-  const { entities, activeEntityId, fetchCompanies, saveCompany, toggleCompanyStatus, setActiveEntityId } = useCompanyStore();
+  const { entities, activeEntityId, fetchCompanies, saveCompany, toggleCompanyStatus, deleteCompany, setActiveEntityId } = useCompanyStore();
   const getInitialForm = () => {
     const savedCountry = localStorage.getItem('onboarding_country_name') || 'Pakistan';
     const savedCurrency = localStorage.getItem('active_currency') || 'PKR';
@@ -356,17 +358,37 @@ export function CompaniesView() {
                   <TableCell className="font-mono text-muted-foreground">{e.code}</TableCell>
                   <TableCell>{e.currencyCode || e.functionalCurrency}</TableCell>
                   <TableCell>{e.country}</TableCell>
-                  <TableCell><Badge variant={e.active ? 'secondary' : 'outline'}>{e.active ? 'Active' : 'Inactive'}</Badge></TableCell>
+                  <TableCell><Badge variant={e.active ? 'secondary' : 'destructive'}>{e.active ? 'Active' : 'Deactivated'}</Badge></TableCell>
                   <TableCell>
-                    <div className="flex items-center gap-1">
-                      {e.id !== activeEntityId && (
-                        <Button variant="outline" size="sm" onClick={() => setActiveEntityId(e.id)} title="Switch working company and its currency">Use</Button>
-                      )}
-                      <Button variant="ghost" size="sm" onClick={() => startEdit(e)} title="Edit company"><Pencil className="h-3.5 w-3.5" /></Button>
-                      <Button variant="ghost" size="sm" onClick={() => toggleCompanyStatus(e.id, !e.active)}>
-                        {e.active ? 'Deactivate' : 'Activate'}
-                      </Button>
-                    </div>
+                    <DropdownMenu>
+                      <DropdownMenuTrigger render={<Button variant="ghost" size="icon" className="h-8 w-8" aria-label="Actions"><MoreHorizontal className="h-4 w-4" /></Button>} />
+                      <DropdownMenuContent align="end">
+                        {e.id !== activeEntityId && (
+                          <DropdownMenuItem onClick={() => setActiveEntityId(e.id)} disabled={!e.active}>
+                            <Building2 className="h-4 w-4" /> {e.active ? 'Use this company' : 'Deactivated — cannot use'}
+                          </DropdownMenuItem>
+                        )}
+                        {e.id === activeEntityId && (
+                          <DropdownMenuItem disabled className="justify-between"><span>Working in</span><CheckCircle2 className="h-4 w-4 text-teal-600" /></DropdownMenuItem>
+                        )}
+                        {e.id !== activeEntityId && !e.active && (
+                          <DropdownMenuItem variant="destructive" onClick={() => {
+                            if (window.confirm('Delete this company and all its data (journals, invoices, payroll, etc.)? This cannot be undone.')) {
+                              deleteCompany(e.id);
+                            }
+                          }}>
+                            <Trash2 className="h-4 w-4" /> Delete company & data
+                          </DropdownMenuItem>
+                        )}
+                        <DropdownMenuItem onClick={() => startEdit(e)} disabled={!e.active}>
+                          <Pencil className="h-4 w-4" /> {e.active ? 'Edit company' : 'Read-only (deactivated)'}
+                        </DropdownMenuItem>
+                        <DropdownMenuSeparator />
+                        <DropdownMenuItem onClick={() => toggleCompanyStatus(e.id, !e.active)}>
+                          {e.active ? <Power className="h-4 w-4" /> : <RotateCcw className="h-4 w-4" />} {e.active ? 'Deactivate' : 'Activate'}
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
                   </TableCell>
                 </TableRow>
               ))}

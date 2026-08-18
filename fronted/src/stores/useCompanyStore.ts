@@ -12,6 +12,7 @@ interface CompanyState {
   setActiveEntityId: (id: string) => void;
   saveCompany: (data: any, id?: string) => Promise<Entity>;
   toggleCompanyStatus: (id: string, active: boolean) => Promise<void>;
+  deleteCompany: (id: string) => Promise<void>;
   getActiveEntity: () => Entity | undefined;
 }
 
@@ -81,6 +82,17 @@ export const useCompanyStore = create<CompanyState>((set, get) => ({
       await get().fetchCompanies();
     } catch (err: any) {
       set({ error: err.message || 'Failed to update company status', loading: false });
+      throw err;
+    }
+  },
+
+  deleteCompany: async (id: string) => {
+    set({ loading: true, error: null });
+    try {
+      await entitiesApi.deleteCompany(id);
+      await get().fetchCompanies();
+    } catch (err: any) {
+      set({ error: err.message || 'Failed to delete company', loading: false });
       throw err;
     }
   },

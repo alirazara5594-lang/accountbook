@@ -3,6 +3,8 @@ using Zenabook.Api.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using System.Text.Json;
+using System.Collections;
+using System.Reflection;
 
 namespace Zenabook.Api.Services;
 
@@ -3147,6 +3149,56 @@ public IReadOnlyList<EmployeeCompensation> EmployeeCompensations => _employeeCom
         company.Name = request.Name.Trim(); company.Code = request.Code?.Trim(); company.LegalName = request.LegalName?.Trim(); company.Type = request.Type ?? company.Type; company.ParentId = request.ParentId; company.Country = !string.IsNullOrWhiteSpace(request.Country) ? request.Country.Trim() : company.Country; company.CurrencyCode = !string.IsNullOrWhiteSpace(request.CurrencyCode) ? request.CurrencyCode.Trim().ToUpperInvariant() : !string.IsNullOrWhiteSpace(request.FunctionalCurrency) ? request.FunctionalCurrency.Trim().ToUpperInvariant() : company.CurrencyCode; company.TaxAuthorityId = request.TaxAuthorityId; company.UpdatedAt = DateTime.UtcNow; Persist(); return true;
     }
     public bool SetCompanyStatus(Guid id, bool active, out string? error) { var company = _companies.FirstOrDefault(x => x.Id == id); error = null; if (company is null) { error = "Entity not found."; return false; } company.Active = active; company.UpdatedAt = DateTime.UtcNow; Persist(); return true; }
+
+    public bool PurgeCompanyData(Guid id, out string? error)
+    {
+        error = null;
+        var company = _companies.FirstOrDefault(x => x.Id == id);
+        if (company is null) { error = "Entity not found."; return false; }
+        lock (_lock)
+        {
+            var ids = new HashSet<Guid>();
+            void CollectChildren(Guid parentId)
+            {
+                foreach (var child in _companies.Where(x => x.ParentId == parentId))
+                    if (ids.Add(child.Id)) CollectChildren(child.Id);
+            }
+            CollectChildren(id);
+            ids.Add(id);
+
+            var listFields = GetType().GetFields(BindingFlags.NonPublic | BindingFlags.Instance);
+            foreach (var field in listFields)
+            {
+                if (field.GetValue(this) is not IList list) continue;
+                var elementType = field.FieldType.IsGenericType ? field.FieldType.GetGenericArguments().FirstOrDefault() : null;
+                if (elementType is null || elementType == typeof(Company)) continue;
+                var companyIdProp = elementType.GetProperty("CompanyId");
+                if (companyIdProp is null) continue;
+                var toRemove = new List<object>();
+                foreach (var item in list)
+                {
+                    if (item is null) continue;
+                    var match = companyIdProp.GetValue(item) switch
+                    {
+                        Guid g => ids.Contains(g),
+                        string s => Guid.TryParse(s, out var gs) && ids.Contains(gs),
+                        _ => false
+                    };
+                    if (match) toRemove.Add(item);
+                }
+                foreach (var item in toRemove) list.Remove(item);
+            }
+
+            _intercompanyAllocations.RemoveAll(a => a.SourceCompanyId == id || a.Recipients.Any(r => r.CompanyId == id));
+
+            var validEntryIds = _entries.Select(e => e.Id).ToHashSet();
+            _journalEvents.RemoveAll(e => !validEntryIds.Contains(e.JournalEntryId));
+
+            _companies.RemoveAll(x => ids.Contains(x.Id));
+            Persist();
+        }
+        return true;
+    }
     
     // Tax Authorities
     public TaxAuthority? FindTaxAuthority(Guid id) => _taxAuthorities.FirstOrDefault(x => x.Id == id);

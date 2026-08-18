@@ -95,4 +95,5 @@ public class CompaniesController(AccountingStore store) : ControllerBase
         : BadRequest(new { message = error });
     [HttpPut("{id:guid}")] public IActionResult Update(Guid id, CompanyRequest request) => store.UpdateCompany(id, request, out var company, out var error) ? Ok(company) : BadRequest(new { message = error });
     [HttpPatch("{id:guid}/status")] public IActionResult SetStatus(Guid id, CompanyStatusRequest request) => store.SetCompanyStatus(id, request.Active, out var error) ? NoContent() : BadRequest(new { message = error });
+    [HttpDelete("{id:guid}")] public IActionResult Purge(Guid id) => store.PurgeCompanyData(id, out var error) ? NoContent() : BadRequest(new { message = error });
 }
