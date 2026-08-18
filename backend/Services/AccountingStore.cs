@@ -4469,11 +4469,13 @@ _bankImports.Clear(); _bankImports.AddRange(state.BankImports ?? []);
             Brackets =
             [
                 new SalaryTaxBracket { FromAmount = 0, ToAmount = 600000, RatePercent = 0, FixedTax = 0, Description = "Up to PKR 600,000 - Exempt" },
-                new SalaryTaxBracket { FromAmount = 600001, ToAmount = 1200000, RatePercent = 5, FixedTax = 0, Description = "PKR 600,001 – 1,200,000 @ 5%" },
-                new SalaryTaxBracket { FromAmount = 1200001, ToAmount = 2200000, RatePercent = 15, FixedTax = 30000, Description = "PKR 1,200,001 – 2,200,000 @ 15%" },
-                new SalaryTaxBracket { FromAmount = 2200001, ToAmount = 3200000, RatePercent = 25, FixedTax = 180000, Description = "PKR 2,200,001 – 3,200,000 @ 25%" },
-                new SalaryTaxBracket { FromAmount = 3200001, ToAmount = 4100000, RatePercent = 30, FixedTax = 430000, Description = "PKR 3,200,001 – 4,100,000 @ 30%" },
-                new SalaryTaxBracket { FromAmount = 4100001, ToAmount = null, RatePercent = 35, FixedTax = 700000, Description = "Above PKR 4,100,000 @ 35%" },
+                new SalaryTaxBracket { FromAmount = 600001, ToAmount = 1200000, RatePercent = 1, FixedTax = 0, Description = "PKR 600,001 – 1,200,000 @ 1%" },
+                new SalaryTaxBracket { FromAmount = 1200001, ToAmount = 2200000, RatePercent = 11, FixedTax = 0, Description = "PKR 1,200,001 – 2,200,000 @ 11%" },
+                new SalaryTaxBracket { FromAmount = 2200001, ToAmount = 3200000, RatePercent = 20, FixedTax = 0, Description = "PKR 2,200,001 – 3,200,000 @ 20%" },
+                new SalaryTaxBracket { FromAmount = 3200001, ToAmount = 4100000, RatePercent = 25, FixedTax = 0, Description = "PKR 3,200,001 – 4,100,000 @ 25%" },
+                new SalaryTaxBracket { FromAmount = 4100001, ToAmount = 5600000, RatePercent = 29, FixedTax = 0, Description = "PKR 4,100,001 – 5,600,000 @ 29%" },
+                new SalaryTaxBracket { FromAmount = 5600001, ToAmount = 7000000, RatePercent = 32, FixedTax = 0, Description = "PKR 5,600,001 – 7,000,000 @ 32%" },
+                new SalaryTaxBracket { FromAmount = 7000001, ToAmount = null, RatePercent = 35, FixedTax = 0, Description = "Above PKR 7,000,000 @ 35%" },
             ]
         });
 
@@ -4491,13 +4493,13 @@ _bankImports.Clear(); _bankImports.AddRange(state.BankImports ?? []);
             IsActive = true,
             Brackets =
             [
-                new SalaryTaxBracket { FromAmount = 0, ToAmount = 12200, RatePercent = 10, FixedTax = 0, Description = "10% bracket" },
-                new SalaryTaxBracket { FromAmount = 12200, ToAmount = 49500, RatePercent = 12, FixedTax = 1220, Description = "12% bracket" },
-                new SalaryTaxBracket { FromAmount = 49500, ToAmount = 105500, RatePercent = 22, FixedTax = 5696, Description = "22% bracket" },
-                new SalaryTaxBracket { FromAmount = 105500, ToAmount = 201000, RatePercent = 24, FixedTax = 18016, Description = "24% bracket" },
-                new SalaryTaxBracket { FromAmount = 201000, ToAmount = 255500, RatePercent = 32, FixedTax = 41136, Description = "32% bracket" },
-                new SalaryTaxBracket { FromAmount = 255500, ToAmount = 639000, RatePercent = 35, FixedTax = 58576, Description = "35% bracket" },
-                new SalaryTaxBracket { FromAmount = 639000, ToAmount = null, RatePercent = 37, FixedTax = 192801, Description = "37% bracket" },
+                new SalaryTaxBracket { FromAmount = 0, ToAmount = 12400, RatePercent = 10, FixedTax = 0, Description = "10% bracket" },
+                new SalaryTaxBracket { FromAmount = 12401, ToAmount = 50400, RatePercent = 12, FixedTax = 1220, Description = "12% bracket" },
+                new SalaryTaxBracket { FromAmount = 50401, ToAmount = 105700, RatePercent = 22, FixedTax = 5696, Description = "22% bracket" },
+                new SalaryTaxBracket { FromAmount = 105701, ToAmount = 201775, RatePercent = 24, FixedTax = 18016, Description = "24% bracket" },
+                new SalaryTaxBracket { FromAmount = 201776, ToAmount = 256225, RatePercent = 32, FixedTax = 41136, Description = "32% bracket" },
+                new SalaryTaxBracket { FromAmount = 256226, ToAmount = 640600, RatePercent = 35, FixedTax = 58576, Description = "35% bracket" },
+                new SalaryTaxBracket { FromAmount = 640601, ToAmount = null, RatePercent = 37, FixedTax = 192801, Description = "37% bracket" },
             ]
         });
 
@@ -4515,9 +4517,10 @@ _bankImports.Clear(); _bankImports.AddRange(state.BankImports ?? []);
             IsActive = true,
             Brackets =
             [
-                new SalaryTaxBracket { FromAmount = 0, ToAmount = 37700, RatePercent = 20, FixedTax = 0, Description = "Basic Rate (20%)" },
-                new SalaryTaxBracket { FromAmount = 37700, ToAmount = 125140, RatePercent = 40, FixedTax = 7540, Description = "Higher Rate (40%)" },
-                new SalaryTaxBracket { FromAmount = 125140, ToAmount = null, RatePercent = 45, FixedTax = 42516, Description = "Additional Rate (45%)" },
+                new SalaryTaxBracket { FromAmount = 0, ToAmount = 12570, RatePercent = 0, FixedTax = 0, Description = "Personal Allowance (0%)" },
+                new SalaryTaxBracket { FromAmount = 12571, ToAmount = 50270, RatePercent = 20, FixedTax = 7540, Description = "Basic Rate (20%)" },
+                new SalaryTaxBracket { FromAmount = 50271, ToAmount = 125140, RatePercent = 40, FixedTax = 42516, Description = "Higher Rate (40%)" },
+                new SalaryTaxBracket { FromAmount = 125141, ToAmount = null, RatePercent = 45, FixedTax = 0, Description = "Additional Rate (45%)" },
             ]
         });
 
@@ -4536,10 +4539,10 @@ _bankImports.Clear(); _bankImports.AddRange(state.BankImports ?? []);
             Brackets =
             [
                 new SalaryTaxBracket { FromAmount = 0, ToAmount = 57375, RatePercent = 15, FixedTax = 0, Description = "15% bracket" },
-                new SalaryTaxBracket { FromAmount = 57375, ToAmount = 114750, RatePercent = 20.5m, FixedTax = 8606.25m, Description = "20.5% bracket" },
-                new SalaryTaxBracket { FromAmount = 114750, ToAmount = 159000, RatePercent = 26, FixedTax = 19947.38m, Description = "26% bracket" },
-                new SalaryTaxBracket { FromAmount = 159000, ToAmount = 225000, RatePercent = 29, FixedTax = 31252.38m, Description = "29% bracket" },
-                new SalaryTaxBracket { FromAmount = 225000, ToAmount = null, RatePercent = 33, FixedTax = 50392.38m, Description = "33% bracket" },
+                new SalaryTaxBracket { FromAmount = 57376, ToAmount = 114749, RatePercent = 20.5m, FixedTax = 8606.25m, Description = "20.5% bracket" },
+                new SalaryTaxBracket { FromAmount = 114750, ToAmount = 181440, RatePercent = 26, FixedTax = 19947.38m, Description = "26% bracket" },
+                new SalaryTaxBracket { FromAmount = 181441, ToAmount = 258482, RatePercent = 29, FixedTax = 31252.38m, Description = "29% bracket" },
+                new SalaryTaxBracket { FromAmount = 258483, ToAmount = null, RatePercent = 33, FixedTax = 50392.38m, Description = "33% bracket" },
             ]
         });
 
@@ -4557,11 +4560,11 @@ _bankImports.Clear(); _bankImports.AddRange(state.BankImports ?? []);
             IsActive = true,
             Brackets =
             [
-                new SalaryTaxBracket { FromAmount = 0, ToAmount = 12300, RatePercent = 0, FixedTax = 0, Description = "Tax-free allowance" },
-                new SalaryTaxBracket { FromAmount = 12300, ToAmount = 17443, RatePercent = 14, FixedTax = 0, Description = "14% (progression zone)" },
-                new SalaryTaxBracket { FromAmount = 17443, ToAmount = 68480, RatePercent = 24, FixedTax = 1654, Description = "24% bracket" },
-                new SalaryTaxBracket { FromAmount = 68480, ToAmount = 277825, RatePercent = 42, FixedTax = 12860, Description = "42% bracket" },
-                new SalaryTaxBracket { FromAmount = 277825, ToAmount = null, RatePercent = 45, FixedTax = 23340, Description = "45% top rate" },
+                new SalaryTaxBracket { FromAmount = 0, ToAmount = 12348, RatePercent = 0, FixedTax = 0, Description = "Tax-free allowance" },
+                new SalaryTaxBracket { FromAmount = 12349, ToAmount = 17799, RatePercent = 14, FixedTax = 0, Description = "14% (progression zone)" },
+                new SalaryTaxBracket { FromAmount = 17800, ToAmount = 69878, RatePercent = 24, FixedTax = 1654, Description = "24% bracket" },
+                new SalaryTaxBracket { FromAmount = 69879, ToAmount = 277825, RatePercent = 42, FixedTax = 12860, Description = "42% bracket" },
+                new SalaryTaxBracket { FromAmount = 277826, ToAmount = null, RatePercent = 45, FixedTax = 23340, Description = "45% top rate" },
             ]
         });
 
