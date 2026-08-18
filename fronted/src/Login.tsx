@@ -198,12 +198,12 @@ export function Login({ onLogin }: LoginProps) {
             <b>AC</b><span>FIN</span>
           </div>
           <p style={{ fontSize: '11px', color: '#64748b', margin: '-4px 0 10px', fontWeight: 500, letterSpacing: '0.3px' }}>
-            Accounting & Financial Intelligence Network
+Accounting Information Management System
           </p>
           <p className="login-subtitle">
             {mode === 'signin'
-              ? 'Sign in to your multi-entity ERP dashboard'
-              : 'Create your account to get started'}
+              ? 'Sign in to AIMS — your multi-entity ERP'
+              : 'Create your AIMS account to get started'}
           </p>
         </div>
 
@@ -337,7 +337,7 @@ export function Login({ onLogin }: LoginProps) {
         <div className="auth-switch">
           {mode === 'signin' ? (
             <span>
-              New to ACFIN?{' '}
+              New to AIMS?{' '}
               <button type="button" className="auth-switch-link" onClick={() => { setMode('signup'); setError(null); setSuccess(null); }}>
                 Create an account
               </button>

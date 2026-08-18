@@ -1,5 +1,6 @@
+import { useState } from 'react';
 import { LogOut } from 'lucide-react';
-import { NAVIGATION } from '../navigation';
+import { NAVIGATION, type NavGroup } from '../navigation';
 import type { UserData } from '../Login';
 
 interface Props {
@@ -11,15 +12,27 @@ interface Props {
 }
 
 export default function IconRail({ activePage, onNavigate, modules, currentUser, onLogout }: Props) {
+  const [hoverInfo, setHoverInfo] = useState<{ name: string; up: boolean } | null>(null);
+
+  const handleEnter = (group: NavGroup, e: React.MouseEvent<HTMLDivElement>) => {
+    const rect = e.currentTarget.getBoundingClientRect();
+    const estHeight = 100 + group.items.length * 31;
+    setHoverInfo({ name: group.name, up: rect.top + estHeight > window.innerHeight - 8 });
+  };
+  const handleLeave = () => setHoverInfo(null);
+
   const groups = NAVIGATION.filter(
     group => !modules || modules.length === 0 || modules.includes(group.moduleId)
   );
 
   return (
     <aside className="icon-rail">
-      <div className="rail-brand" title="ACFIN">
-        <b>AC</b>
-        <span>FIN</span>
+      <div className="rail-brand" title="AIMS — Accounting Information Management System">
+        <img src="/favicon.svg" alt="" className="rail-brand-logo" />
+        <div className="rail-brand-text">
+          <span className="rail-brand-aim">AIM</span>
+          <span className="rail-brand-s">S</span>
+        </div>
       </div>
 
       <nav className="rail-nav">
@@ -27,7 +40,7 @@ export default function IconRail({ activePage, onNavigate, modules, currentUser,
           const active = activePage.startsWith(group.name + '.');
           const Icon = group.icon;
           return (
-            <div className="rail-item-wrap" key={group.name}>
+            <div className="rail-item-wrap" key={group.name} onMouseEnter={e => handleEnter(group, e)} onMouseLeave={handleLeave}>
               <button
                 className={'rail-item' + (active ? ' active' : '')}
                 title={group.name}
@@ -36,7 +49,7 @@ export default function IconRail({ activePage, onNavigate, modules, currentUser,
                 <Icon className="rail-icon" size={18} strokeWidth={1.8} />
                 <span className="rail-label">{group.label.split(' ')[0]}</span>
               </button>
-              <div className="rail-flyout">
+              <div className={'rail-flyout' + (hoverInfo?.name === group.name && hoverInfo.up ? ' fly-up' : '')}>
                 <div className="flyout-title">
                   <Icon className="flyout-module-icon" size={15} strokeWidth={1.9} />
                   {group.label}

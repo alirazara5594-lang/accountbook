@@ -3,7 +3,7 @@ import type { ReactNode } from 'react';
 import {
   Search, Bell, Plus, ChevronDown, LogOut, Coins, X, FileText, Receipt,
   Building2, Users, Wallet, CalendarDays, Boxes, ClipboardList, Landmark,
-  Globe, BarChart3,
+  Globe, BarChart3, Check,
 } from 'lucide-react';
 import { NAVIGATION } from '../navigation';
 import type { UserData } from '../Login';
@@ -24,6 +24,7 @@ const M = {
 interface Props {
   currentUser: UserData;
   entities: any[];
+  activeEntityId: string;
   onSelectEntity: (id: string) => void;
   page: string;
   setPage: (p: string) => void;
@@ -39,12 +40,13 @@ type SearchHit = { label: string; sub: string; icon: ReactNode; action: () => vo
 const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 
 export default function TopHeader(props: Props) {
-  const { currentUser, entities, onSelectEntity, page, setPage, accounts, notify, onLogout, theme, onThemeChange } = props;
+  const { currentUser, entities, activeEntityId, onSelectEntity, page, setPage, accounts, notify, onLogout, theme, onThemeChange } = props;
 
   const [query, setQuery] = useState('');
   const [searchOpen, setSearchOpen] = useState(false);
   const [notifOpen, setNotifOpen] = useState(false);
   const [actionsOpen, setActionsOpen] = useState(false);
+  const [entityOpen, setEntityOpen] = useState(false);
   const [period, setPeriod] = useState<{ m: number; y: number }>(() => {
     try {
       const saved = JSON.parse(localStorage.getItem('acfin_period') || '');
@@ -57,6 +59,7 @@ export default function TopHeader(props: Props) {
   const searchRef = useRef<HTMLDivElement>(null);
   const notifRef = useRef<HTMLDivElement>(null);
   const actionsRef = useRef<HTMLDivElement>(null);
+  const entityRef = useRef<HTMLDivElement>(null);
   const searchInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -68,6 +71,7 @@ export default function TopHeader(props: Props) {
       if (searchRef.current && !searchRef.current.contains(e.target as Node)) setSearchOpen(false);
       if (notifRef.current && !notifRef.current.contains(e.target as Node)) setNotifOpen(false);
       if (actionsRef.current && !actionsRef.current.contains(e.target as Node)) setActionsOpen(false);
+      if (entityRef.current && !entityRef.current.contains(e.target as Node)) setEntityOpen(false);
     };
     document.addEventListener('mousedown', onDown);
     return () => document.removeEventListener('mousedown', onDown);
@@ -84,6 +88,7 @@ export default function TopHeader(props: Props) {
         setSearchOpen(false);
         setNotifOpen(false);
         setActionsOpen(false);
+        setEntityOpen(false);
       }
     };
     document.addEventListener('keydown', onKey);
@@ -91,6 +96,7 @@ export default function TopHeader(props: Props) {
   }, []);
 
   const currency = getActiveCurrency();
+  const activeEntity = entities.find(x => x.id === activeEntityId);
 
   const pageHits = useMemo(() => {
     const out: { label: string; sub: string; key: string }[] = [];
@@ -161,12 +167,54 @@ export default function TopHeader(props: Props) {
   };
 
   return (
-    <header className="topbar" style={{ background: M.bg, borderBottom: `1px solid ${M.border}`, position: 'sticky', top: 0, zIndex: 50, boxShadow: '0 1px 3px rgba(15, 23, 42, 0.08)' }}>
+    <header className="topbar" style={{ background: M.bg, borderBottom: '2px solid var(--color-sidebar-bg)', position: 'sticky', top: 0, zIndex: 2000, boxShadow: '0 2px 8px color-mix(in srgb, var(--color-sidebar-bg) 20%, transparent)' }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '0 16px', minHeight: 54, maxWidth: 1450, margin: '0 auto', flexWrap: 'wrap', rowGap: 6 }}>
-        {/* Brand + breadcrumb */}
+        {/* Working entity switcher + breadcrumb */}
         <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexShrink: 0 }}>
-          <div className="brand" style={{ fontSize: 18, letterSpacing: '-1px', margin: 0, display: 'flex', alignItems: 'center' }}>
-            <b style={{ color: M.accent }}>AC</b><span style={{ color: M.text }}>FIN</span>
+          <div ref={entityRef} style={{ position: 'relative' }}>
+            <button
+              onClick={() => setEntityOpen(o => !o)}
+              title="Switch working entity"
+              style={{
+                display: 'flex', alignItems: 'center', gap: 9,
+                background: M.hover, border: '1px solid ' + M.border, borderRadius: 9,
+                padding: '5px 10px', cursor: 'pointer',
+              }}
+            >
+              <span className="avatar small" style={{ width: 26, height: 26, fontSize: 10 }}>{activeEntity?.code?.[0] || activeEntity?.name?.[0] || 'E'}</span>
+              <span style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', lineHeight: 1.15 }}>
+                <strong style={{ fontSize: 12, color: M.text, whiteSpace: 'nowrap', maxWidth: 150, overflow: 'hidden', textOverflow: 'ellipsis' }}>{activeEntity?.name || 'Select entity'}</strong>
+                <small style={{ fontSize: 10, color: M.muted }}>{activeEntity?.currencyCode || activeEntity?.functionalCurrency || 'PKR'} · {activeEntity?.country || '—'}</small>
+              </span>
+              <ChevronDown size={13} style={{ color: M.muted }} />
+            </button>
+            {entityOpen && (
+              <div style={dropdownBase}>
+                <div style={{ padding: '8px 14px', fontSize: 10, fontWeight: 800, letterSpacing: 1, color: M.muted, textTransform: 'uppercase' }}>Working entity</div>
+                {entities.length === 0 ? (
+                  <div style={{ padding: '18px 16px', fontSize: 12, color: M.muted, textAlign: 'center' }}>No entities yet</div>
+                ) : (
+                  <div style={{ maxHeight: 300, overflowY: 'auto' }}>
+                    {entities.map(e => (
+                      <button
+                        key={e.id}
+                        onClick={() => { onSelectEntity(e.id); notify(`Switched to ${e.name}`); setEntityOpen(false); }}
+                        style={{ display: 'flex', alignItems: 'center', gap: 10, width: '100%', padding: '9px 14px', border: 0, background: 'transparent', cursor: 'pointer', textAlign: 'left', color: M.text, fontSize: 13, borderBottom: '1px solid ' + M.hover }}
+                        onMouseEnter={ev => (ev.currentTarget.style.background = M.hover)}
+                        onMouseLeave={ev => (ev.currentTarget.style.background = 'transparent')}
+                      >
+                        <span className="avatar small" style={{ width: 26, height: 26, fontSize: 10 }}>{e.code?.[0] || e.name?.[0] || 'E'}</span>
+                        <span style={{ flex: 1, minWidth: 0 }}>
+                          <span style={{ display: 'block', fontWeight: 600, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{e.name}</span>
+                          <span style={{ display: 'block', fontSize: 11, color: M.muted }}>{e.currencyCode || e.functionalCurrency || 'PKR'} · {e.country || '—'}{e.active ? '' : ' · Deactivated'}</span>
+                        </span>
+                        {e.id === activeEntityId && <Check size={15} style={{ color: M.accent, flexShrink: 0 }} />}
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
           </div>
           <div style={{ width: 1, height: 20, background: M.border }} />
           <div style={{ fontSize: 12, color: M.muted, whiteSpace: 'nowrap', fontWeight: 500, flexShrink: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis' }}>
@@ -187,7 +235,7 @@ export default function TopHeader(props: Props) {
               placeholder="Search pages, accounts, companies…"
               style={{ border: 0, outline: 'none', background: 'transparent', flex: 1, fontSize: 13, color: M.text }}
             />
-            {query ? <button onClick={() => { setQuery(''); setSearchOpen(false); }} style={{ border: 0, background: 'none', cursor: 'pointer', padding: 0, color: M.muted }}><X size={14} /></button> : <kbd style={{ fontSize: 10, color: M.muted, background: '#fff', border: '1px solid #cbd5e1', borderRadius: 5, padding: '1px 5px', flexShrink: 0 }}>⌘K</kbd>}
+            {query && <button onClick={() => { setQuery(''); setSearchOpen(false); }} style={{ border: 0, background: 'none', cursor: 'pointer', padding: 0, color: M.muted }}><X size={14} /></button>}
           </div>
           {searchOpen && (
             <div style={dropdownBase}>
