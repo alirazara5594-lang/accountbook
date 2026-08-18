@@ -9,15 +9,16 @@ import { NAVIGATION } from '../navigation';
 import type { UserData } from '../Login';
 import { useSalesStore, useProcurementStore } from '../stores';
 import { getActiveCurrency } from '../lib/currency';
+import ThemeSwitcher from './ThemeSwitcher';
 
 const M = {
-  border: '#e2e8f0',
-  text: '#1e293b',
-  muted: '#64748b',
-  accent: '#0d9488',
-  bg: '#ffffff',
-  hover: '#f1f5f9',
-  sidebar: '#12202f',
+  border: 'var(--color-border)',
+  text: 'var(--color-text)',
+  muted: 'var(--color-text-muted)',
+  accent: 'var(--color-primary)',
+  bg: 'var(--color-surface)',
+  hover: 'var(--color-surface-muted)',
+  sidebar: 'var(--color-sidebar-bg)',
 };
 
 interface Props {
@@ -29,6 +30,8 @@ interface Props {
   accounts: any[];
   notify: (m: string) => void;
   onLogout: () => void;
+  theme: string;
+  onThemeChange: (id: string) => void;
 }
 
 type SearchHit = { label: string; sub: string; icon: ReactNode; action: () => void };
@@ -36,7 +39,7 @@ type SearchHit = { label: string; sub: string; icon: ReactNode; action: () => vo
 const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 
 export default function TopHeader(props: Props) {
-  const { currentUser, entities, onSelectEntity, page, setPage, accounts, notify, onLogout } = props;
+  const { currentUser, entities, onSelectEntity, page, setPage, accounts, notify, onLogout, theme, onThemeChange } = props;
 
   const [query, setQuery] = useState('');
   const [searchOpen, setSearchOpen] = useState(false);
@@ -216,7 +219,7 @@ export default function TopHeader(props: Props) {
         <div style={{ flex: 1 }} />
 
         {/* Currency badge */}
-        <div title="Active currency" style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, fontWeight: 700, color: M.accent, background: '#f0fdfa', border: '1px solid #99f6e4', borderRadius: 8, padding: '5px 10px', flexShrink: 0 }}>
+        <div title="Active currency" style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, fontWeight: 700, color: 'var(--color-primary)', background: 'var(--color-secondary)', border: '1px solid var(--color-secondary-hover)', borderRadius: 8, padding: '5px 10px', flexShrink: 0 }}>
           <Coins size={14} />
           {currency}
         </div>
@@ -230,6 +233,11 @@ export default function TopHeader(props: Props) {
           <select value={period.y} onChange={e => setPeriod(p => ({ ...p, y: Number(e.target.value) }))} style={{ border: '1px solid ' + M.border, borderRadius: 8, padding: '4px 6px', fontSize: 12, background: '#fff', color: M.text, cursor: 'pointer', outline: 'none' }}>
             {[new Date().getFullYear() - 1, new Date().getFullYear(), new Date().getFullYear() + 1].map(y => <option key={y} value={y}>{y}</option>)}
           </select>
+        </div>
+
+        {/* Theme */}
+        <div style={{ flexShrink: 0 }}>
+          <ThemeSwitcher theme={theme} onSelect={onThemeChange} />
         </div>
 
         {/* Quick actions */}
