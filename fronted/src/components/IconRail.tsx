@@ -25,6 +25,7 @@ export default function IconRail({ activePage, onNavigate, modules, currentUser,
       <nav className="rail-nav">
         {groups.map(group => {
           const active = activePage.startsWith(group.name + '.');
+          const Icon = group.icon;
           return (
             <div className="rail-item-wrap" key={group.name}>
               <button
@@ -32,11 +33,12 @@ export default function IconRail({ activePage, onNavigate, modules, currentUser,
                 title={group.name}
                 onClick={() => onNavigate(`${group.name}.Summary`)}
               >
-                <span className="rail-icon">{group.icon}</span>
+                <Icon className="rail-icon" size={18} strokeWidth={1.8} />
+                <span className="rail-label">{group.name.split(' ')[0]}</span>
               </button>
               <div className="rail-flyout">
                 <div className="flyout-title">
-                  <span className="flyout-module-icon">{group.icon}</span>
+                  <Icon className="flyout-module-icon" size={15} strokeWidth={1.9} />
                   {group.name}
                 </div>
                 <button
@@ -63,13 +65,13 @@ export default function IconRail({ activePage, onNavigate, modules, currentUser,
         })}
       </nav>
 
-      <div className="rail-bottom">
+      <div className="rail-footer">
+        <button className="rail-logout" title="Sign out" onClick={onLogout}>
+          <LogOut size={14} />
+        </button>
         <div className="rail-user avatar small" title={currentUser.fullName}>
           {currentUser.avatar}
         </div>
-        <button className="rail-logout" title="Sign out" onClick={onLogout}>
-          <LogOut size={15} />
-        </button>
       </div>
     </aside>
   );

@@ -3,7 +3,7 @@ import type { ReactNode } from 'react';
 import {
   Search, Bell, Plus, ChevronDown, LogOut, Coins, X, FileText, Receipt,
   Building2, Users, Wallet, CalendarDays, Boxes, ClipboardList, Landmark,
-  Globe,
+  Globe, BarChart3,
 } from 'lucide-react';
 import { NAVIGATION } from '../navigation';
 import type { UserData } from '../Login';
@@ -140,6 +140,7 @@ export default function TopHeader(props: Props) {
     { icon: <Users size={15} />, label: 'New Customer', action: () => setPage('Sales & Customers.Customers') },
     { icon: <Building2 size={15} />, label: 'New Vendor', action: () => setPage('Procurement.Vendors') },
     { icon: <Boxes size={15} />, label: 'New Product / Service', action: () => setPage('Sales & Customers.Products & Services') },
+    { icon: <BarChart3 size={15} />, label: 'Financial Reports', action: () => setPage('Accounting.Financial Reports') },
     { icon: <Wallet size={15} />, label: 'Bank Account', action: () => setPage('Banking & Payments.Bank Accounts') },
   ];
 

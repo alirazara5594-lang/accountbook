@@ -1,10 +1,10 @@
-import { useEffect, useState, useMemo, useRef } from 'react'
+import { useEffect, useState, useMemo } from 'react'
 import type { FormEvent } from 'react'
 import './App.css'
 import { Login } from './Login'
 import type { UserData } from './Login'
 import OnboardingWizard from './components/OnboardingWizard'
-import { LogOut, ShieldAlert } from 'lucide-react'
+import { ShieldAlert } from 'lucide-react'
 import { authApi } from './api/modules/auth.api'
 import Intercompany from './Intercompany'
 import EntitySettings from './EntitySettings'
@@ -88,7 +88,7 @@ import { FinancialOverview } from './financial-overview/FinancialOverview'
 
 import { NAVIGATION } from './navigation'
 import IconRail from './components/IconRail'
-import { getStoredTheme, DEFAULT_THEME } from './themes'
+import { getStoredTheme } from './themes'
 import TopHeader from './components/TopHeader'
 import type { Account } from './api/modules/coa.api'
 type AccountType = 'Asset' | 'Liability' | 'Equity' | 'Revenue' | 'Expense' | 'ContraAsset' | 'ContraLiability' | 'ContraEquity' | 'ContraRevenue' | 'ContraExpense'
@@ -289,10 +289,6 @@ export default function App() {
     }
   }
 
-  const handleGroupClick = (groupName: string) => {
-    setOpenGroups(curr => curr.includes(groupName) ? [] : [groupName]);
-    setPage(`${groupName}.Summary`);
-  }
   const activeEntity = entities.find(x => x.id === activeEntityId)
   const readOnly = !!activeEntity && !activeEntity.active
   const activeViewMap: Record<string, string> = {
@@ -409,21 +405,8 @@ export default function App() {
   }
   const activeView = activeViewMap[page] || 'placeholder'
   const [group, module] = page.split('.')
-
-  const [showEntityMenu, setShowEntityMenu] = useState(false);
-  const entityMenuRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    const handleClickOutside = (e: MouseEvent) => {
-      if (entityMenuRef.current && !entityMenuRef.current.contains(e.target as Node)) {
-        setShowEntityMenu(false);
-      }
-    };
-    if (showEntityMenu) {
-      document.addEventListener('mousedown', handleClickOutside);
-      return () => document.removeEventListener('mousedown', handleClickOutside);
-    }
-  }, [showEntityMenu]);
+  const activeGroup = NAVIGATION.find(g => g.name === group)
+  const activeGroupItems = activeGroup?.items || []
 
   if (!currentUser) {
     return <Login onLogin={handleLogin} />;
@@ -434,12 +417,28 @@ export default function App() {
     return <OnboardingWizard currentUser={currentUser} />;
   }
 
-  const handleEntitySwitch = (entityId: string) => {
-    setActiveEntityId(entityId);
-    setShowEntityMenu(false);
-  };
-
-  return <div className="app"><IconRail activePage={page} onNavigate={setPage} modules={activeEntity?.modules || []} currentUser={currentUser} onLogout={handleLogout} /><div className="main-col"><TopHeader currentUser={currentUser} entities={entities} onSelectEntity={setActiveEntityId} page={page} setPage={setPage} accounts={accounts} notify={notify} onLogout={handleLogout} theme={theme} onThemeChange={setTheme} /><main>{readOnly && <div style={{ display: 'flex', alignItems: 'center', gap: 10, background: '#fef3c7', border: '1px solid #f59e0b', color: '#92400e', borderRadius: 10, padding: '10px 14px', marginBottom: 16, fontSize: 12.5, fontWeight: 600 }}><ShieldAlert size={16} style={{ flexShrink: 0 }} /><span>{activeEntity?.name} is <b>Deactivated</b> — read-only mode. You can view data and download reports, but editing is disabled.</span><button onClick={() => setPage('Administration.Companies')} style={{ marginLeft: 'auto', background: '#fff7ed', border: '1px solid #f59e0b', borderRadius: 8, padding: '4px 10px', fontSize: 11, fontWeight: 700, color: '#92400e', cursor: 'pointer' }}>Manage Companies</button></div>}<header className="page-head"><div><p className="eyebrow">{group.toUpperCase()}</p><h1>{module}</h1></div><div style={{ display: 'flex', alignItems: 'flex-end', gap: 12 }}><label className="entity-picker">Working in<select value={activeEntityId} onChange={e => setActiveEntityId(e.target.value)}>{entities.map(x => <option key={x.id} value={x.id}>{x.name}{x.code ? ` · ${x.code}` : ''}</option>)}</select></label>{activeView === 'journal' && <button className="primary" onClick={() => document.getElementById('journal-form')?.scrollIntoView({ behavior: 'smooth' })} disabled={readOnly} style={readOnly ? { opacity: 0.5, cursor: 'not-allowed' } : undefined}>＋ New entry</button>}</div></header>
+  return <div className="app"><IconRail activePage={page} onNavigate={setPage} modules={activeEntity?.modules || []} currentUser={currentUser} onLogout={handleLogout} /><div className="main-col"><TopHeader currentUser={currentUser} entities={entities} onSelectEntity={setActiveEntityId} page={page} setPage={setPage} accounts={accounts} notify={notify} onLogout={handleLogout} theme={theme} onThemeChange={setTheme} /><main>{readOnly && <div style={{ display: 'flex', alignItems: 'center', gap: 10, background: '#fef3c7', border: '1px solid #f59e0b', color: '#92400e', borderRadius: 10, padding: '10px 14px', marginBottom: 16, fontSize: 12.5, fontWeight: 600 }}><ShieldAlert size={16} style={{ flexShrink: 0 }} /><span>{activeEntity?.name} is <b>Deactivated</b> — read-only mode. You can view data and download reports, but editing is disabled.</span><button onClick={() => setPage('Administration.Companies')} style={{ marginLeft: 'auto', background: '#fff7ed', border: '1px solid #f59e0b', borderRadius: 8, padding: '4px 10px', fontSize: 11, fontWeight: 700, color: '#92400e', cursor: 'pointer' }}>Manage Companies</button></div>}<div className="module-workspace">
+    <header className="module-head">
+      <div className="module-title">
+        <span className="module-icon">{(() => { const MIcon = activeGroup?.icon; return MIcon ? <MIcon size={20} strokeWidth={1.8} /> : '▦'; })()}</span>
+        <div>
+          <p className="eyebrow">MODULE</p>
+          <h1>{group}</h1>
+        </div>
+      </div>
+      <div className="module-actions">
+        <label className="entity-picker">Working in<select value={activeEntityId} onChange={e => setActiveEntityId(e.target.value)}>{entities.map(x => <option key={x.id} value={x.id}>{x.name}{x.code ? ` · ${x.code}` : ''}</option>)}</select></label>
+        {activeView === 'journal' && <button className="primary" onClick={() => document.getElementById('journal-form')?.scrollIntoView({ behavior: 'smooth' })} disabled={readOnly} style={readOnly ? { opacity: 0.5, cursor: 'not-allowed' } : undefined}>＋ New entry</button>}
+      </div>
+    </header>
+    <nav className="module-tabs">
+      <button className={'tab' + (module === 'Summary' || module === 'Dashboard' ? ' active' : '')} onClick={() => setPage(`${group}.Summary`)}>Dashboard</button>
+      {activeGroupItems.map(item => {
+        const key = `${group}.${item}`;
+        return <button key={item} className={'tab' + (page === key ? ' active' : '')} onClick={() => setPage(key)}>{item}</button>;
+      })}
+    </nav>
+  </div>
   {activeView === 'dashboard' && <FinancialOverview accounts={accounts} entries={entries} setPage={setPage} activeEntityId={activeEntityId} />}
   {activeView === 'module-summary' && <ModuleSummary moduleName={group} accounts={accounts} entries={entries} setPage={setPage} openCreateAccount={openCreate} />}
   {activeView === 'sales-summary' && <SalesSummaryView activeEntityId={activeEntityId} setPage={setPage} />}
