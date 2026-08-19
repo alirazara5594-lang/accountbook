@@ -54,11 +54,11 @@ const C = {
   blueLight: '#60a5fa',
   amber: '#f59e0b',
   amberLight: '#fbbf24',
-  violet: '#8b5cf6',
-  violetLight: '#a78bfa',
-  teal: '#14b8a6',
-  tealLight: '#2dd4bf',
-  indigo: '#6366f1',
+  violet: '#a855f7',
+  violetLight: '#c084fc',
+  teal: '#06b6d4',
+  tealLight: '#22d3ee',
+  indigo: '#3b82f6',
   slate: '#64748b',
 };
 
@@ -800,10 +800,10 @@ export function ExpenseDistributionCard({ data, currency }: { data: FinancialDat
    ═══════════════════════════════════════════════════════════════ */
 
 const ALERT_SEV: Record<string, { dot: string; bg: string; label: string; badgeCls: string }> = {
-  critical: { dot: '#dc2626', bg: '#fef2f2', label: 'Critical Risk', badgeCls: 'badge-danger' },
-  warning: { dot: '#f59e0b', bg: '#fffbeb', label: 'Warning', badgeCls: 'badge-warn' },
-  info: { dot: '#3b82f6', bg: '#eff6ff', label: 'FY Notice', badgeCls: 'badge-info' },
-  success: { dot: '#10b981', bg: '#ecfdf5', label: 'All Clear', badgeCls: 'badge-ok' },
+  critical: { dot: '#dc2626', bg: 'var(--color-danger-background)', label: 'Critical Risk', badgeCls: 'badge-danger' },
+  warning: { dot: '#f59e0b', bg: 'var(--color-warning-background)', label: 'Warning', badgeCls: 'badge-warn' },
+  info: { dot: '#3b82f6', bg: 'var(--color-info-background)', label: 'FY Notice', badgeCls: 'badge-info' },
+  success: { dot: '#10b981', bg: 'var(--color-success-background)', label: 'All Clear', badgeCls: 'badge-ok' },
 };
 
 export function ExecutiveRiskAlerts({
@@ -991,7 +991,7 @@ export function QuickAdd({ setPage }: { setPage: (p: string) => void }) {
         className="quick-add-fab"
         title="Quick Actions"
       >
-        {open ? <X className="w-5 h-5" /> : <Plus className="w-5 h-5" />}
+        {open ? <X className="w-4 h-4" /> : <Plus className="w-4 h-4" />}
       </button>
     </div>
   );

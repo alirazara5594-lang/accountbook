@@ -763,9 +763,9 @@ tbody td {
 .snapshot-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0}
 .snapshot-value{font-size:16px;font-weight:800;color:var(--color-text-strong);line-height:1.1}
 .snapshot-label{font-size:9px;font-weight:700;color:var(--color-text-muted);letter-spacing:.4px;text-transform:uppercase;margin-top:1px}
-.quick-add-fab{width:48px;height:48px;border-radius:50%;border:0;cursor:pointer;display:grid;place-items:center;color:#fff;background:linear-gradient(135deg,var(--color-primary),var(--color-primary-hover));box-shadow:0 8px 20px color-mix(in srgb,var(--color-primary) 40%,transparent);transition:transform .15s ease}
+.quick-add-fab{width:40px;height:40px;border-radius:50%;border:0;cursor:pointer;display:grid;place-items:center;color:#fff;background:linear-gradient(135deg,var(--color-primary),var(--color-primary-hover));box-shadow:0 8px 20px color-mix(in srgb,var(--color-primary) 40%,transparent);transition:transform .15s ease}
 .quick-add-fab:hover{transform:scale(1.06)}
-.quick-add-menu{position:absolute;bottom:60px;right:0;width:240px;padding:0;overflow:hidden}
+.quick-add-menu{position:absolute;bottom:52px;right:0;width:240px;padding:0;overflow:hidden}
 .quick-add-header{font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.5px;color:var(--color-text-muted);padding:10px 14px 8px;border-bottom:1px solid var(--color-border-subtle)}
 .quick-add-list{padding:6px}
 .quick-add-item{display:block;width:100%;text-align:left;font-size:12px;font-weight:600;color:var(--color-text);padding:7px 10px;border-radius:8px;border:none;background:none;cursor:pointer;transition:background .1s}
@@ -813,8 +813,8 @@ position:sticky;
   line-height:1;
   gap:0;
 }
-.rail-brand-aim{
-  font-size:20px;
+.rail-brand-am{
+  font-size:24px;
   font-weight:900;
   color:#ffffff;
   letter-spacing:2px;

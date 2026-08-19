@@ -27,10 +27,10 @@ export default function IconRail({ activePage, onNavigate, modules, currentUser,
 
   return (
     <aside className="icon-rail">
-      <div className="rail-brand" title="AIMS — Accounting Information Management System">
+      <div className="rail-brand" title="AMS — Accounting Management System">
         <img src="/favicon.svg" alt="" className="rail-brand-logo" />
         <div className="rail-brand-text">
-          <span className="rail-brand-aim">AIM</span>
+          <span className="rail-brand-am">AM</span>
           <span className="rail-brand-s">S</span>
         </div>
       </div>

@@ -88,7 +88,7 @@ import { FinancialOverview } from './financial-overview/FinancialOverview'
 
 import { NAVIGATION } from './navigation'
 import IconRail from './components/IconRail'
-import { getStoredTheme } from './themes'
+import { getStoredTheme, THEMES } from './themes'
 import TopHeader from './components/TopHeader'
 import type { Account } from './api/modules/coa.api'
 type AccountType = 'Asset' | 'Liability' | 'Equity' | 'Revenue' | 'Expense' | 'ContraAsset' | 'ContraLiability' | 'ContraEquity' | 'ContraRevenue' | 'ContraExpense'
@@ -218,7 +218,9 @@ export default function App() {
 
   useEffect(() => {
     document.documentElement.setAttribute('data-theme', theme);
-    localStorage.setItem('acfin_theme', theme);
+    localStorage.setItem('ams_theme', theme);
+    const isDark = THEMES.find(t => t.id === theme)?.dark;
+    document.documentElement.classList.toggle('dark', !!isDark);
   }, [theme]);
 
   const [modal, setModal] = useState(false)

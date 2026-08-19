@@ -29,10 +29,10 @@ import { agingBucket, AGING_BUCKETS } from './financial-overview/format';
 const num = (n: number) => new Intl.NumberFormat('en-US').format(n || 0);
 
 const C = {
-  page: '#f8fafc', card: '#ffffff', inner: '#f1f5f9', bdr: '#e2e8f0',
-  accent: '#0ea5e9', cyan: '#0891b2', amber: '#d97706', emerald: '#059669',
-  rose: '#e11d48', violet: '#7c3aed', pink: '#db2777', white: '#1e293b',
-  muted: '#475569', dim: '#94a3b8', blue: '#2563eb',
+  page: 'var(--color-background)', card: 'var(--color-surface)', inner: 'var(--color-surface-muted)', bdr: 'var(--color-border)',
+  accent: '#3b82f6', cyan: '#06b6d4', amber: '#f59e0b', emerald: '#10b981',
+  rose: '#ef4444', violet: '#a855f7', pink: '#ec4899', white: 'var(--color-text)',
+  muted: 'var(--color-text-muted)', dim: 'var(--color-text-subtle)', blue: '#3b82f6',
 };
 
 /* ────────────────────────────────────────────────────────────────── */
@@ -167,7 +167,7 @@ export function SalesSummaryView({ activeEntityId, setPage }: { activeEntityId?:
           const Ico = k.icon;
           return (
             <div className="col-4" key={i}>
-              <div className="card h-100 border-1 shadow-sm" style={{ borderColor: '#dee2e6' }}>
+              <div className="card h-100 border-1 shadow-sm" style={{ borderColor: 'var(--color-border)' }}>
                 <div className="card-body p-2">
                   <div className="d-flex align-items-center justify-content-between mb-1">
                     <small className="text-muted fw-semibold text-uppercase" style={{ fontSize: '9px', letterSpacing: '.3px' }}>{k.label}</small>
@@ -189,7 +189,7 @@ export function SalesSummaryView({ activeEntityId, setPage }: { activeEntityId?:
       {/* ═══ SALES TREND + INVOICE STATUS ═══ */}
       <div className="row g-3 mb-3">
         <div className="col-lg-8">
-          <div className="card h-100 border-1 shadow-sm" style={{ borderColor: '#dee2e6' }}>
+          <div className="card h-100 border-1 shadow-sm" style={{ borderColor: 'var(--color-border)' }}>
             <div className="card-body p-3">
               <h6 className="card-title fw-bold mb-3" style={{ fontSize: '13px' }}>Sales Trend</h6>
               <ResponsiveContainer width="100%" height={200}>
@@ -204,7 +204,7 @@ export function SalesSummaryView({ activeEntityId, setPage }: { activeEntityId?:
                   <XAxis dataKey="m" tick={{ fontSize: 9, fill: '#6c757d' }} axisLine={false} tickLine={false} />
                   <YAxis tick={{ fontSize: 9, fill: '#6c757d' }} axisLine={false} tickLine={false}
                          tickFormatter={(v: any) => Number(v) >= 1000 ? `${(Number(v) / 1000).toFixed(0)}k` : v} />
-                  <Tooltip contentStyle={{ background: '#fff', border: '1px solid #dee2e6', borderRadius: 8, fontSize: 11 }}
+                   <Tooltip contentStyle={{ background: 'var(--color-surface)', border: '1px solid var(--color-border)', borderRadius: 8, fontSize: 11 }}
                            formatter={(v: any) => [money(Number(v)), 'Sales']} />
                   <Area type="monotone" dataKey="amt" stroke="#0d6efd" strokeWidth={2} fill="url(#gSalesBoot)" name="Sales" />
                 </AreaChart>
@@ -213,7 +213,7 @@ export function SalesSummaryView({ activeEntityId, setPage }: { activeEntityId?:
           </div>
         </div>
         <div className="col-lg-4">
-          <div className="card h-100 border-1 shadow-sm" style={{ borderColor: '#dee2e6' }}>
+          <div className="card h-100 border-1 shadow-sm" style={{ borderColor: 'var(--color-border)' }}>
             <div className="card-body p-3">
               <h6 className="card-title fw-bold mb-3" style={{ fontSize: '13px' }}>Invoice Status</h6>
               {invByStatus.length === 0 ? (
@@ -257,7 +257,7 @@ export function SalesSummaryView({ activeEntityId, setPage }: { activeEntityId?:
       <div className="row g-2 mb-3">
         {/* Financial Health Index */}
         <div className="col-lg-4">
-          <div className="card border-1 shadow-sm" style={{ borderColor: '#dee2e6' }}>
+          <div className="card border-1 shadow-sm" style={{ borderColor: 'var(--color-border)' }}>
             <div className="card-body p-2.5">
               <div className="d-flex align-items-center justify-content-between mb-1.5">
                 <div className="d-flex align-items-center gap-1.5">
@@ -289,7 +289,7 @@ export function SalesSummaryView({ activeEntityId, setPage }: { activeEntityId?:
 
         {/* Working Capital & Runway */}
         <div className="col-lg-4">
-          <div className="card border-1 shadow-sm" style={{ borderColor: '#dee2e6' }}>
+          <div className="card border-1 shadow-sm" style={{ borderColor: 'var(--color-border)' }}>
             <div className="card-body p-2.5">
               <div className="d-flex align-items-center justify-content-between mb-1.5">
                 <div className="d-flex align-items-center gap-1.5">
@@ -310,7 +310,7 @@ export function SalesSummaryView({ activeEntityId, setPage }: { activeEntityId?:
 
         {/* Audit & Closing Controls */}
         <div className="col-lg-4">
-          <div className="card border-1 shadow-sm" style={{ borderColor: '#dee2e6' }}>
+          <div className="card border-1 shadow-sm" style={{ borderColor: 'var(--color-border)' }}>
             <div className="card-body p-2.5">
               <div className="d-flex align-items-center justify-content-between mb-1.5">
                 <div className="d-flex align-items-center gap-1.5">
@@ -342,7 +342,7 @@ export function SalesSummaryView({ activeEntityId, setPage }: { activeEntityId?:
       <div className="row g-3 mb-3">
         {/* Risk Alerts */}
         <div className="col-lg-6">
-          <div className="card h-100 border-1 shadow-sm" style={{ borderColor: '#dee2e6' }}>
+          <div className="card h-100 border-1 shadow-sm" style={{ borderColor: 'var(--color-border)' }}>
             <div className="card-header bg-transparent d-flex align-items-center justify-content-between border-0 pb-0">
               <h6 className="fw-bold mb-0" style={{ fontSize: '13px' }}>
                 <AlertTriangle size={13} className="me-1 text-warning" />
@@ -357,7 +357,7 @@ export function SalesSummaryView({ activeEntityId, setPage }: { activeEntityId?:
                 {alerts.map(a => {
                   const sevMap: Record<string, { dot: string; bg: string; badge: string }> = {
                     critical: { dot: '#dc2626', bg: '#fef2f2', badge: 'bg-danger' },
-                    warning: { dot: '#f59e0b', bg: '#fffbeb', badge: 'bg-warning' },
+                     warning: { dot: '#f59e0b', bg: 'var(--color-warning-background)', badge: 'bg-warning' },
                     info: { dot: '#3b82f6', bg: '#eff6ff', badge: 'bg-info' },
                     success: { dot: '#10b981', bg: '#ecfdf5', badge: 'bg-success' },
                   };
@@ -380,7 +380,7 @@ export function SalesSummaryView({ activeEntityId, setPage }: { activeEntityId?:
 
         {/* Aging Summary */}
         <div className="col-lg-6">
-          <div className="card h-100 border-1 shadow-sm" style={{ borderColor: '#dee2e6' }}>
+          <div className="card h-100 border-1 shadow-sm" style={{ borderColor: 'var(--color-border)' }}>
             <div className="card-header bg-transparent d-flex align-items-center justify-content-between border-0 pb-0">
               <h6 className="fw-bold mb-0" style={{ fontSize: '13px' }}>
                 <Clock size={13} className="me-1 text-primary" />
@@ -452,7 +452,7 @@ export function SalesSummaryView({ activeEntityId, setPage }: { activeEntityId?:
       {/* ═══ IMPORTANT RATIOS ═══ */}
       <div className="row g-3 mb-3">
         <div className="col-12">
-          <div className="card border-1 shadow-sm" style={{ borderColor: '#dee2e6' }}>
+          <div className="card border-1 shadow-sm" style={{ borderColor: 'var(--color-border)' }}>
             <div className="card-header bg-transparent border-0 pb-0">
               <h6 className="fw-bold mb-0" style={{ fontSize: '13px' }}>
                 <BarChart3 size={13} className="me-1 text-primary" />
@@ -482,8 +482,8 @@ export function SalesSummaryView({ activeEntityId, setPage }: { activeEntityId?:
                   ]},
                 ].map(group => (
                   <div className="col-lg-4" key={group.group}>
-                    <div className="p-3 rounded-2 border" style={{ borderColor: '#e2e8f0' }}>
-                      <div className="d-flex align-items-center gap-2 mb-2 pb-2 border-bottom" style={{ borderColor: '#e9ecef' }}>
+                    <div className="p-3 rounded-2 border" style={{ borderColor: 'var(--color-border)' }}>
+                      <div className="d-flex align-items-center gap-2 mb-2 pb-2 border-bottom" style={{ borderColor: 'var(--color-border)' }}>
                         <span className="d-inline-flex align-items-center justify-content-center rounded" style={{ width: 24, height: 24, background: `${group.color}15`, color: group.color }}>
                           <BarChart3 size={12} />
                         </span>
@@ -518,7 +518,7 @@ export function SalesSummaryView({ activeEntityId, setPage }: { activeEntityId?:
       <div className="row g-3">
         {/* Recent Invoices */}
         <div className="col-lg-7">
-          <div className="card h-100 border-1 shadow-sm" style={{ borderColor: '#dee2e6' }}>
+          <div className="card h-100 border-1 shadow-sm" style={{ borderColor: 'var(--color-border)' }}>
             <div className="card-header bg-transparent d-flex align-items-center justify-content-between border-0 pb-0">
               <h6 className="fw-bold mb-0" style={{ fontSize: '13px' }}>Recent Invoices</h6>
               <button onClick={() => setPage?.('Sales & Customers.Sales Workspace')}
@@ -533,7 +533,7 @@ export function SalesSummaryView({ activeEntityId, setPage }: { activeEntityId?:
                 const bsColor = status === 'Paid' ? 'success' : status === 'Overdue' ? 'danger' : 'warning';
                 return (
                   <div key={i.id} className="d-flex align-items-center gap-3 py-2 px-2 rounded-2 mb-1"
-                       style={{ background: '#f8f9fa', border: '1px solid #dee2e6' }}>
+                       style={{ background: 'var(--color-surface-muted)', border: '1px solid var(--color-border)' }}>
                     <div className={`d-flex align-items-center justify-content-center rounded-circle bg-${bsColor} bg-opacity-10 text-${bsColor}`}
                          style={{ width: 32, height: 32, flexShrink: 0 }}>
                       {overdue ? <AlertTriangle size={14} /> : <Receipt size={14} />}
@@ -555,7 +555,7 @@ export function SalesSummaryView({ activeEntityId, setPage }: { activeEntityId?:
 
         {/* Top Customers by Revenue */}
         <div className="col-lg-5">
-          <div className="card h-100 border-1 shadow-sm" style={{ borderColor: '#dee2e6' }}>
+          <div className="card h-100 border-1 shadow-sm" style={{ borderColor: 'var(--color-border)' }}>
             <div className="card-header bg-transparent d-flex align-items-center justify-content-between border-0 pb-0">
               <h6 className="fw-bold mb-0" style={{ fontSize: '13px' }}>Top Customers</h6>
               <button onClick={() => setPage?.('Sales & Customers.Customers')}

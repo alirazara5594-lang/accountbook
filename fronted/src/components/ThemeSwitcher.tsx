@@ -1,11 +1,36 @@
 import { useEffect, useRef, useState } from 'react';
-import { Palette, Check } from 'lucide-react';
-import { THEMES } from '../themes';
+import { Sun, Moon, CloudSun, Check } from 'lucide-react';
+
+const MODES = [
+  { id: 'dark', name: 'Dark', icon: Moon },
+  { id: 'light', name: 'Light', icon: Sun },
+  { id: 'cool', name: 'Cool', icon: CloudSun },
+] as const;
+
+type ModeId = (typeof MODES)[number]['id'];
+
+export function getDisplayMode(theme: string): ModeId {
+  if (theme.endsWith('-light')) return 'light';
+  if (theme.endsWith('-cool')) return 'cool';
+  return 'dark';
+}
+
+export function getThemeFamily(_theme: string): string {
+  return 'bp';
+}
+
+export function resolveThemeId(_family: string, mode: ModeId): string {
+  return `bp-${mode}`;
+}
 
 export default function ThemeSwitcher({ theme, onSelect }: { theme: string; onSelect: (id: string) => void }) {
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
-  const current = THEMES.find(t => t.id === theme) || THEMES[0];
+
+  const family = getThemeFamily(theme);
+  const mode = getDisplayMode(theme);
+  const current = MODES.find(m => m.id === mode) || MODES[0];
+  const CurrentIcon = current.icon;
 
   useEffect(() => {
     const onDown = (e: MouseEvent) => {
@@ -19,7 +44,7 @@ export default function ThemeSwitcher({ theme, onSelect }: { theme: string; onSe
     position: 'absolute',
     top: 'calc(100% + 8px)',
     right: 0,
-    minWidth: 240,
+    minWidth: 180,
     background: 'var(--color-surface)',
     border: '1px solid var(--color-border)',
     borderRadius: 12,
@@ -32,68 +57,57 @@ export default function ThemeSwitcher({ theme, onSelect }: { theme: string; onSe
     <div ref={ref} style={{ position: 'relative', flexShrink: 0 }}>
       <button
         onClick={() => setOpen(o => !o)}
-        title="Change theme"
+        title="Display mode"
         style={{
           display: 'flex',
           alignItems: 'center',
-          gap: 7,
+          justifyContent: 'center',
           background: 'var(--color-surface-muted)',
           border: '1px solid var(--color-border)',
           borderRadius: 9,
-          height: 34,
-          padding: '0 10px',
+          height: 30,
+          width: 30,
           cursor: 'pointer',
           color: 'var(--color-text)',
         }}
       >
-        <span
-          className="theme-dot"
-          style={{
-            width: 15,
-            height: 15,
-            borderRadius: 99,
-            background: `linear-gradient(135deg, ${current.primary} 50%, ${current.sidebar} 50%)`,
-            boxShadow: '0 0 0 1px rgba(15,23,42,0.12)',
-            flexShrink: 0,
-          }}
-        />
-        <Palette size={15} />
+        <CurrentIcon size={14} style={{ color: 'var(--color-primary)' }} />
       </button>
 
       {open && (
         <div style={dropdownBase}>
           <div style={{ padding: '8px 14px', fontSize: 10, fontWeight: 800, letterSpacing: 1, color: 'var(--color-text-muted)', textTransform: 'uppercase' }}>
-            Choose theme
+            Display Mode
           </div>
-          {THEMES.map(t => (
-            <button
-              key={t.id}
-              onClick={() => { onSelect(t.id); setOpen(false); }}
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: 11,
-                width: '100%',
-                padding: '9px 14px',
-                border: 0,
-                background: 'transparent',
-                cursor: 'pointer',
-                textAlign: 'left',
-                fontSize: 13,
-                color: 'var(--color-text)',
-                borderBottom: '1px solid var(--color-border-subtle)',
-              }}
-              onMouseEnter={e => (e.currentTarget.style.background = 'var(--color-surface-muted)')}
-              onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
-            >
-              <span style={{ display: 'flex', gap: 3, flexShrink: 0 }}>
-                <span style={{ width: 15, height: 15, borderRadius: 99, background: t.primary }} />
-                <span style={{ width: 15, height: 15, borderRadius: 99, background: t.sidebar }} />
-              </span>
-              <span style={{ flex: 1, fontWeight: theme === t.id ? 700 : 600 }}>{t.name}</span>
-              {theme === t.id && <Check size={14} style={{ color: 'var(--color-primary)' }} />}
-            </button>
-          ))}
+          {MODES.map(m => {
+            const Icon = m.icon;
+            return (
+              <button
+                key={m.id}
+                onClick={() => { onSelect(resolveThemeId(family, m.id)); setOpen(false); }}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 11,
+                  width: '100%',
+                  padding: '9px 14px',
+                  border: 0,
+                  background: 'transparent',
+                  cursor: 'pointer',
+                  textAlign: 'left',
+                  fontSize: 13,
+                  color: 'var(--color-text)',
+                  borderBottom: '1px solid var(--color-border-subtle)',
+                }}
+                onMouseEnter={e => (e.currentTarget.style.background = 'var(--color-surface-muted)')}
+                onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
+              >
+                <Icon size={14} style={{ color: 'var(--color-text-muted)' }} />
+                <span style={{ flex: 1, fontWeight: mode === m.id ? 700 : 600 }}>{m.name}</span>
+                {mode === m.id && <Check size={14} style={{ color: 'var(--color-primary)' }} />}
+              </button>
+            );
+          })}
         </div>
       )}
     </div>

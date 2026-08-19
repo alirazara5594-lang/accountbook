@@ -195,15 +195,15 @@ export function Login({ onLogin }: LoginProps) {
       <div className="login-card">
         <div className="login-header">
           <div className="login-logo">
-            <b>AC</b><span>FIN</span>
+            <b>AM</b><span>S</span>
           </div>
           <p style={{ fontSize: '11px', color: '#64748b', margin: '-4px 0 10px', fontWeight: 500, letterSpacing: '0.3px' }}>
-Accounting Information Management System
+Accounting Management System
           </p>
           <p className="login-subtitle">
             {mode === 'signin'
-              ? 'Sign in to AIMS — your multi-entity ERP'
-              : 'Create your AIMS account to get started'}
+              ? 'Sign in to AMS — your multi-entity ERP'
+              : 'Create your AMS account to get started'}
           </p>
         </div>
 
@@ -337,7 +337,7 @@ Accounting Information Management System
         <div className="auth-switch">
           {mode === 'signin' ? (
             <span>
-              New to AIMS?{' '}
+              New to AMS?{' '}
               <button type="button" className="auth-switch-link" onClick={() => { setMode('signup'); setError(null); setSuccess(null); }}>
                 Create an account
               </button>
