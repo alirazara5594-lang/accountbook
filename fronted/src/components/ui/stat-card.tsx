@@ -12,26 +12,37 @@ interface StatCardProps extends React.ComponentProps<"div"> {
 }
 
 const tones = {
-  teal: { chip: "bg-teal-500/10 text-teal-600", value: "text-foreground" },
-  green: { chip: "bg-green-500/10 text-green-600", value: "text-foreground" },
-  red: { chip: "bg-red-500/10 text-red-600", value: "text-foreground" },
-  amber: { chip: "bg-amber-500/10 text-amber-600", value: "text-foreground" },
-  blue: { chip: "bg-blue-500/10 text-blue-600", value: "text-foreground" },
-  violet: { chip: "bg-violet-500/10 text-violet-600", value: "text-foreground" },
-  cyan: { chip: "bg-cyan-500/10 text-cyan-600", value: "text-foreground" },
+  teal: { chip: "linear-gradient(135deg,#14b8a6,#2dd4bf)", value: "text-foreground" },
+  green: { chip: "linear-gradient(135deg,#10b981,#34d399)", value: "text-foreground" },
+  red: { chip: "linear-gradient(135deg,#ef4444,#f87171)", value: "text-foreground" },
+  amber: { chip: "linear-gradient(135deg,#f59e0b,#fbbf24)", value: "text-foreground" },
+  blue: { chip: "linear-gradient(135deg,#3b82f6,#60a5fa)", value: "text-foreground" },
+  violet: { chip: "linear-gradient(135deg,#8b5cf6,#a78bfa)", value: "text-foreground" },
+  cyan: { chip: "linear-gradient(135deg,#06b6d4,#22d3ee)", value: "text-foreground" },
 } as const
 
 function StatCard({ icon: Icon, label, value, tone = "teal", className, ...props }: StatCardProps) {
   const t = tones[tone]
   return (
-    <Card className={cn("flex items-center gap-2.5 p-3", className)} {...props}>
-      <span className={cn("flex size-8 shrink-0 items-center justify-center rounded-lg", t.chip)}>
-        <Icon className="size-3.5" />
-      </span>
-      <div className="min-w-0">
-        <p className={cn("truncate text-sm font-bold leading-tight", t.value)}>{value}</p>
-        <p className="truncate text-[10px] text-muted-foreground">{label}</p>
+    <Card
+      className={cn(
+        "group/stat flex min-h-[90px] flex-col justify-between gap-2 p-3 transition-all duration-150 hover:-translate-y-0.5 hover:shadow-md",
+        className
+      )}
+      {...props}
+    >
+      <div className="flex items-start justify-between gap-2">
+        <span className="truncate text-[9px] font-semibold uppercase tracking-wide text-muted-foreground">
+          {label}
+        </span>
+        <span
+          className="flex size-7 shrink-0 items-center justify-center rounded-[8px] text-white shadow-sm"
+          style={{ background: t.chip }}
+        >
+          <Icon className="size-3.5" />
+        </span>
       </div>
+      <p className={cn("truncate text-lg font-extrabold leading-tight tracking-tight", t.value)}>{value}</p>
     </Card>
   )
 }

@@ -548,6 +548,222 @@ tbody td {
 .text-blue-700{color:var(--color-primary-hover)!important}
 .bg-blue-50{background-color:var(--color-secondary)!important}.bg-indigo-50{background-color:var(--color-secondary)!important}.text-blue-600{color:var(--color-primary)!important}.text-indigo-600{color:var(--color-primary)!important}.text-blue-500{color:var(--color-primary)!important}.text-indigo-500{color:var(--color-primary)!important}
 
+/* ══ Modern analytics cards (SaaS + dashboard style) ══ */
+.fcard{
+  background:var(--color-surface);
+  border:1px solid var(--color-border);
+  border-radius:16px;
+  box-shadow:var(--shadow-md);
+  display:flex;
+  flex-direction:column;
+}
+.fcard > * { flex-shrink: 0; }
+.fcard > *:last-child { flex: 1; min-height: 0; }
+
+/* ── Section card wrapper ── */
+.section-card{
+  padding:18px 20px;
+  display:flex;
+  flex-direction:column;
+  height:100%;
+}
+.section-card-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px}
+.section-card-title-row{display:flex;align-items:center;gap:8px}
+.section-card-icon{width:28px;height:28px;border-radius:9px;display:grid;place-items:center;background:var(--color-surface-muted);color:var(--color-primary);flex-shrink:0}
+.section-card-title{font-size:13px;font-weight:700;color:var(--color-text-strong);letter-spacing:-.2px}
+.section-badge{font-size:10px;font-weight:700;padding:3px 9px;border-radius:999px;letter-spacing:.3px}
+.badge-ok{background:#dcfce7;color:#16a34a}
+.badge-warn{background:#fef3c7;color:#d97706}
+.badge-info{background:#dbeafe;color:#2563eb}
+.badge-danger{background:#fee2e2;color:#dc2626}
+
+/* ── Hero KPI card ── */
+.hero-kpi{
+  padding:12px 14px;
+  display:flex;
+  flex-direction:column;
+  justify-content:space-between;
+  height:90px;
+  min-width:0;
+  overflow:hidden;
+  border-radius:14px;
+  border:1px solid var(--color-border);
+  background:var(--color-surface);
+  box-shadow:var(--shadow-sm);
+  transition:transform .12s ease,box-shadow .12s ease;
+}
+.hero-kpi:hover{transform:translateY(-2px);box-shadow:var(--shadow-lg)}
+.hero-kpi-top{display:flex;align-items:center;justify-content:space-between;gap:6px}
+.hero-kpi-chip{width:26px;height:26px;border-radius:8px;display:grid;place-items:center;flex-shrink:0;box-shadow:0 3px 8px rgb(0 0 0 / .12)}
+.hero-kpi-label{font-size:10px;font-weight:700;color:var(--color-text-muted);letter-spacing:.5px;text-transform:uppercase;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.hero-kpi-value{font-size:18px;font-weight:800;color:var(--color-text-strong);letter-spacing:-.4px;line-height:1.1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.hero-kpi-delta{display:inline-flex;align-items:center}
+.hero-delta-up{display:inline-flex;align-items:center;gap:2px;font-size:10px;font-weight:700;color:#16a34a;background:#dcfce7;padding:2px 7px;border-radius:999px}
+.hero-delta-down{display:inline-flex;align-items:center;gap:2px;font-size:10px;font-weight:700;color:#dc2626;background:#fee2e2;padding:2px 7px;border-radius:999px}
+.hero-delta-neutral{font-size:10px;font-weight:600;color:var(--color-text-muted);padding:2px 7px;border-radius:999px;background:var(--color-surface-muted)}
+
+/* ── Chart legend ── */
+.chart-legend{display:flex;gap:14px;margin-bottom:10px;flex-wrap:wrap}
+.legend-item{display:flex;align-items:center;gap:5px;font-size:10px;font-weight:700;color:var(--color-text-muted)}
+.legend-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0}
+
+/* ── Cash flow donut + summary ── */
+.cash-flow-layout{
+  display:flex;
+  flex-direction:column;
+  gap:16px;
+  height:100%;
+}
+.cash-flow-metrics{
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:10px;
+}
+.cf-metric{
+  display:flex;
+  align-items:flex-start;
+  gap:8px;
+}
+.cf-dot{
+  width:8px;
+  height:8px;
+  border-radius:50%;
+  flex-shrink:0;
+  margin-top:4px;
+}
+.cf-metric-label{
+  font-size:9px;
+  font-weight:700;
+  color:var(--color-text-muted);
+  letter-spacing:.5px;
+  text-transform:uppercase;
+  line-height:1;
+}
+.cf-metric-value{
+  font-size:13px;
+  font-weight:800;
+  color:var(--color-text-strong);
+  line-height:1.2;
+  margin-top:1px;
+}
+.cash-flow-donut-wrap{
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  gap:8px;
+  flex:1;
+  min-height:0;
+}
+.cf-net{
+  text-align:center;
+}
+.cf-net-label{
+  font-size:9px;
+  font-weight:700;
+  color:var(--color-text-muted);
+  letter-spacing:.5px;
+  text-transform:uppercase;
+}
+.cf-net-value{
+  font-size:16px;
+  font-weight:800;
+  line-height:1.1;
+}
+.cf-waterfall{
+  width:100%;
+}
+
+/* ── Accounting equation bar ── */
+.eq-equation-row{display:flex;align-items:center;justify-content:center;gap:10px;margin-bottom:16px;padding:12px 0;background:var(--color-surface-muted);border-radius:12px}
+.eq-term{font-size:20px;font-weight:800;letter-spacing:-.5px;line-height:1}
+.eq-term-asset{color:#06b6d4}
+.eq-term-liab{color:#f97316}
+.eq-term-eq{color:#8b5cf6}
+.eq-operator{font-size:18px;font-weight:700;color:var(--color-text-muted);opacity:.5}
+.eq-bars{display:flex;flex-direction:column;gap:8px}
+.eq-bar-row{display:flex;align-items:center;gap:10px}
+.eq-bar-label-side{font-size:9px;font-weight:700;color:var(--color-text-muted);letter-spacing:.3px;text-transform:uppercase;width:36px;text-align:right;flex-shrink:0}
+.eq-bar{flex:1;height:36px;border-radius:10px;overflow:hidden;display:flex}
+.eq-bar-full{background:var(--color-surface-muted)}
+.eq-seg{display:flex;align-items:center;justify-content:center;color:#fff;font-size:10px;font-weight:700;white-space:nowrap;overflow:hidden;min-width:0}
+.eq-seg span{padding:0 8px;overflow:hidden;text-overflow:ellipsis}
+.eq-seg-assets{width:100%;background:linear-gradient(135deg,#14b8a6,#06b6d4)}
+.eq-seg-liab{background:linear-gradient(135deg,#f97316,#ef4444);min-width:0}
+.eq-seg-eq{background:linear-gradient(135deg,#8b5cf6,#7c3aed);min-width:0}
+.eq-cards{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin-top:14px}
+.eq-card{display:flex;align-items:center;gap:8px;padding:10px 12px;border-radius:10px;border:1px solid var(--color-border-subtle);background:var(--color-surface)}
+.eq-card-dot{width:10px;height:10px;border-radius:50%;flex-shrink:0}
+.eq-card-label{font-size:9px;font-weight:700;color:var(--color-text-muted);letter-spacing:.4px;text-transform:uppercase;line-height:1}
+.eq-card-value{font-size:14px;font-weight:800;color:var(--color-text-strong);line-height:1.1;margin-top:1px}
+.eq-footer-alert{display:flex;align-items:center;gap:6px;margin-top:12px;padding:8px 10px;border-radius:8px;background:#fef2f2;border:1px solid #fecaca;font-size:10px;font-weight:600;color:#dc2626}
+
+/* ── Ratio grid ── */
+.ratio-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
+@media(min-width:768px){.ratio-grid{grid-template-columns:repeat(4,minmax(0,1fr))}}
+.ratio-chip{display:flex;align-items:center;gap:8px;padding:10px 12px;border-radius:10px;border:1px solid var(--color-border-subtle);background:var(--color-surface);min-width:0;overflow:hidden}
+.ratio-chip-icon{width:30px;height:30px;border-radius:8px;display:grid;place-items:center;flex-shrink:0}
+.ratio-chip-body{min-width:0;overflow:hidden}
+.ratio-chip-value{font-size:15px;font-weight:800;color:var(--color-text-strong);line-height:1.1;letter-spacing:-.3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ratio-chip-label{font-size:9px;font-weight:700;color:var(--color-text-muted);letter-spacing:.4px;text-transform:uppercase;margin-top:1px}
+
+/* ── Aging grid ── */
+.aging-grid{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:6px}
+.aging-col{display:flex;flex-direction:column;align-items:center;gap:3px;text-align:center}
+.aging-pill{font-size:8px;font-weight:700;padding:2px 6px;border-radius:999px;letter-spacing:.3px;text-transform:uppercase}
+.aging-pill.up{background:#dcfce7;color:#16a34a}
+.aging-pill.warn{background:#fef3c7;color:#d97706}
+.aging-pill.down{background:#fee2e2;color:#dc2626}
+.aging-bucket-name{font-size:9px;font-weight:600;color:var(--color-text-muted);letter-spacing:.3px}
+.aging-bucket-value{font-size:12px;font-weight:800;color:var(--color-text-strong);line-height:1.1}
+.aging-bucket-pct{font-size:9px;font-weight:700;color:var(--color-text-muted)}
+.aging-bar-bg{width:100%;height:5px;border-radius:999px;background:var(--color-surface-muted);overflow:hidden}
+.aging-bar-fill{height:100%;border-radius:999px;transition:width .3s ease}
+.aging-total{display:flex;justify-content:space-between;align-items:center;margin-top:12px;padding-top:10px;border-top:1px solid var(--color-border-subtle);font-size:11px;font-weight:600;color:var(--color-text-muted)}
+.aging-total-val{font-size:14px;font-weight:800;color:var(--color-text-strong)}
+
+/* ── Alert list ── */
+.alert-list{display:flex;flex-direction:column;gap:6px}
+.alert-row{display:flex;align-items:flex-start;gap:8px;padding:8px 10px;border-radius:10px;border:1px solid var(--color-border-subtle)}
+.alert-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0;margin-top:4px}
+.alert-body{flex:1;min-width:0}
+.alert-title{font-size:11px;font-weight:700;color:var(--color-text-strong);line-height:1.2}
+.alert-detail{font-size:9px;color:var(--color-text-muted);margin-top:1px;line-height:1.3}
+.alert-badge{font-size:9px;font-weight:700;padding:2px 7px;border-radius:999px;white-space:nowrap;background:var(--color-surface-muted);color:var(--color-text-muted);flex-shrink:0}
+
+/* ── Activity feed ── */
+.activity-list{display:flex;flex-direction:column;gap:0}
+.activity-row{display:flex;align-items:center;gap:8px;padding:8px 0;border-bottom:1px solid var(--color-border-subtle)}
+.activity-row:last-child{border-bottom:none}
+.activity-type-chip{width:24px;height:24px;border-radius:7px;display:grid;place-items:center;flex-shrink:0}
+.activity-type-chip.type-in{background:#dcfce7;color:#16a34a}
+.activity-type-chip.type-out{background:#fee2e2;color:#dc2626}
+.activity-body{flex:1;min-width:0}
+.activity-party{font-size:11px;font-weight:700;color:var(--color-text-strong);line-height:1.2;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.activity-meta{font-size:9px;color:var(--color-text-muted);margin-top:1px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.activity-right{text-align:right;flex-shrink:0}
+.activity-amount{font-size:12px;font-weight:800;line-height:1.1;letter-spacing:-.2px}
+.activity-amount.amt-in{color:#16a34a}
+.activity-amount.amt-out{color:#dc2626}
+.activity-status{display:flex;align-items:center;justify-content:flex-end;gap:4px;font-size:9px;font-weight:600;color:var(--color-text-muted);margin-top:2px}
+.activity-status-dot{width:5px;height:5px;border-radius:50%}
+.activity-status-dot.st-ok{background:#16a34a}
+.activity-status-dot.st-wait{background:#d97706}
+
+/* ── Company snapshot ── */
+.snapshot-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
+@media(min-width:640px){.snapshot-grid{grid-template-columns:repeat(4,minmax(0,1fr))}}
+.snapshot-chip{display:flex;align-items:center;gap:8px;padding:10px 12px;border-radius:10px;border:1px solid var(--color-border-subtle);background:var(--color-surface)}
+.snapshot-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0}
+.snapshot-value{font-size:16px;font-weight:800;color:var(--color-text-strong);line-height:1.1}
+.snapshot-label{font-size:9px;font-weight:700;color:var(--color-text-muted);letter-spacing:.4px;text-transform:uppercase;margin-top:1px}
+.quick-add-fab{width:48px;height:48px;border-radius:50%;border:0;cursor:pointer;display:grid;place-items:center;color:#fff;background:linear-gradient(135deg,var(--color-primary),var(--color-primary-hover));box-shadow:0 8px 20px color-mix(in srgb,var(--color-primary) 40%,transparent);transition:transform .15s ease}
+.quick-add-fab:hover{transform:scale(1.06)}
+.quick-add-menu{position:absolute;bottom:60px;right:0;width:240px;padding:0;overflow:hidden}
+.quick-add-header{font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.5px;color:var(--color-text-muted);padding:10px 14px 8px;border-bottom:1px solid var(--color-border-subtle)}
+.quick-add-list{padding:6px}
+.quick-add-item{display:block;width:100%;text-align:left;font-size:12px;font-weight:600;color:var(--color-text);padding:7px 10px;border-radius:8px;border:none;background:none;cursor:pointer;transition:background .1s}
+.quick-add-item:hover{background:var(--color-surface-muted)}
+
 /* ══ Modern layout: icon rail + module workspace ══ */
 .icon-rail{
   width:110px;
