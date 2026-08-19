@@ -84,7 +84,7 @@ import { PeriodClosingView } from './PeriodClosingView'
 import { AuditTrailView } from './AuditTrailView'
 import { JournalEntriesView } from './JournalEntriesView'
 import { useCoaStore, useJournalsStore, useCompanyStore, useIntercompanyStore } from './stores'
-import { FinancialOverview } from './financial-overview/FinancialOverview'
+import { DashboardOverview } from './DashboardOverview'
 
 import { NAVIGATION } from './navigation'
 import IconRail from './components/IconRail'
@@ -419,7 +419,7 @@ export default function App() {
     return <OnboardingWizard currentUser={currentUser} />;
   }
 
-  return <div className="app"><IconRail activePage={page} onNavigate={setPage} modules={activeEntity?.modules || []} currentUser={currentUser} onLogout={handleLogout} /><div className="main-col"><TopHeader currentUser={currentUser} entities={entities} activeEntityId={activeEntityId} onSelectEntity={setActiveEntityId} page={page} setPage={setPage} accounts={accounts} notify={notify} onLogout={handleLogout} theme={theme} onThemeChange={setTheme} /><main>{readOnly && <div style={{ display: 'flex', alignItems: 'center', gap: 10, background: '#fef3c7', border: '1px solid #f59e0b', color: '#92400e', borderRadius: 10, padding: '10px 14px', marginBottom: 16, fontSize: 12.5, fontWeight: 600 }}><ShieldAlert size={16} style={{ flexShrink: 0 }} /><span>{activeEntity?.name} is <b>Deactivated</b> — read-only mode. You can view data and download reports, but editing is disabled.</span><button onClick={() => setPage('Administration.Companies')} style={{ marginLeft: 'auto', background: '#fff7ed', border: '1px solid #f59e0b', borderRadius: 8, padding: '4px 10px', fontSize: 11, fontWeight: 700, color: '#92400e', cursor: 'pointer' }}>Manage Companies</button></div>}<div className="module-workspace">
+  return <div className="app"><IconRail activePage={page} onNavigate={setPage} modules={activeEntity?.modules || []} currentUser={currentUser} onLogout={handleLogout} /><div className="main-col"><TopHeader currentUser={currentUser} entities={entities} activeEntityId={activeEntityId} onSelectEntity={setActiveEntityId} page={page} setPage={setPage} accounts={accounts} notify={notify} onLogout={handleLogout} /><main>{readOnly && <div style={{ display: 'flex', alignItems: 'center', gap: 10, background: '#fef3c7', border: '1px solid #f59e0b', color: '#92400e', borderRadius: 10, padding: '10px 14px', marginBottom: 16, fontSize: 12.5, fontWeight: 600 }}><ShieldAlert size={16} style={{ flexShrink: 0 }} /><span>{activeEntity?.name} is <b>Deactivated</b> — read-only mode. You can view data and download reports, but editing is disabled.</span><button onClick={() => setPage('Administration.Companies')} style={{ marginLeft: 'auto', background: '#fff7ed', border: '1px solid #f59e0b', borderRadius: 8, padding: '4px 10px', fontSize: 11, fontWeight: 700, color: '#92400e', cursor: 'pointer' }}>Manage Companies</button></div>}<div className="module-workspace">
     <header className="module-head">
       <div className="module-title">
         <span className="module-icon">{(() => { const MIcon = activeGroup?.icon; return MIcon ? <MIcon size={20} strokeWidth={1.8} /> : '▦'; })()}</span>
@@ -441,7 +441,7 @@ export default function App() {
       })}
     </nav>
   </div>
-  {activeView === 'dashboard' && <FinancialOverview accounts={accounts} entries={entries} setPage={setPage} activeEntityId={activeEntityId} />}
+  {activeView === 'dashboard' && <DashboardOverview accounts={accounts} entries={entries} setPage={setPage} activeEntityId={activeEntityId} />}
   {activeView === 'module-summary' && <ModuleSummary moduleName={group} accounts={accounts} entries={entries} setPage={setPage} openCreateAccount={openCreate} />}
   {activeView === 'sales-summary' && <SalesSummaryView activeEntityId={activeEntityId} setPage={setPage} />}
   {activeView === 'procurement-summary' && <ProcurementSummaryView activeEntityId={activeEntityId} setPage={setPage} />}

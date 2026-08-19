@@ -15,12 +15,16 @@ export function getDisplayMode(theme: string): ModeId {
   return 'dark';
 }
 
-export function getThemeFamily(_theme: string): string {
+export function getThemeFamily(theme: string): string {
+  if (theme.startsWith('pi-')) return 'pi';
+  if (theme.startsWith('gp-')) return 'gp';
+  if (theme.startsWith('fn-')) return 'fn';
+  if (theme.startsWith('nc-')) return 'nc';
   return 'bp';
 }
 
-export function resolveThemeId(_family: string, mode: ModeId): string {
-  return `bp-${mode}`;
+export function resolveThemeId(family: string, mode: ModeId): string {
+  return `${family}-${mode}`;
 }
 
 export default function ThemeSwitcher({ theme, onSelect }: { theme: string; onSelect: (id: string) => void }) {

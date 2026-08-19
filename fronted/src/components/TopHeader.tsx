@@ -3,13 +3,12 @@ import type { ReactNode } from 'react';
 import {
   Search, Bell, Plus, ChevronDown, LogOut, Coins, X, FileText, Receipt,
   Building2, Users, Wallet, CalendarDays, Boxes, ClipboardList, Landmark,
-  Globe, BarChart3, Check, Palette,
+  Globe, BarChart3, Check,
 } from 'lucide-react';
 import { NAVIGATION } from '../navigation';
 import type { UserData } from '../Login';
 import { useSalesStore, useProcurementStore } from '../stores';
 import { getActiveCurrency } from '../lib/currency';
-import ThemeSwitcher, { getThemeFamily, getDisplayMode, resolveThemeId } from './ThemeSwitcher';
 
 const M = {
   border: 'var(--color-border)',
@@ -31,8 +30,6 @@ interface Props {
   accounts: any[];
   notify: (m: string) => void;
   onLogout: () => void;
-  theme: string;
-  onThemeChange: (id: string) => void;
 }
 
 type SearchHit = { label: string; sub: string; icon: ReactNode; action: () => void };
@@ -40,13 +37,12 @@ type SearchHit = { label: string; sub: string; icon: ReactNode; action: () => vo
 const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 
 export default function TopHeader(props: Props) {
-  const { currentUser, entities, activeEntityId, onSelectEntity, page, setPage, accounts, notify, onLogout, theme, onThemeChange } = props;
+  const { currentUser, entities, activeEntityId, onSelectEntity, page, setPage, accounts, notify, onLogout } = props;
 
   const [query, setQuery] = useState('');
   const [searchOpen, setSearchOpen] = useState(false);
   const [notifOpen, setNotifOpen] = useState(false);
   const [actionsOpen, setActionsOpen] = useState(false);
-  const [themeComboOpen, setThemeComboOpen] = useState(false);
   const [entityOpen, setEntityOpen] = useState(false);
   const [period, setPeriod] = useState<{ m: number; y: number }>(() => {
     try {
@@ -60,7 +56,6 @@ export default function TopHeader(props: Props) {
   const searchRef = useRef<HTMLDivElement>(null);
   const notifRef = useRef<HTMLDivElement>(null);
   const actionsRef = useRef<HTMLDivElement>(null);
-  const themeComboRef = useRef<HTMLDivElement>(null);
   const entityRef = useRef<HTMLDivElement>(null);
   const searchInputRef = useRef<HTMLInputElement>(null);
 
@@ -73,7 +68,6 @@ export default function TopHeader(props: Props) {
       if (searchRef.current && !searchRef.current.contains(e.target as Node)) setSearchOpen(false);
       if (notifRef.current && !notifRef.current.contains(e.target as Node)) setNotifOpen(false);
       if (actionsRef.current && !actionsRef.current.contains(e.target as Node)) setActionsOpen(false);
-      if (themeComboRef.current && !themeComboRef.current.contains(e.target as Node)) setThemeComboOpen(false);
       if (entityRef.current && !entityRef.current.contains(e.target as Node)) setEntityOpen(false);
     };
     document.addEventListener('mousedown', onDown);
@@ -286,60 +280,6 @@ export default function TopHeader(props: Props) {
           <select value={period.y} onChange={e => setPeriod(p => ({ ...p, y: Number(e.target.value) }))} style={{ border: '1px solid ' + M.border, borderRadius: 8, padding: '4px 6px', fontSize: 12, background: 'var(--color-surface)', color: M.text, cursor: 'pointer', outline: 'none' }}>
             {[new Date().getFullYear() - 1, new Date().getFullYear(), new Date().getFullYear() + 1].map(y => <option key={y} value={y}>{y}</option>)}
           </select>
-        </div>
-
-        {/* Theme */}
-        <div style={{ flexShrink: 0 }}>
-          <ThemeSwitcher theme={theme} onSelect={onThemeChange} />
-        </div>
-
-        {/* Theme Combination */}
-        <div ref={themeComboRef} style={{ position: 'relative', flexShrink: 0 }}>
-          <button onClick={() => setThemeComboOpen(o => !o)} title="Theme combination" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--color-surface-muted)', border: '1px solid var(--color-border)', borderRadius: 9, height: 30, width: 30, cursor: 'pointer', color: 'var(--color-text)' }}>
-            <Palette size={14} style={{ color: 'var(--color-primary)' }} />
-          </button>
-          {themeComboOpen && (
-            <div style={dropdownBase}>
-              <div style={{ padding: '8px 14px', fontSize: 10, fontWeight: 800, letterSpacing: 1, color: 'var(--color-text-muted)', textTransform: 'uppercase' }}>
-                Theme Combination
-              </div>
-              {[
-                { id: 'bp', name: 'Blue Purple', colors: ['#3b82f6', '#a855f7'] },
-              ].map(f => {
-                const active = getThemeFamily(theme) === f.id;
-                return (
-                  <button
-                    key={f.id}
-                    onClick={() => { onThemeChange(resolveThemeId(f.id, getDisplayMode(theme))); setThemeComboOpen(false); }}
-                    style={{
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: 11,
-                      width: '100%',
-                      padding: '9px 14px',
-                      border: 0,
-                      background: 'transparent',
-                      cursor: 'pointer',
-                      textAlign: 'left',
-                      fontSize: 13,
-                      color: 'var(--color-text)',
-                      borderBottom: '1px solid var(--color-border-subtle)',
-                    }}
-                    onMouseEnter={e => (e.currentTarget.style.background = 'var(--color-surface-muted)')}
-                    onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
-                  >
-                    <span style={{ display: 'flex', gap: 3, flexShrink: 0 }}>
-                      {f.colors.map((c, i) => (
-                        <span key={i} style={{ width: 14, height: 14, borderRadius: 99, background: c }} />
-                      ))}
-                    </span>
-                    <span style={{ flex: 1, fontWeight: active ? 700 : 600 }}>{f.name}</span>
-                    {active && <Check size={14} style={{ color: 'var(--color-primary)' }} />}
-                  </button>
-                );
-              })}
-            </div>
-          )}
         </div>
 
         {/* Quick actions */}
