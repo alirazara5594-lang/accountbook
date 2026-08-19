@@ -79,7 +79,6 @@ export function SalesSummaryView({ activeEntityId, setPage }: { activeEntityId?:
     { m: 'May', amt: totalInvoiced * 0.9 }, { m: 'Jun', amt: totalInvoiced },
   ];
 
-  const receiptsArr = sales.receipts;
   const billsArr = proc.bills as any[];
   const bankTxArr = banking.transactions;
   const bankAccArr = banking.bankAccounts;
