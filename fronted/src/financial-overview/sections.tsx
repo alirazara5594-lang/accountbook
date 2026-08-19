@@ -587,8 +587,8 @@ export function ExecutiveRatioMatrix({ data }: { data: FinancialData }) {
     >
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         {ratioGroups.map((group) => (
-          <div key={group.group} className="p-3.5 rounded-xl border border-sidebar-accent bg-surface space-y-3">
-            <div className="flex items-center gap-2 pb-2 border-b border-sidebar-accent/40">
+          <div key={group.group} className="p-3.5 rounded-xl border border-border/80 bg-surface space-y-3">
+            <div className="flex items-center gap-2 pb-2 border-b border-border/50">
               <span className="p-1.5 rounded-lg" style={{ background: `${group.color}15`, color: group.color }}>
                 <group.icon className="w-4 h-4" />
               </span>

@@ -1,11 +1,13 @@
 import { useEffect, useState } from 'react';
 import {
-  Users, ShoppingCart, Landmark, Scale, Boxes, Wallet, TrendingUp,
+  Users, ShoppingCart, Landmark, Scale, Boxes, Wallet,
   TrendingDown, AlertTriangle, Receipt, FileText, ArrowUpRight, Package,
   Warehouse, Banknote, HandCoins, Building2, Layers, ClipboardList,
   CalendarCheck2, CreditCard, DollarSign,
-  Activity, Truck, BarChart3, ChevronRight, RefreshCw, CircleDollarSign,
+  Activity, Truck, BarChart3, RefreshCw, CircleDollarSign,
   UserCheck, CalendarDays, Briefcase,
+  ShieldCheck, Flame, CheckCircle2,
+  Clock,
 } from 'lucide-react';
 import {
   AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip,
@@ -22,6 +24,7 @@ import {
   usePayrollStore,
 } from './stores';
 import { money } from './lib/currency';
+import { agingBucket, AGING_BUCKETS } from './financial-overview/format';
 
 const num = (n: number) => new Intl.NumberFormat('en-US').format(n || 0);
 
@@ -39,6 +42,8 @@ export function SalesSummaryView({ activeEntityId, setPage }: { activeEntityId?:
   const sales = useSalesStore();
   const customersStore = useCustomersStore();
   const products = useProductsStore();
+  const banking = useBankingStore();
+  const proc = useProcurementStore();
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -47,6 +52,8 @@ export function SalesSummaryView({ activeEntityId, setPage }: { activeEntityId?:
       sales.fetchAllSales(activeEntityId),
       customersStore.fetchCustomers(activeEntityId),
       products.fetchProducts(activeEntityId),
+      banking.fetchAllBanking(activeEntityId),
+      proc.fetchAllProcurement(activeEntityId),
     ]).catch(() => {}).finally(() => setLoading(false));
   }, [activeEntityId]);
 
@@ -61,9 +68,9 @@ export function SalesSummaryView({ activeEntityId, setPage }: { activeEntityId?:
   const collectionRate = totalInvoiced > 0 ? ((collected / totalInvoiced) * 100).toFixed(1) : '0';
 
   const invByStatus = [
-    { name: 'Paid', value: invoices.filter(i => (i.amountDue ?? 0) <= 0).length, fill: C.emerald },
-    { name: 'Unpaid', value: openInvoices.length, fill: C.amber },
-    { name: 'Overdue', value: overdueCount, fill: C.rose },
+    { name: 'Paid', value: invoices.filter(i => (i.amountDue ?? 0) <= 0).length, color: 'success' },
+    { name: 'Unpaid', value: openInvoices.length, color: 'warning' },
+    { name: 'Overdue', value: overdueCount, color: 'danger' },
   ].filter(d => d.value > 0);
 
   const monthlySales = [
@@ -72,164 +79,539 @@ export function SalesSummaryView({ activeEntityId, setPage }: { activeEntityId?:
     { m: 'May', amt: totalInvoiced * 0.9 }, { m: 'Jun', amt: totalInvoiced },
   ];
 
+  const receiptsArr = sales.receipts;
+  const billsArr = proc.bills as any[];
+  const bankTxArr = banking.transactions;
+  const bankAccArr = banking.bankAccounts;
+  const cashAccArr = banking.cashAccounts;
+
+  const arAgingBuckets: Record<string, number> = {};
+  AGING_BUCKETS.forEach(b => { arAgingBuckets[b] = 0; });
+  openInvoices.forEach((i: any) => {
+    arAgingBuckets[agingBucket(i.dueDate)] += i.amountDue || 0;
+  });
+  const arAgingData = AGING_BUCKETS.map(b => ({ name: b, value: arAgingBuckets[b] }));
+  const arOverdueTotal = arAgingBuckets['1-30'] + arAgingBuckets['31-60'] + arAgingBuckets['61-90'] + arAgingBuckets['90+'];
+
+  const unpaidBills = billsArr.filter((b: any) => (b.amountDue ?? b.totalAmount ?? b.total ?? 0) > 0);
+  const apAgingBuckets: Record<string, number> = {};
+  AGING_BUCKETS.forEach(b => { apAgingBuckets[b] = 0; });
+  unpaidBills.forEach((b: any) => {
+    const due = b.amountDue ?? (b.status !== 'Paid' ? (b.totalAmount ?? b.total ?? 0) : 0);
+    apAgingBuckets[agingBucket(b.dueDate)] += due;
+  });
+  const apAgingData = AGING_BUCKETS.map(b => ({ name: b, value: apAgingBuckets[b] }));
+  const apOverdueTotal = apAgingBuckets['1-30'] + apAgingBuckets['31-60'] + apAgingBuckets['61-90'] + apAgingBuckets['90+'];
+
+  const bankTotal = bankAccArr.reduce((s: number, a: any) => s + (a.balance ?? a.openingBalance ?? 0), 0);
+  const cashTotal = cashAccArr.reduce((s: number, a: any) => s + (a.balance ?? a.openingBalance ?? 0), 0);
+  const cashBank = bankTotal + cashTotal;
+  const workingCapitalCalc = totalInvoiced - outstanding;
+
+  let totalAssetsCalc = 0; let totalLiabilitiesCalc = 0;
+  bankAccArr.forEach((a: any) => { totalAssetsCalc += a.balance ?? a.openingBalance ?? 0; });
+  cashAccArr.forEach((a: any) => { totalAssetsCalc += a.balance ?? a.openingBalance ?? 0; });
+  totalAssetsCalc += totalInvoiced + outstanding;
+  totalLiabilitiesCalc = outstanding + apAgingData.reduce((s, a) => s + a.value, 0);
+  const totalEquityCalc = totalInvoiced - outstanding - totalLiabilitiesCalc;
+  const equationBalanced = Math.abs(totalAssetsCalc - (totalLiabilitiesCalc + totalEquityCalc)) < 0.01;
+
+  let healthScore = 50;
+  if (equationBalanced) healthScore += 20;
+  if (totalInvoiced > 0 && outstanding / totalInvoiced < 0.3) healthScore += 10;
+  if (collectionRate !== '0') healthScore += 10;
+  if (overdueCount === 0) healthScore += 10;
+  healthScore = Math.min(100, Math.max(20, healthScore));
+
+  const monthlyBurn = Math.max(1, (totalInvoiced - outstanding) / 12);
+  const runwayMonths = cashBank > 0 ? Math.min(99, Number((cashBank / monthlyBurn).toFixed(1))) : 0;
+  const currentRatio = totalLiabilitiesCalc > 0 ? totalAssetsCalc / totalLiabilitiesCalc : 0;
+  const quickRatio = totalLiabilitiesCalc > 0 ? (totalAssetsCalc * 0.8) / totalLiabilitiesCalc : 0;
+  const netMargin = totalInvoiced > 0 ? ((totalInvoiced - outstanding) / totalInvoiced) * 100 : 0;
+  const debtToEquity = totalEquityCalc > 0 ? totalLiabilitiesCalc / totalEquityCalc : 0;
+  const avgDaysOutstanding = arOverdueTotal > 0 ? 45 : 15;
+  const unreconciledBankTx = bankTxArr.filter((t: any) => !t.reconciled).length;
+
+  const alerts: { id: string; title: string; detail: string; severity: 'critical' | 'warning' | 'info' | 'success'; page: string }[] = [];
+  if (overdueCount > 0) alerts.push({ id: 'ar-overdue', title: `${overdueCount} Overdue Receivables`, detail: `${money(overdueAmt)} past due`, severity: 'critical', page: 'Sales & Customers.Customer Aging' });
+  if (unpaidBills.length > 0) alerts.push({ id: 'ap-overdue', title: `${unpaidBills.length} Unpaid Vendor Bills`, detail: `${money(apOverdueTotal)} due to vendors`, severity: 'warning', page: 'Procurement.Payables Aging' });
+  if (bankTxArr.filter((t: any) => !t.reconciled).length > 0) alerts.push({ id: 'bank-recon', title: `${bankTxArr.filter((t: any) => !t.reconciled).length} Unreconciled Transactions`, detail: 'Run bank reconciliation', severity: 'info', page: 'Banking & Payments.Bank Reconciliation' });
+  if (alerts.length === 0) alerts.push({ id: 'clear', title: 'All Clear', detail: 'No critical issues', severity: 'success', page: '' });
+
   const kpis = [
-    { label: 'Invoiced', value: money(totalInvoiced), icon: Receipt, color: C.cyan, trend: `${invoices.length} total`, up: true },
-    { label: 'Collected', value: money(collected), icon: Banknote, color: C.emerald, trend: `${collectionRate}% rate`, up: true },
-    { label: 'Outstanding', value: money(outstanding), icon: HandCoins, color: C.amber, trend: overdueCount > 0 ? `${overdueCount} overdue` : 'Clear', up: overdueCount === 0 },
-    { label: 'Customers', value: num(activeCustomers), icon: Users, color: C.violet, trend: `${invoices.length} invoices`, up: true },
-    { label: 'Overdue Amt', value: money(overdueAmt), icon: AlertTriangle, color: C.rose, trend: overdueCount > 0 ? `${overdueCount} bills` : 'None', up: overdueCount === 0 },
-    { label: 'Products', value: num(products.products.length), icon: Package, color: C.blue, trend: 'Active catalog', up: true },
+    { label: 'Invoiced', value: money(totalInvoiced), icon: Receipt, color: 'info', trend: `${invoices.length} total`, up: true },
+    { label: 'Collected', value: money(collected), icon: Banknote, color: 'success', trend: `${collectionRate}% rate`, up: true },
+    { label: 'Outstanding', value: money(outstanding), icon: HandCoins, color: 'warning', trend: overdueCount > 0 ? `${overdueCount} overdue` : 'Clear', up: overdueCount === 0 },
+    { label: 'Customers', value: num(activeCustomers), icon: Users, color: 'primary', trend: `${invoices.length} invoices`, up: true },
+    { label: 'Overdue Amt', value: money(overdueAmt), icon: AlertTriangle, color: 'danger', trend: overdueCount > 0 ? `${overdueCount} bills` : 'None', up: overdueCount === 0 },
+    { label: 'Products', value: num(products.products.length), icon: Package, color: 'secondary', trend: 'Active catalog', up: true },
   ];
 
   return (
-    <div className="space-y-3 font-sans select-none" style={{ color: C.white, background: C.page }}>
+    <div className="container-fluid py-3">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="d-flex align-items-center justify-content-between mb-3">
         <div>
-          <h1 className="text-lg font-extrabold tracking-tight">Sales & Customers</h1>
-          <p className="text-[11px]" style={{ color: C.muted }}>Invoicing, collections, customer management & revenue analytics</p>
+          <h4 className="fw-bold mb-0">Sales & Customers</h4>
+          <small className="text-muted">Invoicing, collections, customer management & revenue analytics</small>
         </div>
-        {loading && <RefreshCw size={14} className="animate-spin" style={{ color: C.accent }} />}
+        {loading && (
+          <div className="spinner-border spinner-border-sm text-primary" role="status">
+            <span className="visually-hidden">Loading...</span>
+          </div>
+        )}
       </div>
 
-      {/* ═══ KPI CARDS — SINGLE ROW, COMPACT ═══ */}
-      <div className="grid grid-cols-3 sm:grid-cols-4 lg:grid-cols-6 gap-2">
+      {/* ═══ KPI CARDS — 2 ROWS × 3 ═══ */}
+      <div className="row g-2 mb-3">
         {kpis.map((k, i) => {
           const Ico = k.icon;
           return (
-            <div key={i} className="sales-kpi-card" style={{ borderColor: `var(--color-sidebar-accent)` }}>
-              <div className="flex items-center justify-between mb-1.5">
-                <span className="sales-kpi-label">{k.label}</span>
-                <span className="sales-kpi-chip" style={{ background: `${k.color}20`, color: k.color }}>
-                  <Ico size={12} />
-                </span>
+            <div className="col-4" key={i}>
+              <div className="card h-100 border-1 shadow-sm" style={{ borderColor: '#dee2e6' }}>
+                <div className="card-body p-2">
+                  <div className="d-flex align-items-center justify-content-between mb-1">
+                    <small className="text-muted fw-semibold text-uppercase" style={{ fontSize: '9px', letterSpacing: '.3px' }}>{k.label}</small>
+                    <span className={`badge bg-${k.color} bg-opacity-10 text-${k.color} rounded-2 p-1`}>
+                      <Ico size={12} />
+                    </span>
+                  </div>
+                  <h6 className="fw-extrabold mb-0" style={{ fontSize: '14px', letterSpacing: '-.3px' }}>{k.value}</h6>
+                  <small className={`fw-semibold ${k.up ? 'text-success' : 'text-danger'}`} style={{ fontSize: '9px' }}>
+                    {k.up ? '▲' : '▼'} {k.trend}
+                  </small>
+                </div>
               </div>
-              <p className="sales-kpi-value" style={{ color: C.white }}>{k.value}</p>
-              <span className="sales-kpi-trend" style={{ color: k.up ? C.emerald : C.rose }}>
-                {k.up ? <TrendingUp size={8} className="inline" /> : <TrendingDown size={8} className="inline" />} {k.trend}
-              </span>
             </div>
           );
         })}
       </div>
 
-      {/* ═══ CHARTS ROW ═══ */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-3">
-        {/* Sales Trend */}
-        <div className="lg:col-span-2 sales-card" style={{ borderColor: `var(--color-sidebar-accent)` }}>
-          <h3 className="sales-card-title">Sales Trend</h3>
-          <ResponsiveContainer width="100%" height={180}>
-            <AreaChart data={monthlySales} margin={{ top: 5, right: 5, left: -20, bottom: 0 }}>
-              <defs>
-                <linearGradient id="gSales" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="0%" stopColor={C.cyan} stopOpacity={0.3} />
-                  <stop offset="100%" stopColor={C.cyan} stopOpacity={0} />
-                </linearGradient>
-              </defs>
-              <CartesianGrid strokeDasharray="3 3" stroke={C.bdr} vertical={false} />
-              <XAxis dataKey="m" tick={{ fontSize: 9, fill: C.dim }} axisLine={false} tickLine={false} />
-              <YAxis tick={{ fontSize: 9, fill: C.dim }} axisLine={false} tickLine={false}
-                     tickFormatter={(v: any) => Number(v) >= 1000 ? `${(Number(v) / 1000).toFixed(0)}k` : v} />
-              <Tooltip contentStyle={{ background: C.card, border: `1px solid ${C.bdr}`, borderRadius: 8, fontSize: 11, color: C.white }}
-                       formatter={(v: any) => [money(Number(v)), 'Sales']} />
-              <Area type="monotone" dataKey="amt" stroke={C.cyan} strokeWidth={2} fill="url(#gSales)" name="Sales" />
-            </AreaChart>
-          </ResponsiveContainer>
-        </div>
-
-        {/* Invoice Status Donut */}
-        <div className="sales-card" style={{ borderColor: `var(--color-sidebar-accent)` }}>
-          <h3 className="sales-card-title">Invoice Status</h3>
-          {invByStatus.length === 0 ? (
-            <div className="flex items-center justify-center h-[160px] text-xs" style={{ color: C.dim }}>No invoices</div>
-          ) : (
-            <div className="flex items-center gap-3">
-              <ResponsiveContainer width={110} height={150}>
-                <PieChart>
-                  <Pie data={invByStatus} cx="50%" cy="50%" innerRadius={30} outerRadius={50} dataKey="value" strokeWidth={0}>
-                    {invByStatus.map((d, i) => <Cell key={i} fill={d.fill} />)}
-                  </Pie>
-                </PieChart>
+      {/* ═══ SALES TREND + INVOICE STATUS ═══ */}
+      <div className="row g-3 mb-3">
+        <div className="col-lg-8">
+          <div className="card h-100 border-1 shadow-sm" style={{ borderColor: '#dee2e6' }}>
+            <div className="card-body p-3">
+              <h6 className="card-title fw-bold mb-3" style={{ fontSize: '13px' }}>Sales Trend</h6>
+              <ResponsiveContainer width="100%" height={200}>
+                <AreaChart data={monthlySales} margin={{ top: 5, right: 5, left: -20, bottom: 0 }}>
+                  <defs>
+                    <linearGradient id="gSalesBoot" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="0%" stopColor="#0d6efd" stopOpacity={0.3} />
+                      <stop offset="100%" stopColor="#0d6efd" stopOpacity={0} />
+                    </linearGradient>
+                  </defs>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#e9ecef" vertical={false} />
+                  <XAxis dataKey="m" tick={{ fontSize: 9, fill: '#6c757d' }} axisLine={false} tickLine={false} />
+                  <YAxis tick={{ fontSize: 9, fill: '#6c757d' }} axisLine={false} tickLine={false}
+                         tickFormatter={(v: any) => Number(v) >= 1000 ? `${(Number(v) / 1000).toFixed(0)}k` : v} />
+                  <Tooltip contentStyle={{ background: '#fff', border: '1px solid #dee2e6', borderRadius: 8, fontSize: 11 }}
+                           formatter={(v: any) => [money(Number(v)), 'Sales']} />
+                  <Area type="monotone" dataKey="amt" stroke="#0d6efd" strokeWidth={2} fill="url(#gSalesBoot)" name="Sales" />
+                </AreaChart>
               </ResponsiveContainer>
-              <div className="space-y-2">
-                {invByStatus.map(d => (
-                  <div key={d.name} className="flex items-center gap-2 text-[10px]">
-                    <span className="w-2 h-2 rounded-full" style={{ background: d.fill }} />
-                    <span style={{ color: C.muted }}>{d.name}</span>
-                    <span className="font-bold" style={{ color: C.white }}>{d.value}</span>
-                  </div>
-                ))}
-                <div className="pt-1.5 border-t" style={{ borderColor: C.bdr }}>
-                  <span className="text-[9px] font-bold" style={{ color: C.muted }}>Collection Rate</span>
-                  <p className="text-sm font-extrabold" style={{ color: C.emerald }}>{collectionRate}%</p>
-                </div>
-              </div>
             </div>
-          )}
+          </div>
+        </div>
+        <div className="col-lg-4">
+          <div className="card h-100 border-1 shadow-sm" style={{ borderColor: '#dee2e6' }}>
+            <div className="card-body p-3">
+              <h6 className="card-title fw-bold mb-3" style={{ fontSize: '13px' }}>Invoice Status</h6>
+              {invByStatus.length === 0 ? (
+                <div className="d-flex align-items-center justify-content-center" style={{ height: 180 }}>
+                  <span className="text-muted small">No invoices</span>
+                </div>
+              ) : (
+                <div className="d-flex align-items-center gap-3">
+                  <ResponsiveContainer width={120} height={160}>
+                    <PieChart>
+                      <Pie data={invByStatus} cx="50%" cy="50%" innerRadius={32} outerRadius={55} dataKey="value" strokeWidth={0}>
+                        {invByStatus.map((d, idx) => {
+                          const fillMap: Record<string, string> = { success: '#198754', warning: '#ffc107', danger: '#dc3545', info: '#0dcaf0', primary: '#0d6efd', secondary: '#6c757d' };
+                          return <Cell key={idx} fill={fillMap[d.color] || '#6c757d'} />;
+                        })}
+                      </Pie>
+                    </PieChart>
+                  </ResponsiveContainer>
+                  <div className="d-flex flex-column gap-2">
+                    {invByStatus.map(d => (
+                      <div key={d.name} className="d-flex align-items-center gap-2">
+                        <span className={`badge bg-${d.color}`} style={{ width: 8, height: 8, borderRadius: '50%', padding: 0 }} />
+                        <small className="text-muted">{d.name}</small>
+                        <strong className="ms-auto">{d.value}</strong>
+                      </div>
+                    ))}
+                    <hr className="my-1" />
+                    <div>
+                      <small className="text-muted fw-bold">Collection Rate</small>
+                      <h5 className="fw-bold text-success mb-0">{collectionRate}%</h5>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
         </div>
       </div>
 
-      {/* ═══ RECENT INVOICES + QUICK LINKS ═══ */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-3">
-        {/* Recent Invoices */}
-        <div className="lg:col-span-2 sales-card" style={{ borderColor: `var(--color-sidebar-accent)` }}>
-          <div className="flex items-center justify-between mb-3">
-            <h3 className="sales-card-title">Recent Invoices</h3>
-            <button onClick={() => setPage?.('Sales & Customers.Sales Workspace')}
-                    className="sales-link-btn">View All</button>
-          </div>
-          <div className="space-y-1.5 max-h-52 overflow-auto">
-            {invoices.slice(0, 5).map(i => {
-              const overdue = (i.amountDue ?? 0) > 0 && new Date(i.dueDate).getTime() < Date.now();
-              const status = (i.amountDue ?? 0) <= 0 ? 'Paid' : overdue ? 'Overdue' : 'Unpaid';
-              const statusColor = status === 'Paid' ? C.emerald : status === 'Overdue' ? C.rose : C.amber;
-              return (
-                <div key={i.id} className="sales-row" style={{ borderColor: `var(--color-sidebar-accent)` }}>
-                  <div className="w-7 h-7 rounded-full flex items-center justify-center shrink-0"
-                       style={{ background: `${statusColor}22`, color: statusColor }}>
-                    {overdue ? <AlertTriangle size={12} /> : <Receipt size={12} />}
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-[11px] font-mono font-bold truncate" style={{ color: C.white }}>{i.invoiceNumber}</p>
-                    <p className="text-[10px] truncate" style={{ color: C.dim }}>{i.customerName || '—'}</p>
-                  </div>
-                  <div className="text-right shrink-0">
-                    <p className="text-[11px] font-bold" style={{ color: C.white }}>{money(i.totalAmount)}</p>
-                    <span className="text-[9px] font-bold px-1.5 py-0.5 rounded"
-                          style={{ color: statusColor, background: `${statusColor}1a` }}>
-                      {status}
-                    </span>
-                  </div>
+      {/* ═══ HEALTH INDEX + WORKING CAPITAL + AUDIT CONTROLS ═══ */}
+      <div className="row g-2 mb-3">
+        {/* Financial Health Index */}
+        <div className="col-lg-4">
+          <div className="card border-1 shadow-sm" style={{ borderColor: '#dee2e6' }}>
+            <div className="card-body p-2.5">
+              <div className="d-flex align-items-center justify-content-between mb-1.5">
+                <div className="d-flex align-items-center gap-1.5">
+                  <ShieldCheck size={13} className="text-success" />
+                  <small className="text-muted fw-bold text-uppercase" style={{ fontSize: '9px', letterSpacing: '.3px' }}>Financial Health</small>
                 </div>
-              );
-            })}
+                <span className={`badge ${healthScore >= 80 ? 'bg-success' : healthScore >= 60 ? 'bg-primary' : 'bg-warning'} bg-opacity-10 text-${healthScore >= 80 ? 'success' : healthScore >= 60 ? 'primary' : 'warning'}`} style={{ fontSize: '8px' }}>
+                  {healthScore >= 80 ? 'Optimal' : healthScore >= 60 ? 'Healthy' : 'Attention'}
+                </span>
+              </div>
+              <div className="d-flex align-items-center justify-content-between">
+                <div>
+                  <h5 className="fw-extrabold mb-0" style={{ fontSize: '18px' }}>{healthScore}<small className="text-muted fw-normal" style={{ fontSize: '11px' }}>/100</small></h5>
+                  <small className="text-muted" style={{ fontSize: '9px' }}>
+                    {equationBalanced ? 'Ledger Balanced' : 'Check Ledger'} · {overdueCount === 0 ? 'No Overdue' : `${overdueCount} Overdue`}
+                  </small>
+                </div>
+                <div className="position-relative" style={{ width: 44, height: 44 }}>
+                  <svg viewBox="0 0 36 36" style={{ width: '100%', height: '100%', transform: 'rotate(-90deg)' }}>
+                    <path d="M18 2.0845a15.9155 15.9155 0 0 1 0 31.831 15.9155 15.9155 0 0 1 0-31.831" fill="none" stroke="#e9ecef" strokeWidth="3" />
+                    <path d="M18 2.0845a15.9155 15.9155 0 0 1 0 31.831 15.9155 15.9155 0 0 1 0-31.831" fill="none" stroke={healthScore >= 60 ? '#198754' : '#ffc107'} strokeWidth="3" strokeDasharray={`${healthScore}, 100`} />
+                  </svg>
+                  <div className="position-absolute top-50 start-50 translate-middle fw-bold" style={{ fontSize: '10px' }}>{healthScore}%</div>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
 
-        {/* Quick Links */}
-        <div className="sales-card" style={{ borderColor: `var(--color-sidebar-accent)` }}>
-          <h3 className="sales-card-title">Quick Links</h3>
-          <div className="space-y-1.5">
-            {[
-              { label: 'Customers', page: 'Sales & Customers.Customers', icon: Users, color: C.cyan },
-              { label: 'Sales Workspace', page: 'Sales & Customers.Sales Workspace', icon: Receipt, color: C.emerald },
-              { label: 'Estimates & Quotes', page: 'Sales & Customers.Estimates & Quotes', icon: FileText, color: C.amber },
-              { label: 'Sales Orders', page: 'Sales & Customers.Sales Orders', icon: ClipboardList, color: C.violet },
-              { label: 'Customer Payments', page: 'Sales & Customers.Customer Payments', icon: DollarSign, color: C.blue },
-              { label: 'Sales Reports', page: 'Sales & Customers.Sales Reports', icon: BarChart3, color: C.pink },
-            ].map(s => {
-              const Ico = s.icon;
-              return (
-                <button key={s.page} onClick={() => setPage?.(s.page)}
-                        className="w-full flex items-center gap-3 py-2 px-3 rounded-lg hover:opacity-80 transition-colors"
-                        style={{ background: C.inner, border: `1px solid var(--color-sidebar-accent)` }}>
-                  <div className="w-7 h-7 rounded-lg flex items-center justify-center shrink-0"
-                       style={{ background: `${s.color}22`, color: s.color }}><Ico size={14} /></div>
-                  <span className="text-[11px] font-medium flex-1 text-left" style={{ color: C.white }}>{s.label}</span>
-                  <ChevronRight size={12} style={{ color: C.dim }} />
-                </button>
-              );
-            })}
+        {/* Working Capital & Runway */}
+        <div className="col-lg-4">
+          <div className="card border-1 shadow-sm" style={{ borderColor: '#dee2e6' }}>
+            <div className="card-body p-2.5">
+              <div className="d-flex align-items-center justify-content-between mb-1.5">
+                <div className="d-flex align-items-center gap-1.5">
+                  <Flame size={13} className="text-warning" />
+                  <small className="text-muted fw-bold text-uppercase" style={{ fontSize: '9px', letterSpacing: '.3px' }}>Working Capital</small>
+                </div>
+                <span className="badge bg-info bg-opacity-10 text-info" style={{ fontSize: '8px' }}>
+                  {runwayMonths > 0 ? `${runwayMonths} Mo.` : 'Neutral'}
+                </span>
+              </div>
+              <h5 className="fw-extrabold mb-0.5" style={{ fontSize: '18px' }}>{money(workingCapitalCalc)}</h5>
+              <small className="text-muted d-block" style={{ fontSize: '9px' }}>
+                Cash on hand: {money(cashBank)} · ~{runwayMonths}mo runway
+              </small>
+            </div>
+          </div>
+        </div>
+
+        {/* Audit & Closing Controls */}
+        <div className="col-lg-4">
+          <div className="card border-1 shadow-sm" style={{ borderColor: '#dee2e6' }}>
+            <div className="card-body p-2.5">
+              <div className="d-flex align-items-center justify-content-between mb-1.5">
+                <div className="d-flex align-items-center gap-1.5">
+                  <CheckCircle2 size={13} className="text-violet" />
+                  <small className="text-muted fw-bold text-uppercase" style={{ fontSize: '9px', letterSpacing: '.3px' }}>Audit Controls</small>
+                </div>
+                <span className={`badge ${unreconciledBankTx === 0 ? 'bg-success' : 'bg-warning'} bg-opacity-10 text-${unreconciledBankTx === 0 ? 'success' : 'warning'}`} style={{ fontSize: '8px' }}>
+                  {unreconciledBankTx === 0 ? 'Clean' : 'Pending'}
+                </span>
+              </div>
+              <div className="d-flex flex-column gap-1">
+                {[
+                  { label: 'Unreconciled Bank Tx', value: unreconciledBankTx, ok: unreconciledBankTx === 0 },
+                  { label: 'Open Invoices', value: openInvoices.length, ok: openInvoices.length === 0 },
+                  { label: 'Unpaid Bills', value: unpaidBills.length, ok: unpaidBills.length === 0 },
+                ].map(c => (
+                  <div key={c.label} className="d-flex align-items-center justify-content-between">
+                    <small className="text-muted" style={{ fontSize: '9px' }}>{c.label}</small>
+                    <span className={`fw-bold ${c.ok ? 'text-success' : 'text-warning'}`} style={{ fontSize: '11px' }}>{c.value}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* ═══ RISK ALERTS + AGING SUMMARY ═══ */}
+      <div className="row g-3 mb-3">
+        {/* Risk Alerts */}
+        <div className="col-lg-6">
+          <div className="card h-100 border-1 shadow-sm" style={{ borderColor: '#dee2e6' }}>
+            <div className="card-header bg-transparent d-flex align-items-center justify-content-between border-0 pb-0">
+              <h6 className="fw-bold mb-0" style={{ fontSize: '13px' }}>
+                <AlertTriangle size={13} className="me-1 text-warning" />
+                Risk & Alert Indicators
+              </h6>
+              <span className={`badge ${alerts.some(a => a.severity === 'critical') ? 'bg-danger' : alerts.some(a => a.severity === 'warning') ? 'bg-warning' : 'bg-success'}`} style={{ fontSize: '9px' }}>
+                {alerts.length} Flagged
+              </span>
+            </div>
+            <div className="card-body p-2 pt-3">
+              <div className="d-flex flex-column gap-2">
+                {alerts.map(a => {
+                  const sevMap: Record<string, { dot: string; bg: string; badge: string }> = {
+                    critical: { dot: '#dc2626', bg: '#fef2f2', badge: 'bg-danger' },
+                    warning: { dot: '#f59e0b', bg: '#fffbeb', badge: 'bg-warning' },
+                    info: { dot: '#3b82f6', bg: '#eff6ff', badge: 'bg-info' },
+                    success: { dot: '#10b981', bg: '#ecfdf5', badge: 'bg-success' },
+                  };
+                  const s = sevMap[a.severity] || sevMap.info;
+                  return (
+                    <div key={a.id} className="d-flex align-items-start gap-2 p-2 rounded-2" style={{ background: s.bg, border: '1px solid #e2e8f0' }}>
+                      <span style={{ width: 7, height: 7, borderRadius: '50%', background: s.dot, marginTop: 4, flexShrink: 0 }} />
+                      <div className="flex-grow-1 min-w-0">
+                        <p className="fw-bold mb-0" style={{ fontSize: '11px' }}>{a.title}</p>
+                        <small className="text-muted" style={{ fontSize: '10px' }}>{a.detail}</small>
+                      </div>
+                      <span className={`badge ${s.badge}`} style={{ fontSize: '9px' }}>{a.severity}</span>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Aging Summary */}
+        <div className="col-lg-6">
+          <div className="card h-100 border-1 shadow-sm" style={{ borderColor: '#dee2e6' }}>
+            <div className="card-header bg-transparent d-flex align-items-center justify-content-between border-0 pb-0">
+              <h6 className="fw-bold mb-0" style={{ fontSize: '13px' }}>
+                <Clock size={13} className="me-1 text-primary" />
+                Aging Summary
+              </h6>
+            </div>
+            <div className="card-body p-2 pt-3">
+              <div className="row g-3">
+                {/* AR Aging */}
+                <div className="col-6">
+                  <small className="fw-bold text-muted d-block mb-2" style={{ fontSize: '10px' }}>RECEIVABLES</small>
+                  {arAgingData.map((bucket, i) => {
+                    const totalAr = arAgingData.reduce((s, a) => s + a.value, 0) || 1;
+                    const pct = (bucket.value / totalAr) * 100;
+                    const colors = ['#10b981', '#14b8a6', '#f59e0b', '#ef4444', '#991b1b'];
+                    return (
+                      <div key={bucket.name} className="mb-1.5">
+                        <div className="d-flex justify-content-between">
+                          <small className="text-muted" style={{ fontSize: '9px' }}>{bucket.name}</small>
+                          <small className="fw-bold" style={{ fontSize: '9px' }}>{pct.toFixed(0)}%</small>
+                        </div>
+                        <div className="progress" style={{ height: 4 }}>
+                          <div className="progress-bar" style={{ width: `${Math.min(100, pct)}%`, background: colors[i] }} />
+                        </div>
+                      </div>
+                    );
+                  })}
+                  {arOverdueTotal > 0 && (
+                    <small className="text-danger fw-bold d-block mt-1" style={{ fontSize: '9px' }}>
+                      {money(arOverdueTotal)} overdue
+                    </small>
+                  )}
+                </div>
+                {/* AP Aging */}
+                <div className="col-6">
+                  <small className="fw-bold text-muted d-block mb-2" style={{ fontSize: '10px' }}>PAYABLES</small>
+                  {apAgingData.map((bucket, i) => {
+                    const totalAp = apAgingData.reduce((s, a) => s + a.value, 0) || 1;
+                    const pct = (bucket.value / totalAp) * 100;
+                    const colors = ['#10b981', '#14b8a6', '#f59e0b', '#ef4444', '#991b1b'];
+                    return (
+                      <div key={bucket.name} className="mb-1.5">
+                        <div className="d-flex justify-content-between">
+                          <small className="text-muted" style={{ fontSize: '9px' }}>{bucket.name}</small>
+                          <small className="fw-bold" style={{ fontSize: '9px' }}>{pct.toFixed(0)}%</small>
+                        </div>
+                        <div className="progress" style={{ height: 4 }}>
+                          <div className="progress-bar" style={{ width: `${Math.min(100, pct)}%`, background: colors[i] }} />
+                        </div>
+                      </div>
+                    );
+                  })}
+                  {apOverdueTotal > 0 && (
+                    <small className="text-danger fw-bold d-block mt-1" style={{ fontSize: '9px' }}>
+                      {money(apOverdueTotal)} overdue
+                    </small>
+                  )}
+                </div>
+              </div>
+              <div className="d-flex justify-content-between mt-2 pt-2 border-top">
+                <small className="text-muted fw-bold" style={{ fontSize: '10px' }}>Total AR: {money(outstanding)}</small>
+                <small className="text-muted fw-bold" style={{ fontSize: '10px' }}>Total AP: {money(apAgingData.reduce((s, a) => s + a.value, 0))}</small>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* ═══ IMPORTANT RATIOS ═══ */}
+      <div className="row g-3 mb-3">
+        <div className="col-12">
+          <div className="card border-1 shadow-sm" style={{ borderColor: '#dee2e6' }}>
+            <div className="card-header bg-transparent border-0 pb-0">
+              <h6 className="fw-bold mb-0" style={{ fontSize: '13px' }}>
+                <BarChart3 size={13} className="me-1 text-primary" />
+                Important Financial Ratios
+              </h6>
+            </div>
+            <div className="card-body p-3">
+              <div className="row g-3">
+                {[
+                  { group: 'Liquidity & Solvency', color: '#0d6efd', items: [
+                    { label: 'Current Ratio', value: `${currentRatio.toFixed(2)}x`, target: '> 1.5x', ok: currentRatio >= 1.5 },
+                    { label: 'Quick Ratio', value: `${quickRatio.toFixed(2)}x`, target: '> 1.0x', ok: quickRatio >= 1.0 },
+                    { label: 'Debt-to-Equity', value: debtToEquity.toFixed(2), target: '< 1.5', ok: debtToEquity < 1.5 },
+                    { label: 'Equity Ratio', value: `${totalAssetsCalc > 0 ? ((totalEquityCalc / totalAssetsCalc) * 100).toFixed(1) : 0}%`, target: '> 40%', ok: totalAssetsCalc > 0 && (totalEquityCalc / totalAssetsCalc) * 100 >= 40 },
+                  ]},
+                  { group: 'Profitability', color: '#198754', items: [
+                    { label: 'Net Margin', value: `${netMargin.toFixed(1)}%`, target: '> 10%', ok: netMargin >= 10 },
+                    { label: 'Collection Rate', value: `${collectionRate}%`, target: '> 80%', ok: parseFloat(collectionRate) >= 80 },
+                    { label: 'ROE', value: `${totalEquityCalc > 0 ? ((totalInvoiced - outstanding) / totalEquityCalc * 100).toFixed(1) : 0}%`, target: '> 15%', ok: false },
+                    { label: 'Gross Margin', value: `${totalInvoiced > 0 ? ((totalInvoiced - outstanding) / totalInvoiced * 100).toFixed(1) : 0}%`, target: '> 30%', ok: totalInvoiced > 0 && (totalInvoiced - outstanding) / totalInvoiced * 100 >= 30 },
+                  ]},
+                  { group: 'Efficiency', color: '#6f42c1', items: [
+                    { label: 'DSO', value: `${avgDaysOutstanding}d`, target: '< 45d', ok: avgDaysOutstanding <= 45 },
+                    { label: 'DPO', value: '30d', target: '30-60d', ok: true },
+                    { label: 'CCC', value: `${Math.max(0, avgDaysOutstanding - 30 + 15)}d`, target: '< 40d', ok: Math.max(0, avgDaysOutstanding - 30 + 15) < 45 },
+                    { label: 'WC Coverage', value: `${totalInvoiced > 0 ? (workingCapitalCalc / totalInvoiced * 100).toFixed(1) : 0}%`, target: '> 20%', ok: totalInvoiced > 0 && workingCapitalCalc / totalInvoiced * 100 >= 20 },
+                  ]},
+                ].map(group => (
+                  <div className="col-lg-4" key={group.group}>
+                    <div className="p-3 rounded-2 border" style={{ borderColor: '#e2e8f0' }}>
+                      <div className="d-flex align-items-center gap-2 mb-2 pb-2 border-bottom" style={{ borderColor: '#e9ecef' }}>
+                        <span className="d-inline-flex align-items-center justify-content-center rounded" style={{ width: 24, height: 24, background: `${group.color}15`, color: group.color }}>
+                          <BarChart3 size={12} />
+                        </span>
+                        <small className="fw-bold text-uppercase" style={{ fontSize: '10px', letterSpacing: '.3px' }}>{group.group}</small>
+                      </div>
+                      <div className="d-flex flex-column gap-2">
+                        {group.items.map(item => (
+                          <div key={item.label} className="d-flex align-items-center justify-content-between">
+                            <div>
+                              <small className="fw-semibold d-block" style={{ fontSize: '11px' }}>{item.label}</small>
+                              <small className="text-muted" style={{ fontSize: '9px' }}>Target: {item.target}</small>
+                            </div>
+                            <div className="text-end">
+                              <small className={`fw-bold d-block ${item.ok ? 'text-success' : 'text-warning'}`} style={{ fontSize: '12px' }}>{item.value}</small>
+                              <span className={`badge ${item.ok ? 'bg-success' : 'bg-warning'} bg-opacity-10 text-${item.ok ? 'success' : 'warning'}`} style={{ fontSize: '8px' }}>
+                                {item.ok ? 'Good' : 'Watch'}
+                              </span>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* ═══ RECENT INVOICES + TOP CUSTOMERS ═══ */}
+      <div className="row g-3">
+        {/* Recent Invoices */}
+        <div className="col-lg-7">
+          <div className="card h-100 border-1 shadow-sm" style={{ borderColor: '#dee2e6' }}>
+            <div className="card-header bg-transparent d-flex align-items-center justify-content-between border-0 pb-0">
+              <h6 className="fw-bold mb-0" style={{ fontSize: '13px' }}>Recent Invoices</h6>
+              <button onClick={() => setPage?.('Sales & Customers.Sales Workspace')}
+                      className="btn btn-sm btn-outline-primary border-0 fw-semibold" style={{ fontSize: '10px' }}>
+                View All →
+              </button>
+            </div>
+            <div className="card-body p-2 pt-3" style={{ maxHeight: 280, overflowY: 'auto' }}>
+              {invoices.slice(0, 6).map(i => {
+                const overdue = (i.amountDue ?? 0) > 0 && new Date(i.dueDate).getTime() < Date.now();
+                const status = (i.amountDue ?? 0) <= 0 ? 'Paid' : overdue ? 'Overdue' : 'Unpaid';
+                const bsColor = status === 'Paid' ? 'success' : status === 'Overdue' ? 'danger' : 'warning';
+                return (
+                  <div key={i.id} className="d-flex align-items-center gap-3 py-2 px-2 rounded-2 mb-1"
+                       style={{ background: '#f8f9fa', border: '1px solid #dee2e6' }}>
+                    <div className={`d-flex align-items-center justify-content-center rounded-circle bg-${bsColor} bg-opacity-10 text-${bsColor}`}
+                         style={{ width: 32, height: 32, flexShrink: 0 }}>
+                      {overdue ? <AlertTriangle size={14} /> : <Receipt size={14} />}
+                    </div>
+                    <div className="flex-grow-1 min-w-0">
+                      <p className="mb-0 fw-bold" style={{ fontSize: '11px', fontFamily: 'monospace' }}>{i.invoiceNumber}</p>
+                      <small className="text-muted">{i.customerName || '—'}</small>
+                    </div>
+                    <div className="text-end" style={{ flexShrink: 0 }}>
+                      <p className="mb-0 fw-bold" style={{ fontSize: '11px' }}>{money(i.totalAmount)}</p>
+                      <span className={`badge bg-${bsColor} bg-opacity-10 text-${bsColor}`} style={{ fontSize: '9px' }}>{status}</span>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        </div>
+
+        {/* Top Customers by Revenue */}
+        <div className="col-lg-5">
+          <div className="card h-100 border-1 shadow-sm" style={{ borderColor: '#dee2e6' }}>
+            <div className="card-header bg-transparent d-flex align-items-center justify-content-between border-0 pb-0">
+              <h6 className="fw-bold mb-0" style={{ fontSize: '13px' }}>Top Customers</h6>
+              <button onClick={() => setPage?.('Sales & Customers.Customers')}
+                      className="btn btn-sm btn-outline-primary border-0 fw-semibold" style={{ fontSize: '10px' }}>
+                View All →
+              </button>
+            </div>
+            <div className="card-body p-2 pt-3">
+              {(() => {
+                const custMap = new Map<string, { name: string; total: number; count: number }>();
+                invoices.forEach(i => {
+                  const name = i.customerName || 'Unknown';
+                  const existing = custMap.get(name) || { name, total: 0, count: 0 };
+                  existing.total += i.totalAmount || 0;
+                  existing.count += 1;
+                  custMap.set(name, existing);
+                });
+                const topCusts = Array.from(custMap.values())
+                  .sort((a, b) => b.total - a.total)
+                  .slice(0, 5);
+                const maxTotal = topCusts.length ? topCusts[0].total : 1;
+                const colors = ['info', 'success', 'warning', 'primary', 'danger'];
+
+                if (topCusts.length === 0) {
+                  return <div className="text-center text-muted py-4" style={{ fontSize: '11px' }}>No customer data</div>;
+                }
+
+                return (
+                  <div className="d-flex flex-column gap-2">
+                    {topCusts.map((c, idx) => {
+                      const pct = ((c.total / maxTotal) * 100).toFixed(0);
+                      return (
+                        <div key={c.name}>
+                          <div className="d-flex align-items-center justify-content-between mb-1">
+                            <div className="d-flex align-items-center gap-2">
+                              <span className={`badge bg-${colors[idx]} rounded-pill`} style={{ fontSize: '9px', width: 20, height: 20, padding: 0 }}>
+                                {idx + 1}
+                              </span>
+                              <small className="fw-semibold" style={{ fontSize: '11px' }}>{c.name}</small>
+                            </div>
+                            <div className="text-end">
+                              <strong style={{ fontSize: '11px' }}>{money(c.total)}</strong>
+                              <small className="text-muted ms-1" style={{ fontSize: '9px' }}>({c.count} inv)</small>
+                            </div>
+                          </div>
+                          <div className="progress" style={{ height: 4 }}>
+                            <div className={`progress-bar bg-${colors[idx]}`} style={{ width: `${pct}%` }} />
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                );
+              })()}
+            </div>
           </div>
         </div>
       </div>
