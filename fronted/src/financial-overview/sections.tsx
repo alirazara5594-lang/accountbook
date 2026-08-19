@@ -24,15 +24,13 @@ import {
   Sparkles,
   FileText,
   ChevronRight,
+  ArrowRight,
 } from 'lucide-react';
 import {
   AreaChart,
   Area,
   BarChart,
   Bar,
-  PieChart as RePieChart,
-  Pie,
-  Cell,
   XAxis,
   YAxis,
   CartesianGrid,
@@ -278,7 +276,8 @@ export function ExecutiveHealthBar({ data, currency }: { data: FinancialData; cu
 
 export function RevenueExpensesTrendChart({ data, currency }: { data: FinancialData; currency: CurrencyCode }) {
   const [viewMode, setViewMode] = useState<'area' | 'bar'>('area');
-  const series = data.series.slice(-6);
+  const [range, setRange] = useState<2 | 3 | 4 | 5 | 6>(6);
+  const series = data.series.slice(-range);
 
   const totalRev = series.reduce((s, x) => s + x.revenue, 0);
   const totalExp = series.reduce((s, x) => s + x.expense, 0);
@@ -289,35 +288,52 @@ export function RevenueExpensesTrendChart({ data, currency }: { data: FinancialD
     <SectionCard
       icon={TrendingUp}
       title="Revenue, Expenses & Profit Trend"
-      subtitle="6-Month trajectory and operating performance"
+      subtitle={`${range}-Month trajectory and operating performance`}
       actions={
-        <div className="flex items-center gap-1 bg-muted/60 p-0.5 rounded-lg border border-border">
-          <button
-            onClick={() => setViewMode('area')}
-            className={`px-2.5 py-1 text-xs font-semibold rounded-md transition-all ${
-              viewMode === 'area' ? 'bg-surface shadow-xs text-primary font-bold' : 'text-muted-foreground hover:text-foreground'
-            }`}
-          >
-            Area Flow
-          </button>
-          <button
-            onClick={() => setViewMode('bar')}
-            className={`px-2.5 py-1 text-xs font-semibold rounded-md transition-all ${
-              viewMode === 'bar' ? 'bg-surface shadow-xs text-primary font-bold' : 'text-muted-foreground hover:text-foreground'
-            }`}
-          >
-            Bars
-          </button>
+        <div className="flex items-center gap-2">
+          {/* Month range selector */}
+          <div className="flex items-center gap-0.5 bg-muted/60 p-0.5 rounded-lg border border-border">
+            {[2, 3, 4, 5, 6].map((m) => (
+              <button
+                key={m}
+                onClick={() => setRange(m as 2 | 3 | 4 | 5 | 6)}
+                className={`px-2 py-1 text-[11px] font-bold rounded-md transition-all ${
+                  range === m ? 'bg-surface shadow-xs text-primary' : 'text-muted-foreground hover:text-foreground'
+                }`}
+              >
+                {m}M
+              </button>
+            ))}
+          </div>
+          {/* View mode toggle */}
+          <div className="flex items-center gap-0.5 bg-muted/60 p-0.5 rounded-lg border border-border">
+            <button
+              onClick={() => setViewMode('area')}
+              className={`px-2.5 py-1 text-[11px] font-bold rounded-md transition-all ${
+                viewMode === 'area' ? 'bg-surface shadow-xs text-primary' : 'text-muted-foreground hover:text-foreground'
+              }`}
+            >
+              Area
+            </button>
+            <button
+              onClick={() => setViewMode('bar')}
+              className={`px-2.5 py-1 text-[11px] font-bold rounded-md transition-all ${
+                viewMode === 'bar' ? 'bg-surface shadow-xs text-primary' : 'text-muted-foreground hover:text-foreground'
+              }`}
+            >
+              Bars
+            </button>
+          </div>
         </div>
       }
     >
       <div className="grid grid-cols-3 gap-2 mb-3 p-2.5 bg-muted/40 rounded-xl border border-border/60">
         <div>
-          <span className="text-[10px] font-bold text-muted-foreground uppercase">6M Total Revenue</span>
+          <span className="text-[10px] font-bold text-muted-foreground uppercase">{range}M Total Revenue</span>
           <p className="text-sm font-extrabold text-emerald-600">{money(totalRev, currency)}</p>
         </div>
         <div>
-          <span className="text-[10px] font-bold text-muted-foreground uppercase">6M Total Expenses</span>
+          <span className="text-[10px] font-bold text-muted-foreground uppercase">{range}M Total Expenses</span>
           <p className="text-sm font-extrabold text-rose-500">{money(totalExp, currency)}</p>
         </div>
         <div>
@@ -571,8 +587,8 @@ export function ExecutiveRatioMatrix({ data }: { data: FinancialData }) {
     >
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         {ratioGroups.map((group) => (
-          <div key={group.group} className="p-3.5 rounded-xl border border-border/80 bg-surface space-y-3">
-            <div className="flex items-center gap-2 pb-2 border-b border-border/50">
+          <div key={group.group} className="p-3.5 rounded-xl border border-sidebar-accent bg-surface space-y-3">
+            <div className="flex items-center gap-2 pb-2 border-b border-sidebar-accent/40">
               <span className="p-1.5 rounded-lg" style={{ background: `${group.color}15`, color: group.color }}>
                 <group.icon className="w-4 h-4" />
               </span>

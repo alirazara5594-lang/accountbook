@@ -241,14 +241,8 @@ export function FinancialOverview({ accounts, entries, setPage, activeEntityId }
       <ExecutiveHealthBar data={data} currency={currency} />
 
       {/* ═══ 3. PRIMARY FINANCIAL TRAJECTORY & CASH FLOW ═══ */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-3">
-        <div className="lg:col-span-2 h-full">
-          <RevenueExpensesTrendChart data={data} currency={currency} />
-        </div>
-        <div className="h-full">
-          <CashFlowAndLiquidityDonut data={data} currency={currency} />
-        </div>
-      </div>
+      <RevenueExpensesTrendChart data={data} currency={currency} />
+      <CashFlowCompact data={data} currency={currency} />
 
       {/* ═══ 4. ACCOUNTING EQUATION & BALANCE INTEGRITY ═══ */}
       <AccountingEquationBar data={data} currency={currency} />

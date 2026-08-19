@@ -551,7 +551,7 @@ tbody td {
 /* ══ Modern analytics cards (SaaS + dashboard style) ══ */
 .fcard{
   background:var(--color-surface);
-  border:1px solid var(--color-border);
+  border:1.5px solid var(--color-sidebar-accent);
   border-radius:16px;
   box-shadow:var(--shadow-md);
   display:flex;
@@ -587,7 +587,7 @@ tbody td {
   min-width:0;
   overflow:hidden;
   border-radius:14px;
-  border:1px solid var(--color-border);
+  border:1.5px solid var(--color-sidebar-accent);
   background:var(--color-surface);
   box-shadow:var(--shadow-sm);
   transition:transform .12s ease,box-shadow .12s ease;
@@ -673,6 +673,13 @@ tbody td {
   width:100%;
 }
 
+/* ── Compact cash flow strip ── */
+.cf-compact-row{display:flex;align-items:center;gap:4px;flex-wrap:nowrap;overflow-x:auto;padding:4px 0}
+.cf-compact-step{display:flex;align-items:center;gap:6px;padding:6px 10px;border-radius:10px;border:1px solid var(--color-sidebar-accent);background:var(--color-surface);white-space:nowrap;flex-shrink:0}
+.cf-compact-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0}
+.cf-compact-label{font-size:9px;font-weight:700;color:var(--color-text-muted);letter-spacing:.3px;text-transform:uppercase;line-height:1}
+.cf-compact-value{font-size:13px;font-weight:800;color:var(--color-text-strong);line-height:1.1;margin-top:1px;white-space:nowrap}
+
 /* ── Accounting equation bar ── */
 .eq-equation-row{display:flex;align-items:center;justify-content:center;gap:10px;margin-bottom:16px;padding:12px 0;background:var(--color-surface-muted);border-radius:12px}
 .eq-term{font-size:20px;font-weight:800;letter-spacing:-.5px;line-height:1}
@@ -691,7 +698,7 @@ tbody td {
 .eq-seg-liab{background:linear-gradient(135deg,#f97316,#ef4444);min-width:0}
 .eq-seg-eq{background:linear-gradient(135deg,#8b5cf6,#7c3aed);min-width:0}
 .eq-cards{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin-top:14px}
-.eq-card{display:flex;align-items:center;gap:8px;padding:10px 12px;border-radius:10px;border:1px solid var(--color-border-subtle);background:var(--color-surface)}
+.eq-card{display:flex;align-items:center;gap:8px;padding:10px 12px;border-radius:10px;border:1px solid var(--color-sidebar-accent);background:var(--color-surface)}
 .eq-card-dot{width:10px;height:10px;border-radius:50%;flex-shrink:0}
 .eq-card-label{font-size:9px;font-weight:700;color:var(--color-text-muted);letter-spacing:.4px;text-transform:uppercase;line-height:1}
 .eq-card-value{font-size:14px;font-weight:800;color:var(--color-text-strong);line-height:1.1;margin-top:1px}
@@ -700,7 +707,7 @@ tbody td {
 /* ── Ratio grid ── */
 .ratio-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
 @media(min-width:768px){.ratio-grid{grid-template-columns:repeat(4,minmax(0,1fr))}}
-.ratio-chip{display:flex;align-items:center;gap:8px;padding:10px 12px;border-radius:10px;border:1px solid var(--color-border-subtle);background:var(--color-surface);min-width:0;overflow:hidden}
+.ratio-chip{display:flex;align-items:center;gap:8px;padding:10px 12px;border-radius:10px;border:1px solid var(--color-sidebar-accent);background:var(--color-surface);min-width:0;overflow:hidden}
 .ratio-chip-icon{width:30px;height:30px;border-radius:8px;display:grid;place-items:center;flex-shrink:0}
 .ratio-chip-body{min-width:0;overflow:hidden}
 .ratio-chip-value{font-size:15px;font-weight:800;color:var(--color-text-strong);line-height:1.1;letter-spacing:-.3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
@@ -723,7 +730,7 @@ tbody td {
 
 /* ── Alert list ── */
 .alert-list{display:flex;flex-direction:column;gap:6px}
-.alert-row{display:flex;align-items:flex-start;gap:8px;padding:8px 10px;border-radius:10px;border:1px solid var(--color-border-subtle)}
+.alert-row{display:flex;align-items:flex-start;gap:8px;padding:8px 10px;border-radius:10px;border:1px solid var(--color-sidebar-accent)}
 .alert-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0;margin-top:4px}
 .alert-body{flex:1;min-width:0}
 .alert-title{font-size:11px;font-weight:700;color:var(--color-text-strong);line-height:1.2}
@@ -752,7 +759,7 @@ tbody td {
 /* ── Company snapshot ── */
 .snapshot-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
 @media(min-width:640px){.snapshot-grid{grid-template-columns:repeat(4,minmax(0,1fr))}}
-.snapshot-chip{display:flex;align-items:center;gap:8px;padding:10px 12px;border-radius:10px;border:1px solid var(--color-border-subtle);background:var(--color-surface)}
+.snapshot-chip{display:flex;align-items:center;gap:8px;padding:10px 12px;border-radius:10px;border:1px solid var(--color-sidebar-accent);background:var(--color-surface)}
 .snapshot-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0}
 .snapshot-value{font-size:16px;font-weight:800;color:var(--color-text-strong);line-height:1.1}
 .snapshot-label{font-size:9px;font-weight:700;color:var(--color-text-muted);letter-spacing:.4px;text-transform:uppercase;margin-top:1px}
@@ -827,7 +834,7 @@ position:sticky;
   display:flex;
   flex-direction:column;
   gap:2px;
-  padding:4px 6px;
+  padding:14px 6px 4px;
   overflow:visible;
 }
 .rail-item-wrap{position:relative;display:block}
@@ -994,3 +1001,28 @@ position:sticky;
   .module-head{flex-direction:column;align-items:flex-start}
   .module-actions{width:100%;flex-wrap:wrap}
 }
+
+/* ══ Sales & Module Summary Dashboard ══ */
+.sales-card{background:var(--color-surface);border:1.5px solid var(--color-sidebar-accent);border-radius:14px;padding:14px 16px;box-shadow:var(--shadow-sm)}
+.sales-card-title{font-size:12px;font-weight:700;color:var(--color-text-strong);margin-bottom:10px;letter-spacing:-.2px}
+.sales-link-btn{font-size:10px;font-weight:600;padding:3px 8px;border-radius:6px;background:var(--color-surface-muted);color:var(--color-primary);border:1px solid var(--color-sidebar-accent);cursor:pointer;transition:opacity .15s}
+.sales-link-btn:hover{opacity:.8}
+.sales-row{display:flex;align-items:center;gap:10px;padding:7px 10px;border-radius:8px;background:var(--color-surface-muted);border:1px solid var(--color-sidebar-accent);transition:background .1s}
+.sales-row:hover{background:var(--color-surface)}
+
+/* ══ Sales KPI Cards (compact single-row) ══ */
+.sales-kpi-card{
+  padding:8px 10px;
+  border-radius:10px;
+  background:var(--color-surface);
+  border:1.5px solid var(--color-sidebar-accent);
+  box-shadow:var(--shadow-sm);
+  min-width:0;
+  overflow:hidden;
+  transition:transform .1s ease,box-shadow .1s ease;
+}
+.sales-kpi-card:hover{transform:translateY(-1px);box-shadow:var(--shadow-md)}
+.sales-kpi-label{font-size:9px;font-weight:700;color:var(--color-text-muted);letter-spacing:.3px;text-transform:uppercase;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.sales-kpi-chip{width:22px;height:22px;border-radius:6px;display:inline-grid;place-items:center;flex-shrink:0}
+.sales-kpi-value{font-size:14px;font-weight:800;color:var(--color-text-strong);letter-spacing:-.3px;line-height:1.1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.sales-kpi-trend{font-size:9px;font-weight:600;margin-top:1px;display:block}

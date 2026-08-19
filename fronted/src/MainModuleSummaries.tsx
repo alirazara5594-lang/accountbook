@@ -56,7 +56,9 @@ export function SalesSummaryView({ activeEntityId, setPage }: { activeEntityId?:
   const outstanding = invoices.reduce((s, i) => s + ((i.amountDue ?? (i.totalAmount - (i.paidAmount || 0))) || 0), 0);
   const openInvoices = invoices.filter(i => (i.amountDue ?? 0) > 0);
   const overdueCount = openInvoices.filter(i => new Date(i.dueDate).getTime() < Date.now()).length;
+  const overdueAmt = openInvoices.filter(i => new Date(i.dueDate).getTime() < Date.now()).reduce((s, i) => s + (i.amountDue ?? 0), 0);
   const activeCustomers = customersStore.customers.filter(c => String(c.status) === 'Active').length;
+  const collectionRate = totalInvoiced > 0 ? ((collected / totalInvoiced) * 100).toFixed(1) : '0';
 
   const invByStatus = [
     { name: 'Paid', value: invoices.filter(i => (i.amountDue ?? 0) <= 0).length, fill: C.emerald },
@@ -70,45 +72,52 @@ export function SalesSummaryView({ activeEntityId, setPage }: { activeEntityId?:
     { m: 'May', amt: totalInvoiced * 0.9 }, { m: 'Jun', amt: totalInvoiced },
   ];
 
+  const kpis = [
+    { label: 'Invoiced', value: money(totalInvoiced), icon: Receipt, color: C.cyan, trend: `${invoices.length} total`, up: true },
+    { label: 'Collected', value: money(collected), icon: Banknote, color: C.emerald, trend: `${collectionRate}% rate`, up: true },
+    { label: 'Outstanding', value: money(outstanding), icon: HandCoins, color: C.amber, trend: overdueCount > 0 ? `${overdueCount} overdue` : 'Clear', up: overdueCount === 0 },
+    { label: 'Customers', value: num(activeCustomers), icon: Users, color: C.violet, trend: `${invoices.length} invoices`, up: true },
+    { label: 'Overdue Amt', value: money(overdueAmt), icon: AlertTriangle, color: C.rose, trend: overdueCount > 0 ? `${overdueCount} bills` : 'None', up: overdueCount === 0 },
+    { label: 'Products', value: num(products.products.length), icon: Package, color: C.blue, trend: 'Active catalog', up: true },
+  ];
+
   return (
-    <div className="space-y-4 font-sans select-none" style={{ color: C.white, background: C.page }}>
+    <div className="space-y-3 font-sans select-none" style={{ color: C.white, background: C.page }}>
+      {/* Header */}
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-lg font-extrabold tracking-tight">Sales & Customers</h1>
-          <p className="text-xs" style={{ color: C.muted }}>Customer profiles, invoicing, estimates & collections</p>
+          <p className="text-[11px]" style={{ color: C.muted }}>Invoicing, collections, customer management & revenue analytics</p>
         </div>
         {loading && <RefreshCw size={14} className="animate-spin" style={{ color: C.accent }} />}
       </div>
 
-      {/* KPI Cards */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-        {[
-          { label: 'Total Invoiced', value: money(totalInvoiced), icon: <Receipt size={14} />, color: C.cyan, trend: '+12.5%', up: true },
-          { label: 'Collected', value: money(collected), icon: <Banknote size={14} />, color: C.emerald, trend: '+8.3%', up: true },
-          { label: 'Outstanding AR', value: money(outstanding), icon: <HandCoins size={14} />, color: C.amber, trend: overdueCount > 0 ? `${overdueCount} overdue` : 'Clear', up: overdueCount === 0 },
-          { label: 'Active Customers', value: num(activeCustomers), icon: <Users size={14} />, color: C.violet, trend: `+${num(invoices.length)} invoices`, up: true },
-        ].map((c, i) => (
-          <div key={i} className="rounded-xl p-3 flex items-center gap-2.5" style={{ background: C.card, border: `1px solid ${C.bdr}` }}>
-            <div className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0"
-                 style={{ background: `${c.color}22`, color: c.color, border: `1px solid ${c.color}44` }}>
-              {c.icon}
-            </div>
-            <div className="min-w-0">
-              <p className="text-[10px] font-semibold" style={{ color: C.muted }}>{c.label}</p>
-              <p className="text-sm font-bold truncate" style={{ color: C.white }}>{c.value}</p>
-              <span className="text-[9px] font-bold" style={{ color: c.up ? C.emerald : C.rose }}>
-                {c.up ? <TrendingUp size={8} className="inline" /> : <TrendingDown size={8} className="inline" />} {c.trend}
+      {/* ═══ KPI CARDS — SINGLE ROW, COMPACT ═══ */}
+      <div className="grid grid-cols-3 sm:grid-cols-4 lg:grid-cols-6 gap-2">
+        {kpis.map((k, i) => {
+          const Ico = k.icon;
+          return (
+            <div key={i} className="sales-kpi-card" style={{ borderColor: `var(--color-sidebar-accent)` }}>
+              <div className="flex items-center justify-between mb-1.5">
+                <span className="sales-kpi-label">{k.label}</span>
+                <span className="sales-kpi-chip" style={{ background: `${k.color}20`, color: k.color }}>
+                  <Ico size={12} />
+                </span>
+              </div>
+              <p className="sales-kpi-value" style={{ color: C.white }}>{k.value}</p>
+              <span className="sales-kpi-trend" style={{ color: k.up ? C.emerald : C.rose }}>
+                {k.up ? <TrendingUp size={8} className="inline" /> : <TrendingDown size={8} className="inline" />} {k.trend}
               </span>
             </div>
-          </div>
-        ))}
+          );
+        })}
       </div>
 
-      {/* Charts Row */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+      {/* ═══ CHARTS ROW ═══ */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-3">
         {/* Sales Trend */}
-        <div className="lg:col-span-2 rounded-xl p-4" style={{ background: C.card, border: `1px solid ${C.bdr}` }}>
-          <h3 className="text-sm font-bold mb-3" style={{ color: C.white }}>Sales Trend</h3>
+        <div className="lg:col-span-2 sales-card" style={{ borderColor: `var(--color-sidebar-accent)` }}>
+          <h3 className="sales-card-title">Sales Trend</h3>
           <ResponsiveContainer width="100%" height={180}>
             <AreaChart data={monthlySales} margin={{ top: 5, right: 5, left: -20, bottom: 0 }}>
               <defs>
@@ -123,26 +132,26 @@ export function SalesSummaryView({ activeEntityId, setPage }: { activeEntityId?:
                      tickFormatter={(v: any) => Number(v) >= 1000 ? `${(Number(v) / 1000).toFixed(0)}k` : v} />
               <Tooltip contentStyle={{ background: C.card, border: `1px solid ${C.bdr}`, borderRadius: 8, fontSize: 11, color: C.white }}
                        formatter={(v: any) => [money(Number(v)), 'Sales']} />
-              <Area type="monotone" dataKey="amt" stroke={C.cyan} strokeWidth={2} fill="url(#gSales)" name="amt" />
+              <Area type="monotone" dataKey="amt" stroke={C.cyan} strokeWidth={2} fill="url(#gSales)" name="Sales" />
             </AreaChart>
           </ResponsiveContainer>
         </div>
 
         {/* Invoice Status Donut */}
-        <div className="rounded-xl p-4" style={{ background: C.card, border: `1px solid ${C.bdr}` }}>
-          <h3 className="text-sm font-bold mb-3" style={{ color: C.white }}>Invoice Status</h3>
+        <div className="sales-card" style={{ borderColor: `var(--color-sidebar-accent)` }}>
+          <h3 className="sales-card-title">Invoice Status</h3>
           {invByStatus.length === 0 ? (
             <div className="flex items-center justify-center h-[160px] text-xs" style={{ color: C.dim }}>No invoices</div>
           ) : (
             <div className="flex items-center gap-3">
-              <ResponsiveContainer width={120} height={160}>
+              <ResponsiveContainer width={110} height={150}>
                 <PieChart>
-                  <Pie data={invByStatus} cx="50%" cy="50%" innerRadius={32} outerRadius={55} dataKey="value" strokeWidth={0}>
+                  <Pie data={invByStatus} cx="50%" cy="50%" innerRadius={30} outerRadius={50} dataKey="value" strokeWidth={0}>
                     {invByStatus.map((d, i) => <Cell key={i} fill={d.fill} />)}
                   </Pie>
                 </PieChart>
               </ResponsiveContainer>
-              <div className="space-y-1.5">
+              <div className="space-y-2">
                 {invByStatus.map(d => (
                   <div key={d.name} className="flex items-center gap-2 text-[10px]">
                     <span className="w-2 h-2 rounded-full" style={{ background: d.fill }} />
@@ -150,28 +159,34 @@ export function SalesSummaryView({ activeEntityId, setPage }: { activeEntityId?:
                     <span className="font-bold" style={{ color: C.white }}>{d.value}</span>
                   </div>
                 ))}
+                <div className="pt-1.5 border-t" style={{ borderColor: C.bdr }}>
+                  <span className="text-[9px] font-bold" style={{ color: C.muted }}>Collection Rate</span>
+                  <p className="text-sm font-extrabold" style={{ color: C.emerald }}>{collectionRate}%</p>
+                </div>
               </div>
             </div>
           )}
         </div>
       </div>
 
-      {/* Recent Invoices + Quick Nav */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-        <div className="rounded-xl p-4" style={{ background: C.card, border: `1px solid ${C.bdr}` }}>
+      {/* ═══ RECENT INVOICES + QUICK LINKS ═══ */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-3">
+        {/* Recent Invoices */}
+        <div className="lg:col-span-2 sales-card" style={{ borderColor: `var(--color-sidebar-accent)` }}>
           <div className="flex items-center justify-between mb-3">
-            <h3 className="text-sm font-bold" style={{ color: C.white }}>Recent Invoices</h3>
+            <h3 className="sales-card-title">Recent Invoices</h3>
             <button onClick={() => setPage?.('Sales & Customers.Sales Workspace')}
-                    className="text-[10px] font-medium px-2 py-0.5 rounded-md hover:opacity-80"
-                    style={{ background: C.inner, color: C.accent, border: `1px solid ${C.bdr}` }}>View All</button>
+                    className="sales-link-btn">View All</button>
           </div>
-          <div className="space-y-1.5 max-h-48 overflow-auto">
+          <div className="space-y-1.5 max-h-52 overflow-auto">
             {invoices.slice(0, 5).map(i => {
               const overdue = (i.amountDue ?? 0) > 0 && new Date(i.dueDate).getTime() < Date.now();
+              const status = (i.amountDue ?? 0) <= 0 ? 'Paid' : overdue ? 'Overdue' : 'Unpaid';
+              const statusColor = status === 'Paid' ? C.emerald : status === 'Overdue' ? C.rose : C.amber;
               return (
-                <div key={i.id} className="flex items-center gap-3 py-2 px-3 rounded-lg" style={{ background: C.inner, border: `1px solid ${C.bdr}` }}>
+                <div key={i.id} className="sales-row" style={{ borderColor: `var(--color-sidebar-accent)` }}>
                   <div className="w-7 h-7 rounded-full flex items-center justify-center shrink-0"
-                       style={{ background: overdue ? `${C.rose}22` : `${C.emerald}22`, color: overdue ? C.rose : C.emerald }}>
+                       style={{ background: `${statusColor}22`, color: statusColor }}>
                     {overdue ? <AlertTriangle size={12} /> : <Receipt size={12} />}
                   </div>
                   <div className="flex-1 min-w-0">
@@ -181,9 +196,8 @@ export function SalesSummaryView({ activeEntityId, setPage }: { activeEntityId?:
                   <div className="text-right shrink-0">
                     <p className="text-[11px] font-bold" style={{ color: C.white }}>{money(i.totalAmount)}</p>
                     <span className="text-[9px] font-bold px-1.5 py-0.5 rounded"
-                          style={{ color: (i.amountDue ?? 0) <= 0 ? C.emerald : overdue ? C.rose : C.amber,
-                                   background: `${(i.amountDue ?? 0) <= 0 ? C.emerald : overdue ? C.rose : C.amber}1a` }}>
-                      {(i.amountDue ?? 0) <= 0 ? 'Paid' : overdue ? 'Overdue' : 'Unpaid'}
+                          style={{ color: statusColor, background: `${statusColor}1a` }}>
+                      {status}
                     </span>
                   </div>
                 </div>
@@ -192,26 +206,30 @@ export function SalesSummaryView({ activeEntityId, setPage }: { activeEntityId?:
           </div>
         </div>
 
-        <div className="rounded-xl p-4" style={{ background: C.card, border: `1px solid ${C.bdr}` }}>
-          <h3 className="text-sm font-bold mb-3" style={{ color: C.white }}>Quick Links</h3>
+        {/* Quick Links */}
+        <div className="sales-card" style={{ borderColor: `var(--color-sidebar-accent)` }}>
+          <h3 className="sales-card-title">Quick Links</h3>
           <div className="space-y-1.5">
             {[
-              { label: 'Customers', page: 'Sales & Customers.Customers', icon: <Users size={14} />, color: C.cyan },
-              { label: 'Sales Workspace', page: 'Sales & Customers.Sales Workspace', icon: <Receipt size={14} />, color: C.emerald },
-              { label: 'Estimates & Quotes', page: 'Sales & Customers.Estimates & Quotes', icon: <FileText size={14} />, color: C.amber },
-              { label: 'Sales Orders', page: 'Sales & Customers.Sales Orders', icon: <ClipboardList size={14} />, color: C.violet },
-              { label: 'Customer Payments', page: 'Sales & Customers.Customer Payments', icon: <DollarSign size={14} />, color: C.blue },
-              { label: 'Sales Reports', page: 'Sales & Customers.Sales Reports', icon: <BarChart3 size={14} />, color: C.pink },
-            ].map(s => (
-              <button key={s.page} onClick={() => setPage?.(s.page)}
-                      className="w-full flex items-center gap-3 py-2 px-3 rounded-lg hover:opacity-80 transition-colors"
-                      style={{ background: C.inner, border: `1px solid ${C.bdr}` }}>
-                <div className="w-7 h-7 rounded-lg flex items-center justify-center shrink-0"
-                     style={{ background: `${s.color}22`, color: s.color }}>{s.icon}</div>
-                <span className="text-[11px] font-medium flex-1 text-left" style={{ color: C.white }}>{s.label}</span>
-                <ChevronRight size={12} style={{ color: C.dim }} />
-              </button>
-            ))}
+              { label: 'Customers', page: 'Sales & Customers.Customers', icon: Users, color: C.cyan },
+              { label: 'Sales Workspace', page: 'Sales & Customers.Sales Workspace', icon: Receipt, color: C.emerald },
+              { label: 'Estimates & Quotes', page: 'Sales & Customers.Estimates & Quotes', icon: FileText, color: C.amber },
+              { label: 'Sales Orders', page: 'Sales & Customers.Sales Orders', icon: ClipboardList, color: C.violet },
+              { label: 'Customer Payments', page: 'Sales & Customers.Customer Payments', icon: DollarSign, color: C.blue },
+              { label: 'Sales Reports', page: 'Sales & Customers.Sales Reports', icon: BarChart3, color: C.pink },
+            ].map(s => {
+              const Ico = s.icon;
+              return (
+                <button key={s.page} onClick={() => setPage?.(s.page)}
+                        className="w-full flex items-center gap-3 py-2 px-3 rounded-lg hover:opacity-80 transition-colors"
+                        style={{ background: C.inner, border: `1px solid var(--color-sidebar-accent)` }}>
+                  <div className="w-7 h-7 rounded-lg flex items-center justify-center shrink-0"
+                       style={{ background: `${s.color}22`, color: s.color }}><Ico size={14} /></div>
+                  <span className="text-[11px] font-medium flex-1 text-left" style={{ color: C.white }}>{s.label}</span>
+                  <ChevronRight size={12} style={{ color: C.dim }} />
+                </button>
+              );
+            })}
           </div>
         </div>
       </div>
