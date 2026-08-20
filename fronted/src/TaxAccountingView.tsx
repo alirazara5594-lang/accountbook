@@ -54,6 +54,7 @@ export const TaxAccountingView: React.FC<TaxAccountingViewProps> = ({ activeEnti
   const [showRateForm, setShowRateForm] = useState(false);
   const [formError, setFormError] = useState('');
   const [saving, setSaving] = useState(false);
+  const [seeding, setSeeding] = useState(false);
 
   const [codeForm, setCodeForm] = useState({ code: '', name: '', taxType: 'Sales Tax', taxAuthorityId: '', rate: '' });
   const [rateForm, setRateForm] = useState({ taxCodeId: '', name: '', ratePercent: '', effectiveDate: new Date().toISOString().slice(0, 10) });
@@ -180,6 +181,55 @@ export const TaxAccountingView: React.FC<TaxAccountingViewProps> = ({ activeEnti
     }
   };
 
+  const handleLoadPresetTemplate = async () => {
+    if (!current) return;
+    setSeeding(true);
+    setError('');
+    try {
+      const matchingAuthority = authorityIds.size > 0 
+        ? Array.from(authorityIds)[0] 
+        : authorities.find(a => countryNames.some(c => (a.country || '').toLowerCase() === c.toLowerCase()))?.id 
+        || authorities[0]?.id;
+
+      if (!matchingAuthority) {
+        throw new Error('No tax authority found for this jurisdiction.');
+      }
+
+      const presets: Record<string, { code: string; name: string; rate: number; type: string }[]> = {
+        UK: [{ code: 'UK-VAT-STD', name: 'Standard VAT', rate: 20, type: 'VAT' }],
+        USA: [{ code: 'US-SALES-STD', name: 'Standard Sales Tax', rate: 6.25, type: 'Sales Tax' }],
+        PK: [{ code: 'PK-GST-STD', name: 'Standard GST', rate: 18, type: 'Sales Tax' }],
+        EU: [{ code: 'EU-VAT-STD', name: 'Standard EU VAT', rate: 21, type: 'VAT' }],
+        UAE: [{ code: 'UAE-VAT-STD', name: 'Standard VAT', rate: 5, type: 'VAT' }],
+        SA: [{ code: 'KSA-VAT-STD', name: 'Standard VAT', rate: 15, type: 'VAT' }],
+        CA: [{ code: 'CA-GST-STD', name: 'Standard GST', rate: 5, type: 'GST' }],
+      };
+
+      const selectedPresets = presets[selectedJurisdiction] || [];
+      if (selectedPresets.length === 0) {
+        throw new Error('No presets available for this jurisdiction.');
+      }
+
+      for (const p of selectedPresets) {
+        await taxApi.createTaxCode({
+          code: p.code,
+          name: p.name,
+          description: `${p.type} — ${current.name} Preset`,
+          taxAuthorityId: matchingAuthority,
+          isActive: true,
+          rates: [{ percentage: p.rate, effectiveFrom: new Date().toISOString().slice(0, 10) }],
+        });
+      }
+
+      await load();
+      setError('');
+    } catch (err: any) {
+      setError(err?.message || 'Failed to seed template.');
+    } finally {
+      setSeeding(false);
+    }
+  };
+
   const filteredCodes = useMemo(() => {
     if (!query.trim()) return jurisdictionCodes;
     const q = query.toLowerCase();
@@ -212,6 +262,17 @@ export const TaxAccountingView: React.FC<TaxAccountingViewProps> = ({ activeEnti
           </p>
         </div>
         <div className="flex items-center gap-2 shrink-0">
+          <select
+            value={selectedJurisdiction}
+            onChange={e => setSelectedJurisdiction(e.target.value)}
+            className="h-9 px-3 bg-white border border-slate-200 rounded-lg text-xs font-semibold text-slate-700 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+          >
+            {jurisdictions.map(j => (
+              <option key={j.id} value={j.id}>
+                {j.flag} {j.name} ({j.regime})
+              </option>
+            ))}
+          </select>
           <DataToolbar
             query={query}
             setQuery={setQuery}
@@ -312,7 +373,21 @@ export const TaxAccountingView: React.FC<TaxAccountingViewProps> = ({ activeEnti
             </TableHeader>
             <TableBody className="divide-y divide-slate-100">
               {filteredCodes.length === 0 && !loading && (
-                <TableRow><TableCell colSpan={4} className="py-6 text-center text-xs text-slate-400">No tax codes for this jurisdiction yet.</TableCell></TableRow>
+                <TableRow>
+                  <TableCell colSpan={4} className="py-8 text-center text-xs text-slate-400">
+                    <div className="flex flex-col items-center justify-center space-y-3">
+                      <span>No tax codes configured for this jurisdiction.</span>
+                      <Button
+                        size="sm"
+                        onClick={handleLoadPresetTemplate}
+                        disabled={seeding}
+                        className="bg-indigo-600 hover:bg-indigo-700 text-white font-semibold text-xs px-4 py-2 rounded-lg flex items-center gap-1.5 shadow-sm"
+                      >
+                        {seeding ? 'Loading Presets...' : `⚡ Load Standard ${current?.name} Presets`}
+                      </Button>
+                    </div>
+                  </TableCell>
+                </TableRow>
               )}
               {filteredCodes.map(c => {
                 const latestRate = c.rates?.length ? c.rates[c.rates.length - 1] : undefined;
