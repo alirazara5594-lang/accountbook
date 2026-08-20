@@ -1,9 +1,8 @@
-import { useEffect, useState } from 'react';
+import { useEffect } from 'react';
 import {
-  TrendingUp, TrendingDown, Wallet, Building2, Landmark, Boxes,
-  BarChart3, RefreshCw, ShieldCheck, CheckCircle2, AlertTriangle,
-  HandCoins, CreditCard, Layers, Activity,
-  Bell, Settings, Clock, ShieldAlert
+  TrendingUp, Wallet, Building2, Landmark, Boxes,
+  BarChart3, ShieldCheck, CheckCircle2, AlertTriangle,
+  HandCoins, CreditCard, Layers, Activity, Clock, ShieldAlert
 } from 'lucide-react';
 import {
   AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip,
@@ -15,6 +14,9 @@ import {
   useProjectsStore, useAdministrationStore, useTaxStore,
 } from './stores';
 import { money, moneyCompact } from './lib/currency';
+import {
+  KpiCard, ChartCard, HealthCard, ActivityCard, DashboardHeader
+} from './components/dashboard';
 
 interface DashboardOverviewProps {
   accounts?: { code: string; name: string; type: string; openingBalance: number; status?: string }[];
@@ -49,17 +51,13 @@ export function DashboardOverview({ accounts = [], entries = [], setPage, active
   const adminStore = useAdministrationStore();
   const { fetchAllTaxData } = useTaxStore();
 
-  const [loading, setLoading] = useState(true);
-  const [today] = useState(() => new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric', year: 'numeric' }));
-
   useEffect(() => {
-    setLoading(true);
     Promise.all([
       fetchAllSales(activeEntityId), fetchAllProcurement(activeEntityId), fetchAllBanking(activeEntityId),
       fetchAllAssetsInventory(activeEntityId), fetchAllManufacturing(activeEntityId),
       usePayrollStore.getState().fetchAll(), fieldStore.fetchAll(), complianceStore.fetchAll(),
       fetchProjectsAll(), adminStore.fetchAll(), fetchAllTaxData(),
-    ]).catch(() => {}).finally(() => setLoading(false));
+    ]).catch(() => {});
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeEntityId]);
 
@@ -124,26 +122,6 @@ export function DashboardOverview({ accounts = [], entries = [], setPage, active
   ];
 
   const DONUT_COLORS = ['#3b82f6', '#ef4444', '#10b981'];
-
-  // Sparkline Generator Helper
-  const renderSparkline = (dataPoints: number[], strokeColor: string) => {
-    const chartData = dataPoints.map((val, idx) => ({ idx, val }));
-    return (
-      <div className="w-16 h-6 shrink-0 ml-2">
-        <ResponsiveContainer width="100%" height="100%">
-          <AreaChart data={chartData} margin={{ top: 2, right: 2, left: 2, bottom: 2 }}>
-            <defs>
-              <linearGradient id={`sparkGrad-${strokeColor}`} x1="0" y1="0" x2="0" y2="1">
-                <stop offset="5%" stopColor={strokeColor} stopOpacity={0.15} />
-                <stop offset="95%" stopColor={strokeColor} stopOpacity={0} />
-              </linearGradient>
-            </defs>
-            <Area type="monotone" dataKey="val" stroke={strokeColor} strokeWidth={1.5} fill={`url(#sparkGrad-${strokeColor})`} dot={false} />
-          </AreaChart>
-        </ResponsiveContainer>
-      </div>
-    );
-  };
 
   // Compile Dynamic Transaction History
   const transactionHistory: { type: string; ref: string; amount: number; status: string; date: string; contact: string }[] = [];
@@ -227,113 +205,74 @@ export function DashboardOverview({ accounts = [], entries = [], setPage, active
   return (
     <main className="mx-auto w-full max-w-[1600px] px-6 py-6 space-y-6">
 
-      {/* ── 1. HEADER (Full Width, Compact Dashboard Header) ── */}
-      <div className="bg-[var(--color-surface)] px-5 py-4 rounded-2xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 border border-[var(--color-border)] shadow-sm">
-        <div className="min-w-0">
-          <h1 className="text-lg font-black tracking-tight text-[var(--color-text-strong)] leading-tight">
-            Accounting & Finance ERP Overview
-          </h1>
-          <p className="text-xs text-[var(--color-text-muted)] mt-0.5">
-            Real-time financial performance & business insights
-          </p>
-        </div>
-        <div className="flex items-center gap-3 shrink-0 self-end sm:self-center">
-          {loading && (
-            <span className="flex items-center gap-1.5 text-[10px] text-[var(--color-primary)] font-bold mr-1">
-              <RefreshCw className="w-3.5 h-3.5 animate-spin" />
-            </span>
-          )}
-          <span className="text-xs font-semibold text-[var(--color-text-muted)] bg-[var(--color-surface-muted)] px-3 py-1.5 rounded-xl border border-[var(--color-border-subtle)]">
-            {today}
-          </span>
-          <button onClick={() => setPage('AI & Analytics.Analytics Dashboard')} className="w-9 h-9 rounded-xl border border-[var(--color-border)] hover:border-[var(--color-primary)] hover:bg-[var(--color-surface-muted)] transition-colors flex items-center justify-center relative cursor-pointer" title="Notifications">
-            <Bell className="w-4 h-4 text-[var(--color-text)]" />
-            <span className="absolute top-2 right-2.5 w-2 h-2 rounded-full bg-rose-500 animate-pulse" />
-          </button>
-          <button onClick={() => setPage('Administration.System Settings')} className="w-9 h-9 rounded-xl border border-[var(--color-border)] hover:border-[var(--color-primary)] hover:bg-[var(--color-surface-muted)] transition-colors flex items-center justify-center cursor-pointer" title="ERP Settings">
-            <Settings className="w-4 h-4 text-[var(--color-text)]" />
-          </button>
-        </div>
-      </div>
+      {/* ── 1. HEADER (Full Width) ── */}
+      <DashboardHeader className="col-span-12" />
 
       {/* ── 12-COLUMN DASHBOARD GRID ── */}
       <div className="grid grid-cols-12 gap-5">
 
         {/* ── KPI ROW 1 ── */}
         {[
-          { title: 'Total Revenue', value: money(totalRevenue), trend: '+14.2%', points: [totalRevenue * 0.7, totalRevenue * 0.8, totalRevenue * 0.75, totalRevenue * 0.9, totalRevenue * 0.85, totalRevenue], color: '#3b82f6', icon: TrendingUp },
-          { title: 'Gross Profit', value: money(grossProfit), trend: '+12.4%', points: [grossProfit * 0.68, grossProfit * 0.78, grossProfit * 0.72, grossProfit * 0.88, grossProfit * 0.82, grossProfit], color: '#8b5cf6', icon: BarChart3 },
-          { title: 'Net Profit', value: money(netIncome), trend: '+18.5%', points: [netIncome * 0.5, netIncome * 0.6, netIncome * 0.55, netIncome * 0.8, netIncome * 0.7, netIncome], color: '#10b981', icon: Wallet },
-          { title: 'Cash & Bank', value: money(totalLiquidity), trend: '+8.9%', points: [totalLiquidity * 0.85, totalLiquidity * 0.88, totalLiquidity * 0.92, totalLiquidity * 0.89, totalLiquidity * 0.95, totalLiquidity], color: '#06b6d4', icon: Landmark }
+          { label: 'Total Revenue', value: money(totalRevenue), trend: '+14.2%', trendType: 'up', points: [totalRevenue * 0.7, totalRevenue * 0.8, totalRevenue * 0.75, totalRevenue * 0.9, totalRevenue * 0.85, totalRevenue], color: '#3b82f6', icon: TrendingUp },
+          { label: 'Gross Profit', value: money(grossProfit), trend: '+12.4%', trendType: 'up', points: [grossProfit * 0.68, grossProfit * 0.78, grossProfit * 0.72, grossProfit * 0.88, grossProfit * 0.82, grossProfit], color: '#8b5cf6', icon: BarChart3 },
+          { label: 'Net Profit', value: money(netIncome), trend: '+18.5%', trendType: 'up', points: [netIncome * 0.5, netIncome * 0.6, netIncome * 0.55, netIncome * 0.8, netIncome * 0.7, netIncome], color: '#10b981', icon: Wallet },
+          { label: 'Cash & Bank', value: money(totalLiquidity), trend: '+8.9%', trendType: 'up', points: [totalLiquidity * 0.85, totalLiquidity * 0.88, totalLiquidity * 0.92, totalLiquidity * 0.89, totalLiquidity * 0.95, totalLiquidity], color: '#06b6d4', icon: Landmark }
         ].map((kpi, i) => {
           const Icon = kpi.icon;
           return (
-            <div key={i} className="col-span-12 sm:col-span-6 lg:col-span-3 bg-[var(--color-surface)] border border-[var(--color-border)] rounded-2xl p-4 shadow-sm flex flex-col justify-between min-h-[110px] relative overflow-hidden transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md">
-              <div className="flex items-center justify-between mb-1">
-                <span className="text-[9.5px] font-bold uppercase tracking-wider text-[var(--color-text-muted)] truncate">{kpi.title}</span>
-                <div className="w-7 h-7 rounded-lg flex items-center justify-center shrink-0" style={{ background: `color-mix(in srgb, ${kpi.color} 12%, transparent)`, color: kpi.color }}>
-                  <Icon className="w-4 h-4" />
-                </div>
-              </div>
-              <p className="text-lg font-black text-[var(--color-text-strong)] tracking-tight truncate my-1.5">{kpi.value}</p>
-              <div className="flex items-center justify-between mt-auto">
-                <div className="flex items-center gap-1">
-                  {kpi.color === '#ef4444' ? (
-                    <TrendingDown className="w-3.5 h-3.5 text-rose-500 shrink-0" />
-                  ) : (
-                    <TrendingUp className="w-3.5 h-3.5 text-emerald-500 shrink-0" />
-                  )}
-                  <span className={`text-[10px] font-bold shrink-0 ${kpi.color === '#ef4444' ? 'text-rose-500' : 'text-emerald-500'}`}>{kpi.trend}</span>
-                </div>
-                {renderSparkline(kpi.points, kpi.color)}
-              </div>
-              <div className="absolute bottom-0 left-0 h-0.5 w-full" style={{ background: `linear-gradient(90deg, ${kpi.color}, transparent)` }} />
-            </div>
+            <KpiCard
+              key={i}
+              label={kpi.label}
+              value={kpi.value}
+              icon={Icon}
+              color={kpi.color}
+              change={kpi.trend}
+              trendType={kpi.trendType as any}
+              sparkline={kpi.points.map(v => ({ value: v }))}
+              className="col-span-12 sm:col-span-6 lg:col-span-3"
+            />
           );
         })}
 
         {/* ── KPI ROW 2 ── */}
         {[
-          { title: 'Customers Receivable', value: money(totalAR), trend: openInvoices.length > 0 ? `${openInvoices.length} invoices due` : 'Clear', points: [totalAR * 0.95, totalAR * 0.92, totalAR * 1.02, totalAR * 0.88, totalAR * 1.05, totalAR], color: '#10b981', icon: HandCoins },
-          { title: 'Vendor Payables', value: money(totalAP), trend: unpaidBillsArr.length > 0 ? `${unpaidBillsArr.length} bills unpaid` : 'Clear', points: [totalAP * 0.8, totalAP * 0.85, totalAP * 0.78, totalAP * 0.92, totalAP * 0.88, totalAP], color: '#ef4444', icon: CreditCard },
-          { title: 'Total Assets', value: money(totalAssets), trend: 'Audited assets ledger', points: [totalAssets * 0.98, totalAssets * 0.99, totalAssets * 1.0, totalAssets * 1.01, totalAssets * 1.02, totalAssets], color: '#3b82f6', icon: Building2 },
-          { title: 'Equity', value: money(equityValue), trend: 'Assets − Liabilities', points: [equityValue * 0.97, equityValue * 0.98, equityValue * 0.99, equityValue * 1.0, equityValue * 1.01, equityValue], color: '#a855f7', icon: Layers }
+          { label: 'Customers Receivable', value: money(totalAR), trend: openInvoices.length > 0 ? `${openInvoices.length} due` : 'Clear', trendType: 'neutral', points: [totalAR * 0.95, totalAR * 0.92, totalAR * 1.02, totalAR * 0.88, totalAR * 1.05, totalAR], color: '#10b981', icon: HandCoins },
+          { label: 'Vendor Payables', value: money(totalAP), trend: unpaidBillsArr.length > 0 ? `${unpaidBillsArr.length} due` : 'Clear', trendType: unpaidBillsArr.length > 0 ? 'down' : 'neutral', points: [totalAP * 0.8, totalAP * 0.85, totalAP * 0.78, totalAP * 0.92, totalAP * 0.88, totalAP], color: '#ef4444', icon: CreditCard },
+          { label: 'Total Assets', value: money(totalAssets), trend: 'Audited assets', trendType: 'neutral', points: [totalAssets * 0.98, totalAssets * 0.99, totalAssets * 1.0, totalAssets * 1.01, totalAssets * 1.02, totalAssets], color: '#3b82f6', icon: Building2 },
+          { label: 'Equity', value: money(equityValue), trend: 'Assets − Liabilities', trendType: 'neutral', points: [equityValue * 0.97, equityValue * 0.98, equityValue * 0.99, equityValue * 1.0, equityValue * 1.01, equityValue], color: '#a855f7', icon: Layers }
         ].map((kpi, i) => {
           const Icon = kpi.icon;
           return (
-            <div key={i} className="col-span-12 sm:col-span-6 lg:col-span-3 bg-[var(--color-surface)] border border-[var(--color-border)] rounded-2xl p-4 shadow-sm flex flex-col justify-between min-h-[110px] relative overflow-hidden transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md">
-              <div className="flex items-center justify-between mb-1">
-                <span className="text-[9.5px] font-bold uppercase tracking-wider text-[var(--color-text-muted)] truncate">{kpi.title}</span>
-                <div className="w-7 h-7 rounded-lg flex items-center justify-center shrink-0" style={{ background: `color-mix(in srgb, ${kpi.color} 12%, transparent)`, color: kpi.color }}>
-                  <Icon className="w-4 h-4" />
-                </div>
-              </div>
-              <p className="text-lg font-black text-[var(--color-text-strong)] tracking-tight truncate my-1.5">{kpi.value}</p>
-              <div className="flex items-center justify-between mt-auto">
-                <span className="text-[9px] text-[var(--color-text-subtle)] truncate max-w-[80px]">{kpi.trend}</span>
-                {renderSparkline(kpi.points, kpi.color)}
-              </div>
-              <div className="absolute bottom-0 left-0 h-0.5 w-full" style={{ background: `linear-gradient(90deg, ${kpi.color}, transparent)` }} />
-            </div>
+            <KpiCard
+              key={i}
+              label={kpi.label}
+              value={kpi.value}
+              icon={Icon}
+              color={kpi.color}
+              change={kpi.trend}
+              trendType={kpi.trendType as any}
+              sparkline={kpi.points.map(v => ({ value: v }))}
+              className="col-span-12 sm:col-span-6 lg:col-span-3"
+            />
           );
         })}
 
         {/* ── PERFORMANCE ROW ── */}
         
         {/* Income & Expense Trend (col-span-12 lg:col-span-7) */}
-        <div className="col-span-12 lg:col-span-7 bg-[var(--color-surface)] p-4 rounded-2xl border border-[var(--color-border)] shadow-sm">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-4 pb-2.5 border-b border-[var(--color-border-subtle)]">
-            <div>
-              <h3 className="text-xs font-black uppercase tracking-wider text-[var(--color-text-strong)] flex items-center gap-1.5">
-                <BarChart3 className="w-4 h-4 text-[var(--color-primary)]" /> Income & Expense Trend
-              </h3>
-              <p className="text-[10px] text-[var(--color-text-muted)]">Monthly timeline comparison with revenue net profit margin curves</p>
-            </div>
-            <div className="flex items-center gap-3 text-[10px] font-bold self-end sm:self-center">
+        <ChartCard
+          title="Income & Expense Trend"
+          subtitle="Monthly timeline comparison with revenue net profit margin curves"
+          icon={BarChart3}
+          iconColor="var(--color-primary)"
+          actions={
+            <>
               <span className="flex items-center gap-1.5" style={{ color: '#3b82f6' }}><span className="w-2.5 h-2.5 rounded-sm" style={{ background: '#3b82f6' }} /> Income</span>
               <span className="flex items-center gap-1.5" style={{ color: '#ef4444' }}><span className="w-2.5 h-2.5 rounded-sm" style={{ background: '#ef4444' }} /> Expense</span>
-            </div>
-          </div>
+            </>
+          }
+          className="col-span-12 lg:col-span-7"
+        >
           <div className="w-full min-h-[220px]">
             <ResponsiveContainer width="100%" height={220}>
               <AreaChart data={performanceTrend} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
@@ -357,16 +296,16 @@ export function DashboardOverview({ accounts = [], entries = [], setPage, active
               </AreaChart>
             </ResponsiveContainer>
           </div>
-        </div>
+        </ChartCard>
 
         {/* Cash Flow Overview (col-span-12 lg:col-span-5) */}
-        <div className="col-span-12 lg:col-span-5 bg-[var(--color-surface)] p-4 rounded-2xl border border-[var(--color-border)] shadow-sm flex flex-col justify-between">
-          <div className="pb-2.5 border-b border-[var(--color-border-subtle)] mb-3">
-            <h3 className="text-xs font-black uppercase tracking-wider text-[var(--color-text-strong)] flex items-center gap-1.5">
-              <HandCoins className="w-4 h-4 text-[#06b6d4]" /> Cash Flow Overview
-            </h3>
-            <p className="text-[10px] text-[var(--color-text-muted)]">Corporate liquidity flows (Operating, Investing, Financing)</p>
-          </div>
+        <ChartCard
+          title="Cash Flow Overview"
+          subtitle="Corporate liquidity flows (Operating, Investing, Financing)"
+          icon={HandCoins}
+          iconColor="#06b6d4"
+          className="col-span-12 lg:col-span-5 justify-between"
+        >
           <div className="w-full min-h-[160px] flex-1 flex items-center justify-center">
             <ResponsiveContainer width="100%" height={170}>
               <BarChart data={[
@@ -391,19 +330,19 @@ export function DashboardOverview({ accounts = [], entries = [], setPage, active
             <div className="flex justify-between"><span>Investing Outflow:</span><span className="text-rose-500">-{money(ocf * 0.35)}</span></div>
             <div className="flex justify-between"><span>Financing Outflow:</span><span className="text-rose-500">-{money(ocf * 0.15)}</span></div>
           </div>
-        </div>
+        </ChartCard>
 
         {/* Proportional Balance Sheet Position (col-span-12 lg:col-span-7) */}
-        <div className="col-span-12 lg:col-span-7 bg-[var(--color-surface)] p-4 rounded-2xl border border-[var(--color-border)] shadow-sm">
-          <div className="pb-2.5 border-b border-[var(--color-border-subtle)] mb-4">
-            <h3 className="text-xs font-black uppercase tracking-wider text-[var(--color-text-strong)] flex items-center gap-1.5">
-              <Landmark className="w-4 h-4 text-[var(--color-primary)]" /> Proportional Balance Sheet Position
-            </h3>
-            <p className="text-[10px] text-[var(--color-text-muted)]">Visual representation of Assets relative to Liabilities and equity</p>
-          </div>
+        <ChartCard
+          title="Proportional Balance Sheet Position"
+          subtitle="Visual representation of Assets relative to Liabilities and equity"
+          icon={Landmark}
+          iconColor="var(--color-primary)"
+          className="col-span-12 lg:col-span-7"
+        >
           <div className="flex flex-col sm:flex-row items-center justify-around gap-4 min-h-[170px]">
             <div className="w-[150px] h-[150px] relative shrink-0 flex items-center justify-center">
-              <ResponsiveContainer width="100%" height={100}>
+              <ResponsiveContainer width="100%" height={150}>
                 <PieChart>
                   <Pie data={[
                     { name: 'Assets', value: totalAssets, fill: '#3b82f6' },
@@ -436,16 +375,16 @@ export function DashboardOverview({ accounts = [], entries = [], setPage, active
               ))}
             </div>
           </div>
-        </div>
+        </ChartCard>
 
         {/* Top Expense Categories (col-span-12 lg:col-span-5) */}
-        <div className="col-span-12 lg:col-span-5 bg-[var(--color-surface)] p-4 rounded-2xl border border-[var(--color-border)] shadow-sm flex flex-col justify-between">
-          <div className="pb-2.5 border-b border-[var(--color-border-subtle)] mb-3">
-            <h3 className="text-xs font-black uppercase tracking-wider text-[var(--color-text-strong)] flex items-center gap-1.5">
-              <Boxes className="w-4 h-4 text-[#ef4444]" /> Top Expense Categories
-            </h3>
-            <p className="text-[10px] text-[var(--color-text-muted)]">Horizontal distribution of expenditures</p>
-          </div>
+        <ChartCard
+          title="Top Expense Categories"
+          subtitle="Horizontal distribution of expenditures"
+          icon={Boxes}
+          iconColor="#ef4444"
+          className="col-span-12 lg:col-span-5 justify-between"
+        >
           <div className="space-y-2.5">
             {expenseBreakdown.map((e, i) => {
               const maxVal = Math.max(...expenseBreakdown.map(x => x.value)) || 1;
@@ -463,19 +402,18 @@ export function DashboardOverview({ accounts = [], entries = [], setPage, active
               );
             })}
           </div>
-        </div>
+        </ChartCard>
 
         {/* ── HEALTH ROW ── */}
         
         {/* Accounting Equation Verification (col-span-12 md:col-span-6 lg:col-span-4) */}
-        <div className="col-span-12 md:col-span-6 lg:col-span-4 bg-[var(--color-surface)] p-4 rounded-2xl border border-[var(--color-border)] shadow-sm flex flex-col justify-between min-h-[290px]">
-          <div className="pb-2.5 border-b border-[var(--color-border-subtle)]">
-            <h3 className="text-xs font-black uppercase tracking-wider text-[var(--color-text-strong)] flex items-center gap-1.5">
-              <CheckCircle2 className="w-4 h-4 text-emerald-500" /> Accounting Equation Balance
-            </h3>
-            <p className="text-[10px] text-[var(--color-text-muted)]">GAAP & IFRS structural double-entry validation</p>
-          </div>
-          
+        <HealthCard
+          title="Accounting Equation Balance"
+          subtitle="GAAP & IFRS structural double-entry validation"
+          icon={CheckCircle2}
+          iconColor="#10b981"
+          className="col-span-12 md:col-span-6 lg:col-span-4 justify-between min-h-[290px]"
+        >
           <div className="my-3 space-y-2 text-center">
             <div className="py-2.5 px-2 rounded-xl bg-[var(--color-surface-muted)] border border-[var(--color-border-subtle)] font-mono text-xs font-extrabold text-[var(--color-text-strong)]">
               Assets = Liabilities + Equity
@@ -508,16 +446,16 @@ export function DashboardOverview({ accounts = [], entries = [], setPage, active
               </div>
             )}
           </div>
-        </div>
+        </HealthCard>
 
         {/* Financial Ratios (col-span-12 md:col-span-6 lg:col-span-4) */}
-        <div className="col-span-12 md:col-span-6 lg:col-span-4 bg-[var(--color-surface)] p-4 rounded-2xl border border-[var(--color-border)] shadow-sm flex flex-col justify-between min-h-[290px]">
-          <div className="pb-2.5 border-b border-[var(--color-border-subtle)]">
-            <h3 className="text-xs font-black uppercase tracking-wider text-[var(--color-text-strong)] flex items-center gap-1.5">
-              <Activity className="w-4 h-4 text-[var(--color-primary)]" /> Key Solvency & Margin Ratios
-            </h3>
-            <p className="text-[10px] text-[var(--color-text-muted)]">Core metrics for liquidity and financial health</p>
-          </div>
+        <HealthCard
+          title="Key Solvency & Margin Ratios"
+          subtitle="Core metrics for liquidity and financial health"
+          icon={Activity}
+          iconColor="var(--color-primary)"
+          className="col-span-12 md:col-span-6 lg:col-span-4 justify-between min-h-[290px]"
+        >
           <div className="space-y-2 my-3">
             {[
               { name: 'Current Ratio', val: `${currentRatio.toFixed(2)}x`, status: 'Optimal', color: '#10b981' },
@@ -539,17 +477,16 @@ export function DashboardOverview({ accounts = [], entries = [], setPage, active
               </div>
             ))}
           </div>
-        </div>
+        </HealthCard>
 
         {/* AR Accounts Receivable Aging Summary (col-span-12 md:col-span-6 lg:col-span-4) */}
-        <div className="col-span-12 md:col-span-6 lg:col-span-4 bg-[var(--color-surface)] p-4 rounded-2xl border border-[var(--color-border)] shadow-sm flex flex-col justify-between min-h-[290px]">
-          <div className="pb-2.5 border-b border-[var(--color-border-subtle)]">
-            <h3 className="text-xs font-black uppercase tracking-wider text-[var(--color-text-strong)] flex items-center gap-1.5">
-              <Clock className="w-4 h-4 text-[#ef4444]" /> Accounts Receivable (AR) Aging Summary
-            </h3>
-            <p className="text-[10px] text-[var(--color-text-muted)]">Aging schedule of outstanding customer balances</p>
-          </div>
-          
+        <HealthCard
+          title="Accounts Receivable (AR) Aging Summary"
+          subtitle="Aging schedule of outstanding customer balances"
+          icon={Clock}
+          iconColor="#ef4444"
+          className="col-span-12 md:col-span-6 lg:col-span-4 justify-between min-h-[290px]"
+        >
           <div className="space-y-3 my-3">
             {[
               { name: 'Current aging', val: arAging['Current'] || 0, color: '#10b981' },
@@ -572,18 +509,18 @@ export function DashboardOverview({ accounts = [], entries = [], setPage, active
               );
             })}
           </div>
-        </div>
+        </HealthCard>
 
         {/* ── ACTIVITY ROW ── */}
 
         {/* Recent Transactions (col-span-12 lg:col-span-7) */}
-        <div className="col-span-12 lg:col-span-7 bg-[var(--color-surface)] p-4 rounded-2xl border border-[var(--color-border)] shadow-sm">
-          <div className="pb-2.5 border-b border-[var(--color-border-subtle)] mb-3">
-            <h3 className="text-xs font-black uppercase tracking-wider text-[var(--color-text-strong)] flex items-center gap-1.5">
-              <Clock className="w-4 h-4 text-[var(--color-primary)]" /> Recent Corporate Transactions
-            </h3>
-            <p className="text-[10px] text-[var(--color-text-muted)]">Consolidated registry of sales, payments, vouchers, and bills</p>
-          </div>
+        <ActivityCard
+          title="Recent Corporate Transactions"
+          subtitle="Consolidated registry of sales, payments, vouchers, and bills"
+          icon={Clock}
+          iconColor="var(--color-primary)"
+          className="col-span-12 lg:col-span-7"
+        >
           <div className="overflow-x-auto">
             <table className="w-full text-left text-[10.5px]">
               <thead>
@@ -621,16 +558,16 @@ export function DashboardOverview({ accounts = [], entries = [], setPage, active
               </tbody>
             </table>
           </div>
-        </div>
+        </ActivityCard>
 
         {/* Alerts & Notifications (col-span-12 lg:col-span-5) */}
-        <div className="col-span-12 lg:col-span-5 bg-[var(--color-surface)] p-4 rounded-2xl border border-[var(--color-border)] shadow-sm flex flex-col justify-between">
-          <div className="pb-2.5 border-b border-[var(--color-border-subtle)] mb-3">
-            <h3 className="text-xs font-black uppercase tracking-wider text-[var(--color-text-strong)] flex items-center gap-1.5">
-              <AlertTriangle className="w-4 h-4 text-rose-500" /> Accounting Health Alerts
-            </h3>
-            <p className="text-[10px] text-[var(--color-text-muted)]">Immediate double-entry control system warnings</p>
-          </div>
+        <ActivityCard
+          title="Accounting Health Alerts"
+          subtitle="Immediate double-entry control system warnings"
+          icon={AlertTriangle}
+          iconColor="#ef4444"
+          className="col-span-12 lg:col-span-5 justify-between"
+        >
           <div className="space-y-3 flex-1 flex flex-col justify-start">
             {alertsList.map((alert) => {
               let alertColor = '#3b82f6';
@@ -658,7 +595,7 @@ export function DashboardOverview({ accounts = [], entries = [], setPage, active
               );
             })}
           </div>
-        </div>
+        </ActivityCard>
 
       </div>
 
