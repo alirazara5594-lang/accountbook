@@ -1,10 +1,18 @@
 import { Bell, Settings } from 'lucide-react';
 
 interface DashboardHeaderProps {
+  title?: string;
+  subtitle?: string;
+  badge?: string;
   className?: string;
 }
 
-export function DashboardHeader({ className = '' }: DashboardHeaderProps) {
+export function DashboardHeader({
+  title = 'Accounting & Finance ERP Overview',
+  subtitle = 'Real-time financial performance & business insights',
+  badge,
+  className = '',
+}: DashboardHeaderProps) {
   const today = new Date().toLocaleDateString('en-US', {
     weekday: 'long',
     year: 'numeric',
@@ -12,19 +20,34 @@ export function DashboardHeader({ className = '' }: DashboardHeaderProps) {
     day: 'numeric',
   });
 
+  // Generate initials for avatar box based on title
+  const initials = title
+    .split(' ')
+    .filter(w => w.length > 0 && w[0] === w[0].toUpperCase())
+    .map(w => w[0])
+    .slice(0, 2)
+    .join('');
+
   return (
     <div className={`col-span-12 bg-[var(--color-surface)] border border-[var(--color-border)] rounded-2xl px-6 py-5 shadow-sm flex items-center justify-between ${className}`}>
       {/* Left */}
       <div className="flex items-center gap-4">
         <div className="w-12 h-12 rounded-xl flex items-center justify-center shrink-0" style={{ background: 'color-mix(in srgb, var(--color-primary) 15%, transparent)', border: '1px solid color-mix(in srgb, var(--color-primary) 30%, transparent)' }}>
-          <span className="text-lg font-black text-[var(--color-primary)]">AF</span>
+          <span className="text-lg font-black text-[var(--color-primary)]">{initials || 'AF'}</span>
         </div>
         <div>
-          <h1 className="text-lg font-black tracking-tight text-[var(--color-text-strong)] uppercase">
-            Accounting & Finance ERP Overview
-          </h1>
+          <div className="flex items-center gap-2">
+            <h1 className="text-lg font-black tracking-tight text-[var(--color-text-strong)] uppercase">
+              {title}
+            </h1>
+            {badge && (
+              <span className="text-[9px] font-bold px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200">
+                {badge}
+              </span>
+            )}
+          </div>
           <p className="text-xs text-[var(--color-text-muted)] mt-0.5">
-            Real-time financial performance & business insights
+            {subtitle}
           </p>
         </div>
       </div>
