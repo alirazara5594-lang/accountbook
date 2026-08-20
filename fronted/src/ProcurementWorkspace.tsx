@@ -915,7 +915,7 @@ export const ProcurementWorkspace: React.FC<{ activeEntityId: string; entities?:
                         <span style={{ width: 100, textAlign: 'right', fontWeight: 700, fontSize: 13, color: '#0f172a', fontFamily: 'monospace' }}>
                           ${lineTotal.toFixed(2)}
                         </span>
-                        <button type="button" style={{ color: '#ef4444', background: 'none', border: 'none', cursor: 'pointer', fontWeight: 'bold', fontSize: 16, width: 24 }} onClick={() => setBillLines(billLines.filter((_, idx) => idx !== i))}>
+                        <button type="button" style={{ color: 'var(--color-danger)', background: 'none', border: 'none', cursor: 'pointer', fontWeight: 'bold', fontSize: 16, width: 24 }} onClick={() => setBillLines(billLines.filter((_, idx) => idx !== i))}>
                           ×
                         </button>
                       </div>

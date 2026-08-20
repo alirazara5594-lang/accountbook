@@ -165,7 +165,7 @@ export const JournalEntriesView: React.FC<JournalEntriesViewProps> = ({ accounts
           <div style={{ flex: 1 }}>
             <span>Debits <b>{money(totals.debit)}</b></span>
             <span>Credits <b>{money(totals.credit)}</b></span>
-            {totals.debit !== totals.credit && <em style={{ marginLeft: 12, color: '#ef4444' }}>Entry must balance</em>}
+            {totals.debit !== totals.credit && <em style={{ marginLeft: 12, color: 'var(--color-danger)' }}>Entry must balance</em>}
           </div>
           <button type="button" className="secondary btn-draft" onClick={(e) => handlePost(e, 'draft')} disabled={saving}><Save className="w-4 h-4 mr-1.5" /> Save as Draft</button>
           <button type="button" className="secondary btn-draft" onClick={(e) => handlePost(e, 'submit')} disabled={saving}><Clock className="w-4 h-4 mr-1.5" /> Submit for Approval</button>

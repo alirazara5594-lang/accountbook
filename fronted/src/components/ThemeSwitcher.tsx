@@ -16,6 +16,7 @@ export function getDisplayMode(theme: string): ModeId {
 }
 
 export function getThemeFamily(theme: string): string {
+  if (theme.startsWith('va-')) return 'va';
   if (theme.startsWith('pi-')) return 'pi';
   if (theme.startsWith('gp-')) return 'gp';
   if (theme.startsWith('fn-')) return 'fn';

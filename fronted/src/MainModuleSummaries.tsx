@@ -30,9 +30,9 @@ const num = (n: number) => new Intl.NumberFormat('en-US').format(n || 0);
 
 const C = {
   page: 'var(--color-background)', card: 'var(--color-surface)', inner: 'var(--color-surface-muted)', bdr: 'var(--color-border)',
-  accent: '#3b82f6', cyan: '#06b6d4', amber: '#f59e0b', emerald: '#10b981',
-  rose: '#ef4444', violet: '#a855f7', pink: '#ec4899', white: 'var(--color-text)',
-  muted: 'var(--color-text-muted)', dim: 'var(--color-text-subtle)', blue: '#3b82f6',
+  accent: 'var(--color-primary)', cyan: 'var(--color-info)', amber: 'var(--color-warning)', emerald: 'var(--color-success)',
+  rose: 'var(--color-danger)', violet: 'var(--color-accent)', pink: '#ec4899', white: 'var(--color-text)',
+  muted: 'var(--color-text-muted)', dim: 'var(--color-text-subtle)', blue: 'var(--color-primary)',
 };
 
 /* ────────────────────────────────────────────────────────────────── */
@@ -193,19 +193,13 @@ export function SalesSummaryView({ activeEntityId, setPage }: { activeEntityId?:
               <h6 className="card-title fw-bold mb-3" style={{ fontSize: '13px' }}>Sales Trend</h6>
               <ResponsiveContainer width="100%" height={200}>
                 <AreaChart data={monthlySales} margin={{ top: 5, right: 5, left: -20, bottom: 0 }}>
-                  <defs>
-                    <linearGradient id="gSalesBoot" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="0%" stopColor="#0d6efd" stopOpacity={0.3} />
-                      <stop offset="100%" stopColor="#0d6efd" stopOpacity={0} />
-                    </linearGradient>
-                  </defs>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#e9ecef" vertical={false} />
-                  <XAxis dataKey="m" tick={{ fontSize: 9, fill: '#6c757d' }} axisLine={false} tickLine={false} />
-                  <YAxis tick={{ fontSize: 9, fill: '#6c757d' }} axisLine={false} tickLine={false}
+                  <CartesianGrid strokeDasharray="3 3" stroke={C.bdr} vertical={false} />
+                  <XAxis dataKey="m" tick={{ fontSize: 9, fill: 'var(--color-text-muted)' }} axisLine={false} tickLine={false} />
+                  <YAxis tick={{ fontSize: 9, fill: 'var(--color-text-muted)' }} axisLine={false} tickLine={false}
                          tickFormatter={(v: any) => Number(v) >= 1000 ? `${(Number(v) / 1000).toFixed(0)}k` : v} />
                    <Tooltip contentStyle={{ background: 'var(--color-surface)', border: '1px solid var(--color-border)', borderRadius: 8, fontSize: 11 }}
                            formatter={(v: any) => [money(Number(v)), 'Sales']} />
-                  <Area type="monotone" dataKey="amt" stroke="#0d6efd" strokeWidth={2} fill="url(#gSalesBoot)" name="Sales" />
+                  <Area type="monotone" dataKey="amt" stroke={C.accent} strokeWidth={2} fill={C.accent} fillOpacity={0.15} name="Sales" />
                 </AreaChart>
               </ResponsiveContainer>
             </div>
@@ -225,8 +219,8 @@ export function SalesSummaryView({ activeEntityId, setPage }: { activeEntityId?:
                     <PieChart>
                       <Pie data={invByStatus} cx="50%" cy="50%" innerRadius={32} outerRadius={55} dataKey="value" strokeWidth={0}>
                         {invByStatus.map((d, idx) => {
-                          const fillMap: Record<string, string> = { success: '#198754', warning: '#ffc107', danger: '#dc3545', info: '#0dcaf0', primary: '#0d6efd', secondary: '#6c757d' };
-                          return <Cell key={idx} fill={fillMap[d.color] || '#6c757d'} />;
+                          const fillMap: Record<string, string> = { success: 'var(--color-success)', warning: 'var(--color-warning)', danger: 'var(--color-danger)', info: 'var(--color-info)', primary: 'var(--color-primary)', secondary: 'var(--color-text-muted)' };
+                          return <Cell key={idx} fill={fillMap[d.color] || 'var(--color-text-muted)'} />;
                         })}
                       </Pie>
                     </PieChart>
@@ -276,8 +270,8 @@ export function SalesSummaryView({ activeEntityId, setPage }: { activeEntityId?:
                 </div>
                 <div className="position-relative" style={{ width: 44, height: 44 }}>
                   <svg viewBox="0 0 36 36" style={{ width: '100%', height: '100%', transform: 'rotate(-90deg)' }}>
-                    <path d="M18 2.0845a15.9155 15.9155 0 0 1 0 31.831 15.9155 15.9155 0 0 1 0-31.831" fill="none" stroke="#e9ecef" strokeWidth="3" />
-                    <path d="M18 2.0845a15.9155 15.9155 0 0 1 0 31.831 15.9155 15.9155 0 0 1 0-31.831" fill="none" stroke={healthScore >= 60 ? '#198754' : '#ffc107'} strokeWidth="3" strokeDasharray={`${healthScore}, 100`} />
+                    <path d="M18 2.0845a15.9155 15.9155 0 0 1 0 31.831 15.9155 15.9155 0 0 1 0-31.831" fill="none" stroke="var(--color-border)" strokeWidth="3" />
+                    <path d="M18 2.0845a15.9155 15.9155 0 0 1 0 31.831 15.9155 15.9155 0 0 1 0-31.831" fill="none" stroke={healthScore >= 60 ? 'var(--color-success)' : 'var(--color-warning)'} strokeWidth="3" strokeDasharray={`${healthScore}, 100`} />
                   </svg>
                   <div className="position-absolute top-50 start-50 translate-middle fw-bold" style={{ fontSize: '10px' }}>{healthScore}%</div>
                 </div>
@@ -355,14 +349,14 @@ export function SalesSummaryView({ activeEntityId, setPage }: { activeEntityId?:
               <div className="d-flex flex-column gap-2">
                 {alerts.map(a => {
                   const sevMap: Record<string, { dot: string; bg: string; badge: string }> = {
-                    critical: { dot: '#dc2626', bg: '#fef2f2', badge: 'bg-danger' },
-                     warning: { dot: '#f59e0b', bg: 'var(--color-warning-background)', badge: 'bg-warning' },
-                    info: { dot: '#3b82f6', bg: '#eff6ff', badge: 'bg-info' },
-                    success: { dot: '#10b981', bg: '#ecfdf5', badge: 'bg-success' },
+                    critical: { dot: 'var(--color-danger)', bg: 'var(--color-danger-background)', badge: 'bg-danger' },
+                     warning: { dot: 'var(--color-warning)', bg: 'var(--color-warning-background)', badge: 'bg-warning' },
+                    info: { dot: 'var(--color-primary)', bg: 'var(--color-primary-background)', badge: 'bg-info' },
+                    success: { dot: 'var(--color-success)', bg: 'var(--color-success-background)', badge: 'bg-success' },
                   };
                   const s = sevMap[a.severity] || sevMap.info;
                   return (
-                    <div key={a.id} className="d-flex align-items-start gap-2 p-2 rounded-2" style={{ background: s.bg, border: '1px solid #e2e8f0' }}>
+                    <div key={a.id} className="d-flex align-items-start gap-2 p-2 rounded-2" style={{ background: s.bg, border: '1px solid var(--color-border)' }}>
                       <span style={{ width: 7, height: 7, borderRadius: '50%', background: s.dot, marginTop: 4, flexShrink: 0 }} />
                       <div className="flex-grow-1 min-w-0">
                         <p className="fw-bold mb-0" style={{ fontSize: '11px' }}>{a.title}</p>
@@ -394,7 +388,7 @@ export function SalesSummaryView({ activeEntityId, setPage }: { activeEntityId?:
                   {arAgingData.map((bucket, i) => {
                     const totalAr = arAgingData.reduce((s, a) => s + a.value, 0) || 1;
                     const pct = (bucket.value / totalAr) * 100;
-                    const colors = ['#10b981', '#14b8a6', '#f59e0b', '#ef4444', '#991b1b'];
+                    const colors = ['var(--color-success)', 'var(--color-info)', 'var(--color-warning)', 'var(--color-danger)', '#991b1b'];
                     return (
                       <div key={bucket.name} className="mb-1.5">
                         <div className="d-flex justify-content-between">
@@ -419,7 +413,7 @@ export function SalesSummaryView({ activeEntityId, setPage }: { activeEntityId?:
                   {apAgingData.map((bucket, i) => {
                     const totalAp = apAgingData.reduce((s, a) => s + a.value, 0) || 1;
                     const pct = (bucket.value / totalAp) * 100;
-                    const colors = ['#10b981', '#14b8a6', '#f59e0b', '#ef4444', '#991b1b'];
+                    const colors = ['var(--color-success)', 'var(--color-info)', 'var(--color-warning)', 'var(--color-danger)', '#991b1b'];
                     return (
                       <div key={bucket.name} className="mb-1.5">
                         <div className="d-flex justify-content-between">
@@ -461,19 +455,19 @@ export function SalesSummaryView({ activeEntityId, setPage }: { activeEntityId?:
             <div className="card-body p-3">
               <div className="row g-3">
                 {[
-                  { group: 'Liquidity & Solvency', color: '#0d6efd', items: [
+                  { group: 'Liquidity & Solvency', color: 'var(--color-primary)', items: [
                     { label: 'Current Ratio', value: `${currentRatio.toFixed(2)}x`, target: '> 1.5x', ok: currentRatio >= 1.5 },
                     { label: 'Quick Ratio', value: `${quickRatio.toFixed(2)}x`, target: '> 1.0x', ok: quickRatio >= 1.0 },
                     { label: 'Debt-to-Equity', value: debtToEquity.toFixed(2), target: '< 1.5', ok: debtToEquity < 1.5 },
                     { label: 'Equity Ratio', value: `${totalAssetsCalc > 0 ? ((totalEquityCalc / totalAssetsCalc) * 100).toFixed(1) : 0}%`, target: '> 40%', ok: totalAssetsCalc > 0 && (totalEquityCalc / totalAssetsCalc) * 100 >= 40 },
                   ]},
-                  { group: 'Profitability', color: '#198754', items: [
+                  { group: 'Profitability', color: 'var(--color-success)', items: [
                     { label: 'Net Margin', value: `${netMargin.toFixed(1)}%`, target: '> 10%', ok: netMargin >= 10 },
                     { label: 'Collection Rate', value: `${collectionRate}%`, target: '> 80%', ok: parseFloat(collectionRate) >= 80 },
                     { label: 'ROE', value: `${totalEquityCalc > 0 ? ((totalInvoiced - outstanding) / totalEquityCalc * 100).toFixed(1) : 0}%`, target: '> 15%', ok: false },
                     { label: 'Gross Margin', value: `${totalInvoiced > 0 ? ((totalInvoiced - outstanding) / totalInvoiced * 100).toFixed(1) : 0}%`, target: '> 30%', ok: totalInvoiced > 0 && (totalInvoiced - outstanding) / totalInvoiced * 100 >= 30 },
                   ]},
-                  { group: 'Efficiency', color: '#6f42c1', items: [
+                  { group: 'Efficiency', color: 'var(--color-accent)', items: [
                     { label: 'DSO', value: `${avgDaysOutstanding}d`, target: '< 45d', ok: avgDaysOutstanding <= 45 },
                     { label: 'DPO', value: '30d', target: '30-60d', ok: true },
                     { label: 'CCC', value: `${Math.max(0, avgDaysOutstanding - 30 + 15)}d`, target: '< 40d', ok: Math.max(0, avgDaysOutstanding - 30 + 15) < 45 },

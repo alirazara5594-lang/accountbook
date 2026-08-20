@@ -66,7 +66,7 @@ function SalesReportsWorkspace({ activeEntityId }: Props) {
       .map(([name, value]) => ({ name, value }));
   }, [invoices]);
 
-  const COLORS = ['#94a3b8', '#3b82f6', '#10b981', '#ef4444', '#f59e0b', '#f97316'];
+  const COLORS = ['var(--color-text-muted)', 'var(--color-primary)', 'var(--color-success)', 'var(--color-danger)', 'var(--color-warning)', 'var(--color-warning)'];
 
   return (
     <div className="p-4 max-w-7xl mx-auto space-y-4">
@@ -163,8 +163,8 @@ function SalesReportsWorkspace({ activeEntityId }: Props) {
                 <XAxis dataKey="month" tick={{ fontSize: 10 }} stroke="#94a3b8" />
                 <YAxis tick={{ fontSize: 10 }} stroke="#94a3b8" tickFormatter={(v: number) => moneyCompact(v)} />
                 <Tooltip formatter={(value) => fmt(Number(value))} contentStyle={{ fontSize: 11, borderRadius: 8 }} />
-                <Bar dataKey="sales" fill="#3b82f6" radius={[4, 4, 0, 0]} name="Sales" />
-                <Bar dataKey="paid" fill="#10b981" radius={[4, 4, 0, 0]} name="Paid" />
+                <Bar dataKey="sales" fill="var(--color-primary)" radius={[4, 4, 0, 0]} name="Sales" />
+                <Bar dataKey="paid" fill="var(--color-success)" radius={[4, 4, 0, 0]} name="Paid" />
               </BarChart>
             </ResponsiveContainer>
           ) : (

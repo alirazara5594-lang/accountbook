@@ -3,7 +3,7 @@ import type { ReactNode } from 'react';
 import {
   Search, Bell, Plus, ChevronDown, LogOut, Coins, X, FileText, Receipt,
   Building2, Users, Wallet, CalendarDays, Boxes, ClipboardList, Landmark,
-  Globe, BarChart3, Check, Sun, Moon,
+  Globe, BarChart3, Check, Sun, Moon, CloudSun,
 } from 'lucide-react';
 import { NAVIGATION } from '../navigation';
 import type { UserData } from '../Login';
@@ -44,10 +44,13 @@ export default function TopHeader(props: Props) {
 
   const displayMode = theme ? getDisplayMode(theme) : 'dark';
   const themeFamily = theme ? getThemeFamily(theme) : 'bp';
-  const toggleMode = () => {
+  const [displayOpen, setDisplayOpen] = useState(false);
+  const displayRef = useRef<HTMLDivElement>(null);
+
+  const setDisplayMode = (mode: string) => {
     if (!onThemeChange) return;
-    const next = displayMode === 'dark' ? 'light' : 'dark';
-    onThemeChange(resolveThemeId(themeFamily, next));
+    onThemeChange(resolveThemeId(themeFamily, mode as any));
+    setDisplayOpen(false);
   };
 
   const [query, setQuery] = useState('');
@@ -80,6 +83,7 @@ export default function TopHeader(props: Props) {
       if (notifRef.current && !notifRef.current.contains(e.target as Node)) setNotifOpen(false);
       if (actionsRef.current && !actionsRef.current.contains(e.target as Node)) setActionsOpen(false);
       if (entityRef.current && !entityRef.current.contains(e.target as Node)) setEntityOpen(false);
+      if (displayRef.current && !displayRef.current.contains(e.target as Node)) setDisplayOpen(false);
     };
     document.addEventListener('mousedown', onDown);
     return () => document.removeEventListener('mousedown', onDown);
@@ -310,15 +314,40 @@ export default function TopHeader(props: Props) {
           )}
         </div>
 
-        {/* Display mode toggle */}
-        <div style={{ flexShrink: 0 }}>
+        {/* Display mode dropdown */}
+        <div ref={displayRef} style={{ position: 'relative', flexShrink: 0 }}>
           <button
-            onClick={toggleMode}
-            title={displayMode === 'dark' ? 'Switch to light display mode' : 'Switch to dark display mode'}
+            onClick={() => setDisplayOpen(o => !o)}
+            title="Display mode"
             style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', background: M.hover, border: '1px solid ' + M.border, borderRadius: 9, width: 34, height: 34, cursor: 'pointer', color: M.text }}
           >
-            {displayMode === 'dark' ? <Sun size={16} style={{ color: 'var(--color-primary)' }} /> : <Moon size={16} style={{ color: 'var(--color-primary)' }} />}
+            {displayMode === 'dark' ? <Moon size={16} style={{ color: 'var(--color-primary)' }} /> : displayMode === 'cool' ? <CloudSun size={16} style={{ color: 'var(--color-primary)' }} /> : <Sun size={16} style={{ color: 'var(--color-primary)' }} />}
           </button>
+          {displayOpen && (
+            <div style={{ position: 'absolute', top: 'calc(100% + 8px)', right: 0, minWidth: 160, background: M.bg, border: '1px solid ' + M.border, borderRadius: 12, boxShadow: '0 12px 32px rgba(15, 23, 42, 0.16)', zIndex: 60, overflow: 'hidden' }}>
+              <div style={{ padding: '8px 14px', fontSize: 10, fontWeight: 800, letterSpacing: 1, color: M.muted, textTransform: 'uppercase' }}>Display Mode</div>
+              {[
+                { id: 'dark', label: 'Dark', icon: Moon },
+                { id: 'cool', label: 'Cool', icon: CloudSun },
+                { id: 'light', label: 'Light', icon: Sun },
+              ].map(m => {
+                const Icon = m.icon;
+                return (
+                  <button
+                    key={m.id}
+                    onClick={() => setDisplayMode(m.id)}
+                    style={{ display: 'flex', alignItems: 'center', gap: 10, width: '100%', padding: '9px 14px', border: 0, background: 'transparent', cursor: 'pointer', textAlign: 'left', fontSize: 13, color: M.text, borderBottom: '1px solid ' + M.hover }}
+                    onMouseEnter={e => (e.currentTarget.style.background = M.hover)}
+                    onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
+                  >
+                    <Icon size={14} style={{ color: displayMode === m.id ? 'var(--color-primary)' : M.muted }} />
+                    <span style={{ flex: 1, fontWeight: displayMode === m.id ? 700 : 600 }}>{m.label}</span>
+                    {displayMode === m.id && <Check size={14} style={{ color: 'var(--color-primary)' }} />}
+                  </button>
+                );
+              })}
+            </div>
+          )}
         </div>
 
         {/* Notifications */}

@@ -118,16 +118,16 @@ export function DashboardOverview({ accounts = [], entries: _entries = [], setPa
     { name: 'Marketing', value: totalExpense * 0.15 },
     { name: 'Other', value: totalExpense * 0.15 },
   ];
-  const DONUT_COLORS = ['#3b82f6', '#a855f7', '#06b6d4', '#10b981'];
+  const DONUT_COLORS = ['var(--color-primary)', 'var(--color-accent)', 'var(--color-info)', 'var(--color-success)'];
 
   // 6 Main Strategic KPIs
   const strategicKPIs = [
-    { label: 'Total Revenue', value: money(totalRevenue), icon: TrendingUp, color: '#3b82f6', change: '+14.2%', trendType: 'up', sub: 'vs baseline target' },
-    { label: 'Net Profit', value: money(netIncome), icon: Wallet, color: '#10b981', change: '+18.5%', trendType: 'up', sub: 'vs baseline target' },
-    { label: 'Operating Cash Flow (OCF)', value: money(ocf), icon: Landmark, color: '#06b6d4', change: '+12.1%', trendType: 'up', sub: 'vs baseline target' },
-    { label: 'Gross Profit Margin', value: money(grossProfit), icon: BarChart3, color: '#8b5cf6', change: '+9.4%', trendType: 'up', sub: 'period-over-period' },
-    { label: 'EBITDA (Earnings)', value: money(ebitda), icon: Activity, color: '#f59e0b', change: '+11.2%', trendType: 'up', sub: 'period-over-period' },
-    { label: 'Total Expenses', value: money(totalExpense), icon: CreditCard, color: '#ef4444', change: '+4.8%', trendType: 'down', sub: 'expense expansion' },
+    { label: 'Total Revenue', value: money(totalRevenue), icon: TrendingUp, color: 'var(--color-primary)', change: '+14.2%', trendType: 'up', sub: 'vs baseline target' },
+    { label: 'Net Profit', value: money(netIncome), icon: Wallet, color: 'var(--color-success)', change: '+18.5%', trendType: 'up', sub: 'vs baseline target' },
+    { label: 'Operating Cash Flow (OCF)', value: money(ocf), icon: Landmark, color: 'var(--color-info)', change: '+12.1%', trendType: 'up', sub: 'vs baseline target' },
+    { label: 'Gross Profit Margin', value: money(grossProfit), icon: BarChart3, color: 'var(--color-accent)', change: '+9.4%', trendType: 'up', sub: 'period-over-period' },
+    { label: 'EBITDA (Earnings)', value: money(ebitda), icon: Activity, color: 'var(--color-warning)', change: '+11.2%', trendType: 'up', sub: 'period-over-period' },
+    { label: 'Total Expenses', value: money(totalExpense), icon: CreditCard, color: 'var(--color-danger)', change: '+4.8%', trendType: 'down', sub: 'expense expansion' },
   ];
 
   return (
@@ -175,14 +175,14 @@ export function DashboardOverview({ accounts = [], entries: _entries = [], setPa
         </div>
         {/* visual equations progress bar */}
         <div className="w-full h-3 rounded-full bg-[var(--color-surface-muted)] overflow-hidden flex">
-          <div className="h-full bg-[#3b82f6] transition-all duration-300" style={{ width: `${totalAssets > 0 ? (totalAssets / (totalAssets + totalLiabilities + Math.max(0, equityValue))) * 100 : 50}%` }} title="Assets" />
-          <div className="h-full bg-[#ef4444] transition-all duration-300" style={{ width: `${totalLiabilities > 0 ? (totalLiabilities / (totalAssets + totalLiabilities + Math.max(0, equityValue))) * 100 : 25}%` }} title="Liabilities" />
-          <div className="h-full bg-[#10b981] transition-all duration-300" style={{ width: `${equityValue > 0 ? (equityValue / (totalAssets + totalLiabilities + Math.max(0, equityValue))) * 100 : 25}%` }} title="Equity" />
+          <div className="h-full bg-[var(--color-primary)] transition-all duration-300" style={{ width: `${totalAssets > 0 ? (totalAssets / (totalAssets + totalLiabilities + Math.max(0, equityValue))) * 100 : 50}%` }} title="Assets" />
+          <div className="h-full bg-[var(--color-danger)] transition-all duration-300" style={{ width: `${totalLiabilities > 0 ? (totalLiabilities / (totalAssets + totalLiabilities + Math.max(0, equityValue))) * 100 : 25}%` }} title="Liabilities" />
+          <div className="h-full bg-[var(--color-success)] transition-all duration-300" style={{ width: `${equityValue > 0 ? (equityValue / (totalAssets + totalLiabilities + Math.max(0, equityValue))) * 100 : 25}%` }} title="Equity" />
         </div>
         <div className="flex items-center justify-between mt-2 text-[9px] font-bold text-[var(--color-text-muted)]">
-          <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-[#3b82f6]" /> Total Assets ({money(totalAssets)})</span>
-          <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-[#ef4444]" /> Liabilities ({money(totalLiabilities)})</span>
-          <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-[#10b981]" /> Equity ({money(equityValue)})</span>
+          <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-[var(--color-primary)]" /> Total Assets ({money(totalAssets)})</span>
+          <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-[var(--color-danger)]" /> Liabilities ({money(totalLiabilities)})</span>
+          <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-[var(--color-success)]" /> Equity ({money(equityValue)})</span>
         </div>
       </div>
 
@@ -233,31 +233,21 @@ export function DashboardOverview({ accounts = [], entries: _entries = [], setPa
               <p className="text-[10px] text-[var(--color-text-muted)]">Consolidated income statement quarterly movement overview</p>
             </div>
             <div className="flex items-center gap-3 text-[10px] font-bold self-end sm:self-center">
-              <span className="flex items-center gap-1.5" style={{ color: '#3b82f6' }}><span className="w-2.5 h-2.5 rounded-sm" style={{ background: '#3b82f6' }} /> Revenue</span>
-              <span className="flex items-center gap-1.5" style={{ color: '#ef4444' }}><span className="w-2.5 h-2.5 rounded-sm" style={{ background: '#ef4444' }} /> Expenses</span>
-              <span className="flex items-center gap-1.5" style={{ color: '#10b981' }}><span className="w-2.5 h-2.5 rounded-sm" style={{ background: '#10b981' }} /> Net Profit</span>
+              <span className="flex items-center gap-1.5" style={{ color: 'var(--color-primary)' }}><span className="w-2.5 h-2.5 rounded-sm" style={{ background: '#3b82f6' }} /> Revenue</span>
+              <span className="flex items-center gap-1.5" style={{ color: 'var(--color-danger)' }}><span className="w-2.5 h-2.5 rounded-sm" style={{ background: '#ef4444' }} /> Expenses</span>
+              <span className="flex items-center gap-1.5" style={{ color: 'var(--color-success)' }}><span className="w-2.5 h-2.5 rounded-sm" style={{ background: '#10b981' }} /> Net Profit</span>
             </div>
           </div>
           <div className="w-full min-h-[220px]">
             <ResponsiveContainer width="100%" height={220}>
               <AreaChart data={performanceTrend} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
-                <defs>
-                  <linearGradient id="row4Rev" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.25} />
-                    <stop offset="95%" stopColor="#3b82f6" stopOpacity={0} />
-                  </linearGradient>
-                  <linearGradient id="row4Prof" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="#10b981" stopOpacity={0.25} />
-                    <stop offset="95%" stopColor="#10b981" stopOpacity={0} />
-                  </linearGradient>
-                </defs>
                 <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border-subtle)" vertical={false} />
                 <XAxis dataKey="period" tick={{ fontSize: 10, fill: 'var(--color-text-muted)' }} axisLine={false} tickLine={false} />
                 <YAxis tick={{ fontSize: 10, fill: 'var(--color-text-muted)' }} axisLine={false} tickLine={false} tickFormatter={(v: any) => moneyCompact(Number(v))} />
                 <Tooltip formatter={(v: any) => money(Number(v))} contentStyle={{ borderRadius: 12, fontSize: 11, background: 'var(--color-surface)', border: '1px solid var(--color-border)' }} />
-                <Area type="monotone" dataKey="revenue" stroke="#3b82f6" strokeWidth={2.5} fill="url(#row4Rev)" name="Revenue" />
-                <Area type="monotone" dataKey="expense" stroke="#ef4444" strokeWidth={2} fill="transparent" name="Expenses" />
-                <Area type="monotone" dataKey="profit" stroke="#10b981" strokeWidth={2.5} fill="url(#row4Prof)" name="Net Profit" />
+                <Area type="monotone" dataKey="revenue" stroke="var(--color-primary)" strokeWidth={2.5} fill="var(--color-primary)" fillOpacity={0.15} name="Revenue" />
+                <Area type="monotone" dataKey="expense" stroke="var(--color-danger)" strokeWidth={2} fill="transparent" name="Expenses" />
+                <Area type="monotone" dataKey="profit" stroke="var(--color-success)" strokeWidth={2.5} fill="var(--color-success)" fillOpacity={0.15} name="Net Profit" />
               </AreaChart>
             </ResponsiveContainer>
           </div>
@@ -267,7 +257,7 @@ export function DashboardOverview({ accounts = [], entries: _entries = [], setPa
         <div className="bg-[var(--color-surface)] p-4 rounded-2xl border border-[var(--color-border)] shadow-sm flex flex-col justify-between">
           <div className="pb-2.5 border-b border-[var(--color-border-subtle)] mb-3">
             <h3 className="text-xs font-black uppercase tracking-wider text-[var(--color-text-strong)] flex items-center gap-1.5">
-              <CreditCard className="w-4 h-4 text-[#ef4444]" /> Expenses Allocation Donut
+              <CreditCard className="w-4 h-4 text-[var(--color-danger)]" /> Expenses Allocation Donut
             </h3>
             <p className="text-[10px] text-[var(--color-text-muted)]">Consolidated expense account groupings</p>
           </div>
@@ -313,12 +303,12 @@ export function DashboardOverview({ accounts = [], entries: _entries = [], setPa
           </div>
           <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
             {[
-              { label: 'Current Ratio', val: `${currentRatio.toFixed(2)}x`, status: 'Optimal', color: '#10b981', details: 'Assets vs Liabilities' },
-              { label: 'Quick Ratio', val: `${quickRatio.toFixed(2)}x`, status: 'Healthy', color: '#06b6d4', details: 'Acid-test liquidity' },
-              { label: 'Debt / Equity', val: `${debtToEquity.toFixed(2)}`, status: 'Low Risk', color: '#3b82f6', details: 'Leverage integrity' },
-              { label: 'Net Margin', val: `${netMargin.toFixed(1)}%`, status: 'Strong', color: '#8b5cf6', details: 'Net income to sales' },
-              { label: 'Return on Equity', val: `${roe.toFixed(1)}%`, status: 'Superior', color: '#f59e0b', details: 'Yield on net worth' },
-              { label: 'Asset Turnover', val: '0.85x', status: 'Stable', color: '#a855f7', details: 'Revenue generation efficiency' },
+              { label: 'Current Ratio', val: `${currentRatio.toFixed(2)}x`, status: 'Optimal', color: 'var(--color-success)', details: 'Assets vs Liabilities' },
+              { label: 'Quick Ratio', val: `${quickRatio.toFixed(2)}x`, status: 'Healthy', color: 'var(--color-info)', details: 'Acid-test liquidity' },
+              { label: 'Debt / Equity', val: `${debtToEquity.toFixed(2)}`, status: 'Low Risk', color: 'var(--color-primary)', details: 'Leverage integrity' },
+              { label: 'Net Margin', val: `${netMargin.toFixed(1)}%`, status: 'Strong', color: 'var(--color-accent)', details: 'Net income to sales' },
+              { label: 'Return on Equity', val: `${roe.toFixed(1)}%`, status: 'Superior', color: 'var(--color-warning)', details: 'Yield on net worth' },
+              { label: 'Asset Turnover', val: '0.85x', status: 'Stable', color: 'var(--color-accent)', details: 'Revenue generation efficiency' },
             ].map((r, i) => (
               <div key={i} className="bg-[var(--color-surface-muted)] p-2.5 rounded-xl border border-[var(--color-border-subtle)] text-center relative flex flex-col justify-between min-h-[92px]">
                 <span className="text-[9px] font-bold uppercase tracking-wider text-[var(--color-text-muted)] block truncate">{r.label}</span>
@@ -338,7 +328,7 @@ export function DashboardOverview({ accounts = [], entries: _entries = [], setPa
         <div className="bg-[var(--color-surface)] p-4 rounded-2xl border border-[var(--color-border)] shadow-sm flex flex-col justify-between">
           <div className="pb-2.5 border-b border-[var(--color-border-subtle)] mb-3">
             <h3 className="text-xs font-black uppercase tracking-wider text-[var(--color-text-strong)] flex items-center gap-1.5">
-              <HandCoins className="w-4 h-4 text-[#06b6d4]" /> Liquidity & Cash Position
+              <HandCoins className="w-4 h-4 text-[var(--color-info)]" /> Liquidity & Cash Position
             </h3>
             <p className="text-[10px] text-[var(--color-text-muted)]">Consolidated cash flow and treasury status</p>
           </div>
@@ -378,7 +368,7 @@ export function DashboardOverview({ accounts = [], entries: _entries = [], setPa
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-4 pb-2.5 border-b border-[var(--color-border-subtle)]">
             <div>
               <h3 className="text-xs font-black uppercase tracking-wider text-[var(--color-text-strong)] flex items-center gap-1.5">
-                <Clock className="w-4 h-4 text-[#ef4444]" /> Comparative Receivables (AR) vs Payables (AP) Aging
+                <Clock className="w-4 h-4 text-[var(--color-danger)]" /> Comparative Receivables (AR) vs Payables (AP) Aging
               </h3>
               <p className="text-[10px] text-[var(--color-text-muted)]">Credit control analysis of outstanding invoices and vendor bills</p>
             </div>
@@ -433,16 +423,16 @@ export function DashboardOverview({ accounts = [], entries: _entries = [], setPa
         <div className="bg-[var(--color-surface)] p-4 rounded-2xl border border-[var(--color-border)] shadow-sm flex flex-col justify-between">
           <div className="pb-2.5 border-b border-[var(--color-border-subtle)] mb-3">
             <h3 className="text-xs font-black uppercase tracking-wider text-[var(--color-text-strong)] flex items-center gap-1.5">
-              <Boxes className="w-4 h-4 text-[#8b5cf6]" /> Operational Vital Signs
+              <Boxes className="w-4 h-4 text-[var(--color-accent)]" /> Operational Vital Signs
             </h3>
             <p className="text-[10px] text-[var(--color-text-muted)]">General registry metadata values</p>
           </div>
           <div className="space-y-2">
             {[
-              { label: 'Active Invoices', val: safeInvoices.length, detail: 'Invoicing registry count', color: '#3b82f6' },
-              { label: 'Pending Bills', val: unpaidBillsArr.length, detail: 'Accounts Payable list count', color: '#f59e0b' },
-              { label: 'Stock Catalog', val: `${safeStockLevels.length} items`, detail: 'Assets Inventory registry count', color: '#8b5cf6' },
-              { label: 'Compliance Status', val: '98.5%', detail: 'Tax filing alignment score', color: '#10b981' },
+              { label: 'Active Invoices', val: safeInvoices.length, detail: 'Invoicing registry count', color: 'var(--color-primary)' },
+              { label: 'Pending Bills', val: unpaidBillsArr.length, detail: 'Accounts Payable list count', color: 'var(--color-warning)' },
+              { label: 'Stock Catalog', val: `${safeStockLevels.length} items`, detail: 'Assets Inventory registry count', color: 'var(--color-accent)' },
+              { label: 'Compliance Status', val: '98.5%', detail: 'Tax filing alignment score', color: 'var(--color-success)' },
             ].map((v, i) => (
               <div key={i} className="flex items-center justify-between p-2 rounded-xl bg-[var(--color-surface-muted)] text-[10px]">
                 <div className="min-w-0 flex-1">

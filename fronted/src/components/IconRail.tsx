@@ -28,10 +28,16 @@ export default function IconRail({ activePage, onNavigate, modules, currentUser,
   return (
     <aside className="icon-rail">
       <div className="rail-brand" title="AMS — Accounting Management System">
-        <img src="/favicon.svg" alt="" className="rail-brand-logo" />
+        <div className="rail-brand-logo-mark">
+          <svg width="32" height="32" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <rect width="32" height="32" rx="8" fill="var(--color-primary)" fillOpacity="0.15"/>
+            <path d="M8 22L12 10L16 18L20 10L24 22" stroke="var(--color-primary)" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"/>
+            <circle cx="26" cy="10" r="2.5" fill="var(--color-accent)"/>
+          </svg>
+        </div>
         <div className="rail-brand-text">
-          <span className="rail-brand-am">AM</span>
-          <span className="rail-brand-s">S</span>
+          <span className="rail-brand-am">AMS</span>
+          <span className="rail-brand-sub">ERP</span>
         </div>
       </div>
 

@@ -518,7 +518,7 @@ export const VendorBills: React.FC<{ activeEntityId: string }> = ({ activeEntity
                         </span>
                         <button
                           type="button"
-                          style={{ color: '#ef4444', background: 'none', border: 'none', cursor: 'pointer', fontWeight: 'bold', fontSize: 16, width: 24 }}
+                          style={{ color: 'var(--color-danger)', background: 'none', border: 'none', cursor: 'pointer', fontWeight: 'bold', fontSize: 16, width: 24 }}
                           onClick={() => setBillLines(billLines.filter((_, idx) => idx !== i))}
                         >
                           ×

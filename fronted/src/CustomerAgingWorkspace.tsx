@@ -11,11 +11,11 @@ type Props = { activeEntityId: string };
 
 const BUCKETS = ['Current', '1-30', '31-60', '61-90', '90+'] as const;
 const BUCKET_COLORS: Record<string, string> = {
-  Current: '#10b981',
-  '1-30': '#f59e0b',
-  '31-60': '#f97316',
-  '61-90': '#ef4444',
-  '90+': '#dc2626',
+  Current: 'var(--color-success)',
+  '1-30': 'var(--color-warning)',
+  '31-60': 'var(--color-warning)',
+  '61-90': 'var(--color-danger)',
+  '90+': 'var(--color-danger)',
 };
 
 function agingBucket(dueDate: string): string {

@@ -18,7 +18,7 @@ const today = () => new Date().toISOString().split('T')[0];
 const monthKey = (d: string) => d.slice(0, 7);
 const MONTH_LABELS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 
-const PIE_COLORS = ['#0d9488', '#2563eb', '#8b5cf6', '#f59e0b', '#10b981', '#ef4444', '#06b6d4', '#64748b'];
+const PIE_COLORS = ['var(--color-info)', 'var(--color-primary)', 'var(--color-accent)', 'var(--color-warning)', 'var(--color-success)', 'var(--color-danger)', 'var(--color-info)', 'var(--color-text-muted)'];
 
 function useAnalyticsData() {
   const coa = useCoaStore();
@@ -163,17 +163,13 @@ export function AnalyticsDashboardView() {
       <SummaryPanel icon={BarChart3} title="Revenue vs Expenses (6 months)">
         <ResponsiveContainer width="100%" height={220}>
           <RAreaChart data={chartData}>
-            <defs>
-              <linearGradient id="gRev" x1="0" y1="0" x2="0" y2="1"><stop offset="5%" stopColor="#0d9488" stopOpacity={0.3} /><stop offset="95%" stopColor="#0d9488" stopOpacity={0} /></linearGradient>
-              <linearGradient id="gExp" x1="0" y1="0" x2="0" y2="1"><stop offset="5%" stopColor="#ef4444" stopOpacity={0.3} /><stop offset="95%" stopColor="#ef4444" stopOpacity={0} /></linearGradient>
-            </defs>
-            <RCartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
+            <RCartesianGrid strokeDasharray="3 3" stroke="var(--color-border)" />
             <RXAxis dataKey="month" tick={{ fontSize: 11 }} />
             <RYAxis tick={{ fontSize: 11 }} />
             <RTooltip formatter={(v: any) => money(Number(v))} />
             <RLegend />
-            <RArea type="monotone" dataKey="revenue" stroke="#0d9488" fill="url(#gRev)" name="Revenue" />
-            <RArea type="monotone" dataKey="expenses" stroke="#ef4444" fill="url(#gExp)" name="Expenses" />
+            <RArea type="monotone" dataKey="revenue" stroke="var(--color-info)" fill="var(--color-info)" fillOpacity={0.15} name="Revenue" />
+            <RArea type="monotone" dataKey="expenses" stroke="var(--color-danger)" fill="var(--color-danger)" fillOpacity={0.15} name="Expenses" />
           </RAreaChart>
         </ResponsiveContainer>
       </SummaryPanel>
@@ -209,13 +205,13 @@ export function FinancialAnalyticsView() {
           <p className="text-sm font-medium flex items-center gap-2"><BarChart3 className="h-4 w-4" /> Monthly Revenue & Profit</p>
           <ResponsiveContainer width="100%" height={260}>
             <RBarChart data={d.monthly.length ? d.monthly : [{ month: 'No data', revenue: 0, expenses: 0, profit: 0 }]}>
-              <RCartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
+              <RCartesianGrid strokeDasharray="3 3" stroke="var(--color-border)" />
               <RXAxis dataKey="month" tick={{ fontSize: 11 }} />
               <RYAxis tick={{ fontSize: 11 }} />
               <RTooltip formatter={(v: any) => money(Number(v))} />
               <RLegend />
-              <RBar dataKey="revenue" fill="#0d9488" name="Revenue" radius={[4, 4, 0, 0]} />
-              <RBar dataKey="profit" fill="#8b5cf6" name="Profit" radius={[4, 4, 0, 0]} />
+              <RBar dataKey="revenue" fill="var(--color-info)" name="Revenue" radius={[4, 4, 0, 0]} />
+              <RBar dataKey="profit" fill="var(--color-accent)" name="Profit" radius={[4, 4, 0, 0]} />
             </RBarChart>
           </ResponsiveContainer>
         </Card>
@@ -254,12 +250,11 @@ export function SalesAnalyticsView() {
           <p className="text-sm font-medium flex items-center gap-2"><BarChart3 className="h-4 w-4" /> Monthly Sales Revenue</p>
           <ResponsiveContainer width="100%" height={260}>
             <RAreaChart data={d.monthly.length ? d.monthly : [{ month: 'No data', revenue: 0, expenses: 0, profit: 0 }]}>
-              <defs><linearGradient id="gSales" x1="0" y1="0" x2="0" y2="1"><stop offset="5%" stopColor="#2563eb" stopOpacity={0.3} /><stop offset="95%" stopColor="#2563eb" stopOpacity={0} /></linearGradient></defs>
-              <RCartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
+              <RCartesianGrid strokeDasharray="3 3" stroke="var(--color-border)" />
               <RXAxis dataKey="month" tick={{ fontSize: 11 }} />
               <RYAxis tick={{ fontSize: 11 }} />
               <RTooltip formatter={(v: any) => money(Number(v))} />
-              <RArea type="monotone" dataKey="revenue" stroke="#2563eb" fill="url(#gSales)" name="Revenue" />
+              <RArea type="monotone" dataKey="revenue" stroke="var(--color-primary)" fill="var(--color-primary)" fillOpacity={0.15} name="Revenue" />
             </RAreaChart>
           </ResponsiveContainer>
         </Card>
@@ -330,11 +325,11 @@ export function ExpenseAnalyticsView() {
           <p className="text-sm font-medium flex items-center gap-2"><BarChart3 className="h-4 w-4" /> Monthly Expenses</p>
           <ResponsiveContainer width="100%" height={260}>
             <RBarChart data={d.monthly.length ? d.monthly : [{ month: 'No data', revenue: 0, expenses: 0, profit: 0 }]}>
-              <RCartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
+              <RCartesianGrid strokeDasharray="3 3" stroke="var(--color-border)" />
               <RXAxis dataKey="month" tick={{ fontSize: 11 }} />
               <RYAxis tick={{ fontSize: 11 }} />
               <RTooltip formatter={(v: any) => money(Number(v))} />
-              <RBar dataKey="expenses" fill="#ef4444" name="Expenses" radius={[4, 4, 0, 0]} />
+              <RBar dataKey="expenses" fill="var(--color-danger)" name="Expenses" radius={[4, 4, 0, 0]} />
             </RBarChart>
           </ResponsiveContainer>
         </Card>
@@ -363,14 +358,14 @@ export function CashFlowAnalyticsView() {
           <p className="text-sm font-medium flex items-center gap-2"><LineChart className="h-4 w-4" /> Monthly Cash Flow</p>
           <ResponsiveContainer width="100%" height={260}>
             <RLineChart data={d.cashFlow.length ? d.cashFlow : [{ month: 'No data', inflow: 0, outflow: 0, net: 0 }]}>
-              <RCartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
+              <RCartesianGrid strokeDasharray="3 3" stroke="var(--color-border)" />
               <RXAxis dataKey="month" tick={{ fontSize: 11 }} />
               <RYAxis tick={{ fontSize: 11 }} />
               <RTooltip formatter={(v: any) => money(Number(v))} />
               <RLegend />
-              <RLine type="monotone" dataKey="inflow" stroke="#10b981" name="Inflow" />
-              <RLine type="monotone" dataKey="outflow" stroke="#ef4444" name="Outflow" />
-              <RLine type="monotone" dataKey="net" stroke="#2563eb" name="Net" />
+              <RLine type="monotone" dataKey="inflow" stroke="var(--color-success)" name="Inflow" />
+              <RLine type="monotone" dataKey="outflow" stroke="var(--color-danger)" name="Outflow" />
+              <RLine type="monotone" dataKey="net" stroke="var(--color-primary)" name="Net" />
             </RLineChart>
           </ResponsiveContainer>
         </Card>
@@ -411,13 +406,13 @@ export function InventoryAnalyticsView() {
           <p className="text-sm font-medium flex items-center gap-2"><Boxes className="h-4 w-4" /> Stock Level & Reorder Points</p>
           <ResponsiveContainer width="100%" height={260}>
             <RBarChart data={d.stockLevels.length ? d.stockLevels.slice(0, 12).map(l => ({ name: l.productName || l.itemCode || 'Item', onHand: l.quantityOnHand || 0, reorder: l.reorderPoint || 0 })) : [{ name: 'No data', onHand: 0, reorder: 0 }]}>
-              <RCartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
+              <RCartesianGrid strokeDasharray="3 3" stroke="var(--color-border)" />
               <RXAxis dataKey="name" tick={{ fontSize: 10 }} interval={0} angle={-20} textAnchor="end" height={60} />
               <RYAxis tick={{ fontSize: 11 }} />
               <RTooltip />
               <RLegend />
-              <RBar dataKey="onHand" fill="#0d9488" name="On Hand" radius={[4, 4, 0, 0]} />
-              <RBar dataKey="reorder" fill="#f59e0b" name="Reorder Point" radius={[4, 4, 0, 0]} />
+              <RBar dataKey="onHand" fill="var(--color-info)" name="On Hand" radius={[4, 4, 0, 0]} />
+              <RBar dataKey="reorder" fill="var(--color-warning)" name="Reorder Point" radius={[4, 4, 0, 0]} />
             </RBarChart>
           </ResponsiveContainer>
         </Card>
@@ -499,13 +494,13 @@ export function ForecastingView() {
         <p className="text-sm font-medium flex items-center gap-2"><LineChart className="h-4 w-4" /> Revenue Forecast (Linear Trend)</p>
         <ResponsiveContainer width="100%" height={300}>
           <RLineChart data={forecast}>
-            <RCartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
+            <RCartesianGrid strokeDasharray="3 3" stroke="var(--color-border)" />
             <RXAxis dataKey="month" tick={{ fontSize: 11 }} />
             <RYAxis tick={{ fontSize: 11 }} />
             <RTooltip formatter={(v: any) => money(Number(v))} />
             <RLegend />
-            <RLine type="monotone" dataKey="revenue" stroke="#0d9488" name="Revenue" dot={{ r: 3 }} />
-            <RLine type="monotone" dataKey="expenses" stroke="#ef4444" name="Expenses" dot={{ r: 3 }} strokeDasharray="5 5" />
+            <RLine type="monotone" dataKey="revenue" stroke="var(--color-info)" name="Revenue" dot={{ r: 3 }} />
+            <RLine type="monotone" dataKey="expenses" stroke="var(--color-danger)" name="Expenses" dot={{ r: 3 }} strokeDasharray="5 5" />
           </RLineChart>
         </ResponsiveContainer>
         <p className="text-xs text-muted-foreground">Dashed segments represent projected values extrapolated from historical trend. Forecast quality improves as more months of data are recorded.</p>
