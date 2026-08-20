@@ -198,30 +198,22 @@ export function DashboardOverview({ accounts = [], entries: _entries = [], setPa
           }
           className="col-span-12 lg:col-span-7"
         >
-          <ResponsiveContainer width="100%" height={280}>
-            <AreaChart data={monthlyTrend} margin={{ top: 10, right: 10, left: -15, bottom: 0 }}>
-              <defs>
-                <linearGradient id="gradIncome" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="0%" stopColor="var(--color-success)" stopOpacity={0.25} />
-                  <stop offset="100%" stopColor="var(--color-success)" stopOpacity={0} />
-                </linearGradient>
-                <linearGradient id="gradNet" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="0%" stopColor="var(--color-primary)" stopOpacity={0.2} />
-                  <stop offset="100%" stopColor="var(--color-primary)" stopOpacity={0} />
-                </linearGradient>
-              </defs>
-              <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border-subtle)" vertical={false} />
-              <XAxis dataKey="month" tick={{ fontSize: 10, fill: 'var(--color-text-muted)' }} axisLine={false} tickLine={false} />
-              <YAxis tick={{ fontSize: 10, fill: 'var(--color-text-muted)' }} axisLine={false} tickLine={false} tickFormatter={(v: any) => moneyCompact(Number(v))} />
-              <Tooltip
-                contentStyle={{ borderRadius: 12, fontSize: 11, background: 'var(--color-surface)', border: '1px solid var(--color-border)', boxShadow: '0 4px 12px rgba(0,0,0,0.1)' }}
-              />
-              <Legend iconType="square" iconSize={8} wrapperStyle={{ fontSize: 10, paddingTop: 8 }} />
-              <Area type="monotone" dataKey="income" stroke="var(--color-success)" strokeWidth={2} fill="url(#gradIncome)" name="Income" />
-              <Area type="monotone" dataKey="expense" stroke="var(--color-danger)" strokeWidth={2} fill="transparent" name="Expenses" strokeDasharray="5 3" />
-              <Area type="monotone" dataKey="net" stroke="var(--color-primary)" strokeWidth={2.5} fill="url(#gradNet)" name="Net Income" />
-            </AreaChart>
-          </ResponsiveContainer>
+          <div className="w-full h-[280px]">
+            <ResponsiveContainer width="100%" height="100%" minWidth={100} minHeight={100}>
+              <AreaChart data={monthlyTrend} margin={{ top: 10, right: 10, left: -15, bottom: 0 }}>
+                <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border-subtle)" vertical={false} />
+                <XAxis dataKey="month" tick={{ fontSize: 10, fill: 'var(--color-text-muted)' }} axisLine={false} tickLine={false} />
+                <YAxis tick={{ fontSize: 10, fill: 'var(--color-text-muted)' }} axisLine={false} tickLine={false} tickFormatter={(v: any) => moneyCompact(Number(v))} />
+                <Tooltip
+                  contentStyle={{ borderRadius: 12, fontSize: 11, background: 'var(--color-surface)', border: '1px solid var(--color-border)', boxShadow: '0 4px 12px rgba(0,0,0,0.1)' }}
+                />
+                <Legend iconType="square" iconSize={8} wrapperStyle={{ fontSize: 10, paddingTop: 8 }} />
+                <Area type="monotone" dataKey="income" stroke="var(--color-success)" strokeWidth={2} fill="var(--color-success)" fillOpacity={0.12} name="Income" />
+                <Area type="monotone" dataKey="expense" stroke="var(--color-danger)" strokeWidth={2} fill="transparent" name="Expenses" strokeDasharray="5 3" />
+                <Area type="monotone" dataKey="net" stroke="var(--color-primary)" strokeWidth={2.5} fill="var(--color-primary)" fillOpacity={0.1} name="Net Income" />
+              </AreaChart>
+            </ResponsiveContainer>
+          </div>
         </ChartCard>
 
         {/* ── Cash Flow Overview (5 cols) ── */}
@@ -232,22 +224,24 @@ export function DashboardOverview({ accounts = [], entries: _entries = [], setPa
           iconColor="var(--color-info)"
           className="col-span-12 lg:col-span-5"
         >
-          <ResponsiveContainer width="100%" height={180}>
-            <BarChart data={cashFlowData} margin={{ top: 5, right: 5, left: -15, bottom: 0 }} barGap={2}>
-              <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border-subtle)" vertical={false} />
-              <XAxis dataKey="category" tick={{ fontSize: 9, fill: 'var(--color-text-muted)' }} axisLine={false} tickLine={false} />
-              <YAxis tick={{ fontSize: 9, fill: 'var(--color-text-muted)' }} axisLine={false} tickLine={false} tickFormatter={(v: any) => moneyCompact(Number(v))} />
-              <Tooltip
-                formatter={(v: any) => money(Number(v))}
-                contentStyle={{ borderRadius: 10, fontSize: 11, background: 'var(--color-surface)', border: '1px solid var(--color-border)' }}
-              />
-              <Bar dataKey="amount" radius={[4, 4, 0, 0]} name="Cash Flow">
-                {cashFlowData.map((_entry, index) => (
-                  <Cell key={index} fill={cashFlowColors[index]} />
-                ))}
-              </Bar>
-            </BarChart>
-          </ResponsiveContainer>
+          <div className="w-full h-[180px]">
+            <ResponsiveContainer width="100%" height="100%" minWidth={100} minHeight={100}>
+              <BarChart data={cashFlowData} margin={{ top: 5, right: 5, left: -15, bottom: 0 }} barGap={2}>
+                <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border-subtle)" vertical={false} />
+                <XAxis dataKey="category" tick={{ fontSize: 9, fill: 'var(--color-text-muted)' }} axisLine={false} tickLine={false} />
+                <YAxis tick={{ fontSize: 9, fill: 'var(--color-text-muted)' }} axisLine={false} tickLine={false} tickFormatter={(v: any) => moneyCompact(Number(v))} />
+                <Tooltip
+                  formatter={(v: any) => money(Number(v))}
+                  contentStyle={{ borderRadius: 10, fontSize: 11, background: 'var(--color-surface)', border: '1px solid var(--color-border)' }}
+                />
+                <Bar dataKey="amount" radius={[4, 4, 0, 0]} name="Cash Flow">
+                  {cashFlowData.map((_entry, index) => (
+                    <Cell key={index} fill={cashFlowColors[index]} />
+                  ))}
+                </Bar>
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
           {/* Summary rows */}
           <div className="space-y-2 mt-3">
             {cashFlowData.map((cf, i) => (

@@ -1,5 +1,4 @@
 import { type LucideIcon, TrendingUp, TrendingDown, Minus } from 'lucide-react';
-import { AreaChart, Area, ResponsiveContainer } from 'recharts';
 
 interface KpiCardProps {
   label: string;
@@ -11,6 +10,32 @@ interface KpiCardProps {
   sub?: string;
   sparkline?: { value: number }[];
   className?: string;
+}
+
+function Sparkline({ data, color }: { data: { value: number }[]; color: string }) {
+  const values = data.map((d) => d.value);
+  if (values.length < 2) return null;
+  const min = Math.min(...values);
+  const max = Math.max(...values);
+  const range = max - min || 1;
+  const W = 80;
+  const H = 30;
+  const P = 2;
+  const usableW = W - P * 2;
+  const usableH = H - P * 2;
+  const points = values.map((v, i) => {
+    const x = P + (i / (values.length - 1)) * usableW;
+    const y = H - P - ((v - min) / range) * usableH;
+    return `${x.toFixed(1)},${y.toFixed(1)}`;
+  });
+  const lineD = `M ${points.join(' L ')}`;
+  const areaD = `M ${points[0]} L ${points.join(' L ')} L ${(W - P).toFixed(1)},${H.toFixed(1)} L ${P},${H.toFixed(1)} Z`;
+  return (
+    <svg className="w-20 h-8 shrink-0 overflow-visible" viewBox={`0 0 ${W} ${H}`} preserveAspectRatio="none" aria-hidden="true">
+      <path d={areaD} fill={color} fillOpacity={0.15} />
+      <path d={lineD} fill="none" stroke={color} strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
 }
 
 export function KpiCard({ label, value, icon: Icon, color, change, trendType, sub, sparkline, className = '' }: KpiCardProps) {
@@ -31,7 +56,7 @@ export function KpiCard({ label, value, icon: Icon, color, change, trendType, su
 
       {/* Trend + Sparkline Row */}
       <div className="flex items-end justify-between mt-2 gap-2">
-        <div className="flex items-center gap-1.5 shrink-0">
+        <div className="flex items-center gap-1.5 shrink-0 min-w-0">
           {trendType === 'up' && <TrendingUp className="w-3.5 h-3.5 shrink-0" style={{ color: trendColor }} />}
           {trendType === 'down' && <TrendingDown className="w-3.5 h-3.5 shrink-0" style={{ color: trendColor }} />}
           {trendType === 'neutral' && <Minus className="w-3.5 h-3.5 shrink-0" style={{ color: trendColor }} />}
@@ -39,25 +64,8 @@ export function KpiCard({ label, value, icon: Icon, color, change, trendType, su
           {sub && <span className="text-[9px] text-[var(--color-text-subtle)] truncate">{sub}</span>}
         </div>
         {sparkline && sparkline.length > 0 && (
-          <div className="w-20 h-8 shrink-0 opacity-70">
-            <ResponsiveContainer width="100%" height="100%">
-              <AreaChart data={sparkline} margin={{ top: 0, right: 0, left: 0, bottom: 0 }}>
-                <defs>
-                  <linearGradient id={`spark-${label.replace(/\s/g, '')}`} x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="0%" stopColor={color} stopOpacity={0.3} />
-                    <stop offset="100%" stopColor={color} stopOpacity={0} />
-                  </linearGradient>
-                </defs>
-                <Area
-                  type="monotone"
-                  dataKey="value"
-                  stroke={color}
-                  strokeWidth={1.5}
-                  fill={`url(#spark-${label.replace(/\s/g, '')})`}
-                  dot={false}
-                />
-              </AreaChart>
-            </ResponsiveContainer>
+          <div className="shrink-0" style={{ opacity: 0.7 }}>
+            <Sparkline data={sparkline} color={color} />
           </div>
         )}
       </div>

@@ -86,6 +86,7 @@ import { JournalEntriesView } from './JournalEntriesView'
 import { useCoaStore, useJournalsStore, useCompanyStore, useIntercompanyStore } from './stores'
 import { DashboardOverview } from './DashboardOverview'
 import { DashboardHub } from './components/DashboardHub'
+import { ErrorBoundary } from './components/ErrorBoundary'
 
 import { NAVIGATION } from './navigation'
 import IconRail from './components/IconRail'
@@ -442,7 +443,11 @@ export default function App() {
     </nav>
   </div>
   {activeView === 'dashboard-hub' && <DashboardHub setPage={setPage} accounts={accounts} activeEntityId={activeEntityId} currentUser={currentUser} />}
-  {activeView === 'dashboard-overview' && <DashboardOverview accounts={accounts} entries={entries} setPage={setPage} activeEntityId={activeEntityId} />}
+  {activeView === 'dashboard-overview' && (
+    <ErrorBoundary>
+      <DashboardOverview accounts={accounts} entries={entries} setPage={setPage} activeEntityId={activeEntityId} />
+    </ErrorBoundary>
+  )}
   {activeView === 'module-summary' && <ModuleSummary moduleName={group} accounts={accounts} entries={entries} setPage={setPage} openCreateAccount={openCreate} />}
   {activeView === 'sales-summary' && <SalesSummaryView activeEntityId={activeEntityId} setPage={setPage} />}
   {activeView === 'procurement-summary' && <ProcurementSummaryView activeEntityId={activeEntityId} setPage={setPage} />}
