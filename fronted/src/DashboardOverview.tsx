@@ -2,11 +2,11 @@ import { useEffect, useState } from 'react';
 import {
   TrendingUp, Wallet, Landmark, BarChart3, RefreshCw,
   ShieldCheck, CheckCircle2, HandCoins, CreditCard,
-  Activity, Clock, Boxes
+  Activity, Clock, Boxes, Banknote
 } from 'lucide-react';
 import {
-  AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip,
-  ResponsiveContainer, PieChart, Pie, Cell
+  AreaChart, Area, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip,
+  ResponsiveContainer, Legend, Cell
 } from 'recharts';
 import {
   useSalesStore, useProcurementStore, useBankingStore, useAssetsInventoryStore,
@@ -14,7 +14,7 @@ import {
   useProjectsStore, useAdministrationStore, useTaxStore,
 } from './stores';
 import { money, moneyCompact } from './lib/currency';
-import { KpiCard, ChartCard, HealthCard, ActivityCard } from './components/dashboard';
+import { KpiCard, ChartCard, HealthCard, ActivityCard, DashboardHeader } from './components/dashboard';
 
 interface DashboardOverviewProps {
   accounts?: { code: string; name: string; type: string; openingBalance: number; status?: string }[];
@@ -95,114 +95,170 @@ export function DashboardOverview({ accounts = [], entries: _entries = [], setPa
 
   const grossProfit = totalRevenue * 0.65;
   const ocf = totalLiquidity * 0.42;
-  const ebitda = netIncome + (totalExpense * 0.15);
   const roe = totalAssets > 0 ? (netIncome / totalAssets) * 100 : 15.4;
   const currentRatio = totalLiabilities > 0 ? totalAssets / totalLiabilities : 1.8;
   const quickRatio = totalLiabilities > 0 ? (totalLiquidity + totalAR) / totalLiabilities : 1.4;
   const debtToEquity = totalAssets > totalLiabilities ? totalLiabilities / (totalAssets - totalLiabilities) : 0.45;
   const netMargin = totalRevenue > 0 ? (netIncome / totalRevenue) * 100 : 0;
 
-  const performanceTrend = [
-    { period: 'Q1', revenue: totalRevenue * 0.2, expense: totalExpense * 0.22, profit: (totalRevenue * 0.2) - (totalExpense * 0.22) },
-    { period: 'Q2', revenue: totalRevenue * 0.24, expense: totalExpense * 0.23, profit: (totalRevenue * 0.24) - (totalExpense * 0.23) },
-    { period: 'Q3', revenue: totalRevenue * 0.27, expense: totalExpense * 0.26, profit: (totalRevenue * 0.27) - (totalExpense * 0.26) },
-    { period: 'Q4', revenue: totalRevenue * 0.29, expense: totalExpense * 0.29, profit: (totalRevenue * 0.29) - (totalExpense * 0.29) },
+  // Monthly trend data (simulated)
+  const monthlyTrend = [
+    { month: 'Jan', income: totalRevenue * 0.07, expense: totalExpense * 0.075, net: (totalRevenue * 0.07) - (totalExpense * 0.075) },
+    { month: 'Feb', income: totalRevenue * 0.075, expense: totalExpense * 0.08, net: (totalRevenue * 0.075) - (totalExpense * 0.08) },
+    { month: 'Mar', income: totalRevenue * 0.085, expense: totalExpense * 0.082, net: (totalRevenue * 0.085) - (totalExpense * 0.082) },
+    { month: 'Apr', income: totalRevenue * 0.08, expense: totalExpense * 0.078, net: (totalRevenue * 0.08) - (totalExpense * 0.078) },
+    { month: 'May', income: totalRevenue * 0.09, expense: totalExpense * 0.085, net: (totalRevenue * 0.09) - (totalExpense * 0.085) },
+    { month: 'Jun', income: totalRevenue * 0.088, expense: totalExpense * 0.088, net: (totalRevenue * 0.088) - (totalExpense * 0.088) },
+    { month: 'Jul', income: totalRevenue * 0.092, expense: totalExpense * 0.09, net: (totalRevenue * 0.092) - (totalExpense * 0.09) },
+    { month: 'Aug', income: totalRevenue * 0.095, expense: totalExpense * 0.092, net: (totalRevenue * 0.095) - (totalExpense * 0.092) },
+    { month: 'Sep', income: totalRevenue * 0.098, expense: totalExpense * 0.095, net: (totalRevenue * 0.098) - (totalExpense * 0.095) },
+    { month: 'Oct', income: totalRevenue * 0.1, expense: totalExpense * 0.098, net: (totalRevenue * 0.1) - (totalExpense * 0.098) },
+    { month: 'Nov', income: totalRevenue * 0.105, expense: totalExpense * 0.1, net: (totalRevenue * 0.105) - (totalExpense * 0.1) },
+    { month: 'Dec', income: totalRevenue * 0.115, expense: totalExpense * 0.11, net: (totalRevenue * 0.115) - (totalExpense * 0.11) },
   ];
 
-  const expenseBreakdown = [
-    { name: 'Operating', value: totalExpense * 0.45 },
-    { name: 'Payroll', value: totalExpense * 0.25 },
-    { name: 'Marketing', value: totalExpense * 0.15 },
-    { name: 'Other', value: totalExpense * 0.15 },
+  // Cash flow data
+  const operatingCF = totalLiquidity * 0.42;
+  const investingCF = -(totalAssets * 0.08);
+  const financingCF = totalLiabilities * 0.15;
+  const cashFlowData = [
+    { category: 'Operating', amount: operatingCF },
+    { category: 'Investing', amount: investingCF },
+    { category: 'Financing', amount: financingCF },
   ];
-  const DONUT_COLORS = ['var(--color-primary)', 'var(--color-accent)', 'var(--color-info)', 'var(--color-success)'];
+  const cashFlowColors = ['var(--color-success)', 'var(--color-danger)', 'var(--color-info)'];
 
-  const kpisRow1 = [
-    { label: 'Total Revenue', value: money(totalRevenue), icon: TrendingUp, color: 'var(--color-primary)', change: '+14.2%', trendType: 'up' as const, sub: 'vs baseline target' },
-    { label: 'Net Profit', value: money(netIncome), icon: Wallet, color: 'var(--color-success)', change: '+18.5%', trendType: 'up' as const, sub: 'vs baseline target' },
-    { label: 'Operating Cash Flow', value: money(ocf), icon: Landmark, color: 'var(--color-info)', change: '+12.1%', trendType: 'up' as const, sub: 'vs baseline target' },
-    { label: 'Quick Ratio', value: `${quickRatio.toFixed(2)}x`, icon: HandCoins, color: 'var(--color-accent)', change: 'Healthy', trendType: 'up' as const, sub: 'Acid-test liquidity' },
+  // Sparkline data (simulated quarterly trend)
+  const q = [totalRevenue * 0.18, totalRevenue * 0.22, totalRevenue * 0.27, totalRevenue * 0.33];
+  const revSpark = [{ value: q[0] }, { value: q[1] }, { value: q[2] }, { value: q[3] }];
+  const gpSpark = [{ value: q[0] * 0.65 }, { value: q[1] * 0.65 }, { value: q[2] * 0.65 }, { value: q[3] * 0.65 }];
+  const npSpark = [{ value: q[0] * 0.25 }, { value: q[1] * 0.28 }, { value: q[2] * 0.30 }, { value: q[3] * 0.32 }];
+  const cashSpark = [{ value: bankTotal * 0.8 }, { value: bankTotal * 0.85 }, { value: bankTotal * 0.95 }, { value: totalLiquidity }];
+  const arSpark = [{ value: totalAR * 1.1 }, { value: totalAR * 1.05 }, { value: totalAR * 0.98 }, { value: totalAR }];
+  const apSpark = [{ value: totalAP * 0.9 }, { value: totalAP * 0.95 }, { value: totalAP * 1.02 }, { value: totalAP }];
+  const assetSpark = [{ value: totalAssets * 0.92 }, { value: totalAssets * 0.95 }, { value: totalAssets * 0.98 }, { value: totalAssets }];
+  const eqSpark = [{ value: (totalAssets - totalLiabilities) * 0.9 }, { value: (totalAssets - totalLiabilities) * 0.94 }, { value: (totalAssets - totalLiabilities) * 0.97 }, { value: totalAssets - totalLiabilities }];
+
+  // ── PRIMARY KPI ROW 1 ──
+  const primaryKPIs = [
+    { label: 'Total Revenue', value: money(totalRevenue), icon: TrendingUp, color: 'var(--color-primary)', change: '+14.2%', trendType: 'up' as const, sub: 'vs last quarter', sparkline: revSpark },
+    { label: 'Gross Profit', value: money(grossProfit), icon: BarChart3, color: 'var(--color-success)', change: '+9.4%', trendType: 'up' as const, sub: 'period-over-period', sparkline: gpSpark },
+    { label: 'Net Profit', value: money(netIncome), icon: Wallet, color: 'var(--color-accent)', change: '+18.5%', trendType: 'up' as const, sub: 'vs baseline target', sparkline: npSpark },
+    { label: 'Cash & Bank', value: money(totalLiquidity), icon: Landmark, color: 'var(--color-info)', change: '+12.1%', trendType: 'up' as const, sub: 'combined balance', sparkline: cashSpark },
   ];
 
-  const kpisRow2 = [
-    { label: 'EBITDA', value: money(ebitda), icon: Activity, color: 'var(--color-warning)', change: '+11.2%', trendType: 'up' as const, sub: 'period-over-period' },
-    { label: 'Total Expenses', value: money(totalExpense), icon: CreditCard, color: 'var(--color-danger)', change: '+4.8%', trendType: 'down' as const, sub: 'expense expansion' },
-    { label: 'Gross Profit Margin', value: money(grossProfit), icon: BarChart3, color: 'var(--color-accent)', change: '+9.4%', trendType: 'up' as const, sub: 'period-over-period' },
-    { label: 'Current Ratio', value: `${currentRatio.toFixed(2)}x`, icon: CheckCircle2, color: 'var(--color-success)', change: 'Optimal', trendType: 'up' as const, sub: 'Assets vs Liabilities' },
+  // ── FINANCIAL POSITION KPI ROW 2 ──
+  const financialKPIs = [
+    { label: 'Customers Receivable', value: money(totalAR), icon: HandCoins, color: 'var(--color-warning)', change: `${moneyCompact(arAging['31-60'] + arAging['61-90'] + arAging['90+'])} overdue`, trendType: 'down' as const, sub: 'AR aging total', sparkline: arSpark },
+    { label: 'Vendor Payables', value: money(totalAP), icon: CreditCard, color: 'var(--color-danger)', change: `${moneyCompact(apAging['61-90'] + apAging['90+'])} overdue`, trendType: 'up' as const, sub: 'AP aging total', sparkline: apSpark },
+    { label: 'Total Assets', value: money(totalAssets), icon: Boxes, color: 'var(--color-primary)', change: '+6.8%', trendType: 'up' as const, sub: 'total asset base', sparkline: assetSpark },
+    { label: 'Equity', value: money(totalAssets - totalLiabilities), icon: CheckCircle2, color: 'var(--color-success)', change: '+11.3%', trendType: 'up' as const, sub: 'net worth', sparkline: eqSpark },
   ];
 
   return (
     <main className="mx-auto w-full max-w-[1600px] px-6 py-6">
       <div className="grid grid-cols-12 gap-5">
 
-        {/* ── KPI ROW 1 ── */}
-        {kpisRow1.map((kpi, i) => (
+        {/* ── HEADER ── */}
+        <DashboardHeader />
+
+        {/* ── PRIMARY KPI ROW 1 ── */}
+        <div className="col-span-12">
+          <h2 className="text-xs font-black uppercase tracking-wider text-[var(--color-text-muted)] mb-3">Primary KPIs</h2>
+        </div>
+        {primaryKPIs.map((kpi, i) => (
           <KpiCard key={i} {...kpi} className="col-span-12 sm:col-span-6 lg:col-span-3" />
         ))}
 
-        {/* ── KPI ROW 2 ── */}
-        {kpisRow2.map((kpi, i) => (
+        {/* ── FINANCIAL POSITION KPI ROW 2 ── */}
+        <div className="col-span-12 mt-2">
+          <h2 className="text-xs font-black uppercase tracking-wider text-[var(--color-text-muted)] mb-3">Financial Position</h2>
+        </div>
+        {financialKPIs.map((kpi, i) => (
           <KpiCard key={i} {...kpi} className="col-span-12 sm:col-span-6 lg:col-span-3" />
         ))}
 
-        {/* ── PERFORMANCE: Trend Chart ── */}
+        {/* ── FINANCIAL PERFORMANCE SECTION ── */}
+        <div className="col-span-12">
+          <h2 className="text-xs font-black uppercase tracking-wider text-[var(--color-text-muted)] mb-3">Financial Performance</h2>
+        </div>
+
+        {/* ── Income & Expense Trend (7 cols) ── */}
         <ChartCard
-          title="Revenue, Expenses & Net Profit Trend"
-          subtitle="Consolidated income statement quarterly movement overview"
-          icon={BarChart3}
+          title="Income & Expense Trend"
+          subtitle="Monthly consolidated income statement movement"
+          icon={TrendingUp}
           iconColor="var(--color-primary)"
           actions={
             <>
-              <span className="flex items-center gap-1.5" style={{ color: 'var(--color-primary)' }}><span className="w-2.5 h-2.5 rounded-sm" style={{ background: 'var(--color-primary)' }} /> Revenue</span>
+              <span className="flex items-center gap-1.5" style={{ color: 'var(--color-success)' }}><span className="w-2.5 h-2.5 rounded-sm" style={{ background: 'var(--color-success)' }} /> Income</span>
               <span className="flex items-center gap-1.5" style={{ color: 'var(--color-danger)' }}><span className="w-2.5 h-2.5 rounded-sm" style={{ background: 'var(--color-danger)' }} /> Expenses</span>
-              <span className="flex items-center gap-1.5" style={{ color: 'var(--color-success)' }}><span className="w-2.5 h-2.5 rounded-sm" style={{ background: 'var(--color-success)' }} /> Net Profit</span>
+              <span className="flex items-center gap-1.5" style={{ color: 'var(--color-primary)' }}><span className="w-2.5 h-2.5 rounded-sm" style={{ background: 'var(--color-primary)' }} /> Net</span>
             </>
           }
           className="col-span-12 lg:col-span-7"
         >
-          <ResponsiveContainer width="100%" height={220}>
-            <AreaChart data={performanceTrend} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+          <ResponsiveContainer width="100%" height={280}>
+            <AreaChart data={monthlyTrend} margin={{ top: 10, right: 10, left: -15, bottom: 0 }}>
+              <defs>
+                <linearGradient id="gradIncome" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="0%" stopColor="var(--color-success)" stopOpacity={0.25} />
+                  <stop offset="100%" stopColor="var(--color-success)" stopOpacity={0} />
+                </linearGradient>
+                <linearGradient id="gradNet" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="0%" stopColor="var(--color-primary)" stopOpacity={0.2} />
+                  <stop offset="100%" stopColor="var(--color-primary)" stopOpacity={0} />
+                </linearGradient>
+              </defs>
               <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border-subtle)" vertical={false} />
-              <XAxis dataKey="period" tick={{ fontSize: 10, fill: 'var(--color-text-muted)' }} axisLine={false} tickLine={false} />
+              <XAxis dataKey="month" tick={{ fontSize: 10, fill: 'var(--color-text-muted)' }} axisLine={false} tickLine={false} />
               <YAxis tick={{ fontSize: 10, fill: 'var(--color-text-muted)' }} axisLine={false} tickLine={false} tickFormatter={(v: any) => moneyCompact(Number(v))} />
-              <Tooltip formatter={(v: any) => money(Number(v))} contentStyle={{ borderRadius: 12, fontSize: 11, background: 'var(--color-surface)', border: '1px solid var(--color-border)' }} />
-              <Area type="monotone" dataKey="revenue" stroke="var(--color-primary)" strokeWidth={2.5} fill="var(--color-primary)" fillOpacity={0.15} name="Revenue" />
-              <Area type="monotone" dataKey="expense" stroke="var(--color-danger)" strokeWidth={2} fill="transparent" name="Expenses" />
-              <Area type="monotone" dataKey="profit" stroke="var(--color-success)" strokeWidth={2.5} fill="var(--color-success)" fillOpacity={0.15} name="Net Profit" />
+              <Tooltip
+                contentStyle={{ borderRadius: 12, fontSize: 11, background: 'var(--color-surface)', border: '1px solid var(--color-border)', boxShadow: '0 4px 12px rgba(0,0,0,0.1)' }}
+              />
+              <Legend iconType="square" iconSize={8} wrapperStyle={{ fontSize: 10, paddingTop: 8 }} />
+              <Area type="monotone" dataKey="income" stroke="var(--color-success)" strokeWidth={2} fill="url(#gradIncome)" name="Income" />
+              <Area type="monotone" dataKey="expense" stroke="var(--color-danger)" strokeWidth={2} fill="transparent" name="Expenses" strokeDasharray="5 3" />
+              <Area type="monotone" dataKey="net" stroke="var(--color-primary)" strokeWidth={2.5} fill="url(#gradNet)" name="Net Income" />
             </AreaChart>
           </ResponsiveContainer>
         </ChartCard>
 
-        {/* ── PERFORMANCE: Expense Donut ── */}
+        {/* ── Cash Flow Overview (5 cols) ── */}
         <ChartCard
-          title="Expenses Allocation Donut"
-          subtitle="Consolidated expense account groupings"
-          icon={CreditCard}
-          iconColor="var(--color-danger)"
+          title="Cash Flow Overview"
+          subtitle="Operating, investing & financing activities"
+          icon={Banknote}
+          iconColor="var(--color-info)"
           className="col-span-12 lg:col-span-5"
         >
-          <div className="relative w-full h-[140px] flex items-center justify-center">
-            <ResponsiveContainer width="100%" height={140}>
-              <PieChart>
-                <Pie data={expenseBreakdown} cx="50%" cy="50%" innerRadius={42} outerRadius={60} dataKey="value" strokeWidth={0}>
-                  {expenseBreakdown.map((_, i) => <Cell key={i} fill={DONUT_COLORS[i]} />)}
-                </Pie>
-                <Tooltip formatter={(v: any) => money(Number(v))} contentStyle={{ borderRadius: 10, fontSize: 11, background: 'var(--color-surface)', border: '1px solid var(--color-border)' }} />
-              </PieChart>
-            </ResponsiveContainer>
-            <div className="absolute flex flex-col items-center justify-center">
-              <span className="text-[9px] uppercase font-bold text-[var(--color-text-subtle)]">Total</span>
-              <span className="text-xs font-black text-[var(--color-text-strong)]">{moneyCompact(totalExpense)}</span>
-            </div>
-          </div>
-          <div className="grid grid-cols-2 gap-1.5 mt-2">
-            {expenseBreakdown.map((e, i) => (
-              <div key={i} className="flex items-center justify-between px-2 py-1 rounded bg-[var(--color-surface-muted)] text-[10px]">
-                <div className="flex items-center gap-1.5 min-w-0">
-                  <span className="w-2 h-2 rounded-full shrink-0" style={{ background: DONUT_COLORS[i] }} />
-                  <span className="font-medium text-[var(--color-text)] truncate">{e.name}</span>
+          <ResponsiveContainer width="100%" height={180}>
+            <BarChart data={cashFlowData} margin={{ top: 5, right: 5, left: -15, bottom: 0 }} barGap={2}>
+              <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border-subtle)" vertical={false} />
+              <XAxis dataKey="category" tick={{ fontSize: 9, fill: 'var(--color-text-muted)' }} axisLine={false} tickLine={false} />
+              <YAxis tick={{ fontSize: 9, fill: 'var(--color-text-muted)' }} axisLine={false} tickLine={false} tickFormatter={(v: any) => moneyCompact(Number(v))} />
+              <Tooltip
+                formatter={(v: any) => money(Number(v))}
+                contentStyle={{ borderRadius: 10, fontSize: 11, background: 'var(--color-surface)', border: '1px solid var(--color-border)' }}
+              />
+              <Bar dataKey="amount" radius={[4, 4, 0, 0]} name="Cash Flow">
+                {cashFlowData.map((_entry, index) => (
+                  <Cell key={index} fill={cashFlowColors[index]} />
+                ))}
+              </Bar>
+            </BarChart>
+          </ResponsiveContainer>
+          {/* Summary rows */}
+          <div className="space-y-2 mt-3">
+            {cashFlowData.map((cf, i) => (
+              <div key={i} className="flex items-center justify-between p-2 rounded-lg bg-[var(--color-surface-muted)] text-[10px]">
+                <div className="flex items-center gap-2">
+                  <span className="w-2.5 h-2.5 rounded-sm shrink-0" style={{ background: cashFlowColors[i] }} />
+                  <span className="font-semibold text-[var(--color-text)]">{cf.category}</span>
                 </div>
-                <span className="font-bold text-[var(--color-text-strong)] ml-1">{moneyCompact(e.value)}</span>
+                <span className="font-bold" style={{ color: cf.amount >= 0 ? 'var(--color-success)' : 'var(--color-danger)' }}>
+                  {money(cf.amount)}
+                </span>
               </div>
             ))}
           </div>
