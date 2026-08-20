@@ -35,7 +35,7 @@ export function DashboardHub({ setPage, accounts = [], currentUser }: DashboardH
   return (
     <div className="max-w-7xl mx-auto font-sans space-y-4">
       {/* ── Welcome Banner ── */}
-      <div className="bg-gradient-to-r from-[var(--color-sidebar-bg)] via-[var(--color-surface)] to-[var(--color-sidebar-bg)] border border-[var(--color-border)] rounded-xl p-5 shadow-sm flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+      <div className="bg-[var(--color-surface)] border border-[var(--color-border)] rounded-xl p-5 shadow-sm flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
         <div className="flex items-center gap-3.5">
           <div className="w-12 h-12 rounded-xl flex items-center justify-center shrink-0" style={{ background: 'color-mix(in srgb, var(--color-primary) 15%, transparent)', border: '1px solid color-mix(in srgb, var(--color-primary) 30%, transparent)' }}>
             <LayoutDashboard className="w-6 h-6" style={{ color: 'var(--color-primary)' }} />
