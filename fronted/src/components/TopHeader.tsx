@@ -3,12 +3,13 @@ import type { ReactNode } from 'react';
 import {
   Search, Bell, Plus, ChevronDown, LogOut, Coins, X, FileText, Receipt,
   Building2, Users, Wallet, CalendarDays, Boxes, ClipboardList, Landmark,
-  Globe, BarChart3, Check,
+  Globe, BarChart3, Check, Sun, Moon,
 } from 'lucide-react';
 import { NAVIGATION } from '../navigation';
 import type { UserData } from '../Login';
 import { useSalesStore, useProcurementStore } from '../stores';
 import { getActiveCurrency } from '../lib/currency';
+import { getDisplayMode, getThemeFamily, resolveThemeId } from './ThemeSwitcher';
 
 const M = {
   border: 'var(--color-border)',
@@ -30,6 +31,8 @@ interface Props {
   accounts: any[];
   notify: (m: string) => void;
   onLogout: () => void;
+  theme?: string;
+  onThemeChange?: (id: string) => void;
 }
 
 type SearchHit = { label: string; sub: string; icon: ReactNode; action: () => void };
@@ -37,7 +40,15 @@ type SearchHit = { label: string; sub: string; icon: ReactNode; action: () => vo
 const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 
 export default function TopHeader(props: Props) {
-  const { currentUser, entities, activeEntityId, onSelectEntity, page, setPage, accounts, notify, onLogout } = props;
+  const { currentUser, entities, activeEntityId, onSelectEntity, page, setPage, accounts, notify, onLogout, theme, onThemeChange } = props;
+
+  const displayMode = theme ? getDisplayMode(theme) : 'dark';
+  const themeFamily = theme ? getThemeFamily(theme) : 'bp';
+  const toggleMode = () => {
+    if (!onThemeChange) return;
+    const next = displayMode === 'dark' ? 'light' : 'dark';
+    onThemeChange(resolveThemeId(themeFamily, next));
+  };
 
   const [query, setQuery] = useState('');
   const [searchOpen, setSearchOpen] = useState(false);
@@ -297,6 +308,17 @@ export default function TopHeader(props: Props) {
               ))}
             </div>
           )}
+        </div>
+
+        {/* Display mode toggle */}
+        <div style={{ flexShrink: 0 }}>
+          <button
+            onClick={toggleMode}
+            title={displayMode === 'dark' ? 'Switch to light display mode' : 'Switch to dark display mode'}
+            style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', background: M.hover, border: '1px solid ' + M.border, borderRadius: 9, width: 34, height: 34, cursor: 'pointer', color: M.text }}
+          >
+            {displayMode === 'dark' ? <Sun size={16} style={{ color: 'var(--color-primary)' }} /> : <Moon size={16} style={{ color: 'var(--color-primary)' }} />}
+          </button>
         </div>
 
         {/* Notifications */}
