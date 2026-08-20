@@ -161,26 +161,25 @@ export function SalesSummaryView({ activeEntityId, setPage }: { activeEntityId?:
         )}
       </div>
 
-      {/* ═══ KPI CARDS — 2 ROWS × 3 ═══ */}
-      <div className="row g-2 mb-3">
+      {/* ═══ KPI CARDS — RESPONSIVE GRID ═══ */}
+      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3 mb-4">
         {kpis.map((k, i) => {
           const Ico = k.icon;
+          const kpiColor = k.color === 'primary' ? 'var(--color-primary)' : k.color === 'secondary' ? 'var(--color-secondary-foreground)' : `var(--color-${k.color})`;
+          const kpiBg = `color-mix(in srgb, ${kpiColor} 12%, transparent)`;
           return (
-            <div className="col-4" key={i}>
-              <div className="card h-100 border-1 shadow-sm" style={{ borderColor: 'var(--color-border)' }}>
-                <div className="card-body p-2">
-                  <div className="d-flex align-items-center justify-content-between mb-1">
-                    <small className="text-muted fw-semibold text-uppercase" style={{ fontSize: '9px', letterSpacing: '.3px' }}>{k.label}</small>
-                    <span className={`badge bg-${k.color} bg-opacity-10 text-${k.color} rounded-2 p-1`}>
-                      <Ico size={12} />
-                    </span>
-                  </div>
-                  <h6 className="fw-extrabold mb-0" style={{ fontSize: '14px', letterSpacing: '-.3px' }}>{k.value}</h6>
-                  <small className={`fw-semibold ${k.up ? 'text-success' : 'text-danger'}`} style={{ fontSize: '9px' }}>
-                    {k.up ? '▲' : '▼'} {k.trend}
-                  </small>
-                </div>
+            <div key={i} className="rounded-xl p-3 flex flex-col justify-between min-w-0 transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md relative overflow-hidden" style={{ background: C.card, border: `1px solid ${C.bdr}`, minHeight: '100px' }}>
+              <div className="d-flex align-items-center justify-content-between mb-1.5">
+                <small className="text-muted fw-semibold text-uppercase truncate" style={{ fontSize: '9px', letterSpacing: '.3px', color: C.muted }}>{k.label}</small>
+                <span className="rounded-md p-1 shrink-0 flex items-center justify-center" style={{ background: kpiBg, color: kpiColor }}>
+                  <Ico size={12} />
+                </span>
               </div>
+              <h6 className="fw-extrabold mb-1 truncate text-sm" style={{ color: C.white, letterSpacing: '-.3px' }}>{k.value}</h6>
+              <small className={`fw-semibold truncate ${k.up ? 'text-success' : 'text-danger'}`} style={{ fontSize: '9px' }}>
+                {k.up ? '▲' : '▼'} {k.trend}
+              </small>
+              <div className="absolute bottom-0 left-0 h-0.5 w-full" style={{ background: `linear-gradient(90deg, ${kpiColor}, transparent)` }} />
             </div>
           );
         })}

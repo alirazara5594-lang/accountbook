@@ -85,6 +85,7 @@ import { AuditTrailView } from './AuditTrailView'
 import { JournalEntriesView } from './JournalEntriesView'
 import { useCoaStore, useJournalsStore, useCompanyStore, useIntercompanyStore } from './stores'
 import { DashboardOverview } from './DashboardOverview'
+import { DashboardHub } from './components/DashboardHub'
 
 import { NAVIGATION } from './navigation'
 import IconRail from './components/IconRail'
@@ -102,7 +103,7 @@ export default function App() {
   const [page, setPage] = useState<string>(() => {
     return localStorage.getItem('last_active_page') || 'Overview.Dashboard';
   });
-  const [theme, setTheme] = useState<string>(getStoredTheme);
+  const [theme, _setTheme] = useState<string>(getStoredTheme);
   const [settingsView, setSettingsView] = useState<'home' | 'entities' | 'mappings'>('home')
 
   const accounts = useCoaStore((s) => s.accounts as Account[])
@@ -294,8 +295,9 @@ export default function App() {
   const activeEntity = entities.find(x => x.id === activeEntityId)
   const readOnly = !!activeEntity && !activeEntity.active
   const activeViewMap: Record<string, string> = {
-    'Overview.Dashboard': 'dashboard',
-    'Overview.Summary': 'dashboard',
+    'Overview.Dashboard': 'dashboard-hub',
+    'Overview.Summary': 'dashboard-hub',
+    'Overview.Overview': 'dashboard-overview',
     'Sales & Customers.Summary': 'sales-summary',
     'Sales & Customers.Customers': 'customers',
     'Sales & Customers.Products & Services': 'products',
@@ -441,7 +443,8 @@ export default function App() {
       })}
     </nav>
   </div>
-  {activeView === 'dashboard' && <DashboardOverview accounts={accounts} entries={entries} setPage={setPage} activeEntityId={activeEntityId} />}
+  {activeView === 'dashboard-hub' && <DashboardHub setPage={setPage} accounts={accounts} activeEntityId={activeEntityId} currentUser={currentUser} />}
+  {activeView === 'dashboard-overview' && <DashboardOverview accounts={accounts} entries={entries} setPage={setPage} activeEntityId={activeEntityId} />}
   {activeView === 'module-summary' && <ModuleSummary moduleName={group} accounts={accounts} entries={entries} setPage={setPage} openCreateAccount={openCreate} />}
   {activeView === 'sales-summary' && <SalesSummaryView activeEntityId={activeEntityId} setPage={setPage} />}
   {activeView === 'procurement-summary' && <ProcurementSummaryView activeEntityId={activeEntityId} setPage={setPage} />}

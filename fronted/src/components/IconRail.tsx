@@ -54,24 +54,35 @@ export default function IconRail({ activePage, onNavigate, modules, currentUser,
                   <Icon className="flyout-module-icon" size={15} strokeWidth={1.9} />
                   {group.label}
                 </div>
-                <button
-                  className={'flyout-item' + (activePage === `${group.name}.Summary` || activePage === 'Overview.Dashboard' && group.name === 'Overview' ? ' active' : '')}
-                  onClick={() => onNavigate(`${group.name}.Summary`)}
-                >
-                  Dashboard
-                </button>
-                {group.items.map(item => {
-                  const key = `${group.name}.${item}`;
-                  return (
+                {group.name === 'Overview' ? (
+                  <button
+                    className={'flyout-item' + (activePage === 'Overview.Overview' ? ' active' : '')}
+                    onClick={() => onNavigate('Overview.Overview')}
+                  >
+                    Overview
+                  </button>
+                ) : (
+                  <>
                     <button
-                      key={item}
-                      className={'flyout-item' + (activePage === key ? ' active' : '')}
-                      onClick={() => onNavigate(key)}
+                      className={'flyout-item' + (activePage === `${group.name}.Summary` ? ' active' : '')}
+                      onClick={() => onNavigate(`${group.name}.Summary`)}
                     >
-                      {item}
+                      Dashboard
                     </button>
-                  );
-                })}
+                    {group.items.map(item => {
+                      const key = `${group.name}.${item}`;
+                      return (
+                        <button
+                          key={item}
+                          className={'flyout-item' + (activePage === key ? ' active' : '')}
+                          onClick={() => onNavigate(key)}
+                        >
+                          {item}
+                        </button>
+                      );
+                    })}
+                  </>
+                )}
               </div>
             </div>
           );

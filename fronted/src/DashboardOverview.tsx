@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import {
-  TrendingUp, Wallet, Receipt, Building2, Landmark, Boxes,
+  TrendingUp, TrendingDown, Wallet, Receipt, Building2, Landmark, Boxes,
   BarChart3, RefreshCw, ShieldCheck,
   HandCoins, CreditCard, Layers, Activity, Percent, ArrowUpRight, ArrowDownRight
 } from 'lucide-react';
@@ -16,8 +16,8 @@ import {
 import { money, moneyCompact } from './lib/currency';
 
 interface DashboardOverviewProps {
-  accounts: { code: string; name: string; type: string; openingBalance: number; status?: string }[];
-  entries: { id: string; status?: string }[];
+  accounts?: { code: string; name: string; type: string; openingBalance: number; status?: string }[];
+  entries?: { id: string; status?: string }[];
   setPage: (page: string) => void;
   activeEntityId?: string;
 }
@@ -34,11 +34,11 @@ function agingBucket(due?: string): string {
 }
 const BUCKETS = ['Current', '1-30', '31-60', '61-90', '90+'];
 
-export function DashboardOverview({ accounts, entries: _entries, setPage: _setPage, activeEntityId }: DashboardOverviewProps) {
-  const { invoices, fetchAllSales } = useSalesStore();
-  const { bills, fetchAllProcurement } = useProcurementStore();
-  const { bankAccounts, cashAccounts, fetchAllBanking } = useBankingStore();
-  const { stockLevels, fetchAllAssetsInventory } = useAssetsInventoryStore();
+export function DashboardOverview({ accounts = [], entries: _entries = [], setPage: _setPage, activeEntityId }: DashboardOverviewProps) {
+  const { invoices = [], fetchAllSales } = useSalesStore();
+  const { bills = [], fetchAllProcurement } = useProcurementStore();
+  const { bankAccounts = [], cashAccounts = [], fetchAllBanking } = useBankingStore();
+  const { stockLevels = [], fetchAllAssetsInventory } = useAssetsInventoryStore();
   const { fetchAllManufacturing } = useManufacturingStore();
   usePayrollStore();
   const fieldStore = useFieldOperationsStore();
@@ -61,36 +61,43 @@ export function DashboardOverview({ accounts, entries: _entries, setPage: _setPa
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeEntityId]);
 
-  /* ── Financial Metrics ── */
-  const totalRevenue = accounts.filter(a => a.type === 'Revenue' || a.type === 'ContraRevenue').reduce((s, a) => s + a.openingBalance, 0);
-  const totalExpense = accounts.filter(a => a.type === 'Expense' || a.type === 'ContraExpense').reduce((s, a) => s + a.openingBalance, 0);
-  const totalAssets = accounts.filter(a => a.type === 'Asset').reduce((s, a) => s + a.openingBalance, 0);
-  const totalLiabilities = accounts.filter(a => a.type === 'Liability').reduce((s, a) => s + a.openingBalance, 0);
+  /* ── Financial Metrics (with full safe fallbacks) ── */
+  const safeAccounts = accounts || [];
+  const safeInvoices = invoices || [];
+  const safeBills = bills || [];
+  const safeBankAccounts = bankAccounts || [];
+  const safeCashAccounts = cashAccounts || [];
+  const safeStockLevels = stockLevels || [];
+
+  const totalRevenue = safeAccounts.filter(a => a?.type === 'Revenue' || a?.type === 'ContraRevenue').reduce((s, a) => s + (a?.openingBalance || 0), 0);
+  const totalExpense = safeAccounts.filter(a => a?.type === 'Expense' || a?.type === 'ContraExpense').reduce((s, a) => s + (a?.openingBalance || 0), 0);
+  const totalAssets = safeAccounts.filter(a => a?.type === 'Asset').reduce((s, a) => s + (a?.openingBalance || 0), 0);
+  const totalLiabilities = safeAccounts.filter(a => a?.type === 'Liability').reduce((s, a) => s + (a?.openingBalance || 0), 0);
   const netIncome = totalRevenue - totalExpense;
 
-  const bankTotal = bankAccounts.reduce((s, a) => s + (a.balance ?? a.openingBalance ?? 0), 0);
-  const cashTotal = cashAccounts.reduce((s, a) => s + (a.balance ?? a.openingBalance ?? 0), 0);
+  const bankTotal = safeBankAccounts.reduce((s, a) => s + (a?.balance ?? a?.openingBalance ?? 0), 0);
+  const cashTotal = safeCashAccounts.reduce((s, a) => s + (a?.balance ?? a?.openingBalance ?? 0), 0);
   const totalLiquidity = bankTotal + cashTotal;
 
-  const openInvoices = invoices.filter(i => (i.amountDue || 0) > 0);
-  const unpaidBillsArr = (bills as any[]).filter(b => (b.amountDue ?? (b.status !== 'Paid' ? b.totalAmount ?? b.total ?? 0 : 0)) > 0);
+  const openInvoices = safeInvoices.filter(i => (i?.amountDue || 0) > 0);
+  const unpaidBillsArr = (safeBills as any[]).filter(b => (b?.amountDue ?? (b?.status !== 'Paid' ? b?.totalAmount ?? b?.total ?? 0 : 0)) > 0);
 
   const arAging: Record<string, number> = {}; BUCKETS.forEach(b => arAging[b] = 0);
-  openInvoices.forEach(i => { arAging[agingBucket(i.dueDate)] += i.amountDue || 0; });
+  openInvoices.forEach(i => { arAging[agingBucket(i?.dueDate)] += i?.amountDue || 0; });
   const apAging: Record<string, number> = {}; BUCKETS.forEach(b => apAging[b] = 0);
   unpaidBillsArr.forEach(b => {
-    const due = b.amountDue ?? ((b.totalAmount ?? b.total ?? 0) - (b.amountPaid ?? 0));
-    apAging[agingBucket(b.dueDate)] += due;
+    const due = b?.amountDue ?? ((b?.totalAmount ?? b?.total ?? 0) - (b?.amountPaid ?? 0));
+    apAging[agingBucket(b?.dueDate)] += due;
   });
-  const totalAR = arAging['Current'] + arAging['1-30'] + arAging['31-60'] + arAging['61-90'] + arAging['90+'];
-  const totalAP = apAging['Current'] + apAging['1-30'] + apAging['31-60'] + apAging['61-90'] + apAging['90+'];
+  const totalAR = (arAging['Current'] || 0) + (arAging['1-30'] || 0) + (arAging['31-60'] || 0) + (arAging['61-90'] || 0) + (arAging['90+'] || 0);
+  const totalAP = (apAging['Current'] || 0) + (apAging['1-30'] || 0) + (apAging['31-60'] || 0) + (apAging['61-90'] || 0) + (apAging['90+'] || 0);
 
   const workingCapital = totalAssets - totalLiabilities;
 
   // Derived financial metrics
-  const grossProfit = totalRevenue * 0.65; // Estimated COGS 35%
-  const ocf = totalLiquidity * 0.42; // Operating Cash Flow
-  const ebitda = netIncome + (totalExpense * 0.15); // EBITDA approximation
+  const grossProfit = totalRevenue * 0.65;
+  const ocf = totalLiquidity * 0.42;
+  const ebitda = netIncome + (totalExpense * 0.15);
   const roe = totalAssets > 0 ? (netIncome / totalAssets) * 100 : 15.4;
   const currentRatio = totalLiabilities > 0 ? totalAssets / totalLiabilities : 1.8;
   const quickRatio = totalLiabilities > 0 ? (totalLiquidity + totalAR) / totalLiabilities : 1.4;
@@ -104,7 +111,7 @@ export function DashboardOverview({ accounts, entries: _entries, setPage: _setPa
     { period: 'Q4', revenue: totalRevenue * 0.29, expense: totalExpense * 0.29, profit: (totalRevenue * 0.29) - (totalExpense * 0.29) },
   ];
 
-  const agingBarData = BUCKETS.map(b => ({ name: b, ar: arAging[b], ap: apAging[b] }));
+  const agingBarData = BUCKETS.map(b => ({ name: b, ar: arAging[b] || 0, ap: apAging[b] || 0 }));
 
   const expenseBreakdown = [
     { name: 'Operating', value: totalExpense * 0.45 },
@@ -140,77 +147,53 @@ export function DashboardOverview({ accounts, entries: _entries, setPage: _setPa
         </div>
       </div>
 
-      {/* ── ROW 1: Top KPIs (revenue, net profit, OCF) [repeat(3, 1fr) | gap 16px | mb 16px] ── */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-4">
+      {/* ── Consolidated KPI Cockpit Grid (9 Row Unified Architecture) ── */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-6">
         {[
-          { label: 'Total Revenue', value: money(totalRevenue), icon: <TrendingUp className="w-4 h-4" />, color: '#3b82f6', change: '+14.2%' },
-          { label: 'Net Profit', value: money(netIncome), icon: <Wallet className="w-4 h-4" />, color: '#10b981', change: '+18.5%' },
-          { label: 'Operating Cash Flow (OCF)', value: money(ocf), icon: <Landmark className="w-4 h-4" />, color: '#06b6d4', change: '+12.1%' },
-        ].map((k, i) => (
-          <div key={i} className="bg-[var(--color-surface)] rounded-xl border border-[var(--color-border)] shadow-sm px-4 py-3 relative overflow-hidden">
-            <div className="flex items-center justify-between mb-2">
-              <span className="text-[11px] font-bold uppercase tracking-wide text-[var(--color-text-muted)]">{k.label}</span>
-              <div className="w-8 h-8 rounded-lg flex items-center justify-center" style={{ background: `color-mix(in srgb, ${k.color} 12%, transparent)`, color: k.color }}>
-                {k.icon}
+          { label: 'Total Revenue', value: money(totalRevenue), icon: TrendingUp, color: '#3b82f6', change: '+14.2%', trendType: 'up', subtext: 'vs target' },
+          { label: 'Net Profit', value: money(netIncome), icon: Wallet, color: '#10b981', change: '+18.5%', trendType: 'up', subtext: 'vs target' },
+          { label: 'Operating Cash Flow (OCF)', value: money(ocf), icon: Landmark, color: '#06b6d4', change: '+12.1%', trendType: 'up', subtext: 'vs target' },
+          { label: 'Gross Profit', value: money(grossProfit), icon: BarChart3, color: '#8b5cf6', change: '+9.4%', trendType: 'up', subtext: 'period-over-period' },
+          { label: 'EBITDA', value: money(ebitda), icon: Activity, color: '#f59e0b', change: '+11.2%', trendType: 'up', subtext: 'period-over-period' },
+          { label: 'Total Expenses', value: money(totalExpense), icon: CreditCard, color: '#ef4444', change: '+4.8%', trendType: 'down', subtext: 'period-over-period' },
+          { label: 'Working Capital', value: money(workingCapital), icon: Building2, color: '#3b82f6', change: 'Solid', trendType: 'badge', subtext: 'health indicator' },
+          { label: 'Return on Equity (ROE)', value: `${roe.toFixed(1)}%`, icon: Percent, color: '#10b981', change: 'Optimal', trendType: 'badge', subtext: 'health indicator' },
+          { label: 'Accounts Receivable (AR)', value: money(totalAR), icon: HandCoins, color: '#06b6d4', change: 'Manageable', trendType: 'badge', subtext: 'health indicator' },
+        ].map((k, i) => {
+          const Icon = k.icon;
+          return (
+            <div key={i} className="bg-[var(--color-surface)] rounded-xl border border-[var(--color-border)] shadow-sm px-4 py-3.5 relative overflow-hidden transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md flex flex-col justify-between min-h-[105px]">
+              <div className="flex items-center justify-between mb-1.5">
+                <span className="text-[10px] font-black uppercase tracking-wider text-[var(--color-text-muted)] truncate">{k.label}</span>
+                <div className="w-7 h-7 rounded-lg flex items-center justify-center shrink-0" style={{ background: `color-mix(in srgb, ${k.color} 12%, transparent)`, color: k.color }}>
+                  <Icon className="w-4 h-4" />
+                </div>
               </div>
-            </div>
-            <p className="text-xl font-extrabold text-[var(--color-text-strong)]">{k.value}</p>
-            <div className="flex items-center gap-1 mt-1">
-              <TrendingUp className="w-3 h-3" style={{ color: 'var(--color-success)' }} />
-              <span className="text-[10px] font-bold" style={{ color: 'var(--color-success)' }}>{k.change}</span>
-              <span className="text-[9px] text-[var(--color-text-subtle)]">vs target</span>
-            </div>
-            <div className="absolute bottom-0 left-0 h-0.5 w-full" style={{ background: `linear-gradient(90deg, ${k.color}, transparent)` }} />
-          </div>
-        ))}
-      </div>
-
-      {/* ── ROW 2: Second KPIs (gross profit, EBITDA, expenses) [repeat(3, 1fr) | gap 16px | mb 16px] ── */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-4">
-        {[
-          { label: 'Gross Profit', value: money(grossProfit), icon: <BarChart3 className="w-4 h-4" />, color: '#8b5cf6', change: '+9.4%' },
-          { label: 'EBITDA', value: money(ebitda), icon: <Activity className="w-4 h-4" />, color: '#f59e0b', change: '+11.2%' },
-          { label: 'Total Expenses', value: money(totalExpense), icon: <CreditCard className="w-4 h-4" />, color: '#ef4444', change: '+4.8%' },
-        ].map((k, i) => (
-          <div key={i} className="bg-[var(--color-surface)] rounded-xl border border-[var(--color-border)] shadow-sm px-4 py-3 relative overflow-hidden">
-            <div className="flex items-center justify-between mb-2">
-              <span className="text-[11px] font-bold uppercase tracking-wide text-[var(--color-text-muted)]">{k.label}</span>
-              <div className="w-8 h-8 rounded-lg flex items-center justify-center" style={{ background: `color-mix(in srgb, ${k.color} 12%, transparent)`, color: k.color }}>
-                {k.icon}
+              <p className="text-xl font-extrabold text-[var(--color-text-strong)] tracking-tight truncate mb-1">{k.value}</p>
+              <div className="flex items-center gap-1.5 mt-auto">
+                {k.trendType === 'up' && (
+                  <>
+                    <TrendingUp className="w-3 h-3 text-[var(--color-success)] shrink-0" />
+                    <span className="text-[10px] font-bold text-[var(--color-success)] shrink-0">{k.change}</span>
+                  </>
+                )}
+                {k.trendType === 'down' && (
+                  <>
+                    <TrendingDown className="w-3 h-3 text-[var(--color-danger)] shrink-0" />
+                    <span className="text-[10px] font-bold text-[var(--color-danger)] shrink-0">{k.change}</span>
+                  </>
+                )}
+                {k.trendType === 'badge' && (
+                  <span className="text-[9px] font-bold px-1.5 py-0.5 rounded shrink-0" style={{ background: `color-mix(in srgb, ${k.color} 12%, transparent)`, color: k.color }}>
+                    {k.change}
+                  </span>
+                )}
+                <span className="text-[9px] text-[var(--color-text-subtle)] truncate ml-1">{k.subtext}</span>
               </div>
+              <div className="absolute bottom-0 left-0 h-0.5 w-full" style={{ background: `linear-gradient(90deg, ${k.color}, transparent)` }} />
             </div>
-            <p className="text-xl font-extrabold text-[var(--color-text-strong)]">{k.value}</p>
-            <div className="flex items-center gap-1 mt-1">
-              <span className="text-[10px] font-bold" style={{ color: k.color }}>{k.change}</span>
-              <span className="text-[9px] text-[var(--color-text-subtle)]">period-over-period</span>
-            </div>
-            <div className="absolute bottom-0 left-0 h-0.5 w-full" style={{ background: `linear-gradient(90deg, ${k.color}, transparent)` }} />
-          </div>
-        ))}
-      </div>
-
-      {/* ── ROW 3: Third KPIs (working capital, ROE, AR) [repeat(3, 1fr) | gap 16px | mb 24px] ── */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
-        {[
-          { label: 'Working Capital', value: money(workingCapital), icon: <Building2 className="w-4 h-4" />, color: '#3b82f6', change: 'Solid' },
-          { label: 'Return on Equity (ROE)', value: `${roe.toFixed(1)}%`, icon: <Percent className="w-4 h-4" />, color: '#10b981', change: 'Optimal' },
-          { label: 'Accounts Receivable (AR)', value: money(totalAR), icon: <HandCoins className="w-4 h-4" />, color: '#06b6d4', change: 'Manageable' },
-        ].map((k, i) => (
-          <div key={i} className="bg-[var(--color-surface)] rounded-xl border border-[var(--color-border)] shadow-sm px-4 py-3 relative overflow-hidden">
-            <div className="flex items-center justify-between mb-2">
-              <span className="text-[11px] font-bold uppercase tracking-wide text-[var(--color-text-muted)]">{k.label}</span>
-              <div className="w-8 h-8 rounded-lg flex items-center justify-center" style={{ background: `color-mix(in srgb, ${k.color} 12%, transparent)`, color: k.color }}>
-                {k.icon}
-              </div>
-            </div>
-            <p className="text-xl font-extrabold text-[var(--color-text-strong)]">{k.value}</p>
-            <div className="flex items-center gap-1 mt-1">
-              <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-[var(--color-surface-muted)]" style={{ color: k.color }}>{k.change}</span>
-              <span className="text-[9px] text-[var(--color-text-subtle)]">health indicator</span>
-            </div>
-            <div className="absolute bottom-0 left-0 h-0.5 w-full" style={{ background: `linear-gradient(90deg, ${k.color}, transparent)` }} />
-          </div>
-        ))}
+          );
+        })}
       </div>
 
       {/* ── ROW 4: Revenue vs Expenses trend graph [1 (full width) | gap — | mb 24px] ── */}
@@ -225,31 +208,33 @@ export function DashboardOverview({ accounts, entries: _entries, setPage: _setPa
             <span className="flex items-center gap-1" style={{ color: '#10b981' }}><span className="w-2.5 h-2.5 rounded-sm" style={{ background: '#10b981' }} /> Net Profit</span>
           </div>
         </div>
-        <ResponsiveContainer width="100%" height={240}>
-          <AreaChart data={performanceTrend} margin={{ top: 10, right: 10, left: -10, bottom: 0 }}>
-            <defs>
-              <linearGradient id="row4Rev" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.35} />
-                <stop offset="95%" stopColor="#3b82f6" stopOpacity={0} />
-              </linearGradient>
-              <linearGradient id="row4Prof" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="5%" stopColor="#10b981" stopOpacity={0.35} />
-                <stop offset="95%" stopColor="#10b981" stopOpacity={0} />
-              </linearGradient>
-            </defs>
-            <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border-subtle)" vertical={false} />
-            <XAxis dataKey="period" tick={{ fontSize: 10, fill: 'var(--color-text-muted)' }} axisLine={false} tickLine={false} />
-            <YAxis tick={{ fontSize: 10, fill: 'var(--color-text-muted)' }} axisLine={false} tickLine={false} tickFormatter={(v: any) => moneyCompact(Number(v))} />
-            <Tooltip formatter={(v: any) => money(Number(v))} contentStyle={{ borderRadius: 8, fontSize: 11, background: 'var(--color-surface)', border: '1px solid var(--color-border)' }} />
-            <Area type="monotone" dataKey="revenue" stroke="#3b82f6" strokeWidth={2.5} fill="url(#row4Rev)" name="Revenue" />
-            <Area type="monotone" dataKey="expense" stroke="#ef4444" strokeWidth={2} fill="transparent" name="Expenses" />
-            <Area type="monotone" dataKey="profit" stroke="#10b981" strokeWidth={2.5} fill="url(#row4Prof)" name="Net Profit" />
-          </AreaChart>
-        </ResponsiveContainer>
+        <div className="w-full min-h-[240px]">
+          <ResponsiveContainer width="100%" height={240}>
+            <AreaChart data={performanceTrend} margin={{ top: 10, right: 10, left: -10, bottom: 0 }}>
+              <defs>
+                <linearGradient id="row4Rev" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.35} />
+                  <stop offset="95%" stopColor="#3b82f6" stopOpacity={0} />
+                </linearGradient>
+                <linearGradient id="row4Prof" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="5%" stopColor="#10b981" stopOpacity={0.35} />
+                  <stop offset="95%" stopColor="#10b981" stopOpacity={0} />
+                </linearGradient>
+              </defs>
+              <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border-subtle)" vertical={false} />
+              <XAxis dataKey="period" tick={{ fontSize: 10, fill: 'var(--color-text-muted)' }} axisLine={false} tickLine={false} />
+              <YAxis tick={{ fontSize: 10, fill: 'var(--color-text-muted)' }} axisLine={false} tickLine={false} tickFormatter={(v: any) => moneyCompact(Number(v))} />
+              <Tooltip formatter={(v: any) => money(Number(v))} contentStyle={{ borderRadius: 8, fontSize: 11, background: 'var(--color-surface)', border: '1px solid var(--color-border)' }} />
+              <Area type="monotone" dataKey="revenue" stroke="#3b82f6" strokeWidth={2.5} fill="url(#row4Rev)" name="Revenue" />
+              <Area type="monotone" dataKey="expense" stroke="#ef4444" strokeWidth={2} fill="transparent" name="Expenses" />
+              <Area type="monotone" dataKey="profit" stroke="#10b981" strokeWidth={2.5} fill="url(#row4Prof)" name="Net Profit" />
+            </AreaChart>
+          </ResponsiveContainer>
+        </div>
       </div>
 
       {/* ── ROW 5: Financial ratios [repeat(6, 1fr) | gap 16px | mb 24px] ── */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-4 mb-6">
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2 mb-6">
         {[
           { label: 'Current Ratio', val: `${currentRatio.toFixed(2)}x`, status: 'Optimal' },
           { label: 'Quick Ratio', val: `${quickRatio.toFixed(2)}x`, status: 'Healthy' },
@@ -258,9 +243,9 @@ export function DashboardOverview({ accounts, entries: _entries, setPage: _setPa
           { label: 'ROE', val: `${roe.toFixed(1)}%`, status: 'Superior' },
           { label: 'Asset Turnover', val: '0.85x', status: 'Stable' },
         ].map((r, i) => (
-          <div key={i} className="bg-[var(--color-surface)] p-3 rounded-xl border border-[var(--color-border)] shadow-sm text-center">
-            <span className="text-[10px] font-bold uppercase tracking-wider text-[var(--color-text-muted)] block mb-1">{r.label}</span>
-            <p className="text-lg font-black text-[var(--color-text-strong)]">{r.val}</p>
+          <div key={i} className="bg-[var(--color-surface)] p-2 rounded-xl border border-[var(--color-border)] shadow-sm text-center min-w-0">
+            <span className="text-[9px] font-bold uppercase tracking-wider text-[var(--color-text-muted)] block mb-1 truncate">{r.label}</span>
+            <p className="text-base font-black text-[var(--color-text-strong)]">{r.val}</p>
             <span className="inline-block text-[9px] font-bold px-2 py-0.5 rounded-full mt-1" style={{ background: 'var(--color-success-background)', color: 'var(--color-success)' }}>
               {r.status}
             </span>
@@ -275,14 +260,16 @@ export function DashboardOverview({ accounts, entries: _entries, setPage: _setPa
           <h3 className="text-xs font-bold text-[var(--color-text-strong)] flex items-center gap-1.5 pb-2 border-b border-[var(--color-border-subtle)] mb-3">
             <CreditCard className="w-4 h-4" style={{ color: '#ef4444' }} /> Expense Breakdown Donut
           </h3>
-          <ResponsiveContainer width="100%" height={180}>
-            <PieChart>
-              <Pie data={expenseBreakdown} cx="50%" cy="50%" innerRadius={55} outerRadius={80} dataKey="value" strokeWidth={0}>
-                {expenseBreakdown.map((_, i) => <Cell key={i} fill={DONUT_COLORS[i]} />)}
-              </Pie>
-              <Tooltip formatter={(v: any) => money(Number(v))} contentStyle={{ borderRadius: 8, fontSize: 11, background: 'var(--color-surface)', border: '1px solid var(--color-border)' }} />
-            </PieChart>
-          </ResponsiveContainer>
+          <div className="w-full min-h-[180px]">
+            <ResponsiveContainer width="100%" height={180}>
+              <PieChart>
+                <Pie data={expenseBreakdown} cx="50%" cy="50%" innerRadius={55} outerRadius={80} dataKey="value" strokeWidth={0}>
+                  {expenseBreakdown.map((_, i) => <Cell key={i} fill={DONUT_COLORS[i]} />)}
+                </Pie>
+                <Tooltip formatter={(v: any) => money(Number(v))} contentStyle={{ borderRadius: 8, fontSize: 11, background: 'var(--color-surface)', border: '1px solid var(--color-border)' }} />
+              </PieChart>
+            </ResponsiveContainer>
+          </div>
           <div className="grid grid-cols-2 gap-2 mt-2">
             {expenseBreakdown.map((e, i) => (
               <div key={i} className="flex items-center justify-between px-2 py-1 rounded bg-[var(--color-surface-muted)]">
@@ -335,15 +322,17 @@ export function DashboardOverview({ accounts, entries: _entries, setPage: _setPa
             </h3>
             <span className="text-xs font-black text-[var(--color-success)]">{money(totalAR)}</span>
           </div>
-          <ResponsiveContainer width="100%" height={160}>
-            <BarChart data={agingBarData} margin={{ top: 5, right: 5, left: -10, bottom: 0 }}>
-              <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border-subtle)" vertical={false} />
-              <XAxis dataKey="name" tick={{ fontSize: 9, fill: 'var(--color-text-muted)' }} axisLine={false} tickLine={false} />
-              <YAxis tick={{ fontSize: 9, fill: 'var(--color-text-muted)' }} axisLine={false} tickLine={false} tickFormatter={(v: any) => moneyCompact(Number(v))} />
-              <Tooltip formatter={(v: any) => money(Number(v))} contentStyle={{ borderRadius: 8, fontSize: 10, background: 'var(--color-surface)', border: '1px solid var(--color-border)' }} />
-              <Bar dataKey="ar" fill="#10b981" radius={[4, 4, 0, 0]} name="AR Amount" />
-            </BarChart>
-          </ResponsiveContainer>
+          <div className="w-full min-h-[160px]">
+            <ResponsiveContainer width="100%" height={160}>
+              <BarChart data={agingBarData} margin={{ top: 5, right: 5, left: -10, bottom: 0 }}>
+                <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border-subtle)" vertical={false} />
+                <XAxis dataKey="name" tick={{ fontSize: 9, fill: 'var(--color-text-muted)' }} axisLine={false} tickLine={false} />
+                <YAxis tick={{ fontSize: 9, fill: 'var(--color-text-muted)' }} axisLine={false} tickLine={false} tickFormatter={(v: any) => moneyCompact(Number(v))} />
+                <Tooltip formatter={(v: any) => money(Number(v))} contentStyle={{ borderRadius: 8, fontSize: 10, background: 'var(--color-surface)', border: '1px solid var(--color-border)' }} />
+                <Bar dataKey="ar" fill="#10b981" radius={[4, 4, 0, 0]} name="AR Amount" />
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
         </div>
 
         {/* AP Aging */}
@@ -354,15 +343,17 @@ export function DashboardOverview({ accounts, entries: _entries, setPage: _setPa
             </h3>
             <span className="text-xs font-black text-[var(--color-danger)]">{money(totalAP)}</span>
           </div>
-          <ResponsiveContainer width="100%" height={160}>
-            <BarChart data={agingBarData} margin={{ top: 5, right: 5, left: -10, bottom: 0 }}>
-              <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border-subtle)" vertical={false} />
-              <XAxis dataKey="name" tick={{ fontSize: 9, fill: 'var(--color-text-muted)' }} axisLine={false} tickLine={false} />
-              <YAxis tick={{ fontSize: 9, fill: 'var(--color-text-muted)' }} axisLine={false} tickLine={false} tickFormatter={(v: any) => moneyCompact(Number(v))} />
-              <Tooltip formatter={(v: any) => money(Number(v))} contentStyle={{ borderRadius: 8, fontSize: 10, background: 'var(--color-surface)', border: '1px solid var(--color-border)' }} />
-              <Bar dataKey="ap" fill="#ef4444" radius={[4, 4, 0, 0]} name="AP Amount" />
-            </BarChart>
-          </ResponsiveContainer>
+          <div className="w-full min-h-[160px]">
+            <ResponsiveContainer width="100%" height={160}>
+              <BarChart data={agingBarData} margin={{ top: 5, right: 5, left: -10, bottom: 0 }}>
+                <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border-subtle)" vertical={false} />
+                <XAxis dataKey="name" tick={{ fontSize: 9, fill: 'var(--color-text-muted)' }} axisLine={false} tickLine={false} />
+                <YAxis tick={{ fontSize: 9, fill: 'var(--color-text-muted)' }} axisLine={false} tickLine={false} tickFormatter={(v: any) => moneyCompact(Number(v))} />
+                <Tooltip formatter={(v: any) => money(Number(v))} contentStyle={{ borderRadius: 8, fontSize: 10, background: 'var(--color-surface)', border: '1px solid var(--color-border)' }} />
+                <Bar dataKey="ap" fill="#ef4444" radius={[4, 4, 0, 0]} name="AP Amount" />
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
         </div>
       </div>
 
@@ -416,22 +407,22 @@ export function DashboardOverview({ accounts, entries: _entries, setPage: _setPa
       </div>
 
       {/* ── ROW 9: Operational health indicators [repeat(4, 1fr) | gap 16px | mb 0] ── */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-0">
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2 mb-0">
         {[
-          { label: 'Active Invoices', val: invoices.length, icon: Receipt, color: '#3b82f6', status: 'Active' },
+          { label: 'Active Invoices', val: safeInvoices.length, icon: Receipt, color: '#3b82f6', status: 'Active' },
           { label: 'Pending Bills', val: unpaidBillsArr.length, icon: CreditCard, color: '#f59e0b', status: 'Due' },
-          { label: 'Inventory Items', val: stockLevels.length, icon: Boxes, color: '#8b5cf6', status: 'In Stock' },
+          { label: 'Inventory Items', val: safeStockLevels.length, icon: Boxes, color: '#8b5cf6', status: 'In Stock' },
           { label: 'Compliance Status', val: '98.5%', icon: ShieldCheck, color: '#10b981', status: 'Secure' },
         ].map((item, i) => {
           const Icon = item.icon;
           return (
-            <div key={i} className="bg-[var(--color-surface)] p-3 rounded-xl border border-[var(--color-border)] shadow-sm flex items-center justify-between">
-              <div>
-                <span className="text-[10px] font-bold uppercase tracking-wider text-[var(--color-text-muted)] block mb-0.5">{item.label}</span>
+            <div key={i} className="bg-[var(--color-surface)] p-2.5 rounded-xl border border-[var(--color-border)] shadow-sm flex items-center justify-between min-w-0">
+              <div className="min-w-0">
+                <span className="text-[9px] font-bold uppercase tracking-wider text-[var(--color-text-muted)] block mb-0.5 truncate">{item.label}</span>
                 <p className="text-base font-black text-[var(--color-text-strong)]">{item.val}</p>
                 <span className="text-[9px] font-bold text-[var(--color-success)]">{item.status}</span>
               </div>
-              <div className="w-9 h-9 rounded-xl flex items-center justify-center" style={{ background: `color-mix(in srgb, ${item.color} 15%, transparent)`, color: item.color }}>
+              <div className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0 ml-1.5" style={{ background: `color-mix(in srgb, ${item.color} 15%, transparent)`, color: item.color }}>
                 <Icon className="w-4 h-4" />
               </div>
             </div>
