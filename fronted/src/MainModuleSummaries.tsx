@@ -4,9 +4,9 @@ import {
   TrendingDown, AlertTriangle, Receipt, FileText, ArrowUpRight, Package,
   Warehouse, Banknote, HandCoins, Building2, Layers, ClipboardList,
   CalendarCheck2, CreditCard, DollarSign,
-  Activity, Truck, BarChart3, CircleDollarSign,
+  Activity, BarChart3, CircleDollarSign,
   UserCheck, CalendarDays, Briefcase,
-  ShieldCheck, Flame, CheckCircle2,
+  ShieldCheck, CheckCircle2,
   Clock
 } from 'lucide-react';
 import {
@@ -105,11 +105,6 @@ export function SalesSummaryView({ activeEntityId, setPage }: { activeEntityId?:
   const apAgingData = BUCKETS.map(b => ({ name: b, value: apAgingBuckets[b] }));
   const apOverdueTotal = apAgingBuckets['1-30'] + apAgingBuckets['31-60'] + apAgingBuckets['61-90'] + apAgingBuckets['90+'];
 
-  const bankTotal = bankAccArr.reduce((s: number, a: any) => s + (a.balance ?? a.openingBalance ?? 0), 0);
-  const cashTotal = cashAccArr.reduce((s: number, a: any) => s + (a.balance ?? a.openingBalance ?? 0), 0);
-  const cashBank = bankTotal + cashTotal;
-  const workingCapitalCalc = totalInvoiced - outstanding;
-
   let totalAssetsCalc = 0; let totalLiabilitiesCalc = 0;
   bankAccArr.forEach((a: any) => { totalAssetsCalc += a.balance ?? a.openingBalance ?? 0; });
   cashAccArr.forEach((a: any) => { totalAssetsCalc += a.balance ?? a.openingBalance ?? 0; });
@@ -124,9 +119,6 @@ export function SalesSummaryView({ activeEntityId, setPage }: { activeEntityId?:
   if (collectionRate !== '0') healthScore += 10;
   if (overdueCount === 0) healthScore += 10;
   healthScore = Math.min(100, Math.max(20, healthScore));
-
-  const monthlyBurn = Math.max(1, (totalInvoiced - outstanding) / 12);
-  const runwayMonths = cashBank > 0 ? Math.min(99, Number((cashBank / monthlyBurn).toFixed(1))) : 0;
 
   const alerts: { id: string; title: string; detail: string; severity: 'critical' | 'warning' | 'info' | 'success'; page: string }[] = [];
   if (overdueCount > 0) alerts.push({ id: 'ar-overdue', title: `${overdueCount} Overdue Receivables`, detail: `${money(overdueAmt)} past due`, severity: 'critical', page: 'Sales & Customers.Customer Aging' });
@@ -237,7 +229,7 @@ export function SalesSummaryView({ activeEntityId, setPage }: { activeEntityId?:
           subtitle="Equation balancing and receivables aging indicators"
           icon={ShieldCheck}
           iconColor="#10b981"
-          className="col-span-12 md:col-span-6 lg:col-span-4 justify-between"
+          className="col-span-12 md:col-span-6 lg:col-span-6 justify-between"
         >
           <div className="my-3 space-y-2 text-center">
             <div className="py-2 px-2 rounded-xl bg-[var(--color-surface-muted)] border border-[var(--color-border-subtle)] text-xs font-black text-[var(--color-text-strong)]">
@@ -257,7 +249,7 @@ export function SalesSummaryView({ activeEntityId, setPage }: { activeEntityId?:
           subtitle="Maturity buckets of outstanding customer balances"
           icon={Clock}
           iconColor="#3b82f6"
-          className="col-span-12 md:col-span-6 lg:col-span-4"
+          className="col-span-12 md:col-span-6 lg:col-span-6"
         >
           <div className="space-y-2.5 my-1">
             {arAgingData.map((bucket, i) => {
@@ -276,32 +268,6 @@ export function SalesSummaryView({ activeEntityId, setPage }: { activeEntityId?:
                 </div>
               );
             })}
-          </div>
-        </HealthCard>
-
-        <HealthCard
-          title="Working Capital Position"
-          subtitle="Corporate liquidity runway estimation"
-          icon={Flame}
-          iconColor="#f59e0b"
-          className="col-span-12 md:col-span-6 lg:col-span-4 justify-between"
-        >
-          <div className="space-y-2 my-1">
-            <div className="flex justify-between text-[11px] font-bold">
-              <span>Working Capital:</span>
-              <span className="text-blue-500">{money(workingCapitalCalc)}</span>
-            </div>
-            <div className="flex justify-between text-[11px]">
-              <span>Cash & Bank:</span>
-              <span className="text-[var(--color-text-strong)]">{money(cashBank)}</span>
-            </div>
-            <div className="flex justify-between text-[11px]">
-              <span>Monthly Burn Rate:</span>
-              <span className="text-[var(--color-text-strong)]">{money(monthlyBurn)}</span>
-            </div>
-          </div>
-          <div className="mt-3 p-2 rounded-xl bg-[var(--color-surface-muted)] text-[9px] text-center font-bold text-[var(--color-text-muted)]">
-            Runway coverage: <span className="text-amber-500 font-extrabold">{runwayMonths} months</span>
           </div>
         </HealthCard>
 
@@ -397,7 +363,6 @@ export function ProcurementSummaryView({ activeEntityId, setPage }: { activeEnti
   const { orders, bills, requests, grns } = proc;
   const billTotal = bills.reduce((s, b: any) => s + (b.totalAmount || b.total || 0), 0);
   const orderValue = orders.reduce((s, o: any) => s + (o.totalAmount || o.total || 0), 0);
-  const openOrders = orders.filter((o: any) => ['Open', 'Pending', 'Approved'].includes(o.status)).length;
   const openRequests = requests.filter(r => !['Closed', 'Approved'].includes(r.status)).length;
   const paidBills = bills.filter((b: any) => b.status === 'Paid').length;
   const unpaidBills = bills.length - paidBills;
@@ -416,6 +381,46 @@ export function ProcurementSummaryView({ activeEntityId, setPage }: { activeEnti
     { name: 'Unpaid', value: unpaidBills },
   ].filter(d => d.value > 0);
 
+  const apAgingBuckets: Record<string, number> = {}; BUCKETS.forEach(b => { apAgingBuckets[b] = 0; });
+  const unpaidBillsArr = (bills as any[]).filter(b => (b.amountDue ?? (b.totalAmount ?? b.total ?? 0) - (b.amountPaid ?? 0)) > 0);
+  unpaidBillsArr.forEach((b: any) => {
+    const due = b.amountDue ?? ((b.totalAmount ?? b.total ?? 0) - (b.amountPaid ?? 0));
+    apAgingBuckets[getAgingBucket(b.dueDate)] += due;
+  });
+  const apAgingData = BUCKETS.map(b => ({ name: b, value: apAgingBuckets[b] }));
+  const totalAP = apAgingData.reduce((s, a) => s + a.value, 0);
+
+  const overdueCount = bills.filter((b: any) => {
+    const due = b.amountDue ?? ((b.totalAmount ?? b.total ?? 0) - (b.amountPaid ?? 0));
+    return due > 0 && new Date(b.dueDate).getTime() < Date.now();
+  }).length;
+
+  const overdueAmt = bills.filter((b: any) => {
+    const due = b.amountDue ?? ((b.totalAmount ?? b.total ?? 0) - (b.amountPaid ?? 0));
+    return due > 0 && new Date(b.dueDate).getTime() < Date.now();
+  }).reduce((s, b: any) => s + (b.amountDue ?? ((b.totalAmount ?? b.total ?? 0) - (b.amountPaid ?? 0))), 0);
+
+  const disbursedPaid = bills.reduce((s, b: any) => s + (b.amountPaid ?? (b.status === 'Paid' ? b.totalAmount ?? b.total ?? 0 : 0)), 0);
+  const paymentRate = billTotal > 0 ? ((disbursedPaid / billTotal) * 100).toFixed(1) : '0';
+  const activeVendors = vendorsStore.vendors.filter((v: any) => String(v.status) === 'Active').length;
+
+  let healthScore = 100;
+  if (overdueCount > 0) healthScore -= 20;
+  if (unpaidBills > 3) healthScore -= 10;
+  if (parseFloat(paymentRate) < 70) healthScore -= 15;
+  healthScore = Math.max(20, healthScore);
+
+  const alerts: { id: string; title: string; detail: string; severity: 'critical' | 'warning' | 'info' | 'success'; page: string }[] = [];
+  if (overdueCount > 0) {
+    alerts.push({ id: 'ap-overdue', title: `${overdueCount} Overdue Bills`, detail: `${money(overdueAmt)} past due to suppliers`, severity: 'critical', page: 'Procurement.Payables Aging' });
+  }
+  if (openRequests > 0) {
+    alerts.push({ id: 'po-requests', title: `${openRequests} Purchase Requests Pending`, detail: 'Awaiting review & order conversion', severity: 'info', page: 'Procurement.Procurement Workspace' });
+  }
+  if (alerts.length === 0) {
+    alerts.push({ id: 'clear', title: 'All Clear', detail: 'No critical procurement issues', severity: 'success', page: '' });
+  }
+
   return (
     <main className="mx-auto w-full max-w-[1600px] space-y-6">
       <DashboardHeader
@@ -429,8 +434,8 @@ export function ProcurementSummaryView({ activeEntityId, setPage }: { activeEnti
         {[
           { label: 'PO Value', value: money(orderValue), icon: ShoppingCart, color: '#06b6d4', change: `${orders.length} orders`, trendType: 'up', points: [orderValue * 0.5, orderValue * 0.65, orderValue * 0.75, orderValue * 0.85, orderValue * 0.95, orderValue] },
           { label: 'Total Bills', value: money(billTotal), icon: FileText, color: '#f59e0b', change: `${bills.length} bills`, trendType: 'neutral', points: [billTotal * 0.4, billTotal * 0.55, billTotal * 0.7, billTotal * 0.8, billTotal * 0.9, billTotal] },
-          { label: 'Open POs', value: num(openOrders), icon: Truck, color: '#10b981', change: 'Awaiting delivery', trendType: 'neutral', points: [openOrders * 0.8, openOrders * 0.9, openOrders, openOrders, openOrders, openOrders] },
-          { label: 'Open Requests', value: num(openRequests), icon: ClipboardList, color: '#a855f7', change: 'Requires approval', trendType: 'neutral', points: [openRequests * 1.1, openRequests * 1.05, openRequests, openRequests, openRequests, openRequests] }
+          { label: 'Unpaid Payables', value: money(totalAP), icon: HandCoins, color: '#ef4444', change: overdueCount > 0 ? `${overdueCount} overdue` : 'Clear', trendType: overdueCount > 0 ? 'down' : 'neutral', points: [totalAP * 1.1, totalAP * 1.05, totalAP * 1.0, totalAP * 0.95, totalAP * 0.9, totalAP] },
+          { label: 'Active Vendors', value: num(activeVendors), icon: Users, color: '#3b82f6', change: 'Registered', trendType: 'neutral', points: [activeVendors * 0.9, activeVendors * 0.95, activeVendors, activeVendors, activeVendors, activeVendors] }
         ].map((kpi, i) => {
           const Icon = kpi.icon;
           return (
@@ -523,6 +528,124 @@ export function ProcurementSummaryView({ activeEntityId, setPage }: { activeEnti
             </div>
           </div>
         </ChartCard>
+
+        {/* Health */}
+        <HealthCard
+          title="Procurement Health Index"
+          subtitle="Equation balancing and payables aging indicators"
+          icon={ShieldCheck}
+          iconColor="#10b981"
+          className="col-span-12 md:col-span-6 lg:col-span-6 justify-between"
+        >
+          <div className="my-3 space-y-2 text-center">
+            <div className="py-2 px-2 rounded-xl bg-[var(--color-surface-muted)] border border-[var(--color-border-subtle)] text-xs font-black text-[var(--color-text-strong)]">
+              Health Score: {healthScore}/100
+            </div>
+            <p className="text-[9px] text-[var(--color-text-muted)]">
+              {overdueCount === 0 ? 'No Overdue Bills' : `${overdueCount} Overdue Bills`} · Payment Rate: {paymentRate}%
+            </p>
+          </div>
+          <div className="w-full h-2 rounded-full bg-[var(--color-surface-muted)] overflow-hidden">
+            <div className="h-full rounded-full bg-emerald-500 transition-all duration-300" style={{ width: `${healthScore}%` }} />
+          </div>
+        </HealthCard>
+
+        <HealthCard
+          title="Payables Aging Summary"
+          subtitle="Maturity buckets of outstanding vendor payables"
+          icon={Clock}
+          iconColor="#ef4444"
+          className="col-span-12 md:col-span-6 lg:col-span-6"
+        >
+          <div className="space-y-2.5 my-1">
+            {apAgingData.map((bucket, i) => {
+              const totalAp = apAgingData.reduce((s, a) => s + a.value, 0) || 1;
+              const pct = (bucket.value / totalAp) * 100;
+              const colors = ['#10b981', '#06b6d4', '#f59e0b', '#ef4444', '#991b1b'];
+              return (
+                <div key={bucket.name} className="space-y-1 text-[10px]">
+                  <div className="flex justify-between">
+                    <span className="font-semibold text-[var(--color-text)]">{bucket.name}</span>
+                    <span className="font-black text-[var(--color-text-strong)]">{money(bucket.value)} ({pct.toFixed(0)}%)</span>
+                  </div>
+                  <div className="w-full h-1.5 rounded-full bg-[var(--color-surface-muted)] overflow-hidden">
+                    <div className="h-full rounded-full" style={{ width: `${pct}%`, background: colors[i % colors.length] }} />
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </HealthCard>
+
+        {/* Activity & Alerts */}
+        <ActivityCard
+          title="Recent Vendor Bills"
+          subtitle="Latest purchasing transactions"
+          icon={FileText}
+          iconColor="#3b82f6"
+          actions={<button onClick={() => setPage?.('Procurement.Bills')} className="hover:text-primary transition-colors text-[9px] font-extrabold uppercase">View All →</button>}
+          className="col-span-12 lg:col-span-7"
+        >
+          <div className="overflow-x-auto">
+            <table className="w-full text-left text-[10px]">
+              <thead>
+                <tr className="border-b border-[var(--color-border-subtle)] text-[var(--color-text-muted)] font-bold">
+                  <th className="py-2 px-1">Ref</th>
+                  <th className="py-2">Vendor</th>
+                  <th className="py-2 text-right">Amount</th>
+                  <th className="py-2 text-right">Status</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-[var(--color-border-subtle)]">
+                {bills.slice(0, 5).map((b: any) => {
+                  const overdue = (b.amountDue ?? 0) > 0 && new Date(b.dueDate).getTime() < Date.now();
+                  const status = b.status === 'Paid' ? 'Paid' : overdue ? 'Overdue' : 'Unpaid';
+                  const badgeCol = status === 'Paid' ? '#10b981' : status === 'Overdue' ? '#ef4444' : '#f59e0b';
+                  return (
+                    <tr key={b.id} className="hover:bg-[var(--color-surface-muted)] transition-colors">
+                      <td className="py-2 px-1 font-mono font-bold text-[var(--color-text-strong)]">{b.billNumber || 'BILL-' + b.id.slice(0, 5)}</td>
+                      <td className="py-2 truncate max-w-[140px]">{b.vendorName || '—'}</td>
+                      <td className="py-2 text-right font-black text-[var(--color-text-strong)]">{money(b.totalAmount || b.total || 0)}</td>
+                      <td className="py-2 text-right">
+                        <span className="inline-block text-[8px] font-extrabold px-1.5 py-0.5 rounded-full" style={{ background: `color-mix(in srgb, ${badgeCol} 12%, transparent)`, color: badgeCol }}>
+                          {status}
+                        </span>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        </ActivityCard>
+
+        <ActivityCard
+          title="Procurement Alerts & Warnings"
+          subtitle="System purchasing controls notifications"
+          icon={AlertTriangle}
+          iconColor="#ef4444"
+          className="col-span-12 lg:col-span-5"
+        >
+          <div className="space-y-2">
+            {alerts.map(a => {
+              let alertColor = '#3b82f6';
+              if (a.severity === 'critical') alertColor = '#ef4444';
+              else if (a.severity === 'warning') alertColor = '#f59e0b';
+              else if (a.severity === 'success') alertColor = '#10b981';
+              return (
+                <div key={a.id} onClick={() => setPage?.(a.page)} className="flex items-start gap-2.5 p-2 rounded-xl border border-[var(--color-border-subtle)] hover:border-primary bg-[var(--color-surface-muted)] cursor-pointer group transition-colors">
+                  <div className="w-7 h-7 rounded-lg flex items-center justify-center shrink-0 mt-0.5" style={{ background: `color-mix(in srgb, ${alertColor} 12%, transparent)`, color: alertColor }}>
+                    <AlertTriangle className="w-4 h-4" />
+                  </div>
+                  <div className="min-w-0">
+                    <span className="font-bold text-[var(--color-text-strong)] text-[10px] block group-hover:text-primary transition-colors leading-tight">{a.title}</span>
+                    <span className="text-[8px] text-[var(--color-text-subtle)] block mt-0.5">{a.detail}</span>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </ActivityCard>
 
         {/* Quick Links / Navigation list */}
         <ActivityCard
