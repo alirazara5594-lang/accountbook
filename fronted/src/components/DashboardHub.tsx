@@ -66,7 +66,7 @@ export function DashboardHub({ setPage, accounts = [], currentUser }: DashboardH
       </div>
 
       {/* ── High-Level Snapshot Strips ── */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
         {[
           { label: 'Consolidated Assets', value: money(totalAssets), icon: Landmark, color: '#3b82f6', sub: 'Audited ledger' },
           { label: 'Total Revenue', value: money(totalRevenue), icon: TrendingUp, color: '#10b981', sub: 'FY to date' },
