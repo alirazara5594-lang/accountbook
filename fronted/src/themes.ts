@@ -8,9 +8,9 @@ export interface ThemeDef {
 }
 
 export const THEMES: ThemeDef[] = [
-  { id: 'va-dark', name: 'Dark', primary: '#8b5cf6', accent: '#a855f7', sidebar: '#111827', dark: true },
-  { id: 'va-cool', name: 'Cool', primary: '#8b5cf6', accent: '#a855f7', sidebar: '#111827' },
-  { id: 'va-light', name: 'Light', primary: '#8b5cf6', accent: '#a855f7', sidebar: '#111827' },
+  { id: 'va-dark', name: 'Dark', primary: '#00d4ff', accent: '#a855f7', sidebar: '#0a1020', dark: true },
+  { id: 'va-cool', name: 'Cool', primary: '#00c4e8', accent: '#a855f7', sidebar: '#0d1528' },
+  { id: 'va-light', name: 'Light', primary: '#8b5cf6', accent: '#a855f7', sidebar: '#f8fafc' },
   { id: 'bp-dark', name: 'Dark', primary: '#3b82f6', accent: '#a855f7', sidebar: '#0d1225', dark: true },
   { id: 'bp-cool', name: 'Cool', primary: '#3b82f6', accent: '#a855f7', sidebar: '#0d1225' },
   { id: 'bp-light', name: 'Light', primary: '#3b82f6', accent: '#a855f7', sidebar: '#0d1225' },
@@ -28,7 +28,7 @@ export const THEMES: ThemeDef[] = [
   { id: 'nc-light', name: 'Neon Light', primary: '#4f46e5', accent: '#475569', sidebar: '#0a0e1a' },
 ];
 
-export const DEFAULT_THEME = 'va-dark';
+export const DEFAULT_THEME = 'va-cool';
 
 export function getStoredTheme(): string {
   try {
