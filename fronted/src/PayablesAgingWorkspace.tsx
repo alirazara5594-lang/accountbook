@@ -2,6 +2,7 @@ import { useEffect } from 'react';
 import { useReportsStore } from './stores/useReportsStore';
 import { useVendorsStore } from './stores';
 import { DataToolbar } from '@/components/ui/data-toolbar';
+import { money } from './lib/currency';
 
 type PayablesAgingProps = { activeEntityId: string };
 
@@ -14,7 +15,7 @@ function PayablesAgingWorkspace({ activeEntityId }: PayablesAgingProps) {
   }, [activeEntityId]);
 
   // Format currency safely
-  const fmt = (n?: number) => (n != null ? n.toLocaleString() : '0.00');
+  const fmt = (n?: number) => money(n || 0);
 
   const exportHeaders = ['Vendor', 'Outstanding', 'Current', '31-60 Days', '61-90 Days', '90+ Days', 'Status'];
   const exportRows = vendors.map((v: any) => [
@@ -49,7 +50,7 @@ function PayablesAgingWorkspace({ activeEntityId }: PayablesAgingProps) {
             </div>
             <div className="stat-card">
               <h3>Total Payables</h3>
-              <h2>${fmt(incomeStatement?.totalPayables)}</h2>
+              <h2>{fmt(incomeStatement?.totalPayables)}</h2>
             </div>
           </div>
 
@@ -66,25 +67,25 @@ function PayablesAgingWorkspace({ activeEntityId }: PayablesAgingProps) {
             <tbody>
               <tr>
                 <td>Current (0-30 days)</td>
-                <td>${fmt(incomeStatement?.currentAging?.current || 0)}</td>
+                <td>{fmt(incomeStatement?.currentAging?.current || 0)}</td>
                 <td>{incomeStatement?.currentAging?.current ? Math.round((incomeStatement.currentAging.current / incomeStatement.totalPayables) * 100) || 0 : 0}%</td>
                 <td>{incomeStatement?.vendorCount || 0}</td>
               </tr>
               <tr>
                 <td>31-60 Days</td>
-                <td>${fmt(incomeStatement?.currentAging?.['30'] || 0)}</td>
+                <td>{fmt(incomeStatement?.currentAging?.['30'] || 0)}</td>
                 <td>{incomeStatement?.currentAging?.['30'] ? Math.round((incomeStatement.currentAging['30'] / incomeStatement.totalPayables) * 100) || 0 : 0}%</td>
                 <td>{incomeStatement?.vendorCount || 0}</td>
               </tr>
               <tr>
                 <td>61-90 Days</td>
-                <td>${fmt(incomeStatement?.currentAging?.['60'] || 0)}</td>
+                <td>{fmt(incomeStatement?.currentAging?.['60'] || 0)}</td>
                 <td>{incomeStatement?.currentAging?.['60'] ? Math.round((incomeStatement.currentAging['60'] / incomeStatement.totalPayables) * 100) || 0 : 0}%</td>
                 <td>{incomeStatement?.vendorCount || 0}</td>
               </tr>
               <tr>
                 <td>90+ Days</td>
-                <td>${fmt(incomeStatement?.currentAging?.['90'] || 0)}</td>
+                <td>{fmt(incomeStatement?.currentAging?.['90'] || 0)}</td>
                 <td>{incomeStatement?.currentAging?.['90'] ? Math.round((incomeStatement.currentAging['90'] / incomeStatement.totalPayables) * 100) || 0 : 0}%</td>
                 <td>{incomeStatement?.vendorCount || 0}</td>
               </tr>
@@ -109,11 +110,11 @@ function PayablesAgingWorkspace({ activeEntityId }: PayablesAgingProps) {
                 {vendors.map((v: any, idx: number) => (
                   <tr key={idx}>
                     <td>{v.name}</td>
-                    <td>${fmt(v.outstandingBalance || 0)}</td>
-                    <td>${fmt(v.currentAging?.current || 0)}</td>
-                    <td>${fmt(v.currentAging?.['30'] || 0)}</td>
-                    <td>${fmt(v.currentAging?.['60'] || 0)}</td>
-                    <td>${fmt(v.currentAging?.['90'] || 0)}</td>
+                    <td>{fmt(v.outstandingBalance || 0)}</td>
+                    <td>{fmt(v.currentAging?.current || 0)}</td>
+                    <td>{fmt(v.currentAging?.['30'] || 0)}</td>
+                    <td>{fmt(v.currentAging?.['60'] || 0)}</td>
+                    <td>{fmt(v.currentAging?.['90'] || 0)}</td>
                     <td>
                       {v.outstandingBalance > 0 ? 'Outstanding' : 'Current'}
                     </td>

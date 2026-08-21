@@ -1,510 +1,887 @@
-import React, { useState, useEffect, useMemo } from 'react';
-import { useSalesStore, useCustomersStore, useProductsStore } from './stores';
-import { DataToolbar } from '@/components/ui/data-toolbar';
-import { money } from './lib/currency';
+import { useState, useEffect, useMemo } from 'react'
+import {
+  FileText, Plus, Check, X, ArrowRight,
+  ArrowLeft, Coins, CheckCircle2, Hash, Users, ArrowUpRight
+} from 'lucide-react'
+import { useSalesStore, useCustomersStore, useProductsStore } from './stores'
+import { useFormDraft } from './hooks/useFormDraft'
+import { DataToolbar } from '@/components/ui/data-toolbar'
+import { money } from './lib/currency'
 
-const statusColors: Record<number, string> = {
-  0: 'bg-gray-100 text-gray-600',
-  1: 'bg-blue-100 text-blue-700',
-  2: 'bg-green-100 text-green-700',
-  3: 'bg-red-100 text-red-600',
-  4: 'bg-orange-100 text-orange-700',
-  5: 'bg-purple-100 text-purple-700',
-};
-const statusLabels = ['Draft', 'Sent', 'Accepted', 'Rejected', 'Expired', 'Invoiced'];
+const statusStyles: Record<number, { label: string; class: string }> = {
+  0: { label: 'Draft', class: 'bg-slate-500/10 text-slate-600 border border-slate-500/20' },
+  1: { label: 'Sent', class: 'bg-sky-500/10 text-sky-600 border border-sky-500/20' },
+  2: { label: 'Accepted', class: 'bg-emerald-500/10 text-emerald-600 border border-emerald-500/20' },
+  3: { label: 'Rejected', class: 'bg-rose-500/10 text-rose-600 border border-rose-500/20' },
+  4: { label: 'Expired', class: 'bg-amber-500/10 text-amber-600 border border-amber-500/20' },
+  5: { label: 'Invoiced', class: 'bg-purple-500/10 text-purple-600 border border-purple-500/20' },
+}
 
 interface Line {
-  productId: string;
-  description: string;
-  quantity: string;
-  unitPrice: string;
-  discountType: 0 | 1; // 0=Percentage, 1=FixedAmount
-  discountValue: string;
-  taxPercent: string;
+  productId: string
+  description: string
+  quantity: string
+  unitPrice: string
+  discountType: 0 | 1 // 0=Percentage, 1=FixedAmount
+  discountValue: string
+  taxPercent: string
 }
 
 const defaultLine = (): Line => ({
-  productId: '', description: '', quantity: '1',
-  unitPrice: '0', discountType: 0, discountValue: '0', taxPercent: '0',
-});
+  productId: '',
+  description: '',
+  quantity: '1',
+  unitPrice: '0',
+  discountType: 0,
+  discountValue: '0',
+  taxPercent: '0',
+})
 
-// ─── Line Item Row ────────────────────────────────────────────────────────────
-const LineRow = ({ line, idx, products, onChange, onRemove }: {
-  line: Line; idx: number; products: any[];
-  onChange: (i: number, f: string, v: any) => void;
-  onRemove: (i: number) => void;
+export const EstimatesAndQuotes: React.FC<{ activeEntityId: string; entities?: any[] }> = ({
+  activeEntityId,
+  entities = []
 }) => {
-  const qty = parseFloat(line.quantity) || 0;
-  const price = parseFloat(line.unitPrice) || 0;
-  const subTotal = qty * price;
-  const discVal = parseFloat(line.discountValue) || 0;
-  const discAmt = line.discountType === 0 ? Math.round(subTotal * discVal / 100 * 100) / 100 : discVal;
-  const afterDisc = subTotal - discAmt;
-  const taxAmt = Math.round(afterDisc * (parseFloat(line.taxPercent) || 0) / 100 * 100) / 100;
-  const lineTotal = afterDisc + taxAmt;
+  const estimates = useSalesStore((s) => s.estimates)
+  const fetchEstimates = useSalesStore((s) => s.fetchEstimates)
+  const createEstimateStore = useSalesStore((s) => s.createEstimate)
+  const updateEstimateStatusStore = useSalesStore((s) => s.updateEstimateStatus)
+  const convertToInvoiceStore = useSalesStore((s) => s.convertToInvoice)
 
-  const onProduct = (id: string) => {
-    onChange(idx, 'productId', id);
-    const p = products.find((p: any) => p.id === id);
-    if (p) { onChange(idx, 'description', p.name); onChange(idx, 'unitPrice', String(p.unitPrice)); }
-  };
+  const customers = useCustomersStore((s) => s.customers)
+  const fetchCustomers = useCustomersStore((s) => s.fetchCustomers)
 
-  const inp = 'border border-gray-200 rounded-lg px-2 py-1.5 text-xs focus:ring-1 focus:ring-blue-400 focus:border-blue-400 w-full';
+  const products = useProductsStore((s) => s.products)
+  const fetchProducts = useProductsStore((s) => s.fetchProducts)
 
-  return (
-    <tr className="border-b border-gray-100 hover:bg-blue-50/20 transition-colors">
-      <td className="px-2 py-2">
-        <select value={line.productId} onChange={e => onProduct(e.target.value)} className={inp}>
-          <option value="">-- Select --</option>
-          {products.map((p: any) => <option key={p.id} value={p.id}>{p.name}</option>)}
-        </select>
-      </td>
-      <td className="px-2 py-2">
-        <input value={line.description} onChange={e => onChange(idx, 'description', e.target.value)} className={inp} placeholder="Description" />
-      </td>
-      <td className="px-2 py-2 w-16">
-        <input type="number" value={line.quantity} onChange={e => onChange(idx, 'quantity', e.target.value)} className={inp + ' text-right'} min="0" />
-      </td>
-      <td className="px-2 py-2 w-24">
-        <input type="number" value={line.unitPrice} onChange={e => onChange(idx, 'unitPrice', e.target.value)} className={inp + ' text-right'} min="0" />
-      </td>
-      <td className="px-2 py-2 w-36">
-        <div className="flex gap-1">
-          <select value={line.discountType} onChange={e => onChange(idx, 'discountType', parseInt(e.target.value))}
-            className="border border-gray-200 rounded-lg px-1 py-1.5 text-xs w-12">
-            <option value={0}>%</option>
-            <option value={1}>$</option>
-          </select>
-          <input type="number" value={line.discountValue} onChange={e => onChange(idx, 'discountValue', e.target.value)}
-            className={inp + ' text-right'} min="0" />
-        </div>
-      </td>
-      <td className="px-2 py-2 w-16">
-        <input type="number" value={line.taxPercent} onChange={e => onChange(idx, 'taxPercent', e.target.value)} className={inp + ' text-right'} min="0" placeholder="%" />
-      </td>
-      <td className="px-3 py-2 text-right text-xs text-gray-500">{money(subTotal)}</td>
-      <td className="px-3 py-2 text-right text-xs text-red-500">{discAmt > 0 ? `-${money(discAmt)}` : '—'}</td>
-      <td className="px-3 py-2 text-right text-xs text-orange-500">{taxAmt > 0 ? money(taxAmt) : '—'}</td>
-      <td className="px-3 py-2 text-right text-sm font-semibold text-blue-700">{money(lineTotal)}</td>
-      <td className="px-2 py-2 text-center">
-        <button onClick={() => onRemove(idx)} className="text-red-300 hover:text-red-500 text-sm transition-colors">✕</button>
-      </td>
-    </tr>
-  );
-};
+  const [loading, setLoading] = useState(true)
+  const [showForm, setShowForm] = useState(false)
+  const [modalTab, setModalTab] = useState<'details' | 'lines' | 'summary'>('details')
+  const [convertModal, setConvertModal] = useState<any>(null)
+  const [toast, setToast] = useState('')
+  const [query, setQuery] = useState('')
+  const [statusFilter, setStatusFilter] = useState<string>('all')
 
-// ─── Estimate Form ────────────────────────────────────────────────────────────
-const EstimateForm = ({ customers, products, onSave, onCancel }: {
-  customers: any[]; products: any[];
-  onSave: (body: any) => void; onCancel: () => void;
-}) => {
   const [form, setForm] = useState({
-    customerId: '', estimateDate: new Date().toISOString().slice(0, 10),
+    customerId: '',
+    estimateDate: new Date().toISOString().slice(0, 10),
     expiryDate: new Date(Date.now() + 30 * 86400000).toISOString().slice(0, 10),
-    reference: '', notes: '', terms: 'Payment due within 30 days of invoice date.',
-  });
-  const [lines, setLines] = useState<Line[]>([defaultLine()]);
+    reference: '',
+    notes: '',
+    terms: 'Payment due within 30 days of invoice date.',
+    currencyCode: 'PKR'
+  })
 
-  // Auto-generate estimate number when form opens
-  useEffect(() => {
-    if (!form.reference) {
-      const salesStore = useSalesStore.getState();
-      salesStore.fetchNextNumber('estimate').then(n => setForm(f => ({ ...f, reference: f.reference || n })));
-    }
-  }, [form.reference]);
+  const [lines, setLines] = useState<Line[]>([defaultLine()])
 
-  const updateLine = (i: number, f: string, v: any) => setLines(ls => ls.map((l, idx) => idx === i ? { ...l, [f]: v } : l));
-
-  const calcs = lines.map(l => {
-    const qty = parseFloat(l.quantity) || 0, price = parseFloat(l.unitPrice) || 0;
-    const sub = qty * price;
-    const discAmt = l.discountType === 0 ? Math.round(sub * (parseFloat(l.discountValue) || 0) / 100 * 100) / 100 : (parseFloat(l.discountValue) || 0);
-    const afterDisc = sub - discAmt;
-    const taxAmt = Math.round(afterDisc * (parseFloat(l.taxPercent) || 0) / 100 * 100) / 100;
-    return { sub, discAmt, taxAmt, total: afterDisc + taxAmt };
-  });
-
-  const totals = calcs.reduce((acc, c) => ({
-    sub: acc.sub + c.sub,
-    disc: acc.disc + c.discAmt,
-    tax: acc.tax + c.taxAmt,
-    total: acc.total + c.total,
-  }), { sub: 0, disc: 0, tax: 0, total: 0 });
-
-  const submit = () => {
-    onSave({
-      ...form,
-      expiryDate: form.expiryDate || null,
-      lines: lines.map(l => ({
-        productId: l.productId || null,
-        description: l.description,
-        quantity: parseFloat(l.quantity),
-        unitPrice: parseFloat(l.unitPrice),
-        discountType: l.discountType,
-        discountValue: parseFloat(l.discountValue),
-        taxCodeId: null,
-        taxPercent: parseFloat(l.taxPercent),
-      }))
-    });
-  };
-
-  return (
-    <div className="overlay">
-      <div className="modal" style={{ maxWidth: '1100px', width: '95%', display: 'flex', flexDirection: 'column', gap: '20px' }}>
-        <div className="modal-head">
-          <div>
-            <p className="eyebrow">SALES & CUSTOMERS</p>
-            <h2>New Estimate / Quote</h2>
-          </div>
-          <button type="button" className="close" onClick={onCancel}>×</button>
-        </div>
-
-        {/* Header fields */}
-        <div className="form-grid">
-          <label>
-            Customer *
-            <select value={form.customerId} onChange={e => setForm(f => ({ ...f, customerId: e.target.value }))}>
-              <option value="">-- Select customer --</option>
-              {customers.map((c: any) => <option key={c.id} value={c.id}>{c.name}</option>)}
-            </select>
-          </label>
-          <label>
-            Estimate Date
-            <input type="date" value={form.estimateDate} onChange={e => setForm(f => ({ ...f, estimateDate: e.target.value }))} />
-          </label>
-          <label>
-            Expiry Date
-            <input type="date" value={form.expiryDate} onChange={e => setForm(f => ({ ...f, expiryDate: e.target.value }))} />
-          </label>
-          <label>
-            Reference
-            <input value={form.reference} onChange={e => setForm(f => ({ ...f, reference: e.target.value }))} placeholder="Project name, RFQ#..." />
-          </label>
-          <label style={{ gridColumn: 'span 2' }}>
-            Notes
-            <input value={form.notes} onChange={e => setForm(f => ({ ...f, notes: e.target.value }))} placeholder="Additional notes for the customer..." />
-          </label>
-        </div>
-
-        {/* Lines */}
-        <div>
-          <div className="flex justify-between items-center mb-2">
-            <h4 className="text-sm font-semibold text-gray-700">Line Items</h4>
-            <button onClick={() => setLines(l => [...l, defaultLine()])}
-              className="text-blue-600 hover:text-blue-800 text-sm font-medium">+ Add Line</button>
-          </div>
-          <div className="border border-gray-200 rounded-xl overflow-hidden">
-            <table className="w-full text-sm">
-              <thead className="bg-gray-50 text-gray-500 text-xs uppercase tracking-wide">
-                <tr>
-                  <th className="py-2 px-2 text-left">Product</th>
-                  <th className="py-2 px-2 text-left">Description</th>
-                  <th className="py-2 px-2 text-right">Qty</th>
-                  <th className="py-2 px-2 text-right">Unit Price</th>
-                  <th className="py-2 px-2 text-center">Discount (% / $)</th>
-                  <th className="py-2 px-2 text-right">Tax %</th>
-                  <th className="py-2 px-3 text-right">Subtotal</th>
-                  <th className="py-2 px-3 text-right">Discount</th>
-                  <th className="py-2 px-3 text-right">Tax</th>
-                  <th className="py-2 px-3 text-right font-semibold">Total</th>
-                  <th className="py-2 px-2"></th>
-                </tr>
-              </thead>
-              <tbody>
-                {lines.map((l, i) => (
-                  <LineRow key={i} line={l} idx={i} products={products}
-                    onChange={updateLine} onRemove={idx => setLines(ls => ls.filter((_, j) => j !== idx))} />
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </div>
-
-        {/* Totals summary and terms */}
-        <div className="grid grid-cols-3 gap-4 items-end">
-          <div style={{ gridColumn: 'span 2' }}>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Terms & Conditions</label>
-            <textarea value={form.terms} onChange={e => setForm(f => ({ ...f, terms: e.target.value }))} rows={3}
-              style={{ width: '100%', border: '1px solid #e2e8f0', borderRadius: '12px', padding: '8px 12px', fontSize: '13px' }} />
-          </div>
-          <div className="bg-gray-50 border border-gray-200 rounded-2xl p-4 space-y-2">
-            <div className="flex justify-between text-sm text-gray-600">
-              <span>Subtotal</span><span className="font-medium">{money(totals.sub)}</span>
-            </div>
-            {totals.disc > 0 && (
-              <div className="flex justify-between text-sm text-red-600">
-                <span>Total Discount</span><span className="font-medium">-{money(totals.disc)}</span>
-              </div>
-            )}
-            {totals.tax > 0 && (
-              <div className="flex justify-between text-sm text-orange-600">
-                <span>Total Tax</span><span className="font-medium">{money(totals.tax)}</span>
-              </div>
-            )}
-            <div className="flex justify-between text-base font-bold text-gray-900 border-t border-gray-200 pt-2">
-              <span>Total Amount</span><span className="text-blue-700">{money(totals.total)}</span>
-            </div>
-          </div>
-        </div>
-
-        <div className="modal-footer">
-          <button type="button" className="secondary btn-cancel" onClick={onCancel}>Cancel</button>
-          <button type="button" className="secondary btn-draft" onClick={(e) => { e.preventDefault(); alert("��� Draft saved locally"); }}>Save Draft</button>
-          <button type="button" className="primary btn-finalize" onClick={submit} disabled={!form.customerId || lines.every(l => !l.description)}>
-            Save Estimate
-          </button>
-        </div>
-      </div>
-    </div>
-  );
-};
-
-// ─── Convert to Invoice Modal ─────────────────────────────────────────────────
-const ConvertModal = ({ estimate, onConfirm, onClose }: { estimate: any; onConfirm: (inv: string, due: string) => void; onClose: () => void }) => {
-  const [invDate, setInvDate] = useState(new Date().toISOString().slice(0, 10));
-  const [dueDate, setDueDate] = useState(new Date(Date.now() + 30 * 86400000).toISOString().slice(0, 10));
-  return (
-    <div className="fixed inset-0 bg-gray-900/50 backdrop-blur-sm z-50 flex items-center justify-center">
-      <div className="bg-white rounded-2xl shadow-xl w-full max-w-md p-6 space-y-4">
-        <h3 className="text-lg font-bold text-gray-900">Convert to Sales Invoice</h3>
-        <div className="bg-blue-50 rounded-xl p-3 text-sm space-y-1">
-          <p><strong>{estimate.estimateNumber}</strong> — {estimate.customerName}</p>
-          <p className="text-gray-600">Total: <strong className="text-blue-700">{money(estimate.totalAmount)}</strong></p>
-        </div>
-        <div className="grid grid-cols-2 gap-3">
-          <div><label className="block text-sm font-medium text-gray-700 mb-1">Invoice Date</label>
-            <input type="date" value={invDate} onChange={e => setInvDate(e.target.value)} className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm" /></div>
-          <div><label className="block text-sm font-medium text-gray-700 mb-1">Due Date</label>
-            <input type="date" value={dueDate} onChange={e => setDueDate(e.target.value)} className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm" /></div>
-        </div>
-        <div className="flex gap-3 pt-1">
-          <button onClick={() => onConfirm(invDate as any, dueDate as any)}
-            className="flex-1 py-2.5 bg-green-600 hover:bg-green-700 text-white rounded-xl font-medium text-sm">Create Invoice</button>
-          <button onClick={onClose} className="flex-1 py-2.5 border border-gray-200 hover:bg-gray-50 rounded-xl text-sm">Cancel</button>
-        </div>
-      </div>
-    </div>
-  );
-};
-
-// ─── Main Component ───────────────────────────────────────────────────────────
-export const EstimatesAndQuotes: React.FC<{ activeEntityId: string }> = ({ activeEntityId }) => {
-  const estimates = useSalesStore((s) => s.estimates);
-  const fetchEstimates = useSalesStore((s) => s.fetchEstimates);
-  const createEstimateStore = useSalesStore((s) => s.createEstimate);
-  const updateEstimateStatusStore = useSalesStore((s) => s.updateEstimateStatus);
-  const convertToInvoiceStore = useSalesStore((s) => s.convertToInvoice);
-
-  const customers = useCustomersStore((s) => s.customers);
-  const fetchCustomers = useCustomersStore((s) => s.fetchCustomers);
-
-  const products = useProductsStore((s) => s.products);
-  const fetchProducts = useProductsStore((s) => s.fetchProducts);
-
-  const [loading, setLoading] = useState(true);
-  const [showForm, setShowForm] = useState(false);
-  const [convertModal, setConvertModal] = useState<any>(null);
-  const [toast, setToast] = useState('');
-  const [query, setQuery] = useState('');
+  const { saveDraft, clearDraft } = useFormDraft('estimate_quote', { form, lines }, (saved: any) => {
+    if (saved.form) setForm(saved.form)
+    if (saved.lines) setLines(saved.lines)
+  }, showForm)
 
   const fetchData = async () => {
-    setLoading(true);
+    setLoading(true)
     try {
       await Promise.all([
         fetchEstimates(activeEntityId),
         fetchCustomers(activeEntityId),
         fetchProducts(),
-      ]);
-    } catch { }
-    setLoading(false);
-  };
+      ])
+    } catch {}
+    setLoading(false)
+  }
 
-  useEffect(() => { fetchData(); }, [activeEntityId]);
-  const notify = (m: string) => { setToast(m); setTimeout(() => setToast(''), 3500); };
+  useEffect(() => {
+    fetchData()
+  }, [activeEntityId])
 
-  const saveEstimate = async (body: any) => {
-    try {
-      await createEstimateStore({ ...body, companyId: activeEntityId || null });
-      notify('✓ Estimate saved as Draft!');
-      setShowForm(false);
-    } catch (e: any) {
-      notify(e.message || 'Error');
+  const notify = (m: string) => {
+    setToast(m)
+    setTimeout(() => setToast(''), 3500)
+  }
+
+  const openCreateModal = async () => {
+    const salesStore = useSalesStore.getState()
+    const nextRef = await salesStore.fetchNextNumber('estimate')
+    setForm({
+      customerId: customers[0]?.id || '',
+      estimateDate: new Date().toISOString().slice(0, 10),
+      expiryDate: new Date(Date.now() + 30 * 86400000).toISOString().slice(0, 10),
+      reference: nextRef || 'EST-0001',
+      notes: 'Quotations valid for 30 days from date of issue.',
+      terms: 'Standard trade terms apply.',
+      currencyCode: 'PKR'
+    })
+    setLines([defaultLine()])
+    setModalTab('details')
+    setShowForm(true)
+  }
+
+  const updateLine = (i: number, field: string, value: any) => {
+    const updated = [...lines]
+    updated[i] = { ...updated[i], [field]: value }
+    if (field === 'productId' && value) {
+      const prod = products.find((p: any) => p.id === value)
+      if (prod) {
+        updated[i] = {
+          ...updated[i],
+          description: prod.name,
+          unitPrice: String(prod.unitPrice || prod.salesPrice || 0)
+        }
+      }
     }
-  };
+    setLines(updated)
+  }
+
+  const addLine = () => setLines([...lines, defaultLine()])
+  const removeLine = (idx: number) => setLines(lines.filter((_, j) => j !== idx))
+
+  const lineCalculations = lines.map(l => {
+    const qty = parseFloat(l.quantity) || 0
+    const price = parseFloat(l.unitPrice) || 0
+    const sub = qty * price
+    const discAmt = l.discountType === 0
+      ? Math.round(sub * (parseFloat(l.discountValue) || 0) / 100 * 100) / 100
+      : (parseFloat(l.discountValue) || 0)
+    const afterDisc = sub - discAmt
+    const taxAmt = Math.round(afterDisc * (parseFloat(l.taxPercent) || 0) / 100 * 100) / 100
+    return { sub, discAmt, taxAmt, total: afterDisc + taxAmt }
+  })
+
+  const totals = lineCalculations.reduce(
+    (acc, c) => ({
+      sub: acc.sub + c.sub,
+      disc: acc.disc + c.discAmt,
+      tax: acc.tax + c.taxAmt,
+      total: acc.total + c.total,
+    }),
+    { sub: 0, disc: 0, tax: 0, total: 0 }
+  )
+
+  const saveEstimate = async () => {
+    if (!form.customerId) {
+      notify('Please select a customer.')
+      return
+    }
+    const body = {
+      ...form,
+      companyId: activeEntityId || null,
+      expiryDate: form.expiryDate || null,
+      lines: lines.map(l => ({
+        productId: l.productId || null,
+        description: l.description,
+        quantity: parseFloat(l.quantity || '1'),
+        unitPrice: parseFloat(l.unitPrice || '0'),
+        discountType: l.discountType,
+        discountValue: parseFloat(l.discountValue || '0'),
+        taxCodeId: null,
+        taxPercent: parseFloat(l.taxPercent || '0'),
+      }))
+    }
+    try {
+      await createEstimateStore(body)
+      clearDraft()
+      notify('✓ Quotation saved as Draft!')
+      setShowForm(false)
+      fetchData()
+    } catch (e: any) {
+      notify(e.message || 'Error saving estimate')
+    }
+  }
 
   const updateStatus = async (id: string, status: number) => {
     try {
-      await updateEstimateStatusStore(id, String(status));
-    } catch {}
-  };
+      await updateEstimateStatusStore(id, String(status))
+      notify(`Status updated to ${statusStyles[status]?.label}`)
+      fetchData()
+    } catch (e: any) {
+      notify(e.message || 'Status update failed')
+    }
+  }
 
   const convertToInvoice = async (invDate: string, dueDate: string) => {
     try {
-      await convertToInvoiceStore(convertModal.id, { invoiceDate: invDate, dueDate });
-      notify('✓ Invoice created! Go to Sales Workspace → Sales Invoices to post it.');
-      setConvertModal(null);
+      await convertToInvoiceStore(convertModal.id, { invoiceDate: invDate, dueDate })
+      notify('✓ Sales invoice created! Check Sales Invoices.')
+      setConvertModal(null)
+      fetchData()
     } catch (e: any) {
-      notify(e.message || 'Error');
+      notify(e.message || 'Conversion failed')
     }
-  };
-
-  // Summary stats
-  const totalValue = estimates.filter((e: any) => String(e.status) !== '3' && String(e.status) !== '4').reduce((s: number, e: any) => s + (e.totalAmount || 0), 0);
-  const accepted = estimates.filter((e: any) => String(e.status) === '2').length;
-  const pending = estimates.filter((e: any) => Number(e.status) <= 1).length;
+  }
 
   const filteredEstimates = useMemo(() => {
-    if (!query.trim()) return estimates;
-    const q = query.toLowerCase();
-    return estimates.filter((e: any) =>
-      (e.estimateNumber || '').toLowerCase().includes(q) ||
-      (e.customerName || '').toLowerCase().includes(q) ||
-      (statusLabels[e.status] || '').toLowerCase().includes(q)
-    );
-  }, [estimates, query]);
+    return estimates.filter((est: any) => {
+      const matchesQuery = !query.trim()
+        ? true
+        : `${est.estimateNumber || ''} ${est.customerName || ''} ${est.reference || ''}`
+            .toLowerCase()
+            .includes(query.toLowerCase())
 
-  const exportHeaders = ['Estimate #', 'Customer', 'Date', 'Expiry', 'Subtotal', 'Discount', 'Tax', 'Total', 'Status'];
-  const exportRows = filteredEstimates.map((e: any) => [
-    e.estimateNumber, e.customerName, e.estimateDate, e.expiryDate || '',
-    e.subTotal, e.totalDiscount, e.totalTax, e.totalAmount, statusLabels[e.status],
-  ]);
+      const matchesStatus = statusFilter === 'all' || String(est.status) === statusFilter
+
+      return matchesQuery && matchesStatus
+    })
+  }, [estimates, query, statusFilter])
+
+  const exportHeaders = ['Quote #', 'Customer', 'Date', 'Expiry Date', 'Discount', 'Tax', 'Total', 'Status']
+  const exportRows = filteredEstimates.map((est: any) => [
+    est.estimateNumber,
+    est.customerName,
+    est.estimateDate,
+    est.expiryDate || '—',
+    est.discountTotal || 0,
+    est.taxTotal || 0,
+    est.totalAmount || 0,
+    statusStyles[est.status]?.label || 'Draft'
+  ])
+
+  const totalQuoteValue = estimates.reduce((s: number, e: any) => s + (e.totalAmount || 0), 0)
+  const acceptedValue = estimates.filter((e: any) => e.status === 2).reduce((s: number, e: any) => s + (e.totalAmount || 0), 0)
+  const pendingCount = estimates.filter((e: any) => e.status === 0 || e.status === 1).length
+
+  const assignedCompany = entities.find(e => e.id === activeEntityId)
 
   return (
     <div className="space-y-6">
-      {toast && <div className="fixed top-6 right-6 z-50 px-5 py-3 bg-green-600 text-white rounded-2xl shadow-lg text-sm font-medium">{toast}</div>}
+      {toast && (
+        <div className="px-3.5 py-2 bg-emerald-500/10 border border-emerald-500/20 text-emerald-600 rounded-xl text-xs font-semibold">
+          {toast}
+        </div>
+      )}
 
+      {/* Submodule Heading Banner (Row 1) */}
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-3 bg-[var(--color-surface)] p-3.5 rounded-xl border border-[var(--color-border)] shadow-sm">
         <div>
           <h1 className="text-base font-bold text-[var(--color-text-strong)] tracking-tight flex items-center gap-2">
-            <span className="text-lg">📋</span> Estimates & Quotes
+            <span className="text-lg">📑</span> Estimates & Quotations
           </h1>
-          <p className="text-[var(--color-text-muted)] text-xs mt-0.5">Create quotes for customers and convert accepted ones into Sales Invoices.</p>
+          <p className="text-[var(--color-text-muted)] text-xs mt-0.5">
+            Prepare commercial quotes, RFQ estimates, pricing proposals, and 1-click invoice conversion.
+          </p>
         </div>
-        <div className="flex items-center gap-1.5 shrink-0">
+        <div className="flex items-center gap-2 shrink-0 flex-wrap">
+          <select
+            className="h-9 px-3 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] text-xs text-[var(--color-text)] outline-none focus:border-[var(--color-primary)] transition-colors shadow-2xs box-border"
+            style={{ paddingTop: 0, paddingBottom: 0 }}
+            value={statusFilter}
+            onChange={e => setStatusFilter(e.target.value)}
+          >
+            <option value="all">⚡ All Statuses</option>
+            <option value="0">⚪ Draft</option>
+            <option value="1">🔵 Sent</option>
+            <option value="2">🟢 Accepted</option>
+            <option value="3">🔴 Rejected</option>
+            <option value="4">🟡 Expired</option>
+            <option value="5">🟣 Invoiced</option>
+          </select>
+
           <DataToolbar
             query={query}
             setQuery={setQuery}
-            searchPlaceholder="Search estimate #, customer..."
+            searchPlaceholder="Search quote #, customer..."
             exportFileName="estimates-and-quotes"
-            exportSheetName="Estimates & Quotes"
-            exportTitle="Estimates & Quotes"
-            exportSubtitle="Quotes and estimates with conversion to sales invoices."
+            exportSheetName="Quotations"
+            exportTitle="Quotations Register"
+            exportSubtitle="Sales proposals and quotation records."
             exportHeaders={exportHeaders}
             exportRows={exportRows}
-            exportTotals={[{ label: 'Total Value', value: totalValue }]}
             onRefresh={() => fetchData()}
           />
-          <button onClick={() => setShowForm(true)}
-            className="primary h-9 px-4 rounded-xl text-xs font-semibold whitespace-nowrap">
-            ＋ New Estimate
+          <button
+            onClick={openCreateModal}
+            className="primary h-9 px-4 rounded-xl text-xs font-semibold whitespace-nowrap flex items-center justify-center gap-1.5 shadow-sm"
+          >
+            <span>＋</span> New Quote
           </button>
         </div>
       </div>
 
-      {/* KPI Cards */}
+      {/* Stats Cards (Row 2) */}
       <section className="stats">
         <article>
-          <span className="stat-icon blue"><span className="text-sm">💰</span></span>
+          <span className="stat-icon blue">
+            <Coins className="w-4 h-4" />
+          </span>
           <div>
             <small>TOTAL PIPELINE VALUE</small>
-            <h2>{money(totalValue)}</h2>
-            <p>Estimated revenue</p>
+            <h2>{money(totalQuoteValue)}</h2>
+            <p>All issued proposals</p>
           </div>
         </article>
         <article>
-          <span className="stat-icon teal"><span className="text-sm">✅</span></span>
+          <span className="stat-icon teal">
+            <CheckCircle2 className="w-4 h-4" />
+          </span>
           <div>
-            <small>ACCEPTED QUOTES</small>
-            <h2>{accepted}</h2>
-            <p>Ready to convert</p>
+            <small>ACCEPTED PROPOSALS</small>
+            <h2>{money(acceptedValue)}</h2>
+            <p>Won & ready to bill</p>
           </div>
         </article>
         <article>
-          <span className="stat-icon violet"><span className="text-sm">⏳</span></span>
+          <span className="stat-icon violet">
+            <FileText className="w-4 h-4" />
+          </span>
           <div>
-            <small>AWAITING RESPONSE</small>
-            <h2>{pending}</h2>
-            <p>Pending customer review</p>
+            <small>PENDING PROPOSALS</small>
+            <h2>{pendingCount}</h2>
+            <p>Awaiting customer approval</p>
           </div>
         </article>
       </section>
 
-      {/* New Estimate Form */}
-      {showForm && (
-        <EstimateForm customers={customers} products={products}
-          onSave={saveEstimate} onCancel={() => setShowForm(false)} />
-      )}
+      {/* Quotes Table */}
+      <div className="bg-[var(--color-surface)] border border-[var(--color-border)] rounded-xl overflow-hidden shadow-sm">
+        <div className="px-4 py-2.5 border-b border-[var(--color-border)] bg-[var(--color-surface-muted)] flex items-center justify-between">
+          <p className="text-xs font-semibold text-[var(--color-text-strong)]">Quotations Directory</p>
+          <span className="text-[11px] text-[var(--color-text-muted)]">
+            Showing {filteredEstimates.length} of {estimates.length} quote{estimates.length !== 1 ? 's' : ''}
+          </span>
+        </div>
 
-      {/* Estimates Table */}
-      <div className="bg-white border border-gray-200 rounded-2xl shadow-sm overflow-hidden">
-        <table className="w-full text-left text-sm">
-          <thead className="bg-gray-50 text-gray-500 border-b border-gray-100 text-xs uppercase tracking-wider">
-            <tr>
-              <th className="py-3 px-4">Estimate #</th>
-              <th className="py-3 px-4">Customer</th>
-              <th className="py-3 px-4">Date</th>
-              <th className="py-3 px-4">Expiry</th>
-              <th className="py-3 px-4 text-right">Subtotal</th>
-              <th className="py-3 px-4 text-right">Discount</th>
-              <th className="py-3 px-4 text-right">Tax</th>
-              <th className="py-3 px-4 text-right font-bold">Total</th>
-              <th className="py-3 px-4">Status</th>
-              <th className="py-3 px-4">Actions</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-gray-50">
-            {filteredEstimates.map((e: any) => (
-              <tr key={e.id} className="hover:bg-gray-50/60 transition-colors">
-                <td className="py-3 px-4 font-medium text-gray-900">{e.estimateNumber}</td>
-                <td className="py-3 px-4 text-gray-700">{e.customerName}</td>
-                <td className="py-3 px-4 text-gray-500">{e.estimateDate}</td>
-                <td className="py-3 px-4 text-gray-500">{e.expiryDate || '—'}</td>
-                <td className="py-3 px-4 text-right">{money(e.subTotal)}</td>
-                <td className="py-3 px-4 text-right text-red-500">{e.totalDiscount > 0 ? `-${money(e.totalDiscount)}` : '—'}</td>
-                <td className="py-3 px-4 text-right text-orange-500">{e.totalTax > 0 ? money(e.totalTax) : '—'}</td>
-                <td className="py-3 px-4 text-right font-bold text-blue-700">{money(e.totalAmount)}</td>
-                <td className="py-3 px-4">
-                  <span className={`px-2 py-1 rounded-full text-xs font-medium ${statusColors[e.status]}`}>
-                    {statusLabels[e.status]}
-                  </span>
-                </td>
-                <td className="py-3 px-4">
-                  <div className="flex flex-wrap gap-2">
-                    {e.status === 0 && (
-                      <button onClick={() => updateStatus(e.id, 1)} className="text-blue-600 hover:text-blue-800 text-xs font-medium">Mark Sent</button>
-                    )}
-                    {(e.status === 0 || e.status === 1) && (
-                      <button onClick={() => updateStatus(e.id, 2)} className="text-green-600 hover:text-green-800 text-xs font-medium">Accept</button>
-                    )}
-                    {(e.status === 0 || e.status === 1) && (
-                      <button onClick={() => updateStatus(e.id, 3)} className="text-red-400 hover:text-red-600 text-xs font-medium">Reject</button>
-                    )}
-                    {(e.status === 2) && (
-                      <button onClick={() => setConvertModal(e)}
-                        className="px-2.5 py-1 bg-green-600 hover:bg-green-700 text-white text-xs font-semibold rounded-lg shadow-sm transition-all">
-                        → Create Invoice
-                      </button>
-                    )}
-                    {e.status === 5 && e.convertedToInvoiceId && (
-                      <span className="text-purple-600 text-xs font-medium">✓ Invoiced</span>
-                    )}
-                  </div>
-                </td>
-              </tr>
-            ))}
-            {!loading && filteredEstimates.length === 0 && (
-              <tr><td colSpan={10} className="py-12 text-center text-gray-400">
-                No estimates yet. Create your first estimate to start the sales cycle.
-              </td></tr>
-            )}
-          </tbody>
-        </table>
+        {loading ? (
+          <div className="py-12 text-center text-xs text-[var(--color-text-muted)]">Loading quotations...</div>
+        ) : filteredEstimates.length === 0 ? (
+          <div className="py-12 text-center text-xs text-[var(--color-text-muted)]">No estimates found matching your criteria.</div>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full text-xs">
+              <thead>
+                <tr className="border-b border-[var(--color-border)] bg-[var(--color-surface-muted)]">
+                  <th className="text-left px-3 py-2 font-semibold text-[var(--color-text-muted)]">Quote #</th>
+                  <th className="text-left px-3 py-2 font-semibold text-[var(--color-text-muted)]">Customer</th>
+                  <th className="text-left px-3 py-2 font-semibold text-[var(--color-text-muted)]">Date</th>
+                  <th className="text-left px-3 py-2 font-semibold text-[var(--color-text-muted)]">Expiry</th>
+                  <th className="text-right px-3 py-2 font-semibold text-[var(--color-text-muted)]">Discount</th>
+                  <th className="text-right px-3 py-2 font-semibold text-[var(--color-text-muted)]">Tax</th>
+                  <th className="text-right px-3 py-2 font-semibold text-[var(--color-text-muted)]">Total</th>
+                  <th className="text-center px-3 py-2 font-semibold text-[var(--color-text-muted)]">Status</th>
+                  <th className="text-right px-3 py-2 font-semibold text-[var(--color-text-muted)]">Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {filteredEstimates.map((est: any) => {
+                  const badge = statusStyles[est.status] || statusStyles[0]
+                  return (
+                    <tr key={est.id} className="border-b border-[var(--color-border)] hover:bg-[var(--color-surface-muted)] transition-colors">
+                      <td className="px-3 py-2 font-mono font-semibold text-[var(--color-text-strong)]">{est.estimateNumber}</td>
+                      <td className="px-3 py-2 font-semibold text-[var(--color-text-strong)]">{est.customerName || '—'}</td>
+                      <td className="px-3 py-2 text-[var(--color-text-muted)]">{est.estimateDate}</td>
+                      <td className="px-3 py-2 text-[var(--color-text-muted)]">{est.expiryDate || '—'}</td>
+                      <td className="px-3 py-2 text-right text-rose-500 font-mono">
+                        {est.discountTotal > 0 ? `-${money(est.discountTotal)}` : '—'}
+                      </td>
+                      <td className="px-3 py-2 text-right text-amber-500 font-mono">
+                        {est.taxTotal > 0 ? money(est.taxTotal) : '—'}
+                      </td>
+                      <td className="px-3 py-2 text-right font-bold text-sky-600 font-mono">{money(est.totalAmount)}</td>
+                      <td className="px-3 py-2 text-center">
+                        <span className={`inline-block px-2 py-0.5 rounded-full text-[10px] font-semibold ${badge.class}`}>
+                          {badge.label}
+                        </span>
+                      </td>
+                      <td className="px-3 py-2 text-right">
+                        <div className="flex items-center justify-end gap-1">
+                          {est.status === 0 && (
+                            <button
+                              onClick={() => updateStatus(est.id, 1)}
+                              className="h-6.5 px-2 rounded border border-[var(--color-border)] hover:bg-[var(--color-surface-muted)] text-[11px]"
+                            >
+                              Send
+                            </button>
+                          )}
+                          {est.status === 1 && (
+                            <button
+                              onClick={() => updateStatus(est.id, 2)}
+                              className="h-6.5 px-2 rounded bg-emerald-500/10 text-emerald-600 hover:bg-emerald-500/20 text-[11px] font-semibold"
+                            >
+                              Accept
+                            </button>
+                          )}
+                          {est.status === 2 && (
+                            <button
+                              onClick={() => setConvertModal(est)}
+                              className="h-6.5 px-2 rounded bg-purple-500/10 text-purple-600 hover:bg-purple-500/20 text-[11px] font-semibold flex items-center gap-1"
+                            >
+                              <ArrowUpRight className="w-3 h-3" /> Invoice
+                            </button>
+                          )}
+                        </div>
+                      </td>
+                    </tr>
+                  )
+                })}
+              </tbody>
+            </table>
+          </div>
+        )}
       </div>
 
-      {/* Convert Modal */}
+      {/* Professional Multi-Tab Quote Creation Modal */}
+      {showForm && (
+        <div className="overlay animate-in fade-in duration-200">
+          <div className="w-full max-w-4xl bg-[var(--color-surface)] border border-[var(--color-border)] rounded-2xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh]">
+            {/* Modal Header */}
+            <div className="px-6 py-4.5 border-b border-[var(--color-border)] bg-[var(--color-surface-muted)]/50 flex items-center justify-between">
+              <div className="flex items-center gap-3.5">
+                <div className="w-11 h-11 rounded-xl bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-white shadow-sm shrink-0">
+                  <FileText className="w-5 h-5" />
+                </div>
+                <div>
+                  <div className="flex items-center gap-2">
+                    <h2 className="text-base font-bold text-[var(--color-text-strong)] tracking-tight">Create Commercial Quotation</h2>
+                    <span className="px-2.5 py-0.5 rounded-full text-[10px] font-semibold bg-indigo-500/10 text-indigo-600 border border-indigo-500/20">
+                      Draft Estimate
+                    </span>
+                  </div>
+                  <p className="text-xs text-[var(--color-text-muted)] mt-0.5 flex items-center gap-1.5">
+                    <span>Assigned Entity:</span>
+                    <span className="font-semibold text-[var(--color-text-strong)]">
+                      🏢 {assignedCompany ? assignedCompany.name : 'Global Group Book'}
+                    </span>
+                  </p>
+                </div>
+              </div>
+
+              <button
+                type="button"
+                className="w-8 h-8 rounded-lg flex items-center justify-center text-[var(--color-text-muted)] hover:text-[var(--color-text-strong)] hover:bg-[var(--color-surface-muted)] transition-colors"
+                onClick={() => setShowForm(false)}
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            {/* Modal Tabs */}
+            <div className="flex items-center gap-2 px-6 pt-3 border-b border-[var(--color-border)] bg-[var(--color-surface)]">
+              <button
+                type="button"
+                onClick={() => setModalTab('details')}
+                className={`flex items-center gap-2 px-4 py-2.5 text-xs font-semibold rounded-t-lg border-b-2 transition-all whitespace-nowrap ${
+                  modalTab === 'details'
+                    ? 'border-[var(--color-primary)] text-[var(--color-primary)] bg-[var(--color-primary)]/5'
+                    : 'border-transparent text-[var(--color-text-muted)] hover:text-[var(--color-text-strong)]'
+                }`}
+              >
+                <Users className="w-3.5 h-3.5" /> 1. Customer & Expiry
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setModalTab('lines')}
+                className={`flex items-center gap-2 px-4 py-2.5 text-xs font-semibold rounded-t-lg border-b-2 transition-all whitespace-nowrap ${
+                  modalTab === 'lines'
+                    ? 'border-[var(--color-primary)] text-[var(--color-primary)] bg-[var(--color-primary)]/5'
+                    : 'border-transparent text-[var(--color-text-muted)] hover:text-[var(--color-text-strong)]'
+                }`}
+              >
+                <Coins className="w-3.5 h-3.5" /> 2. Items & Pricing ({lines.length})
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setModalTab('summary')}
+                className={`flex items-center gap-2 px-4 py-2.5 text-xs font-semibold rounded-t-lg border-b-2 transition-all whitespace-nowrap ${
+                  modalTab === 'summary'
+                    ? 'border-[var(--color-primary)] text-[var(--color-primary)] bg-[var(--color-primary)]/5'
+                    : 'border-transparent text-[var(--color-text-muted)] hover:text-[var(--color-text-strong)]'
+                }`}
+              >
+                <FileText className="w-3.5 h-3.5" /> 3. Terms & Summary
+              </button>
+            </div>
+
+            {/* Modal Body */}
+            <div className="p-6 md:p-8 overflow-y-auto flex-1 space-y-5">
+              {modalTab === 'details' && (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                  <div className="md:col-span-2">
+                    <label className="block text-xs font-semibold text-[var(--color-text-strong)] mb-1.5">
+                      Customer / Client <span className="text-rose-500">*</span>
+                    </label>
+                    <select
+                      value={form.customerId}
+                      onChange={e => setForm({ ...form, customerId: e.target.value })}
+                      className="w-full h-10 px-3.5 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] text-xs text-[var(--color-text-strong)] focus:border-[var(--color-primary)] outline-none shadow-2xs"
+                    >
+                      <option value="">Select customer...</option>
+                      {customers.map((c: any) => (
+                        <option key={c.id} value={c.id}>
+                          {c.name} {c.customerNumber ? `(${c.customerNumber})` : ''}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-semibold text-[var(--color-text-strong)] mb-1.5">
+                      Quote Reference / RFQ #
+                    </label>
+                    <div className="flex items-center gap-2.5 h-10 px-3.5 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] focus-within:border-[var(--color-primary)] transition-colors shadow-2xs">
+                      <Hash className="w-4 h-4 text-[var(--color-text-muted)] shrink-0" />
+                      <input
+                        placeholder="e.g. EST-0001"
+                        value={form.reference}
+                        onChange={e => setForm({ ...form, reference: e.target.value })}
+                        className="w-full h-full border-0 outline-none bg-transparent font-mono text-xs text-[var(--color-text-strong)] placeholder:text-[var(--color-text-muted)]"
+                        style={{ border: 0, outline: 'none', padding: 0, background: 'transparent' }}
+                      />
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-semibold text-[var(--color-text-strong)] mb-1.5">
+                      Quotation Currency
+                    </label>
+                    <select
+                      value={form.currencyCode}
+                      onChange={e => setForm({ ...form, currencyCode: e.target.value })}
+                      className="w-full h-10 px-3.5 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] text-xs font-semibold text-[var(--color-text-strong)] focus:border-[var(--color-primary)] outline-none shadow-2xs"
+                    >
+                      {['PKR', 'USD', 'AED', 'SAR', 'GBP', 'EUR', 'CAD', 'AUD'].map(curr => (
+                        <option key={curr} value={curr}>{curr}</option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-semibold text-[var(--color-text-strong)] mb-1.5">
+                      Quotation Date
+                    </label>
+                    <input
+                      type="date"
+                      value={form.estimateDate}
+                      onChange={e => setForm({ ...form, estimateDate: e.target.value })}
+                      className="w-full h-10 px-3.5 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] text-xs text-[var(--color-text-strong)] focus:border-[var(--color-primary)] outline-none shadow-2xs"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-semibold text-[var(--color-text-strong)] mb-1.5">
+                      Proposal Expiry Date
+                    </label>
+                    <input
+                      type="date"
+                      value={form.expiryDate}
+                      onChange={e => setForm({ ...form, expiryDate: e.target.value })}
+                      className="w-full h-10 px-3.5 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] text-xs text-[var(--color-text-strong)] focus:border-[var(--color-primary)] outline-none shadow-2xs"
+                    />
+                  </div>
+                </div>
+              )}
+
+              {modalTab === 'lines' && (
+                <div className="space-y-4">
+                  <div className="flex items-center justify-between">
+                    <p className="text-xs font-semibold text-[var(--color-text-strong)]">Quotation Line Items</p>
+                    <button
+                      type="button"
+                      onClick={addLine}
+                      className="h-8 px-3 rounded-lg border border-[var(--color-primary)] text-[var(--color-primary)] text-xs font-semibold hover:bg-[var(--color-primary)]/10 transition-colors flex items-center gap-1"
+                    >
+                      <Plus className="w-3.5 h-3.5" /> Add Line
+                    </button>
+                  </div>
+
+                  <div className="border border-[var(--color-border)] rounded-xl overflow-hidden shadow-2xs">
+                    <table className="w-full text-xs">
+                      <thead className="bg-[var(--color-surface-muted)] text-[var(--color-text-muted)] font-semibold border-b border-[var(--color-border)]">
+                        <tr>
+                          <th className="p-2.5 text-left">Product / Service</th>
+                          <th className="p-2.5 text-left">Description</th>
+                          <th className="p-2.5 text-right w-16">Qty</th>
+                          <th className="p-2.5 text-right w-24">Price (Rs)</th>
+                          <th className="p-2.5 text-center w-28">Discount</th>
+                          <th className="p-2.5 text-right w-16">Tax %</th>
+                          <th className="p-2.5 text-right w-24">Total</th>
+                          <th className="p-2.5 w-8"></th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-[var(--color-border)]">
+                        {lines.map((l, i) => (
+                          <tr key={i} className="hover:bg-[var(--color-surface-muted)]/50">
+                            <td className="p-2">
+                              <select
+                                value={l.productId}
+                                onChange={e => updateLine(i, 'productId', e.target.value)}
+                                className="w-full h-8 px-2 rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] text-xs text-[var(--color-text-strong)] outline-none"
+                              >
+                                <option value="">Select Item...</option>
+                                {products.map((p: any) => (
+                                  <option key={p.id} value={p.id}>
+                                    {p.code} — {p.name}
+                                  </option>
+                                ))}
+                              </select>
+                            </td>
+                            <td className="p-2">
+                              <input
+                                placeholder="Description"
+                                value={l.description}
+                                onChange={e => updateLine(i, 'description', e.target.value)}
+                                className="w-full h-8 px-2 rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] text-xs text-[var(--color-text-strong)] outline-none"
+                              />
+                            </td>
+                            <td className="p-2">
+                              <input
+                                type="number"
+                                value={l.quantity}
+                                onChange={e => updateLine(i, 'quantity', e.target.value)}
+                                className="w-full h-8 px-2 rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] text-xs text-right font-mono text-[var(--color-text-strong)] outline-none"
+                              />
+                            </td>
+                            <td className="p-2">
+                              <input
+                                type="number"
+                                step="0.01"
+                                value={l.unitPrice}
+                                onChange={e => updateLine(i, 'unitPrice', e.target.value)}
+                                className="w-full h-8 px-2 rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] text-xs text-right font-mono text-[var(--color-text-strong)] outline-none"
+                              />
+                            </td>
+                            <td className="p-2">
+                              <div className="flex gap-1">
+                                <select
+                                  value={l.discountType}
+                                  onChange={e => updateLine(i, 'discountType', parseInt(e.target.value))}
+                                  className="h-8 border border-[var(--color-border)] rounded-lg px-1 text-xs bg-[var(--color-surface)] text-[var(--color-text-strong)]"
+                                >
+                                  <option value={0}>%</option>
+                                  <option value={1}>Rs</option>
+                                </select>
+                                <input
+                                  type="number"
+                                  value={l.discountValue}
+                                  onChange={e => updateLine(i, 'discountValue', e.target.value)}
+                                  className="w-full h-8 px-2 rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] text-xs text-right font-mono text-[var(--color-text-strong)] outline-none"
+                                />
+                              </div>
+                            </td>
+                            <td className="p-2">
+                              <input
+                                type="number"
+                                value={l.taxPercent}
+                                onChange={e => updateLine(i, 'taxPercent', e.target.value)}
+                                className="w-full h-8 px-2 rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] text-xs text-right font-mono text-[var(--color-text-strong)] outline-none"
+                              />
+                            </td>
+                            <td className="p-2 text-right font-mono font-semibold text-[var(--color-text-strong)]">
+                              {money(lineCalculations[i]?.total || 0)}
+                            </td>
+                            <td className="p-2 text-center">
+                              {lines.length > 1 && (
+                                <button
+                                  type="button"
+                                  onClick={() => removeLine(i)}
+                                  className="w-6 h-6 rounded flex items-center justify-center text-rose-500 hover:bg-rose-500/10"
+                                >
+                                  <X className="w-3.5 h-3.5" />
+                                </button>
+                              )}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              )}
+
+              {modalTab === 'summary' && (
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+                  <div className="md:col-span-2 space-y-4">
+                    <div>
+                      <label className="block text-xs font-semibold text-[var(--color-text-strong)] mb-1.5">
+                        Terms & Conditions
+                      </label>
+                      <textarea
+                        rows={3}
+                        value={form.terms}
+                        onChange={e => setForm({ ...form, terms: e.target.value })}
+                        className="w-full p-3 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] text-xs text-[var(--color-text-strong)] placeholder:text-[var(--color-text-muted)] focus:border-[var(--color-primary)] outline-none shadow-2xs resize-none"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-semibold text-[var(--color-text-strong)] mb-1.5">
+                        Client Notes
+                      </label>
+                      <textarea
+                        rows={2}
+                        value={form.notes}
+                        onChange={e => setForm({ ...form, notes: e.target.value })}
+                        placeholder="Additional remarks or scope inclusions..."
+                        className="w-full p-3 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] text-xs text-[var(--color-text-strong)] placeholder:text-[var(--color-text-muted)] focus:border-[var(--color-primary)] outline-none shadow-2xs resize-none"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="bg-[var(--color-surface-muted)]/60 border border-[var(--color-border)] rounded-xl p-4 space-y-3">
+                    <p className="text-xs font-bold uppercase tracking-wider text-[var(--color-text-strong)]">Quotation Summary</p>
+                    <div className="flex justify-between text-xs text-[var(--color-text-muted)]">
+                      <span>Gross Subtotal</span>
+                      <span className="font-semibold font-mono text-[var(--color-text-strong)]">{money(totals.sub)}</span>
+                    </div>
+                    {totals.disc > 0 && (
+                      <div className="flex justify-between text-xs text-rose-500 font-mono">
+                        <span>Total Discount</span>
+                        <span>-{money(totals.disc)}</span>
+                      </div>
+                    )}
+                    {totals.tax > 0 && (
+                      <div className="flex justify-between text-xs text-amber-500 font-mono">
+                        <span>Sales Tax / VAT</span>
+                        <span>+{money(totals.tax)}</span>
+                      </div>
+                    )}
+                    <div className="border-t border-[var(--color-border)] pt-2.5 flex justify-between text-sm font-bold text-[var(--color-text-strong)]">
+                      <span>Estimated Total</span>
+                      <span className="text-indigo-600 font-mono">{money(totals.total)}</span>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Modal Footer */}
+            <div className="px-6 py-3.5 border-t border-[var(--color-border)] bg-[var(--color-surface-muted)]/50 flex items-center justify-between gap-3">
+              <div className="text-[11px] text-[var(--color-text-muted)] flex items-center gap-1.5">
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 inline-block" />
+                <span>Auto-draft protection active</span>
+              </div>
+
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  className="h-8.5 px-3.5 rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] text-xs font-medium text-[var(--color-text)] hover:bg-[var(--color-surface-muted)] transition-colors"
+                  onClick={() => setShowForm(false)}
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  className="h-8.5 px-3.5 rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] text-xs font-medium text-[var(--color-text-muted)] hover:text-[var(--color-text-strong)] transition-colors"
+                  onClick={(e) => { e.preventDefault(); saveDraft(); notify('Estimate draft saved locally.'); }}
+                >
+                  Save Draft
+                </button>
+
+                {modalTab !== 'details' && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (modalTab === 'summary') setModalTab('lines')
+                      else if (modalTab === 'lines') setModalTab('details')
+                    }}
+                    className="h-8.5 px-3 rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] text-xs font-medium text-[var(--color-text)] hover:bg-[var(--color-surface-muted)] transition-colors flex items-center gap-1"
+                  >
+                    <ArrowLeft className="w-3.5 h-3.5" />
+                    <span>Back</span>
+                  </button>
+                )}
+
+                {modalTab !== 'summary' ? (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (modalTab === 'details') {
+                        if (!form.customerId) {
+                          notify('Please select a customer.')
+                          return
+                        }
+                        setModalTab('lines')
+                      } else if (modalTab === 'lines') {
+                        setModalTab('summary')
+                      }
+                    }}
+                    className="primary h-8.5 px-4 rounded-lg text-xs font-semibold shadow-xs flex items-center gap-1.5"
+                  >
+                    <span>Next: {modalTab === 'details' ? 'Items & Pricing' : 'Terms & Summary'}</span>
+                    <ArrowRight className="w-3.5 h-3.5" />
+                  </button>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={saveEstimate}
+                    className="primary h-8.5 px-4.5 rounded-lg text-xs font-semibold shadow-xs flex items-center gap-1.5 bg-indigo-600 hover:bg-indigo-700 text-white"
+                  >
+                    <Check className="w-3.5 h-3.5" />
+                    <span>Save Estimate</span>
+                  </button>
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Convert to Invoice Modal */}
       {convertModal && (
-        <ConvertModal estimate={convertModal} onConfirm={convertToInvoice} onClose={() => setConvertModal(null)} />
+        <ConvertModal
+          estimate={convertModal}
+          onConfirm={convertToInvoice}
+          onClose={() => setConvertModal(null)}
+        />
       )}
     </div>
-  );
-};
+  )
+}
+
+const ConvertModal = ({
+  estimate,
+  onConfirm,
+  onClose
+}: {
+  estimate: any
+  onConfirm: (inv: string, due: string) => void
+  onClose: () => void
+}) => {
+  const [invDate, setInvDate] = useState(new Date().toISOString().slice(0, 10))
+  const [dueDate, setDueDate] = useState(new Date(Date.now() + 30 * 86400000).toISOString().slice(0, 10))
+  return (
+    <div className="overlay animate-in fade-in duration-200">
+      <div className="w-full max-w-md bg-[var(--color-surface)] border border-[var(--color-border)] rounded-2xl shadow-2xl p-6 space-y-4">
+        <h3 className="text-base font-bold text-[var(--color-text-strong)] tracking-tight">Convert to Sales Invoice</h3>
+        <div className="bg-indigo-500/10 border border-indigo-500/20 rounded-xl p-3.5 text-xs space-y-1">
+          <p className="font-semibold text-[var(--color-text-strong)]">{estimate.estimateNumber} — {estimate.customerName}</p>
+          <p className="text-[var(--color-text-muted)]">Total Amount: <strong className="text-indigo-600 font-mono">{money(estimate.totalAmount)}</strong></p>
+        </div>
+        <div className="grid grid-cols-2 gap-3">
+          <div>
+            <label className="block text-xs font-semibold text-[var(--color-text-strong)] mb-1">Invoice Date</label>
+            <input
+              type="date"
+              value={invDate}
+              onChange={e => setInvDate(e.target.value)}
+              className="w-full h-10 px-3 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] text-xs text-[var(--color-text-strong)] outline-none"
+            />
+          </div>
+          <div>
+            <label className="block text-xs font-semibold text-[var(--color-text-strong)] mb-1">Due Date</label>
+            <input
+              type="date"
+              value={dueDate}
+              onChange={e => setDueDate(e.target.value)}
+              className="w-full h-10 px-3 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] text-xs text-[var(--color-text-strong)] outline-none"
+            />
+          </div>
+        </div>
+        <div className="flex gap-2.5 pt-2">
+          <button
+            type="button"
+            onClick={() => onConfirm(invDate, dueDate)}
+            className="flex-1 h-8.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white font-semibold text-xs transition-colors"
+          >
+            Create Invoice
+          </button>
+          <button
+            type="button"
+            onClick={onClose}
+            className="h-8.5 px-4 rounded-lg border border-[var(--color-border)] text-xs font-medium text-[var(--color-text)] hover:bg-[var(--color-surface-muted)] transition-colors"
+          >
+            Cancel
+          </button>
+        </div>
+      </div>
+    </div>
+  )
+}

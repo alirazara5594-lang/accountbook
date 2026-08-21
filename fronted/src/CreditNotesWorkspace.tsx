@@ -1,356 +1,582 @@
-import React, { useEffect, useState, useMemo } from 'react';
-import { useCreditNotesStore } from './stores/useCreditNotesStore';
-import { useCustomersStore, useCompanyStore } from './stores';
-import { DataToolbar } from '@/components/ui/data-toolbar';
-import { money } from '@/lib/currency';
-import { Plus, X, Send, Trash2, FileText } from 'lucide-react';
+import { useState, useEffect, useMemo } from 'react'
+import type { FormEvent } from 'react'
+import {
+  FileText, Check, X, ArrowRight, ArrowLeft, Coins,
+  CheckCircle2, Users, Trash2, Send, ShieldCheck
+} from 'lucide-react'
+import { useCreditNotesStore } from './stores/useCreditNotesStore'
+import { useCustomersStore, useCompanyStore } from './stores'
+import { useFormDraft } from './hooks/useFormDraft'
+import { DataToolbar } from '@/components/ui/data-toolbar'
+import { money } from '@/lib/currency'
 
-function CreditNotesWorkspace() {
-  const { creditNotes, fetchAll, create, post, void: voidNote } = useCreditNotesStore();
+const statusStyles: Record<string, { label: string; class: string }> = {
+  Draft: { label: 'Draft', class: 'bg-slate-500/10 text-slate-600 border border-slate-500/20' },
+  Posted: { label: 'Posted', class: 'bg-emerald-500/10 text-emerald-600 border border-emerald-500/20' },
+  Void: { label: 'Void', class: 'bg-rose-500/10 text-rose-600 border border-rose-500/20' }
+}
 
-  const notify = (m: string) => alert(m);
-  const customers = useCustomersStore((s) => s.customers as any[]);
-  const { entities: companies, fetchCompanies, activeEntityId } = useCompanyStore();
+export function CreditNotesWorkspace({
+  activeEntityId,
+  entities = []
+}: {
+  activeEntityId?: string
+  entities?: any[]
+}) {
+  const { creditNotes, fetchAll, create, post, void: voidNote } = useCreditNotesStore()
+  const customers = useCustomersStore((s) => s.customers as any[])
+  const { entities: companies, fetchCompanies, activeEntityId: storeEntityId } = useCompanyStore()
 
-  const [showCreate, setShowCreate] = useState(false);
-  const [query, setQuery] = useState('');
+  const currentEntityId = activeEntityId || storeEntityId || ''
+  const [showCreate, setShowCreate] = useState(false)
+  const [modalTab, setModalTab] = useState<'details' | 'items' | 'summary'>('details')
+  const [query, setQuery] = useState('')
+  const [statusFilter, setStatusFilter] = useState<string>('all')
+  const [toast, setToast] = useState('')
+
   const [form, setForm] = useState({
-    companyId: '',
+    companyId: currentEntityId,
     customerId: '',
     creditNoteDate: new Date().toISOString().slice(0, 10),
     notes: '',
-    amount: 0,
-    tax: 0
-  });
+    amount: '0',
+    tax: '0',
+    currencyCode: 'PKR'
+  })
+
+  const { saveDraft, clearDraft } = useFormDraft('credit_note', form, setForm, showCreate)
 
   useEffect(() => {
-    fetchCompanies();
-    fetchAll(activeEntityId);
-  }, []);
+    fetchCompanies()
+    fetchAll(currentEntityId)
+  }, [currentEntityId])
 
-  const handleCreate = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const notify = (m: string) => {
+    setToast(m)
+    setTimeout(() => setToast(''), 3500)
+  }
+
+  const openCreateModal = () => {
+    setForm({
+      companyId: currentEntityId,
+      customerId: customers[0]?.id || '',
+      creditNoteDate: new Date().toISOString().slice(0, 10),
+      notes: 'Customer return / pricing adjustment credit note.',
+      amount: '0',
+      tax: '0',
+      currencyCode: 'PKR'
+    })
+    setModalTab('details')
+    setShowCreate(true)
+  }
+
+  const handleCreate = async (e?: FormEvent) => {
+    if (e) e.preventDefault()
+    if (!form.customerId) {
+      notify('Please select a customer.')
+      return
+    }
+    if (Number(form.amount) <= 0) {
+      notify('Please enter a credit amount greater than 0.')
+      return
+    }
+
     try {
       await create({
-        companyId: form.companyId || activeEntityId,
+        companyId: form.companyId || currentEntityId,
         customerId: form.customerId,
         creditNoteDate: form.creditNoteDate,
         notes: form.notes,
         lines: [{
-          description: form.notes || 'Credit Note',
+          description: form.notes || 'Credit Note Adjustment',
           quantity: 1,
           unitPrice: Number(form.amount),
           discountAmount: 0,
           taxAmount: Number(form.tax)
         }]
-      });
-      setShowCreate(false);
-      setForm({ companyId: '', customerId: '', creditNoteDate: new Date().toISOString().slice(0, 10), notes: '', amount: 0, tax: 0 });
-      notify('✓ Credit Note created successfully!');
+      })
+      clearDraft()
+      setShowCreate(false)
+      notify('✓ Credit Note created successfully!')
+      fetchAll(currentEntityId)
     } catch {
-      notify('Error creating Credit Note');
+      notify('Error creating Credit Note')
     }
-  };
+  }
 
-  const formatDate = (dateStr: string) => new Date(dateStr).toLocaleDateString();
+  const formatDate = (dateStr: string) => (dateStr ? new Date(dateStr).toLocaleDateString() : '—')
 
   const filtered = useMemo(() => {
-    if (!query.trim()) return creditNotes;
-    const q = query.toLowerCase();
-    return creditNotes.filter((cn: any) =>
-      (cn.customerId || '').toLowerCase().includes(q) ||
-      (cn.notes || '').toLowerCase().includes(q) ||
-      (cn.status || '').toLowerCase().includes(q)
-    );
-  }, [creditNotes, query]);
+    return creditNotes.filter((cn: any) => {
+      const cust = customers.find(c => c.id === cn.customerId)
+      const custName = cust?.name || cn.customerId || ''
+      const matchesQuery = !query.trim()
+        ? true
+        : `${custName} ${cn.notes || ''} ${cn.status || ''}`.toLowerCase().includes(query.toLowerCase())
 
-  const exportHeaders = ['Date', 'Customer', 'Reason', 'Amount', 'Status'];
-  const exportRows = filtered.map((cn: any) => [formatDate(cn.creditNoteDate || cn.createdAt), cn.customerId, cn.notes || '', cn.totalAmount, cn.status]);
-  const totalCredit = filtered.reduce((s: number, cn: any) => s + (cn.totalAmount || 0), 0);
+      const matchesStatus = statusFilter === 'all' || (cn.status || '').toLowerCase() === statusFilter.toLowerCase()
+
+      return matchesQuery && matchesStatus
+    })
+  }, [creditNotes, customers, query, statusFilter])
+
+  const exportHeaders = ['Date', 'Customer', 'Reason', 'Amount', 'Status']
+  const exportRows = filtered.map((cn: any) => {
+    const cust = customers.find(c => c.id === cn.customerId)
+    return [
+      formatDate(cn.creditNoteDate || cn.createdAt),
+      cust?.name || cn.customerId || '—',
+      cn.notes || '',
+      cn.totalAmount,
+      cn.status
+    ]
+  })
+
+  const totalCredit = creditNotes.reduce((s: number, cn: any) => s + (cn.totalAmount || 0), 0)
+  const draftCount = creditNotes.filter((cn: any) => cn.status === 'Draft').length
+  const postedCount = creditNotes.filter((cn: any) => cn.status === 'Posted').length
+
+  const assignedCompany = (companies || entities).find((e: any) => e.id === currentEntityId)
 
   return (
-    <div className="p-4 max-w-7xl mx-auto space-y-4">
-      {/* Header */}
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-3 bg-white p-3 rounded-xl border border-gray-200 shadow-sm">
-        <div>
-          <h1 className="text-base font-bold text-gray-900 tracking-tight flex items-center gap-2">
-            <span className="text-lg">📝</span> Credit Notes
-          </h1>
-          <p className="text-gray-500 text-[10px] mt-0.5">Issue credit notes to customers for returns, adjustments, or refunds.</p>
+    <div className="space-y-6">
+      {toast && (
+        <div className="px-3.5 py-2 bg-emerald-500/10 border border-emerald-500/20 text-emerald-600 rounded-xl text-xs font-semibold">
+          {toast}
         </div>
-        <div className="flex items-center gap-1.5 shrink-0">
+      )}
+
+      {/* Submodule Heading Banner (Row 1) */}
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-3 bg-[var(--color-surface)] p-3.5 rounded-xl border border-[var(--color-border)] shadow-sm">
+        <div>
+          <h1 className="text-base font-bold text-[var(--color-text-strong)] tracking-tight flex items-center gap-2">
+            <span className="text-lg">📝</span> Credit Notes & Returns
+          </h1>
+          <p className="text-[var(--color-text-muted)] text-xs mt-0.5">
+            Issue sales credit memos, return adjustments, and customer refund vouchers with automated AR posting.
+          </p>
+        </div>
+        <div className="flex items-center gap-2 shrink-0 flex-wrap">
+          <select
+            className="h-9 px-3 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] text-xs text-[var(--color-text)] outline-none focus:border-[var(--color-primary)] transition-colors shadow-2xs box-border"
+            style={{ paddingTop: 0, paddingBottom: 0 }}
+            value={statusFilter}
+            onChange={e => setStatusFilter(e.target.value)}
+          >
+            <option value="all">⚡ All Statuses</option>
+            <option value="draft">⚪ Draft</option>
+            <option value="posted">🟢 Posted</option>
+            <option value="void">🔴 Void</option>
+          </select>
+
           <DataToolbar
             query={query}
             setQuery={setQuery}
-            searchPlaceholder="Search customer, reason, status..."
+            searchPlaceholder="Search customer, note..."
             exportFileName="credit-notes"
             exportSheetName="Credit Notes"
-            exportTitle="Credit Notes"
-            exportSubtitle="Customer credit notes with draft → posted lifecycle."
+            exportTitle="Credit Notes Register"
+            exportSubtitle="Customer credit memos and returns."
             exportHeaders={exportHeaders}
             exportRows={exportRows}
-            exportTotals={[{ label: 'Total Credit', value: totalCredit }]}
-            onRefresh={() => fetchAll(activeEntityId)}
+            exportTotals={[{ label: 'Total Credit Value', value: totalCredit }]}
+            onRefresh={() => fetchAll(currentEntityId)}
           />
           <button
-            onClick={() => setShowCreate(true)}
-            className="h-8 px-2.5 bg-blue-600 hover:bg-blue-700 text-white text-[11px] font-semibold rounded-lg shrink-0 whitespace-nowrap flex items-center gap-1"
+            onClick={openCreateModal}
+            className="primary h-9 px-4 rounded-xl text-xs font-semibold whitespace-nowrap flex items-center justify-center gap-1.5 shadow-sm"
           >
-            <Plus className="w-3.5 h-3.5" /> Create Credit Note
+            <span>＋</span> Create Credit Note
           </button>
         </div>
       </div>
 
-      {/* Stats */}
+      {/* Stats Cards (Row 2) */}
       <section className="stats">
         <article>
-          <span className="stat-icon blue"><FileText className="w-4 h-4" /></span>
-          <div>
-            <small>TOTAL CREDIT NOTES</small>
-            <h2>{creditNotes.length}</h2>
-            <p>All issued notes</p>
-          </div>
-        </article>
-        <article>
-          <span className="stat-icon teal"><span className="text-sm">📝</span></span>
-          <div>
-            <small>DRAFT NOTES</small>
-            <h2>{creditNotes.filter((cn: any) => cn.status === 'Draft').length}</h2>
-            <p>Awaiting posting</p>
-          </div>
-        </article>
-        <article>
-          <span className="stat-icon violet"><span className="text-sm">✅</span></span>
-          <div>
-            <small>POSTED NOTES</small>
-            <h2>{creditNotes.filter((cn: any) => cn.status === 'Posted').length}</h2>
-            <p>Applied to accounts</p>
-          </div>
-        </article>
-        <article>
-          <span className="stat-icon blue"><span className="text-sm">💰</span></span>
+          <span className="stat-icon blue">
+            <Coins className="w-4 h-4" />
+          </span>
           <div>
             <small>TOTAL CREDIT VALUE</small>
             <h2>{money(totalCredit)}</h2>
-            <p>Outstanding credit</p>
+            <p>Issued customer credits</p>
+          </div>
+        </article>
+        <article>
+          <span className="stat-icon teal">
+            <CheckCircle2 className="w-4 h-4" />
+          </span>
+          <div>
+            <small>POSTED TO LEDGER</small>
+            <h2>{postedCount}</h2>
+            <p>Applied to customer AR</p>
+          </div>
+        </article>
+        <article>
+          <span className="stat-icon violet">
+            <FileText className="w-4 h-4" />
+          </span>
+          <div>
+            <small>DRAFT CREDIT NOTES</small>
+            <h2>{draftCount}</h2>
+            <p>Pending manager approval</p>
           </div>
         </article>
       </section>
 
       {/* Table */}
-      <div className="bg-white border border-gray-200 rounded-xl shadow-sm overflow-hidden">
-        <table className="w-full text-left text-sm">
-          <thead className="bg-gray-50 text-gray-500 border-b border-gray-100 text-[10px] uppercase tracking-wider">
-            <tr>
-              <th className="py-2.5 px-4">Date</th>
-              <th className="py-2.5 px-4">Customer</th>
-              <th className="py-2.5 px-4">Reason</th>
-              <th className="py-2.5 px-4 text-right">Amount</th>
-              <th className="py-2.5 px-4 text-center">Status</th>
-              <th className="py-2.5 px-4 text-right">Actions</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-gray-100">
-            {filtered.map((cn: any) => (
-              <tr key={cn.id} className="hover:bg-gray-50/50 transition-colors">
-                <td className="py-2.5 px-4 text-gray-600">{formatDate(cn.creditNoteDate || cn.createdAt)}</td>
-                <td className="py-2.5 px-4 font-medium text-gray-900">{cn.customerId}</td>
-                <td className="py-2.5 px-4 text-gray-600">{cn.notes || '—'}</td>
-                <td className="py-2.5 px-4 text-right font-bold text-gray-900">
-                  {money(cn.totalAmount)}
-                </td>
-                <td className="py-2.5 px-4 text-center">
-                  <span className={`px-2 py-0.5 rounded-full text-[10px] font-semibold ${
-                    cn.status === 'Posted' ? 'bg-emerald-100 text-emerald-700' :
-                    cn.status === 'Void' ? 'bg-rose-100 text-rose-700' :
-                    'bg-gray-100 text-gray-600'
-                  }`}>
-                    {cn.status === 'Void' ? 'Voided' : cn.status === 'Posted' ? 'Posted' : 'Draft'}
-                  </span>
-                </td>
-                <td className="py-2.5 px-4 text-right">
-                  <div className="flex items-center justify-end gap-1">
-                    {cn.status === 'Draft' && (
-                      <button
-                        onClick={() => post(cn.id)}
-                        className="h-6 px-2 text-[10px] font-semibold text-emerald-600 bg-emerald-50 hover:bg-emerald-100 rounded-md flex items-center gap-1"
-                        title="Post"
-                      >
-                        <Send className="w-3 h-3" /> Post
-                      </button>
-                    )}
-                    {cn.status !== 'Void' && (
-                      <button
-                        onClick={() => voidNote(cn.id)}
-                        className="h-6 px-2 text-[10px] font-semibold text-rose-600 bg-rose-50 hover:bg-rose-100 rounded-md flex items-center gap-1"
-                        title="Void"
-                      >
-                        <Trash2 className="w-3 h-3" /> Void
-                      </button>
-                    )}
-                  </div>
-                </td>
-              </tr>
-            ))}
-            {filtered.length === 0 && (
-              <tr>
-                <td colSpan={6} className="py-12 text-center text-gray-400">
-                  <div className="flex flex-col items-center gap-2">
-                    <span className="text-3xl">📝</span>
-                    <p className="text-sm font-semibold">No credit notes found</p>
-                    <p className="text-[10px]">Create a credit note to get started.</p>
-                  </div>
-                </td>
-              </tr>
-            )}
-          </tbody>
-        </table>
+      <div className="bg-[var(--color-surface)] border border-[var(--color-border)] rounded-xl overflow-hidden shadow-sm">
+        <div className="px-4 py-2.5 border-b border-[var(--color-border)] bg-[var(--color-surface-muted)] flex items-center justify-between">
+          <p className="text-xs font-semibold text-[var(--color-text-strong)]">Credit Notes Directory</p>
+          <span className="text-[11px] text-[var(--color-text-muted)]">
+            Showing {filtered.length} of {creditNotes.length} record{creditNotes.length !== 1 ? 's' : ''}
+          </span>
+        </div>
+
+        {filtered.length === 0 ? (
+          <div className="py-12 text-center text-xs text-[var(--color-text-muted)]">No credit notes found matching your criteria.</div>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full text-xs">
+              <thead>
+                <tr className="border-b border-[var(--color-border)] bg-[var(--color-surface-muted)]">
+                  <th className="text-left px-3 py-2 font-semibold text-[var(--color-text-muted)]">Date</th>
+                  <th className="text-left px-3 py-2 font-semibold text-[var(--color-text-muted)]">Customer</th>
+                  <th className="text-left px-3 py-2 font-semibold text-[var(--color-text-muted)]">Reason / Note</th>
+                  <th className="text-right px-3 py-2 font-semibold text-[var(--color-text-muted)]">Credit Amount</th>
+                  <th className="text-center px-3 py-2 font-semibold text-[var(--color-text-muted)]">Status</th>
+                  <th className="text-right px-3 py-2 font-semibold text-[var(--color-text-muted)]">Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {filtered.map((cn: any) => {
+                  const cust = customers.find(c => c.id === cn.customerId)
+                  const badge = statusStyles[cn.status] || statusStyles.Draft
+
+                  return (
+                    <tr key={cn.id} className="border-b border-[var(--color-border)] hover:bg-[var(--color-surface-muted)] transition-colors">
+                      <td className="px-3 py-2 text-[var(--color-text-muted)]">{formatDate(cn.creditNoteDate || cn.createdAt)}</td>
+                      <td className="px-3 py-2 font-semibold text-[var(--color-text-strong)]">{cust?.name || cn.customerId || '—'}</td>
+                      <td className="px-3 py-2 text-[var(--color-text-muted)]">{cn.notes || '—'}</td>
+                      <td className="px-3 py-2 text-right font-bold text-sky-600 font-mono">{money(cn.totalAmount)}</td>
+                      <td className="px-3 py-2 text-center">
+                        <span className={`inline-block px-2 py-0.5 rounded-full text-[10px] font-semibold ${badge.class}`}>
+                          {badge.label}
+                        </span>
+                      </td>
+                      <td className="px-3 py-2 text-right">
+                        <div className="flex items-center justify-end gap-1">
+                          {cn.status === 'Draft' && (
+                            <button
+                              onClick={() => post(cn.id)}
+                              className="h-6.5 px-2 rounded bg-sky-500/10 text-sky-600 hover:bg-sky-500/20 text-[11px] font-semibold flex items-center gap-1"
+                            >
+                              <Send className="w-3 h-3" /> Post
+                            </button>
+                          )}
+                          {cn.status !== 'Void' && (
+                            <button
+                              onClick={() => voidNote(cn.id)}
+                              className="p-1 rounded text-rose-500 hover:bg-rose-500/10"
+                              title="Void Note"
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </button>
+                          )}
+                        </div>
+                      </td>
+                    </tr>
+                  )
+                })}
+              </tbody>
+            </table>
+          </div>
+        )}
       </div>
 
-      {/* Create Credit Note Modal */}
+      {/* Stepped / Tabbed Credit Note Modal */}
       {showCreate && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40" onClick={() => setShowCreate(false)}>
-          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg mx-4 overflow-hidden" onClick={(e) => e.stopPropagation()}>
+        <div className="overlay animate-in fade-in duration-200">
+          <div className="w-full max-w-4xl bg-[var(--color-surface)] border border-[var(--color-border)] rounded-2xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh]">
             {/* Modal Header */}
-            <div className="flex items-center justify-between p-4 border-b border-gray-200">
-              <div>
-                <h2 className="text-base font-bold text-gray-900 flex items-center gap-2">
-                  <span className="text-lg">📝</span> Create Credit Note
-                </h2>
-                <p className="text-[10px] text-gray-500 mt-0.5">Issue a credit note to adjust customer balance</p>
+            <div className="px-6 py-4.5 border-b border-[var(--color-border)] bg-[var(--color-surface-muted)]/50 flex items-center justify-between">
+              <div className="flex items-center gap-3.5">
+                <div className="w-11 h-11 rounded-xl bg-gradient-to-br from-rose-500 to-pink-600 flex items-center justify-center text-white shadow-sm shrink-0">
+                  <FileText className="w-5 h-5" />
+                </div>
+                <div>
+                  <div className="flex items-center gap-2">
+                    <h2 className="text-base font-bold text-[var(--color-text-strong)] tracking-tight">Create Customer Credit Note</h2>
+                    <span className="px-2.5 py-0.5 rounded-full text-[10px] font-semibold bg-rose-500/10 text-rose-600 border border-rose-500/20">
+                      Credit Memo
+                    </span>
+                  </div>
+                  <p className="text-xs text-[var(--color-text-muted)] mt-0.5 flex items-center gap-1.5">
+                    <span>Assigned Entity:</span>
+                    <span className="font-semibold text-[var(--color-text-strong)]">
+                      🏢 {assignedCompany ? assignedCompany.name : 'Global Group Book'}
+                    </span>
+                  </p>
+                </div>
               </div>
-              <button onClick={() => setShowCreate(false)} className="h-7 w-7 flex items-center justify-center rounded-lg hover:bg-gray-100 text-gray-400 hover:text-gray-600">
+
+              <button
+                type="button"
+                className="w-8 h-8 rounded-lg flex items-center justify-center text-[var(--color-text-muted)] hover:text-[var(--color-text-strong)] hover:bg-[var(--color-surface-muted)] transition-colors"
+                onClick={() => setShowCreate(false)}
+              >
                 <X className="w-4 h-4" />
               </button>
             </div>
 
+            {/* Modal Tabs */}
+            <div className="flex items-center gap-2 px-6 pt-3 border-b border-[var(--color-border)] bg-[var(--color-surface)]">
+              <button
+                type="button"
+                onClick={() => setModalTab('details')}
+                className={`flex items-center gap-2 px-4 py-2.5 text-xs font-semibold rounded-t-lg border-b-2 transition-all whitespace-nowrap ${
+                  modalTab === 'details'
+                    ? 'border-[var(--color-primary)] text-[var(--color-primary)] bg-[var(--color-primary)]/5'
+                    : 'border-transparent text-[var(--color-text-muted)] hover:text-[var(--color-text-strong)]'
+                }`}
+              >
+                <Users className="w-3.5 h-3.5" /> 1. Customer & Date
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setModalTab('items')}
+                className={`flex items-center gap-2 px-4 py-2.5 text-xs font-semibold rounded-t-lg border-b-2 transition-all whitespace-nowrap ${
+                  modalTab === 'items'
+                    ? 'border-[var(--color-primary)] text-[var(--color-primary)] bg-[var(--color-primary)]/5'
+                    : 'border-transparent text-[var(--color-text-muted)] hover:text-[var(--color-text-strong)]'
+                }`}
+              >
+                <Coins className="w-3.5 h-3.5" /> 2. Credit Amount & Tax
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setModalTab('summary')}
+                className={`flex items-center gap-2 px-4 py-2.5 text-xs font-semibold rounded-t-lg border-b-2 transition-all whitespace-nowrap ${
+                  modalTab === 'summary'
+                    ? 'border-[var(--color-primary)] text-[var(--color-primary)] bg-[var(--color-primary)]/5'
+                    : 'border-transparent text-[var(--color-text-muted)] hover:text-[var(--color-text-strong)]'
+                }`}
+              >
+                <FileText className="w-3.5 h-3.5" /> 3. Reason & Confirmation
+              </button>
+            </div>
+
             {/* Modal Body */}
-            <form onSubmit={handleCreate} className="p-4 space-y-4">
-              <div className="grid grid-cols-2 gap-4">
-                {/* Company */}
-                <div className="space-y-1.5">
-                  <label className="text-[10px] font-semibold text-gray-500 uppercase tracking-wider">Company *</label>
-                  <select
-                    required
-                    value={form.companyId}
-                    onChange={(e) => setForm({ ...form, companyId: e.target.value })}
-                    className="w-full h-9 px-3 bg-white border border-gray-200 rounded-lg text-xs text-gray-700 outline-none focus:border-blue-400"
-                  >
-                    <option value="">Select company</option>
-                    {companies.map((c: any) => (
-                      <option key={c.id} value={c.id}>{c.name}</option>
-                    ))}
-                  </select>
-                </div>
+            <div className="p-6 md:p-8 overflow-y-auto flex-1 space-y-5">
+              {modalTab === 'details' && (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                  <div className="md:col-span-2">
+                    <label className="block text-xs font-semibold text-[var(--color-text-strong)] mb-1.5">
+                      Customer / Client <span className="text-rose-500">*</span>
+                    </label>
+                    <select
+                      value={form.customerId}
+                      onChange={e => setForm({ ...form, customerId: e.target.value })}
+                      className="w-full h-10 px-3.5 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] text-xs text-[var(--color-text-strong)] focus:border-[var(--color-primary)] outline-none shadow-2xs"
+                    >
+                      <option value="">Select customer...</option>
+                      {customers.map((c: any) => (
+                        <option key={c.id} value={c.id}>
+                          {c.name} {c.customerNumber ? `(${c.customerNumber})` : ''}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
 
-                {/* Credit Note Date */}
-                <div className="space-y-1.5">
-                  <label className="text-[10px] font-semibold text-gray-500 uppercase tracking-wider">Credit Note Date *</label>
-                  <input
-                    type="date"
-                    required
-                    value={form.creditNoteDate}
-                    onChange={(e) => setForm({ ...form, creditNoteDate: e.target.value })}
-                    className="w-full h-9 px-3 bg-white border border-gray-200 rounded-lg text-xs text-gray-700 outline-none focus:border-blue-400"
-                  />
+                  <div>
+                    <label className="block text-xs font-semibold text-[var(--color-text-strong)] mb-1.5">
+                      Credit Note Date
+                    </label>
+                    <input
+                      type="date"
+                      value={form.creditNoteDate}
+                      onChange={e => setForm({ ...form, creditNoteDate: e.target.value })}
+                      className="w-full h-10 px-3.5 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] text-xs text-[var(--color-text-strong)] focus:border-[var(--color-primary)] outline-none shadow-2xs"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-semibold text-[var(--color-text-strong)] mb-1.5">
+                      Currency
+                    </label>
+                    <select
+                      value={form.currencyCode}
+                      onChange={e => setForm({ ...form, currencyCode: e.target.value })}
+                      className="w-full h-10 px-3.5 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] text-xs font-semibold text-[var(--color-text-strong)] focus:border-[var(--color-primary)] outline-none shadow-2xs"
+                    >
+                      {['PKR', 'USD', 'AED', 'SAR', 'GBP', 'EUR', 'CAD', 'AUD'].map(curr => (
+                        <option key={curr} value={curr}>{curr}</option>
+                      ))}
+                    </select>
+                  </div>
                 </div>
+              )}
+
+              {modalTab === 'items' && (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                  <div>
+                    <label className="block text-xs font-semibold text-[var(--color-text-strong)] mb-1.5">
+                      Credit Principal Amount (Rs) <span className="text-rose-500">*</span>
+                    </label>
+                    <div className="flex items-center gap-2.5 h-10 px-3.5 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] focus-within:border-[var(--color-primary)] transition-colors shadow-2xs">
+                      <span className="text-[11px] font-bold font-mono text-[var(--color-text-muted)] shrink-0 px-1.5 py-0.5 rounded bg-[var(--color-surface-muted)]">
+                        Rs
+                      </span>
+                      <input
+                        type="number"
+                        step="0.01"
+                        min="0"
+                        placeholder="0.00"
+                        value={form.amount}
+                        onChange={e => setForm({ ...form, amount: e.target.value })}
+                        className="w-full h-full border-0 outline-none bg-transparent font-mono text-xs text-[var(--color-text-strong)] placeholder:text-[var(--color-text-muted)]"
+                        style={{ border: 0, outline: 'none', padding: 0, background: 'transparent' }}
+                      />
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-semibold text-[var(--color-text-strong)] mb-1.5">
+                      Tax Reversal Amount (Rs)
+                    </label>
+                    <div className="flex items-center gap-2.5 h-10 px-3.5 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] focus-within:border-[var(--color-primary)] transition-colors shadow-2xs">
+                      <span className="text-[11px] font-bold font-mono text-[var(--color-text-muted)] shrink-0 px-1.5 py-0.5 rounded bg-[var(--color-surface-muted)]">
+                        Rs
+                      </span>
+                      <input
+                        type="number"
+                        step="0.01"
+                        min="0"
+                        placeholder="0.00"
+                        value={form.tax}
+                        onChange={e => setForm({ ...form, tax: e.target.value })}
+                        className="w-full h-full border-0 outline-none bg-transparent font-mono text-xs text-[var(--color-text-strong)] placeholder:text-[var(--color-text-muted)]"
+                        style={{ border: 0, outline: 'none', padding: 0, background: 'transparent' }}
+                      />
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {modalTab === 'summary' && (
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+                  <div className="md:col-span-2 space-y-4">
+                    <label className="block text-xs font-semibold text-[var(--color-text-strong)] mb-1.5">
+                      Reason for Credit Note / Return Remarks
+                    </label>
+                    <textarea
+                      rows={4}
+                      value={form.notes}
+                      onChange={e => setForm({ ...form, notes: e.target.value })}
+                      placeholder="e.g. Return of damaged stock from Invoice INV-1002 / rate adjustment..."
+                      className="w-full p-3 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] text-xs text-[var(--color-text-strong)] placeholder:text-[var(--color-text-muted)] focus:border-[var(--color-primary)] outline-none shadow-2xs resize-none"
+                    />
+                    <div className="p-3.5 rounded-xl border border-emerald-500/20 bg-emerald-500/5 text-xs text-[var(--color-text-muted)] flex items-center gap-2">
+                      <ShieldCheck className="w-4 h-4 text-emerald-500 shrink-0" />
+                      <span>Posting this note will automatically credit customer AR and reverse sales tax liability.</span>
+                    </div>
+                  </div>
+
+                  <div className="bg-[var(--color-surface-muted)]/60 border border-[var(--color-border)] rounded-xl p-4 space-y-3">
+                    <p className="text-xs font-bold uppercase tracking-wider text-[var(--color-text-strong)]">Credit Note Total</p>
+                    <div className="flex justify-between text-xs text-[var(--color-text-muted)]">
+                      <span>Principal Amount</span>
+                      <span className="font-semibold font-mono text-[var(--color-text-strong)]">{money(Number(form.amount) || 0)}</span>
+                    </div>
+                    <div className="flex justify-between text-xs text-amber-500 font-mono">
+                      <span>Tax Reversal</span>
+                      <span>+{money(Number(form.tax) || 0)}</span>
+                    </div>
+                    <div className="border-t border-[var(--color-border)] pt-2.5 flex justify-between text-sm font-bold text-[var(--color-text-strong)]">
+                      <span>Total Credit</span>
+                      <span className="text-rose-600 font-mono">{money((Number(form.amount) || 0) + (Number(form.tax) || 0))}</span>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Modal Footer */}
+            <div className="px-6 py-3.5 border-t border-[var(--color-border)] bg-[var(--color-surface-muted)]/50 flex items-center justify-between gap-3">
+              <div className="text-[11px] text-[var(--color-text-muted)] flex items-center gap-1.5">
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 inline-block" />
+                <span>Auto-draft protection active</span>
               </div>
 
-              {/* Customer */}
-              <div className="space-y-1.5">
-                <label className="text-[10px] font-semibold text-gray-500 uppercase tracking-wider">Customer *</label>
-                <select
-                  required
-                  value={form.customerId}
-                  onChange={(e) => setForm({ ...form, customerId: e.target.value })}
-                  className="w-full h-9 px-3 bg-white border border-gray-200 rounded-lg text-xs text-gray-700 outline-none focus:border-blue-400"
-                >
-                  <option value="">Select customer</option>
-                  {customers.map((c: any) => (
-                    <option key={c.id} value={c.id}>{c.name}</option>
-                  ))}
-                </select>
-              </div>
-
-              {/* Reason */}
-              <div className="space-y-1.5">
-                <label className="text-[10px] font-semibold text-gray-500 uppercase tracking-wider">Reason / Notes *</label>
-                <input
-                  required
-                  value={form.notes}
-                  onChange={(e) => setForm({ ...form, notes: e.target.value })}
-                  placeholder="e.g. Product return, pricing adjustment..."
-                  className="w-full h-9 px-3 bg-white border border-gray-200 rounded-lg text-xs text-gray-700 outline-none focus:border-blue-400 placeholder:text-gray-400"
-                />
-              </div>
-
-              <div className="grid grid-cols-2 gap-4">
-                {/* Amount */}
-                <div className="space-y-1.5">
-                  <label className="text-[10px] font-semibold text-gray-500 uppercase tracking-wider">Credit Amount *</label>
-                  <input
-                    type="number"
-                    step="0.01"
-                    required
-                    value={form.amount || ''}
-                    onChange={(e) => setForm({ ...form, amount: Number(e.target.value) })}
-                    placeholder="0.00"
-                    className="w-full h-9 px-3 bg-white border border-gray-200 rounded-lg text-xs text-gray-700 outline-none focus:border-blue-400 placeholder:text-gray-400"
-                  />
-                </div>
-
-                {/* Tax */}
-                <div className="space-y-1.5">
-                  <label className="text-[10px] font-semibold text-gray-500 uppercase tracking-wider">Tax Amount</label>
-                  <input
-                    type="number"
-                    step="0.01"
-                    value={form.tax || ''}
-                    onChange={(e) => setForm({ ...form, tax: Number(e.target.value) })}
-                    placeholder="0.00"
-                    className="w-full h-9 px-3 bg-white border border-gray-200 rounded-lg text-xs text-gray-700 outline-none focus:border-blue-400 placeholder:text-gray-400"
-                  />
-                </div>
-              </div>
-
-              {/* Total Preview */}
-              <div className="p-3 bg-gray-50 rounded-lg border border-gray-200">
-                <div className="flex justify-between text-xs">
-                  <span className="text-gray-500">Subtotal</span>
-                  <span className="font-semibold">{money(form.amount || 0)}</span>
-                </div>
-                <div className="flex justify-between text-xs mt-1">
-                  <span className="text-gray-500">Tax</span>
-                  <span className="font-semibold">{money(form.tax || 0)}</span>
-                </div>
-                <div className="flex justify-between text-xs mt-2 pt-2 border-t border-gray-200">
-                  <span className="font-bold text-gray-700">Total Credit</span>
-                  <span className="font-bold text-blue-600">{money((form.amount || 0) + (form.tax || 0))}</span>
-                </div>
-              </div>
-
-              {/* Actions */}
-              <div className="flex justify-end gap-2 pt-2">
+              <div className="flex items-center gap-2">
                 <button
                   type="button"
+                  className="h-8.5 px-3.5 rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] text-xs font-medium text-[var(--color-text)] hover:bg-[var(--color-surface-muted)] transition-colors"
                   onClick={() => setShowCreate(false)}
-                  className="h-8 px-4 text-[11px] font-semibold text-gray-600 bg-gray-100 hover:bg-gray-200 rounded-lg"
                 >
                   Cancel
                 </button>
                 <button
-                  type="submit"
-                  className="h-8 px-4 text-[11px] font-semibold text-white bg-blue-600 hover:bg-blue-700 rounded-lg flex items-center gap-1"
+                  type="button"
+                  className="h-8.5 px-3.5 rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] text-xs font-medium text-[var(--color-text-muted)] hover:text-[var(--color-text-strong)] transition-colors"
+                  onClick={(e) => { e.preventDefault(); saveDraft(); notify('Credit note draft saved locally.'); }}
                 >
-                  <Send className="w-3.5 h-3.5" /> Create Credit Note
+                  Save Draft
                 </button>
+
+                {modalTab !== 'details' && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (modalTab === 'summary') setModalTab('items')
+                      else if (modalTab === 'items') setModalTab('details')
+                    }}
+                    className="h-8.5 px-3 rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] text-xs font-medium text-[var(--color-text)] hover:bg-[var(--color-surface-muted)] transition-colors flex items-center gap-1"
+                  >
+                    <ArrowLeft className="w-3.5 h-3.5" />
+                    <span>Back</span>
+                  </button>
+                )}
+
+                {modalTab !== 'summary' ? (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (modalTab === 'details') {
+                        if (!form.customerId) {
+                          notify('Please select a customer.')
+                          return
+                        }
+                        setModalTab('items')
+                      } else if (modalTab === 'items') {
+                        setModalTab('summary')
+                      }
+                    }}
+                    className="primary h-8.5 px-4 rounded-lg text-xs font-semibold shadow-xs flex items-center gap-1.5"
+                  >
+                    <span>Next: {modalTab === 'details' ? 'Amount & Tax' : 'Reason & Summary'}</span>
+                    <ArrowRight className="w-3.5 h-3.5" />
+                  </button>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={handleCreate as any}
+                    className="primary h-8.5 px-4.5 rounded-lg text-xs font-semibold shadow-xs flex items-center gap-1.5 bg-rose-600 hover:bg-rose-700 text-white"
+                  >
+                    <Check className="w-3.5 h-3.5" />
+                    <span>Issue Credit Note</span>
+                  </button>
+                )}
               </div>
-            </form>
+            </div>
           </div>
         </div>
       )}
     </div>
-  );
+  )
 }
 
-export default CreditNotesWorkspace;
+export default CreditNotesWorkspace

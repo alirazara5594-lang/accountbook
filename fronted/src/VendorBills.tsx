@@ -33,7 +33,7 @@ export const VendorBills: React.FC<{ activeEntityId: string }> = ({ activeEntity
     date: new Date().toISOString().split('T')[0],
     dueDate: new Date(Date.now() + 30 * 86400000).toISOString().split('T')[0],
     paymentTermsDays: '30',
-    currencyCode: 'USD',
+    currencyCode: 'PKR',
     notes: '',
     taxAmount: '0'
   });
@@ -64,7 +64,7 @@ export const VendorBills: React.FC<{ activeEntityId: string }> = ({ activeEntity
       date: new Date().toISOString().split('T')[0],
       dueDate: new Date(Date.now() + 30 * 86400000).toISOString().split('T')[0],
       paymentTermsDays: '30',
-      currencyCode: 'USD',
+      currencyCode: 'PKR',
       notes: '',
       taxAmount: '0'
     });

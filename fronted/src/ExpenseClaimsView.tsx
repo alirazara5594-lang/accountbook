@@ -1,89 +1,598 @@
-import React, { useEffect, useMemo, useState } from 'react';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Badge } from '@/components/ui/badge';
-import { DataToolbar } from '@/components/ui/data-toolbar';
-import { ReceiptText, Plus, Search } from 'lucide-react';
-import type { Entity } from './EntitySettings';
-import { useCoaStore, useExpenseClaimsStore } from './stores';
+import { useEffect, useMemo, useState } from 'react'
+import {
+  ReceiptText, Check, X, ArrowRight, ArrowLeft, Coins,
+  CheckCircle2, Users, FileText, ShieldCheck
+} from 'lucide-react'
+import { useCoaStore, useExpenseClaimsStore } from './stores'
+import { useFormDraft } from './hooks/useFormDraft'
+import { DataToolbar } from '@/components/ui/data-toolbar'
+import { money } from '@/lib/currency'
+import type { Entity } from './EntitySettings'
 
-export const ExpenseClaimsView: React.FC<{ activeEntityId: string; entities: Entity[] }> = ({ activeEntityId, entities }) => {
-  const currentEntity = entities.find(e => e.id === activeEntityId);
-  const { claims, fetchClaims, createClaim, setStatus } = useExpenseClaimsStore();
-  const accounts = useCoaStore((s) => s.accounts);
-  const fetchAccounts = useCoaStore((s) => s.fetchAccounts);
-  const [query, setQuery] = useState('');
-  const [showForm, setShowForm] = useState(false);
-  const [form, setForm] = useState({ employeeName: '', department: '', date: new Date().toISOString().slice(0, 10), category: 'Travel', amount: '', notes: '', accountId: '' });
+const statusStyles: Record<string, { label: string; class: string }> = {
+  Submitted: { label: 'Submitted', class: 'bg-sky-500/10 text-sky-600 border border-sky-500/20' },
+  Approved: { label: 'Approved', class: 'bg-amber-500/10 text-amber-600 border border-amber-500/20' },
+  Paid: { label: 'Paid & Posted', class: 'bg-emerald-500/10 text-emerald-600 border border-emerald-500/20' },
+  Rejected: { label: 'Rejected', class: 'bg-rose-500/10 text-rose-600 border border-rose-500/20' }
+}
 
-  useEffect(() => { fetchClaims(activeEntityId); fetchAccounts(); }, [activeEntityId]);
+export const ExpenseClaimsView: React.FC<{ activeEntityId: string; entities?: Entity[] }> = ({
+  activeEntityId,
+  entities = []
+}) => {
+  const currentEntity = entities.find(e => e.id === activeEntityId)
+  const { claims, fetchClaims, createClaim, setStatus } = useExpenseClaimsStore()
+  const accounts = useCoaStore((s) => s.accounts)
+  const fetchAccounts = useCoaStore((s) => s.fetchAccounts)
 
-  const expenseAccounts = accounts.filter(a => a.type === 'Expense' && a.status === 'Active');
-  const filtered = useMemo(() => claims.filter(c => {
-    if (!query.trim()) return true;
-    const q = query.toLowerCase();
-    return c.claimNumber.toLowerCase().includes(q) || c.employeeName.toLowerCase().includes(q) || c.department.toLowerCase().includes(q) || c.status.toLowerCase().includes(q);
-  }), [claims, query]);
-  const exportRows = filtered.map(c => [c.claimNumber, c.date, c.employeeName, c.department, c.totalAmount, c.currency, c.status, c.notes || '']);
+  const [query, setQuery] = useState('')
+  const [statusFilter, setStatusFilter] = useState<string>('all')
+  const [showForm, setShowForm] = useState(false)
+  const [modalTab, setModalTab] = useState<'employee' | 'expense' | 'summary'>('employee')
+  const [toast, setToast] = useState('')
 
-  const submit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    const amount = Number(form.amount);
-    if (!amount || amount <= 0) return alert('Enter a valid expense amount.');
-    await createClaim({
-      employeeName: form.employeeName || 'Employee',
-      department: form.department || 'General',
-      date: form.date,
-      currency: 'USD',
-      notes: form.notes,
-      companyId: activeEntityId,
-      lines: [{ accountId: form.accountId || undefined, category: form.category, description: form.notes || form.category, amount, currency: 'USD' }],
-    });
-    setForm({ employeeName: '', department: '', date: new Date().toISOString().slice(0, 10), category: 'Travel', amount: '', notes: '', accountId: '' });
-    setShowForm(false);
-  };
+  const [form, setForm] = useState({
+    employeeName: '',
+    department: '',
+    date: new Date().toISOString().slice(0, 10),
+    category: 'Travel & Lodging',
+    amount: '',
+    notes: '',
+    accountId: '',
+    currency: 'PKR'
+  })
+
+  const { saveDraft, clearDraft } = useFormDraft('expense_claim', form, setForm, showForm)
+
+  useEffect(() => {
+    fetchClaims(activeEntityId)
+    fetchAccounts()
+  }, [activeEntityId])
+
+  const notify = (m: string) => {
+    setToast(m)
+    setTimeout(() => setToast(''), 3500)
+  }
+
+  const openCreateModal = () => {
+    setForm({
+      employeeName: '',
+      department: 'Finance & Operations',
+      date: new Date().toISOString().slice(0, 10),
+      category: 'Travel & Lodging',
+      amount: '',
+      notes: 'Out-of-pocket business expense reimbursement.',
+      accountId: '',
+      currency: 'PKR'
+    })
+    setModalTab('employee')
+    setShowForm(true)
+  }
+
+  const expenseAccounts = accounts.filter(a => a.type === 'Expense' && a.status === 'Active')
+
+  const submitClaim = async () => {
+    if (!form.employeeName) {
+      notify('Please enter employee name.')
+      return
+    }
+    const amount = Number(form.amount)
+    if (!amount || amount <= 0) {
+      notify('Enter a valid expense amount.')
+      return
+    }
+
+    try {
+      await createClaim({
+        employeeName: form.employeeName,
+        department: form.department || 'General',
+        date: form.date,
+        currency: 'PKR',
+        notes: form.notes,
+        companyId: activeEntityId,
+        lines: [{
+          accountId: form.accountId || undefined,
+          category: form.category,
+          description: form.notes || form.category,
+          amount,
+          currency: 'PKR'
+        }],
+      })
+      clearDraft()
+      setShowForm(false)
+      notify('✓ Expense claim submitted for manager review!')
+      fetchClaims(activeEntityId)
+    } catch {
+      notify('Failed to submit expense claim.')
+    }
+  }
+
+  const filtered = useMemo(() => {
+    return claims.filter(c => {
+      const matchesQuery = !query.trim()
+        ? true
+        : `${c.claimNumber} ${c.employeeName} ${c.department} ${c.notes || ''}`.toLowerCase().includes(query.toLowerCase())
+
+      const matchesStatus = statusFilter === 'all' || c.status.toLowerCase() === statusFilter.toLowerCase()
+
+      return matchesQuery && matchesStatus
+    })
+  }, [claims, query, statusFilter])
+
+  const exportHeaders = ['Claim #', 'Date', 'Employee', 'Department', 'Amount', 'Currency', 'Status', 'Notes']
+  const exportRows = filtered.map(c => [
+    c.claimNumber,
+    c.date,
+    c.employeeName,
+    c.department,
+    c.totalAmount,
+    c.currency || 'PKR',
+    c.status,
+    c.notes || ''
+  ])
+
+  const totalClaims = filtered.reduce((s, c) => s + (c.totalAmount || 0), 0)
+  const pendingCount = filtered.filter(c => c.status === 'Submitted').length
+  const paidCount = filtered.filter(c => c.status === 'Paid').length
 
   return (
-    <div className="space-y-4 font-sans text-slate-800 p-2 md:p-6">
-      <div className="flex flex-col md:flex-row justify-between gap-3 bg-white p-3 rounded-xl border border-gray-200 shadow-sm">
-        <div>
-          <h1 className="text-base font-bold text-slate-900 flex items-center gap-2">
-            <ReceiptText className="w-4 h-4 text-emerald-600" /> Expense Claims
-          </h1>
-          <p className="text-[10px] text-slate-500 mt-0.5">Employee reimbursement claims for {currentEntity?.name || 'Active Entity'}.</p>
+    <div className="space-y-6">
+      {toast && (
+        <div className="px-3.5 py-2 bg-emerald-500/10 border border-emerald-500/20 text-emerald-600 rounded-xl text-xs font-semibold">
+          {toast}
         </div>
-        <button onClick={() => setShowForm(v => !v)}
-          className="h-8 px-2.5 bg-emerald-600 hover:bg-emerald-700 text-white text-[11px] font-semibold rounded-lg shrink-0 whitespace-nowrap flex items-center gap-1">
-          <Plus className="w-3.5 h-3.5" /> New Claim
-        </button>
-      </div>
-
-      {showForm && (
-        <form onSubmit={submit} className="grid grid-cols-1 md:grid-cols-3 gap-3 p-4 bg-white border border-slate-200 rounded-xl">
-          <Input placeholder="Employee name" value={form.employeeName} onChange={e => setForm({ ...form, employeeName: e.target.value })} />
-          <Input placeholder="Department" value={form.department} onChange={e => setForm({ ...form, department: e.target.value })} />
-          <Input type="date" value={form.date} onChange={e => setForm({ ...form, date: e.target.value })} />
-          <select value={form.accountId} onChange={e => setForm({ ...form, accountId: e.target.value })} className="h-10 border rounded-md px-3 text-sm">
-            <option value="">Default expense account</option>
-            {expenseAccounts.map(a => <option key={a.id} value={a.id}>{a.code} - {a.name}</option>)}
-          </select>
-          <Input placeholder="Category" value={form.category} onChange={e => setForm({ ...form, category: e.target.value })} />
-          <Input type="number" placeholder="Amount" value={form.amount} onChange={e => setForm({ ...form, amount: e.target.value })} />
-          <Input className="md:col-span-2" placeholder="Notes / receipt details" value={form.notes} onChange={e => setForm({ ...form, notes: e.target.value })} />
-          <Button type="submit" className="h-10 text-xs">Submit Claim</Button>
-        </form>
       )}
 
-      <div className="flex flex-wrap items-center justify-between gap-3 p-3 bg-slate-50 border border-slate-200 rounded-xl">
-        <div className="relative w-80"><Search className="absolute left-3 top-2.5 h-4 w-4 text-slate-400" /><Input className="pl-9 h-9 text-xs" placeholder="Search claims..." value={query} onChange={e => setQuery(e.target.value)} /></div>
-        <DataToolbar exportFileName="expense-claims" exportSheetName="Expense Claims" exportTitle="Expense Claims" exportHeaders={['Claim #', 'Date', 'Employee', 'Department', 'Amount', 'Currency', 'Status', 'Notes']} exportRows={exportRows} />
+      {/* Submodule Heading Banner (Row 1) */}
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-3 bg-[var(--color-surface)] p-3.5 rounded-xl border border-[var(--color-border)] shadow-sm">
+        <div>
+          <h1 className="text-base font-bold text-[var(--color-text-strong)] tracking-tight flex items-center gap-2">
+            <span className="text-lg">🧾</span> Employee Expense Claims
+          </h1>
+          <p className="text-[var(--color-text-muted)] text-xs mt-0.5">
+            Submit and review staff out-of-pocket expenses, travel advances, and general employee reimbursement vouchers.
+          </p>
+        </div>
+        <div className="flex items-center gap-2 shrink-0 flex-wrap">
+          <select
+            className="h-9 px-3 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] text-xs text-[var(--color-text)] outline-none focus:border-[var(--color-primary)] transition-colors shadow-2xs box-border"
+            style={{ paddingTop: 0, paddingBottom: 0 }}
+            value={statusFilter}
+            onChange={e => setStatusFilter(e.target.value)}
+          >
+            <option value="all">⚡ All Statuses</option>
+            <option value="submitted">🔵 Submitted</option>
+            <option value="approved">🟡 Approved</option>
+            <option value="paid">🟢 Paid & Posted</option>
+            <option value="rejected">🔴 Rejected</option>
+          </select>
+
+          <DataToolbar
+            query={query}
+            setQuery={setQuery}
+            searchPlaceholder="Search employee, claim #..."
+            exportFileName="expense-claims"
+            exportSheetName="Expense Claims"
+            exportTitle="Expense Claims Register"
+            exportSubtitle="Staff reimbursements and expense vouchers."
+            exportHeaders={exportHeaders}
+            exportRows={exportRows}
+            exportTotals={[{ label: 'Total Claims', value: totalClaims }]}
+            onRefresh={() => fetchClaims(activeEntityId)}
+          />
+          <button
+            onClick={openCreateModal}
+            className="primary h-9 px-4 rounded-xl text-xs font-semibold whitespace-nowrap flex items-center justify-center gap-1.5 shadow-sm"
+          >
+            <span>＋</span> New Claim
+          </button>
+        </div>
       </div>
 
-      <div className="bg-white border border-slate-200 rounded-xl overflow-hidden">
-        <Table><TableHeader><TableRow><TableHead>Claim #</TableHead><TableHead>Date</TableHead><TableHead>Employee</TableHead><TableHead>Department</TableHead><TableHead className="text-right">Amount</TableHead><TableHead>Status</TableHead><TableHead className="text-right">Actions</TableHead></TableRow></TableHeader>
-          <TableBody>{filtered.map(c => <TableRow key={c.id}><TableCell className="font-mono font-bold text-xs">{c.claimNumber}</TableCell><TableCell>{c.date}</TableCell><TableCell>{c.employeeName}</TableCell><TableCell>{c.department}</TableCell><TableCell className="text-right font-mono">{new Intl.NumberFormat('en-US', { style: 'currency', currency: c.currency }).format(c.totalAmount)}</TableCell><TableCell><Badge variant="outline">{c.status}</Badge></TableCell><TableCell className="text-right space-x-2">{c.status === 'Submitted' && <Button size="sm" variant="outline" onClick={() => setStatus(c.id, 'Approved', activeEntityId)}>Approve</Button>}{c.status === 'Approved' && <Button size="sm" onClick={() => setStatus(c.id, 'Paid', activeEntityId)}>Pay & Post</Button>}</TableCell></TableRow>)}</TableBody></Table>
+      {/* Stats Cards (Row 2) */}
+      <section className="stats">
+        <article>
+          <span className="stat-icon blue">
+            <Coins className="w-4 h-4" />
+          </span>
+          <div>
+            <small>TOTAL EXPENSE VALUE</small>
+            <h2>{money(totalClaims)}</h2>
+            <p>All recorded vouchers</p>
+          </div>
+        </article>
+        <article>
+          <span className="stat-icon teal">
+            <CheckCircle2 className="w-4 h-4" />
+          </span>
+          <div>
+            <small>PAID & SETTLED</small>
+            <h2>{paidCount}</h2>
+            <p>Posted to GL ledger</p>
+          </div>
+        </article>
+        <article>
+          <span className="stat-icon violet">
+            <FileText className="w-4 h-4" />
+          </span>
+          <div>
+            <small>AWAITING APPROVAL</small>
+            <h2>{pendingCount}</h2>
+            <p>Pending manager sign-off</p>
+          </div>
+        </article>
+      </section>
+
+      {/* Claims Table */}
+      <div className="bg-[var(--color-surface)] border border-[var(--color-border)] rounded-xl overflow-hidden shadow-sm">
+        <div className="px-4 py-2.5 border-b border-[var(--color-border)] bg-[var(--color-surface-muted)] flex items-center justify-between">
+          <p className="text-xs font-semibold text-[var(--color-text-strong)]">Expense Claims Directory</p>
+          <span className="text-[11px] text-[var(--color-text-muted)]">
+            Showing {filtered.length} of {claims.length} claim{claims.length !== 1 ? 's' : ''}
+          </span>
+        </div>
+
+        {filtered.length === 0 ? (
+          <div className="py-12 text-center text-xs text-[var(--color-text-muted)]">No expense claims found matching your criteria.</div>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full text-xs">
+              <thead>
+                <tr className="border-b border-[var(--color-border)] bg-[var(--color-surface-muted)]">
+                  <th className="text-left px-3 py-2 font-semibold text-[var(--color-text-muted)]">Claim #</th>
+                  <th className="text-left px-3 py-2 font-semibold text-[var(--color-text-muted)]">Date</th>
+                  <th className="text-left px-3 py-2 font-semibold text-[var(--color-text-muted)]">Employee</th>
+                  <th className="text-left px-3 py-2 font-semibold text-[var(--color-text-muted)]">Department</th>
+                  <th className="text-left px-3 py-2 font-semibold text-[var(--color-text-muted)]">Description</th>
+                  <th className="text-right px-3 py-2 font-semibold text-[var(--color-text-muted)]">Amount (Rs)</th>
+                  <th className="text-center px-3 py-2 font-semibold text-[var(--color-text-muted)]">Status</th>
+                  <th className="text-right px-3 py-2 font-semibold text-[var(--color-text-muted)]">Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {filtered.map(c => {
+                  const badge = statusStyles[c.status] || statusStyles.Submitted
+                  return (
+                    <tr key={c.id} className="border-b border-[var(--color-border)] hover:bg-[var(--color-surface-muted)] transition-colors">
+                      <td className="px-3 py-2 font-mono font-semibold text-[var(--color-text-strong)]">{c.claimNumber}</td>
+                      <td className="px-3 py-2 text-[var(--color-text-muted)]">{c.date}</td>
+                      <td className="px-3 py-2 font-semibold text-[var(--color-text-strong)]">{c.employeeName}</td>
+                      <td className="px-3 py-2 text-[var(--color-text-muted)]">{c.department}</td>
+                      <td className="px-3 py-2 text-[var(--color-text-muted)]">{c.notes || '—'}</td>
+                      <td className="px-3 py-2 text-right font-bold text-sky-600 font-mono">{money(c.totalAmount)}</td>
+                      <td className="px-3 py-2 text-center">
+                        <span className={`inline-block px-2 py-0.5 rounded-full text-[10px] font-semibold ${badge.class}`}>
+                          {badge.label}
+                        </span>
+                      </td>
+                      <td className="px-3 py-2 text-right">
+                        <div className="flex items-center justify-end gap-1">
+                          {c.status === 'Submitted' && (
+                            <button
+                              onClick={() => { setStatus(c.id, 'Approved', activeEntityId); notify('✓ Claim approved'); }}
+                              className="h-6.5 px-2 rounded bg-amber-500/10 text-amber-600 hover:bg-amber-500/20 text-[11px] font-semibold"
+                            >
+                              Approve
+                            </button>
+                          )}
+                          {c.status === 'Approved' && (
+                            <button
+                              onClick={() => { setStatus(c.id, 'Paid', activeEntityId); notify('✓ Claim settled & posted to GL'); }}
+                              className="h-6.5 px-2 rounded bg-emerald-500/10 text-emerald-600 hover:bg-emerald-500/20 text-[11px] font-semibold"
+                            >
+                              Pay & Post
+                            </button>
+                          )}
+                        </div>
+                      </td>
+                    </tr>
+                  )
+                })}
+              </tbody>
+            </table>
+          </div>
+        )}
       </div>
+
+      {/* Stepped / Tabbed Claim Modal */}
+      {showForm && (
+        <div className="overlay animate-in fade-in duration-200">
+          <div className="w-full max-w-4xl bg-[var(--color-surface)] border border-[var(--color-border)] rounded-2xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh]">
+            {/* Modal Header */}
+            <div className="px-6 py-4.5 border-b border-[var(--color-border)] bg-[var(--color-surface-muted)]/50 flex items-center justify-between">
+              <div className="flex items-center gap-3.5">
+                <div className="w-11 h-11 rounded-xl bg-gradient-to-br from-emerald-500 to-teal-600 flex items-center justify-center text-white shadow-sm shrink-0">
+                  <ReceiptText className="w-5 h-5" />
+                </div>
+                <div>
+                  <div className="flex items-center gap-2">
+                    <h2 className="text-base font-bold text-[var(--color-text-strong)] tracking-tight">Submit Expense Reimbursement</h2>
+                    <span className="px-2.5 py-0.5 rounded-full text-[10px] font-semibold bg-emerald-500/10 text-emerald-600 border border-emerald-500/20">
+                      Staff Claim
+                    </span>
+                  </div>
+                  <p className="text-xs text-[var(--color-text-muted)] mt-0.5 flex items-center gap-1.5">
+                    <span>Operating Unit:</span>
+                    <span className="font-semibold text-[var(--color-text-strong)]">
+                      🏢 {currentEntity ? currentEntity.name : 'Global Group Book'}
+                    </span>
+                  </p>
+                </div>
+              </div>
+
+              <button
+                type="button"
+                className="w-8 h-8 rounded-lg flex items-center justify-center text-[var(--color-text-muted)] hover:text-[var(--color-text-strong)] hover:bg-[var(--color-surface-muted)] transition-colors"
+                onClick={() => setShowForm(false)}
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            {/* Modal Tabs */}
+            <div className="flex items-center gap-2 px-6 pt-3 border-b border-[var(--color-border)] bg-[var(--color-surface)]">
+              <button
+                type="button"
+                onClick={() => setModalTab('employee')}
+                className={`flex items-center gap-2 px-4 py-2.5 text-xs font-semibold rounded-t-lg border-b-2 transition-all whitespace-nowrap ${
+                  modalTab === 'employee'
+                    ? 'border-[var(--color-primary)] text-[var(--color-primary)] bg-[var(--color-primary)]/5'
+                    : 'border-transparent text-[var(--color-text-muted)] hover:text-[var(--color-text-strong)]'
+                }`}
+              >
+                <Users className="w-3.5 h-3.5" /> 1. Staff & Department
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setModalTab('expense')}
+                className={`flex items-center gap-2 px-4 py-2.5 text-xs font-semibold rounded-t-lg border-b-2 transition-all whitespace-nowrap ${
+                  modalTab === 'expense'
+                    ? 'border-[var(--color-primary)] text-[var(--color-primary)] bg-[var(--color-primary)]/5'
+                    : 'border-transparent text-[var(--color-text-muted)] hover:text-[var(--color-text-strong)]'
+                }`}
+              >
+                <Coins className="w-3.5 h-3.5" /> 2. Category & Amount
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setModalTab('summary')}
+                className={`flex items-center gap-2 px-4 py-2.5 text-xs font-semibold rounded-t-lg border-b-2 transition-all whitespace-nowrap ${
+                  modalTab === 'summary'
+                    ? 'border-[var(--color-primary)] text-[var(--color-primary)] bg-[var(--color-primary)]/5'
+                    : 'border-transparent text-[var(--color-text-muted)] hover:text-[var(--color-text-strong)]'
+                }`}
+              >
+                <FileText className="w-3.5 h-3.5" /> 3. Verification & Submit
+              </button>
+            </div>
+
+            {/* Modal Body */}
+            <div className="p-6 md:p-8 overflow-y-auto flex-1 space-y-5">
+              {modalTab === 'employee' && (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                  <div>
+                    <label className="block text-xs font-semibold text-[var(--color-text-strong)] mb-1.5">
+                      Employee Name <span className="text-rose-500">*</span>
+                    </label>
+                    <input
+                      placeholder="e.g. Tariq Mehmood"
+                      value={form.employeeName}
+                      onChange={e => setForm({ ...form, employeeName: e.target.value })}
+                      className="w-full h-10 px-3.5 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] text-xs text-[var(--color-text-strong)] focus:border-[var(--color-primary)] outline-none shadow-2xs"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-semibold text-[var(--color-text-strong)] mb-1.5">
+                      Department
+                    </label>
+                    <input
+                      placeholder="e.g. Sales, Marketing, Logistics"
+                      value={form.department}
+                      onChange={e => setForm({ ...form, department: e.target.value })}
+                      className="w-full h-10 px-3.5 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] text-xs text-[var(--color-text-strong)] focus:border-[var(--color-primary)] outline-none shadow-2xs"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-semibold text-[var(--color-text-strong)] mb-1.5">
+                      Expense Date
+                    </label>
+                    <input
+                      type="date"
+                      value={form.date}
+                      onChange={e => setForm({ ...form, date: e.target.value })}
+                      className="w-full h-10 px-3.5 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] text-xs text-[var(--color-text-strong)] focus:border-[var(--color-primary)] outline-none shadow-2xs"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-semibold text-[var(--color-text-strong)] mb-1.5">
+                      Currency
+                    </label>
+                    <select
+                      value={form.currency}
+                      onChange={e => setForm({ ...form, currency: e.target.value })}
+                      className="w-full h-10 px-3.5 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] text-xs font-semibold text-[var(--color-text-strong)] focus:border-[var(--color-primary)] outline-none shadow-2xs"
+                    >
+                      {['PKR', 'USD', 'AED', 'SAR', 'GBP', 'EUR', 'CAD', 'AUD'].map(curr => (
+                        <option key={curr} value={curr}>{curr}</option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+              )}
+
+              {modalTab === 'expense' && (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                  <div>
+                    <label className="block text-xs font-semibold text-[var(--color-text-strong)] mb-1.5">
+                      Expense Category
+                    </label>
+                    <input
+                      placeholder="e.g. Travel, Fuel, Client Entertainment"
+                      value={form.category}
+                      onChange={e => setForm({ ...form, category: e.target.value })}
+                      className="w-full h-10 px-3.5 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] text-xs text-[var(--color-text-strong)] focus:border-[var(--color-primary)] outline-none shadow-2xs"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-semibold text-[var(--color-text-strong)] mb-1.5">
+                      GL Expense Account (Optional)
+                    </label>
+                    <select
+                      value={form.accountId}
+                      onChange={e => setForm({ ...form, accountId: e.target.value })}
+                      className="w-full h-10 px-3.5 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] text-xs text-[var(--color-text-strong)] focus:border-[var(--color-primary)] outline-none shadow-2xs"
+                    >
+                      <option value="">-- General Operating Expense --</option>
+                      {expenseAccounts.map(a => (
+                        <option key={a.id} value={a.id}>{a.code} — {a.name}</option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <div className="md:col-span-2">
+                    <label className="block text-xs font-semibold text-[var(--color-text-strong)] mb-1.5">
+                      Claim Amount (Rs) <span className="text-rose-500">*</span>
+                    </label>
+                    <div className="flex items-center gap-2.5 h-10 px-3.5 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] focus-within:border-[var(--color-primary)] transition-colors shadow-2xs">
+                      <span className="text-[11px] font-bold font-mono text-[var(--color-text-muted)] shrink-0 px-1.5 py-0.5 rounded bg-[var(--color-surface-muted)]">
+                        Rs
+                      </span>
+                      <input
+                        type="number"
+                        step="0.01"
+                        min="0"
+                        placeholder="0.00"
+                        value={form.amount}
+                        onChange={e => setForm({ ...form, amount: e.target.value })}
+                        className="w-full h-full border-0 outline-none bg-transparent font-mono text-xs text-[var(--color-text-strong)] placeholder:text-[var(--color-text-muted)]"
+                        style={{ border: 0, outline: 'none', padding: 0, background: 'transparent' }}
+                      />
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {modalTab === 'summary' && (
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+                  <div className="md:col-span-2 space-y-4">
+                    <div>
+                      <label className="block text-xs font-semibold text-[var(--color-text-strong)] mb-1.5">
+                        Receipt Details / Business Justification
+                      </label>
+                      <textarea
+                        rows={4}
+                        value={form.notes}
+                        onChange={e => setForm({ ...form, notes: e.target.value })}
+                        placeholder="Attach or describe receipts, purpose of visit, trip dates..."
+                        className="w-full p-3 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] text-xs text-[var(--color-text-strong)] placeholder:text-[var(--color-text-muted)] focus:border-[var(--color-primary)] outline-none shadow-2xs resize-none"
+                      />
+                    </div>
+                    <div className="p-3.5 rounded-xl border border-emerald-500/20 bg-emerald-500/5 text-xs text-[var(--color-text-muted)] flex items-center gap-2">
+                      <ShieldCheck className="w-4 h-4 text-emerald-500 shrink-0" />
+                      <span>Approved claims will generate Dr Travel & Operating Expense / Cr Accounts Payable Employee.</span>
+                    </div>
+                  </div>
+
+                  <div className="bg-[var(--color-surface-muted)]/60 border border-[var(--color-border)] rounded-xl p-4 space-y-3">
+                    <p className="text-xs font-bold uppercase tracking-wider text-[var(--color-text-strong)]">Reimbursement Summary</p>
+                    <div className="flex justify-between text-xs text-[var(--color-text-muted)]">
+                      <span>Employee</span>
+                      <span className="font-semibold text-[var(--color-text-strong)]">{form.employeeName || 'Staff'}</span>
+                    </div>
+                    <div className="flex justify-between text-xs text-[var(--color-text-muted)]">
+                      <span>Category</span>
+                      <span className="font-semibold text-[var(--color-text-strong)]">{form.category}</span>
+                    </div>
+                    <div className="border-t border-[var(--color-border)] pt-2.5 flex justify-between text-sm font-bold text-[var(--color-text-strong)]">
+                      <span>Claim Total</span>
+                      <span className="text-emerald-600 font-mono">{money(parseFloat(form.amount || '0'))}</span>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Modal Footer */}
+            <div className="px-6 py-3.5 border-t border-[var(--color-border)] bg-[var(--color-surface-muted)]/50 flex items-center justify-between gap-3">
+              <div className="text-[11px] text-[var(--color-text-muted)] flex items-center gap-1.5">
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 inline-block" />
+                <span>Auto-draft protection active</span>
+              </div>
+
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  className="h-8.5 px-3.5 rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] text-xs font-medium text-[var(--color-text)] hover:bg-[var(--color-surface-muted)] transition-colors"
+                  onClick={() => setShowForm(false)}
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  className="h-8.5 px-3.5 rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] text-xs font-medium text-[var(--color-text-muted)] hover:text-[var(--color-text-strong)] transition-colors"
+                  onClick={(e) => { e.preventDefault(); saveDraft(); notify('Claim draft saved locally.'); }}
+                >
+                  Save Draft
+                </button>
+
+                {modalTab !== 'employee' && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (modalTab === 'summary') setModalTab('expense')
+                      else if (modalTab === 'expense') setModalTab('employee')
+                    }}
+                    className="h-8.5 px-3 rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] text-xs font-medium text-[var(--color-text)] hover:bg-[var(--color-surface-muted)] transition-colors flex items-center gap-1"
+                  >
+                    <ArrowLeft className="w-3.5 h-3.5" />
+                    <span>Back</span>
+                  </button>
+                )}
+
+                {modalTab !== 'summary' ? (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (modalTab === 'employee') {
+                        if (!form.employeeName) {
+                          notify('Please enter employee name.')
+                          return
+                        }
+                        setModalTab('expense')
+                      } else if (modalTab === 'expense') {
+                        if (!form.amount || parseFloat(form.amount) <= 0) {
+                          notify('Please enter a valid amount.')
+                          return
+                        }
+                        setModalTab('summary')
+                      }
+                    }}
+                    className="primary h-8.5 px-4 rounded-lg text-xs font-semibold shadow-xs flex items-center gap-1.5"
+                  >
+                    <span>Next: {modalTab === 'employee' ? 'Category & Amount' : 'Review & Submit'}</span>
+                    <ArrowRight className="w-3.5 h-3.5" />
+                  </button>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={submitClaim}
+                    className="primary h-8.5 px-4.5 rounded-lg text-xs font-semibold shadow-xs flex items-center gap-1.5 bg-emerald-600 hover:bg-emerald-700 text-white"
+                  >
+                    <Check className="w-3.5 h-3.5" />
+                    <span>Submit Claim</span>
+                  </button>
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
-  );
-};
+  )
+}

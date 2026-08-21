@@ -730,7 +730,7 @@ export const ProcurementWorkspace: React.FC<{ activeEntityId: string; entities?:
                       <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 40 }}>
                         <div style={{ textAlign: 'right' as const, borderLeft: '2px solid #cbd5e1', paddingLeft: 20 }}>
                           <span style={{ fontSize: 11, textTransform: 'uppercase' as const, color: '#047857', fontWeight: 700, letterSpacing: '0.05em' }}>Estimated Total</span>
-                          <p style={{ fontSize: 18, fontWeight: 800, color: '#047857', fontFamily: 'monospace', margin: '2px 0 0' }}>${estimatedTotal.toFixed(2)}</p>
+                          <p style={{ fontSize: 18, fontWeight: 800, color: '#047857', fontFamily: 'monospace', margin: '2px 0 0' }}>{money(estimatedTotal)}</p>
                         </div>
                       </div>
                     </div>
@@ -913,7 +913,7 @@ export const ProcurementWorkspace: React.FC<{ activeEntityId: string; entities?:
                         <input style={{ width: 110, textAlign: 'center' }} type="number" placeholder="Billed Unit Price" value={l.unitPrice} onChange={e => { const u = [...billLines]; u[i].unitPrice = e.target.value; setBillLines(u); }} />
                         <input style={{ width: 90, textAlign: 'center' }} type="number" step="0.01" placeholder="Tax Amt" value={l.taxAmount || 0} onChange={e => { const u = [...billLines]; u[i].taxAmount = e.target.value; setBillLines(u); }} />
                         <span style={{ width: 100, textAlign: 'right', fontWeight: 700, fontSize: 13, color: '#0f172a', fontFamily: 'monospace' }}>
-                          ${lineTotal.toFixed(2)}
+                          {money(lineTotal)}
                         </span>
                         <button type="button" style={{ color: 'var(--color-danger)', background: 'none', border: 'none', cursor: 'pointer', fontWeight: 'bold', fontSize: 16, width: 24 }} onClick={() => setBillLines(billLines.filter((_, idx) => idx !== i))}>
                           ×
@@ -933,15 +933,15 @@ export const ProcurementWorkspace: React.FC<{ activeEntityId: string; entities?:
                       <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 40 }}>
                         <div style={{ textAlign: 'right' as const }}>
                           <span style={{ fontSize: 11, textTransform: 'uppercase' as const, color: '#64748b', fontWeight: 600, letterSpacing: '0.05em' }}>Subtotal</span>
-                          <p style={{ fontSize: 14, fontWeight: 700, color: '#334155', fontFamily: 'monospace', margin: '2px 0 0' }}>${subtotal.toFixed(2)}</p>
+                          <p style={{ fontSize: 14, fontWeight: 700, color: '#334155', fontFamily: 'monospace', margin: '2px 0 0' }}>{money(subtotal)}</p>
                         </div>
                         <div style={{ textAlign: 'right' as const }}>
                           <span style={{ fontSize: 11, textTransform: 'uppercase' as const, color: '#dc2626', fontWeight: 600, letterSpacing: '0.05em' }}>Tax (VAT/GST/Sales Tax)</span>
-                          <p style={{ fontSize: 14, fontWeight: 700, color: '#dc2626', fontFamily: 'monospace', margin: '2px 0 0' }}>${taxTotal.toFixed(2)}</p>
+                          <p style={{ fontSize: 14, fontWeight: 700, color: '#dc2626', fontFamily: 'monospace', margin: '2px 0 0' }}>{money(taxTotal)}</p>
                         </div>
                         <div style={{ textAlign: 'right' as const, borderLeft: '2px solid #cbd5e1', paddingLeft: 20 }}>
                           <span style={{ fontSize: 11, textTransform: 'uppercase' as const, color: '#047857', fontWeight: 700, letterSpacing: '0.05em' }}>Grand Total</span>
-                          <p style={{ fontSize: 18, fontWeight: 800, color: '#047857', fontFamily: 'monospace', margin: '2px 0 0' }}>${grandTotal.toFixed(2)}</p>
+                          <p style={{ fontSize: 18, fontWeight: 800, color: '#047857', fontFamily: 'monospace', margin: '2px 0 0' }}>{money(grandTotal)}</p>
                         </div>
                       </div>
                     </div>
