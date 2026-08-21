@@ -3,7 +3,7 @@ import type { ReactNode } from 'react';
 import {
   Search, Bell, Plus, ChevronDown, LogOut, Coins, X, FileText, Receipt,
   Building2, Users, Wallet, CalendarDays, Boxes, ClipboardList, Landmark,
-  Globe, BarChart3, Check, Sun, Moon, CloudSun,
+  Globe, BarChart3, Check, Sun, Moon,
 } from 'lucide-react';
 import { NAVIGATION } from '../navigation';
 import type { UserData } from '../Login';
@@ -42,15 +42,13 @@ const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', '
 export default function TopHeader(props: Props) {
   const { currentUser, entities, activeEntityId, onSelectEntity, page, setPage, accounts, notify, onLogout, theme, onThemeChange } = props;
 
-  const displayMode = theme ? getDisplayMode(theme) : 'dark';
-  const themeFamily = theme ? getThemeFamily(theme) : 'bp';
-  const [displayOpen, setDisplayOpen] = useState(false);
-  const displayRef = useRef<HTMLDivElement>(null);
+  const displayMode = theme ? getDisplayMode(theme) : 'cool';
+  const themeFamily = theme ? getThemeFamily(theme) : 'nd';
 
-  const setDisplayMode = (mode: string) => {
+  const toggleDisplayMode = () => {
     if (!onThemeChange) return;
-    onThemeChange(resolveThemeId(themeFamily, mode as any));
-    setDisplayOpen(false);
+    const nextMode = displayMode === 'dark' ? 'cool' : 'dark';
+    onThemeChange(resolveThemeId(themeFamily, nextMode));
   };
 
   const [query, setQuery] = useState('');
@@ -83,7 +81,6 @@ export default function TopHeader(props: Props) {
       if (notifRef.current && !notifRef.current.contains(e.target as Node)) setNotifOpen(false);
       if (actionsRef.current && !actionsRef.current.contains(e.target as Node)) setActionsOpen(false);
       if (entityRef.current && !entityRef.current.contains(e.target as Node)) setEntityOpen(false);
-      if (displayRef.current && !displayRef.current.contains(e.target as Node)) setDisplayOpen(false);
     };
     document.addEventListener('mousedown', onDown);
     return () => document.removeEventListener('mousedown', onDown);
@@ -314,41 +311,39 @@ export default function TopHeader(props: Props) {
           )}
         </div>
 
-        {/* Display mode dropdown */}
-        <div ref={displayRef} style={{ position: 'relative', flexShrink: 0 }}>
-          <button
-            onClick={() => setDisplayOpen(o => !o)}
-            title="Display mode"
-            style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', background: M.hover, border: '1px solid ' + M.border, borderRadius: 9, width: 34, height: 34, cursor: 'pointer', color: M.text }}
-          >
-            {displayMode === 'dark' ? <Moon size={16} style={{ color: 'var(--color-primary)' }} /> : displayMode === 'cool' ? <CloudSun size={16} style={{ color: 'var(--color-primary)' }} /> : <Sun size={16} style={{ color: 'var(--color-primary)' }} />}
-          </button>
-          {displayOpen && (
-            <div style={{ position: 'absolute', top: 'calc(100% + 8px)', right: 0, minWidth: 160, background: M.bg, border: '1px solid ' + M.border, borderRadius: 12, boxShadow: '0 12px 32px rgba(15, 23, 42, 0.16)', zIndex: 60, overflow: 'hidden' }}>
-              <div style={{ padding: '8px 14px', fontSize: 10, fontWeight: 800, letterSpacing: 1, color: M.muted, textTransform: 'uppercase' }}>Display Mode</div>
-              {[
-                { id: 'dark', label: 'Dark', icon: Moon },
-                { id: 'cool', label: 'Cool', icon: CloudSun },
-                { id: 'light', label: 'Light', icon: Sun },
-              ].map(m => {
-                const Icon = m.icon;
-                return (
-                  <button
-                    key={m.id}
-                    onClick={() => setDisplayMode(m.id)}
-                    style={{ display: 'flex', alignItems: 'center', gap: 10, width: '100%', padding: '9px 14px', border: 0, background: 'transparent', cursor: 'pointer', textAlign: 'left', fontSize: 13, color: M.text, borderBottom: '1px solid ' + M.hover }}
-                    onMouseEnter={e => (e.currentTarget.style.background = M.hover)}
-                    onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
-                  >
-                    <Icon size={14} style={{ color: displayMode === m.id ? 'var(--color-primary)' : M.muted }} />
-                    <span style={{ flex: 1, fontWeight: displayMode === m.id ? 700 : 600 }}>{m.label}</span>
-                    {displayMode === m.id && <Check size={14} style={{ color: 'var(--color-primary)' }} />}
-                  </button>
-                );
-              })}
-            </div>
+        {/* Display mode direct toggle (Marine / Dark) */}
+        <button
+          onClick={toggleDisplayMode}
+          title={displayMode === 'dark' ? 'Switch to Marine Light mode' : 'Switch to Dark mode'}
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            background: M.hover,
+            border: '1px solid ' + M.border,
+            borderRadius: 9,
+            width: 34,
+            height: 34,
+            cursor: 'pointer',
+            color: M.text,
+            flexShrink: 0,
+            transition: 'all 0.2s ease',
+          }}
+          onMouseEnter={e => {
+            e.currentTarget.style.borderColor = 'var(--color-primary)';
+            e.currentTarget.style.transform = 'scale(1.06)';
+          }}
+          onMouseLeave={e => {
+            e.currentTarget.style.borderColor = M.border;
+            e.currentTarget.style.transform = 'scale(1)';
+          }}
+        >
+          {displayMode === 'dark' ? (
+            <Sun size={17} style={{ color: '#f59e0b' }} />
+          ) : (
+            <Moon size={17} style={{ color: 'var(--color-primary)' }} />
           )}
-        </div>
+        </button>
 
         {/* Notifications */}
         <div ref={notifRef} style={{ position: 'relative', flexShrink: 0 }}>

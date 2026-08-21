@@ -8,7 +8,9 @@ export interface ThemeDef {
 }
 
 export const THEMES: ThemeDef[] = [
+  { id: 'nd-light', name: '🌊 Marine Light', primary: '#006aa7', accent: '#0098db', sidebar: '#0d1b2a' },
   { id: 'nd-dark', name: '🌊 Navy Dark', primary: '#63b3ed', accent: '#90cdf4', sidebar: '#0d1b2a', dark: true },
+  { id: 'nd-cool', name: '🌊 Marine Executive', primary: '#006aa7', accent: '#0098db', sidebar: '#0d1b2a' },
   { id: 'va-dark', name: 'Dark', primary: '#00d4ff', accent: '#a855f7', sidebar: '#0a1020', dark: true },
   { id: 'va-cool', name: 'Cool', primary: '#00c4e8', accent: '#a855f7', sidebar: '#0d1528' },
   { id: 'va-light', name: 'Light', primary: '#8b5cf6', accent: '#a855f7', sidebar: '#f8fafc' },
@@ -29,7 +31,7 @@ export const THEMES: ThemeDef[] = [
   { id: 'nc-light', name: 'Neon Light', primary: '#4f46e5', accent: '#475569', sidebar: '#0a0e1a' },
 ];
 
-export const DEFAULT_THEME = 'va-cool';
+export const DEFAULT_THEME = 'nd-light';
 
 export function getStoredTheme(): string {
   try {

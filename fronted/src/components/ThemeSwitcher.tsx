@@ -1,27 +1,26 @@
 import { useEffect, useRef, useState } from 'react';
-import { Sun, Moon, CloudSun, Check } from 'lucide-react';
+import { Sun, Moon, Check } from 'lucide-react';
 
 const MODES = [
   { id: 'dark', name: 'Dark', icon: Moon },
-  { id: 'light', name: 'Light', icon: Sun },
-  { id: 'cool', name: 'Cool', icon: CloudSun },
+  { id: 'cool', name: 'Cool', icon: Sun },
 ] as const;
 
 type ModeId = (typeof MODES)[number]['id'];
 
 export function getDisplayMode(theme: string): ModeId {
-  if (theme.endsWith('-light')) return 'light';
-  if (theme.endsWith('-cool')) return 'cool';
+  if (theme.endsWith('-cool') || theme.endsWith('-light')) return 'cool';
   return 'dark';
 }
 
 export function getThemeFamily(theme: string): string {
+  if (theme.startsWith('nd-')) return 'nd';
   if (theme.startsWith('va-')) return 'va';
   if (theme.startsWith('pi-')) return 'pi';
   if (theme.startsWith('gp-')) return 'gp';
   if (theme.startsWith('fn-')) return 'fn';
   if (theme.startsWith('nc-')) return 'nc';
-  return 'bp';
+  return 'nd';
 }
 
 export function resolveThemeId(family: string, mode: ModeId): string {
