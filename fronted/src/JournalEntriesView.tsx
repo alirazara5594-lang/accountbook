@@ -131,25 +131,22 @@ export const JournalEntriesView: React.FC<JournalEntriesViewProps> = ({ accounts
           <p className="text-[var(--color-text-muted)] text-xs mt-0.5">Record double-entry general journal vouchers with full debit-credit balancing and audit verification.</p>
         </div>
         <div className="flex items-center gap-2 shrink-0">
-          <button onClick={() => document.getElementById('journal-form')?.scrollIntoView({ behavior: 'smooth' })} className="primary h-9 px-4 rounded-xl text-xs font-semibold">
+          <DataToolbar
+            query={query}
+            setQuery={setQuery}
+            searchPlaceholder="Search reference, description..."
+            exportFileName="journal-entries"
+            exportSheetName="Journal Entries"
+            exportTitle="Journal Entries"
+            exportSubtitle="General journal with full draft → submitted → approved → posted lifecycle (IAS 8)."
+            exportHeaders={exportHeaders}
+            exportRows={exportRows}
+            onRefresh={refresh}
+          />
+          <button onClick={() => document.getElementById('journal-form')?.scrollIntoView({ behavior: 'smooth' })} className="primary h-9 px-4 rounded-xl text-xs font-semibold whitespace-nowrap">
             ＋ New Entry
           </button>
         </div>
-      </div>
-
-      <div className="flex items-center gap-2">
-        <DataToolbar
-          query={query}
-          setQuery={setQuery}
-          searchPlaceholder="Search reference, description, status..."
-          exportFileName="journal-entries"
-          exportSheetName="Journal Entries"
-          exportTitle="Journal Entries"
-          exportSubtitle="General journal with full draft → submitted → approved → posted lifecycle (IAS 8)."
-          exportHeaders={exportHeaders}
-          exportRows={exportRows}
-          onRefresh={refresh}
-        />
       </div>
 
       {error && <p className="text-xs text-rose-600">{error}</p>}

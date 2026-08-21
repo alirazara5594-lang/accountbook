@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import type { FormEvent } from 'react'
-import { Wrench, Search, Plus, Pencil, Trash2, Package, Tag, Archive } from 'lucide-react'
+import { Wrench, Pencil, Trash2, Package, Tag, Archive } from 'lucide-react'
 
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'

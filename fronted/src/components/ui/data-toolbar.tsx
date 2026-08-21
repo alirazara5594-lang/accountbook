@@ -67,8 +67,8 @@ export function DataToolbar({
             value={query || ''}
             onChange={e => setQuery(e.target.value)}
             placeholder={searchPlaceholder}
-            className="!pl-9 pr-7 h-8 w-56 bg-[var(--color-surface)] border border-[var(--color-border)] rounded-xl text-xs text-[var(--color-text-strong)] placeholder:text-[var(--color-text-muted)] focus:border-[var(--color-primary)] focus:outline-none transition-all shadow-2xs"
-            style={{ paddingLeft: '34px' }}
+            className="!pl-9 pr-7 h-9 w-60 bg-[var(--color-surface)] border border-[var(--color-border)] rounded-xl text-xs text-[var(--color-text-strong)] placeholder:text-[var(--color-text-muted)] focus:border-[var(--color-primary)] focus:outline-none transition-all shadow-2xs box-border"
+            style={{ paddingLeft: '34px', paddingTop: '0px', paddingBottom: '0px' }}
           />
           {query ? (
             <button
@@ -77,7 +77,7 @@ export function DataToolbar({
               className="absolute right-2 top-1/2 -translate-y-1/2 text-[var(--color-text-muted)] hover:text-[var(--color-text-strong)]"
               aria-label="Clear search"
             >
-              <X className="h-3 w-3" />
+              <X className="h-3.5 w-3.5" />
             </button>
           ) : null}
         </div>
@@ -89,7 +89,7 @@ export function DataToolbar({
         <button
           type="button"
           onClick={onRefresh}
-          className="inline-flex shrink-0 items-center justify-center rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] h-8 px-2.5 gap-1.5 text-xs font-semibold text-[var(--color-text)] hover:bg-[var(--color-surface-muted)] hover:text-[var(--color-text-strong)] transition-colors shadow-2xs"
+          className="inline-flex shrink-0 items-center justify-center rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] h-9 px-3 gap-1.5 text-xs font-semibold text-[var(--color-text)] hover:bg-[var(--color-surface-muted)] hover:text-[var(--color-text-strong)] transition-colors shadow-2xs"
         >
           <RefreshCw className="w-3.5 h-3.5 text-[var(--color-text-muted)]" /> Refresh
         </button>
@@ -98,7 +98,7 @@ export function DataToolbar({
       {canExport && (
         <DropdownMenu>
           <DropdownMenuTrigger
-            className="inline-flex shrink-0 items-center justify-center rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] h-8 px-2.5 gap-1.5 text-xs font-semibold text-[var(--color-text)] hover:bg-[var(--color-surface-muted)] hover:text-[var(--color-text-strong)] transition-colors shadow-2xs outline-none"
+            className="inline-flex shrink-0 items-center justify-center rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] h-9 px-3 gap-1.5 text-xs font-semibold text-[var(--color-text)] hover:bg-[var(--color-surface-muted)] hover:text-[var(--color-text-strong)] transition-colors shadow-2xs outline-none"
           >
             <Download className="w-3.5 h-3.5 text-[var(--color-text-muted)]" /> Export
           </DropdownMenuTrigger>
