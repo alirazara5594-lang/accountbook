@@ -9,7 +9,6 @@ import { NAVIGATION } from '../navigation';
 import type { UserData } from '../Login';
 import { useSalesStore, useProcurementStore } from '../stores';
 import { getActiveCurrency } from '../lib/currency';
-import { getDisplayMode, getThemeFamily, resolveThemeId } from './ThemeSwitcher';
 
 const M = {
   border: 'var(--color-border)',
@@ -42,13 +41,12 @@ const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', '
 export default function TopHeader(props: Props) {
   const { currentUser, entities, activeEntityId, onSelectEntity, page, setPage, accounts, notify, onLogout, theme, onThemeChange } = props;
 
-  const displayMode = theme ? getDisplayMode(theme) : 'cool';
-  const themeFamily = theme ? getThemeFamily(theme) : 'nd';
+  const isDark = theme ? theme.endsWith('-dark') : false;
 
   const toggleDisplayMode = () => {
     if (!onThemeChange) return;
-    const nextMode = displayMode === 'dark' ? 'cool' : 'dark';
-    onThemeChange(resolveThemeId(themeFamily, nextMode));
+    const nextTheme = isDark ? 'nd-light' : 'nd-dark';
+    onThemeChange(nextTheme);
   };
 
   const [query, setQuery] = useState('');
@@ -311,10 +309,10 @@ export default function TopHeader(props: Props) {
           )}
         </div>
 
-        {/* Display mode direct toggle (Marine / Dark) */}
+        {/* Display mode direct toggle (Marine Light / Dark) */}
         <button
           onClick={toggleDisplayMode}
-          title={displayMode === 'dark' ? 'Switch to Marine Light mode' : 'Switch to Dark mode'}
+          title={isDark ? 'Switch to Marine Light mode' : 'Switch to Navy Dark mode'}
           style={{
             display: 'flex',
             alignItems: 'center',
@@ -338,7 +336,7 @@ export default function TopHeader(props: Props) {
             e.currentTarget.style.transform = 'scale(1)';
           }}
         >
-          {displayMode === 'dark' ? (
+          {isDark ? (
             <Sun size={17} style={{ color: '#f59e0b' }} />
           ) : (
             <Moon size={17} style={{ color: 'var(--color-primary)' }} />
