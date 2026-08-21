@@ -10,16 +10,6 @@ import type { UserData } from '../Login';
 import { useSalesStore, useProcurementStore } from '../stores';
 import { getActiveCurrency } from '../lib/currency';
 
-const M = {
-  border: 'var(--color-border)',
-  text: 'var(--color-text)',
-  muted: 'var(--color-text-muted)',
-  accent: 'var(--color-primary)',
-  bg: 'var(--color-surface)',
-  hover: 'var(--color-surface-muted)',
-  sidebar: 'var(--color-sidebar-bg)',
-};
-
 interface Props {
   currentUser: UserData;
   entities: any[];
@@ -147,14 +137,14 @@ export default function TopHeader(props: Props) {
   if (inactiveAccounts.length) alerts.push({ icon: <Landmark size={14} />, label: `${inactiveAccounts.length} inactive account${inactiveAccounts.length > 1 ? 's' : ''}`, sub: 'Check chart of accounts', page: 'Accounting.Chart of Accounts' });
 
   const quickActions: { icon: ReactNode; label: string; action: () => void }[] = [
-    { icon: <ClipboardList size={15} />, label: 'New Journal Entry', action: () => { if (page === 'Accounting.Journal Entries') { document.getElementById('journal-form')?.scrollIntoView({ behavior: 'smooth' }); } else { setPage('Accounting.Journal Entries'); } } },
-    { icon: <Receipt size={15} />, label: 'New Invoice', action: () => setPage('Sales & Customers.Sales Workspace') },
-    { icon: <FileText size={15} />, label: 'New Vendor Bill', action: () => setPage('Procurement.Bills') },
-    { icon: <Users size={15} />, label: 'New Customer', action: () => setPage('Sales & Customers.Customers') },
-    { icon: <Building2 size={15} />, label: 'New Vendor', action: () => setPage('Procurement.Vendors') },
-    { icon: <Boxes size={15} />, label: 'New Product / Service', action: () => setPage('Sales & Customers.Products & Services') },
-    { icon: <BarChart3 size={15} />, label: 'Financial Reports', action: () => setPage('Accounting.Financial Reports') },
-    { icon: <Wallet size={15} />, label: 'Bank Account', action: () => setPage('Banking & Payments.Bank Accounts') },
+    { icon: <ClipboardList size={14} />, label: 'New Journal Entry', action: () => { if (page === 'Accounting.Journal Entries') { document.getElementById('journal-form')?.scrollIntoView({ behavior: 'smooth' }); } else { setPage('Accounting.Journal Entries'); } } },
+    { icon: <Receipt size={14} />, label: 'New Invoice', action: () => setPage('Sales & Customers.Sales Workspace') },
+    { icon: <FileText size={14} />, label: 'New Vendor Bill', action: () => setPage('Procurement.Bills') },
+    { icon: <Users size={14} />, label: 'New Customer', action: () => setPage('Sales & Customers.Customers') },
+    { icon: <Building2 size={14} />, label: 'New Vendor', action: () => setPage('Procurement.Vendors') },
+    { icon: <Boxes size={14} />, label: 'New Product / Service', action: () => setPage('Sales & Customers.Products & Services') },
+    { icon: <BarChart3 size={14} />, label: 'Financial Reports', action: () => setPage('Accounting.Financial Reports') },
+    { icon: <Wallet size={14} />, label: 'Bank Account', action: () => setPage('Banking & Payments.Bank Accounts') },
   ];
 
   const [groupName, itemName] = page.split('.');
@@ -162,60 +152,62 @@ export default function TopHeader(props: Props) {
 
   const dropdownBase: React.CSSProperties = {
     position: 'absolute',
-    top: 'calc(100% + 8px)',
+    top: 'calc(100% + 6px)',
     right: 0,
-    minWidth: 260,
-    background: '#fff',
-    border: '1px solid #e2e8f0',
+    minWidth: 240,
+    background: 'var(--color-surface)',
+    border: '1px solid var(--color-border)',
     borderRadius: 12,
-    boxShadow: '0 12px 32px rgba(15, 23, 42, 0.16)',
+    boxShadow: '0 16px 40px rgba(0, 0, 0, 0.45)',
     zIndex: 60,
     overflow: 'hidden',
   };
 
   return (
-    <header className="topbar" style={{ background: M.bg, borderBottom: '2px solid var(--color-sidebar-bg)', position: 'sticky', top: 0, zIndex: 2000, boxShadow: '0 2px 8px color-mix(in srgb, var(--color-sidebar-bg) 20%, transparent)' }}>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '0 16px', minHeight: 54, maxWidth: 1450, margin: '0 auto', flexWrap: 'wrap', rowGap: 6 }}>
-        {/* Working entity switcher + breadcrumb */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexShrink: 0 }}>
+    <header className="topbar" style={{ background: 'var(--color-surface)', borderBottom: '1px solid var(--color-border)', position: 'sticky', top: 0, zIndex: 2000, boxShadow: 'var(--shadow-sm)' }}>
+      {/* Strict 1-line flex container */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '0 24px', height: 52, maxWidth: 1450, margin: '0 auto', flexWrap: 'nowrap', boxSizing: 'border-box', overflow: 'hidden' }}>
+        
+        {/* Working entity switcher — moved slightly left */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexShrink: 0, marginLeft: -8 }}>
           <div ref={entityRef} style={{ position: 'relative' }}>
             <button
               onClick={() => setEntityOpen(o => !o)}
               title="Switch working entity"
               style={{
-                display: 'flex', alignItems: 'center', gap: 9,
-                background: M.hover, border: '1px solid ' + M.border, borderRadius: 9,
-                padding: '5px 10px', cursor: 'pointer',
+                display: 'flex', alignItems: 'center', gap: 8,
+                background: 'var(--color-surface-muted)', border: '1px solid var(--color-border)', borderRadius: 9,
+                padding: '4px 10px', cursor: 'pointer', height: 34,
               }}
             >
-              <span className="avatar small" style={{ width: 26, height: 26, fontSize: 10 }}>{activeEntity?.code?.[0] || activeEntity?.name?.[0] || 'E'}</span>
+              <span className="avatar small" style={{ width: 24, height: 24, fontSize: 10 }}>{activeEntity?.code?.[0] || activeEntity?.name?.[0] || 'E'}</span>
               <span style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', lineHeight: 1.15 }}>
-                <strong style={{ fontSize: 12, color: M.text, whiteSpace: 'nowrap', maxWidth: 150, overflow: 'hidden', textOverflow: 'ellipsis' }}>{activeEntity?.name || 'Select entity'}</strong>
-                <small style={{ fontSize: 10, color: M.muted }}>{activeEntity?.currencyCode || activeEntity?.functionalCurrency || 'PKR'} · {activeEntity?.country || '—'}</small>
+                <strong style={{ fontSize: 12.5, color: 'var(--color-text)', whiteSpace: 'nowrap', maxWidth: 130, overflow: 'hidden', textOverflow: 'ellipsis' }}>{activeEntity?.name || 'Select entity'}</strong>
+                <small style={{ fontSize: 10, color: 'var(--color-text-muted)' }}>{activeEntity?.currencyCode || activeEntity?.functionalCurrency || 'PKR'}</small>
               </span>
-              <ChevronDown size={13} style={{ color: M.muted }} />
+              <ChevronDown size={13} style={{ color: 'var(--color-text-muted)' }} />
             </button>
             {entityOpen && (
               <div style={dropdownBase}>
-                <div style={{ padding: '8px 14px', fontSize: 10, fontWeight: 800, letterSpacing: 1, color: M.muted, textTransform: 'uppercase' }}>Working entity</div>
+                <div style={{ padding: '8px 14px', fontSize: 10, fontWeight: 800, letterSpacing: 1, color: 'var(--color-text-muted)', textTransform: 'uppercase' }}>Working entity</div>
                 {entities.length === 0 ? (
-                  <div style={{ padding: '18px 16px', fontSize: 12, color: M.muted, textAlign: 'center' }}>No entities yet</div>
+                  <div style={{ padding: '16px 14px', fontSize: 12, color: 'var(--color-text-muted)', textAlign: 'center' }}>No entities yet</div>
                 ) : (
-                  <div style={{ maxHeight: 300, overflowY: 'auto' }}>
+                  <div style={{ maxHeight: 280, overflowY: 'auto' }}>
                     {entities.map(e => (
                       <button
                         key={e.id}
                         onClick={() => { onSelectEntity(e.id); notify(`Switched to ${e.name}`); setEntityOpen(false); }}
-                        style={{ display: 'flex', alignItems: 'center', gap: 10, width: '100%', padding: '9px 14px', border: 0, background: 'transparent', cursor: 'pointer', textAlign: 'left', color: M.text, fontSize: 13, borderBottom: '1px solid ' + M.hover }}
-                        onMouseEnter={ev => (ev.currentTarget.style.background = M.hover)}
+                        style={{ display: 'flex', alignItems: 'center', gap: 10, width: '100%', padding: '9px 14px', border: 0, background: 'transparent', cursor: 'pointer', textAlign: 'left', color: 'var(--color-text)', fontSize: 12.5, borderBottom: '1px solid var(--color-border-subtle)' }}
+                        onMouseEnter={ev => (ev.currentTarget.style.background = 'var(--color-surface-muted)')}
                         onMouseLeave={ev => (ev.currentTarget.style.background = 'transparent')}
                       >
-                        <span className="avatar small" style={{ width: 26, height: 26, fontSize: 10 }}>{e.code?.[0] || e.name?.[0] || 'E'}</span>
+                        <span className="avatar small" style={{ width: 24, height: 24, fontSize: 10 }}>{e.code?.[0] || e.name?.[0] || 'E'}</span>
                         <span style={{ flex: 1, minWidth: 0 }}>
                           <span style={{ display: 'block', fontWeight: 600, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{e.name}</span>
-                          <span style={{ display: 'block', fontSize: 11, color: M.muted }}>{e.currencyCode || e.functionalCurrency || 'PKR'} · {e.country || '—'}{e.active ? '' : ' · Deactivated'}</span>
+                          <span style={{ display: 'block', fontSize: 10.5, color: 'var(--color-text-muted)' }}>{e.currencyCode || e.functionalCurrency || 'PKR'} · {e.country || '—'}</span>
                         </span>
-                        {e.id === activeEntityId && <Check size={15} style={{ color: M.accent, flexShrink: 0 }} />}
+                        {e.id === activeEntityId && <Check size={14} style={{ color: 'var(--color-primary)', flexShrink: 0 }} />}
                       </button>
                     ))}
                   </div>
@@ -223,47 +215,50 @@ export default function TopHeader(props: Props) {
               </div>
             )}
           </div>
-          <div style={{ width: 1, height: 20, background: M.border }} />
-          <div style={{ fontSize: 12, color: M.muted, whiteSpace: 'nowrap', fontWeight: 500, flexShrink: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis' }}>
-            <span style={{ color: M.text, fontWeight: 600 }}>{groupLabel}</span>
-            {itemName && itemName !== 'Summary' && itemName !== 'Dashboard' && <><span style={{ margin: '0 4px', color: M.muted }}>/</span><span>{itemName}</span></>}
+
+          <div style={{ width: 1, height: 18, background: 'var(--color-border)' }} />
+
+          {/* Breadcrumb */}
+          <div style={{ fontSize: 12, color: 'var(--color-text-muted)', whiteSpace: 'nowrap', fontWeight: 500, flexShrink: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis' }}>
+            <span style={{ color: 'var(--color-text)', fontWeight: 600 }}>{groupLabel}</span>
+            {itemName && itemName !== 'Summary' && itemName !== 'Dashboard' && <><span style={{ margin: '0 4px', color: 'var(--color-text-muted)' }}>/</span><span>{itemName}</span></>}
           </div>
         </div>
 
         {/* Global search */}
-        <div ref={searchRef} style={{ position: 'relative', flex: 1, maxWidth: 220, marginLeft: 'auto' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8, background: '#f1f5f9', border: `1px solid ${searchOpen ? M.accent : 'transparent'}`, borderRadius: 10, padding: '0 10px', height: 36 }}>
-            <Search size={15} style={{ color: M.muted, flexShrink: 0 }} />
+        <div ref={searchRef} style={{ position: 'relative', flex: 1, maxWidth: 220, marginLeft: 'auto', flexShrink: 1, minWidth: 120 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 7, background: 'var(--color-surface-muted)', border: `1px solid ${searchOpen ? 'var(--color-primary)' : 'var(--color-border)'}`, borderRadius: 9, padding: '0 10px', height: 34, transition: 'all 0.2s ease' }}>
+            <Search size={14} style={{ color: 'var(--color-text-muted)', flexShrink: 0 }} />
             <input
               ref={searchInputRef}
               value={query}
               onChange={e => { setQuery(e.target.value); setSearchOpen(true); }}
               onFocus={() => setSearchOpen(true)}
-              placeholder="Search pages, accounts, companies…"
-              style={{ border: 0, outline: 'none', background: 'transparent', flex: 1, fontSize: 13, color: M.text }}
+              placeholder="Search pages, accounts…"
+              style={{ border: 0, outline: 'none', background: 'transparent', width: '100%', minWidth: 0, fontSize: 12.5, color: 'var(--color-text)' }}
             />
-            {query && <button onClick={() => { setQuery(''); setSearchOpen(false); }} style={{ border: 0, background: 'none', cursor: 'pointer', padding: 0, color: M.muted }}><X size={14} /></button>}
+            {query && <button onClick={() => { setQuery(''); setSearchOpen(false); }} style={{ border: 0, background: 'none', cursor: 'pointer', padding: 0, color: 'var(--color-text-muted)' }}><X size={13} /></button>}
           </div>
           {searchOpen && (
             <div style={dropdownBase}>
               {results.length === 0 ? (
-                <div style={{ padding: '18px 16px', fontSize: 12, color: M.muted, textAlign: 'center' }}>
+                <div style={{ padding: '16px 14px', fontSize: 12, color: 'var(--color-text-muted)', textAlign: 'center' }}>
                   {query ? 'No matches found' : 'Type to search pages, accounts or companies'}
                 </div>
               ) : (
-                <div style={{ maxHeight: 320, overflowY: 'auto' }}>
+                <div style={{ maxHeight: 300, overflowY: 'auto' }}>
                   {results.map((r, i) => (
                     <button
                       key={i}
                       onClick={() => { r.action(); setSearchOpen(false); setQuery(''); }}
-                      style={{ display: 'flex', alignItems: 'center', gap: 10, width: '100%', padding: '9px 14px', border: 0, background: 'transparent', cursor: 'pointer', textAlign: 'left', color: M.text, fontSize: 13, borderBottom: '1px solid #f1f5f9' }}
-                      onMouseEnter={e => (e.currentTarget.style.background = M.hover)}
+                      style={{ display: 'flex', alignItems: 'center', gap: 9, width: '100%', padding: '9px 14px', border: 0, background: 'transparent', cursor: 'pointer', textAlign: 'left', color: 'var(--color-text)', fontSize: 12.5, borderBottom: '1px solid var(--color-border-subtle)' }}
+                      onMouseEnter={e => (e.currentTarget.style.background = 'var(--color-surface-muted)')}
                       onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
                     >
-                      <span style={{ color: M.accent, display: 'flex' }}>{r.icon}</span>
+                      <span style={{ color: 'var(--color-primary)', display: 'flex' }}>{r.icon}</span>
                       <span style={{ flex: 1, minWidth: 0 }}>
                         <span style={{ display: 'block', fontWeight: 600, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{r.label}</span>
-                        <span style={{ display: 'block', fontSize: 11, color: M.muted }}>{r.sub}</span>
+                        <span style={{ display: 'block', fontSize: 10.5, color: 'var(--color-text-muted)' }}>{r.sub}</span>
                       </span>
                     </button>
                   ))}
@@ -273,117 +268,120 @@ export default function TopHeader(props: Props) {
           )}
         </div>
 
-        <div style={{ flex: 1 }} />
-
-        {/* Currency badge */}
-        <div title="Active currency" style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, fontWeight: 700, color: 'var(--color-primary)', background: 'var(--color-secondary)', border: '1px solid var(--color-secondary-hover)', borderRadius: 8, padding: '5px 10px', flexShrink: 0 }}>
-          <Coins size={14} />
-          {currency}
-        </div>
-
-        {/* Fiscal period */}
-        <div title="Fiscal period" style={{ display: 'flex', alignItems: 'center', gap: 4, flexShrink: 0 }}>
-          <CalendarDays size={14} style={{ color: M.muted }} />
-          <select value={period.m} onChange={e => setPeriod(p => ({ ...p, m: Number(e.target.value) }))} style={{ border: '1px solid ' + M.border, borderRadius: 8, padding: '4px 6px', fontSize: 12, background: 'var(--color-surface)', color: M.text, cursor: 'pointer', outline: 'none' }}>
-            {MONTHS.map((m, i) => <option key={m} value={i}>{m}</option>)}
-          </select>
-          <select value={period.y} onChange={e => setPeriod(p => ({ ...p, y: Number(e.target.value) }))} style={{ border: '1px solid ' + M.border, borderRadius: 8, padding: '4px 6px', fontSize: 12, background: 'var(--color-surface)', color: M.text, cursor: 'pointer', outline: 'none' }}>
-            {[new Date().getFullYear() - 1, new Date().getFullYear(), new Date().getFullYear() + 1].map(y => <option key={y} value={y}>{y}</option>)}
-          </select>
-        </div>
-
-        {/* Quick actions */}
-        <div ref={actionsRef} style={{ position: 'relative', flexShrink: 0 }}>
-          <button onClick={() => setActionsOpen(o => !o)} title="Quick actions" style={{ display: 'flex', alignItems: 'center', gap: 4, background: M.accent, color: '#fff', border: 0, borderRadius: 9, padding: '5px 9px', cursor: 'pointer', fontSize: 12, fontWeight: 700 }}>
-            <Plus size={13} /> Quick
-          </button>
-          {actionsOpen && (
-            <div style={dropdownBase}>
-              <div style={{ padding: '8px 14px', fontSize: 10, fontWeight: 800, letterSpacing: 1, color: M.muted, textTransform: 'uppercase' }}>Create New</div>
-              {quickActions.map((qa, i) => (
-                <button key={i} onClick={() => { qa.action(); setActionsOpen(false); }} style={{ display: 'flex', alignItems: 'center', gap: 10, width: '100%', padding: '9px 14px', border: 0, background: 'transparent', cursor: 'pointer', textAlign: 'left', color: M.text, fontSize: 13 }} onMouseEnter={e => (e.currentTarget.style.background = M.hover)} onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}>
-                  <span style={{ color: M.accent, display: 'flex' }}>{qa.icon}</span>{qa.label}
-                </button>
-              ))}
-            </div>
-          )}
-        </div>
-
-        {/* Display mode direct toggle (Marine Light / Dark) */}
-        <button
-          onClick={toggleDisplayMode}
-          title={isDark ? 'Switch to Marine Light mode' : 'Switch to Navy Dark mode'}
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            background: M.hover,
-            border: '1px solid ' + M.border,
-            borderRadius: 9,
-            width: 34,
-            height: 34,
-            cursor: 'pointer',
-            color: M.text,
-            flexShrink: 0,
-            transition: 'all 0.2s ease',
-          }}
-          onMouseEnter={e => {
-            e.currentTarget.style.borderColor = 'var(--color-primary)';
-            e.currentTarget.style.transform = 'scale(1.06)';
-          }}
-          onMouseLeave={e => {
-            e.currentTarget.style.borderColor = M.border;
-            e.currentTarget.style.transform = 'scale(1)';
-          }}
-        >
-          {isDark ? (
-            <Sun size={17} style={{ color: '#f59e0b' }} />
-          ) : (
-            <Moon size={17} style={{ color: 'var(--color-primary)' }} />
-          )}
-        </button>
-
-        {/* Notifications */}
-        <div ref={notifRef} style={{ position: 'relative', flexShrink: 0 }}>
-          <button onClick={() => setNotifOpen(o => !o)} title="Notifications" style={{ position: 'relative', background: M.hover, border: 0, borderRadius: 9, width: 34, height: 34, cursor: 'pointer', color: M.text, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-            <Bell size={16} />
-            {notifCount > 0 && <span style={{ position: 'absolute', top: -4, right: -4, background: '#e11d48', color: '#fff', fontSize: 10, fontWeight: 800, borderRadius: 99, minWidth: 16, height: 16, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '0 4px' }}>{notifCount}</span>}
-          </button>
-          {notifOpen && (
-            <div style={dropdownBase}>
-              <div style={{ padding: '8px 14px', fontSize: 10, fontWeight: 800, letterSpacing: 1, color: M.muted, textTransform: 'uppercase' }}>Alerts</div>
-              {alerts.length === 0 ? (
-                <div style={{ padding: '18px 16px', fontSize: 12, color: M.muted, textAlign: 'center' }}>All caught up 🎉</div>
-              ) : (
-                alerts.map((a, i) => (
-                  <button key={i} onClick={() => { setPage(a.page); setNotifOpen(false); }} style={{ display: 'flex', alignItems: 'center', gap: 10, width: '100%', padding: '10px 14px', border: 0, background: 'transparent', cursor: 'pointer', textAlign: 'left', color: M.text, fontSize: 13, borderBottom: '1px solid #f1f5f9' }} onMouseEnter={e => (e.currentTarget.style.background = M.hover)} onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}>
-                    <span style={{ color: '#e11d48', display: 'flex' }}>{a.icon}</span>
-                    <span>
-                      <span style={{ display: 'block', fontWeight: 600 }}>{a.label}</span>
-                      <span style={{ display: 'block', fontSize: 11, color: M.muted }}>{a.sub}</span>
-                    </span>
-                  </button>
-                ))
-              )}
-            </div>
-          )}
-        </div>
-
-        {/* User profile */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexShrink: 0 }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 9 }}>
-            <div className="avatar small" style={{ width: 30, height: 30, fontSize: 11 }}>{currentUser?.avatar}</div>
-            <div style={{ lineHeight: 1.15 }}>
-              <strong style={{ display: 'block', fontSize: 12, color: M.text }}>{currentUser?.fullName}</strong>
-              <small style={{ display: 'block', fontSize: 10, color: M.muted }}>{currentUser?.role}</small>
-            </div>
+        {/* Action icons row — strictly in 1 line */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
+          
+          {/* Currency badge */}
+          <div title="Active currency" style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: 12, fontWeight: 700, color: 'var(--color-primary)', background: 'var(--color-secondary)', border: '1px solid var(--color-secondary-hover)', borderRadius: 8, padding: '4px 8px', height: 32, flexShrink: 0, boxSizing: 'border-box' }}>
+            <Coins size={13} />
+            {currency}
           </div>
-          <ChevronDown size={13} style={{ color: M.muted }} />
-        </div>
 
-        <button onClick={onLogout} title="Sign out" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'transparent', border: 0, borderRadius: 8, width: 32, height: 32, cursor: 'pointer', color: M.muted, flexShrink: 0 }} onMouseEnter={e => (e.currentTarget.style.color = '#e11d48')} onMouseLeave={e => (e.currentTarget.style.color = M.muted)}>
-          <LogOut size={16} />
-        </button>
+          {/* Fiscal period */}
+          <div title="Fiscal period" style={{ display: 'flex', alignItems: 'center', gap: 4, flexShrink: 0 }}>
+            <CalendarDays size={13} style={{ color: 'var(--color-text-muted)' }} />
+            <select value={period.m} onChange={e => setPeriod(p => ({ ...p, m: Number(e.target.value) }))} style={{ border: '1px solid var(--color-border)', borderRadius: 7, padding: '3px 6px', fontSize: 12, background: 'var(--color-surface)', color: 'var(--color-text)', cursor: 'pointer', outline: 'none', height: 32 }}>
+              {MONTHS.map((m, i) => <option key={m} value={i}>{m}</option>)}
+            </select>
+            <select value={period.y} onChange={e => setPeriod(p => ({ ...p, y: Number(e.target.value) }))} style={{ border: '1px solid var(--color-border)', borderRadius: 7, padding: '3px 6px', fontSize: 12, background: 'var(--color-surface)', color: 'var(--color-text)', cursor: 'pointer', outline: 'none', height: 32 }}>
+              {[new Date().getFullYear() - 1, new Date().getFullYear(), new Date().getFullYear() + 1].map(y => <option key={y} value={y}>{y}</option>)}
+            </select>
+          </div>
+
+          {/* Quick actions */}
+          <div ref={actionsRef} style={{ position: 'relative', flexShrink: 0 }}>
+            <button onClick={() => setActionsOpen(o => !o)} title="Quick actions" style={{ display: 'flex', alignItems: 'center', gap: 4, background: 'var(--color-primary)', color: '#fff', border: 0, borderRadius: 8, padding: '0 10px', height: 32, cursor: 'pointer', fontSize: 12, fontWeight: 700 }}>
+              <Plus size={13} /> Quick
+            </button>
+            {actionsOpen && (
+              <div style={dropdownBase}>
+                <div style={{ padding: '8px 14px', fontSize: 10, fontWeight: 800, letterSpacing: 1, color: 'var(--color-text-muted)', textTransform: 'uppercase' }}>Create New</div>
+                {quickActions.map((qa, i) => (
+                  <button key={i} onClick={() => { qa.action(); setActionsOpen(false); }} style={{ display: 'flex', alignItems: 'center', gap: 9, width: '100%', padding: '9px 14px', border: 0, background: 'transparent', cursor: 'pointer', textAlign: 'left', color: 'var(--color-text)', fontSize: 12.5 }} onMouseEnter={e => (e.currentTarget.style.background = 'var(--color-surface-muted)')} onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}>
+                    <span style={{ color: 'var(--color-primary)', display: 'flex' }}>{qa.icon}</span>{qa.label}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* Display mode toggle (Light / Dark) */}
+          <button
+            onClick={toggleDisplayMode}
+            title={isDark ? 'Switch to Light mode' : 'Switch to Dark mode'}
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              background: 'var(--color-surface-muted)',
+              border: '1px solid var(--color-border)',
+              borderRadius: 8,
+              width: 32,
+              height: 32,
+              cursor: 'pointer',
+              color: 'var(--color-text)',
+              flexShrink: 0,
+              transition: 'all 0.2s ease',
+            }}
+            onMouseEnter={e => {
+              e.currentTarget.style.borderColor = 'var(--color-primary)';
+              e.currentTarget.style.transform = 'scale(1.05)';
+            }}
+            onMouseLeave={e => {
+              e.currentTarget.style.borderColor = 'var(--color-border)';
+              e.currentTarget.style.transform = 'scale(1)';
+            }}
+          >
+            {isDark ? (
+              <Sun size={15} style={{ color: '#f59e0b' }} />
+            ) : (
+              <Moon size={15} style={{ color: 'var(--color-primary)' }} />
+            )}
+          </button>
+
+          {/* Notifications */}
+          <div ref={notifRef} style={{ position: 'relative', flexShrink: 0 }}>
+            <button onClick={() => setNotifOpen(o => !o)} title="Notifications" style={{ position: 'relative', background: 'var(--color-surface-muted)', border: '1px solid var(--color-border)', borderRadius: 8, width: 32, height: 32, cursor: 'pointer', color: 'var(--color-text)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <Bell size={14} />
+              {notifCount > 0 && <span style={{ position: 'absolute', top: -3, right: -3, background: '#f43f5e', color: '#fff', fontSize: 9, fontWeight: 800, borderRadius: 99, minWidth: 15, height: 15, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '0 3px' }}>{notifCount}</span>}
+            </button>
+            {notifOpen && (
+              <div style={dropdownBase}>
+                <div style={{ padding: '8px 14px', fontSize: 10, fontWeight: 800, letterSpacing: 1, color: 'var(--color-text-muted)', textTransform: 'uppercase' }}>Alerts</div>
+                {alerts.length === 0 ? (
+                  <div style={{ padding: '16px 14px', fontSize: 12, color: 'var(--color-text-muted)', textAlign: 'center' }}>All caught up 🎉</div>
+                ) : (
+                  alerts.map((a, i) => (
+                    <button key={i} onClick={() => { setPage(a.page); setNotifOpen(false); }} style={{ display: 'flex', alignItems: 'center', gap: 9, width: '100%', padding: '9px 14px', border: 0, background: 'transparent', cursor: 'pointer', textAlign: 'left', color: 'var(--color-text)', fontSize: 12.5, borderBottom: '1px solid var(--color-border-subtle)' }} onMouseEnter={e => (e.currentTarget.style.background = 'var(--color-surface-muted)')} onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}>
+                      <span style={{ color: '#f43f5e', display: 'flex' }}>{a.icon}</span>
+                      <span>
+                        <span style={{ display: 'block', fontWeight: 600 }}>{a.label}</span>
+                        <span style={{ display: 'block', fontSize: 10.5, color: 'var(--color-text-muted)' }}>{a.sub}</span>
+                      </span>
+                    </button>
+                  ))
+                )}
+              </div>
+            )}
+          </div>
+
+          {/* User profile */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 7, flexShrink: 0 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 7 }}>
+              <div className="avatar small" style={{ width: 28, height: 28, fontSize: 11 }}>{currentUser?.avatar}</div>
+              <div style={{ lineHeight: 1.15 }}>
+                <strong style={{ display: 'block', fontSize: 12, color: 'var(--color-text)', whiteSpace: 'nowrap' }}>{currentUser?.fullName}</strong>
+                <small style={{ display: 'block', fontSize: 10, color: 'var(--color-text-muted)', whiteSpace: 'nowrap' }}>{currentUser?.role}</small>
+              </div>
+            </div>
+            <ChevronDown size={12} style={{ color: 'var(--color-text-muted)' }} />
+          </div>
+
+          {/* Logout */}
+          <button onClick={onLogout} title="Sign out" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'transparent', border: 0, borderRadius: 7, width: 28, height: 28, cursor: 'pointer', color: 'var(--color-text-muted)', flexShrink: 0 }} onMouseEnter={e => (e.currentTarget.style.color = '#f43f5e')} onMouseLeave={e => (e.currentTarget.style.color = 'var(--color-text-muted)')}>
+            <LogOut size={15} />
+          </button>
+        </div>
       </div>
     </header>
   );

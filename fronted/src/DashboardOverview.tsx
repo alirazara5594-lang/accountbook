@@ -1,12 +1,12 @@
-import { useEffect } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import {
   TrendingUp, Wallet, Building2, Landmark, Boxes,
-  BarChart3, ShieldCheck, CheckCircle2, AlertTriangle,
-  HandCoins, CreditCard, Layers, Activity, Clock, ShieldAlert
+  BarChart3, AlertTriangle, Scale, ShieldCheck, CheckCircle2, ShieldAlert,
+  HandCoins, CreditCard, Layers, Activity, Clock
 } from 'lucide-react';
 import {
   AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip,
-  ResponsiveContainer, PieChart, Pie, Cell, BarChart, Bar, Legend
+  ResponsiveContainer, Cell, BarChart, Bar, Legend
 } from 'recharts';
 import {
   useSalesStore, useProcurementStore, useBankingStore, useAssetsInventoryStore,
@@ -15,7 +15,7 @@ import {
 } from './stores';
 import { money, moneyCompact } from './lib/currency';
 import {
-  KpiCard, ChartCard, HealthCard, ActivityCard, DashboardHeader
+  KpiCard, ChartCard, HealthCard, ActivityCard, DashboardHeader, type TimeframePeriod
 } from './components/dashboard';
 
 interface DashboardOverviewProps {
@@ -39,6 +39,7 @@ function agingBucket(due?: string): string {
 const BUCKETS = ['Current', '1-30', '31-60', '61-90', '90+'];
 
 export function DashboardOverview({ accounts = [], entries = [], setPage, activeEntityId }: DashboardOverviewProps) {
+  const [selectedPeriod, setSelectedPeriod] = useState<TimeframePeriod>('quarterly');
   const { invoices = [], fetchAllSales } = useSalesStore();
   const { bills = [], fetchAllProcurement } = useProcurementStore();
   const { bankAccounts = [], cashAccounts = [], fetchAllBanking } = useBankingStore();
@@ -104,14 +105,58 @@ export function DashboardOverview({ accounts = [], entries = [], setPage, active
   const netMargin = totalRevenue > 0 ? (netIncome / totalRevenue) * 100 : 0;
   const grossMargin = totalRevenue > 0 ? (grossProfit / totalRevenue) * 100 : 65.0;
 
-  const performanceTrend = [
-    { period: 'Jan', revenue: totalRevenue * 0.8, expense: totalExpense * 0.82, profit: (totalRevenue * 0.8) - (totalExpense * 0.82) },
-    { period: 'Feb', revenue: totalRevenue * 0.88, expense: totalExpense * 0.85, profit: (totalRevenue * 0.88) - (totalExpense * 0.85) },
-    { period: 'Mar', revenue: totalRevenue * 0.92, expense: totalExpense * 0.88, profit: (totalRevenue * 0.92) - (totalExpense * 0.88) },
-    { period: 'Apr', revenue: totalRevenue * 0.95, expense: totalExpense * 0.91, profit: (totalRevenue * 0.95) - (totalExpense * 0.91) },
-    { period: 'May', revenue: totalRevenue * 0.98, expense: totalExpense * 0.94, profit: (totalRevenue * 0.98) - (totalExpense * 0.94) },
-    { period: 'Jun', revenue: totalRevenue, expense: totalExpense, profit: totalRevenue - totalExpense },
-  ];
+  const performanceTrend = useMemo(() => {
+    if (selectedPeriod === 'quarterly') {
+      return [
+        { period: 'Q1 (Jan–Mar)', revenue: totalRevenue * 0.22, expense: totalExpense * 0.23, profit: (totalRevenue * 0.22) - (totalExpense * 0.23) },
+        { period: 'Q2 (Apr–Jun)', revenue: totalRevenue * 0.26, expense: totalExpense * 0.25, profit: (totalRevenue * 0.26) - (totalExpense * 0.25) },
+        { period: 'Q3 (Jul–Sep)', revenue: totalRevenue * 0.24, expense: totalExpense * 0.23, profit: (totalRevenue * 0.24) - (totalExpense * 0.23) },
+        { period: 'Q4 (Oct–Dec)', revenue: totalRevenue * 0.28, expense: totalExpense * 0.29, profit: (totalRevenue * 0.28) - (totalExpense * 0.29) },
+      ];
+    }
+    if (selectedPeriod === 'q1') {
+      return [
+        { period: 'Jan', revenue: totalRevenue * 0.32, expense: totalExpense * 0.34, profit: (totalRevenue * 0.32) - (totalExpense * 0.34) },
+        { period: 'Feb', revenue: totalRevenue * 0.33, expense: totalExpense * 0.33, profit: (totalRevenue * 0.33) - (totalExpense * 0.33) },
+        { period: 'Mar', revenue: totalRevenue * 0.35, expense: totalExpense * 0.33, profit: (totalRevenue * 0.35) - (totalExpense * 0.33) },
+      ];
+    }
+    if (selectedPeriod === 'q2') {
+      return [
+        { period: 'Apr', revenue: totalRevenue * 0.32, expense: totalExpense * 0.31, profit: (totalRevenue * 0.32) - (totalExpense * 0.31) },
+        { period: 'May', revenue: totalRevenue * 0.33, expense: totalExpense * 0.34, profit: (totalRevenue * 0.33) - (totalExpense * 0.34) },
+        { period: 'Jun', revenue: totalRevenue * 0.35, expense: totalExpense * 0.35, profit: (totalRevenue * 0.35) - (totalExpense * 0.35) },
+      ];
+    }
+    if (selectedPeriod === 'q3') {
+      return [
+        { period: 'Jul', revenue: totalRevenue * 0.32, expense: totalExpense * 0.32, profit: (totalRevenue * 0.32) - (totalExpense * 0.32) },
+        { period: 'Aug', revenue: totalRevenue * 0.33, expense: totalExpense * 0.33, profit: (totalRevenue * 0.33) - (totalExpense * 0.33) },
+        { period: 'Sep', revenue: totalRevenue * 0.35, expense: totalExpense * 0.35, profit: (totalRevenue * 0.35) - (totalExpense * 0.35) },
+      ];
+    }
+    if (selectedPeriod === 'q4') {
+      return [
+        { period: 'Oct', revenue: totalRevenue * 0.32, expense: totalExpense * 0.32, profit: (totalRevenue * 0.32) - (totalExpense * 0.32) },
+        { period: 'Nov', revenue: totalRevenue * 0.33, expense: totalExpense * 0.33, profit: (totalRevenue * 0.33) - (totalExpense * 0.33) },
+        { period: 'Dec', revenue: totalRevenue * 0.35, expense: totalExpense * 0.35, profit: (totalRevenue * 0.35) - (totalExpense * 0.35) },
+      ];
+    }
+    return [
+      { period: 'Jan', revenue: totalRevenue * 0.07, expense: totalExpense * 0.08, profit: (totalRevenue * 0.07) - (totalExpense * 0.08) },
+      { period: 'Feb', revenue: totalRevenue * 0.075, expense: totalExpense * 0.075, profit: (totalRevenue * 0.075) - (totalExpense * 0.075) },
+      { period: 'Mar', revenue: totalRevenue * 0.075, expense: totalExpense * 0.075, profit: (totalRevenue * 0.075) - (totalExpense * 0.075) },
+      { period: 'Apr', revenue: totalRevenue * 0.085, expense: totalExpense * 0.08, profit: (totalRevenue * 0.085) - (totalExpense * 0.08) },
+      { period: 'May', revenue: totalRevenue * 0.085, expense: totalExpense * 0.085, profit: (totalRevenue * 0.085) - (totalExpense * 0.085) },
+      { period: 'Jun', revenue: totalRevenue * 0.09, expense: totalExpense * 0.085, profit: (totalRevenue * 0.09) - (totalExpense * 0.085) },
+      { period: 'Jul', revenue: totalRevenue * 0.08, expense: totalExpense * 0.075, profit: (totalRevenue * 0.08) - (totalExpense * 0.075) },
+      { period: 'Aug', revenue: totalRevenue * 0.08, expense: totalExpense * 0.075, profit: (totalRevenue * 0.08) - (totalExpense * 0.075) },
+      { period: 'Sep', revenue: totalRevenue * 0.08, expense: totalExpense * 0.08, profit: (totalRevenue * 0.08) - (totalExpense * 0.08) },
+      { period: 'Oct', revenue: totalRevenue * 0.09, expense: totalExpense * 0.095, profit: (totalRevenue * 0.09) - (totalExpense * 0.095) },
+      { period: 'Nov', revenue: totalRevenue * 0.095, expense: totalExpense * 0.095, profit: (totalRevenue * 0.095) - (totalExpense * 0.095) },
+      { period: 'Dec', revenue: totalRevenue * 0.095, expense: totalExpense * 0.1, profit: (totalRevenue * 0.095) - (totalExpense * 0.1) },
+    ];
+  }, [selectedPeriod, totalRevenue, totalExpense]);
 
   const expenseBreakdown = [
     { name: 'Cost of Goods', value: totalExpense * 0.4, color: '#ef4444' },
@@ -120,8 +165,6 @@ export function DashboardOverview({ accounts = [], entries = [], setPage, active
     { name: 'Sales & Marketing', value: totalExpense * 0.12, color: '#10b981' },
     { name: 'Other', value: totalExpense * 0.08, color: '#a855f7' },
   ];
-
-  const DONUT_COLORS = ['#3b82f6', '#ef4444', '#10b981'];
 
   // Compile Dynamic Transaction History
   const transactionHistory: { type: string; ref: string; amount: number; status: string; date: string; contact: string }[] = [];
@@ -206,7 +249,11 @@ export function DashboardOverview({ accounts = [], entries = [], setPage, active
     <main className="mx-auto w-full max-w-[1600px] px-6 py-6 space-y-6">
 
       {/* ── 1. HEADER (Full Width) ── */}
-      <DashboardHeader className="col-span-12" />
+      <DashboardHeader
+        className="col-span-12"
+        selectedPeriod={selectedPeriod}
+        onPeriodChange={setSelectedPeriod}
+      />
 
       {/* ── 12-COLUMN DASHBOARD GRID ── */}
       <div className="grid grid-cols-12 gap-5">
@@ -332,48 +379,94 @@ export function DashboardOverview({ accounts = [], entries = [], setPage, active
           </div>
         </ChartCard>
 
-        {/* Proportional Balance Sheet Position (col-span-12 lg:col-span-7) */}
+        {/* Accounting Equation & Capital Structure (col-span-12 lg:col-span-7) */}
         <ChartCard
-          title="Proportional Balance Sheet Position"
-          subtitle="Visual representation of Assets relative to Liabilities and equity"
-          icon={Landmark}
-          iconColor="var(--color-primary)"
+          title="Accounting Equation & Capital Structure"
+          subtitle="GAAP & IFRS structural double-entry validation (Assets = Liabilities + Equity)"
+          icon={Scale}
+          iconColor="#10b981"
+          actions={
+            Math.abs(totalAssets - (totalLiabilities + equityValue)) < 0.01 ? (
+              <span className="inline-flex items-center gap-1 text-[10px] font-black text-emerald-500 bg-emerald-500/10 px-2 py-0.5 rounded-full border border-emerald-500/20">
+                <ShieldCheck className="w-3 h-3" /> BALANCED
+              </span>
+            ) : (
+              <span className="inline-flex items-center gap-1 text-[10px] font-black text-rose-500 bg-rose-500/10 px-2 py-0.5 rounded-full border border-rose-500/20">
+                <ShieldAlert className="w-3 h-3 animate-pulse" /> UNBALANCED
+              </span>
+            )
+          }
           className="col-span-12 lg:col-span-7"
         >
-          <div className="flex flex-col sm:flex-row items-center justify-around gap-4 min-h-[170px]">
-            <div className="w-[150px] h-[150px] relative shrink-0 flex items-center justify-center">
-              <ResponsiveContainer width="100%" height={150}>
-                <PieChart>
-                  <Pie data={[
-                    { name: 'Assets', value: totalAssets, fill: '#3b82f6' },
-                    { name: 'Liabilities', value: totalLiabilities, fill: '#ef4444' },
-                    { name: 'Equity', value: equityValue > 0 ? equityValue : 0, fill: '#10b981' }
-                  ]} cx="50%" cy="50%" innerRadius={42} outerRadius={60} dataKey="value" strokeWidth={0}>
-                    {DONUT_COLORS.map((col, i) => <Cell key={i} fill={col} />)}
-                  </Pie>
-                  <Tooltip formatter={(v: any) => money(Number(v))} />
-                </PieChart>
-              </ResponsiveContainer>
-              <div className="absolute flex flex-col items-center justify-center text-center">
-                <span className="text-[8px] uppercase font-bold text-[var(--color-text-subtle)]">Asset Base</span>
-                <span className="text-xs font-black text-[var(--color-text-strong)]">{moneyCompact(totalAssets)}</span>
+          <div className="space-y-3">
+            {/* Equation Visual Banner */}
+            <div className="p-3 rounded-xl bg-[var(--color-surface-muted)] border border-[var(--color-border-subtle)]">
+              <div className="grid grid-cols-11 items-center text-center text-[10px]">
+                <div className="col-span-5 p-2 rounded-lg bg-[var(--color-surface)] border border-[var(--color-border)]">
+                  <span className="text-[9px] text-[var(--color-text-muted)] font-bold uppercase tracking-wider block">Total Assets</span>
+                  <strong className="text-sm font-black text-[#3b82f6] block mt-0.5">{money(totalAssets)}</strong>
+                  <span className="text-[8.5px] text-[var(--color-text-subtle)] truncate block">Cash, Receivables, Inventory, Fixed Assets</span>
+                </div>
+                
+                <div className="col-span-1 font-black text-lg text-[var(--color-text-muted)]">=</div>
+                
+                <div className="col-span-5 p-2 rounded-lg bg-[var(--color-surface)] border border-[var(--color-border)]">
+                  <span className="text-[9px] text-[var(--color-text-muted)] font-bold uppercase tracking-wider block">Liabilities + Equity</span>
+                  <strong className="text-sm font-black text-[#10b981] block mt-0.5">{money(totalLiabilities + equityValue)}</strong>
+                  <span className="text-[8.5px] text-[var(--color-text-subtle)] truncate block">Vendor Payables + Shareholder Capital</span>
+                </div>
               </div>
             </div>
-            <div className="space-y-2 flex-1 w-full max-w-sm">
-              {[
-                { label: 'Total Assets', val: totalAssets, color: '#3b82f6', desc: 'Resource inventory and liquidity reserves' },
-                { label: 'Liabilities', val: totalLiabilities, color: '#ef4444', desc: 'Outstanding payables, vendor debts, loans' },
-                { label: 'Net Capital / Equity', val: equityValue, color: '#10b981', desc: 'Shareholder equity and accumulated net profit' }
-              ].map((x, i) => (
-                <div key={i} className="flex justify-between items-start p-2 rounded-xl bg-[var(--color-surface-muted)] text-[10px]">
-                  <div className="min-w-0">
-                    <span className="font-bold flex items-center gap-1.5" style={{ color: x.color }}><span className="w-2 h-2 rounded-full shrink-0" style={{ background: x.color }} /> {x.label}</span>
-                    <span className="text-[8px] text-[var(--color-text-subtle)] block mt-0.5 truncate">{x.desc}</span>
-                  </div>
-                  <span className="font-extrabold text-[var(--color-text-strong)] ml-2">{money(x.val)}</span>
+
+            {/* Breakdown Grid */}
+            <div className="grid grid-cols-3 gap-2 text-[10px]">
+              <div className="p-2.5 rounded-xl bg-[var(--color-surface-muted)] flex justify-between items-start">
+                <div>
+                  <span className="font-bold text-[#3b82f6] flex items-center gap-1">
+                    <span className="w-2 h-2 rounded-full bg-[#3b82f6]" /> Total Assets
+                  </span>
+                  <span className="text-[8.5px] text-[var(--color-text-subtle)] block mt-0.5">Economic resources</span>
                 </div>
-              ))}
+                <span className="font-black text-[var(--color-text-strong)]">{moneyCompact(totalAssets)}</span>
+              </div>
+
+              <div className="p-2.5 rounded-xl bg-[var(--color-surface-muted)] flex justify-between items-start">
+                <div>
+                  <span className="font-bold text-[#ef4444] flex items-center gap-1">
+                    <span className="w-2 h-2 rounded-full bg-[#ef4444]" /> Liabilities
+                  </span>
+                  <span className="text-[8.5px] text-[var(--color-text-subtle)] block mt-0.5">Creditor debts</span>
+                </div>
+                <span className="font-black text-[var(--color-text-strong)]">{moneyCompact(totalLiabilities)}</span>
+              </div>
+
+              <div className="p-2.5 rounded-xl bg-[var(--color-surface-muted)] flex justify-between items-start">
+                <div>
+                  <span className="font-bold text-[#10b981] flex items-center gap-1">
+                    <span className="w-2 h-2 rounded-full bg-[#10b981]" /> Net Equity
+                  </span>
+                  <span className="text-[8.5px] text-[var(--color-text-subtle)] block mt-0.5">Capital & profit</span>
+                </div>
+                <span className="font-black text-[var(--color-text-strong)]">{moneyCompact(equityValue)}</span>
+              </div>
             </div>
+
+            {/* Verification Status Footer */}
+            {Math.abs(totalAssets - (totalLiabilities + equityValue)) < 0.01 ? (
+              <div className="p-2 px-3 rounded-xl border border-emerald-500/20 bg-emerald-500/5 flex items-center justify-between text-[10px]">
+                <span className="font-bold text-emerald-500 flex items-center gap-1.5">
+                  <CheckCircle2 className="w-3.5 h-3.5" /> Ledger Balanced & Audit Verified
+                </span>
+                <span className="text-[9px] text-[var(--color-text-muted)] font-mono">Variance: $0.00 (Exact match)</span>
+              </div>
+            ) : (
+              <div className="p-2 px-3 rounded-xl border border-rose-500/20 bg-rose-500/5 flex items-center justify-between text-[10px]">
+                <span className="font-bold text-rose-500 flex items-center gap-1.5">
+                  <ShieldAlert className="w-3.5 h-3.5 animate-pulse" /> Ledger Mismatch Detected
+                </span>
+                <span className="text-[9px] text-rose-400 font-mono">Variance: {money(Math.abs(totalAssets - (totalLiabilities + equityValue)))}</span>
+              </div>
+            )}
           </div>
         </ChartCard>
 
@@ -404,47 +497,77 @@ export function DashboardOverview({ accounts = [], entries = [], setPage, active
           </div>
         </ChartCard>
 
-        {/* ── HEALTH ROW ── */}
+        {/* ── HEALTH & AGING ROW ── */}
         
-        {/* Accounting Equation Verification (col-span-12 md:col-span-6 lg:col-span-4) */}
+        {/* AR Accounts Receivable Aging Summary (col-span-12 md:col-span-6 lg:col-span-4) */}
         <HealthCard
-          title="Accounting Equation Balance"
-          subtitle="GAAP & IFRS structural double-entry validation"
-          icon={CheckCircle2}
+          title="Accounts Receivable (AR) Aging"
+          subtitle="Aging schedule of outstanding customer balances"
+          icon={HandCoins}
           iconColor="#10b981"
           className="col-span-12 md:col-span-6 lg:col-span-4 justify-between min-h-[290px]"
         >
-          <div className="my-3 space-y-2 text-center">
-            <div className="py-2.5 px-2 rounded-xl bg-[var(--color-surface-muted)] border border-[var(--color-border-subtle)] font-mono text-xs font-extrabold text-[var(--color-text-strong)]">
-              Assets = Liabilities + Equity
-            </div>
-            <div className="grid grid-cols-3 gap-1 text-[9px] font-bold text-[var(--color-text-muted)]">
-              <div>Assets<span className="block font-black text-sm text-[#3b82f6] mt-0.5">{moneyCompact(totalAssets)}</span></div>
-              <div className="text-center font-black text-base self-center">=</div>
-              <div>L + E<span className="block font-black text-sm text-[#10b981] mt-0.5">{moneyCompact(totalLiabilities + equityValue)}</span></div>
-            </div>
+          <div className="space-y-3 my-3">
+            {[
+              { name: 'Current (Not due)', val: arAging['Current'] || 0, color: '#10b981' },
+              { name: 'Short-term overdue (1-30d)', val: arAging['1-30'] || 0, color: '#06b6d4' },
+              { name: 'Medium-term overdue (31-90d)', val: (arAging['31-60'] || 0) + (arAging['61-90'] || 0), color: '#f59e0b' },
+              { name: 'Long-term overdue (90d+)', val: arAging['90+'] || 0, color: '#ef4444' }
+            ].map((b, i) => {
+              const maxVal = totalAR || 1;
+              const pct = (b.val / maxVal) * 100;
+              return (
+                <div key={i} className="space-y-1 text-[10px]">
+                  <div className="flex justify-between">
+                    <span className="font-semibold text-[var(--color-text)]">{b.name}</span>
+                    <span className="font-black text-[var(--color-text-strong)]">{money(b.val)}</span>
+                  </div>
+                  <div className="w-full h-1.5 rounded-full bg-[var(--color-surface-muted)] overflow-hidden">
+                    <div className="h-full rounded-full transition-all duration-300" style={{ width: `${pct}%`, background: b.color }} />
+                  </div>
+                </div>
+              );
+            })}
           </div>
+          <div className="mt-auto pt-2 border-t border-[var(--color-border-subtle)] flex justify-between items-center text-[10px]">
+            <span className="text-[var(--color-text-muted)] font-medium">Total Receivables:</span>
+            <span className="font-extrabold text-[var(--color-primary)]">{money(totalAR)}</span>
+          </div>
+        </HealthCard>
 
-          <div className="mt-auto">
-            {Math.abs(totalAssets - (totalLiabilities + equityValue)) < 0.01 ? (
-              <div className="p-2.5 rounded-xl border border-emerald-500/20 bg-emerald-500/5 text-center flex flex-col items-center">
-                <span className="inline-flex items-center gap-1 text-[10px] font-black text-emerald-500">
-                  <ShieldCheck className="w-3.5 h-3.5" /> LEDGER EQUATION BALANCED
-                </span>
-                <p className="text-[8px] text-[var(--color-text-subtle)] mt-1">
-                  Compliance integrity certified. All debit and credit ledgers balance exactly.
-                </p>
-              </div>
-            ) : (
-              <div className="p-2.5 rounded-xl border border-rose-500/20 bg-rose-500/5 text-center flex flex-col items-center">
-                <span className="inline-flex items-center gap-1 text-[10px] font-black text-rose-500">
-                  <ShieldAlert className="w-3.5 h-3.5 animate-pulse" /> LEDGER MISMATCH DETECTED
-                </span>
-                <p className="text-[8px] text-[var(--color-text-subtle)] mt-1">
-                  Adjusting general journals required. Suspense ledger accounts mismatch.
-                </p>
-              </div>
-            )}
+        {/* AP Accounts Payable Aging Summary (col-span-12 md:col-span-6 lg:col-span-4) */}
+        <HealthCard
+          title="Accounts Payable (AP) Aging"
+          subtitle="Aging schedule of unpaid vendor obligations"
+          icon={CreditCard}
+          iconColor="#ef4444"
+          className="col-span-12 md:col-span-6 lg:col-span-4 justify-between min-h-[290px]"
+        >
+          <div className="space-y-3 my-3">
+            {[
+              { name: 'Current (Not due)', val: apAging['Current'] || 0, color: '#10b981' },
+              { name: 'Short-term overdue (1-30d)', val: apAging['1-30'] || 0, color: '#06b6d4' },
+              { name: 'Medium-term overdue (31-90d)', val: (apAging['31-60'] || 0) + (apAging['61-90'] || 0), color: '#f59e0b' },
+              { name: 'Long-term overdue (90d+)', val: apAging['90+'] || 0, color: '#ef4444' }
+            ].map((b, i) => {
+              const maxVal = totalAP || 1;
+              const pct = (b.val / maxVal) * 100;
+              return (
+                <div key={i} className="space-y-1 text-[10px]">
+                  <div className="flex justify-between">
+                    <span className="font-semibold text-[var(--color-text)]">{b.name}</span>
+                    <span className="font-black text-[var(--color-text-strong)]">{money(b.val)}</span>
+                  </div>
+                  <div className="w-full h-1.5 rounded-full bg-[var(--color-surface-muted)] overflow-hidden">
+                    <div className="h-full rounded-full transition-all duration-300" style={{ width: `${pct}%`, background: b.color }} />
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+          <div className="mt-auto pt-2 border-t border-[var(--color-border-subtle)] flex justify-between items-center text-[10px]">
+            <span className="text-[var(--color-text-muted)] font-medium">Total Payables:</span>
+            <span className="font-extrabold text-rose-500">{money(totalAP)}</span>
           </div>
         </HealthCard>
 
@@ -476,38 +599,6 @@ export function DashboardOverview({ accounts = [], entries = [], setPage, active
                 </div>
               </div>
             ))}
-          </div>
-        </HealthCard>
-
-        {/* AR Accounts Receivable Aging Summary (col-span-12 md:col-span-6 lg:col-span-4) */}
-        <HealthCard
-          title="Accounts Receivable (AR) Aging Summary"
-          subtitle="Aging schedule of outstanding customer balances"
-          icon={Clock}
-          iconColor="#ef4444"
-          className="col-span-12 md:col-span-6 lg:col-span-4 justify-between min-h-[290px]"
-        >
-          <div className="space-y-3 my-3">
-            {[
-              { name: 'Current aging', val: arAging['Current'] || 0, color: '#10b981' },
-              { name: 'Short-term overdue (1-30d)', val: arAging['1-30'] || 0, color: '#06b6d4' },
-              { name: 'Medium-term overdue (31-90d)', val: (arAging['31-60'] || 0) + (arAging['61-90'] || 0), color: '#f59e0b' },
-              { name: 'Long-term overdue (90d+)', val: arAging['90+'] || 0, color: '#ef4444' }
-            ].map((b, i) => {
-              const maxVal = totalAR || 1;
-              const pct = (b.val / maxVal) * 100;
-              return (
-                <div key={i} className="space-y-1 text-[10px]">
-                  <div className="flex justify-between">
-                    <span className="font-semibold text-[var(--color-text)]">{b.name}</span>
-                    <span className="font-black text-[var(--color-text-strong)]">{money(b.val)}</span>
-                  </div>
-                  <div className="w-full h-1.5 rounded-full bg-[var(--color-surface-muted)] overflow-hidden">
-                    <div className="h-full rounded-full transition-all duration-300" style={{ width: `${pct}%`, background: b.color }} />
-                  </div>
-                </div>
-              );
-            })}
           </div>
         </HealthCard>
 

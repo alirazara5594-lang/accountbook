@@ -1,5 +1,4 @@
-import { useState, useRef, useEffect, useCallback } from 'react';
-import { ChevronDown, ChevronUp } from 'lucide-react';
+import { useState, useRef } from 'react';
 import { NAVIGATION, type NavGroup } from '../navigation';
 import type { UserData } from '../Login';
 import './UniqueSidebar.css';
@@ -21,53 +20,22 @@ export default function UniqueSidebar({
   onLogout,
   moduleBadgeCounts,
 }: Props) {
-  const [hoveredGroup, setHoveredGroup] = useState<NavGroup | null>(null);
-  const [canScrollUp, setCanScrollUp] = useState(false);
-  const [canScrollDown, setCanScrollDown] = useState(false);
+  const [hoveredPopover, setHoveredPopover] = useState<{ top: number; label: string } | null>(null);
   const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const navRef = useRef<HTMLElement>(null);
 
   const groups = NAVIGATION.filter(
     (group) => !modules || modules.length === 0 || modules.includes(group.moduleId)
   );
 
-  const checkScroll = useCallback(() => {
-    const el = navRef.current;
-    if (!el) return;
-    setCanScrollUp(el.scrollTop > 4);
-    setCanScrollDown(el.scrollTop + el.clientHeight < el.scrollHeight - 4);
-  }, []);
-
-  useEffect(() => {
-    const el = navRef.current;
-    if (!el) return;
-    checkScroll();
-    el.addEventListener('scroll', checkScroll, { passive: true });
-    return () => el.removeEventListener('scroll', checkScroll);
-  }, [checkScroll, groups.length]);
-
-  const scrollUp = () => {
-    navRef.current?.scrollBy({ top: -100, behavior: 'smooth' });
-  };
-
-  const scrollDown = () => {
-    navRef.current?.scrollBy({ top: 100, behavior: 'smooth' });
-  };
-
-  const handleMouseEnter = (group: NavGroup) => {
+  const handleMouseEnter = (e: React.MouseEvent<HTMLDivElement>, group: NavGroup) => {
+    const rect = e.currentTarget.getBoundingClientRect();
     if (timeoutRef.current) clearTimeout(timeoutRef.current);
-    setHoveredGroup(group);
+    setHoveredPopover({ top: rect.top + rect.height / 2, label: group.label });
   };
 
   const handleMouseLeave = () => {
-    timeoutRef.current = setTimeout(() => setHoveredGroup(null), 200);
+    timeoutRef.current = setTimeout(() => setHoveredPopover(null), 120);
   };
-
-  const handlePopoverEnter = () => {
-    if (timeoutRef.current) clearTimeout(timeoutRef.current);
-  };
-
-  const handlePopoverLeave = () => setHoveredGroup(null);
 
   const handleModuleClick = (group: NavGroup) => {
     if (group.name === 'Overview') {
@@ -79,6 +47,7 @@ export default function UniqueSidebar({
 
   return (
     <aside className="unique-sidebar">
+      {/* Brand logo & title — lowered down with comfortable margin */}
       <div className="unique-brand">
         <div className="unique-logo-mark">🧾</div>
         <div className="unique-brand-lines">
@@ -87,14 +56,8 @@ export default function UniqueSidebar({
         </div>
       </div>
 
-      {/* Scroll Up Button */}
-      {canScrollUp && (
-        <button className="unique-scroll-btn unique-scroll-up" onClick={scrollUp} title="Scroll up">
-          <ChevronUp size={14} />
-        </button>
-      )}
-
-      <nav className="unique-nav" ref={navRef as React.RefObject<HTMLElement>}>
+      {/* Navigation container — Fixed non-scrolling layout */}
+      <nav className="unique-nav">
         {groups.map((group) => {
           const active = activePage.startsWith(group.name + '.');
           const Icon = group.icon;
@@ -102,7 +65,7 @@ export default function UniqueSidebar({
             <div
               className="unique-item-wrap"
               key={group.moduleId}
-              onMouseEnter={() => handleMouseEnter(group)}
+              onMouseEnter={(e) => handleMouseEnter(e, group)}
               onMouseLeave={handleMouseLeave}
             >
               <button
@@ -111,35 +74,29 @@ export default function UniqueSidebar({
                 title={group.label}
               >
                 <div className="unique-icon-circle">
-                  <Icon className="unique-icon" size={18} strokeWidth={1.8} />
+                  <Icon className="unique-icon" size={16} strokeWidth={1.9} />
                 </div>
                 <span className="unique-label">{group.short}</span>
                 {moduleBadgeCounts?.[group.moduleId] ? (
                   <span className="unique-badge">{moduleBadgeCounts[group.moduleId]}</span>
                 ) : null}
               </button>
-
-              {hoveredGroup?.moduleId === group.moduleId && (
-                <div
-                  className="unique-popover"
-                  onMouseEnter={handlePopoverEnter}
-                  onMouseLeave={handlePopoverLeave}
-                >
-                  <div className="popover-header">{group.label}</div>
-                </div>
-              )}
             </div>
           );
         })}
       </nav>
 
-      {/* Scroll Down Button */}
-      {canScrollDown && (
-        <button className="unique-scroll-btn unique-scroll-down" onClick={scrollDown} title="Scroll down">
-          <ChevronDown size={14} />
-        </button>
+      {/* Floating Hover Popover — Fixed positioned outside */}
+      {hoveredPopover && (
+        <div
+          className="unique-popover"
+          style={{ top: hoveredPopover.top }}
+        >
+          <div className="popover-header">{hoveredPopover.label}</div>
+        </div>
       )}
 
+      {/* Footer / Logout */}
       <div className="unique-footer">
         <button className="unique-logout" onClick={onLogout}>
           <span className="unique-logout-label">Logout</span>
