@@ -1,12 +1,17 @@
 import { useEffect, useMemo, useState } from 'react'
 import type { FormEvent } from 'react'
-import { ShieldAlert, UserCheck, Users, CreditCard, Pencil, Trash2 } from 'lucide-react'
+import {
+  ShieldAlert, UserCheck, Users, User, CreditCard, Pencil, Trash2,
+  Building2, MapPin, Receipt, Globe, Check, Sparkles, X, Mail,
+  Phone, Hash, Calendar, ShieldCheck, ArrowRight, ArrowLeft
+} from 'lucide-react'
 
 import { Button } from '@/components/ui/button'
 import { DataToolbar } from '@/components/ui/data-toolbar'
 import type { Entity } from './EntitySettings'
 import { useCustomersStore } from './stores'
 import { useFormDraft } from './hooks/useFormDraft'
+import { money } from './lib/currency'
 
 export type CustomerStatus = 'Active' | 'Inactive' | 'Blocked'
 
@@ -14,6 +19,8 @@ export type Customer = {
   id: string
   customerNumber: string
   name: string
+  contactPerson?: string
+  contactPhone?: string
   email?: string
   phone?: string
   taxId?: string
@@ -35,6 +42,8 @@ export type Customer = {
 type CustomerForm = {
   customerNumber: string
   name: string
+  contactPerson: string
+  contactPhone: string
   email: string
   phone: string
   taxId: string
@@ -50,9 +59,37 @@ type CustomerForm = {
   companyId: string
 }
 
+export const COUNTRIES = [
+  'Pakistan',
+  'United Arab Emirates',
+  'Saudi Arabia',
+  'United States',
+  'United Kingdom',
+  'Canada',
+  'Australia',
+  'Germany',
+  'France',
+  'Netherlands',
+  'Singapore',
+  'Qatar',
+  'Kuwait',
+  'Oman',
+  'Bahrain',
+  'China',
+  'Japan',
+  'India',
+  'Bangladesh',
+  'Malaysia',
+  'Turkey',
+  'South Africa',
+  'Other / International'
+]
+
 const blankForm = (): CustomerForm => ({
   customerNumber: '',
   name: '',
+  contactPerson: '',
+  contactPhone: '',
   email: '',
   phone: '',
   taxId: '',
@@ -61,14 +98,12 @@ const blankForm = (): CustomerForm => ({
   city: '',
   state: '',
   postalCode: '',
-  country: 'United States',
-  currencyCode: 'USD',
+  country: 'Pakistan',
+  currencyCode: 'PKR',
   creditLimit: '0',
   paymentTermsDays: '30',
   companyId: ''
 })
-
-import { money } from './lib/currency';
 
 export default function CustomerManagement({
   entities,
@@ -91,6 +126,7 @@ export default function CustomerManagement({
   const [companyFilter, setCompanyFilter] = useState<string>('all')
   const [statusFilter, setStatusFilter] = useState<string>('all')
   const [modalOpen, setModalOpen] = useState(false)
+  const [modalTab, setModalTab] = useState<'general' | 'address' | 'financial' | 'tax'>('general')
   const [editingCustomer, setEditingCustomer] = useState<Customer | null>(null)
   const [form, setForm] = useState<CustomerForm>(blankForm())
   const { saveDraft, clearDraft } = useFormDraft('customer', form, setForm, modalOpen)
@@ -136,10 +172,33 @@ export default function CustomerManagement({
   const openCreateModal = async () => {
     setEditingCustomer(null)
     const newForm = blankForm()
-    if (activeEntityId) newForm.companyId = activeEntityId
+    
+    // Automatically assign to the entity currently selected in the top header
+    const targetEntityId = activeEntityId || (entities[0]?.id || '')
+    if (targetEntityId) {
+      newForm.companyId = targetEntityId
+      const matchedEntity = entities.find(e => e.id === targetEntityId)
+      if (matchedEntity) {
+        newForm.currencyCode = matchedEntity.currencyCode || (matchedEntity as any)?.functionalCurrency || 'PKR'
+        newForm.country = matchedEntity.country || 'Pakistan'
+      }
+    }
+
     const num = await fetchNextNumber()
     if (num) newForm.customerNumber = num
+
+    try {
+      const saved = localStorage.getItem('draft_customer')
+      if (saved) {
+        const parsed = JSON.parse(saved)
+        if (parsed.currencyCode === 'USD' || !parsed.currencyCode) parsed.currencyCode = 'PKR'
+        if (parsed.country === 'United States' || !parsed.country) parsed.country = 'Pakistan'
+        localStorage.setItem('draft_customer', JSON.stringify(parsed))
+      }
+    } catch {}
+
     setForm(newForm)
+    setModalTab('general')
     setModalOpen(true)
   }
 
@@ -148,6 +207,8 @@ export default function CustomerManagement({
     setForm({
       customerNumber: customer.customerNumber,
       name: customer.name,
+      contactPerson: customer.contactPerson || '',
+      contactPhone: customer.contactPhone || '',
       email: customer.email || '',
       phone: customer.phone || '',
       taxId: customer.taxId || '',
@@ -156,12 +217,13 @@ export default function CustomerManagement({
       city: customer.city || '',
       state: customer.state || '',
       postalCode: customer.postalCode || '',
-      country: customer.country || 'United States',
-      currencyCode: customer.currencyCode || 'USD',
+      country: customer.country || 'Pakistan',
+      currencyCode: customer.currencyCode || 'PKR',
       creditLimit: String(customer.creditLimit || 0),
       paymentTermsDays: String(customer.paymentTermsDays || 30),
       companyId: customer.companyId || ''
     })
+    setModalTab('general')
     setModalOpen(true)
   }
 
@@ -175,6 +237,8 @@ export default function CustomerManagement({
     const payload = {
       customerNumber: form.customerNumber || null,
       name: form.name.trim(),
+      contactPerson: form.contactPerson.trim() || null,
+      contactPhone: form.contactPhone.trim() || null,
       email: form.email.trim() || null,
       phone: form.phone.trim() || null,
       taxId: form.taxId.trim() || null,
@@ -183,8 +247,8 @@ export default function CustomerManagement({
       city: form.city.trim() || null,
       state: form.state.trim() || null,
       postalCode: form.postalCode.trim() || null,
-      country: form.country.trim() || 'United States',
-      currencyCode: form.currencyCode.trim() || 'USD',
+      country: form.country.trim() || 'Pakistan',
+      currencyCode: form.currencyCode.trim() || 'PKR',
       creditLimit: Number(form.creditLimit) || 0,
       paymentTermsDays: Number(form.paymentTermsDays) || 30,
       companyId: form.companyId || null
@@ -224,6 +288,8 @@ export default function CustomerManagement({
     entities.forEach(e => map.set(e.id, e))
     return map
   }, [entities])
+
+  const assignedCompany = form.companyId ? companyMap.get(form.companyId) : null
 
   return (
     <div className="space-y-6">
@@ -276,8 +342,8 @@ export default function CustomerManagement({
             exportHeaders={exportHeaders}
             exportRows={exportRows}
           />
-          <button onClick={openCreateModal} className="primary h-9 px-4 rounded-xl text-xs font-semibold whitespace-nowrap flex items-center justify-center">
-            ＋ Add Customer
+          <button onClick={openCreateModal} className="primary h-9 px-4 rounded-xl text-xs font-semibold whitespace-nowrap flex items-center justify-center gap-1.5 shadow-sm">
+            <span>＋</span> Add Customer
           </button>
         </div>
       </div>
@@ -393,157 +459,480 @@ export default function CustomerManagement({
         )}
       </div>
 
-      {/* Modal Form */}
+      {/* Professional Customer Modal */}
       {modalOpen && (
-        <div className="overlay">
-          <form className="modal" onSubmit={handleSave}>
-            <div className="modal-head">
-              <div>
-                <p className="eyebrow">SALES & CUSTOMERS</p>
-                <h2>{editingCustomer ? 'Edit Customer' : 'Create New Customer'}</h2>
+        <div className="overlay animate-in fade-in duration-200">
+          <form
+            className="w-full max-w-4xl bg-[var(--color-surface)] border border-[var(--color-border)] rounded-2xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh]"
+            onSubmit={handleSave}
+          >
+            {/* Modal Header */}
+            <div className="px-6 py-4.5 border-b border-[var(--color-border)] bg-[var(--color-surface-muted)]/50 flex items-center justify-between">
+              <div className="flex items-center gap-3.5">
+                <div className="w-11 h-11 rounded-xl bg-gradient-to-br from-sky-500 to-blue-600 flex items-center justify-center text-white shadow-sm shrink-0">
+                  <Building2 className="w-5 h-5" />
+                </div>
+                <div>
+                  <div className="flex items-center gap-2">
+                    <h2 className="text-base font-bold text-[var(--color-text-strong)] tracking-tight">
+                      {editingCustomer ? 'Edit Customer Account' : 'Register New Customer'}
+                    </h2>
+                    <span className="px-2.5 py-0.5 rounded-full text-[10px] font-semibold bg-sky-500/10 text-sky-600 border border-sky-500/20">
+                      {editingCustomer ? 'Updating Profile' : 'New Client'}
+                    </span>
+                  </div>
+                  <p className="text-xs text-[var(--color-text-muted)] mt-0.5 flex items-center gap-1.5">
+                    <span>Assigned Entity:</span>
+                    <span className="font-semibold text-[var(--color-text-strong)] inline-flex items-center gap-1">
+                      🏢 {assignedCompany ? assignedCompany.name : 'Global Group Customer'}
+                    </span>
+                  </p>
+                </div>
               </div>
-              <button type="button" className="close" onClick={() => setModalOpen(false)}>
-                ×
+
+              <button
+                type="button"
+                className="w-8 h-8 rounded-lg flex items-center justify-center text-[var(--color-text-muted)] hover:text-[var(--color-text-strong)] hover:bg-[var(--color-surface-muted)] transition-colors"
+                onClick={() => setModalOpen(false)}
+              >
+                <X className="w-4 h-4" />
               </button>
             </div>
 
-            <div className="form-grid">
-              <label style={{ gridColumn: '1 / -1' }}>
-                Customer Name *
-                <input
-                  required
-                  placeholder="e.g. Global Tech Solutions"
-                  value={form.name}
-                  onChange={e => setForm({ ...form, name: e.target.value })}
-                />
-              </label>
+            {/* Modal Tabs Navigation */}
+            <div className="flex items-center gap-2 px-6 pt-3 border-b border-[var(--color-border)] bg-[var(--color-surface)]">
+              <button
+                type="button"
+                onClick={() => setModalTab('general')}
+                className={`flex items-center gap-2 px-4 py-2.5 text-xs font-semibold rounded-t-lg border-b-2 transition-all whitespace-nowrap ${
+                  modalTab === 'general'
+                    ? 'border-[var(--color-primary)] text-[var(--color-primary)] bg-[var(--color-primary)]/5'
+                    : 'border-transparent text-[var(--color-text-muted)] hover:text-[var(--color-text-strong)]'
+                }`}
+              >
+                <Users className="w-3.5 h-3.5" /> General & Contact
+              </button>
 
-              <label>
-                Customer Number
-                <input
-                  placeholder="e.g. CUST-0001 (Auto-generated)"
-                  value={form.customerNumber}
-                  onChange={e => setForm({ ...form, customerNumber: e.target.value })}
-                />
-              </label>
+              <button
+                type="button"
+                onClick={() => setModalTab('address')}
+                className={`flex items-center gap-2 px-4 py-2.5 text-xs font-semibold rounded-t-lg border-b-2 transition-all whitespace-nowrap ${
+                  modalTab === 'address'
+                    ? 'border-[var(--color-primary)] text-[var(--color-primary)] bg-[var(--color-primary)]/5'
+                    : 'border-transparent text-[var(--color-text-muted)] hover:text-[var(--color-text-strong)]'
+                }`}
+              >
+                <MapPin className="w-3.5 h-3.5" /> Address & Location
+              </button>
 
-              <label>
-                Assigned Company Entity
-                <select value={form.companyId} onChange={e => setForm({ ...form, companyId: e.target.value })}>
-                  <option value="">All / Group Customer (Global)</option>
-                  {entities.map(e => (
-                    <option key={e.id} value={e.id}>
-                      {e.name} {e.code ? `(${e.code})` : ''}
-                    </option>
-                  ))}
-                </select>
-              </label>
+              <button
+                type="button"
+                onClick={() => setModalTab('financial')}
+                className={`flex items-center gap-2 px-4 py-2.5 text-xs font-semibold rounded-t-lg border-b-2 transition-all whitespace-nowrap ${
+                  modalTab === 'financial'
+                    ? 'border-[var(--color-primary)] text-[var(--color-primary)] bg-[var(--color-primary)]/5'
+                    : 'border-transparent text-[var(--color-text-muted)] hover:text-[var(--color-text-strong)]'
+                }`}
+              >
+                <CreditCard className="w-3.5 h-3.5" /> Terms & Financials
+              </button>
 
-              <label>
-                Tax ID / VAT Number
-                <input
-                  placeholder="e.g. US-987654321"
-                  value={form.taxId}
-                  onChange={e => setForm({ ...form, taxId: e.target.value })}
-                />
-              </label>
-
-              <label>
-                Email Address
-                <input
-                  type="email"
-                  placeholder="billing@company.com"
-                  value={form.email}
-                  onChange={e => setForm({ ...form, email: e.target.value })}
-                />
-              </label>
-
-              <label>
-                Phone Number
-                <input
-                  placeholder="+1 (555) 000-0000"
-                  value={form.phone}
-                  onChange={e => setForm({ ...form, phone: e.target.value })}
-                />
-              </label>
-
-              <label>
-                Credit Limit
-                <input
-                  type="number"
-                  step="0.01"
-                  placeholder="50000"
-                  value={form.creditLimit}
-                  onChange={e => setForm({ ...form, creditLimit: e.target.value })}
-                />
-              </label>
-
-              <label>
-                Payment Terms (Days)
-                <input
-                  type="number"
-                  placeholder="30"
-                  value={form.paymentTermsDays}
-                  onChange={e => setForm({ ...form, paymentTermsDays: e.target.value })}
-                />
-              </label>
-
-              <label>
-                Currency
-                <select value={form.currencyCode} onChange={e => setForm({ ...form, currencyCode: e.target.value })}>
-                  {['USD', 'PKR', 'EUR', 'GBP', 'AED', 'SAR', 'CAD', 'AUD'].map(curr => (
-                    <option key={curr} value={curr}>
-                      {curr}
-                    </option>
-                  ))}
-                </select>
-              </label>
-
-              <label>
-                Country
-                <input
-                  placeholder="United States"
-                  value={form.country}
-                  onChange={e => setForm({ ...form, country: e.target.value })}
-                />
-              </label>
-
-              <label style={{ gridColumn: '1 / -1' }}>
-                Address Line 1
-                <input
-                  placeholder="100 Main Street, Suite 400"
-                  value={form.addressLine1}
-                  onChange={e => setForm({ ...form, addressLine1: e.target.value })}
-                />
-              </label>
-
-              <label>
-                City
-                <input
-                  placeholder="San Francisco"
-                  value={form.city}
-                  onChange={e => setForm({ ...form, city: e.target.value })}
-                />
-              </label>
-
-              <label>
-                State / Region
-                <input
-                  placeholder="CA"
-                  value={form.state}
-                  onChange={e => setForm({ ...form, state: e.target.value })}
-                />
-              </label>
+              <button
+                type="button"
+                onClick={() => setModalTab('tax')}
+                className={`flex items-center gap-2 px-4 py-2.5 text-xs font-semibold rounded-t-lg border-b-2 transition-all whitespace-nowrap ${
+                  modalTab === 'tax'
+                    ? 'border-[var(--color-primary)] text-[var(--color-primary)] bg-[var(--color-primary)]/5'
+                    : 'border-transparent text-[var(--color-text-muted)] hover:text-[var(--color-text-strong)]'
+                }`}
+              >
+                <Receipt className="w-3.5 h-3.5" /> Tax & Compliance
+              </button>
             </div>
 
-            <div className="modal-footer">
-              <button type="button" className="secondary btn-cancel" onClick={() => setModalOpen(false)}>
-                Cancel
-              </button>
-              <button type="button" className="secondary btn-draft" onClick={(e) => { e.preventDefault(); saveDraft(); notify('Customer draft saved locally.'); }}>Save Draft</button>
-              <button type="submit" className="primary btn-finalize">
-                {editingCustomer ? 'Finalize & Save Changes' : 'Finalize & Create Customer'}
-              </button>
+            {/* Modal Body / Tab Content */}
+            <div className="p-6 md:p-8 overflow-y-auto flex-1 space-y-5">
+              {modalTab === 'general' && (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                  <div className="md:col-span-2">
+                    <label className="block text-xs font-semibold text-[var(--color-text-strong)] mb-1.5">
+                      Customer / Company Name <span className="text-rose-500">*</span>
+                    </label>
+                    <div className="flex items-center gap-2.5 h-10 px-3.5 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] focus-within:border-[var(--color-primary)] transition-colors shadow-2xs">
+                      <Building2 className="w-4 h-4 text-[var(--color-text-muted)] shrink-0" />
+                      <input
+                        required
+                        placeholder="e.g. Apex Global Logistics LLC"
+                        value={form.name}
+                        onChange={e => setForm({ ...form, name: e.target.value })}
+                        className="w-full h-full border-0 outline-none bg-transparent text-xs text-[var(--color-text-strong)] placeholder:text-[var(--color-text-muted)]"
+                        style={{ border: 0, outline: 'none', padding: 0, background: 'transparent' }}
+                      />
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-semibold text-[var(--color-text-strong)] mb-1.5">
+                      Customer Number (Account Code)
+                    </label>
+                    <div className="flex items-center gap-2.5 h-10 px-3.5 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] focus-within:border-[var(--color-primary)] transition-colors shadow-2xs">
+                      <Hash className="w-4 h-4 text-[var(--color-text-muted)] shrink-0" />
+                      <input
+                        placeholder="e.g. CUST-0001 (Auto-generated)"
+                        value={form.customerNumber}
+                        onChange={e => setForm({ ...form, customerNumber: e.target.value })}
+                        className="w-full h-full border-0 outline-none bg-transparent font-mono text-xs text-[var(--color-text-strong)] placeholder:text-[var(--color-text-muted)]"
+                        style={{ border: 0, outline: 'none', padding: 0, background: 'transparent' }}
+                      />
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-semibold text-[var(--color-text-strong)] mb-1.5">
+                      Assigned Company Entity
+                    </label>
+                    <select
+                      value={form.companyId}
+                      onChange={e => setForm({ ...form, companyId: e.target.value })}
+                      className="w-full h-10 px-3.5 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] text-xs text-[var(--color-text-strong)] focus:border-[var(--color-primary)] outline-none shadow-2xs"
+                    >
+                      <option value="">🌐 All / Group Customer (Global)</option>
+                      {entities.map(e => (
+                        <option key={e.id} value={e.id}>
+                          🏢 {e.name} {e.code ? `(${e.code})` : ''} {e.id === activeEntityId ? '★ (Active Workspace)' : ''}
+                        </option>
+                      ))}
+                    </select>
+                    <p className="text-[11px] text-[var(--color-text-muted)] mt-1.5 flex items-center gap-1">
+                      <Sparkles className="w-3 h-3 text-sky-500" /> Automatically assigned from top header workspace.
+                    </p>
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-semibold text-[var(--color-text-strong)] mb-1.5">
+                      Primary Email Address
+                    </label>
+                    <div className="flex items-center gap-2.5 h-10 px-3.5 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] focus-within:border-[var(--color-primary)] transition-colors shadow-2xs">
+                      <Mail className="w-4 h-4 text-[var(--color-text-muted)] shrink-0" />
+                      <input
+                        type="email"
+                        placeholder="billing@apexlogistics.com"
+                        value={form.email}
+                        onChange={e => setForm({ ...form, email: e.target.value })}
+                        className="w-full h-full border-0 outline-none bg-transparent text-xs text-[var(--color-text-strong)] placeholder:text-[var(--color-text-muted)]"
+                        style={{ border: 0, outline: 'none', padding: 0, background: 'transparent' }}
+                      />
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-semibold text-[var(--color-text-strong)] mb-1.5">
+                      Company Phone / Landline
+                    </label>
+                    <div className="flex items-center gap-2.5 h-10 px-3.5 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] focus-within:border-[var(--color-primary)] transition-colors shadow-2xs">
+                      <Phone className="w-4 h-4 text-[var(--color-text-muted)] shrink-0" />
+                      <input
+                        placeholder="+92 (42) 35789000"
+                        value={form.phone}
+                        onChange={e => setForm({ ...form, phone: e.target.value })}
+                        className="w-full h-full border-0 outline-none bg-transparent text-xs text-[var(--color-text-strong)] placeholder:text-[var(--color-text-muted)]"
+                        style={{ border: 0, outline: 'none', padding: 0, background: 'transparent' }}
+                      />
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-semibold text-[var(--color-text-strong)] mb-1.5">
+                      Contact Person Name
+                    </label>
+                    <div className="flex items-center gap-2.5 h-10 px-3.5 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] focus-within:border-[var(--color-primary)] transition-colors shadow-2xs">
+                      <User className="w-4 h-4 text-[var(--color-text-muted)] shrink-0" />
+                      <input
+                        placeholder="e.g. Muhammad Ali / Sarah Khan"
+                        value={form.contactPerson}
+                        onChange={e => setForm({ ...form, contactPerson: e.target.value })}
+                        className="w-full h-full border-0 outline-none bg-transparent text-xs text-[var(--color-text-strong)] placeholder:text-[var(--color-text-muted)]"
+                        style={{ border: 0, outline: 'none', padding: 0, background: 'transparent' }}
+                      />
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-semibold text-[var(--color-text-strong)] mb-1.5">
+                      Contact Person Phone / Mobile
+                    </label>
+                    <div className="flex items-center gap-2.5 h-10 px-3.5 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] focus-within:border-[var(--color-primary)] transition-colors shadow-2xs">
+                      <Phone className="w-4 h-4 text-[var(--color-text-muted)] shrink-0" />
+                      <input
+                        placeholder="+92 (300) 1234567"
+                        value={form.contactPhone}
+                        onChange={e => setForm({ ...form, contactPhone: e.target.value })}
+                        className="w-full h-full border-0 outline-none bg-transparent text-xs text-[var(--color-text-strong)] placeholder:text-[var(--color-text-muted)]"
+                        style={{ border: 0, outline: 'none', padding: 0, background: 'transparent' }}
+                      />
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {modalTab === 'address' && (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                  <div className="md:col-span-2">
+                    <label className="block text-xs font-semibold text-[var(--color-text-strong)] mb-1.5">
+                      Billing Address Line 1
+                    </label>
+                    <div className="flex items-center gap-2.5 h-10 px-3.5 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] focus-within:border-[var(--color-primary)] transition-colors shadow-2xs">
+                      <MapPin className="w-4 h-4 text-[var(--color-text-muted)] shrink-0" />
+                      <input
+                        placeholder="e.g. 12-A Main Boulevard, Gulberg III"
+                        value={form.addressLine1}
+                        onChange={e => setForm({ ...form, addressLine1: e.target.value })}
+                        className="w-full h-full border-0 outline-none bg-transparent text-xs text-[var(--color-text-strong)] placeholder:text-[var(--color-text-muted)]"
+                        style={{ border: 0, outline: 'none', padding: 0, background: 'transparent' }}
+                      />
+                    </div>
+                  </div>
+
+                  <div className="md:col-span-2">
+                    <label className="block text-xs font-semibold text-[var(--color-text-strong)] mb-1.5">
+                      Address Line 2 (Optional)
+                    </label>
+                    <input
+                      placeholder="Floor 2, Office # 204"
+                      value={form.addressLine2}
+                      onChange={e => setForm({ ...form, addressLine2: e.target.value })}
+                      className="w-full h-10 px-3.5 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] text-xs text-[var(--color-text-strong)] placeholder:text-[var(--color-text-muted)] focus:border-[var(--color-primary)] outline-none shadow-2xs"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-semibold text-[var(--color-text-strong)] mb-1.5">
+                      City
+                    </label>
+                    <input
+                      placeholder="Lahore"
+                      value={form.city}
+                      onChange={e => setForm({ ...form, city: e.target.value })}
+                      className="w-full h-10 px-3.5 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] text-xs text-[var(--color-text-strong)] placeholder:text-[var(--color-text-muted)] focus:border-[var(--color-primary)] outline-none shadow-2xs"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-semibold text-[var(--color-text-strong)] mb-1.5">
+                      State / Province / Region
+                    </label>
+                    <input
+                      placeholder="Punjab"
+                      value={form.state}
+                      onChange={e => setForm({ ...form, state: e.target.value })}
+                      className="w-full h-10 px-3.5 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] text-xs text-[var(--color-text-strong)] placeholder:text-[var(--color-text-muted)] focus:border-[var(--color-primary)] outline-none shadow-2xs"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-semibold text-[var(--color-text-strong)] mb-1.5">
+                      Postal Code / ZIP
+                    </label>
+                    <input
+                      placeholder="54000"
+                      value={form.postalCode}
+                      onChange={e => setForm({ ...form, postalCode: e.target.value })}
+                      className="w-full h-10 px-3.5 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] text-xs text-[var(--color-text-strong)] placeholder:text-[var(--color-text-muted)] focus:border-[var(--color-primary)] outline-none shadow-2xs"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-semibold text-[var(--color-text-strong)] mb-1.5">
+                      Country
+                    </label>
+                    <div className="flex items-center gap-2.5 h-10 px-3.5 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] focus-within:border-[var(--color-primary)] transition-colors shadow-2xs">
+                      <Globe className="w-4 h-4 text-[var(--color-text-muted)] shrink-0" />
+                      <select
+                        value={form.country}
+                        onChange={e => setForm({ ...form, country: e.target.value })}
+                        className="w-full h-full border-0 outline-none bg-transparent text-xs text-[var(--color-text-strong)] cursor-pointer"
+                        style={{ border: 0, outline: 'none', padding: 0, background: 'transparent' }}
+                      >
+                        {COUNTRIES.map(country => (
+                          <option key={country} value={country} className="bg-[var(--color-surface)] text-[var(--color-text-strong)]">
+                            {country}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {modalTab === 'financial' && (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                  <div>
+                    <label className="block text-xs font-semibold text-[var(--color-text-strong)] mb-1.5">
+                      Default Currency
+                    </label>
+                    <select
+                      value={form.currencyCode}
+                      onChange={e => setForm({ ...form, currencyCode: e.target.value })}
+                      className="w-full h-10 px-3.5 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] text-xs font-semibold text-[var(--color-text-strong)] focus:border-[var(--color-primary)] outline-none shadow-2xs"
+                    >
+                      {['PKR', 'USD', 'AED', 'SAR', 'GBP', 'EUR', 'CAD', 'AUD'].map(curr => (
+                        <option key={curr} value={curr}>
+                          {curr}
+                        </option>
+                      ))}
+                    </select>
+                    <p className="text-[11px] text-[var(--color-text-muted)] mt-1.5">
+                      Invoices for this customer will record amounts in this currency.
+                    </p>
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-semibold text-[var(--color-text-strong)] mb-1.5">
+                      Credit Limit ({form.currencyCode})
+                    </label>
+                    <div className="flex items-center gap-2.5 h-10 px-3.5 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] focus-within:border-[var(--color-primary)] transition-colors shadow-2xs">
+                      <span className="text-[11px] font-bold font-mono text-[var(--color-text-muted)] shrink-0 px-1.5 py-0.5 rounded bg-[var(--color-surface-muted)]">
+                        {form.currencyCode === 'PKR' ? 'Rs' : form.currencyCode === 'USD' ? '$' : form.currencyCode === 'EUR' ? '€' : form.currencyCode === 'GBP' ? '£' : form.currencyCode}
+                      </span>
+                      <input
+                        type="number"
+                        step="0.01"
+                        placeholder="500000"
+                        value={form.creditLimit}
+                        onChange={e => setForm({ ...form, creditLimit: e.target.value })}
+                        className="w-full h-full border-0 outline-none bg-transparent font-mono text-xs text-[var(--color-text-strong)] placeholder:text-[var(--color-text-muted)]"
+                        style={{ border: 0, outline: 'none', padding: 0, background: 'transparent' }}
+                      />
+                    </div>
+                    <p className="text-[11px] text-[var(--color-text-muted)] mt-1.5">
+                      Max outstanding trade receivables allowed before warning.
+                    </p>
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-semibold text-[var(--color-text-strong)] mb-1.5">
+                      Payment Terms (Net Days)
+                    </label>
+                    <div className="flex items-center gap-2.5 h-10 px-3.5 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] focus-within:border-[var(--color-primary)] transition-colors shadow-2xs">
+                      <Calendar className="w-4 h-4 text-[var(--color-text-muted)] shrink-0" />
+                      <input
+                        type="number"
+                        placeholder="30"
+                        value={form.paymentTermsDays}
+                        onChange={e => setForm({ ...form, paymentTermsDays: e.target.value })}
+                        className="w-full h-full border-0 outline-none bg-transparent text-xs text-[var(--color-text-strong)] placeholder:text-[var(--color-text-muted)]"
+                        style={{ border: 0, outline: 'none', padding: 0, background: 'transparent' }}
+                      />
+                    </div>
+                    <p className="text-[11px] text-[var(--color-text-muted)] mt-1.5">
+                      Default invoice due date offset (e.g. 30 = Net 30 days).
+                    </p>
+                  </div>
+                </div>
+              )}
+
+              {modalTab === 'tax' && (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                  <div className="md:col-span-2">
+                    <label className="block text-xs font-semibold text-[var(--color-text-strong)] mb-1.5">
+                      Tax Registration / VAT ID / NTN
+                    </label>
+                    <div className="flex items-center gap-2.5 h-10 px-3.5 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] focus-within:border-[var(--color-primary)] transition-colors shadow-2xs">
+                      <Receipt className="w-4 h-4 text-[var(--color-text-muted)] shrink-0" />
+                      <input
+                        placeholder="e.g. 1234567-8 (FBR NTN / STRN) or TRN"
+                        value={form.taxId}
+                        onChange={e => setForm({ ...form, taxId: e.target.value })}
+                        className="w-full h-full border-0 outline-none bg-transparent font-mono text-xs text-[var(--color-text-strong)] placeholder:text-[var(--color-text-muted)]"
+                        style={{ border: 0, outline: 'none', padding: 0, background: 'transparent' }}
+                      />
+                    </div>
+                    <p className="text-[11px] text-[var(--color-text-muted)] mt-1.5">
+                      Required for automated B2B e-invoicing compliance (FBR, ZATCA, EU VAT).
+                    </p>
+                  </div>
+
+                  <div className="md:col-span-2 p-4 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface-muted)]/60 text-xs text-[var(--color-text-muted)]">
+                    <p className="font-semibold text-[var(--color-text-strong)] flex items-center gap-1.5 mb-1.5">
+                      <ShieldCheck className="w-4 h-4 text-emerald-500" /> Compliance Note
+                    </p>
+                    <p className="text-[11px] leading-relaxed">
+                      This customer will inherit tax rates and rules based on their assigned country ({form.country || 'Global'}) and corporate entity.
+                    </p>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Modal Footer */}
+            <div className="px-6 py-3.5 border-t border-[var(--color-border)] bg-[var(--color-surface-muted)]/50 flex items-center justify-between gap-3">
+              <div className="text-[11px] text-[var(--color-text-muted)] flex items-center gap-1.5">
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 inline-block" />
+                <span>Auto-draft protection active</span>
+              </div>
+
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  className="h-8.5 px-3.5 rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] text-xs font-medium text-[var(--color-text)] hover:bg-[var(--color-surface-muted)] transition-colors"
+                  onClick={() => setModalOpen(false)}
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  className="h-8.5 px-3.5 rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] text-xs font-medium text-[var(--color-text-muted)] hover:text-[var(--color-text-strong)] transition-colors"
+                  onClick={(e) => { e.preventDefault(); saveDraft(); notify('Customer draft saved locally.'); }}
+                >
+                  Save Draft
+                </button>
+
+                {modalTab !== 'general' && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (modalTab === 'tax') setModalTab('financial')
+                      else if (modalTab === 'financial') setModalTab('address')
+                      else if (modalTab === 'address') setModalTab('general')
+                    }}
+                    className="h-8.5 px-3 rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] text-xs font-medium text-[var(--color-text)] hover:bg-[var(--color-surface-muted)] transition-colors flex items-center gap-1"
+                  >
+                    <ArrowLeft className="w-3.5 h-3.5" />
+                    <span>Back</span>
+                  </button>
+                )}
+
+                {modalTab !== 'tax' ? (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (modalTab === 'general') {
+                        if (!form.name.trim()) {
+                          notify('Customer name is required.')
+                          return
+                        }
+                        setModalTab('address')
+                      } else if (modalTab === 'address') {
+                        setModalTab('financial')
+                      } else if (modalTab === 'financial') {
+                        setModalTab('tax')
+                      }
+                    }}
+                    className="primary h-8.5 px-4 rounded-lg text-xs font-semibold shadow-xs flex items-center gap-1.5"
+                  >
+                    <span>Next: {modalTab === 'general' ? 'Address & Location' : modalTab === 'address' ? 'Terms & Financials' : 'Tax & Compliance'}</span>
+                    <ArrowRight className="w-3.5 h-3.5" />
+                  </button>
+                ) : (
+                  <button
+                    type="submit"
+                    className="primary h-8.5 px-4.5 rounded-lg text-xs font-semibold shadow-xs flex items-center gap-1.5 bg-emerald-600 hover:bg-emerald-700 text-white"
+                  >
+                    <Check className="w-3.5 h-3.5" />
+                    <span>{editingCustomer ? 'Save Changes' : 'Create Customer'}</span>
+                  </button>
+                )}
+              </div>
             </div>
           </form>
         </div>
