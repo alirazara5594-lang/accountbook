@@ -160,6 +160,114 @@
 }
 
 /* ═══════════════════════════════════════════════════════════════
+   NAVY DARK — Matches the UniqueSidebar's deep navy blue palette
+   ═══════════════════════════════════════════════════════════════ */
+[data-theme="nd-dark"] {
+  --color-primary: #63b3ed;
+  --color-primary-hover: #90cdf4;
+  --color-primary-foreground: #0d1b2a;
+  --color-secondary: #1a2b5c;
+  --color-secondary-hover: #1e3270;
+  --color-secondary-foreground: #bee3f8;
+  --color-accent: #90cdf4;
+  --color-accent-foreground: #0d1b2a;
+
+  --color-background: #0a1220;
+  --color-surface: rgba(13, 27, 42, 0.92);
+  --color-surface-muted: rgba(26, 43, 92, 0.45);
+  --color-text: #e2edf8;
+  --color-text-strong: #ffffff;
+  --color-text-muted: #7aa3c8;
+  --color-text-subtle: #4a7da8;
+  --color-border: rgba(99, 179, 237, 0.15);
+  --color-border-subtle: rgba(99, 179, 237, 0.08);
+
+  --color-success: #34d399;
+  --color-success-background: rgba(52, 211, 153, 0.12);
+  --color-warning: #fbbf24;
+  --color-warning-background: rgba(251, 191, 36, 0.12);
+  --color-danger: #f87171;
+  --color-danger-background: rgba(248, 113, 113, 0.12);
+  --color-info: #63b3ed;
+  --color-info-background: rgba(99, 179, 237, 0.12);
+
+  --color-sidebar-bg: #0d1b2a;
+  --color-sidebar-bg-hover: rgba(99, 179, 237, 0.1);
+  --color-sidebar-text: #7aa3c8;
+  --color-sidebar-text-hover: #ffffff;
+  --color-sidebar-brand: #ffffff;
+  --color-sidebar-border: rgba(99, 179, 237, 0.15);
+  --color-sidebar-accent: #63b3ed;
+
+  --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.4), 0 1px 2px rgba(0, 0, 0, 0.3);
+  --shadow-md: 0 4px 14px rgba(0, 0, 0, 0.45), 0 2px 6px rgba(0, 0, 0, 0.3);
+  --shadow-lg: 0 12px 40px rgba(0, 0, 0, 0.6), 0 4px 12px rgba(0, 0, 0, 0.35);
+
+  --background: var(--color-background);
+  --foreground: var(--color-text);
+  --card: var(--color-surface);
+  --card-foreground: var(--color-text);
+  --popover: var(--color-surface);
+  --popover-foreground: var(--color-text);
+  --primary: var(--color-primary);
+  --primary-foreground: var(--color-primary-foreground);
+  --secondary: var(--color-secondary);
+  --secondary-foreground: var(--color-secondary-foreground);
+  --muted: var(--color-surface-muted);
+  --muted-foreground: var(--color-text-muted);
+  --accent: var(--color-secondary);
+  --accent-foreground: var(--color-secondary-foreground);
+  --destructive: var(--color-danger);
+  --destructive-foreground: #ffffff;
+  --border: var(--color-border);
+  --input: var(--color-border);
+  --ring: var(--color-primary);
+  --chart-1: #63b3ed;
+  --chart-2: #90cdf4;
+  --chart-3: #34d399;
+  --chart-4: #fbbf24;
+  --chart-5: #f87171;
+  --sidebar: var(--color-sidebar-bg);
+  --sidebar-foreground: var(--color-sidebar-text);
+  --sidebar-primary: var(--color-sidebar-accent);
+  --sidebar-primary-foreground: #0d1b2a;
+  --sidebar-accent: var(--color-sidebar-bg-hover);
+  --sidebar-accent-foreground: var(--color-sidebar-text-hover);
+  --sidebar-border: var(--color-sidebar-border);
+  --sidebar-ring: var(--color-sidebar-accent);
+}
+
+[data-theme="nd-dark"] .fcard,
+[data-theme="nd-dark"] .hero-kpi,
+[data-theme="nd-dark"] .section-card,
+[data-theme="nd-dark"] .snapshot-chip,
+[data-theme="nd-dark"] .ratio-chip,
+[data-theme="nd-dark"] .alert-row,
+[data-theme="nd-dark"] .eq-card {
+  background: rgba(13, 27, 42, 0.75);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(99, 179, 237, 0.12);
+  box-shadow: 0 0 20px rgba(99, 179, 237, 0.05), inset 0 1px 0 rgba(255, 255, 255, 0.03);
+}
+
+[data-theme="nd-dark"] .card {
+  background: rgba(13, 27, 42, 0.75) !important;
+  backdrop-filter: blur(16px) !important;
+  -webkit-backdrop-filter: blur(16px) !important;
+  border-color: rgba(99, 179, 237, 0.12) !important;
+  box-shadow: 0 0 20px rgba(99, 179, 237, 0.05) !important;
+}
+
+[data-theme="nd-dark"] input,
+[data-theme="nd-dark"] select,
+[data-theme="nd-dark"] textarea {
+  background: rgba(13, 27, 42, 0.7);
+  border-color: rgba(99, 179, 237, 0.18);
+  color: #e2edf8;
+}
+
+/* ═══════════════════════════════════════════════════════════════
    DARK MODE — Deep navy + blue/purple/cyan neon accents
    ═══════════════════════════════════════════════════════════════ */
 [data-theme="bp-dark"] {

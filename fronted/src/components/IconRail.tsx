@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { LogOut, ChevronLeft, ChevronRight } from 'lucide-react';
+import { useState, useRef } from 'react';
+import { LogOut } from 'lucide-react';
 import { NAVIGATION, type NavGroup } from '../navigation';
 import type { UserData } from '../Login';
 
@@ -9,25 +9,38 @@ interface Props {
   modules: string[];
   currentUser: UserData;
   onLogout: () => void;
+  /** Optional badge counts for modules, e.g. { Sales: 3, Procurement: 1 } */
+  moduleBadgeCounts?: Record<string, number>;
 }
 
-export default function IconRail({ activePage, onNavigate, modules, currentUser, onLogout }: Props) {
-  const [isCollapsed, setIsCollapsed] = useState(false);
-  const [selectedGroup, setSelectedGroup] = useState<NavGroup | null>(null);
+export default function IconRail({ activePage, onNavigate, modules, currentUser, onLogout, moduleBadgeCounts }: Props) {
+  const [hoveredGroup, setHoveredGroup] = useState<NavGroup | null>(null);
+  const timeoutRef = useRef<any>(null);
 
   const groups = NAVIGATION.filter(
     group => !modules || modules.length === 0 || modules.includes(group.moduleId)
   );
 
-  // Determine active group based on activePage
-  const activeGroupName = activePage.split('.')[0] || 'Overview';
-  const activeGroup = selectedGroup || groups.find(g => g.name === activeGroupName) || groups[0];
+  const handleMouseEnter = (group: NavGroup) => {
+    if (timeoutRef.current) clearTimeout(timeoutRef.current);
+    setHoveredGroup(group);
+  };
+
+  const handleMouseLeave = () => {
+    timeoutRef.current = setTimeout(() => {
+      setHoveredGroup(null);
+    }, 200);
+  };
+
+  const handlePopoverEnter = () => {
+    if (timeoutRef.current) clearTimeout(timeoutRef.current);
+  };
+
+  const handlePopoverLeave = () => {
+    setHoveredGroup(null);
+  };
 
   const handleModuleClick = (group: NavGroup) => {
-    setSelectedGroup(group);
-    setIsCollapsed(false); // Auto-expand submenu when a primary module is clicked
-    
-    // Navigate directly to the module's summary page
     if (group.name === 'Overview') {
       onNavigate('Overview.Overview');
     } else {
@@ -36,92 +49,101 @@ export default function IconRail({ activePage, onNavigate, modules, currentUser,
   };
 
   return (
-    <div className="double-rail-container">
-      {/* Primary Slim Icon Rail */}
-      <aside className="primary-rail">
-        <div className="rail-brand" title="AMS — Accounting Management System">
-          <div className="rail-brand-logo-mark">
-            <svg width="24" height="24" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <div className="floating-dock-container">
+      {/* Floating Island Dock */}
+      <aside className="floating-island-dock">
+        <div className="dock-brand" title="AMS — ERP Portal">
+          <div className="dock-logo-mark">
+            <svg width="20" height="20" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
               <rect width="32" height="32" rx="8" fill="var(--color-primary)" fillOpacity="0.15"/>
               <path d="M8 22L12 10L16 18L20 10L24 22" stroke="var(--color-primary)" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"/>
             </svg>
           </div>
+          <span className="dock-brand-text">AMS</span>
         </div>
 
-        <nav className="rail-nav">
+        <nav className="dock-nav">
           {groups.map(group => {
-            const active = activeGroup.name === group.name;
+            const active = activePage.startsWith(group.name + '.');
             const Icon = group.icon;
+            const isHovered = hoveredGroup?.name === group.name;
+
             return (
-              <button
+              <div
+                className="dock-item-wrap"
                 key={group.name}
-                className={'rail-item' + (active ? ' active' : '')}
-                title={group.label}
-                onClick={() => handleModuleClick(group)}
+                onMouseEnter={() => handleMouseEnter(group)}
+                onMouseLeave={handleMouseLeave}
               >
-                <Icon className="rail-icon" size={18} strokeWidth={1.8} />
-                <span className="rail-short-label">{group.short}</span>
-              </button>
+                <button
+                  className={'dock-item' + (active ? ' active' : '')}
+                  onClick={() => handleModuleClick(group)}
+                  title={group.label}
+                >
+                  <Icon className="dock-icon" size={16} strokeWidth={1.8} />
+                  <span className="dock-label">{group.short}</span>
+                  {moduleBadgeCounts?.[group.name] ? (
+                    <span className="dock-badge">{moduleBadgeCounts[group.name]}</span>
+                  ) : null}
+                </button>
+
+                {/* Floating Speech-Bubble Submenu */}
+                {isHovered && (
+                  <div
+                    className="dock-popover"
+                    onMouseEnter={handlePopoverEnter}
+                    onMouseLeave={handlePopoverLeave}
+                  >
+                    <div className="popover-header">
+                      <span className="popover-title">{group.label}</span>
+                    </div>
+                    <div className="popover-nav-items">
+                      {group.name === 'Overview' ? (
+                        <button
+                          className={'popover-nav-item' + (activePage === 'Overview.Overview' ? ' active' : '')}
+                          onClick={() => onNavigate('Overview.Overview')}
+                        >
+                          Overview Dashboard
+                        </button>
+                      ) : (
+                        <>
+                          <button
+                            className={'popover-nav-item' + (activePage === `${group.name}.Summary` ? ' active' : '')}
+                            onClick={() => onNavigate(`${group.name}.Summary`)}
+                          >
+                            Summary Cockpit
+                          </button>
+                          {group.items.map(item => {
+                            const key = `${group.name}.${item}`;
+                            return (
+                              <button
+                                key={item}
+                                className={'popover-nav-item' + (activePage === key ? ' active' : '')}
+                                onClick={() => onNavigate(key)}
+                              >
+                                {item}
+                              </button>
+                            );
+                          })}
+                        </>
+                      )}
+                    </div>
+                  </div>
+                )}
+              </div>
             );
           })}
         </nav>
 
-        <div className="rail-footer">
-          <div className="rail-user avatar small" title={currentUser.fullName}>
+        <div className="dock-footer">
+          <div className="dock-user avatar small" title={currentUser.fullName}>
             {currentUser.avatar}
           </div>
-          <button className="rail-logout" title="Sign out" onClick={onLogout}>
+          <button className="dock-logout" title="Sign out" onClick={onLogout}>
             <LogOut size={14} />
+            <span className="dock-logout-label">Logout</span>
           </button>
         </div>
-      </aside>
-
-      {/* Secondary Sliding Submenu Panel */}
-      <aside className={'secondary-rail' + (isCollapsed ? ' collapsed' : '')}>
-        <div className="secondary-header">
-          <span className="secondary-title">{activeGroup.label}</span>
-        </div>
-
-        <div className="secondary-nav-items">
-          {activeGroup.name === 'Overview' ? (
-            <button
-              className={'secondary-nav-item' + (activePage === 'Overview.Overview' ? ' active' : '')}
-              onClick={() => onNavigate('Overview.Overview')}
-            >
-              Overview Dashboard
-            </button>
-          ) : (
-            <>
-              <button
-                className={'secondary-nav-item' + (activePage === `${activeGroup.name}.Summary` ? ' active' : '')}
-                onClick={() => onNavigate(`${activeGroup.name}.Summary`)}
-              >
-                Summary Cockpit
-              </button>
-              {activeGroup.items.map(item => {
-                const key = `${activeGroup.name}.${item}`;
-                return (
-                  <button
-                    key={item}
-                    className={'secondary-nav-item' + (activePage === key ? ' active' : '')}
-                    onClick={() => onNavigate(key)}
-                  >
-                    {item}
-                  </button>
-                );
-              })}
-            </>
-          )}
-        </div>
-
-        {/* Collapse Toggle Handle */}
-        <button
-          className="secondary-collapse-btn"
-          onClick={() => setIsCollapsed(!isCollapsed)}
-          title={isCollapsed ? 'Expand menu' : 'Collapse menu'}
-        >
-          {isCollapsed ? <ChevronRight size={12} /> : <ChevronLeft size={12} />}
-        </button>
       </aside>
     </div>
   );

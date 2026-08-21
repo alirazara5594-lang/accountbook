@@ -88,8 +88,8 @@ import { DashboardOverview } from './DashboardOverview'
 import { DashboardHub } from './components/DashboardHub'
 import { ErrorBoundary } from './components/ErrorBoundary'
 
+import UniqueSidebar from './components/UniqueSidebar';
 import { NAVIGATION } from './navigation'
-import IconRail from './components/IconRail'
 import { getStoredTheme } from './themes'
 import TopHeader from './components/TopHeader'
 import type { Account } from './api/modules/coa.api'
@@ -408,7 +408,7 @@ export default function App() {
   }
   const activeView = activeViewMap[page] || 'placeholder'
   const [group, module] = page.split('.')
-  const activeGroup = NAVIGATION.find(g => g.name === group)
+  const activeGroup = NAVIGATION.find((g: { name: string }) => g.name === group)
   const activeGroupItems = activeGroup?.items || []
 
   if (!currentUser) {
@@ -420,7 +420,7 @@ export default function App() {
     return <OnboardingWizard currentUser={currentUser} />;
   }
 
-  return <div className="app"><IconRail activePage={page} onNavigate={setPage} modules={activeEntity?.modules || []} currentUser={currentUser} onLogout={handleLogout} /><div className="main-col"><TopHeader currentUser={currentUser} entities={entities} activeEntityId={activeEntityId} onSelectEntity={setActiveEntityId} page={page} setPage={setPage} accounts={accounts} notify={notify} onLogout={handleLogout} theme={theme} onThemeChange={setTheme} /><main>{readOnly && <div style={{ display: 'flex', alignItems: 'center', gap: 10, background: '#fef3c7', border: '1px solid #f59e0b', color: '#92400e', borderRadius: 10, padding: '10px 14px', marginBottom: 16, fontSize: 12.5, fontWeight: 600 }}><ShieldAlert size={16} style={{ flexShrink: 0 }} /><span>{activeEntity?.name} is <b>Deactivated</b> — read-only mode. You can view data and download reports, but editing is disabled.</span><button onClick={() => setPage('Administration.Companies')} style={{ marginLeft: 'auto', background: '#fff7ed', border: '1px solid #f59e0b', borderRadius: 8, padding: '4px 10px', fontSize: 11, fontWeight: 700, color: '#92400e', cursor: 'pointer' }}>Manage Companies</button></div>}<div className="module-workspace">
+  return <div className="app"><UniqueSidebar activePage={page} onNavigate={setPage} modules={activeEntity?.modules || []} currentUser={currentUser} onLogout={handleLogout} /><div className="main-col"><TopHeader currentUser={currentUser} entities={entities} activeEntityId={activeEntityId} onSelectEntity={setActiveEntityId} page={page} setPage={setPage} accounts={accounts} notify={notify} onLogout={handleLogout} theme={theme} onThemeChange={setTheme} /><main>{readOnly && <div style={{ display: 'flex', alignItems: 'center', gap: 10, background: '#fef3c7', border: '1px solid #f59e0b', color: '#92400e', borderRadius: 10, padding: '10px 14px', marginBottom: 16, fontSize: 12.5, fontWeight: 600 }}><ShieldAlert size={16} style={{ flexShrink: 0 }} /><span>{activeEntity?.name} is <b>Deactivated</b> — read-only mode. You can view data and download reports, but editing is disabled.</span><button onClick={() => setPage('Administration.Companies')} style={{ marginLeft: 'auto', background: '#fff7ed', border: '1px solid #f59e0b', borderRadius: 8, padding: '4px 10px', fontSize: 11, fontWeight: 700, color: '#92400e', cursor: 'pointer' }}>Manage Companies</button></div>}<div className="module-workspace">
     <header className="module-head">
       <div className="module-title">
         <span className="module-icon">{(() => { const MIcon = activeGroup?.icon; return MIcon ? <MIcon size={20} strokeWidth={1.8} /> : '▦'; })()}</span>
@@ -436,7 +436,7 @@ export default function App() {
     </header>
     <nav className="module-tabs">
       <button className={'tab' + (module === 'Summary' || module === 'Dashboard' ? ' active' : '')} onClick={() => setPage(`${group}.Summary`)}>Dashboard</button>
-      {activeGroupItems.map(item => {
+      {activeGroupItems.map((item: string) => {
         const key = `${group}.${item}`;
         return <button key={item} className={'tab' + (page === key ? ' active' : '')} onClick={() => setPage(key)}>{item}</button>;
       })}

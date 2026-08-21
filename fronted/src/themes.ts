@@ -8,6 +8,7 @@ export interface ThemeDef {
 }
 
 export const THEMES: ThemeDef[] = [
+  { id: 'nd-dark', name: '🌊 Navy Dark', primary: '#63b3ed', accent: '#90cdf4', sidebar: '#0d1b2a', dark: true },
   { id: 'va-dark', name: 'Dark', primary: '#00d4ff', accent: '#a855f7', sidebar: '#0a1020', dark: true },
   { id: 'va-cool', name: 'Cool', primary: '#00c4e8', accent: '#a855f7', sidebar: '#0d1528' },
   { id: 'va-light', name: 'Light', primary: '#8b5cf6', accent: '#a855f7', sidebar: '#f8fafc' },
