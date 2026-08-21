@@ -254,19 +254,6 @@ export default function ProductsAndServices({
           <p className="text-[var(--color-text-muted)] text-xs mt-0.5">Manage physical inventory goods, billable services, kits, and GAAP GL mappings.</p>
         </div>
         <div className="flex items-center gap-2 shrink-0 flex-wrap">
-          <select
-            className="h-9 px-3 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] text-xs text-[var(--color-text)] outline-none focus:border-[var(--color-primary)] transition-colors shadow-2xs box-border"
-            style={{ paddingTop: 0, paddingBottom: 0 }}
-            value={typeFilter}
-            onChange={e => setTypeFilter(e.target.value)}
-          >
-            <option value="all">⚡ All Item Types</option>
-            <option value="Physical">📦 Physical Goods</option>
-            <option value="Service">🛠️ Services</option>
-            <option value="NonInventory">📑 Non-Inventory Supplies</option>
-            <option value="Bundle">🎁 Bundles / Kits</option>
-          </select>
-
           <DataToolbar
             query={search}
             setQuery={setSearch}
@@ -277,8 +264,20 @@ export default function ProductsAndServices({
             exportSubtitle={`Master catalog (${filteredProducts.length} items).`}
             exportHeaders={exportHeaders}
             exportRows={exportRows}
-            onRefresh={() => fetchProducts()}
-          />
+          >
+            <select
+              className="h-9 px-3 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] text-xs text-[var(--color-text)] outline-none focus:border-[var(--color-primary)] transition-colors shadow-2xs box-border"
+              style={{ paddingTop: 0, paddingBottom: 0 }}
+              value={typeFilter}
+              onChange={e => setTypeFilter(e.target.value)}
+            >
+              <option value="all">⚡ All Item Types</option>
+              <option value="Physical">📦 Physical Goods</option>
+              <option value="Service">🛠️ Services</option>
+              <option value="NonInventory">📑 Non-Inventory Supplies</option>
+              <option value="Bundle">🎁 Bundles / Kits</option>
+            </select>
+          </DataToolbar>
           <button onClick={openCreateModal} className="primary h-9 px-4 rounded-xl text-xs font-semibold whitespace-nowrap flex items-center justify-center gap-1.5 shadow-sm">
             <span>＋</span> Add Item
           </button>
@@ -491,7 +490,7 @@ export default function ProductsAndServices({
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
                   <div>
                     <label className="block text-xs font-semibold text-[var(--color-text-strong)] mb-1.5">
-                      Item Type <span className="text-rose-500">*</span>
+                      <span className="text-rose-500 font-bold mr-1">*</span> Item Type
                     </label>
                     <select
                       value={form.type}
@@ -523,7 +522,7 @@ export default function ProductsAndServices({
 
                   <div className="md:col-span-2">
                     <label className="block text-xs font-semibold text-[var(--color-text-strong)] mb-1.5">
-                      Item Name <span className="text-rose-500">*</span>
+                      <span className="text-rose-500 font-bold mr-1">*</span> Item Name
                     </label>
                     <div className="flex items-center gap-2.5 h-10 px-3.5 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] focus-within:border-[var(--color-primary)] transition-colors shadow-2xs">
                       <Package className="w-4 h-4 text-[var(--color-text-muted)] shrink-0" />
@@ -643,7 +642,7 @@ export default function ProductsAndServices({
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
                     <div className="md:col-span-2">
                       <label className="block text-xs font-semibold text-[var(--color-text-strong)] mb-1.5">
-                        Income Account (Revenue) <span className="text-rose-500">*</span>
+                        <span className="text-rose-500 font-bold mr-1">*</span> Income Account (Revenue)
                       </label>
                       <select
                         required

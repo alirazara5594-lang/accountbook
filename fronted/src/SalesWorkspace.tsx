@@ -231,20 +231,6 @@ export const SalesWorkspace: React.FC<{ activeEntityId: string; entities?: any[]
           </p>
         </div>
         <div className="flex items-center gap-2 shrink-0 flex-wrap">
-          <select
-            className="h-9 px-3 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] text-xs text-[var(--color-text)] outline-none focus:border-[var(--color-primary)] transition-colors shadow-2xs box-border"
-            style={{ paddingTop: 0, paddingBottom: 0 }}
-            value={statusFilter}
-            onChange={e => setStatusFilter(e.target.value)}
-          >
-            <option value="all">⚡ All Statuses</option>
-            <option value="draft">⚪ Draft</option>
-            <option value="sent">🔵 Sent</option>
-            <option value="paid">🟢 Paid</option>
-            <option value="partly paid">🟡 Partially Paid</option>
-            <option value="overdue">🔴 Overdue</option>
-          </select>
-
           <DataToolbar
             query={query}
             setQuery={setQuery}
@@ -256,8 +242,21 @@ export const SalesWorkspace: React.FC<{ activeEntityId: string; entities?: any[]
             exportHeaders={exportHeaders}
             exportRows={exportRows}
             exportTotals={[{ label: 'Total Outstanding', value: totalOutstanding }]}
-            onRefresh={() => fetchData()}
-          />
+          >
+            <select
+              className="h-9 px-3 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] text-xs text-[var(--color-text)] outline-none focus:border-[var(--color-primary)] transition-colors shadow-2xs box-border"
+              style={{ paddingTop: 0, paddingBottom: 0 }}
+              value={statusFilter}
+              onChange={e => setStatusFilter(e.target.value)}
+            >
+              <option value="all">⚡ All Statuses</option>
+              <option value="draft">⚪ Draft</option>
+              <option value="sent">🔵 Sent</option>
+              <option value="paid">🟢 Paid</option>
+              <option value="partly paid">🟡 Partially Paid</option>
+              <option value="overdue">🔴 Overdue</option>
+            </select>
+          </DataToolbar>
           <button
             onClick={openCreateModal}
             className="primary h-9 px-4 rounded-xl text-xs font-semibold whitespace-nowrap flex items-center justify-center gap-1.5 shadow-sm"
@@ -474,7 +473,7 @@ export const SalesWorkspace: React.FC<{ activeEntityId: string; entities?: any[]
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
                   <div className="md:col-span-2">
                     <label className="block text-xs font-semibold text-[var(--color-text-strong)] mb-1.5">
-                      Customer Account <span className="text-rose-500">*</span>
+                      <span className="text-rose-500 font-bold mr-1">*</span> Customer Account
                     </label>
                     <select
                       value={form.customerId}
@@ -548,16 +547,9 @@ export const SalesWorkspace: React.FC<{ activeEntityId: string; entities?: any[]
               )}
 
               {modalTab === 'lines' && (
-                <div className="space-y-4">
-                  <div className="flex items-center justify-between">
+                <div className="space-y-3">
+                  <div>
                     <p className="text-xs font-semibold text-[var(--color-text-strong)]">Invoice Items & Quantities</p>
-                    <button
-                      type="button"
-                      onClick={addLine}
-                      className="h-8 px-3 rounded-lg border border-[var(--color-primary)] text-[var(--color-primary)] text-xs font-semibold hover:bg-[var(--color-primary)]/10 transition-colors flex items-center gap-1"
-                    >
-                      <Plus className="w-3.5 h-3.5" /> Add Line
-                    </button>
                   </div>
 
                   <div className="border border-[var(--color-border)] rounded-xl overflow-hidden shadow-2xs">
@@ -656,6 +648,16 @@ export const SalesWorkspace: React.FC<{ activeEntityId: string; entities?: any[]
                         ))}
                       </tbody>
                     </table>
+                  </div>
+
+                  <div className="flex justify-start pt-1">
+                    <button
+                      type="button"
+                      onClick={addLine}
+                      className="h-8 px-3.5 rounded-lg border border-[var(--color-primary)] text-[var(--color-primary)] text-xs font-semibold hover:bg-[var(--color-primary)]/10 transition-colors flex items-center gap-1.5 shadow-2xs"
+                    >
+                      <Plus className="w-3.5 h-3.5" /> Add Line
+                    </button>
                   </div>
                 </div>
               )}
@@ -791,7 +793,9 @@ export const SalesWorkspace: React.FC<{ activeEntityId: string; entities?: any[]
               </p>
             </div>
             <div>
-              <label className="block text-xs font-semibold text-[var(--color-text-strong)] mb-1.5">* Accounts Receivable Account</label>
+              <label className="block text-xs font-semibold text-[var(--color-text-strong)] mb-1.5">
+                <span className="text-rose-500 font-bold mr-1">*</span> Accounts Receivable Account
+              </label>
               <select
                 value={postForm.arAccId}
                 onChange={e => setPostForm({ ...postForm, arAccId: e.target.value })}
@@ -804,7 +808,9 @@ export const SalesWorkspace: React.FC<{ activeEntityId: string; entities?: any[]
               </select>
             </div>
             <div>
-              <label className="block text-xs font-semibold text-[var(--color-text-strong)] mb-1.5">* Revenue Account</label>
+              <label className="block text-xs font-semibold text-[var(--color-text-strong)] mb-1.5">
+                <span className="text-rose-500 font-bold mr-1">*</span> Revenue Account
+              </label>
               <select
                 value={postForm.revenueAccId}
                 onChange={e => setPostForm({ ...postForm, revenueAccId: e.target.value })}

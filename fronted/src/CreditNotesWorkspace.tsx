@@ -157,18 +157,6 @@ export function CreditNotesWorkspace({
           </p>
         </div>
         <div className="flex items-center gap-2 shrink-0 flex-wrap">
-          <select
-            className="h-9 px-3 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] text-xs text-[var(--color-text)] outline-none focus:border-[var(--color-primary)] transition-colors shadow-2xs box-border"
-            style={{ paddingTop: 0, paddingBottom: 0 }}
-            value={statusFilter}
-            onChange={e => setStatusFilter(e.target.value)}
-          >
-            <option value="all">⚡ All Statuses</option>
-            <option value="draft">⚪ Draft</option>
-            <option value="posted">🟢 Posted</option>
-            <option value="void">🔴 Void</option>
-          </select>
-
           <DataToolbar
             query={query}
             setQuery={setQuery}
@@ -180,8 +168,19 @@ export function CreditNotesWorkspace({
             exportHeaders={exportHeaders}
             exportRows={exportRows}
             exportTotals={[{ label: 'Total Credit Value', value: totalCredit }]}
-            onRefresh={() => fetchAll(currentEntityId)}
-          />
+          >
+            <select
+              className="h-9 px-3 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] text-xs text-[var(--color-text)] outline-none focus:border-[var(--color-primary)] transition-colors shadow-2xs box-border"
+              style={{ paddingTop: 0, paddingBottom: 0 }}
+              value={statusFilter}
+              onChange={e => setStatusFilter(e.target.value)}
+            >
+              <option value="all">⚡ All Statuses</option>
+              <option value="draft">⚪ Draft</option>
+              <option value="posted">🟢 Posted</option>
+              <option value="void">🔴 Void</option>
+            </select>
+          </DataToolbar>
           <button
             onClick={openCreateModal}
             className="primary h-9 px-4 rounded-xl text-xs font-semibold whitespace-nowrap flex items-center justify-center gap-1.5 shadow-sm"
@@ -375,7 +374,7 @@ export function CreditNotesWorkspace({
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
                   <div className="md:col-span-2">
                     <label className="block text-xs font-semibold text-[var(--color-text-strong)] mb-1.5">
-                      Customer / Client <span className="text-rose-500">*</span>
+                      <span className="text-rose-500 font-bold mr-1">*</span> Customer / Client
                     </label>
                     <select
                       value={form.customerId}
@@ -424,7 +423,7 @@ export function CreditNotesWorkspace({
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
                   <div>
                     <label className="block text-xs font-semibold text-[var(--color-text-strong)] mb-1.5">
-                      Credit Principal Amount (Rs) <span className="text-rose-500">*</span>
+                      <span className="text-rose-500 font-bold mr-1">*</span> Credit Principal Amount (Rs)
                     </label>
                     <div className="flex items-center gap-2.5 h-10 px-3.5 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] focus-within:border-[var(--color-primary)] transition-colors shadow-2xs">
                       <span className="text-[11px] font-bold font-mono text-[var(--color-text-muted)] shrink-0 px-1.5 py-0.5 rounded bg-[var(--color-surface-muted)]">

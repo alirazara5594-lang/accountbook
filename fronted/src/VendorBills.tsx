@@ -322,9 +322,11 @@ export const VendorBills: React.FC<{ activeEntityId: string }> = ({ activeEntity
             )}
 
             <div className="form-grid">
-              <label>
-                * Vendor / Supplier Name
-                <select required value={billForm.vendorId} onChange={e => setBillForm({ ...billForm, vendorId: e.target.value })}>
+              <div>
+                <label className="block text-xs font-semibold text-[var(--color-text-strong)] mb-1.5">
+                  <span className="text-rose-500 font-bold mr-1">*</span> Vendor / Supplier Name
+                </label>
+                <select required value={billForm.vendorId} onChange={e => setBillForm({ ...billForm, vendorId: e.target.value })} className="w-full">
                   <option value="">-- Select Vendor --</option>
                   {vendors.map(v => (
                     <option key={v.id} value={v.id}>
@@ -332,31 +334,39 @@ export const VendorBills: React.FC<{ activeEntityId: string }> = ({ activeEntity
                     </option>
                   ))}
                 </select>
-              </label>
+              </div>
 
-              <label>
-                * Supplier Invoice Number
+              <div>
+                <label className="block text-xs font-semibold text-[var(--color-text-strong)] mb-1.5">
+                  <span className="text-rose-500 font-bold mr-1">*</span> Supplier Invoice Number
+                </label>
                 <input
                   required
                   placeholder="e.g. INV-SUPP-9982"
                   value={billForm.vendorInvoiceNumber}
                   onChange={e => setBillForm({ ...billForm, vendorInvoiceNumber: e.target.value })}
+                  className="w-full"
                 />
-              </label>
+              </div>
 
-              <label>
-                System Bill Number
+              <div>
+                <label className="block text-xs font-semibold text-[var(--color-text-strong)] mb-1.5">
+                  System Bill Number
+                </label>
                 <input
                   placeholder="Auto-generated e.g. BILL-0001"
                   value={billForm.billNumber}
                   onChange={e => setBillForm({ ...billForm, billNumber: e.target.value })}
+                  className="w-full"
                 />
-              </label>
+              </div>
 
               {entryMode === 'procurement' ? (
-                <label>
-                  * Linked Purchase Order
-                  <select value={billForm.purchaseOrderId} onChange={e => setBillForm({ ...billForm, purchaseOrderId: e.target.value })}>
+                <div>
+                  <label className="block text-xs font-semibold text-[var(--color-text-strong)] mb-1.5">
+                    <span className="text-rose-500 font-bold mr-1">*</span> Linked Purchase Order
+                  </label>
+                  <select value={billForm.purchaseOrderId} onChange={e => setBillForm({ ...billForm, purchaseOrderId: e.target.value })} className="w-full">
                     <option value="">-- Select Purchase Order --</option>
                     {orders.map(p => (
                       <option key={p.id} value={p.id}>
@@ -364,71 +374,84 @@ export const VendorBills: React.FC<{ activeEntityId: string }> = ({ activeEntity
                       </option>
                     ))}
                   </select>
-                </label>
+                </div>
               ) : (
-                <label>
-                  Direct AP Ledger Posting
-                  <input disabled value="Direct Accounts Payable Liability (Posting to GL)" style={{ background: '#f8fafc', color: '#0284c7', fontWeight: 'bold' }} />
-                </label>
+                <div>
+                  <label className="block text-xs font-semibold text-[var(--color-text-strong)] mb-1.5">
+                    Direct AP Ledger Posting
+                  </label>
+                  <input disabled value="Direct Accounts Payable Liability (Posting to GL)" style={{ background: '#f8fafc', color: '#0284c7', fontWeight: 'bold' }} className="w-full" />
+                </div>
               )}
 
-              <label>
-                * Invoice / Bill Date
+              <div>
+                <label className="block text-xs font-semibold text-[var(--color-text-strong)] mb-1.5">
+                  <span className="text-rose-500 font-bold mr-1">*</span> Invoice / Bill Date
+                </label>
                 <input
                   type="date"
                   required
                   value={billForm.date}
                   onChange={e => setBillForm({ ...billForm, date: e.target.value })}
+                  className="w-full"
                 />
-              </label>
+              </div>
 
-              <label>
-                * Due Date
+              <div>
+                <label className="block text-xs font-semibold text-[var(--color-text-strong)] mb-1.5">
+                  <span className="text-rose-500 font-bold mr-1">*</span> Due Date
+                </label>
                 <input
                   type="date"
                   required
                   value={billForm.dueDate}
                   onChange={e => setBillForm({ ...billForm, dueDate: e.target.value })}
+                  className="w-full"
                 />
-              </label>
+              </div>
 
-              <label>
-                Payment Terms (Days)
+              <div>
+                <label className="block text-xs font-semibold text-[var(--color-text-strong)] mb-1.5">
+                  Payment Terms (Days)
+                </label>
                 <input
                   type="number"
                   placeholder="30"
                   value={billForm.paymentTermsDays}
                   onChange={e => setBillForm({ ...billForm, paymentTermsDays: e.target.value })}
+                  className="w-full"
                 />
-              </label>
+              </div>
 
-              <label>
-                Transaction Currency
-                <select value={billForm.currencyCode} onChange={e => setBillForm({ ...billForm, currencyCode: e.target.value })}>
-                  {['USD', 'PKR', 'EUR', 'GBP', 'AED', 'SAR', 'CAD', 'AUD'].map(curr => (
+              <div>
+                <label className="block text-xs font-semibold text-[var(--color-text-strong)] mb-1.5">
+                  Transaction Currency
+                </label>
+                <select value={billForm.currencyCode} onChange={e => setBillForm({ ...billForm, currencyCode: e.target.value })} className="w-full">
+                  {['PKR', 'USD', 'EUR', 'GBP', 'AED', 'SAR', 'CAD', 'AUD'].map(curr => (
                     <option key={curr} value={curr}>
                       {curr}
                     </option>
                   ))}
                 </select>
-              </label>
+              </div>
 
-              <label style={{ gridColumn: '1 / -1' }}>
-                Payment Notes / Internal References
+              <div style={{ gridColumn: '1 / -1' }}>
+                <label className="block text-xs font-semibold text-[var(--color-text-strong)] mb-1.5">
+                  Payment Notes / Internal References
+                </label>
                 <input
                   placeholder="Payment instructions, bank wire info, or reference tags"
                   value={billForm.notes}
                   onChange={e => setBillForm({ ...billForm, notes: e.target.value })}
+                  className="w-full"
                 />
-              </label>
+              </div>
 
               {/* Line Items Section */}
               <div style={{ gridColumn: '1 / -1', marginTop: 15 }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
                   <strong style={{ fontSize: 13, textTransform: 'uppercase', color: '#475569', letterSpacing: '0.05em' }}>Billed Line Items & GL Account Distributions</strong>
-                  <button type="button" className="btn-secondary" style={{ fontSize: 12, padding: '4px 10px' }} onClick={() => setBillLines([...billLines, { description: '', quantity: 1, unitPrice: 0, accountId: '', destination: 'Expense', taxAmount: 0 }])}>
-                    + Add Line Item
-                  </button>
                 </div>
 
                 {/* Column Headers */}
@@ -450,10 +473,10 @@ export const VendorBills: React.FC<{ activeEntityId: string }> = ({ activeEntity
                     const lineTax = parseFloat(l.taxAmount) || 0;
                     const lineTotal = lineSubtotal + lineTax;
                     return (
-                      <div key={i} style={{ display: 'flex', gap: 8, alignItems: 'center', background: '#f8fafc', padding: 10, borderRadius: 8, border: '1px solid #e2e8f0' }}>
+                      <div key={i} style={{ display: 'flex', gap: 8, alignItems: 'center', background: '#f8fafc', padding: 8, borderRadius: 8, border: '1px solid #e2e8f0' }}>
                         <input
                           style={{ flex: 1 }}
-                          placeholder="Item Description *"
+                          placeholder="Item description"
                           value={l.description}
                           onChange={e => {
                             const u = [...billLines];
@@ -526,6 +549,12 @@ export const VendorBills: React.FC<{ activeEntityId: string }> = ({ activeEntity
                       </div>
                     );
                   })}
+                </div>
+
+                <div style={{ display: 'flex', justifyContent: 'flex-start', marginTop: 10 }}>
+                  <button type="button" className="btn-secondary" style={{ fontSize: 12, padding: '4px 10px' }} onClick={() => setBillLines([...billLines, { description: '', quantity: 1, unitPrice: 0, accountId: '', destination: 'Expense', taxAmount: 0 }])}>
+                    + Add Line Item
+                  </button>
                 </div>
 
                 {/* Bill Totals Summary */}

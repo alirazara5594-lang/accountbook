@@ -693,7 +693,6 @@ export const ProcurementWorkspace: React.FC<{ activeEntityId: string; entities?:
               <div className="border-t pt-3 space-y-3">
                 <div className="flex justify-between items-center">
                   <p className="font-bold text-gray-800 text-xs uppercase tracking-wider">Line Items & Target Destinations</p>
-                  <Button size="sm" variant="outline" onClick={addPrLine}>+ Add Line Item</Button>
                 </div>
                 {prLines.map((l, i) => (
                   <div key={i} className="p-3 bg-gray-50 rounded-xl space-y-2 border border-gray-200 text-xs">
@@ -723,6 +722,9 @@ export const ProcurementWorkspace: React.FC<{ activeEntityId: string; entities?:
                     </div>
                   </div>
                 ))}
+                <div className="flex justify-start pt-1">
+                  <Button size="sm" variant="outline" onClick={addPrLine}>+ Add Line Item</Button>
+                </div>
                 {prLines.length > 0 && (() => {
                   const estimatedTotal = prLines.reduce((sum, l) => sum + ((parseFloat(l.quantity) || 0) * (parseFloat(l.estimatedUnitPrice) || 0)), 0);
                   return (
@@ -886,9 +888,6 @@ export const ProcurementWorkspace: React.FC<{ activeEntityId: string; entities?:
               <div style={{ gridColumn: '1 / -1', marginTop: 15 }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
                   <strong style={{ fontSize: 13, textTransform: 'uppercase', color: '#475569', letterSpacing: '0.05em' }}>Billed Line Items & Unit Costs</strong>
-                  <button type="button" className="btn-secondary" style={{ fontSize: 12, padding: '4px 10px' }} onClick={() => setBillLines([...billLines, { description: '', quantity: 1, unitPrice: 0, taxAmount: 0, destination: 'Expense' }])}>
-                    + Add Line Item
-                  </button>
                 </div>
 
                 {/* Column Headers */}
@@ -921,6 +920,12 @@ export const ProcurementWorkspace: React.FC<{ activeEntityId: string; entities?:
                       </div>
                     );
                   })}
+                </div>
+
+                <div style={{ display: 'flex', justifyContent: 'flex-start', marginTop: 10 }}>
+                  <button type="button" className="btn-secondary" style={{ fontSize: 12, padding: '4px 10px' }} onClick={() => setBillLines([...billLines, { description: '', quantity: 1, unitPrice: 0, taxAmount: 0, destination: 'Expense' }])}>
+                    + Add Line Item
+                  </button>
                 </div>
 
                 {/* Bill Totals Summary */}

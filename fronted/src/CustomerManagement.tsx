@@ -3,7 +3,7 @@ import type { FormEvent } from 'react'
 import {
   ShieldAlert, UserCheck, Users, User, CreditCard, Pencil, Trash2,
   Building2, MapPin, Receipt, Globe, Check, Sparkles, X, Mail,
-  Phone, Hash, Calendar, ShieldCheck, ArrowRight, ArrowLeft
+  Phone, Hash, Calendar, ShieldCheck, ArrowRight, ArrowLeft, Eye
 } from 'lucide-react'
 
 import { Button } from '@/components/ui/button'
@@ -302,35 +302,6 @@ export default function CustomerManagement({
           <p className="text-[var(--color-text-muted)] text-xs mt-0.5">Manage customer records, credit terms, contact directories, and trade receivables.</p>
         </div>
         <div className="flex items-center gap-2 shrink-0 flex-wrap">
-          <select
-            className="h-9 px-3 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] text-xs text-[var(--color-text)] outline-none focus:border-[var(--color-primary)] transition-colors shadow-2xs box-border"
-            style={{ paddingTop: 0, paddingBottom: 0 }}
-            value={statusFilter}
-            onChange={e => setStatusFilter(e.target.value)}
-          >
-            <option value="all">⚡ All Statuses</option>
-            <option value="Active">🟢 Active</option>
-            <option value="Inactive">⚪ Inactive</option>
-            <option value="Blocked">🔴 Blocked</option>
-          </select>
-
-          {entities && entities.length > 1 && (
-            <select
-              className="h-9 px-3 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] text-xs text-[var(--color-text)] outline-none focus:border-[var(--color-primary)] transition-colors shadow-2xs box-border"
-              style={{ paddingTop: 0, paddingBottom: 0 }}
-              value={companyFilter}
-              onChange={e => setCompanyFilter(e.target.value)}
-            >
-              <option value="all">🏢 All Companies</option>
-              <option value="unassigned">🌐 Global</option>
-              {entities.map(e => (
-                <option key={e.id} value={e.id}>
-                  🏢 {e.name} {e.code ? `(${e.code})` : ''}
-                </option>
-              ))}
-            </select>
-          )}
-
           <DataToolbar
             query={search}
             setQuery={setSearch}
@@ -341,7 +312,36 @@ export default function CustomerManagement({
             exportSubtitle="Customer accounts, credit limits, and contact records."
             exportHeaders={exportHeaders}
             exportRows={exportRows}
-          />
+          >
+            <select
+              className="h-9 px-3 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] text-xs text-[var(--color-text)] outline-none focus:border-[var(--color-primary)] transition-colors shadow-2xs box-border"
+              style={{ paddingTop: 0, paddingBottom: 0 }}
+              value={statusFilter}
+              onChange={e => setStatusFilter(e.target.value)}
+            >
+              <option value="all">⚡ All Statuses</option>
+              <option value="Active">🟢 Active</option>
+              <option value="Inactive">⚪ Inactive</option>
+              <option value="Blocked">🔴 Blocked</option>
+            </select>
+
+            {entities && entities.length > 1 && (
+              <select
+                className="h-9 px-3 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] text-xs text-[var(--color-text)] outline-none focus:border-[var(--color-primary)] transition-colors shadow-2xs box-border"
+                style={{ paddingTop: 0, paddingBottom: 0 }}
+                value={companyFilter}
+                onChange={e => setCompanyFilter(e.target.value)}
+              >
+                <option value="all">🏢 All Companies</option>
+                <option value="unassigned">🌐 Global</option>
+                {entities.map(e => (
+                  <option key={e.id} value={e.id}>
+                    🏢 {e.name} {e.code ? `(${e.code})` : ''}
+                  </option>
+                ))}
+              </select>
+            )}
+          </DataToolbar>
           <button onClick={openCreateModal} className="primary h-9 px-4 rounded-xl text-xs font-semibold whitespace-nowrap flex items-center justify-center gap-1.5 shadow-sm">
             <span>＋</span> Add Customer
           </button>
@@ -556,7 +556,7 @@ export default function CustomerManagement({
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
                   <div className="md:col-span-2">
                     <label className="block text-xs font-semibold text-[var(--color-text-strong)] mb-1.5">
-                      Customer / Company Name <span className="text-rose-500">*</span>
+                      <span className="text-rose-500 font-bold mr-1">*</span> Customer / Company Name
                     </label>
                     <div className="flex items-center gap-2.5 h-10 px-3.5 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] focus-within:border-[var(--color-primary)] transition-colors shadow-2xs">
                       <Building2 className="w-4 h-4 text-[var(--color-text-muted)] shrink-0" />

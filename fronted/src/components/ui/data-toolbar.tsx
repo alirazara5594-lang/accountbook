@@ -8,7 +8,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuLabel,
 } from '@/components/ui/dropdown-menu';
-import { Search, Download, FileText, FileSpreadsheet, Printer, UploadCloud, RefreshCw, X } from 'lucide-react';
+import { Search, Download, FileText, FileSpreadsheet, Printer, UploadCloud, X } from 'lucide-react';
 import { downloadCSV, downloadExcel, downloadPDF, readUploadedFile, type ExportRow } from '@/lib/exportUtils';
 
 export interface DataToolbarProps {
@@ -44,7 +44,7 @@ export function DataToolbar({
   onUpload,
   uploadAccept,
   uploadLabel = 'Upload file',
-  onRefresh,
+  onRefresh: _onRefresh,
   children,
 }: DataToolbarProps) {
   const fileRef = useRef<HTMLInputElement>(null);
@@ -84,16 +84,6 @@ export function DataToolbar({
       )}
 
       {children}
-
-      {onRefresh && (
-        <button
-          type="button"
-          onClick={onRefresh}
-          className="inline-flex shrink-0 items-center justify-center rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] h-9 px-3 gap-1.5 text-xs font-semibold text-[var(--color-text)] hover:bg-[var(--color-surface-muted)] hover:text-[var(--color-text-strong)] transition-colors shadow-2xs"
-        >
-          <RefreshCw className="w-3.5 h-3.5 text-[var(--color-text-muted)]" /> Refresh
-        </button>
-      )}
 
       {canExport && (
         <DropdownMenu>
