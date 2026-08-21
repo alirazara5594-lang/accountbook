@@ -1,5 +1,4 @@
 import { useRef } from 'react';
-import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import {
   DropdownMenu,
@@ -59,21 +58,23 @@ export function DataToolbar({
   };
 
   return (
-    <div className="flex items-center gap-1.5">
+    <div className="flex items-center gap-1.5 flex-wrap">
       {setQuery && (
-        <div className="relative">
-          <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-400 pointer-events-none" />
-          <Input
+        <div className="relative flex items-center">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-[var(--color-text-muted)] pointer-events-none z-10" />
+          <input
+            type="text"
             value={query || ''}
             onChange={e => setQuery(e.target.value)}
             placeholder={searchPlaceholder}
-            className="pl-7 h-7 w-48 bg-white border border-slate-200 rounded-lg text-[11px] placeholder:text-slate-400"
+            className="!pl-9 pr-7 h-8 w-56 bg-[var(--color-surface)] border border-[var(--color-border)] rounded-xl text-xs text-[var(--color-text-strong)] placeholder:text-[var(--color-text-muted)] focus:border-[var(--color-primary)] focus:outline-none transition-all shadow-2xs"
+            style={{ paddingLeft: '34px' }}
           />
           {query ? (
             <button
               type="button"
               onClick={() => setQuery('')}
-              className="absolute right-1.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
+              className="absolute right-2 top-1/2 -translate-y-1/2 text-[var(--color-text-muted)] hover:text-[var(--color-text-strong)]"
               aria-label="Clear search"
             >
               <X className="h-3 w-3" />
@@ -85,17 +86,21 @@ export function DataToolbar({
       {children}
 
       {onRefresh && (
-        <Button size="sm" variant="outline" onClick={onRefresh} className="h-7 px-2 gap-1 text-[11px] font-semibold">
-          <RefreshCw className="w-3.5 h-3.5" /> Refresh
-        </Button>
+        <button
+          type="button"
+          onClick={onRefresh}
+          className="inline-flex shrink-0 items-center justify-center rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] h-8 px-2.5 gap-1.5 text-xs font-semibold text-[var(--color-text)] hover:bg-[var(--color-surface-muted)] hover:text-[var(--color-text-strong)] transition-colors shadow-2xs"
+        >
+          <RefreshCw className="w-3.5 h-3.5 text-[var(--color-text-muted)]" /> Refresh
+        </button>
       )}
 
       {canExport && (
         <DropdownMenu>
           <DropdownMenuTrigger
-            className="inline-flex shrink-0 items-center justify-center rounded-lg border border-slate-200 bg-white h-7 px-2 gap-1 text-[11px] font-semibold text-slate-700 hover:bg-slate-50 outline-none"
+            className="inline-flex shrink-0 items-center justify-center rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] h-8 px-2.5 gap-1.5 text-xs font-semibold text-[var(--color-text)] hover:bg-[var(--color-surface-muted)] hover:text-[var(--color-text-strong)] transition-colors shadow-2xs outline-none"
           >
-            <Download className="w-3.5 h-3.5" /> Export
+            <Download className="w-3.5 h-3.5 text-[var(--color-text-muted)]" /> Export
           </DropdownMenuTrigger>
           <DropdownMenuContent className="w-40">
             <DropdownMenuLabel className="text-[10px]">Download as</DropdownMenuLabel>

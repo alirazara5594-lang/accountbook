@@ -4,7 +4,7 @@ import { assetsInventoryApi } from './api/modules/assetsInventory.api';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Zap, Trash2, Wallet } from 'lucide-react';
+import { Zap, Trash2 } from 'lucide-react';
 import { DataToolbar } from '@/components/ui/data-toolbar';
 import { money } from './lib/currency';
 
@@ -133,13 +133,13 @@ export const FixedAssets: React.FC<{activeEntityId: string}> = ({activeEntityId}
   ]);
 
   return (
-    <div className="space-y-4 font-sans text-slate-800 p-2 md:p-6">
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-3 bg-white p-3 rounded-xl border border-gray-200 shadow-sm">
+    <div className="space-y-6">
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-3 bg-[var(--color-surface)] p-3.5 rounded-xl border border-[var(--color-border)] shadow-sm">
         <div>
-          <h1 className="text-base font-bold text-slate-900 tracking-tight flex items-center gap-2">
-            <Wallet className="w-4 h-4 text-indigo-600" /> Fixed Assets
+          <h1 className="text-base font-bold text-[var(--color-text-strong)] tracking-tight flex items-center gap-2">
+            <span className="text-lg">🏛️</span> Fixed Assets Register
           </h1>
-          <p className="text-[10px] text-slate-500 mt-0.5">
+          <p className="text-xs text-[var(--color-text-muted)] mt-0.5">
             Asset register with depreciation and disposal actions that post to the general ledger (IAS 16 property, plant & equipment).
           </p>
         </div>

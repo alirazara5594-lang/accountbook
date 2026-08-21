@@ -148,15 +148,15 @@ export const VendorBills: React.FC<{ activeEntityId: string }> = ({ activeEntity
   });
 
   return (
-    <div className="p-4 max-w-7xl mx-auto space-y-4">
+    <div className="space-y-6">
       {toast && <div className="fixed top-6 right-6 z-50 px-5 py-3 bg-emerald-600 text-white rounded-2xl shadow-lg text-sm font-medium">{toast}</div>}
 
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-3 bg-white p-3 rounded-xl border border-gray-200 shadow-sm">
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-3 bg-[var(--color-surface)] p-3.5 rounded-xl border border-[var(--color-border)] shadow-sm">
         <div>
-          <h1 className="text-base font-bold text-gray-900 tracking-tight flex items-center gap-2">
+          <h1 className="text-base font-bold text-[var(--color-text-strong)] tracking-tight flex items-center gap-2">
             <span className="text-lg">💳</span> Vendor Bills & Supplier Invoices
           </h1>
-          <p className="text-gray-500 text-[10px] mt-0.5">Direct supplier liability creation or procurement-linked 3-way match invoices.</p>
+          <p className="text-[var(--color-text-muted)] text-xs mt-0.5">Direct supplier liability creation or procurement-linked 3-way match invoices.</p>
         </div>
         <div className="flex items-center gap-1.5 shrink-0">
           <DataToolbar
@@ -173,11 +173,11 @@ export const VendorBills: React.FC<{ activeEntityId: string }> = ({ activeEntity
             onRefresh={() => { fetchBills(activeEntityId); fetchOrders(activeEntityId); }}
           />
           <button onClick={() => handleOpenModal(null, 'direct')}
-            className="h-8 px-2.5 bg-white border border-gray-200 hover:bg-gray-50 text-gray-700 text-[11px] font-semibold rounded-lg shrink-0 whitespace-nowrap">
+            className="secondary h-9 px-3 text-xs font-semibold rounded-xl">
             ⚡ Direct Bill
           </button>
           <button onClick={() => handleOpenModal(null, 'procurement')}
-            className="h-8 px-2.5 bg-emerald-600 hover:bg-emerald-700 text-white text-[11px] font-semibold rounded-lg shrink-0 whitespace-nowrap">
+            className="primary h-9 px-3 text-xs font-semibold rounded-xl">
             📜 PO Bill
           </button>
         </div>

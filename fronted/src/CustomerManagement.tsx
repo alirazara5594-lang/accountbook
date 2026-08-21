@@ -225,8 +225,40 @@ export default function CustomerManagement({
     return map
   }, [entities])
 
+  const exportHeaders = ['Customer #', 'Name', 'Email', 'Phone', 'City', 'Currency', 'Credit Limit', 'Terms (Days)', 'Status'];
+  const exportRows = filteredCustomers.map(c => [
+    c.customerNumber, c.name, c.email || '', c.phone || '', c.city || '', c.currencyCode, c.creditLimit, c.paymentTermsDays, c.status
+  ]);
+
   return (
     <div className="space-y-6">
+      {/* Submodule Heading Banner */}
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-3 bg-[var(--color-surface)] p-3.5 rounded-xl border border-[var(--color-border)] shadow-sm">
+        <div>
+          <h1 className="text-base font-bold text-[var(--color-text-strong)] tracking-tight flex items-center gap-2">
+            <span className="text-lg">👥</span> Customer Management
+          </h1>
+          <p className="text-[var(--color-text-muted)] text-xs mt-0.5">Manage customer records, credit terms, contact directories, and trade receivables.</p>
+        </div>
+        <div className="flex items-center gap-2 shrink-0">
+          <DataToolbar
+            query={search}
+            setQuery={setSearch}
+            searchPlaceholder="Search customer #, name..."
+            exportFileName="customer-directory"
+            exportSheetName="Customers"
+            exportTitle="Customer Directory"
+            exportSubtitle="Customer accounts, credit limits, and contact records."
+            exportHeaders={exportHeaders}
+            exportRows={exportRows}
+            onRefresh={fetchCustomers}
+          />
+          <button onClick={() => { setForm(blankForm()); setEditingCustomer(null); setModalOpen(true); }} className="primary h-9 px-4 rounded-xl text-xs font-semibold whitespace-nowrap">
+            ＋ Add Customer
+          </button>
+        </div>
+      </div>
+
       {/* Header Stats */}
       <section className="stats">
         <article>
@@ -261,23 +293,8 @@ export default function CustomerManagement({
         </article>
       </section>
 
-      {/* Customer Management Toolbar */}
+      {/* Customer Management Filters */}
       <div className="customer-toolbar">
-        <div className="customer-search-box">
-          <Search className="search-icon" />
-          <input
-            type="text"
-            placeholder="Search by customer name, code, email..."
-            value={search}
-            onChange={e => setSearch(e.target.value)}
-          />
-          {search && (
-            <button className="clear-search" onClick={() => setSearch('')} title="Clear search">
-              ×
-            </button>
-          )}
-        </div>
-
         <div className="customer-filter-group">
           <select
             className="filter-select"

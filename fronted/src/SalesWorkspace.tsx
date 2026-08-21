@@ -148,13 +148,18 @@ const SalesInvoicesTab: React.FC<{ activeEntityId: string }> = ({ activeEntityId
     <div className="space-y-3">
       {toast && <div className="px-3 py-1.5 bg-green-50 border border-green-200 text-green-800 rounded-lg text-[11px]">{toast}</div>}
 
-      <div className="flex flex-wrap justify-between items-center gap-2">
-        <h2 className="text-sm font-bold text-gray-900">Sales Invoices</h2>
-        <div className="flex items-center gap-1.5">
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-3 bg-[var(--color-surface)] p-3.5 rounded-xl border border-[var(--color-border)] shadow-sm">
+        <div>
+          <h1 className="text-base font-bold text-[var(--color-text-strong)] tracking-tight flex items-center gap-2">
+            <span className="text-lg">🧾</span> Sales Invoices
+          </h1>
+          <p className="text-[var(--color-text-muted)] text-xs mt-0.5">Manage customer invoices, billing schedules, automated posting, and revenue recognition.</p>
+        </div>
+        <div className="flex items-center gap-1.5 shrink-0">
           <DataToolbar
             query={query}
             setQuery={setQuery}
-            searchPlaceholder="Search invoice #, customer, status..."
+            searchPlaceholder="Search invoice #, customer..."
             exportFileName="sales-invoices"
             exportSheetName="Sales Invoices"
             exportTitle="Sales Invoices"
@@ -164,7 +169,7 @@ const SalesInvoicesTab: React.FC<{ activeEntityId: string }> = ({ activeEntityId
             exportTotals={[{ label: 'Total Outstanding', value: totalDue }]}
             onRefresh={() => fetchData()}
           />
-          <button onClick={() => setShowForm(true)} className="h-8 px-2.5 bg-blue-600 hover:bg-blue-700 text-white text-[11px] font-semibold rounded-lg shrink-0 whitespace-nowrap">+ New Invoice</button>
+          <button onClick={() => setShowForm(true)} className="primary h-9 px-4 rounded-xl text-xs font-semibold whitespace-nowrap">＋ New Invoice</button>
         </div>
       </div>
 

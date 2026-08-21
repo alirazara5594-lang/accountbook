@@ -674,12 +674,14 @@ export const ChartOfAccounts: React.FC<ChartOfAccountsProps> = ({
   return (
     <div className="space-y-6 max-w-7xl mx-auto font-sans pb-12 animate-fade-in">
       {/* 1. Header with Page Title & Subtitle + Buttons */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-3 bg-[var(--color-surface)] p-3.5 rounded-xl border border-[var(--color-border)] shadow-sm">
         <div>
-          <h1 className="text-xl font-bold text-slate-900 tracking-tight">Chart of Accounts Summary</h1>
-          <p className="text-xs text-slate-500 mt-1">View and manage all your chart of accounts</p>
+          <h1 className="text-base font-bold text-[var(--color-text-strong)] tracking-tight flex items-center gap-2">
+            <span className="text-lg">📚</span> Chart of Accounts
+          </h1>
+          <p className="text-[var(--color-text-muted)] text-xs mt-0.5">Manage hierarchical account heads, normal balances, currency mappings, and live GL drill-downs.</p>
         </div>
-        <div className="flex flex-wrap items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2 shrink-0">
           <DataToolbar
             exportFileName={`Zenabook_ChartOfAccounts_${new Date().toISOString().slice(0, 10)}`}
             exportSheetName="Chart of Accounts"
@@ -692,14 +694,12 @@ export const ChartOfAccounts: React.FC<ChartOfAccountsProps> = ({
             uploadLabel="Import"
             onRefresh={reloadAccounts}
           />
-          <Button
-            size="sm"
+          <button
             onClick={() => { setParentIdForNew(''); openCreate(); }}
-            className="h-9 px-4 gap-1.5 text-xs font-bold text-white bg-[#143e2b] hover:bg-[#0c2a1d] rounded-xl shadow-xs"
+            className="primary h-9 px-4 rounded-xl text-xs font-semibold"
           >
-            <Plus className="w-4 h-4" />
-            New Account
-          </Button>
+            ＋ New Account
+          </button>
         </div>
       </div>
 

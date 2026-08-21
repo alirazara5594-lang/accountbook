@@ -121,7 +121,22 @@ export const JournalEntriesView: React.FC<JournalEntriesViewProps> = ({ accounts
   const exportRows = filteredEntries.map(e => [e.date?.slice(0, 10) || '', e.reference, e.description, e.lines.length, e.status || 'Draft']);
 
   return (
-    <div className="space-y-6 font-sans text-slate-800 p-2 md:p-6">
+    <div className="space-y-6">
+      {/* Submodule Heading Banner */}
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-3 bg-[var(--color-surface)] p-3.5 rounded-xl border border-[var(--color-border)] shadow-sm">
+        <div>
+          <h1 className="text-base font-bold text-[var(--color-text-strong)] tracking-tight flex items-center gap-2">
+            <span className="text-lg">📒</span> Journal Entries
+          </h1>
+          <p className="text-[var(--color-text-muted)] text-xs mt-0.5">Record double-entry general journal vouchers with full debit-credit balancing and audit verification.</p>
+        </div>
+        <div className="flex items-center gap-2 shrink-0">
+          <button onClick={() => document.getElementById('journal-form')?.scrollIntoView({ behavior: 'smooth' })} className="primary h-9 px-4 rounded-xl text-xs font-semibold">
+            ＋ New Entry
+          </button>
+        </div>
+      </div>
+
       <div className="flex items-center gap-2">
         <DataToolbar
           query={query}

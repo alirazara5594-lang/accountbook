@@ -212,6 +212,33 @@ export default function ProductsAndServices({ entities, activeEntityId, notify }
 
   return (
     <div className="space-y-6">
+      {/* Submodule Heading Banner */}
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-3 bg-[var(--color-surface)] p-3.5 rounded-xl border border-[var(--color-border)] shadow-sm">
+        <div>
+          <h1 className="text-base font-bold text-[var(--color-text-strong)] tracking-tight flex items-center gap-2">
+            <span className="text-lg">📦</span> Products & Services
+          </h1>
+          <p className="text-[var(--color-text-muted)] text-xs mt-0.5">Manage physical inventory items, billable services, non-inventory supplies, and pricing tiers.</p>
+        </div>
+        <div className="flex items-center gap-2 shrink-0">
+          <DataToolbar
+            query={search}
+            setQuery={setSearch}
+            searchPlaceholder="Search product name, code..."
+            exportFileName="products-and-services"
+            exportSheetName="Products & Services"
+            exportTitle="Products & Services"
+            exportSubtitle={`Product and service catalog (${filteredProducts.length} items).`}
+            exportHeaders={exportHeaders}
+            exportRows={exportRows}
+            onRefresh={() => fetchProducts()}
+          />
+          <button onClick={openCreateModal} className="primary h-9 px-4 rounded-xl text-xs font-semibold whitespace-nowrap">
+            ＋ New Item
+          </button>
+        </div>
+      </div>
+
       {/* Stats */}
       <section className="stats">
         <article>
@@ -240,18 +267,8 @@ export default function ProductsAndServices({ entities, activeEntityId, notify }
         </article>
       </section>
 
-      {/* Toolbar */}
+      {/* Category & Type Filter */}
       <div className="customer-toolbar">
-        <div className="customer-search-box">
-          <Search className="search-icon" />
-          <input
-            type="text"
-            placeholder="Search by name, code, or category..."
-            value={search}
-            onChange={e => setSearch(e.target.value)}
-          />
-        </div>
-
         <div className="customer-filter-group">
           <select className="filter-select" value={typeFilter} onChange={e => setTypeFilter(e.target.value)}>
             <option value="all">All Types</option>
@@ -260,20 +277,6 @@ export default function ProductsAndServices({ entities, activeEntityId, notify }
             <option value="NonInventory">Non-Inventory</option>
             <option value="Bundle">Bundles / Kits</option>
           </select>
-
-          <DataToolbar
-            exportFileName="products-and-services"
-            exportSheetName="Products & Services"
-            exportTitle="Products & Services"
-            exportSubtitle={`Product and service catalog (${filteredProducts.length} items).`}
-            exportHeaders={exportHeaders}
-            exportRows={exportRows}
-            onRefresh={() => fetchProducts()}
-          />
-
-          <button className="primary flex items-center gap-2" onClick={openCreateModal}>
-            <Plus className="w-4 h-4" /> New Item
-          </button>
         </div>
       </div>
 

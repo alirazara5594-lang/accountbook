@@ -1,9 +1,8 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Wallet, Search, Plus, Edit3, ArrowLeftRight, CheckCircle2 } from 'lucide-react';
+import { Wallet, Search, Edit3, ArrowLeftRight, CheckCircle2 } from 'lucide-react';
 import { DataToolbar } from '@/components/ui/data-toolbar';
 import type { Entity } from './EntitySettings';
 import { apiClient } from './api/client';
@@ -134,18 +133,18 @@ export const CashAccountsView: React.FC<CashAccountsViewProps> = ({ activeEntity
   };
 
   return (
-    <div className="space-y-4 font-sans text-slate-800 p-2 md:p-6">
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-3 bg-white p-3 rounded-xl border border-gray-200 shadow-sm">
+    <div className="space-y-6">
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-3 bg-[var(--color-surface)] p-3.5 rounded-xl border border-[var(--color-border)] shadow-sm">
         <div>
-          <h1 className="text-base font-bold text-slate-900 tracking-tight flex items-center gap-2">
-            <Wallet className="w-4 h-4 text-emerald-600" /> Cash Accounts & Vaults
+          <h1 className="text-base font-bold text-[var(--color-text-strong)] tracking-tight flex items-center gap-2">
+            <span className="text-lg">💵</span> Cash Accounts & Vaults
           </h1>
-          <p className="text-[10px] text-slate-500 mt-0.5">
+          <p className="text-xs text-[var(--color-text-muted)] mt-0.5">
             Physical cash register balances, petty cash funds, and internal vault reserves for {currentEntity?.name || 'Active Entity'}.
           </p>
         </div>
 
-        <div className="flex flex-wrap items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2 shrink-0">
           <DataToolbar
             exportFileName="cash-accounts"
             exportSheetName="Cash Accounts"
@@ -156,17 +155,16 @@ export const CashAccountsView: React.FC<CashAccountsViewProps> = ({ activeEntity
             exportTotals={[{ label: 'Total Cash Balance', value: totalBalance }]}
             onRefresh={loadCashAccounts}
           />
-          <Button
-            size="sm"
+          <button
             onClick={() => {
               setEditingAccount(null);
               setForm({ code: `1110${cashAccounts.length + 4}`, name: '', vaultLocation: '', custodian: '', currency: 'PKR', balance: '0', status: 'Active' });
               setIsModalOpen(true);
             }}
-            className="h-9 px-4 gap-1.5 text-xs font-semibold text-white bg-[#143e2b] hover:bg-[#0f3222] shadow-xs"
+            className="primary h-9 px-4 rounded-xl text-xs font-semibold"
           >
-            <Plus className="w-4 h-4" /> Add Cash Register / Vault
-          </Button>
+            ＋ Add Cash Register / Vault
+          </button>
         </div>
       </div>
 

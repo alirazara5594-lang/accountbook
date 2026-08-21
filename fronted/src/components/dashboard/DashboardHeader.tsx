@@ -8,6 +8,7 @@ interface DashboardHeaderProps {
   subtitle?: string;
   badge?: string;
   className?: string;
+  showControls?: boolean;
   selectedPeriod?: TimeframePeriod;
   onPeriodChange?: (period: TimeframePeriod) => void;
   selectedDate?: string;
@@ -21,11 +22,41 @@ const MONTH_NAMES = [
   'July', 'August', 'September', 'October', 'November', 'December'
 ];
 
+function getModuleInitials(title: string): string {
+  const t = title.toUpperCase();
+  if (t.includes('ACCOUNTING') && (t.includes('FINANCE') || t.includes('OVERVIEW'))) return 'A&F';
+  if (t.includes('SALES') && t.includes('CUSTOMER')) return 'S&C';
+  if (t.includes('SALES')) return 'SLS';
+  if (t.includes('PROCUREMENT') || t.includes('PURCHAS')) return 'PUR';
+  if (t.includes('BANKING') || t.includes('PAYMENT')) return 'B&P';
+  if (t.includes('ACCOUNTING')) return 'ACC';
+  if (t.includes('ASSET') && t.includes('INVENTORY')) return 'A&I';
+  if (t.includes('ASSET')) return 'AST';
+  if (t.includes('MANUFACTURING') || t.includes('PRODUCTION')) return 'M&P';
+  if (t.includes('PAYROLL') || t.includes('HR')) return 'PAY';
+  if (t.includes('SURVEY') || t.includes('FIELD')) return 'FLD';
+  if (t.includes('GOVERNMENT') || t.includes('COMPLIANCE') || t.includes('TAX')) return 'TAX';
+  if (t.includes('PROJECT')) return 'PRJ';
+  if (t.includes('ANALYTICS') || t.includes('AI')) return 'AI';
+  if (t.includes('ADMIN')) return 'ADM';
+
+  // Fallback: take first letters of meaningful words
+  const words = title
+    .replace(/[&/\\#,+()$~%.'":*?<>{}]/g, ' ')
+    .split(/\s+/)
+    .filter(w => w.length > 0 && !['AND', 'OF', 'THE', 'FOR', 'SUMMARY', 'OVERVIEW'].includes(w.toUpperCase()));
+  if (words.length >= 2) {
+    return (words[0][0] + words[1][0]).toUpperCase();
+  }
+  return (words[0]?.slice(0, 3) || 'ERP').toUpperCase();
+}
+
 export function DashboardHeader({
   title = 'Accounting & Finance ERP Overview',
   subtitle = 'Real-time financial performance & business insights',
   badge,
   className = '',
+  showControls = false,
   selectedPeriod = 'quarterly',
   onPeriodChange,
   selectedDate,
@@ -35,7 +66,6 @@ export function DashboardHeader({
     return selectedDate || new Date().toISOString().split('T')[0];
   });
   const [calendarOpen, setCalendarOpen] = useState(false);
-  
   const popoverRef = useRef<HTMLDivElement>(null);
 
   const activeDateStr = selectedDate || internalDate;
@@ -119,7 +149,6 @@ export function DashboardHeader({
     const daysInPrevMonth = new Date(viewYear, viewMonth, 0).getDate();
 
     const days: { day: number; currentMonth: boolean; year: number; month: number; isSelected: boolean; isToday: boolean }[] = [];
-
     const todayIso = new Date().toISOString().split('T')[0];
 
     // Previous month filler days
@@ -179,19 +208,11 @@ export function DashboardHeader({
     q4: 'Q4 (Oct – Dec)',
   };
 
-  // Generate initials for avatar box based on title
-  const initials = title.toLowerCase().includes('accounting')
-    ? 'A&F'
-    : title
-        .split(' ')
-        .filter(w => w.length > 0 && w[0] === w[0].toUpperCase())
-        .map(w => w[0])
-        .slice(0, 2)
-        .join('') || 'A&F';
+  const initials = getModuleInitials(title);
 
   return (
     <div className={`col-span-12 bg-[var(--color-surface)] border border-[var(--color-border)] rounded-2xl px-6 py-4 shadow-sm flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 ${className}`}>
-      {/* Left */}
+      {/* Left — Logo badge, title and subtitle */}
       <div className="flex items-center gap-4">
         <div className="w-11 h-11 rounded-xl flex items-center justify-center shrink-0 shadow-sm" style={{ background: 'color-mix(in srgb, var(--color-primary) 15%, transparent)', border: '1px solid color-mix(in srgb, var(--color-primary) 30%, transparent)' }}>
           <span className="text-sm font-black tracking-tight text-[var(--color-primary)]">{initials}</span>
@@ -208,167 +229,168 @@ export function DashboardHeader({
             )}
           </div>
           <p className="text-xs text-[var(--color-text-muted)] mt-0.5">
-            {subtitle} · <span className="font-semibold text-[var(--color-primary)]">{periodLabels[selectedPeriod]}</span>
+            {subtitle} {showControls ? <>· <span className="font-semibold text-[var(--color-primary)]">{periodLabels[selectedPeriod]}</span></> : null}
           </p>
         </div>
       </div>
 
-      {/* Right — Interactive Date Picker & Quarterly View Filter */}
-      <div className="flex items-center gap-3 self-end sm:self-center flex-wrap">
-        
-        {/* Interactive Calendar Popover Trigger */}
-        <div className="relative" ref={popoverRef}>
-          <button
-            onClick={() => {
-              setViewMonth(activeDateObj.getMonth());
-              setViewYear(activeDateObj.getFullYear());
-              setCalendarOpen(o => !o);
-            }}
-            title="Click to select any date"
-            className={`flex items-center gap-2 px-3 py-1.5 rounded-xl border transition-all cursor-pointer shadow-sm ${
-              calendarOpen
-                ? 'bg-[var(--color-surface)] border-[var(--color-primary)] text-[var(--color-primary)] ring-2 ring-[var(--color-primary)]/20'
-                : 'bg-[var(--color-surface-muted)] border-[var(--color-border)] hover:border-[var(--color-primary)] text-[var(--color-text)]'
-            }`}
-          >
-            <Calendar className="w-3.5 h-3.5 text-[var(--color-primary)]" />
-            <span className="text-xs font-semibold">{formattedDate}</span>
-          </button>
-
-          {/* Popover Calendar */}
-          {calendarOpen && (
-            <div
-              className="absolute top-[calc(100%+8px)] right-0 z-50 w-72 bg-[var(--color-surface)] border border-[var(--color-border)] rounded-2xl shadow-2xl p-4 space-y-3 animate-in fade-in zoom-in-95 duration-150"
-              style={{ boxShadow: '0 20px 40px rgba(0,0,0,0.5), 0 0 15px rgba(139,92,246,0.15)' }}
+      {/* Right — Show controls ONLY if showControls is enabled (Dashboard Overview) */}
+      {showControls && (
+        <div className="flex items-center gap-3 self-end sm:self-center flex-wrap">
+          {/* Interactive Calendar Popover Trigger */}
+          <div className="relative" ref={popoverRef}>
+            <button
+              onClick={() => {
+                setViewMonth(activeDateObj.getMonth());
+                setViewYear(activeDateObj.getFullYear());
+                setCalendarOpen(o => !o);
+              }}
+              title="Click to select any date"
+              className={`flex items-center gap-2 px-3 py-1.5 rounded-xl border transition-all cursor-pointer shadow-sm ${
+                calendarOpen
+                  ? 'bg-[var(--color-surface)] border-[var(--color-primary)] text-[var(--color-primary)] ring-2 ring-[var(--color-primary)]/20'
+                  : 'bg-[var(--color-surface-muted)] border-[var(--color-border)] hover:border-[var(--color-primary)] text-[var(--color-text)]'
+              }`}
             >
-              {/* Header: Month & Year Navigator */}
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-1">
-                  <span className="font-extrabold text-xs text-[var(--color-text-strong)]">
-                    {MONTH_NAMES[viewMonth]} {viewYear}
-                  </span>
+              <Calendar className="w-3.5 h-3.5 text-[var(--color-primary)]" />
+              <span className="text-xs font-semibold">{formattedDate}</span>
+            </button>
+
+            {/* Popover Calendar */}
+            {calendarOpen && (
+              <div
+                className="absolute top-[calc(100%+8px)] right-0 z-50 w-72 bg-[var(--color-surface)] border border-[var(--color-border)] rounded-2xl shadow-2xl p-4 space-y-3 animate-in fade-in zoom-in-95 duration-150"
+                style={{ boxShadow: '0 20px 40px rgba(0,0,0,0.5), 0 0 15px rgba(139,92,246,0.15)' }}
+              >
+                {/* Header: Month & Year Navigator */}
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-1">
+                    <span className="font-extrabold text-xs text-[var(--color-text-strong)]">
+                      {MONTH_NAMES[viewMonth]} {viewYear}
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-1">
+                    <button
+                      onClick={prevMonth}
+                      className="w-7 h-7 rounded-lg flex items-center justify-center hover:bg-[var(--color-surface-muted)] text-[var(--color-text-muted)] hover:text-[var(--color-text)] transition-colors"
+                    >
+                      <ChevronLeft className="w-4 h-4" />
+                    </button>
+                    <button
+                      onClick={nextMonth}
+                      className="w-7 h-7 rounded-lg flex items-center justify-center hover:bg-[var(--color-surface-muted)] text-[var(--color-text-muted)] hover:text-[var(--color-text)] transition-colors"
+                    >
+                      <ChevronRight className="w-4 h-4" />
+                    </button>
+                  </div>
                 </div>
-                <div className="flex items-center gap-1">
+
+                {/* Day-of-week header */}
+                <div className="grid grid-cols-7 text-center text-[9px] font-bold text-[var(--color-text-muted)] uppercase tracking-wider">
+                  <span>Su</span><span>Mo</span><span>Tu</span><span>We</span><span>Th</span><span>Fr</span><span>Sa</span>
+                </div>
+
+                {/* Calendar Grid */}
+                <div className="grid grid-cols-7 gap-1 text-center">
+                  {calendarGrid.map((item, idx) => (
+                    <button
+                      key={idx}
+                      onClick={() => handleSelectDate(item.year, item.month, item.day)}
+                      className={`h-7 w-7 mx-auto rounded-lg text-[11px] font-bold flex items-center justify-center transition-all ${
+                        item.isSelected
+                          ? 'bg-[var(--color-primary)] text-white shadow-md scale-105'
+                          : item.isToday
+                          ? 'border border-[var(--color-primary)] text-[var(--color-primary)] hover:bg-[var(--color-primary)]/10'
+                          : item.currentMonth
+                          ? 'text-[var(--color-text)] hover:bg-[var(--color-surface-muted)]'
+                          : 'text-[var(--color-text-muted)]/40 hover:bg-[var(--color-surface-muted)]/50'
+                      }`}
+                    >
+                      {item.day}
+                    </button>
+                  ))}
+                </div>
+
+                {/* Quick Presets */}
+                <div className="pt-2 border-t border-[var(--color-border-subtle)] flex items-center justify-between text-[9.5px]">
                   <button
-                    onClick={prevMonth}
-                    className="w-7 h-7 rounded-lg flex items-center justify-center hover:bg-[var(--color-surface-muted)] text-[var(--color-text-muted)] hover:text-[var(--color-text)] transition-colors"
+                    onClick={() => setPreset('today')}
+                    className="px-2 py-1 rounded-lg text-[var(--color-primary)] font-bold hover:bg-[var(--color-primary)]/10 transition-colors"
                   >
-                    <ChevronLeft className="w-4 h-4" />
+                    Today
                   </button>
                   <button
-                    onClick={nextMonth}
-                    className="w-7 h-7 rounded-lg flex items-center justify-center hover:bg-[var(--color-surface-muted)] text-[var(--color-text-muted)] hover:text-[var(--color-text)] transition-colors"
+                    onClick={() => setPreset('yesterday')}
+                    className="px-2 py-1 rounded-lg text-[var(--color-text-muted)] font-semibold hover:bg-[var(--color-surface-muted)] transition-colors"
                   >
-                    <ChevronRight className="w-4 h-4" />
+                    Yesterday
+                  </button>
+                  <button
+                    onClick={() => setPreset('monthStart')}
+                    className="px-2 py-1 rounded-lg text-[var(--color-text-muted)] font-semibold hover:bg-[var(--color-surface-muted)] transition-colors"
+                  >
+                    Month Start
+                  </button>
+                  <button
+                    onClick={() => setPreset('monthEnd')}
+                    className="px-2 py-1 rounded-lg text-[var(--color-text-muted)] font-semibold hover:bg-[var(--color-surface-muted)] transition-colors"
+                  >
+                    Month End
                   </button>
                 </div>
-              </div>
 
-              {/* Day-of-week header */}
-              <div className="grid grid-cols-7 text-center text-[9px] font-bold text-[var(--color-text-muted)] uppercase tracking-wider">
-                <span>Su</span><span>Mo</span><span>Tu</span><span>We</span><span>Th</span><span>Fr</span><span>Sa</span>
+                {/* Direct ISO Input */}
+                <div className="pt-1">
+                  <input
+                    type="date"
+                    value={activeDateStr}
+                    onChange={(e) => {
+                      if (e.target.value) {
+                        setInternalDate(e.target.value);
+                        onDateChange?.(e.target.value);
+                        const d = new Date(e.target.value + 'T00:00:00');
+                        if (!isNaN(d.getTime())) {
+                          setViewMonth(d.getMonth());
+                          setViewYear(d.getFullYear());
+                        }
+                        setCalendarOpen(false);
+                      }
+                    }}
+                    className="w-full text-[10px] bg-[var(--color-surface-muted)] border border-[var(--color-border)] rounded-lg px-2 py-1 text-[var(--color-text)] outline-none focus:border-[var(--color-primary)]"
+                  />
+                </div>
               </div>
+            )}
+          </div>
+          
+          {/* Interactive Quarterly / Period Filter */}
+          <div className="flex items-center bg-[var(--color-surface-muted)] border border-[var(--color-border)] rounded-xl p-1 gap-1">
+            <div className="flex items-center gap-1.5 px-2 text-[10px] font-bold text-[var(--color-text-muted)] border-r border-[var(--color-border)] pr-2.5">
+              <span>View:</span>
+            </div>
 
-              {/* Calendar Grid */}
-              <div className="grid grid-cols-7 gap-1 text-center">
-                {calendarGrid.map((item, idx) => (
+            <div className="flex items-center gap-1">
+              {(['quarterly', 'q1', 'q2', 'q3', 'q4', 'all'] as TimeframePeriod[]).map((p) => {
+                const active = selectedPeriod === p;
+                const shortLabel = p === 'quarterly' ? 'Quarterly' : p === 'all' ? 'Annual' : p.toUpperCase();
+                return (
                   <button
-                    key={idx}
-                    onClick={() => handleSelectDate(item.year, item.month, item.day)}
-                    className={`h-7 w-7 mx-auto rounded-lg text-[11px] font-bold flex items-center justify-center transition-all ${
-                      item.isSelected
-                        ? 'bg-[var(--color-primary)] text-white shadow-md scale-105'
-                        : item.isToday
-                        ? 'border border-[var(--color-primary)] text-[var(--color-primary)] hover:bg-[var(--color-primary)]/10'
-                        : item.currentMonth
-                        ? 'text-[var(--color-text)] hover:bg-[var(--color-surface-muted)]'
-                        : 'text-[var(--color-text-muted)]/40 hover:bg-[var(--color-surface-muted)]/50'
+                    key={p}
+                    onClick={() => onPeriodChange?.(p)}
+                    className={`px-2.5 py-1 rounded-lg text-[10px] font-bold transition-all ${
+                      active
+                        ? 'bg-[var(--color-primary)] text-white shadow-sm'
+                        : 'text-[var(--color-text-muted)] hover:text-[var(--color-text)] hover:bg-[var(--color-surface)]'
                     }`}
                   >
-                    {item.day}
+                    {shortLabel}
                   </button>
-                ))}
-              </div>
-
-              {/* Quick Presets */}
-              <div className="pt-2 border-t border-[var(--color-border-subtle)] flex items-center justify-between text-[9.5px]">
-                <button
-                  onClick={() => setPreset('today')}
-                  className="px-2 py-1 rounded-lg text-[var(--color-primary)] font-bold hover:bg-[var(--color-primary)]/10 transition-colors"
-                >
-                  Today
-                </button>
-                <button
-                  onClick={() => setPreset('yesterday')}
-                  className="px-2 py-1 rounded-lg text-[var(--color-text-muted)] font-semibold hover:bg-[var(--color-surface-muted)] transition-colors"
-                >
-                  Yesterday
-                </button>
-                <button
-                  onClick={() => setPreset('monthStart')}
-                  className="px-2 py-1 rounded-lg text-[var(--color-text-muted)] font-semibold hover:bg-[var(--color-surface-muted)] transition-colors"
-                >
-                  Month Start
-                </button>
-                <button
-                  onClick={() => setPreset('monthEnd')}
-                  className="px-2 py-1 rounded-lg text-[var(--color-text-muted)] font-semibold hover:bg-[var(--color-surface-muted)] transition-colors"
-                >
-                  Month End
-                </button>
-              </div>
-
-              {/* Direct ISO Input */}
-              <div className="pt-1">
-                <input
-                  type="date"
-                  value={activeDateStr}
-                  onChange={(e) => {
-                    if (e.target.value) {
-                      setInternalDate(e.target.value);
-                      onDateChange?.(e.target.value);
-                      const d = new Date(e.target.value + 'T00:00:00');
-                      if (!isNaN(d.getTime())) {
-                        setViewMonth(d.getMonth());
-                        setViewYear(d.getFullYear());
-                      }
-                      setCalendarOpen(false);
-                    }
-                  }}
-                  className="w-full text-[10px] bg-[var(--color-surface-muted)] border border-[var(--color-border)] rounded-lg px-2 py-1 text-[var(--color-text)] outline-none focus:border-[var(--color-primary)]"
-                />
-              </div>
+                );
+              })}
             </div>
-          )}
-        </div>
-        
-        {/* Interactive Quarterly / Period Filter */}
-        <div className="flex items-center bg-[var(--color-surface-muted)] border border-[var(--color-border)] rounded-xl p-1 gap-1">
-          <div className="flex items-center gap-1.5 px-2 text-[10px] font-bold text-[var(--color-text-muted)] border-r border-[var(--color-border)] pr-2.5">
-            <span>View:</span>
-          </div>
-
-          <div className="flex items-center gap-1">
-            {(['quarterly', 'q1', 'q2', 'q3', 'q4', 'all'] as TimeframePeriod[]).map((p) => {
-              const active = selectedPeriod === p;
-              const shortLabel = p === 'quarterly' ? 'Quarterly' : p === 'all' ? 'Annual' : p.toUpperCase();
-              return (
-                <button
-                  key={p}
-                  onClick={() => onPeriodChange?.(p)}
-                  className={`px-2.5 py-1 rounded-lg text-[10px] font-bold transition-all ${
-                    active
-                      ? 'bg-[var(--color-primary)] text-white shadow-sm'
-                      : 'text-[var(--color-text-muted)] hover:text-[var(--color-text)] hover:bg-[var(--color-surface)]'
-                  }`}
-                >
-                  {shortLabel}
-                </button>
-              );
-            })}
           </div>
         </div>
-      </div>
+      )}
     </div>
   );
 }

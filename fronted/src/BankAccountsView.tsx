@@ -205,19 +205,19 @@ export const BankAccountsView: React.FC<BankAccountsViewProps> = ({ activeEntity
   const totalBalance = filtered.reduce((s, a) => s + (a.balance || 0), 0);
 
   return (
-    <div className="space-y-4 font-sans text-slate-800 p-2 md:p-6">
+    <div className="space-y-6">
       {/* Top Header & Context */}
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-3 bg-white p-3 rounded-xl border border-gray-200 shadow-sm">
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-3 bg-[var(--color-surface)] p-3.5 rounded-xl border border-[var(--color-border)] shadow-sm">
         <div>
-          <h1 className="text-base font-bold text-slate-900 tracking-tight flex items-center gap-2">
-            <Building2 className="w-4 h-4 text-emerald-600" /> Bank Accounts Summary
+          <h1 className="text-base font-bold text-[var(--color-text-strong)] tracking-tight flex items-center gap-2">
+            <span className="text-lg">🏦</span> Bank Accounts
           </h1>
-          <p className="text-[10px] text-slate-500 mt-0.5">
+          <p className="text-xs text-[var(--color-text-muted)] mt-0.5">
             Commercial bank account balances, IBAN & SWIFT records, and live account management for {currentEntity?.name || 'Active Entity'}.
           </p>
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 shrink-0">
           <DataToolbar
             exportFileName={`bank_accounts_summary_${new Date().toISOString().slice(0, 10)}`}
             exportSheetName="Bank Accounts"
@@ -229,14 +229,12 @@ export const BankAccountsView: React.FC<BankAccountsViewProps> = ({ activeEntity
             onRefresh={loadBankAccounts}
           />
 
-          <Button
-            size="sm"
+          <button
             onClick={openCreateModal}
-            className="h-9 px-4 gap-1.5 text-xs font-semibold text-white bg-[#143e2b] hover:bg-[#0f3222] shadow-xs"
+            className="primary h-9 px-4 rounded-xl text-xs font-semibold"
           >
-            <Plus className="w-4 h-4" />
-            Add Bank Account
-          </Button>
+            ＋ Add Bank Account
+          </button>
         </div>
       </div>
 

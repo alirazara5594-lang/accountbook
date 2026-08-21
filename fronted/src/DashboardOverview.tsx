@@ -251,6 +251,7 @@ export function DashboardOverview({ accounts = [], entries = [], setPage, active
       {/* ── 1. HEADER (Full Width) ── */}
       <DashboardHeader
         className="col-span-12"
+        showControls={true}
         selectedPeriod={selectedPeriod}
         onPeriodChange={setSelectedPeriod}
       />
