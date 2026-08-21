@@ -55,6 +55,7 @@ export const TaxAccountingView: React.FC<TaxAccountingViewProps> = ({ activeEnti
   const [formError, setFormError] = useState('');
   const [saving, setSaving] = useState(false);
   const [seeding, setSeeding] = useState(false);
+  const [editingCode, setEditingCode] = useState<TaxCode | null>(null);
 
   const [codeForm, setCodeForm] = useState({ code: '', name: '', taxType: 'Sales Tax', taxAuthorityId: '', rate: '' });
   const [rateForm, setRateForm] = useState({ taxCodeId: '', name: '', ratePercent: '', effectiveDate: new Date().toISOString().slice(0, 10) });
@@ -112,6 +113,7 @@ export const TaxAccountingView: React.FC<TaxAccountingViewProps> = ({ activeEnti
 
   const openCreateCode = () => {
     setFormError('');
+    setEditingCode(null);
     setCodeForm({
       code: '',
       name: '',
@@ -122,15 +124,55 @@ export const TaxAccountingView: React.FC<TaxAccountingViewProps> = ({ activeEnti
     setShowCodeForm(true);
   };
 
-  const openCreateRate = () => {
+  const openEditCode = (c: TaxCode) => {
+    setFormError('');
+    setEditingCode(c);
+    const latestRate = c.rates?.length ? c.rates[c.rates.length - 1] : undefined;
+    setCodeForm({
+      code: c.code,
+      name: c.name,
+      taxType: c.taxType || 'Sales Tax',
+      taxAuthorityId: c.taxAuthorityId || '',
+      rate: String(latestRate?.percentage ?? latestRate?.ratePercent ?? 0),
+    });
+    setShowCodeForm(true);
+  };
+
+  const openCreateRateForCode = (c: TaxCode) => {
     setFormError('');
     setRateForm({
-      taxCodeId: jurisdictionCodes[0]?.id || '',
+      taxCodeId: c.id,
       name: 'Standard Rate',
-      ratePercent: current ? String(current.standardRate) : '',
+      ratePercent: '',
       effectiveDate: new Date().toISOString().slice(0, 10),
     });
     setShowRateForm(true);
+  };
+
+  const openCreateRate = () => {
+    if (jurisdictionCodes.length > 0) {
+      openCreateRateForCode(jurisdictionCodes[0]);
+    } else {
+      setFormError('Please create a tax code first.');
+    }
+  };
+
+  const handleToggleCodeStatus = async (c: TaxCode) => {
+    const latestRate = c.rates?.length ? c.rates[c.rates.length - 1] : undefined;
+    const rateVal = latestRate?.percentage ?? latestRate?.ratePercent ?? 0;
+    try {
+      await taxApi.updateTaxCode(c.id, {
+        code: c.code,
+        name: c.name,
+        description: c.description || `${c.taxType || 'Tax'} — ${current?.name || 'Tax'}`,
+        taxAuthorityId: c.taxAuthorityId || '',
+        isActive: !(c.isActive !== false),
+        rates: [{ percentage: rateVal, effectiveFrom: new Date().toISOString().slice(0, 10) }],
+      });
+      load();
+    } catch (err: any) {
+      setError(err?.message || 'Failed to toggle tax code status.');
+    }
   };
 
   const handleCreateCode = async (e: React.FormEvent) => {
@@ -141,19 +183,31 @@ export const TaxAccountingView: React.FC<TaxAccountingViewProps> = ({ activeEnti
     if (isNaN(rate) || rate <= 0) { setFormError('Rate must be greater than zero.'); return; }
     setSaving(true);
     try {
-      const created = await taxApi.createTaxCode({
-        code: codeForm.code,
-        name: codeForm.name,
-        description: `${codeForm.taxType} — ${current?.name || 'Tax'}`,
-        taxAuthorityId: codeForm.taxAuthorityId,
-        isActive: true,
-        rates: [{ percentage: rate, effectiveFrom: new Date().toISOString().slice(0, 10) }],
-      });
-      setCodes(prev => [...prev, created]);
+      if (editingCode) {
+        await taxApi.updateTaxCode(editingCode.id, {
+          code: codeForm.code,
+          name: codeForm.name,
+          description: `${codeForm.taxType} — ${current?.name || 'Tax'}`,
+          taxAuthorityId: codeForm.taxAuthorityId,
+          isActive: editingCode.isActive !== false,
+          rates: [{ percentage: rate, effectiveFrom: new Date().toISOString().slice(0, 10) }],
+        });
+      } else {
+        const created = await taxApi.createTaxCode({
+          code: codeForm.code,
+          name: codeForm.name,
+          description: `${codeForm.taxType} — ${current?.name || 'Tax'}`,
+          taxAuthorityId: codeForm.taxAuthorityId,
+          isActive: true,
+          rates: [{ percentage: rate, effectiveFrom: new Date().toISOString().slice(0, 10) }],
+        });
+        setCodes(prev => [...prev, created]);
+      }
       setShowCodeForm(false);
+      setEditingCode(null);
       load();
     } catch (err: any) {
-      setFormError(err?.data?.error || err?.data?.message || err?.message || 'Failed to create tax code.');
+      setFormError(err?.data?.error || err?.data?.message || err?.message || 'Failed to save tax code.');
     } finally {
       setSaving(false);
     }
@@ -368,13 +422,14 @@ export const TaxAccountingView: React.FC<TaxAccountingViewProps> = ({ activeEnti
                 <TableHead className="w-28 text-[11px] font-bold text-slate-500 uppercase tracking-wider pl-4">CODE</TableHead>
                 <TableHead className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">NAME</TableHead>
                 <TableHead className="w-20 text-right text-[11px] font-bold text-slate-500 uppercase tracking-wider">RATE</TableHead>
-                <TableHead className="w-24 text-[11px] font-bold text-slate-500 uppercase tracking-wider">STATUS</TableHead>
+                <TableHead className="w-20 text-[11px] font-bold text-slate-500 uppercase tracking-wider">STATUS</TableHead>
+                <TableHead className="w-48 text-right text-[11px] font-bold text-slate-500 uppercase tracking-wider pr-4">ACTIONS</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody className="divide-y divide-slate-100">
               {filteredCodes.length === 0 && !loading && (
                 <TableRow>
-                  <TableCell colSpan={4} className="py-8 text-center text-xs text-slate-400">
+                  <TableCell colSpan={5} className="py-8 text-center text-xs text-slate-400">
                     <div className="flex flex-col items-center justify-center space-y-3">
                       <span>No tax codes configured for this jurisdiction.</span>
                       <Button
@@ -400,6 +455,32 @@ export const TaxAccountingView: React.FC<TaxAccountingViewProps> = ({ activeEnti
                       <span className={`inline-flex px-2.5 py-0.5 rounded-md text-[11px] font-semibold border ${c.isActive !== false && c.status !== 'Inactive' ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : 'bg-slate-100 text-slate-600 border-slate-200'}`}>
                         {c.isActive === false || c.status === 'Inactive' ? 'Inactive' : 'Active'}
                       </span>
+                    </TableCell>
+                    <TableCell className="py-3 text-right space-x-1.5 pr-4">
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        onClick={() => openEditCode(c)}
+                        className="h-7 px-2 text-[10px] font-bold text-indigo-600 hover:text-indigo-900 hover:bg-indigo-50"
+                      >
+                        Edit
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        onClick={() => openCreateRateForCode(c)}
+                        className="h-7 px-2 text-[10px] font-bold text-emerald-600 hover:text-emerald-900 hover:bg-emerald-50"
+                      >
+                        + Rate
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        onClick={() => handleToggleCodeStatus(c)}
+                        className={`h-7 px-2 text-[10px] font-bold ${c.isActive !== false ? 'text-rose-600 hover:text-rose-900 hover:bg-rose-50' : 'text-slate-600 hover:text-slate-900 hover:bg-slate-50'}`}
+                      >
+                        {c.isActive !== false ? 'Disable' : 'Enable'}
+                      </Button>
                     </TableCell>
                   </TableRow>
                 );
@@ -477,15 +558,15 @@ export const TaxAccountingView: React.FC<TaxAccountingViewProps> = ({ activeEnti
             <div className="modal-head">
               <div>
                 <p className="eyebrow">TAX ACCOUNTING — {current?.flag} {current?.name}</p>
-                <h2>Create Tax Code</h2>
+                <h2>{editingCode ? 'Edit Tax Code' : 'Create Tax Code'}</h2>
               </div>
-              <button type="button" className="close" onClick={() => setShowCodeForm(false)}>×</button>
+              <button type="button" className="close" onClick={() => { setShowCodeForm(false); setEditingCode(null); }}>×</button>
             </div>
             <div className="form-grid">
               {formError && <p className="error" style={{ gridColumn: '1 / -1', color: '#c25c5c', fontSize: 13, marginBottom: 10 }}>{formError}</p>}
               <div>
                 <label className="text-xs font-semibold text-slate-700 block mb-1">Tax Code</label>
-                <Input required placeholder="e.g. VAT-PK-17" value={codeForm.code} onChange={e => setCodeForm({ ...codeForm, code: e.target.value.toUpperCase() })} className="h-9 text-xs font-mono" />
+                <Input required placeholder="e.g. VAT-PK-17" value={codeForm.code} onChange={e => setCodeForm({ ...codeForm, code: e.target.value.toUpperCase() })} className="h-9 text-xs font-mono" disabled={!!editingCode} />
               </div>
               <div>
                 <label className="text-xs font-semibold text-slate-700 block mb-1">Name</label>
@@ -516,9 +597,9 @@ export const TaxAccountingView: React.FC<TaxAccountingViewProps> = ({ activeEnti
               </div>
             </div>
             <div className="modal-footer">
-              <button type="button" className="secondary btn-cancel" onClick={() => setShowCodeForm(false)}>Cancel</button>
+              <button type="button" className="secondary btn-cancel" onClick={() => { setShowCodeForm(false); setEditingCode(null); }}>Cancel</button>
               <button type="button" className="secondary btn-draft" onClick={(e) => { e.preventDefault(); alert("��� Draft saved locally"); }}>Save Draft</button>
-              <button type="submit" className="primary btn-finalize" disabled={saving}>{saving ? 'Saving…' : 'Create Tax Code'}</button>
+              <button type="submit" className="primary btn-finalize" disabled={saving}>{saving ? 'Saving…' : editingCode ? 'Update Tax Code' : 'Create Tax Code'}</button>
             </div>
           </form>
         </div>

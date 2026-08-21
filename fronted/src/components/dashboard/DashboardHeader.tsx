@@ -5,6 +5,8 @@ interface DashboardHeaderProps {
   subtitle?: string;
   badge?: string;
   className?: string;
+  onSettingsClick?: () => void;
+  onNotificationClick?: () => void;
 }
 
 export function DashboardHeader({
@@ -12,6 +14,8 @@ export function DashboardHeader({
   subtitle = 'Real-time financial performance & business insights',
   badge,
   className = '',
+  onSettingsClick,
+  onNotificationClick,
 }: DashboardHeaderProps) {
   const today = new Date().toLocaleDateString('en-US', {
     weekday: 'long',
@@ -55,10 +59,18 @@ export function DashboardHeader({
       {/* Right */}
       <div className="flex items-center gap-5">
         <span className="text-sm font-semibold text-[var(--color-text)]">{today}</span>
-        <button className="w-9 h-9 rounded-xl flex items-center justify-center text-[var(--color-text-muted)] hover:bg-[var(--color-surface-muted)] hover:text-[var(--color-text)] transition-colors">
+        <button
+          onClick={onNotificationClick || (() => alert("🔔 System Notifications\n\nAll systems functional. No unread compliance alerts or message warnings."))}
+          className="w-9 h-9 rounded-xl flex items-center justify-center text-[var(--color-text-muted)] hover:bg-[var(--color-surface-muted)] hover:text-[var(--color-text)] transition-colors"
+          title="Notifications"
+        >
           <Bell className="w-4.5 h-4.5" />
         </button>
-        <button className="w-9 h-9 rounded-xl flex items-center justify-center text-[var(--color-text-muted)] hover:bg-[var(--color-surface-muted)] hover:text-[var(--color-text)] transition-colors">
+        <button
+          onClick={onSettingsClick || (() => alert("⚙️ ERP System Settings\n\nUse the Administration sidebar menu or click settings to view system logs and configuration templates."))}
+          className="w-9 h-9 rounded-xl flex items-center justify-center text-[var(--color-text-muted)] hover:bg-[var(--color-surface-muted)] hover:text-[var(--color-text)] transition-colors"
+          title="System Settings"
+        >
           <Settings className="w-4.5 h-4.5" />
         </button>
       </div>

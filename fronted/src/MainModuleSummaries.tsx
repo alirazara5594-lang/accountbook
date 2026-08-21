@@ -132,6 +132,7 @@ export function SalesSummaryView({ activeEntityId, setPage }: { activeEntityId?:
         title="Sales & Customers Summary"
         subtitle="Invoicing, collections, customer management & revenue analytics"
         badge={loading ? 'Syncing...' : 'Live Audited'}
+        onSettingsClick={() => setPage?.('Administration.System Settings')}
       />
 
       <div className="grid grid-cols-12 gap-5">
@@ -427,6 +428,7 @@ export function ProcurementSummaryView({ activeEntityId, setPage }: { activeEnti
         title="Procurement & Vendor Summary"
         subtitle="Purchase requests, POs, goods receipts, and vendor bills"
         badge={loading ? 'Syncing...' : 'Active Operations'}
+        onSettingsClick={() => setPage?.('Administration.System Settings')}
       />
 
       <div className="grid grid-cols-12 gap-5">
@@ -708,6 +710,7 @@ export function BankingSummaryView({ activeEntityId, setPage }: { activeEntityId
         title="Banking & Treasury Summary"
         subtitle="Bank accounts, cash registers, reconciliation & transfers"
         badge={loading ? 'Syncing...' : 'Active Liquidity'}
+        onSettingsClick={() => setPage?.('Administration.System Settings')}
       />
 
       <div className="grid grid-cols-12 gap-5">
@@ -850,6 +853,7 @@ export function AccountingSummaryView({ accounts, entries, setPage }: {
         title="Ledger & Accounting Summary"
         subtitle="Chart of accounts, general journal ledger files, and compliance reporting"
         badge="Live Ledger Audited"
+        onSettingsClick={() => setPage?.('Administration.System Settings')}
       />
 
       <div className="grid grid-cols-12 gap-5">
@@ -997,6 +1001,7 @@ export function AssetsInventorySummaryView({ activeEntityId, setPage }: { active
         title="Assets & Inventory Summary"
         subtitle="Fixed assets, asset depreciation schedule, warehouses & stock levels"
         badge={loading ? 'Syncing...' : 'Active Assets'}
+        onSettingsClick={() => setPage?.('Administration.System Settings')}
       />
 
       <div className="grid grid-cols-12 gap-5">
@@ -1151,6 +1156,7 @@ export function PayrollSummaryView({ setPage }: { activeEntityId?: string; setPa
         title="Payroll & HR Summary"
         subtitle="Employees payroll registration, leaves checklist, salary slips & runs"
         badge={loading ? 'Syncing...' : 'Active HR'}
+        onSettingsClick={() => setPage?.('Administration.System Settings')}
       />
 
       <div className="grid grid-cols-12 gap-5">

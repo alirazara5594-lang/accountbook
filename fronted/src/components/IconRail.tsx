@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { LogOut } from 'lucide-react';
+import { LogOut, ChevronLeft, ChevronRight } from 'lucide-react';
 import { NAVIGATION, type NavGroup } from '../navigation';
 import type { UserData } from '../Login';
 
@@ -12,97 +12,117 @@ interface Props {
 }
 
 export default function IconRail({ activePage, onNavigate, modules, currentUser, onLogout }: Props) {
-  const [hoverInfo, setHoverInfo] = useState<{ name: string; up: boolean } | null>(null);
-
-  const handleEnter = (group: NavGroup, e: React.MouseEvent<HTMLDivElement>) => {
-    const rect = e.currentTarget.getBoundingClientRect();
-    const estHeight = 100 + group.items.length * 31;
-    setHoverInfo({ name: group.name, up: rect.top + estHeight > window.innerHeight - 8 });
-  };
-  const handleLeave = () => setHoverInfo(null);
+  const [isCollapsed, setIsCollapsed] = useState(false);
+  const [selectedGroup, setSelectedGroup] = useState<NavGroup | null>(null);
 
   const groups = NAVIGATION.filter(
     group => !modules || modules.length === 0 || modules.includes(group.moduleId)
   );
 
-  return (
-    <aside className="icon-rail">
-      <div className="rail-brand" title="AMS — Accounting Management System">
-        <div className="rail-brand-logo-mark">
-          <svg width="32" height="32" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
-            <rect width="32" height="32" rx="8" fill="var(--color-primary)" fillOpacity="0.15"/>
-            <path d="M8 22L12 10L16 18L20 10L24 22" stroke="var(--color-primary)" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"/>
-            <circle cx="26" cy="10" r="2.5" fill="var(--color-accent)"/>
-          </svg>
-        </div>
-        <div className="rail-brand-text">
-          <span className="rail-brand-am">AMS</span>
-          <span className="rail-brand-sub">ERP</span>
-        </div>
-      </div>
+  // Determine active group based on activePage
+  const activeGroupName = activePage.split('.')[0] || 'Overview';
+  const activeGroup = selectedGroup || groups.find(g => g.name === activeGroupName) || groups[0];
 
-      <nav className="rail-nav">
-        {groups.map(group => {
-          const active = activePage.startsWith(group.name + '.');
-          const Icon = group.icon;
-          return (
-            <div className="rail-item-wrap" key={group.name} onMouseEnter={e => handleEnter(group, e)} onMouseLeave={handleLeave}>
+  const handleModuleClick = (group: NavGroup) => {
+    setSelectedGroup(group);
+    setIsCollapsed(false); // Auto-expand submenu when a primary module is clicked
+    
+    // Navigate directly to the module's summary page
+    if (group.name === 'Overview') {
+      onNavigate('Overview.Overview');
+    } else {
+      onNavigate(`${group.name}.Summary`);
+    }
+  };
+
+  return (
+    <div className="double-rail-container">
+      {/* Primary Slim Icon Rail */}
+      <aside className="primary-rail">
+        <div className="rail-brand" title="AMS — Accounting Management System">
+          <div className="rail-brand-logo-mark">
+            <svg width="24" height="24" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <rect width="32" height="32" rx="8" fill="var(--color-primary)" fillOpacity="0.15"/>
+              <path d="M8 22L12 10L16 18L20 10L24 22" stroke="var(--color-primary)" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"/>
+            </svg>
+          </div>
+        </div>
+
+        <nav className="rail-nav">
+          {groups.map(group => {
+            const active = activeGroup.name === group.name;
+            const Icon = group.icon;
+            return (
               <button
+                key={group.name}
                 className={'rail-item' + (active ? ' active' : '')}
-                title={group.name}
-                onClick={() => onNavigate(`${group.name}.Summary`)}
+                title={group.label}
+                onClick={() => handleModuleClick(group)}
               >
                 <Icon className="rail-icon" size={18} strokeWidth={1.8} />
-                <span className="rail-label">{group.label.split(' ')[0]}</span>
+                <span className="rail-short-label">{group.short}</span>
               </button>
-              <div className={'rail-flyout' + (hoverInfo?.name === group.name && hoverInfo.up ? ' fly-up' : '')}>
-                <div className="flyout-title">
-                  <Icon className="flyout-module-icon" size={15} strokeWidth={1.9} />
-                  {group.label}
-                </div>
-                {group.name === 'Overview' ? (
-                  <button
-                    className={'flyout-item' + (activePage === 'Overview.Overview' ? ' active' : '')}
-                    onClick={() => onNavigate('Overview.Overview')}
-                  >
-                    Overview
-                  </button>
-                ) : (
-                  <>
-                    <button
-                      className={'flyout-item' + (activePage === `${group.name}.Summary` ? ' active' : '')}
-                      onClick={() => onNavigate(`${group.name}.Summary`)}
-                    >
-                      Dashboard
-                    </button>
-                    {group.items.map(item => {
-                      const key = `${group.name}.${item}`;
-                      return (
-                        <button
-                          key={item}
-                          className={'flyout-item' + (activePage === key ? ' active' : '')}
-                          onClick={() => onNavigate(key)}
-                        >
-                          {item}
-                        </button>
-                      );
-                    })}
-                  </>
-                )}
-              </div>
-            </div>
-          );
-        })}
-      </nav>
+            );
+          })}
+        </nav>
 
-      <div className="rail-footer">
-        <div className="rail-user avatar small" title={currentUser.fullName}>
-          {currentUser.avatar}
+        <div className="rail-footer">
+          <div className="rail-user avatar small" title={currentUser.fullName}>
+            {currentUser.avatar}
+          </div>
+          <button className="rail-logout" title="Sign out" onClick={onLogout}>
+            <LogOut size={14} />
+          </button>
         </div>
-        <button className="rail-logout" title="Sign out" onClick={onLogout}>
-          <LogOut size={14} />
+      </aside>
+
+      {/* Secondary Sliding Submenu Panel */}
+      <aside className={'secondary-rail' + (isCollapsed ? ' collapsed' : '')}>
+        <div className="secondary-header">
+          <span className="secondary-title">{activeGroup.label}</span>
+        </div>
+
+        <div className="secondary-nav-items">
+          {activeGroup.name === 'Overview' ? (
+            <button
+              className={'secondary-nav-item' + (activePage === 'Overview.Overview' ? ' active' : '')}
+              onClick={() => onNavigate('Overview.Overview')}
+            >
+              Overview Dashboard
+            </button>
+          ) : (
+            <>
+              <button
+                className={'secondary-nav-item' + (activePage === `${activeGroup.name}.Summary` ? ' active' : '')}
+                onClick={() => onNavigate(`${activeGroup.name}.Summary`)}
+              >
+                Summary Cockpit
+              </button>
+              {activeGroup.items.map(item => {
+                const key = `${activeGroup.name}.${item}`;
+                return (
+                  <button
+                    key={item}
+                    className={'secondary-nav-item' + (activePage === key ? ' active' : '')}
+                    onClick={() => onNavigate(key)}
+                  >
+                    {item}
+                  </button>
+                );
+              })}
+            </>
+          )}
+        </div>
+
+        {/* Collapse Toggle Handle */}
+        <button
+          className="secondary-collapse-btn"
+          onClick={() => setIsCollapsed(!isCollapsed)}
+          title={isCollapsed ? 'Expand menu' : 'Collapse menu'}
+        >
+          {isCollapsed ? <ChevronRight size={12} /> : <ChevronLeft size={12} />}
         </button>
-      </div>
-    </aside>
+      </aside>
+    </div>
   );
 }

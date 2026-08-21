@@ -20,6 +20,7 @@ export interface TaxCode {
   rates?: any[];
   taxAuthorityId?: string;
   isActive?: boolean;
+  description?: string;
 }
 
 export interface TaxRate {
@@ -69,6 +70,10 @@ export const taxApi = {
 
   createTaxCode: async (data: any): Promise<TaxCode> => {
     return apiClient<TaxCode>('/taxes/codes', { method: 'POST', body: data });
+  },
+
+  updateTaxCode: async (id: string, data: any): Promise<TaxCode> => {
+    return apiClient<TaxCode>(`/taxes/codes/${id}`, { method: 'PUT', body: data });
   },
 
   createTaxRate: async (data: any): Promise<TaxRate> => {
