@@ -539,7 +539,7 @@ export function AIInsightsView() {
     if (d.obligationsDue > 0) list.push({ icon: <AlertTriangle className="h-4 w-4" />, title: 'Tax obligations due', detail: `${d.obligationsDue} obligation(s) are due or overdue. File returns in Government Compliance to avoid penalties.`, tone: 'red' });
 
     if (d.assets.length > 0) {
-      const depreciating = d.assets.filter(a => a.status === 'Active' && a.accumulatedDepreciation > 0).length;
+      const depreciating = d.assets.filter(a => a.status === 'Active' && (a.accumulatedDepreciation || 0) > 0).length;
       list.push({ icon: <Scale className="h-4 w-4" />, title: 'Asset depreciation', detail: `${depreciating} of ${d.assets.length} assets are depreciating. Net book value is ${money(d.assets.reduce((s, a) => s + (a.bookValue || 0), 0))}.`, tone: 'blue' });
     }
 

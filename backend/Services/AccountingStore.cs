@@ -2483,6 +2483,40 @@ public IReadOnlyList<EmployeeCompensation> EmployeeCompensations => _employeeCom
         }
     }
 
+    // Create / Register New Fixed Asset
+    public bool CreateFixedAsset(FixedAsset asset, out string? error)
+    {
+        error = null;
+        lock (_lock)
+        {
+            if (string.IsNullOrWhiteSpace(asset.Name))
+            {
+                error = "Asset name is required.";
+                return false;
+            }
+            if (string.IsNullOrWhiteSpace(asset.AssetTag))
+            {
+                asset.AssetTag = $"AST-{DateTime.UtcNow.Year}-{_fixedAssets.Count + 1:D4}";
+            }
+            if (asset.PurchasePrice <= 0)
+            {
+                error = "Purchase cost must be greater than zero.";
+                return false;
+            }
+            if (asset.UsefulLifeYears <= 0)
+            {
+                asset.UsefulLifeYears = 3;
+            }
+
+            asset.CreatedAt = DateTime.UtcNow;
+            asset.UpdatedAt = DateTime.UtcNow;
+            _fixedAssets.Add(asset);
+
+            Persist();
+            return true;
+        }
+    }
+
     // Fixed Asset Depreciation (posts a real double-entry journal)
     public bool RunDepreciation(Guid assetId, Guid? depreciationExpenseAccountId, Guid? accumulatedDepreciationAccountId, out string? error)
     {

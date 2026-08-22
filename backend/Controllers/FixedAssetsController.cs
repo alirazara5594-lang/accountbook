@@ -24,6 +24,14 @@ public class FixedAssetsController : ControllerBase
         return Ok(query);
     }
 
+    [HttpPost]
+    public IActionResult CreateFixedAsset([FromBody] FixedAsset asset)
+    {
+        if (!_store.CreateFixedAsset(asset, out var error))
+            return BadRequest(new { error });
+        return Ok(asset);
+    }
+
     [HttpPost("{id}/run-depreciation")]
     public IActionResult RunDepreciation(Guid id, [FromBody] DepreciationRequest request)
     {

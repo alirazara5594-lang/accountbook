@@ -2,17 +2,26 @@ import { apiClient } from '../client';
 
 export interface FixedAsset {
   id: string;
-  assetCode: string;
+  assetTag?: string;
+  assetCode?: string;
   name: string;
-  category: string;
-  acquisitionDate: string;
-  cost: number;
-  salvageValue: number;
-  usefulLifeMonths: number;
-  depreciationMethod: string;
-  accumulatedDepreciation: number;
-  bookValue: number;
-  status: 'Active' | 'Disposed' | 'FullyDepreciated';
+  category?: string;
+  description?: string;
+  acquisitionDate?: string;
+  purchaseDate?: string;
+  cost?: number;
+  purchasePrice?: number;
+  salvageValue?: number;
+  usefulLifeMonths?: number;
+  usefulLifeYears?: number;
+  depreciationMethod?: string | number;
+  accumulatedDepreciation?: number;
+  bookValue?: number;
+  netBookValue?: number;
+  status: 'Active' | 'Disposed' | 'FullyDepreciated' | string | number;
+  assetAccountId?: string;
+  accumulatedDepreciationAccountId?: string;
+  depreciationExpenseAccountId?: string;
   companyId?: string;
 }
 
@@ -67,8 +76,15 @@ export const assetsInventoryApi = {
     return apiClient<FixedAsset[]>('/fixedassets', { params: { companyId } });
   },
 
+  createFixedAsset: async (data: any): Promise<FixedAsset> => {
+    return apiClient<FixedAsset>('/fixedassets', {
+      method: 'POST',
+      body: data,
+    });
+  },
+
   runDepreciation: async (id: string, expenseAccId: string, accumAccId: string): Promise<any> => {
-    return apiClient(`/fixed-assets/${id}/run-depreciation`, {
+    return apiClient(`/fixedassets/${id}/run-depreciation`, {
       method: 'POST',
       body: { depreciationExpenseAccountId: expenseAccId, accumulatedDepreciationAccountId: accumAccId },
     });

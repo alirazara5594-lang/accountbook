@@ -847,248 +847,377 @@ export const VoucherManagement: React.FC<VoucherManagementProps> = ({ activeEnti
         </div>
       </div>
 
-      {/* Post Voucher Modal Dialog */}
+      {/* ─── Ultra-Modern Institutional Voucher Creation Workspace Modal ─── */}
       {isModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-xs p-4" onClick={() => setIsModalOpen(false)}>
-          <div className="bg-[var(--color-surface)] border border-[var(--color-border)] rounded-2xl shadow-2xl w-full max-w-xl overflow-hidden flex flex-col max-h-[90vh]" onClick={(e) => e.stopPropagation()}>
-            <div className="flex items-center justify-between p-4 border-b border-[var(--color-border)] bg-gray-50/50 dark:bg-gray-900/50">
-              <div>
-                <h2 className="text-base font-bold text-[var(--color-text-strong)] flex items-center gap-2">
-                  <FileText className="w-4 h-4 text-emerald-600" /> Post {getVoucherFullTitle(selectedVoucherType)}
-                </h2>
-                <p className="text-xs text-[var(--color-text-muted)] mt-0.5">
-                  Posts automated double-entry transaction to General Ledger for {currentEntity?.name || 'Active Company'}.
-                </p>
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs p-3 md:p-6 overflow-y-auto" onClick={() => setIsModalOpen(false)}>
+          <div
+            className="bg-[var(--color-surface)] border border-[var(--color-border)] rounded-2xl shadow-2xl w-full max-w-4xl overflow-hidden flex flex-col my-auto max-h-[92vh] transition-all animate-in fade-in zoom-in-95 duration-200"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Modal Header */}
+            <div className="flex items-center justify-between px-6 py-4 border-b border-[var(--color-border)] bg-gray-50/70 dark:bg-gray-900/70">
+              <div className="flex items-center gap-3">
+                <div className={`p-2.5 rounded-xl border ${
+                  selectedVoucherType === 'BPV' ? 'bg-rose-50 dark:bg-rose-950/40 text-rose-600 border-rose-200 dark:border-rose-800' :
+                  selectedVoucherType === 'BRV' ? 'bg-emerald-50 dark:bg-emerald-950/40 text-emerald-600 border-emerald-200 dark:border-emerald-800' :
+                  selectedVoucherType === 'CPV' ? 'bg-amber-50 dark:bg-amber-950/40 text-amber-600 border-amber-200 dark:border-amber-800' :
+                  selectedVoucherType === 'CRV' ? 'bg-teal-50 dark:bg-teal-950/40 text-teal-600 border-teal-200 dark:border-teal-800' :
+                  'bg-indigo-50 dark:bg-indigo-950/40 text-indigo-600 border-indigo-200 dark:border-indigo-800'
+                }`}>
+                  <FileText className="w-5 h-5" />
+                </div>
+                <div>
+                  <div className="flex items-center gap-2">
+                    <h2 className="text-base font-bold text-[var(--color-text-strong)]">
+                      Post {getVoucherFullTitle(selectedVoucherType)}
+                    </h2>
+                    <span className={`text-[10px] px-2.5 py-0.5 rounded-full font-bold uppercase tracking-wider ${getVoucherBadgeStyle(selectedVoucherType)}`}>
+                      {selectedVoucherType}
+                    </span>
+                  </div>
+                  <p className="text-xs text-[var(--color-text-muted)] mt-0.5">
+                    Authorized double-entry accounting transaction for <strong>{currentEntity?.name || 'Active Company'}</strong>.
+                  </p>
+                </div>
               </div>
-              <button onClick={() => setIsModalOpen(false)} className="h-7 w-7 flex items-center justify-center rounded-lg hover:bg-gray-200 dark:hover:bg-gray-800 text-gray-500">
-                <X className="w-4 h-4" />
+
+              <button
+                onClick={() => setIsModalOpen(false)}
+                className="h-8 w-8 flex items-center justify-center rounded-xl hover:bg-gray-200 dark:hover:bg-gray-800 text-[var(--color-text-muted)] hover:text-[var(--color-text-strong)] transition-all"
+              >
+                <X className="w-5 h-5" />
               </button>
             </div>
 
-            <form onSubmit={handlePostVoucher} className="p-5 space-y-4 overflow-y-auto">
+            {/* Modal Body: 2-Column Responsive Workspace */}
+            <form onSubmit={handlePostVoucher} className="flex-1 overflow-y-auto p-6 space-y-5">
               {error && (
-                <div className="p-3 bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-800 rounded-xl text-rose-700 dark:text-rose-300 text-xs font-semibold">
-                  {error}
+                <div className="p-3.5 bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-800 rounded-xl text-rose-700 dark:text-rose-300 text-xs font-semibold flex items-center justify-between">
+                  <span>{error}</span>
+                  <button type="button" onClick={() => setError('')} className="text-rose-500 hover:text-rose-700 font-bold ml-2">✕</button>
                 </div>
               )}
 
-              {/* Voucher Type Tabs */}
-              <div className="grid grid-cols-5 gap-1.5 p-1 bg-gray-100 dark:bg-gray-800 rounded-xl">
-                {(['BPV', 'BRV', 'CPV', 'CRV', 'JV'] as VoucherType[]).map((t) => (
-                  <button
-                    key={t}
-                    type="button"
-                    onClick={() => openVoucherModal(t)}
-                    className={`py-1.5 text-xs font-bold rounded-lg transition-all ${
-                      selectedVoucherType === t
-                        ? 'bg-white dark:bg-gray-900 text-blue-600 shadow-xs'
-                        : 'text-gray-500 hover:text-gray-800 dark:hover:text-gray-200'
-                    }`}
-                  >
-                    {t}
-                  </button>
-                ))}
-              </div>
+              <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+                {/* ─── Left Column (7 cols): Data Entry Fields ─── */}
+                <div className="lg:col-span-7 space-y-4">
+                  {/* Date & Currency Row */}
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="space-y-1.5">
+                      <label className="text-xs font-bold text-[var(--color-text-strong)] flex items-center gap-1.5">
+                        <Clock className="w-3.5 h-3.5 text-gray-500" /> Voucher Date *
+                      </label>
+                      <input
+                        type="date"
+                        value={form.date}
+                        onChange={(e) => setForm({ ...form, date: e.target.value })}
+                        className="w-full h-9 px-3 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] text-xs text-[var(--color-text)] font-mono outline-none focus:border-emerald-500 shadow-2xs"
+                        required
+                      />
+                    </div>
+                    <div className="space-y-1.5">
+                      <label className="text-xs font-bold text-[var(--color-text-strong)] flex items-center gap-1.5">
+                        <DollarSign className="w-3.5 h-3.5 text-gray-500" /> Currency *
+                      </label>
+                      <select
+                        value={form.currency}
+                        onChange={(e) => setForm({ ...form, currency: e.target.value })}
+                        className="w-full h-9 px-3 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] text-xs text-[var(--color-text)] outline-none focus:border-emerald-500 shadow-2xs"
+                        required
+                      >
+                        <option value="PKR">PKR — Pakistani Rupee</option>
+                        <option value="USD">USD — US Dollar</option>
+                        <option value="AED">AED — UAE Dirham</option>
+                        <option value="SAR">SAR — Saudi Riyal</option>
+                        <option value="GBP">GBP — British Pound</option>
+                        <option value="EUR">EUR — Euro</option>
+                        <option value="CAD">CAD — Canadian Dollar</option>
+                      </select>
+                    </div>
+                  </div>
 
-              <div className="grid grid-cols-2 gap-3">
-                <div className="space-y-1">
-                  <label className="text-xs font-bold text-[var(--color-text-strong)]">Voucher Date *</label>
-                  <input
-                    type="date"
-                    value={form.date}
-                    onChange={(e) => setForm({ ...form, date: e.target.value })}
-                    className="w-full h-9 px-3 rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] text-xs text-[var(--color-text)] outline-none focus:border-blue-500"
-                    required
-                  />
-                </div>
-                <div className="space-y-1">
-                  <label className="text-xs font-bold text-[var(--color-text-strong)]">Currency *</label>
-                  <select
-                    value={form.currency}
-                    onChange={(e) => setForm({ ...form, currency: e.target.value })}
-                    className="w-full h-9 px-3 rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] text-xs text-[var(--color-text)] outline-none focus:border-blue-500"
-                    required
-                  >
-                    <option value="PKR">PKR - Pakistani Rupee</option>
-                    <option value="USD">USD - US Dollar</option>
-                    <option value="AED">AED - UAE Dirham</option>
-                    <option value="SAR">SAR - Saudi Riyal</option>
-                    <option value="GBP">GBP - British Pound</option>
-                    <option value="EUR">EUR - Euro</option>
-                    <option value="CAD">CAD - Canadian Dollar</option>
-                  </select>
-                </div>
-              </div>
+                  {/* Posting Source Account */}
+                  <div className="space-y-1.5">
+                    <label className="text-xs font-bold text-[var(--color-text-strong)] flex items-center gap-1.5">
+                      {selectedVoucherType === 'BPV' || selectedVoucherType === 'BRV' ? (
+                        <>
+                          <Building2 className="w-3.5 h-3.5 text-blue-600" />
+                          <span>Commercial Bank Account *</span>
+                        </>
+                      ) : selectedVoucherType === 'CPV' || selectedVoucherType === 'CRV' ? (
+                        <>
+                          <Wallet className="w-3.5 h-3.5 text-amber-600" />
+                          <span>Cash Register / Vault Account *</span>
+                        </>
+                      ) : (
+                        <>
+                          <BookOpen className="w-3.5 h-3.5 text-indigo-600" />
+                          <span>General Ledger Balancing Account *</span>
+                        </>
+                      )}
+                    </label>
+                    <select
+                      value={form.accountName}
+                      onChange={(e) => setForm({ ...form, accountName: e.target.value })}
+                      className="w-full h-9 px-3 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] text-xs text-[var(--color-text)] outline-none focus:border-emerald-500 shadow-2xs"
+                      required
+                    >
+                      {selectedVoucherType === 'BPV' || selectedVoucherType === 'BRV' ? (
+                        bankAccounts.length > 0 ? (
+                          bankAccounts.map((b) => (
+                            <option key={b.id} value={b.name}>{b.code} — {b.name}</option>
+                          ))
+                        ) : (
+                          <option value="Commercial Bank Account">11201 — Commercial Bank Account</option>
+                        )
+                      ) : selectedVoucherType === 'CPV' || selectedVoucherType === 'CRV' ? (
+                        cashAccounts.length > 0 ? (
+                          cashAccounts.map((c) => (
+                            <option key={c.id} value={c.name}>{c.code} — {c.name}</option>
+                          ))
+                        ) : (
+                          <option value="Main Cash Register Vault">11101 — Main Cash Register Vault</option>
+                        )
+                      ) : (
+                        <option value="General Ledger Adjustments">11000 — General Ledger Adjustments</option>
+                      )}
+                    </select>
+                  </div>
 
-              {/* Posting Bank/Cash/GL Account */}
-              <div className="space-y-1">
-                <label className="text-xs font-bold text-[var(--color-text-strong)]">
-                  {selectedVoucherType === 'BPV' || selectedVoucherType === 'BRV'
-                    ? 'Commercial Bank Account *'
-                    : selectedVoucherType === 'CPV' || selectedVoucherType === 'CRV'
-                    ? 'Cash Register / Vault Account *'
-                    : 'GL Adjustment Account *'}
-                </label>
-                <select
-                  value={form.accountName}
-                  onChange={(e) => setForm({ ...form, accountName: e.target.value })}
-                  className="w-full h-9 px-3 rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] text-xs text-[var(--color-text)] outline-none focus:border-blue-500"
-                  required
-                >
-                  {selectedVoucherType === 'BPV' || selectedVoucherType === 'BRV' ? (
-                    bankAccounts.length > 0 ? (
-                      bankAccounts.map((b) => <option key={b.id} value={b.name}>{b.code} — {b.name}</option>)
+                  {/* Counterparty / Beneficiary */}
+                  <div className="space-y-1.5">
+                    <label className="text-xs font-bold text-[var(--color-text-strong)]">
+                      {selectedVoucherType === 'BPV' || selectedVoucherType === 'CPV'
+                        ? 'Payee / Supplier (Vendor) *'
+                        : selectedVoucherType === 'BRV' || selectedVoucherType === 'CRV'
+                        ? 'Payer / Client (Customer) *'
+                        : 'Adjusting Party / GL Reference *'}
+                    </label>
+                    {selectedVoucherType === 'BPV' || selectedVoucherType === 'CPV' ? (
+                      <select
+                        value={form.partyName}
+                        onChange={(e) => setForm({ ...form, partyName: e.target.value })}
+                        className="w-full h-9 px-3 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] text-xs text-[var(--color-text)] outline-none focus:border-emerald-500 shadow-2xs"
+                        required
+                      >
+                        <option value="">-- Select Vendor / Supplier --</option>
+                        {vendors.map((v) => (
+                          <option key={v.id} value={v.name}>{v.name} ({v.vendorNumber || 'Vendor'})</option>
+                        ))}
+                      </select>
+                    ) : selectedVoucherType === 'BRV' || selectedVoucherType === 'CRV' ? (
+                      <select
+                        value={form.partyName}
+                        onChange={(e) => setForm({ ...form, partyName: e.target.value })}
+                        className="w-full h-9 px-3 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] text-xs text-[var(--color-text)] outline-none focus:border-emerald-500 shadow-2xs"
+                        required
+                      >
+                        <option value="">-- Select Customer / Client --</option>
+                        {customers.map((c) => (
+                          <option key={c.id} value={c.name}>{c.name} ({c.customerNumber || 'Customer'})</option>
+                        ))}
+                      </select>
                     ) : (
-                      <option value="Habib Bank Limited (HBL)">11201 — Habib Bank Limited (HBL)</option>
-                    )
-                  ) : selectedVoucherType === 'CPV' || selectedVoucherType === 'CRV' ? (
-                    cashAccounts.length > 0 ? (
-                      cashAccounts.map((c) => <option key={c.id} value={c.name}>{c.code} — {c.name}</option>)
-                    ) : (
-                      <option value="Main Cash Register Vault">11101 — Main Cash Register Vault</option>
-                    )
-                  ) : (
-                    <option value="General Ledger Adjustments">11000 — General Ledger Adjustments</option>
-                  )}
-                </select>
-              </div>
+                      <input
+                        type="text"
+                        value={form.partyName}
+                        onChange={(e) => setForm({ ...form, partyName: e.target.value })}
+                        placeholder="e.g. Accrued Payroll / Fixed Asset Depreciation"
+                        className="w-full h-9 px-3 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] text-xs text-[var(--color-text)] outline-none focus:border-emerald-500 shadow-2xs"
+                        required
+                      />
+                    )}
+                  </div>
 
-              {/* Counterparty / Beneficiary */}
-              <div className="space-y-1">
-                <label className="text-xs font-bold text-[var(--color-text-strong)]">
-                  {selectedVoucherType === 'BPV' || selectedVoucherType === 'CPV'
-                    ? 'Payee / Supplier (Vendor) *'
-                    : selectedVoucherType === 'BRV' || selectedVoucherType === 'CRV'
-                    ? 'Payer / Client (Customer) *'
-                    : 'Party / Adjusting Account Narration *'}
-                </label>
-                {selectedVoucherType === 'BPV' || selectedVoucherType === 'CPV' ? (
-                  <select
-                    value={form.partyName}
-                    onChange={(e) => setForm({ ...form, partyName: e.target.value })}
-                    className="w-full h-9 px-3 rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] text-xs text-[var(--color-text)] outline-none focus:border-blue-500"
-                    required
-                  >
-                    <option value="">-- Select Vendor / Payee --</option>
-                    {vendors.map((v) => (
-                      <option key={v.id} value={v.name}>{v.name} ({v.vendorNumber || 'Vendor'})</option>
-                    ))}
-                  </select>
-                ) : selectedVoucherType === 'BRV' || selectedVoucherType === 'CRV' ? (
-                  <select
-                    value={form.partyName}
-                    onChange={(e) => setForm({ ...form, partyName: e.target.value })}
-                    className="w-full h-9 px-3 rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] text-xs text-[var(--color-text)] outline-none focus:border-blue-500"
-                    required
-                  >
-                    <option value="">-- Select Customer / Payer --</option>
-                    {customers.map((c) => (
-                      <option key={c.id} value={c.name}>{c.name} ({c.customerNumber || 'Customer'})</option>
-                    ))}
-                  </select>
-                ) : (
-                  <input
-                    type="text"
-                    value={form.partyName}
-                    onChange={(e) => setForm({ ...form, partyName: e.target.value })}
-                    placeholder="e.g. Accrued Payroll / Audit Adjustment"
-                    className="w-full h-9 px-3 rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] text-xs text-[var(--color-text)] outline-none focus:border-blue-500"
-                    required
-                  />
-                )}
-              </div>
+                  {/* Payment Mode & Reference */}
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="space-y-1.5">
+                      <label className="text-xs font-bold text-[var(--color-text-strong)]">Payment Instrument</label>
+                      <select
+                        value={form.paymentMode}
+                        onChange={(e) => setForm({ ...form, paymentMode: e.target.value })}
+                        className="w-full h-9 px-3 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] text-xs text-[var(--color-text)] outline-none focus:border-emerald-500 shadow-2xs"
+                      >
+                        <option value="Wire Transfer">Wire Transfer</option>
+                        <option value="Bank Transfer">Bank Transfer / Online</option>
+                        <option value="Cheque">Cheque / Check</option>
+                        <option value="Pay Order">Pay Order</option>
+                        <option value="Cash">Physical Cash</option>
+                        <option value="ACH">ACH Electronic</option>
+                        <option value="RTGS">RTGS Real-Time</option>
+                        <option value="N/A">N/A (Journal Adjustment)</option>
+                      </select>
+                    </div>
+                    <div className="space-y-1.5">
+                      <label className="text-xs font-bold text-[var(--color-text-strong)]">Cheque / Reference Number</label>
+                      <input
+                        type="text"
+                        value={form.chequeNumber}
+                        onChange={(e) => setForm({ ...form, chequeNumber: e.target.value })}
+                        placeholder="e.g. CHQ-99182 / TXN-8172"
+                        className="w-full h-9 px-3 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] text-xs text-[var(--color-text)] font-mono outline-none focus:border-emerald-500 shadow-2xs"
+                      />
+                    </div>
+                  </div>
 
-              <div className="grid grid-cols-2 gap-3">
-                <div className="space-y-1">
-                  <label className="text-xs font-bold text-[var(--color-text-strong)]">Payment Mode</label>
-                  <select
-                    value={form.paymentMode}
-                    onChange={(e) => setForm({ ...form, paymentMode: e.target.value })}
-                    className="w-full h-9 px-3 rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] text-xs text-[var(--color-text)] outline-none focus:border-blue-500"
-                  >
-                    <option value="Wire Transfer">Wire Transfer</option>
-                    <option value="Bank Transfer">Bank Transfer / Online</option>
-                    <option value="Cheque">Cheque / Check</option>
-                    <option value="Pay Order">Pay Order</option>
-                    <option value="Cash">Physical Cash</option>
-                    <option value="ACH">ACH Electronic</option>
-                    <option value="RTGS">RTGS Real-Time</option>
-                    <option value="N/A">N/A (Journal Adjustment)</option>
-                  </select>
+                  {/* Amount Input */}
+                  <div className="space-y-1.5">
+                    <label className="text-xs font-bold text-[var(--color-text-strong)] flex items-center justify-between">
+                      <span>Voucher Amount ({form.currency}) *</span>
+                      <span className="font-mono text-emerald-600 dark:text-emerald-400 font-extrabold">
+                        {money(parseFloat(form.amount) || 0, form.currency)}
+                      </span>
+                    </label>
+                    <div className="relative">
+                      <input
+                        type="number"
+                        step="0.01"
+                        min="0.01"
+                        value={form.amount}
+                        onChange={(e) => setForm({ ...form, amount: e.target.value })}
+                        placeholder="0.00"
+                        className="w-full h-10 px-3.5 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] text-sm text-[var(--color-text)] font-mono font-bold outline-none focus:border-emerald-500 shadow-2xs"
+                        required
+                      />
+                    </div>
+                  </div>
+
+                  {/* Narration & Quick Memos */}
+                  <div className="space-y-1.5">
+                    <label className="text-xs font-bold text-[var(--color-text-strong)]">Narration / Memo</label>
+                    <input
+                      type="text"
+                      value={form.narration}
+                      onChange={(e) => setForm({ ...form, narration: e.target.value })}
+                      placeholder="e.g. Settlement of Invoice #INV-1092 via bank wire"
+                      className="w-full h-9 px-3 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] text-xs text-[var(--color-text)] outline-none focus:border-emerald-500 shadow-2xs"
+                    />
+                    {/* Quick Suggestions */}
+                    <div className="flex items-center gap-1.5 flex-wrap pt-1">
+                      <span className="text-[10px] text-[var(--color-text-muted)] font-semibold">Quick memo:</span>
+                      {['Supplier Invoice Settlement', 'Advance Payment', 'Monthly Office Rent', 'Utility Bills', 'Tax Clearance'].map((memo) => (
+                        <button
+                          key={memo}
+                          type="button"
+                          onClick={() => setForm({ ...form, narration: memo })}
+                          className="text-[10px] px-2 py-0.5 rounded-md bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-300 hover:bg-gray-200 hover:text-gray-900 dark:hover:text-white transition-colors"
+                        >
+                          {memo}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
                 </div>
-                <div className="space-y-1">
-                  <label className="text-xs font-bold text-[var(--color-text-strong)]">Cheque / Reference Number</label>
-                  <input
-                    type="text"
-                    value={form.chequeNumber}
-                    onChange={(e) => setForm({ ...form, chequeNumber: e.target.value })}
-                    placeholder="e.g. CHQ-99182 / TXN-8172"
-                    className="w-full h-9 px-3 rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] text-xs text-[var(--color-text)] font-mono outline-none focus:border-blue-500"
-                  />
+
+                {/* ─── Right Column (5 cols): Live Accounting T-Account & GL Impact ─── */}
+                <div className="lg:col-span-5 flex flex-col justify-between space-y-4 bg-gray-50/50 dark:bg-gray-900/50 p-4 rounded-2xl border border-[var(--color-border)]">
+                  <div>
+                    <div className="flex items-center justify-between pb-3 border-b border-[var(--color-border)]">
+                      <span className="text-xs font-extrabold uppercase tracking-wider text-[var(--color-text-strong)] flex items-center gap-1.5">
+                        <Layers className="w-4 h-4 text-emerald-600" /> Live Double-Entry T-Account
+                      </span>
+                      <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800">
+                        IAS 1 Balanced
+                      </span>
+                    </div>
+
+                    {/* Double-Entry Table */}
+                    <div className="mt-3 border border-[var(--color-border)] rounded-xl overflow-hidden bg-[var(--color-surface)]">
+                      <table className="w-full text-xs">
+                        <thead>
+                          <tr className="bg-gray-100/60 dark:bg-gray-800/60 text-[10px] font-extrabold text-[var(--color-text-muted)] uppercase border-b border-[var(--color-border)]">
+                            <th className="py-2 px-3 text-left">ACCOUNT / DESCRIPTION</th>
+                            <th className="py-2 px-2 text-right">DEBIT (+)</th>
+                            <th className="py-2 px-2 text-right">CREDIT (-)</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-[var(--color-border)] font-mono text-[11px]">
+                          {/* Row 1: Debit */}
+                          <tr>
+                            <td className="py-2.5 px-3 font-sans">
+                              <span className="font-bold text-[var(--color-text-strong)] block truncate max-w-[140px]">
+                                {selectedVoucherType === 'BRV' || selectedVoucherType === 'CRV'
+                                  ? form.accountName || 'Cash/Bank Vault'
+                                  : form.partyName || 'Accounts Payable / Expense'}
+                              </span>
+                              <span className="text-[9px] text-[var(--color-text-muted)]">
+                                {selectedVoucherType === 'BRV' || selectedVoucherType === 'CRV' ? 'Asset Account' : 'Liability / Expense'}
+                              </span>
+                            </td>
+                            <td className="py-2.5 px-2 text-right font-bold text-emerald-600 dark:text-emerald-400">
+                              {money(parseFloat(form.amount) || 0, form.currency)}
+                            </td>
+                            <td className="py-2.5 px-2 text-right text-gray-400">—</td>
+                          </tr>
+
+                          {/* Row 2: Credit */}
+                          <tr>
+                            <td className="py-2.5 px-3 font-sans">
+                              <span className="font-bold text-[var(--color-text-strong)] block truncate max-w-[140px]">
+                                {selectedVoucherType === 'BPV' || selectedVoucherType === 'CPV'
+                                  ? form.accountName || 'Cash/Bank Vault'
+                                  : form.partyName || 'Accounts Receivable / Income'}
+                              </span>
+                              <span className="text-[9px] text-[var(--color-text-muted)]">
+                                {selectedVoucherType === 'BPV' || selectedVoucherType === 'CPV' ? 'Asset Account' : 'Asset / Revenue'}
+                              </span>
+                            </td>
+                            <td className="py-2.5 px-2 text-right text-gray-400">—</td>
+                            <td className="py-2.5 px-2 text-right font-bold text-rose-600 dark:text-rose-400">
+                              {money(parseFloat(form.amount) || 0, form.currency)}
+                            </td>
+                          </tr>
+                        </tbody>
+                        <tfoot>
+                          <tr className="bg-gray-50 dark:bg-gray-900 font-extrabold border-t border-[var(--color-border)]">
+                            <td className="py-2 px-3 text-[10px] text-[var(--color-text-strong)]">TOTALS (BALANCED)</td>
+                            <td className="py-2 px-2 text-right text-emerald-600 text-[10px]">
+                              {money(parseFloat(form.amount) || 0, form.currency)}
+                            </td>
+                            <td className="py-2 px-2 text-right text-rose-600 text-[10px]">
+                              {money(parseFloat(form.amount) || 0, form.currency)}
+                            </td>
+                          </tr>
+                        </tfoot>
+                      </table>
+                    </div>
+
+                    {/* Accounting Standard Notice */}
+                    <div className="mt-3.5 p-3 rounded-xl bg-blue-50/40 dark:bg-blue-950/20 border border-blue-200 dark:border-blue-800 text-[11px] text-blue-900 dark:text-blue-200 leading-relaxed">
+                      <p className="font-bold mb-0.5 flex items-center gap-1">
+                        <CheckCircle2 className="w-3.5 h-3.5 text-blue-600" /> GAAP & IAS Double-Entry Audit Trail
+                      </p>
+                      {selectedVoucherType === 'BPV' && 'Decreases commercial bank balance and debits accounts payable / vendor ledger.'}
+                      {selectedVoucherType === 'BRV' && 'Increases commercial bank balance and credits accounts receivable / customer ledger.'}
+                      {selectedVoucherType === 'CPV' && 'Decreases cash drawer balance and debits accounts payable / vendor ledger.'}
+                      {selectedVoucherType === 'CRV' && 'Increases cash drawer balance and credits accounts receivable / customer ledger.'}
+                      {selectedVoucherType === 'JV' && 'Adjusts General Ledger accounts with equal debit and credit journal entries.'}
+                    </div>
+                  </div>
+
+                  {/* Entity Stamp */}
+                  <div className="text-[10px] text-[var(--color-text-muted)] flex items-center justify-between border-t border-[var(--color-border)] pt-2.5">
+                    <span>Corporate Entity: <strong>{currentEntity?.name || 'Primary Entity'}</strong></span>
+                    <span>Status: <strong>Immediate GL Post</strong></span>
+                  </div>
                 </div>
               </div>
 
-              <div className="space-y-1">
-                <label className="text-xs font-bold text-[var(--color-text-strong)]">Voucher Amount ({form.currency}) *</label>
-                <input
-                  type="number"
-                  step="0.01"
-                  value={form.amount}
-                  onChange={(e) => setForm({ ...form, amount: e.target.value })}
-                  placeholder="0.00"
-                  className="w-full h-9 px-3 rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] text-xs text-[var(--color-text)] font-mono font-bold outline-none focus:border-blue-500"
-                  required
-                />
-              </div>
-
-              <div className="space-y-1">
-                <label className="text-xs font-bold text-[var(--color-text-strong)]">Narration / Audit Trail Description</label>
-                <input
-                  type="text"
-                  value={form.narration}
-                  onChange={(e) => setForm({ ...form, narration: e.target.value })}
-                  placeholder="e.g. Settlement of Invoice #INV-1092 via bank wire"
-                  className="w-full h-9 px-3 rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] text-xs text-[var(--color-text)] outline-none focus:border-blue-500"
-                />
-              </div>
-
-              {/* Double-Entry Preview Box */}
-              <div className="p-3 bg-blue-50/50 dark:bg-blue-950/20 rounded-xl border border-blue-200 dark:border-blue-800 text-xs space-y-1.5">
-                <span className="font-bold text-blue-800 dark:text-blue-300 block text-[11px] uppercase tracking-wider">
-                  Double-Entry General Ledger Preview
-                </span>
-                <div className="flex justify-between text-xs">
-                  <span className="text-[var(--color-text)] font-medium">
-                    Debit (+): {selectedVoucherType === 'BRV' || selectedVoucherType === 'CRV' ? form.accountName || 'Cash/Bank' : form.partyName || 'Party / Expense'}
-                  </span>
-                  <span className="font-mono font-bold text-emerald-600">
-                    {money(parseFloat(form.amount) || 0, form.currency)}
-                  </span>
-                </div>
-                <div className="flex justify-between text-xs">
-                  <span className="text-[var(--color-text)] font-medium">
-                    Credit (-): {selectedVoucherType === 'BPV' || selectedVoucherType === 'CPV' ? form.accountName || 'Cash/Bank' : form.partyName || 'Party / Revenue'}
-                  </span>
-                  <span className="font-mono font-bold text-rose-600">
-                    {money(parseFloat(form.amount) || 0, form.currency)}
-                  </span>
-                </div>
-              </div>
-
-              <div className="flex items-center justify-end gap-2 pt-2 border-t border-[var(--color-border)]">
+              {/* Modal Footer Actions */}
+              <div className="flex items-center justify-end gap-3 pt-4 border-t border-[var(--color-border)]">
                 <button
                   type="button"
                   onClick={() => setIsModalOpen(false)}
-                  className="secondary h-9 px-4 rounded-lg text-xs font-semibold"
+                  className="secondary h-9 px-4 rounded-xl text-xs font-semibold"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
                   disabled={saving}
-                  className="primary h-9 px-4 rounded-lg text-xs font-semibold flex items-center gap-1.5 shadow-xs"
+                  className="primary h-9 px-5 rounded-xl text-xs font-bold flex items-center gap-2 shadow-xs"
                 >
-                  {saving ? <RefreshCw className="w-3.5 h-3.5 animate-spin" /> : <CheckCircle2 className="w-3.5 h-3.5" />}
+                  {saving ? <RefreshCw className="w-4 h-4 animate-spin" /> : <CheckCircle2 className="w-4 h-4" />}
                   Post {selectedVoucherType} Voucher
                 </button>
               </div>
@@ -1097,63 +1226,78 @@ export const VoucherManagement: React.FC<VoucherManagementProps> = ({ activeEnti
         </div>
       )}
 
-      {/* Voucher Detail Audit Modal */}
+      {/* ─── Ultra-Modern Voucher Detail Audit Modal ─── */}
       {selectedDetailVoucher && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-xs p-4" onClick={() => setSelectedDetailVoucher(null)}>
-          <div className="bg-[var(--color-surface)] border border-[var(--color-border)] rounded-2xl shadow-2xl w-full max-w-lg overflow-hidden flex flex-col max-h-[90vh]" onClick={(e) => e.stopPropagation()}>
-            <div className="flex items-center justify-between p-4 border-b border-[var(--color-border)] bg-gray-50/50 dark:bg-gray-900/50">
-              <div>
-                <h2 className="text-base font-bold text-[var(--color-text-strong)] flex items-center gap-2">
-                  <FileText className="w-4 h-4 text-emerald-600" /> Voucher #{selectedDetailVoucher.voucherNumber}
-                </h2>
-                <p className="text-xs text-[var(--color-text-muted)] mt-0.5">
-                  {getVoucherFullTitle(selectedDetailVoucher.voucherType)}
-                </p>
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs p-3 md:p-6" onClick={() => setSelectedDetailVoucher(null)}>
+          <div className="bg-[var(--color-surface)] border border-[var(--color-border)] rounded-2xl shadow-2xl w-full max-w-xl overflow-hidden flex flex-col max-h-[92vh] transition-all animate-in fade-in zoom-in-95 duration-200" onClick={(e) => e.stopPropagation()}>
+            <div className="flex items-center justify-between p-5 border-b border-[var(--color-border)] bg-gray-50/70 dark:bg-gray-900/70">
+              <div className="flex items-center gap-3">
+                <div className="p-2.5 bg-emerald-50 dark:bg-emerald-950/40 text-emerald-600 rounded-xl border border-emerald-200 dark:border-emerald-800">
+                  <FileText className="w-5 h-5" />
+                </div>
+                <div>
+                  <div className="flex items-center gap-2">
+                    <h2 className="text-base font-bold text-[var(--color-text-strong)]">
+                      Voucher #{selectedDetailVoucher.voucherNumber}
+                    </h2>
+                    <span className={`text-[10px] px-2.5 py-0.5 rounded-full font-bold uppercase tracking-wider ${getVoucherBadgeStyle(selectedDetailVoucher.voucherType)}`}>
+                      {selectedDetailVoucher.voucherType}
+                    </span>
+                  </div>
+                  <p className="text-xs text-[var(--color-text-muted)] mt-0.5">
+                    {getVoucherFullTitle(selectedDetailVoucher.voucherType)}
+                  </p>
+                </div>
               </div>
-              <button onClick={() => setSelectedDetailVoucher(null)} className="h-7 w-7 flex items-center justify-center rounded-lg hover:bg-gray-200 dark:hover:bg-gray-800 text-gray-500">
-                <X className="w-4 h-4" />
+              <button
+                onClick={() => setSelectedDetailVoucher(null)}
+                className="h-8 w-8 flex items-center justify-center rounded-xl hover:bg-gray-200 dark:hover:bg-gray-800 text-[var(--color-text-muted)] hover:text-[var(--color-text-strong)] transition-all"
+              >
+                <X className="w-5 h-5" />
               </button>
             </div>
 
-            <div className="p-5 space-y-4 overflow-y-auto text-xs">
-              <div className="p-3 bg-gray-50 dark:bg-gray-900 rounded-xl border border-[var(--color-border)] space-y-2">
-                <div className="flex justify-between">
-                  <span className="text-[var(--color-text-muted)]">Voucher Type:</span>
+            <div className="p-6 space-y-4 overflow-y-auto text-xs">
+              <div className="p-4 bg-gray-50 dark:bg-gray-900 rounded-2xl border border-[var(--color-border)] space-y-2.5">
+                <div className="flex justify-between py-1 border-b border-[var(--color-border)]">
+                  <span className="text-[var(--color-text-muted)]">Voucher Sequence / Type:</span>
                   <span className={`font-bold px-2 py-0.5 rounded-md ${getVoucherBadgeStyle(selectedDetailVoucher.voucherType)}`}>
-                    {selectedDetailVoucher.voucherType}
+                    {selectedDetailVoucher.voucherNumber} ({selectedDetailVoucher.voucherType})
                   </span>
                 </div>
-                <div className="flex justify-between">
-                  <span className="text-[var(--color-text-muted)]">Date:</span>
-                  <span className="font-semibold text-[var(--color-text-strong)]">{selectedDetailVoucher.date}</span>
+                <div className="flex justify-between py-1 border-b border-[var(--color-border)]">
+                  <span className="text-[var(--color-text-muted)]">Effective Posting Date:</span>
+                  <span className="font-semibold text-[var(--color-text-strong)] font-mono">{selectedDetailVoucher.date}</span>
                 </div>
-                <div className="flex justify-between">
+                <div className="flex justify-between py-1 border-b border-[var(--color-border)]">
                   <span className="text-[var(--color-text-muted)]">Posting Account:</span>
                   <span className="font-semibold text-[var(--color-text-strong)]">{selectedDetailVoucher.accountName}</span>
                 </div>
-                <div className="flex justify-between">
-                  <span className="text-[var(--color-text-muted)]">Beneficiary / Party:</span>
+                <div className="flex justify-between py-1 border-b border-[var(--color-border)]">
+                  <span className="text-[var(--color-text-muted)]">Beneficiary / Counterparty:</span>
                   <span className="font-semibold text-[var(--color-text-strong)]">{selectedDetailVoucher.partyName} ({selectedDetailVoucher.partyType})</span>
                 </div>
-                <div className="flex justify-between">
-                  <span className="text-[var(--color-text-muted)]">Payment Mode & Cheque:</span>
+                <div className="flex justify-between py-1 border-b border-[var(--color-border)]">
+                  <span className="text-[var(--color-text-muted)]">Payment Mode & Instrument:</span>
                   <span className="font-medium text-[var(--color-text-strong)]">
-                    {selectedDetailVoucher.paymentMode} {selectedDetailVoucher.chequeNumber ? `(#${selectedDetailVoucher.chequeNumber})` : ''}
+                    {selectedDetailVoucher.paymentMode} {selectedDetailVoucher.chequeNumber ? `(Cheque #${selectedDetailVoucher.chequeNumber})` : ''}
                   </span>
                 </div>
-                <div className="flex justify-between">
+                <div className="flex justify-between py-1 border-b border-[var(--color-border)]">
                   <span className="text-[var(--color-text-muted)]">Voucher Amount:</span>
-                  <span className="font-mono font-extrabold text-sm text-blue-600 dark:text-blue-400">
+                  <span className="font-mono font-extrabold text-sm text-emerald-600 dark:text-emerald-400">
                     {money(selectedDetailVoucher.amount, selectedDetailVoucher.currency)}
                   </span>
                 </div>
-                <div className="flex justify-between">
-                  <span className="text-[var(--color-text-muted)]">Narration:</span>
+                <div className="flex justify-between py-1 border-b border-[var(--color-border)]">
+                  <span className="text-[var(--color-text-muted)]">Narration / Memo:</span>
                   <span className="font-medium text-[var(--color-text-strong)]">{selectedDetailVoucher.narration || '—'}</span>
                 </div>
-                <div className="flex justify-between">
-                  <span className="text-[var(--color-text-muted)]">Status:</span>
-                  <span className="font-bold text-emerald-600">{selectedDetailVoucher.status}</span>
+                <div className="flex justify-between py-1">
+                  <span className="text-[var(--color-text-muted)]">Audit Status:</span>
+                  <span className="font-bold text-emerald-600 flex items-center gap-1">
+                    <CheckCircle2 className="w-3.5 h-3.5" /> Posted & Reconciled
+                  </span>
                 </div>
               </div>
 
@@ -1161,14 +1305,14 @@ export const VoucherManagement: React.FC<VoucherManagementProps> = ({ activeEnti
                 <button
                   type="button"
                   onClick={() => setSelectedDetailVoucher(null)}
-                  className="secondary h-9 px-4 rounded-lg text-xs font-semibold"
+                  className="secondary h-9 px-4 rounded-xl text-xs font-semibold"
                 >
                   Close
                 </button>
                 <button
                   type="button"
                   onClick={() => generateVoucherPDF(selectedDetailVoucher)}
-                  className="primary h-9 px-4 rounded-lg text-xs font-semibold flex items-center gap-1.5 shadow-xs"
+                  className="primary h-9 px-4 rounded-xl text-xs font-bold flex items-center gap-1.5 shadow-xs"
                 >
                   <Download className="w-3.5 h-3.5" /> Download Voucher PDF
                 </button>
