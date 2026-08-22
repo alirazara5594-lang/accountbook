@@ -1,9 +1,11 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { reportsApi } from './api/modules/reports.api';
+import { useCoaStore } from './stores';
 import {
   BookOpen, Search, X, ShieldCheck,
   Download, FileSpreadsheet, RefreshCw,
-  Layers, ArrowUpRight, ArrowDownRight
+  Layers, ArrowUpRight, ArrowDownRight,
+  FileText, CheckCircle2, AlertCircle, Filter
 } from 'lucide-react';
 import { money } from './lib/currency';
 import { downloadExcel, downloadCSV } from './lib/exportUtils';
@@ -33,6 +35,9 @@ interface GeneralLedgerViewProps {
 
 export const GeneralLedgerView: React.FC<GeneralLedgerViewProps> = ({ activeEntityId, entities }) => {
   const currentEntity = entities.find((e) => e.id === activeEntityId);
+  const coaAccounts = useCoaStore((s) => s.accounts);
+  const fetchAccounts = useCoaStore((s) => s.fetchAccounts);
+
   const [lines, setLines] = useState<GeneralLedgerLine[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -42,6 +47,13 @@ export const GeneralLedgerView: React.FC<GeneralLedgerViewProps> = ({ activeEnti
   const [datePreset, setDatePreset] = useState<'all' | 'today' | 'this_month' | 'this_quarter' | 'this_year'>('all');
   const [selectedAccountFilter, setSelectedAccountFilter] = useState<string>('ALL');
   const [viewMode, setViewMode] = useState<'chronological' | 'grouped'>('chronological');
+
+  // Load COA accounts if empty
+  useEffect(() => {
+    if (coaAccounts.length === 0) {
+      fetchAccounts();
+    }
+  }, [coaAccounts.length, fetchAccounts]);
 
   // Handle Date Presets
   const applyDatePreset = (preset: 'all' | 'today' | 'this_month' | 'this_quarter' | 'this_year') => {
@@ -94,86 +106,114 @@ export const GeneralLedgerView: React.FC<GeneralLedgerViewProps> = ({ activeEnti
     load();
   }, [activeEntityId, from, to]);
 
-  // Unique Accounts list
-  const uniqueAccounts = useMemo(() => {
-    const map = new Map<string, { code: string; name: string }>();
+  // Combined Unique Accounts List (All COA Accounts + Any Transaction Accounts)
+  const availableAccounts = useMemo(() => {
+    const map = new Map<string, { code: string; name: string; type?: string; id?: string }>();
+    coaAccounts.forEach((a) => {
+      if (a.code) {
+        map.set(a.code, { code: a.code, name: a.name, type: a.type, id: a.id });
+      }
+    });
     lines.forEach((l) => {
-      if (l.accountCode) {
-        map.set(l.accountCode, { code: l.accountCode, name: l.accountName });
+      if (l.accountCode && !map.has(l.accountCode)) {
+        map.set(l.accountCode, { code: l.accountCode, name: l.accountName, id: l.accountId });
       }
     });
     return Array.from(map.values()).sort((a, b) => a.code.localeCompare(b.code));
-  }, [lines]);
+  }, [coaAccounts, lines]);
 
   // Filtered Lines
   const filtered = useMemo(() => {
     return lines.filter((l) => {
+      // Account Code Filter
       if (selectedAccountFilter !== 'ALL' && l.accountCode !== selectedAccountFilter) {
         return false;
       }
+      // Text Search Query
       if (query.trim()) {
         const q = query.toLowerCase();
-        const matchesRef = (l.reference || '').toLowerCase().includes(q);
-        const matchesCode = (l.accountCode || '').toLowerCase().includes(q);
-        const matchesName = (l.accountName || '').toLowerCase().includes(q);
-        const matchesDesc = (l.description || '').toLowerCase().includes(q);
-        const matchesType = (l.transactionType || '').toLowerCase().includes(q);
-        if (!matchesRef && !matchesCode && !matchesName && !matchesDesc && !matchesType) return false;
+        const refMatch = l.reference?.toLowerCase().includes(q);
+        const codeMatch = l.accountCode?.toLowerCase().includes(q);
+        const nameMatch = l.accountName?.toLowerCase().includes(q);
+        const descMatch = l.description?.toLowerCase().includes(q);
+        const memoMatch = l.memo?.toLowerCase().includes(q);
+        const typeMatch = l.transactionType?.toLowerCase().includes(q);
+        if (!refMatch && !codeMatch && !nameMatch && !descMatch && !memoMatch && !typeMatch) {
+          return false;
+        }
       }
       return true;
     });
-  }, [lines, query, selectedAccountFilter]);
+  }, [lines, selectedAccountFilter, query]);
 
-  // 4 Top Financial KPIs
-  const totalDebit = filtered.reduce((s, l) => s + (l.debit || 0), 0);
-  const totalCredit = filtered.reduce((s, l) => s + (l.credit || 0), 0);
+  // Financial KPI Calculations
+  const totalDebit = useMemo(() => filtered.reduce((acc, curr) => acc + (curr.debit || 0), 0), [filtered]);
+  const totalCredit = useMemo(() => filtered.reduce((acc, curr) => acc + (curr.credit || 0), 0), [filtered]);
   const netDifference = Math.abs(totalDebit - totalCredit);
   const isBalanced = netDifference < 0.01;
 
-  // Grouped Account Structure for T-Account View
-  const groupedAccounts = useMemo(() => {
-    const map = new Map<string, { code: string; name: string; debit: number; credit: number; lines: GeneralLedgerLine[] }>();
+  // Grouped Accounts for T-Account View
+  const groupedByAccount = useMemo(() => {
+    const groups: Record<string, { code: string; name: string; lines: GeneralLedgerLine[]; totalDr: number; totalCr: number; balance: number }> = {};
     filtered.forEach((l) => {
-      const key = l.accountCode || l.accountId || 'UNKNOWN';
-      if (!map.has(key)) {
-        map.set(key, { code: l.accountCode, name: l.accountName, debit: 0, credit: 0, lines: [] });
+      const key = l.accountCode || 'UNASSIGNED';
+      if (!groups[key]) {
+        groups[key] = {
+          code: l.accountCode,
+          name: l.accountName,
+          lines: [],
+          totalDr: 0,
+          totalCr: 0,
+          balance: 0,
+        };
       }
-      const acc = map.get(key)!;
-      acc.debit += l.debit || 0;
-      acc.credit += l.credit || 0;
-      acc.lines.push(l);
+      groups[key].lines.push(l);
+      groups[key].totalDr += l.debit || 0;
+      groups[key].totalCr += l.credit || 0;
     });
-    return Array.from(map.values()).sort((a, b) => a.code.localeCompare(b.code));
+
+    Object.values(groups).forEach((g) => {
+      g.balance = g.totalDr - g.totalCr;
+    });
+
+    return Object.values(groups).sort((a, b) => a.code.localeCompare(b.code));
   }, [filtered]);
 
-  // ─── Branded Official General Ledger Statement PDF ────────────────────────
-  const generateStatementPDF = () => {
-    const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
+  // ─── Export Institutional PDF ─────────────────────────────────────────────
+  const exportPDF = () => {
+    const doc = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4' });
     const pageWidth = doc.internal.pageSize.getWidth();
     const margin = 14;
     const contentWidth = pageWidth - margin * 2;
+    let yPos = 14;
 
-    const primaryColor: [number, number, number] = [20, 62, 43]; // Institutional Deep Forest
+    const brandColor: [number, number, number] = [15, 23, 42]; // Slate 900
     const grayColor: [number, number, number] = [100, 116, 139];
 
-    // Banner Header
-    doc.setFillColor(...primaryColor);
-    doc.rect(0, 0, pageWidth, 28, 'F');
+    // Header Band
+    doc.setFillColor(...brandColor);
+    doc.rect(margin, yPos, contentWidth, 22, 'F');
 
     doc.setTextColor(255, 255, 255);
-    doc.setFontSize(16);
     doc.setFont('helvetica', 'bold');
-    doc.text('GENERAL LEDGER AUDIT REGISTER', margin, 14);
+    doc.setFontSize(14);
+    doc.text((currentEntity?.name || 'Enterprise Group').toUpperCase(), margin + 6, yPos + 8);
 
-    doc.setFontSize(8.5);
+    doc.setFontSize(9);
     doc.setFont('helvetica', 'normal');
-    doc.text(`Entity: ${currentEntity?.name || 'All Consolidated Entities'}`, margin, 21);
-    doc.text(`Period: ${from || 'Inception'} to ${to || 'Present'}`, pageWidth - margin, 14, { align: 'right' });
-    doc.text(`Standard: IAS 1 / IFRS Compliant`, pageWidth - margin, 21, { align: 'right' });
+    doc.setTextColor(203, 213, 225);
+    doc.text('GENERAL LEDGER AUDIT REGISTER · DOUBLE-ENTRY FINANCIAL STATEMENT', margin + 6, yPos + 14);
 
-    let yPos = 36;
+    doc.setFontSize(8);
+    doc.setFont('helvetica', 'bold');
+    doc.setTextColor(255, 255, 255);
+    const dateRangeLabel = from && to ? `${from} to ${to}` : from ? `From ${from}` : to ? `Up to ${to}` : 'All Dates (Full History)';
+    doc.text(`PERIOD: ${dateRangeLabel}`, pageWidth - margin - 6, yPos + 8, { align: 'right' });
+    doc.text(`CURRENCY: ${currentEntity?.currencyCode || 'PKR'}`, pageWidth - margin - 6, yPos + 14, { align: 'right' });
 
-    // Summary Card
+    yPos += 28;
+
+    // KPI Summary Bar in PDF
     doc.setFillColor(248, 250, 252);
     doc.setDrawColor(226, 232, 240);
     doc.roundedRect(margin, yPos, contentWidth, 14, 2, 2, 'FD');
@@ -214,13 +254,13 @@ export const GeneralLedgerView: React.FC<GeneralLedgerViewProps> = ({ activeEnti
       styles: { fontSize: 7.5, cellPadding: 2.5, textColor: [30, 41, 59] },
       headStyles: { fillColor: [15, 23, 42], textColor: [255, 255, 255], fontStyle: 'bold' },
       columnStyles: {
-        0: { cellWidth: 20 },
-        1: { cellWidth: 24, fontStyle: 'bold' },
-        2: { cellWidth: 42 },
-        3: { cellWidth: 46 },
-        4: { cellWidth: 16 },
-        5: { cellWidth: 20, halign: 'right' },
-        6: { cellWidth: 20, halign: 'right' },
+        0: { cellWidth: 22 },
+        1: { cellWidth: 26, fontStyle: 'bold' },
+        2: { cellWidth: 46 },
+        3: { cellWidth: 50 },
+        4: { cellWidth: 20 },
+        5: { cellWidth: 24, halign: 'right' },
+        6: { cellWidth: 24, halign: 'right' },
       },
       margin: { left: margin, right: margin },
     });
@@ -268,64 +308,66 @@ export const GeneralLedgerView: React.FC<GeneralLedgerViewProps> = ({ activeEnti
   };
 
   return (
-    <div className="space-y-4 font-sans text-slate-800 p-2 md:p-6 min-h-screen">
+    <div className="p-6 max-w-[1400px] mx-auto space-y-6">
       {/* ─── Top Control & Action Bar ─── */}
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 bg-[var(--color-surface)] p-4 rounded-2xl border border-[var(--color-border)] shadow-xs">
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-[var(--color-border)] pb-4">
         <div className="flex items-center gap-3">
-          <div className="p-2.5 bg-emerald-50 dark:bg-emerald-950/40 text-emerald-600 rounded-xl border border-emerald-200 dark:border-emerald-800 shrink-0">
+          <div className="p-2.5 bg-emerald-500/10 text-emerald-600 rounded-xl border border-emerald-500/20 shrink-0">
             <BookOpen className="w-5 h-5" />
           </div>
           <div>
-            <h1 className="text-base font-bold text-[var(--color-text-strong)] flex items-center gap-2">
-              General Ledger Register <span className="text-[10px] px-2 py-0.5 rounded-full bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 font-semibold border border-blue-200 dark:border-blue-800">IAS 1 / IFRS / GAAP</span>
+            <h1 className="text-xl font-black tracking-tight text-[var(--color-text-strong)] flex items-center gap-2.5">
+              General Ledger Register
+              <span className="text-[10px] px-2 py-0.5 rounded-full bg-blue-500/10 text-blue-600 font-semibold border border-blue-500/20">
+                IAS 1 / IFRS Double-Entry
+              </span>
             </h1>
-            <p className="text-xs text-[var(--color-text-muted)] mt-0.5">
-              Posting-level double-entry register of all general journal & subledger lines for <strong>{currentEntity?.name || 'All Entities'}</strong>.
+            <p className="text-xs text-[var(--color-text-muted)] mt-1">
+              Audit-trail ledger of all posted transactions, running balances, and T-account allocations for {currentEntity?.name || 'Active Entity'}.
             </p>
           </div>
         </div>
 
-        <div className="flex items-center gap-1.5 shrink-0 flex-wrap">
+        {/* Action Buttons */}
+        <div className="flex items-center gap-2 flex-wrap">
           <button
-            onClick={generateStatementPDF}
-            className="inline-flex items-center gap-1.5 h-9 px-3.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold transition-all shadow-xs"
+            onClick={load}
+            disabled={loading}
+            className="px-3 py-2 border border-[var(--color-border)] hover:bg-[var(--color-surface-muted)] text-[var(--color-text-strong)] rounded-xl text-xs font-bold flex items-center gap-1.5 shadow-xs transition-all"
+            title="Refresh Ledger"
+          >
+            <RefreshCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin' : ''}`} /> Refresh
+          </button>
+          <button
+            onClick={exportPDF}
+            className="px-3 py-2 bg-slate-900 hover:bg-slate-800 text-white rounded-xl text-xs font-bold flex items-center gap-1.5 shadow-xs transition-all"
           >
             <Download className="w-3.5 h-3.5" /> PDF Statement
           </button>
           <button
             onClick={() => exportData('excel')}
-            className="inline-flex items-center gap-1.5 h-9 px-3 bg-[var(--color-surface)] hover:bg-gray-50 dark:hover:bg-gray-800 text-[var(--color-text)] border border-[var(--color-border)] rounded-xl text-xs font-semibold transition-all shadow-2xs"
-            title="Export to Excel (.xls)"
+            className="px-3 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold flex items-center gap-1.5 shadow-xs transition-all"
           >
-            <FileSpreadsheet className="w-3.5 h-3.5 text-emerald-600" /> Excel
+            <FileSpreadsheet className="w-3.5 h-3.5" /> Excel (.xlsx)
           </button>
           <button
             onClick={() => exportData('csv')}
-            className="inline-flex items-center gap-1.5 h-9 px-3 bg-[var(--color-surface)] hover:bg-gray-50 dark:hover:bg-gray-800 text-[var(--color-text)] border border-[var(--color-border)] rounded-xl text-xs font-semibold transition-all shadow-2xs"
-            title="Export to CSV (.csv)"
+            className="px-3 py-2 border border-[var(--color-border)] hover:bg-[var(--color-surface-muted)] text-[var(--color-text-strong)] rounded-xl text-xs font-bold flex items-center gap-1.5 shadow-xs transition-all"
           >
-            CSV
-          </button>
-          <button
-            onClick={load}
-            disabled={loading}
-            className="h-9 w-9 flex items-center justify-center bg-[var(--color-surface)] hover:bg-gray-50 dark:hover:bg-gray-800 text-[var(--color-text-muted)] border border-[var(--color-border)] rounded-xl transition-all shadow-2xs"
-            title="Refresh Ledger"
-          >
-            <RefreshCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin' : ''}`} />
+            <FileText className="w-3.5 h-3.5" /> CSV
           </button>
         </div>
       </div>
 
-      {/* ─── 4-in-1 Top Financial KPI Cards ─── */}
-      <div className="grid gap-3" style={{ gridTemplateColumns: 'repeat(4, minmax(0, 1fr))' }}>
+      {/* ─── 4-in-1 Financial KPI Summary Cards ─── */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         {/* Total Debit */}
         <div className="bg-[var(--color-surface)] border border-[var(--color-border)] rounded-2xl p-4 shadow-xs flex flex-col justify-between hover:border-emerald-500/30 transition-all">
           <div className="flex items-center justify-between">
             <span className="text-[10px] font-extrabold uppercase tracking-wider text-[var(--color-text-muted)]">
               TOTAL POSTED DEBITS (DR)
             </span>
-            <div className="p-1.5 rounded-lg bg-emerald-50 dark:bg-emerald-950/40 text-emerald-600">
+            <div className="p-1.5 rounded-lg bg-emerald-500/10 text-emerald-600">
               <ArrowUpRight className="w-4 h-4" />
             </div>
           </div>
@@ -343,7 +385,7 @@ export const GeneralLedgerView: React.FC<GeneralLedgerViewProps> = ({ activeEnti
             <span className="text-[10px] font-extrabold uppercase tracking-wider text-[var(--color-text-muted)]">
               TOTAL POSTED CREDITS (CR)
             </span>
-            <div className="p-1.5 rounded-lg bg-rose-50 dark:bg-rose-950/40 text-rose-600">
+            <div className="p-1.5 rounded-lg bg-rose-500/10 text-rose-600">
               <ArrowDownRight className="w-4 h-4" />
             </div>
           </div>
@@ -361,16 +403,20 @@ export const GeneralLedgerView: React.FC<GeneralLedgerViewProps> = ({ activeEnti
             <span className="text-[10px] font-extrabold uppercase tracking-wider text-[var(--color-text-muted)]">
               DOUBLE-ENTRY INTEGRITY
             </span>
-            <div className="p-1.5 rounded-lg bg-blue-50 dark:bg-blue-950/40 text-blue-600">
+            <div className="p-1.5 rounded-lg bg-blue-500/10 text-blue-600">
               <ShieldCheck className="w-4 h-4" />
             </div>
           </div>
           <div className="mt-2">
             <div className="text-xl font-mono font-extrabold text-[var(--color-text-strong)] flex items-center gap-1.5">
               {isBalanced ? (
-                <span className="text-emerald-600 dark:text-emerald-400">0.00 Diff</span>
+                <span className="text-emerald-600 dark:text-emerald-400 flex items-center gap-1">
+                  <CheckCircle2 className="w-4 h-4" /> 0.00 Diff
+                </span>
               ) : (
-                <span className="text-rose-600">{money(netDifference)} Diff</span>
+                <span className="text-rose-600 flex items-center gap-1">
+                  <AlertCircle className="w-4 h-4" /> {money(netDifference)} Diff
+                </span>
               )}
             </div>
             <p className="text-[10px] text-[var(--color-text-muted)] mt-0.5">
@@ -380,12 +426,12 @@ export const GeneralLedgerView: React.FC<GeneralLedgerViewProps> = ({ activeEnti
         </div>
 
         {/* Transaction Lines */}
-        <div className="bg-[var(--color-surface)] border border-[var(--color-border)] rounded-2xl p-4 shadow-xs flex flex-col justify-between hover:border-emerald-500/30 transition-all">
+        <div className="bg-[var(--color-surface)] border border-[var(--color-border)] rounded-2xl p-4 shadow-xs flex flex-col justify-between hover:border-teal-500/30 transition-all">
           <div className="flex items-center justify-between">
             <span className="text-[10px] font-extrabold uppercase tracking-wider text-[var(--color-text-muted)]">
               POSTED LEDGER LINES
             </span>
-            <div className="p-1.5 rounded-lg bg-emerald-50 dark:bg-emerald-950/40 text-emerald-600">
+            <div className="p-1.5 rounded-lg bg-teal-500/10 text-teal-600">
               <Layers className="w-4 h-4" />
             </div>
           </div>
@@ -393,177 +439,197 @@ export const GeneralLedgerView: React.FC<GeneralLedgerViewProps> = ({ activeEnti
             <div className="text-xl font-mono font-extrabold text-[var(--color-text-strong)]">
               {filtered.length} Lines
             </div>
-            <p className="text-[10px] text-[var(--color-text-muted)] mt-0.5">Across {uniqueAccounts.length} Chart Accounts</p>
+            <p className="text-[10px] text-[var(--color-text-muted)] mt-0.5">Across {availableAccounts.length} Chart Accounts</p>
           </div>
         </div>
       </div>
 
       {/* ─── Search, Date Range & Filter Toolbar ─── */}
-      <div className="bg-[var(--color-surface)] p-3.5 rounded-2xl border border-[var(--color-border)] shadow-xs flex flex-wrap items-center justify-between gap-3">
-        {/* Zero Overlap Search Box */}
-        <div className="inline-flex items-center h-9 px-3 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] focus-within:border-emerald-500 w-full sm:w-72 shadow-2xs">
-          <Search className="w-4 h-4 text-[var(--color-text-muted)] shrink-0 mr-2" />
-          <input
-            type="text"
-            placeholder="Search reference, account, memo..."
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-            className="w-full text-xs text-[var(--color-text)] placeholder:text-[var(--color-text-muted)] !p-0 !border-0 !outline-none !bg-transparent focus:!ring-0"
-          />
-          {query && (
-            <button onClick={() => setQuery('')} className="p-0.5 text-gray-400 hover:text-gray-600 shrink-0 ml-1">
-              <X className="w-3.5 h-3.5" />
-            </button>
-          )}
-        </div>
-
-        {/* Account Filter Dropdown */}
-        <div className="inline-flex items-center gap-1.5">
-          <select
-            value={selectedAccountFilter}
-            onChange={(e) => setSelectedAccountFilter(e.target.value)}
-            className="h-9 px-3 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] text-xs text-[var(--color-text)] outline-none focus:border-emerald-500 shadow-2xs font-medium"
-          >
-            <option value="ALL">All Chart of Accounts ({uniqueAccounts.length})</option>
-            {uniqueAccounts.map((a) => (
-              <option key={a.code} value={a.code}>
-                {a.code} — {a.name}
-              </option>
-            ))}
-          </select>
-        </div>
-
-        {/* Date Range Presets & Inputs */}
-        <div className="flex items-center gap-1.5 flex-wrap">
-          <div className="inline-flex p-0.5 bg-gray-100 dark:bg-gray-800/60 rounded-xl border border-[var(--color-border)] text-xs font-semibold">
-            {(
-              [
-                { id: 'all', label: 'All' },
-                { id: 'today', label: 'Today' },
-                { id: 'this_month', label: 'Month' },
-                { id: 'this_quarter', label: 'Quarter' },
-                { id: 'this_year', label: 'Year' },
-              ] as const
-            ).map((p) => (
-              <button
-                key={p.id}
-                onClick={() => applyDatePreset(p.id)}
-                className={`px-2.5 py-1 rounded-lg text-[11px] transition-all ${
-                  datePreset === p.id
-                    ? 'bg-[var(--color-surface)] text-emerald-700 dark:text-emerald-300 shadow-2xs font-bold'
-                    : 'text-[var(--color-text-muted)] hover:text-[var(--color-text-strong)]'
-                }`}
-              >
-                {p.label}
+      <div className="bg-[var(--color-surface)] p-4 rounded-2xl border border-[var(--color-border)] shadow-xs space-y-3">
+        {/* Row 1: Search & Account Selector */}
+        <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
+          {/* Search Box */}
+          <div className="inline-flex items-center h-10 px-3 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface-muted)] focus-within:border-emerald-500 flex-1 max-w-md shadow-2xs">
+            <Search className="w-4 h-4 text-[var(--color-text-muted)] shrink-0 mr-2" />
+            <input
+              type="text"
+              placeholder="Search reference #, account code, memo, title..."
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              className="w-full text-xs text-[var(--color-text)] placeholder:text-[var(--color-text-muted)] !p-0 !border-0 !outline-none !bg-transparent focus:!ring-0"
+            />
+            {query && (
+              <button onClick={() => setQuery('')} className="p-0.5 text-gray-400 hover:text-gray-600 shrink-0 ml-1">
+                <X className="w-3.5 h-3.5" />
               </button>
-            ))}
+            )}
           </div>
 
-          <div className="inline-flex items-center gap-1">
-            <input
-              type="date"
-              value={from}
-              onChange={(e) => { setFrom(e.target.value); setDatePreset('all'); }}
-              className="h-8 px-2 rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] text-[11px] text-[var(--color-text)] font-mono outline-none focus:border-emerald-500"
-            />
-            <span className="text-gray-400 text-xs">—</span>
-            <input
-              type="date"
-              value={to}
-              onChange={(e) => { setTo(e.target.value); setDatePreset('all'); }}
-              className="h-8 px-2 rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] text-[11px] text-[var(--color-text)] font-mono outline-none focus:border-emerald-500"
-            />
+          {/* Account Filter Dropdown */}
+          <div className="inline-flex items-center gap-2">
+            <Filter className="w-4 h-4 text-[var(--color-text-muted)] shrink-0" />
+            <select
+              value={selectedAccountFilter}
+              onChange={(e) => setSelectedAccountFilter(e.target.value)}
+              className="h-10 px-3 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] text-xs text-[var(--color-text)] outline-none focus:border-emerald-500 shadow-2xs font-semibold min-w-[240px]"
+            >
+              <option value="ALL">All Chart of Accounts ({availableAccounts.length})</option>
+              {availableAccounts.map((a) => (
+                <option key={a.code} value={a.code}>
+                  {a.code} — {a.name} {a.type ? `(${a.type})` : ''}
+                </option>
+              ))}
+            </select>
+          </div>
+        </div>
+
+        {/* Row 2: Date Presets, Custom Range & View Toggle */}
+        <div className="flex flex-wrap items-center justify-between gap-3 pt-2 border-t border-[var(--color-border)]">
+          {/* Date Range Presets */}
+          <div className="flex items-center gap-2 flex-wrap">
+            <div className="inline-flex p-1 bg-[var(--color-surface-muted)] rounded-xl border border-[var(--color-border)] text-xs font-semibold">
+              {(
+                [
+                  { id: 'all', label: 'All Dates' },
+                  { id: 'today', label: 'Today' },
+                  { id: 'this_month', label: 'Month' },
+                  { id: 'this_quarter', label: 'Quarter' },
+                  { id: 'this_year', label: 'Year' },
+                ] as const
+              ).map((p) => (
+                <button
+                  key={p.id}
+                  onClick={() => applyDatePreset(p.id)}
+                  className={`px-3 py-1 rounded-lg text-xs transition-all ${
+                    datePreset === p.id
+                      ? 'bg-[var(--color-surface)] text-emerald-600 dark:text-emerald-400 shadow-2xs font-bold'
+                      : 'text-[var(--color-text-muted)] hover:text-[var(--color-text-strong)]'
+                  }`}
+                >
+                  {p.label}
+                </button>
+              ))}
+            </div>
+
+            {/* Custom Date Range */}
+            <div className="inline-flex items-center gap-1.5">
+              <input
+                type="date"
+                value={from}
+                onChange={(e) => { setFrom(e.target.value); setDatePreset('all'); }}
+                className="h-9 px-2.5 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] text-xs text-[var(--color-text)] font-mono outline-none focus:border-emerald-500"
+              />
+              <span className="text-[var(--color-text-muted)] text-xs">—</span>
+              <input
+                type="date"
+                value={to}
+                onChange={(e) => { setTo(e.target.value); setDatePreset('all'); }}
+                className="h-9 px-2.5 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] text-xs text-[var(--color-text)] font-mono outline-none focus:border-emerald-500"
+              />
+            </div>
           </div>
 
-          {/* View Mode Switcher */}
-          <div className="inline-flex p-0.5 bg-gray-100 dark:bg-gray-800/60 rounded-xl border border-[var(--color-border)] text-xs font-semibold ml-1">
+          {/* View Mode Toggle */}
+          <div className="inline-flex p-1 bg-[var(--color-surface-muted)] rounded-xl border border-[var(--color-border)] text-xs font-semibold">
             <button
               onClick={() => setViewMode('chronological')}
-              className={`px-2.5 py-1 rounded-lg text-[11px] transition-all ${
+              className={`px-3 py-1 rounded-lg text-xs transition-all ${
                 viewMode === 'chronological'
-                  ? 'bg-[var(--color-surface)] text-emerald-700 dark:text-emerald-300 shadow-2xs font-bold'
+                  ? 'bg-[var(--color-surface)] text-emerald-600 dark:text-emerald-400 shadow-2xs font-bold'
                   : 'text-[var(--color-text-muted)] hover:text-[var(--color-text-strong)]'
               }`}
             >
-              Postings
+              📄 Postings Register
             </button>
             <button
               onClick={() => setViewMode('grouped')}
-              className={`px-2.5 py-1 rounded-lg text-[11px] transition-all ${
+              className={`px-3 py-1 rounded-lg text-xs transition-all ${
                 viewMode === 'grouped'
-                  ? 'bg-[var(--color-surface)] text-emerald-700 dark:text-emerald-300 shadow-2xs font-bold'
+                  ? 'bg-[var(--color-surface)] text-emerald-600 dark:text-emerald-400 shadow-2xs font-bold'
                   : 'text-[var(--color-text-muted)] hover:text-[var(--color-text-strong)]'
               }`}
             >
-              T-Accounts
+              ⚖️ T-Account Ledgers
             </button>
           </div>
         </div>
       </div>
 
       {error && (
-        <div className="p-3.5 bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-800 rounded-xl text-rose-700 dark:text-rose-300 text-xs font-semibold flex items-center justify-between">
+        <div className="p-4 bg-rose-500/10 border border-rose-500/20 text-rose-600 rounded-xl text-xs flex items-center gap-2 font-medium">
+          <AlertCircle className="w-4 h-4 shrink-0" />
           <span>{error}</span>
-          <button onClick={() => setError('')} className="text-rose-500 hover:text-rose-700 font-bold ml-2">✕</button>
         </div>
       )}
 
-      {/* ─── Mode 1: Chronological Detailed Postings View ─── */}
+      {/* ─── Mode 1: Chronological Ledger Register Table ─── */}
       {viewMode === 'chronological' && (
-        <div className="bg-[var(--color-surface)] border border-[var(--color-border)] rounded-2xl shadow-xs overflow-hidden">
+        <div className="rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)] overflow-hidden shadow-sm">
           <div className="overflow-x-auto">
-            <table className="w-full text-xs text-left border-collapse">
+            <table className="w-full text-left border-collapse text-xs">
               <thead>
-                <tr className="border-b border-[var(--color-border)] bg-gray-50/50 dark:bg-gray-900/50 text-[10px] uppercase tracking-wider text-[var(--color-text-muted)] font-extrabold">
-                  <th className="py-3.5 px-4">POSTING DATE</th>
-                  <th className="py-3.5 px-4">REFERENCE ID</th>
-                  <th className="py-3.5 px-4">CHART OF ACCOUNT</th>
-                  <th className="py-3.5 px-4">DESCRIPTION / MEMO</th>
-                  <th className="py-3.5 px-4 text-center">TX TYPE</th>
-                  <th className="py-3.5 px-4 text-right">DEBIT (+)</th>
-                  <th className="py-3.5 px-4 text-right pr-6">CREDIT (-)</th>
+                <tr className="border-b border-[var(--color-border)] bg-[var(--color-surface-muted)] text-[var(--color-text-muted)] font-bold uppercase tracking-wider text-[11px]">
+                  <th className="py-3 px-4 w-28">Date</th>
+                  <th className="py-3 px-4 w-32">Reference #</th>
+                  <th className="py-3 px-4 min-w-[200px]">GL Account</th>
+                  <th className="py-3 px-4 min-w-[240px]">Description / Memo</th>
+                  <th className="py-3 px-4 w-28">Type</th>
+                  <th className="py-3 px-4 text-right w-32">Debit (DR)</th>
+                  <th className="py-3 px-4 text-right w-32">Credit (CR)</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-[var(--color-border)]">
-                {filtered.length === 0 ? (
+              <tbody className="divide-y divide-[var(--color-border)] font-sans text-[var(--color-text)]">
+                {loading ? (
                   <tr>
-                    <td colSpan={7} className="py-12 text-center text-[var(--color-text-muted)]">
-                      <div className="max-w-xs mx-auto space-y-2">
-                        <BookOpen className="w-8 h-8 text-gray-300 dark:text-gray-700 mx-auto" />
-                        <p className="font-semibold text-xs text-[var(--color-text-strong)]">No general ledger lines found</p>
-                        <p className="text-[11px]">Post journals or sales/purchase transactions to populate the general ledger.</p>
+                    <td colSpan={7} className="py-12 text-center text-xs text-[var(--color-text-muted)]">
+                      <div className="flex flex-col items-center justify-center gap-2">
+                        <RefreshCw className="w-5 h-5 animate-spin text-emerald-600" />
+                        <span>Loading general ledger entries…</span>
+                      </div>
+                    </td>
+                  </tr>
+                ) : filtered.length === 0 ? (
+                  <tr>
+                    <td colSpan={7} className="py-12 text-center text-xs text-[var(--color-text-muted)]">
+                      <div className="flex flex-col items-center justify-center gap-1.5">
+                        <BookOpen className="w-6 h-6 text-gray-400 opacity-40 mb-1" />
+                        <span className="font-semibold text-sm text-[var(--color-text-strong)]">No general ledger entries found</span>
+                        <span className="text-[11px]">Post journals, sales invoices, or bills to generate ledger movements.</span>
                       </div>
                     </td>
                   </tr>
                 ) : (
-                  filtered.map((l, i) => (
-                    <tr key={`${l.id}-${i}`} className="hover:bg-gray-50/50 dark:hover:bg-gray-900/30 transition-colors">
-                      <td className="py-3 px-4 font-mono font-semibold text-[var(--color-text)]">
-                        {l.date?.slice(0, 10)}
+                  filtered.map((l) => (
+                    <tr key={l.id} className="hover:bg-[var(--color-surface-muted)]/50 transition-colors">
+                      <td className="py-3 px-4 font-mono text-[11px] text-[var(--color-text-muted)]">
+                        {l.date?.slice(0, 10) || '—'}
                       </td>
-                      <td className="py-3 px-4 font-mono font-bold text-blue-600 dark:text-blue-400">
-                        {l.reference}
+                      <td className="py-3 px-4 font-mono font-bold text-blue-600">
+                        {l.reference || '—'}
                       </td>
                       <td className="py-3 px-4">
-                        <span className="font-mono font-bold text-[var(--color-text-strong)] block">
-                          {l.accountCode}
-                        </span>
-                        <span className="text-[10px] text-[var(--color-text-muted)] block truncate max-w-xs">
-                          {l.accountName}
-                        </span>
+                        <div className="flex items-center gap-1.5">
+                          <span className="font-mono font-bold text-xs text-[var(--color-text-strong)]">
+                            {l.accountCode}
+                          </span>
+                          <span className="text-xs text-[var(--color-text-muted)]">
+                            — {l.accountName}
+                          </span>
+                        </div>
                       </td>
-                      <td className="py-3 px-4 font-medium text-[var(--color-text)] max-w-xs truncate">
-                        {l.description || l.memo || '—'}
+                      <td className="py-3 px-4 text-xs text-[var(--color-text)]">
+                        <div>{l.description || '—'}</div>
+                        {l.memo && <div className="text-[10px] text-[var(--color-text-muted)] italic mt-0.5">{l.memo}</div>}
                       </td>
-                      <td className="py-3 px-4 text-center">
-                        <span className="inline-flex px-2 py-0.5 rounded-md text-[10px] font-semibold bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 border border-[var(--color-border)]">
+                      <td className="py-3 px-4">
+                        <span className="px-2 py-0.5 rounded-md bg-[var(--color-surface-muted)] text-[10px] font-semibold text-[var(--color-text-muted)] border border-[var(--color-border)]">
                           {l.transactionType || 'Journal'}
                         </span>
                       </td>
-                      <td className="py-3 px-4 text-right font-mono font-bold text-emerald-600 dark:text-emerald-400">
+                      <td className="py-3 px-4 text-right font-mono font-bold text-emerald-600">
                         {l.debit > 0 ? money(l.debit) : '—'}
                       </td>
-                      <td className="py-3 px-4 text-right font-mono font-bold text-rose-600 dark:text-rose-400 pr-6">
+                      <td className="py-3 px-4 text-right font-mono font-bold text-rose-600">
                         {l.credit > 0 ? money(l.credit) : '—'}
                       </td>
                     </tr>
@@ -572,14 +638,14 @@ export const GeneralLedgerView: React.FC<GeneralLedgerViewProps> = ({ activeEnti
               </tbody>
               {filtered.length > 0 && (
                 <tfoot>
-                  <tr className="bg-gray-50/80 dark:bg-gray-900/80 font-extrabold border-t-2 border-[var(--color-border)]">
-                    <td colSpan={5} className="py-3.5 px-4 text-[var(--color-text-strong)] text-xs">
-                      TOTAL MOVEMENTS (BALANCED DOUBLE-ENTRY)
+                  <tr className="border-t-2 border-[var(--color-border)] bg-[var(--color-surface-muted)] font-bold text-xs">
+                    <td colSpan={5} className="py-3 px-4 text-[var(--color-text-strong)] uppercase tracking-wider">
+                      Total Ledger Postings (Double-Entry Balanced)
                     </td>
-                    <td className="py-3.5 px-4 text-right font-mono text-sm text-emerald-600 dark:text-emerald-400">
+                    <td className="py-3 px-4 text-right font-mono text-emerald-600 font-extrabold text-sm">
                       {money(totalDebit)}
                     </td>
-                    <td className="py-3.5 px-4 text-right font-mono text-sm text-rose-600 dark:text-rose-400 pr-6">
+                    <td className="py-3 px-4 text-right font-mono text-rose-600 font-extrabold text-sm">
                       {money(totalCredit)}
                     </td>
                   </tr>
@@ -590,79 +656,87 @@ export const GeneralLedgerView: React.FC<GeneralLedgerViewProps> = ({ activeEnti
         </div>
       )}
 
-      {/* ─── Mode 2: Grouped Account-by-Account T-Account Ledger View ─── */}
+      {/* ─── Mode 2: T-Account Visual Ledgers ─── */}
       {viewMode === 'grouped' && (
-        <div className="space-y-4">
-          {groupedAccounts.length === 0 ? (
-            <div className="bg-[var(--color-surface)] border border-[var(--color-border)] rounded-2xl p-12 text-center text-[var(--color-text-muted)]">
-              <BookOpen className="w-8 h-8 text-gray-300 dark:text-gray-700 mx-auto mb-2" />
-              <p className="font-semibold text-xs text-[var(--color-text-strong)]">No account transactions found</p>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+          {groupedByAccount.length === 0 ? (
+            <div className="col-span-2 p-12 text-center text-xs text-[var(--color-text-muted)] border border-[var(--color-border)] rounded-2xl bg-[var(--color-surface)]">
+              No T-Account ledgers available for the selected criteria.
             </div>
           ) : (
-            groupedAccounts.map((acc) => {
-              const netBalance = acc.debit - acc.credit;
-              return (
-                <div key={acc.code} className="bg-[var(--color-surface)] border border-[var(--color-border)] rounded-2xl shadow-xs overflow-hidden">
-                  <div className="p-4 bg-gray-50/70 dark:bg-gray-900/70 border-b border-[var(--color-border)] flex flex-wrap items-center justify-between gap-2">
-                    <div className="flex items-center gap-2.5">
-                      <span className="px-2.5 py-1 rounded-lg bg-emerald-100 dark:bg-emerald-950/60 text-emerald-800 dark:text-emerald-300 font-mono font-extrabold text-xs">
-                        {acc.code}
-                      </span>
-                      <h3 className="text-sm font-bold text-[var(--color-text-strong)]">
-                        {acc.name}
-                      </h3>
-                      <span className="text-[10px] text-[var(--color-text-muted)] font-semibold">
-                        ({acc.lines.length} postings)
-                      </span>
-                    </div>
-
-                    <div className="flex items-center gap-4 text-xs font-mono">
-                      <span>Total Dr: <strong className="text-emerald-600">{money(acc.debit)}</strong></span>
-                      <span>Total Cr: <strong className="text-rose-600">{money(acc.credit)}</strong></span>
-                      <span className="px-2.5 py-1 rounded-lg bg-[var(--color-surface)] border border-[var(--color-border)] font-bold text-[var(--color-text-strong)]">
-                        Net: {money(Math.abs(netBalance))} {netBalance >= 0 ? 'Dr' : 'Cr'}
-                      </span>
-                    </div>
+            groupedByAccount.map((group) => (
+              <div
+                key={group.code}
+                className="p-5 rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)] shadow-xs space-y-4"
+              >
+                {/* T-Account Card Header */}
+                <div className="flex items-center justify-between border-b border-[var(--color-border)] pb-3">
+                  <div>
+                    <h3 className="font-bold text-sm text-[var(--color-text-strong)] flex items-center gap-2">
+                      <span className="font-mono text-emerald-600">{group.code}</span>
+                      <span>— {group.name}</span>
+                    </h3>
+                    <p className="text-[10px] text-[var(--color-text-muted)] mt-0.5">
+                      {group.lines.length} transaction entries
+                    </p>
                   </div>
-
-                  <div className="overflow-x-auto">
-                    <table className="w-full text-xs text-left border-collapse">
-                      <thead>
-                        <tr className="border-b border-[var(--color-border)] text-[9px] uppercase tracking-wider text-[var(--color-text-muted)] font-bold bg-gray-50/30 dark:bg-gray-900/30">
-                          <th className="py-2.5 px-4">DATE</th>
-                          <th className="py-2.5 px-4">REF #</th>
-                          <th className="py-2.5 px-4">DESCRIPTION / MEMO</th>
-                          <th className="py-2.5 px-4">TYPE</th>
-                          <th className="py-2.5 px-4 text-right">DEBIT (+)</th>
-                          <th className="py-2.5 px-4 text-right pr-6">CREDIT (-)</th>
-                        </tr>
-                      </thead>
-                      <tbody className="divide-y divide-[var(--color-border)]">
-                        {acc.lines.map((l, idx) => (
-                          <tr key={idx} className="hover:bg-gray-50/40 dark:hover:bg-gray-900/30">
-                            <td className="py-2 px-4 font-mono text-[var(--color-text)]">{l.date?.slice(0, 10)}</td>
-                            <td className="py-2 px-4 font-mono font-bold text-blue-600 dark:text-blue-400">{l.reference}</td>
-                            <td className="py-2 px-4 text-[var(--color-text-strong)]">{l.description || l.memo || '—'}</td>
-                            <td className="py-2 px-4 text-gray-500">{l.transactionType || 'Journal'}</td>
-                            <td className="py-2 px-4 text-right font-mono font-bold text-emerald-600">
-                              {l.debit > 0 ? money(l.debit) : '—'}
-                            </td>
-                            <td className="py-2 px-4 text-right font-mono font-bold text-rose-600 pr-6">
-                              {l.credit > 0 ? money(l.credit) : '—'}
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
+                  <div className="text-right">
+                    <span className="text-[10px] font-bold uppercase tracking-wider text-[var(--color-text-muted)] block">
+                      Net Balance
+                    </span>
+                    <span className={`text-sm font-mono font-bold ${group.balance >= 0 ? 'text-emerald-600' : 'text-rose-600'}`}>
+                      {money(Math.abs(group.balance))} {group.balance >= 0 ? '(DR)' : '(CR)'}
+                    </span>
                   </div>
                 </div>
-              );
-            })
+
+                {/* T-Table (Split Debit / Credit) */}
+                <div className="grid grid-cols-2 gap-3 text-xs">
+                  {/* Debit Side (Left) */}
+                  <div className="border-r border-[var(--color-border)] pr-3 space-y-2">
+                    <div className="font-bold text-[11px] text-emerald-600 uppercase tracking-wider border-b border-[var(--color-border)] pb-1 flex justify-between">
+                      <span>Debit (DR)</span>
+                      <span>{money(group.totalDr)}</span>
+                    </div>
+                    <div className="space-y-1.5 max-h-48 overflow-y-auto">
+                      {group.lines
+                        .filter((l) => l.debit > 0)
+                        .map((l) => (
+                          <div key={l.id} className="flex justify-between text-[11px] font-mono py-0.5">
+                            <span className="text-[var(--color-text-muted)] truncate max-w-[110px]" title={l.description}>
+                              {l.date?.slice(5, 10)} {l.reference}
+                            </span>
+                            <span className="font-bold text-emerald-600">{money(l.debit)}</span>
+                          </div>
+                        ))}
+                    </div>
+                  </div>
+
+                  {/* Credit Side (Right) */}
+                  <div className="pl-1 space-y-2">
+                    <div className="font-bold text-[11px] text-rose-600 uppercase tracking-wider border-b border-[var(--color-border)] pb-1 flex justify-between">
+                      <span>Credit (CR)</span>
+                      <span>{money(group.totalCr)}</span>
+                    </div>
+                    <div className="space-y-1.5 max-h-48 overflow-y-auto">
+                      {group.lines
+                        .filter((l) => l.credit > 0)
+                        .map((l) => (
+                          <div key={l.id} className="flex justify-between text-[11px] font-mono py-0.5">
+                            <span className="text-[var(--color-text-muted)] truncate max-w-[110px]" title={l.description}>
+                              {l.date?.slice(5, 10)} {l.reference}
+                            </span>
+                            <span className="font-bold text-rose-600">{money(l.credit)}</span>
+                          </div>
+                        ))}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            ))
           )}
         </div>
       )}
     </div>
   );
 };
-
-export default GeneralLedgerView;

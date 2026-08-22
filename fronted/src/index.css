@@ -43,3 +43,13 @@
     @apply font-sans;
   }
 }
+
+/* Global Modal & Info Form Overlays - 100% Guaranteed Above All Headers & Bars */
+.fixed.inset-0,
+div[class*="fixed inset-0"],
+[role="dialog"],
+.overlay,
+.modal-backdrop,
+div[data-state="open"] {
+  z-index: 99999 !important;
+}
