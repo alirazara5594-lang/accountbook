@@ -5,7 +5,7 @@ import {
   Warehouse, Banknote, HandCoins, Building2, Layers, ClipboardList,
   CalendarCheck2, CreditCard, DollarSign,
   Activity, BarChart3, CircleDollarSign,
-  UserCheck, CalendarDays, Briefcase,
+  UserCheck, Briefcase,
   ShieldCheck, CheckCircle2,
   Clock
 } from 'lucide-react';
@@ -127,7 +127,7 @@ export function SalesSummaryView({ activeEntityId, setPage }: { activeEntityId?:
   if (alerts.length === 0) alerts.push({ id: 'clear', title: 'All Clear', detail: 'No critical issues', severity: 'success', page: '' });
 
   return (
-    <main className="mx-auto w-full max-w-[1600px] space-y-6">
+    <div className="mx-auto w-full max-w-[1600px] space-y-6">
       <DashboardHeader
         title="Sales & Customers Summary"
         subtitle="Invoicing, collections, customer management & revenue analytics"
@@ -342,7 +342,7 @@ export function SalesSummaryView({ activeEntityId, setPage }: { activeEntityId?:
           </div>
         </ActivityCard>
       </div>
-    </main>
+    </div>
   );
 }
 
@@ -423,7 +423,7 @@ export function ProcurementSummaryView({ activeEntityId, setPage }: { activeEnti
   }
 
   return (
-    <main className="mx-auto w-full max-w-[1600px] space-y-6">
+    <div className="mx-auto w-full max-w-[1600px] space-y-6">
       <DashboardHeader
         title="Procurement & Vendor Summary"
         subtitle="Purchase requests, POs, goods receipts, and vendor bills"
@@ -677,7 +677,7 @@ export function ProcurementSummaryView({ activeEntityId, setPage }: { activeEnti
           </div>
         </ActivityCard>
       </div>
-    </main>
+    </div>
   );
 }
 
@@ -705,7 +705,7 @@ export function BankingSummaryView({ activeEntityId, setPage }: { activeEntityId
   ].filter(d => d.value > 0);
 
   return (
-    <main className="mx-auto w-full max-w-[1600px] space-y-6">
+    <div className="mx-auto w-full max-w-[1600px] space-y-6">
       <DashboardHeader
         title="Banking & Treasury Summary"
         subtitle="Bank accounts, cash registers, reconciliation & transfers"
@@ -820,7 +820,7 @@ export function BankingSummaryView({ activeEntityId, setPage }: { activeEntityId
           </div>
         </ActivityCard>
       </div>
-    </main>
+    </div>
   );
 }
 
@@ -848,7 +848,7 @@ export function AccountingSummaryView({ accounts, entries, setPage }: {
   const healthTotal = healthBar.reduce((s, x) => s + x.value, 0) || 1;
 
   return (
-    <main className="mx-auto w-full max-w-[1600px] space-y-6">
+    <div className="mx-auto w-full max-w-[1600px] space-y-6">
       <DashboardHeader
         title="Ledger & Accounting Summary"
         subtitle="Chart of accounts, general journal ledger files, and compliance reporting"
@@ -966,7 +966,7 @@ export function AccountingSummaryView({ accounts, entries, setPage }: {
           </div>
         </ActivityCard>
       </div>
-    </main>
+    </div>
   );
 }
 
@@ -996,7 +996,7 @@ export function AssetsInventorySummaryView({ activeEntityId, setPage }: { active
   ].filter(d => d.value > 0);
 
   return (
-    <main className="mx-auto w-full max-w-[1600px] space-y-6">
+    <div className="mx-auto w-full max-w-[1600px] space-y-6">
       <DashboardHeader
         title="Assets & Inventory Summary"
         subtitle="Fixed assets, asset depreciation schedule, warehouses & stock levels"
@@ -1115,7 +1115,7 @@ export function AssetsInventorySummaryView({ activeEntityId, setPage }: { active
           </div>
         </ActivityCard>
       </div>
-    </main>
+    </div>
   );
 }
 
@@ -1134,7 +1134,6 @@ export function PayrollSummaryView({ setPage }: { activeEntityId?: string; setPa
 
   const { employees, departments, positions, payruns, salarySlips, leaveRequests } = payroll;
   const activeEmployees = employees.filter(e => e.status === 'Active').length;
-  const totalBasic = employees.reduce((s, e) => s + (e.basicSalary || 0), 0);
   const totalNetPay = salarySlips.reduce((s, sl) => s + (sl.netPay || 0), 0);
   const pendingLeave = leaveRequests.filter(l => l.status === 'Pending').length;
   const postedPayruns = payruns.filter(p => p.status === 'Posted').length;
@@ -1151,7 +1150,7 @@ export function PayrollSummaryView({ setPage }: { activeEntityId?: string; setPa
   ];
 
   return (
-    <main className="mx-auto w-full max-w-[1600px] space-y-6">
+    <div className="mx-auto w-full max-w-[1600px] space-y-6">
       <DashboardHeader
         title="Payroll & HR Summary"
         subtitle="Employees payroll registration, leaves checklist, salary slips & runs"
@@ -1163,25 +1162,22 @@ export function PayrollSummaryView({ setPage }: { activeEntityId?: string; setPa
         {/* KPI Cards */}
         {[
           { label: 'Total Employees', value: num(employees.length), icon: Users, color: '#3b82f6', change: 'Headcount', trendType: 'neutral', points: [employees.length, employees.length, employees.length, employees.length, employees.length, employees.length] },
-          { label: 'Active Employees', value: num(activeEmployees), icon: UserCheck, color: '#10b981', change: 'On duty', trendType: 'neutral', points: [activeEmployees, activeEmployees, activeEmployees, activeEmployees, activeEmployees, activeEmployees] },
-          { label: 'Monthly Gross Payroll', value: money(totalBasic), icon: DollarSign, color: '#a855f7', change: 'Basic salaries', trendType: 'neutral', points: [totalBasic * 0.9, totalBasic * 0.95, totalBasic, totalBasic, totalBasic, totalBasic] },
-          { label: 'Pending Leave', value: num(pendingLeave), icon: CalendarDays, color: pendingLeave > 0 ? '#f59e0b' : '#10b981', change: 'Awaiting review', trendType: pendingLeave > 0 ? 'down' : 'neutral', points: [pendingLeave, pendingLeave, pendingLeave, pendingLeave, pendingLeave, pendingLeave] }
-        ].map((kpi, i) => {
-          const Icon = kpi.icon;
-          return (
-            <KpiCard
-              key={i}
-              label={kpi.label}
-              value={kpi.value}
-              icon={Icon}
-              color={kpi.color}
-              change={kpi.change}
-              trendType={kpi.trendType as any}
-              sparkline={kpi.points.map(v => ({ value: v }))}
-              className="col-span-12 sm:col-span-6 lg:col-span-3"
-            />
-          );
-        })}
+          { label: 'Active Staff', value: num(activeEmployees), icon: UserCheck, color: '#10b981', change: 'Active payroll', trendType: 'neutral', points: [activeEmployees, activeEmployees, activeEmployees, activeEmployees, activeEmployees, activeEmployees] },
+          { label: 'Total Net Pay', value: money(totalNetPay), icon: DollarSign, color: '#06b6d4', change: 'Disbursed', trendType: 'neutral', points: [totalNetPay * 0.8, totalNetPay * 0.9, totalNetPay * 0.85, totalNetPay * 0.95, totalNetPay] },
+          { label: 'Pending Leave', value: num(pendingLeave), icon: Clock, color: pendingLeave > 0 ? '#f59e0b' : '#10b981', change: 'Approval required', trendType: pendingLeave > 0 ? 'down' : 'neutral', points: [pendingLeave, pendingLeave, pendingLeave, pendingLeave] },
+        ].map((k, i) => (
+          <KpiCard
+            key={i}
+            label={k.label}
+            value={k.value}
+            icon={k.icon}
+            color={k.color}
+            change={k.change}
+            trendType={k.trendType as any}
+            sparkline={k.points.map(v => ({ value: v }))}
+            className="col-span-12 sm:col-span-6 lg:col-span-3"
+          />
+        ))}
 
         {/* Charts */}
         <ChartCard
@@ -1276,6 +1272,6 @@ export function PayrollSummaryView({ setPage }: { activeEntityId?: string; setPa
           </div>
         </ActivityCard>
       </div>
-    </main>
+    </div>
   );
 }

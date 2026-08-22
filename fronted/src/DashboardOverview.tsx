@@ -246,7 +246,7 @@ export function DashboardOverview({ accounts = [], entries = [], setPage, active
   });
 
   return (
-    <main className="mx-auto w-full max-w-[1600px] px-6 py-6 space-y-6">
+    <div className="mx-auto w-full max-w-[1600px] px-6 py-6 space-y-6">
 
       {/* ── 1. HEADER (Full Width) ── */}
       <DashboardHeader
@@ -690,8 +690,7 @@ export function DashboardOverview({ accounts = [], entries = [], setPage, active
         </ActivityCard>
 
       </div>
-
-    </main>
+    </div>
   );
 }
 

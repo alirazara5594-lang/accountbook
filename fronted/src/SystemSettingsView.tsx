@@ -155,8 +155,8 @@ export const SystemSettingsView: React.FC<SystemSettingsProps> = ({ setPage, not
             <span className="text-xs font-semibold uppercase tracking-wider">Multi-Sector Suite</span>
             <Layers className="w-4 h-4 text-purple-600" />
           </div>
-          <div className="text-lg font-black text-purple-600 font-mono">{selectedSectors.length} Sectors Active</div>
-          <div className="text-[11px] text-[var(--color-text-muted)]">Services, Retail, Mfg, Projects</div>
+          <div className="text-lg font-black text-purple-600 font-mono">{selectedSectors.length} / 14 Active</div>
+          <div className="text-[11px] text-[var(--color-text-muted)]">14 Commercial Industry Profiles</div>
         </div>
 
         <div className="p-4 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] shadow-sm space-y-1">
@@ -353,36 +353,150 @@ export const SystemSettingsView: React.FC<SystemSettingsProps> = ({ setPage, not
       {/* ─── TAB 3: MULTI-SECTOR ADAPTABILITY ─── */}
       {activeTab === 'sectors' && (
         <div className="p-5 rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)] shadow-sm space-y-4 text-xs">
-          <div className="border-b border-[var(--color-border)] pb-3">
-            <h3 className="font-bold text-sm text-[var(--color-text-strong)]">Multi-Sector Business Engine Activation</h3>
-            <p className="text-[11px] text-[var(--color-text-muted)]">Enable specific workflows tailored to your commercial business model without bloating other operations.</p>
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-[var(--color-border)] pb-3">
+            <div>
+              <h3 className="font-bold text-sm text-[var(--color-text-strong)] flex items-center gap-2">
+                <Layers className="w-4 h-4 text-purple-600" />
+                Multi-Sector Business Engine Activation ({selectedSectors.length} Active)
+              </h3>
+              <p className="text-[11px] text-[var(--color-text-muted)] mt-0.5">
+                Enable industry-specific workflows and accounting rules tailored to your commercial business model without bloating other operations.
+              </p>
+            </div>
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => {
+                  const allSectorIds = [
+                    'Services', 'Retail', 'Manufacturing', 'Construction',
+                    'RealEstate', 'Healthcare', 'Hospitality', 'Logistics',
+                    'Agriculture', 'NonProfit', 'Education', 'FinancialServices',
+                    'Energy', 'SaaS'
+                  ];
+                  setSelectedSectors(allSectorIds);
+                  localStorage.setItem('erp_system_sectors', JSON.stringify(allSectorIds));
+                  notify('✓ Enabled all 14 commercial business sector engines');
+                }}
+                className="px-3 py-1.5 border border-[var(--color-border)] hover:bg-[var(--color-surface-muted)] text-[var(--color-text-strong)] rounded-xl text-xs font-semibold"
+              >
+                Enable All Sectors
+              </button>
+            </div>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {[
               {
                 id: 'Services',
+                icon: '💼',
                 title: 'Professional Services & Consulting',
+                category: 'Service & Retainers',
                 desc: 'Hourly billing, client retainers, timesheet tracking, service items, and milestone invoicing.',
-                color: 'blue',
+                tags: ['Hourly Rates', 'Timesheets', 'Retainers'],
               },
               {
                 id: 'Retail',
-                title: 'Retail & E-Commerce / Distribution',
-                desc: 'Physical inventory tracking, barcode SKU management, POS registers, and multi-warehouse stock replenishment.',
-                color: 'emerald',
+                icon: '🛒',
+                title: 'Retail, POS & Omnichannel E-Commerce',
+                category: 'Commerce & Stock',
+                desc: 'Physical inventory tracking, barcode SKU scanner, POS cash registers, and multi-warehouse replenishment.',
+                tags: ['POS Registers', 'Barcoding', 'Stock Min/Max'],
               },
               {
                 id: 'Manufacturing',
+                icon: '🏭',
                 title: 'Manufacturing & Process Production',
+                category: 'Industrial',
                 desc: 'Multi-level Bill of Materials (BOM), work orders, job costing, raw material WIP, and finished goods conversion.',
-                color: 'purple',
+                tags: ['Multi-BOM', 'Work Orders', 'WIP Costing'],
               },
               {
-                id: 'Projects',
-                title: 'Construction & Project Accounting',
-                desc: 'Job costing, progress billing, subcontractor claims, phase budgets, and milestone profitability.',
-                color: 'amber',
+                id: 'Construction',
+                icon: '🏗️',
+                title: 'Construction & Civil Engineering',
+                category: 'Project Accounting',
+                desc: 'Project-based job costing, AIA G702 progress billing, retention receivables, and subcontractor claims.',
+                tags: ['Progress Billing', 'Retention AR/AP', 'Job Costing'],
+              },
+              {
+                id: 'RealEstate',
+                icon: '🏢',
+                title: 'Real Estate & Property Management',
+                category: 'Leases & Property',
+                desc: 'IFRS 16 lease management, tenant billing, property unit registries, and CAM service charge reconciliations.',
+                tags: ['IFRS 16 Leases', 'Tenant Portals', 'CAM Charges'],
+              },
+              {
+                id: 'Healthcare',
+                icon: '🏥',
+                title: 'Healthcare, Pharma & Life Sciences',
+                category: 'Medical & Clinical',
+                desc: 'Batch & lot expiry tracking, patient billing, pharmaceutical records, and clinical cost center accounting.',
+                tags: ['Batch & Expiry', 'Patient Ledger', 'Cost Centers'],
+              },
+              {
+                id: 'Hospitality',
+                icon: '🍽️',
+                title: 'Hospitality, Restaurants & Food Service',
+                category: 'F&B & Lodging',
+                desc: 'Table & room billing, recipe costing, kitchen order tokens (KOT), banquet management, and daily cash sweeps.',
+                tags: ['Table/Room POS', 'Recipe BOM', 'Daily Sweeps'],
+              },
+              {
+                id: 'Logistics',
+                icon: '🚚',
+                title: 'Logistics, Freight & Fleet Management',
+                category: 'Transport & Freight',
+                desc: 'Waybill dispatch, vehicle trip costing, fuel log reconciliation, container tracking, and demurrage claims.',
+                tags: ['Trip Costing', 'Waybills', 'Fuel Logs'],
+              },
+              {
+                id: 'Agriculture',
+                icon: '🌾',
+                title: 'Agriculture & Farming (IAS 41)',
+                category: 'Biological Assets',
+                desc: 'Biological assets fair valuation, harvest costing, seasonal expense amortization, and field plot accounting.',
+                tags: ['IAS 41 Biologicals', 'Harvest Costing', 'Plot Tracking'],
+              },
+              {
+                id: 'NonProfit',
+                icon: '🏛️',
+                title: 'Non-Profit, NGO & Grant Accounting',
+                category: 'Funds & Grants',
+                desc: 'Multi-donor fund accounting, restricted grant tracking, program vs admin expense split, and Form 990 audit reporting.',
+                tags: ['Fund Accounting', 'Grant Tracking', '990 Audits'],
+              },
+              {
+                id: 'Education',
+                icon: '🎓',
+                title: 'Education & Academic Institutions',
+                category: 'Academia',
+                desc: 'Tuition fee schedules, student ledgers, term-based billing, faculty payroll, and departmental lab costing.',
+                tags: ['Tuition Billing', 'Student Ledger', 'Term Fees'],
+              },
+              {
+                id: 'FinancialServices',
+                icon: '💳',
+                title: 'Financial Services & FinTech Lending',
+                category: 'Banking & Lending',
+                desc: 'Loan disbursement, IFRS 9 expected credit loss (ECL) provisioning, interest amortizations, and collateral ledgers.',
+                tags: ['IFRS 9 ECL', 'Loan Amortization', 'Collateral'],
+              },
+              {
+                id: 'Energy',
+                icon: '⚡',
+                title: 'Energy, Utilities & Mining',
+                category: 'Natural Resources',
+                desc: 'Depletion accounting (IFRS 6), environmental restoration accruals (IAS 37), meter billing, and grid tariff rates.',
+                tags: ['IFRS 6 Depletion', 'IAS 37 Accruals', 'Meter Tariffs'],
+              },
+              {
+                id: 'SaaS',
+                icon: '💻',
+                title: 'SaaS, Subscription & Digital Media',
+                category: 'Recurring Revenue',
+                desc: 'ASC 606 / IFRS 15 recurring revenue recognition, deferred revenue amortization, MRR/ARR analytics, and churn metrics.',
+                tags: ['IFRS 15 Deferred', 'MRR / ARR', 'Dunning'],
               },
             ].map((sector) => {
               const active = selectedSectors.includes(sector.id);
@@ -396,18 +510,31 @@ export const SystemSettingsView: React.FC<SystemSettingsProps> = ({ setPage, not
                       : 'bg-[var(--color-surface-muted)] border-[var(--color-border)] hover:border-teal-500/40'
                   }`}
                 >
-                  <div className="space-y-1">
+                  <div className="space-y-1.5 flex-1 min-width-0">
                     <div className="flex items-center gap-2">
-                      <div className={`w-2.5 h-2.5 rounded-full ${active ? 'bg-teal-600' : 'bg-slate-300 dark:bg-slate-700'}`} />
-                      <h4 className="font-bold text-xs text-[var(--color-text-strong)]">{sector.title}</h4>
+                      <span className="text-base">{sector.icon}</span>
+                      <h4 className="font-bold text-xs text-[var(--color-text-strong)] truncate">{sector.title}</h4>
+                      <span className="text-[9px] px-1.5 py-0.5 rounded bg-[var(--color-surface)] border border-[var(--color-border)] text-[var(--color-text-muted)] font-medium shrink-0">
+                        {sector.category}
+                      </span>
                     </div>
                     <p className="text-[11px] text-[var(--color-text-muted)] leading-relaxed">{sector.desc}</p>
+                    <div className="flex items-center gap-1.5 pt-1 flex-wrap">
+                      {sector.tags.map((tag) => (
+                        <span
+                          key={tag}
+                          className="text-[9px] px-1.5 py-0.5 rounded-md bg-[var(--color-surface)] text-[var(--color-text-muted)] border border-[var(--color-border)] font-mono"
+                        >
+                          {tag}
+                        </span>
+                      ))}
+                    </div>
                   </div>
                   <input
                     type="checkbox"
                     checked={active}
                     readOnly
-                    className="accent-teal-600 mt-1"
+                    className="accent-teal-600 mt-1 shrink-0"
                   />
                 </div>
               );
