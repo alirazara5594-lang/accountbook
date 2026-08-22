@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import {
   ReceiptText, Check, X, ArrowRight, ArrowLeft, Coins,
-  CheckCircle2, Users, FileText, ShieldCheck
+  CheckCircle2, Users, FileText, ShieldCheck, Eye
 } from 'lucide-react'
 import { useCoaStore, useExpenseClaimsStore } from './stores'
 import { useFormDraft } from './hooks/useFormDraft'
@@ -28,7 +28,7 @@ export const ExpenseClaimsView: React.FC<{ activeEntityId: string; entities?: En
   const [query, setQuery] = useState('')
   const [statusFilter, setStatusFilter] = useState<string>('all')
   const [showForm, setShowForm] = useState(false)
-  const [modalTab, setModalTab] = useState<'employee' | 'expense' | 'summary'>('employee')
+  const [modalTab, setModalTab] = useState<'employee' | 'expense' | 'summary' | 'preview'>('employee')
   const [toast, setToast] = useState('')
 
   const [form, setForm] = useState({
@@ -365,6 +365,18 @@ export const ExpenseClaimsView: React.FC<{ activeEntityId: string; entities?: En
               >
                 <FileText className="w-3.5 h-3.5" /> 3. Verification & Submit
               </button>
+
+              <button
+                type="button"
+                onClick={() => setModalTab('preview')}
+                className={`flex items-center gap-2 px-4 py-2.5 text-xs font-semibold rounded-t-lg border-b-2 transition-all whitespace-nowrap ${
+                  modalTab === 'preview'
+                    ? 'border-emerald-600 text-emerald-600 bg-emerald-500/10'
+                    : 'border-transparent text-[var(--color-text-muted)] hover:text-[var(--color-text-strong)]'
+                }`}
+              >
+                <Eye className="w-3.5 h-3.5" /> 4. One-Page Preview
+              </button>
             </div>
 
             {/* Modal Body */}
@@ -515,76 +527,82 @@ export const ExpenseClaimsView: React.FC<{ activeEntityId: string; entities?: En
                   </div>
                 </div>
               )}
+
+              {modalTab === 'preview' && (
+                <div className="space-y-6">
+                  <div className="p-5 rounded-2xl bg-gradient-to-r from-violet-500/10 via-purple-500/5 to-indigo-500/10 border border-violet-500/20 flex flex-col md:flex-row md:items-center justify-between gap-4">
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <span className="text-base font-bold text-[var(--color-text-strong)]">Expense Claim: Auto-generated</span>
+                        <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-violet-500/10 text-violet-600 border border-violet-500/20">Pending Approval</span>
+                      </div>
+                      <p className="text-xs text-[var(--color-text-muted)] mt-1">
+                        Employee: <strong>{form.employeeName || 'Employee'}</strong> • Department: <span>{form.department || 'N/A'}</span>
+                      </p>
+                    </div>
+                    <div className="flex items-center gap-4 text-xs">
+                      <div><span className="text-[var(--color-text-muted)] block text-[11px]">Expense Date:</span><strong>{form.date}</strong></div>
+                      <div><span className="text-[var(--color-text-muted)] block text-[11px]">Currency:</span><strong className="font-mono">{form.currency}</strong></div>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs">
+                    <div className="p-4 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] space-y-2 shadow-2xs">
+                      <p className="font-bold text-[var(--color-text-strong)] border-b border-[var(--color-border)] pb-2">Claim Details</p>
+                      <div className="flex justify-between"><span className="text-[var(--color-text-muted)]">Category:</span><span className="font-semibold">{form.category}</span></div>
+                      <div className="flex justify-between"><span className="text-[var(--color-text-muted)]">GL Account:</span><span className="font-mono text-xs">{form.accountId || '—'}</span></div>
+                      <div className="flex justify-between font-bold text-violet-600 font-mono border-t border-[var(--color-border)] pt-2">
+                        <span>Total Claim Amount:</span>
+                        <span className="text-base">{money(parseFloat(form.amount || '0'))}</span>
+                      </div>
+                    </div>
+                    <div className="p-4 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] space-y-2">
+                      <p className="font-bold text-[var(--color-text-strong)] border-b border-[var(--color-border)] pb-2">Business Justification & Journal</p>
+                      <p className="text-[11px] text-[var(--color-text-muted)] leading-relaxed">{form.notes || 'No justification provided.'}</p>
+                      <div className="mt-2 p-2.5 rounded-lg bg-violet-500/5 border border-violet-500/20 text-[10px] text-violet-700">
+                        <strong>GAAP Journal Entry (On Approval):</strong><br />
+                        Dr {form.category || 'Operating'} Expense Account<br />
+                        Cr Accounts Payable — Employee
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
             </div>
 
             {/* Modal Footer */}
             <div className="px-6 py-3.5 border-t border-[var(--color-border)] bg-[var(--color-surface-muted)]/50 flex items-center justify-between gap-3">
               <div className="text-[11px] text-[var(--color-text-muted)] flex items-center gap-1.5">
                 <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 inline-block" />
-                <span>Auto-draft protection active</span>
+                <span>{modalTab === 'preview' ? 'Ready for final verification & submission' : 'Auto-draft protection active'}</span>
               </div>
 
               <div className="flex items-center gap-2">
-                <button
-                  type="button"
-                  className="h-8.5 px-3.5 rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] text-xs font-medium text-[var(--color-text)] hover:bg-[var(--color-surface-muted)] transition-colors"
-                  onClick={() => setShowForm(false)}
-                >
-                  Cancel
-                </button>
-                <button
-                  type="button"
-                  className="h-8.5 px-3.5 rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] text-xs font-medium text-[var(--color-text-muted)] hover:text-[var(--color-text-strong)] transition-colors"
-                  onClick={(e) => { e.preventDefault(); saveDraft(); notify('Claim draft saved locally.'); }}
-                >
-                  Save Draft
-                </button>
+                <button type="button" className="h-8.5 px-3.5 rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] text-xs font-medium text-[var(--color-text)] hover:bg-[var(--color-surface-muted)] transition-colors" onClick={() => setShowForm(false)}>Cancel</button>
+                {modalTab !== 'preview' && (
+                  <button type="button" className="h-8.5 px-3.5 rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] text-xs font-medium text-[var(--color-text-muted)] hover:text-[var(--color-text-strong)] transition-colors" onClick={(e) => { e.preventDefault(); saveDraft(); notify('Claim draft saved locally.'); }}>Save Draft</button>
+                )}
 
                 {modalTab !== 'employee' && (
-                  <button
-                    type="button"
-                    onClick={() => {
-                      if (modalTab === 'summary') setModalTab('expense')
-                      else if (modalTab === 'expense') setModalTab('employee')
-                    }}
-                    className="h-8.5 px-3 rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] text-xs font-medium text-[var(--color-text)] hover:bg-[var(--color-surface-muted)] transition-colors flex items-center gap-1"
-                  >
+                  <button type="button" onClick={() => { if (modalTab === 'preview') setModalTab('summary'); else if (modalTab === 'summary') setModalTab('expense'); else if (modalTab === 'expense') setModalTab('employee'); }} className="h-8.5 px-3 rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] text-xs font-medium text-[var(--color-text)] hover:bg-[var(--color-surface-muted)] transition-colors flex items-center gap-1">
                     <ArrowLeft className="w-3.5 h-3.5" />
-                    <span>Back</span>
+                    <span>{modalTab === 'preview' ? 'Back to Edit' : 'Back'}</span>
                   </button>
                 )}
 
-                {modalTab !== 'summary' ? (
-                  <button
-                    type="button"
-                    onClick={() => {
-                      if (modalTab === 'employee') {
-                        if (!form.employeeName) {
-                          notify('Please enter employee name.')
-                          return
-                        }
-                        setModalTab('expense')
-                      } else if (modalTab === 'expense') {
-                        if (!form.amount || parseFloat(form.amount) <= 0) {
-                          notify('Please enter a valid amount.')
-                          return
-                        }
-                        setModalTab('summary')
-                      }
-                    }}
-                    className="primary h-8.5 px-4 rounded-lg text-xs font-semibold shadow-xs flex items-center gap-1.5"
-                  >
-                    <span>Next: {modalTab === 'employee' ? 'Category & Amount' : 'Review & Submit'}</span>
-                    <ArrowRight className="w-3.5 h-3.5" />
+                {modalTab !== 'preview' ? (
+                  <button type="button" onClick={() => {
+                    if (modalTab === 'employee') { if (!form.employeeName) { notify('Please enter employee name.'); return } setModalTab('expense') }
+                    else if (modalTab === 'expense') { if (!form.amount || parseFloat(form.amount) <= 0) { notify('Please enter a valid amount.'); return } setModalTab('summary') }
+                    else if (modalTab === 'summary') { setModalTab('preview') }
+                  }} className="primary h-8.5 px-4 rounded-lg text-xs font-semibold shadow-xs flex items-center gap-1.5">
+                    <span>{modalTab === 'employee' ? 'Next: Category & Amount' : modalTab === 'expense' ? 'Next: Verification & Submit' : 'Preview & Review'}</span>
+                    {modalTab === 'summary' ? <Eye className="w-3.5 h-3.5" /> : <ArrowRight className="w-3.5 h-3.5" />}
                   </button>
                 ) : (
-                  <button
-                    type="button"
-                    onClick={submitClaim}
-                    className="primary h-8.5 px-4.5 rounded-lg text-xs font-semibold shadow-xs flex items-center gap-1.5 bg-emerald-600 hover:bg-emerald-700 text-white"
-                  >
+                  <button type="button" onClick={submitClaim} className="primary h-8.5 px-5 rounded-lg text-xs font-semibold shadow-xs flex items-center gap-1.5 bg-emerald-600 hover:bg-emerald-700 text-white">
                     <Check className="w-3.5 h-3.5" />
-                    <span>Submit Claim</span>
+                    <span>Confirm & Submit Claim</span>
                   </button>
                 )}
               </div>

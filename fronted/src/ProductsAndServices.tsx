@@ -3,7 +3,7 @@ import type { FormEvent } from 'react'
 import {
   Wrench, Pencil, Trash2, Package, Tag, Archive,
   Receipt, Check, X, Hash, Layers,
-  ShieldCheck, ArrowRight, ArrowLeft, Coins
+  ShieldCheck, ArrowRight, ArrowLeft, Coins, Eye
 } from 'lucide-react'
 
 import { Button } from '@/components/ui/button'
@@ -27,45 +27,34 @@ export type Product = {
   unit: string
   unitPrice: number
   costPrice: number
-  taxCodeId?: string
   incomeAccountId?: string
   expenseAccountId?: string
-  assetAccountId?: string
-  status: 'Active' | 'Inactive'
-  createdAt: string
-  updatedAt: string
+  inventoryAccountId?: string
+  taxCodeId?: string
+  status: ProductStatus
+  barcode?: string
+  sku?: string
+  reorderPoint?: number
+  currentStock?: number
 }
 
-type Account = {
-  id: string
-  code: string
-  name: string
-  type: string
-}
-
-type TaxCode = {
-  id: string
-  code: string
-  name: string
-  rate: number
-  rates?: { percentage: number }[]
-  taxAuthorityId?: string
-}
-
-type ProductForm = {
+export type ProductForm = {
   code: string
   name: string
   description: string
   type: ProductType
   category: string
   unit: string
-  currencyCode: string
   unitPrice: string
   costPrice: string
-  taxCodeId: string
   incomeAccountId: string
   expenseAccountId: string
-  assetAccountId: string
+  inventoryAccountId: string
+  taxCodeId: string
+  status: ProductStatus
+  barcode: string
+  sku: string
+  reorderPoint: string
 }
 
 const blankForm = (): ProductForm => ({
@@ -74,14 +63,17 @@ const blankForm = (): ProductForm => ({
   description: '',
   type: 'Physical',
   category: 'General',
-  unit: 'Each',
-  currencyCode: 'PKR',
+  unit: 'Unit',
   unitPrice: '0',
   costPrice: '0',
-  taxCodeId: '',
   incomeAccountId: '',
   expenseAccountId: '',
-  assetAccountId: ''
+  inventoryAccountId: '',
+  taxCodeId: '',
+  status: 'Active',
+  barcode: '',
+  sku: '',
+  reorderPoint: '0'
 })
 
 export default function ProductsAndServices({
@@ -90,7 +82,7 @@ export default function ProductsAndServices({
   notify
 }: {
   entities?: any[]
-  activeEntityId?: string
+  activeEntityId: string
   notify: (msg: string) => void
 }) {
   const products = useProductsStore((s: any) => s.products as Product[])
@@ -109,7 +101,7 @@ export default function ProductsAndServices({
   const [search, setSearch] = useState('')
   const [typeFilter, setTypeFilter] = useState<string>('all')
   const [modalOpen, setModalOpen] = useState(false)
-  const [modalTab, setModalTab] = useState<'info' | 'pricing' | 'accounting' | 'tax'>('info')
+  const [modalTab, setModalTab] = useState<'info' | 'pricing' | 'accounting' | 'tax' | 'preview'>('info')
   const [editingProduct, setEditingProduct] = useState<Product | null>(null)
   const [form, setForm] = useState<ProductForm>(blankForm())
   const { saveDraft, clearDraft } = useFormDraft('product', form, setForm, modalOpen)
@@ -482,6 +474,18 @@ export default function ProductsAndServices({
               >
                 <Receipt className="w-3.5 h-3.5" /> Tax & Classification
               </button>
+
+              <button
+                type="button"
+                onClick={() => setModalTab('preview')}
+                className={`flex items-center gap-2 px-4 py-2.5 text-xs font-semibold rounded-t-lg border-b-2 transition-all whitespace-nowrap ${
+                  modalTab === 'preview'
+                    ? 'border-emerald-600 text-emerald-600 bg-emerald-500/10'
+                    : 'border-transparent text-[var(--color-text-muted)] hover:text-[var(--color-text-strong)]'
+                }`}
+              >
+                <Eye className="w-3.5 h-3.5" /> 5. One-Page Preview
+              </button>
             </div>
 
             {/* Modal Body */}
@@ -729,13 +733,106 @@ export default function ProductsAndServices({
                   </div>
                 </div>
               )}
+
+              {modalTab === 'preview' && (
+                <div className="space-y-6">
+                  {/* Summary Banner */}
+                  <div className="p-4 rounded-2xl bg-gradient-to-r from-amber-500/10 via-orange-500/5 to-yellow-500/10 border border-amber-500/20 flex flex-col md:flex-row md:items-center justify-between gap-4">
+                    <div className="flex items-center gap-3.5">
+                      <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-amber-500 to-orange-600 flex items-center justify-center text-white text-lg font-bold shadow-sm shrink-0">
+                        <Package className="w-6 h-6" />
+                      </div>
+                      <div>
+                        <div className="flex items-center gap-2">
+                          <h3 className="text-base font-bold text-[var(--color-text-strong)]">
+                            {form.name || 'Unnamed Item'}
+                          </h3>
+                          <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-500/10 text-amber-600 border border-amber-500/20">
+                            {form.type} Item
+                          </span>
+                        </div>
+                        <p className="text-xs text-[var(--color-text-muted)] mt-0.5 font-mono">
+                          SKU / Code: {form.code || 'Auto-generated'} • Category: {form.category || 'General'}
+                        </p>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs font-semibold px-3 py-1.5 rounded-lg bg-[var(--color-surface)] border border-[var(--color-border)] text-emerald-600 font-mono">
+                        Selling Price: {money(parseFloat(form.unitPrice) || 0)}
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Details Grid */}
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs">
+                    {/* Basic Info */}
+                    <div className="p-4 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] space-y-3 shadow-2xs">
+                      <h4 className="font-bold text-[var(--color-text-strong)] flex items-center gap-2 border-b border-[var(--color-border)] pb-2">
+                        <Package className="w-4 h-4 text-sky-500" /> Item Identification & Description
+                      </h4>
+                      <div className="grid grid-cols-2 gap-2 text-[11px]">
+                        <div><span className="text-[var(--color-text-muted)]">Item Type:</span> <p className="font-semibold text-[var(--color-text-strong)]">{form.type}</p></div>
+                        <div><span className="text-[var(--color-text-muted)]">UoM (Unit of Measure):</span> <p className="font-semibold text-[var(--color-text-strong)]">{form.unit || 'Unit'}</p></div>
+                        <div className="col-span-2"><span className="text-[var(--color-text-muted)]">Description:</span> <p className="font-semibold text-[var(--color-text-strong)]">{form.description || '—'}</p></div>
+                        <div><span className="text-[var(--color-text-muted)]">Status:</span> <p className="font-semibold text-[var(--color-text-strong)]">{form.status}</p></div>
+                      </div>
+                    </div>
+
+                    {/* Pricing & Cost */}
+                    <div className="p-4 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] space-y-3 shadow-2xs">
+                      <h4 className="font-bold text-[var(--color-text-strong)] flex items-center gap-2 border-b border-[var(--color-border)] pb-2">
+                        <Coins className="w-4 h-4 text-emerald-500" /> Pricing & Profit Margin
+                      </h4>
+                      <div className="grid grid-cols-2 gap-2 text-[11px]">
+                        <div><span className="text-[var(--color-text-muted)]">Selling Price:</span> <p className="font-semibold font-mono text-[var(--color-text-strong)]">{money(parseFloat(form.unitPrice) || 0)}</p></div>
+                        <div><span className="text-[var(--color-text-muted)]">Purchase / Standard Cost:</span> <p className="font-semibold font-mono text-[var(--color-text-strong)]">{money(parseFloat(form.costPrice) || 0)}</p></div>
+                        <div className="col-span-2">
+                          <span className="text-[var(--color-text-muted)]">Gross Margin:</span>
+                          <p className="font-semibold text-emerald-600 font-mono">
+                            {(() => {
+                              const p = parseFloat(form.unitPrice) || 0;
+                              const c = parseFloat(form.costPrice) || 0;
+                              return p > 0 ? `${(((p - c) / p) * 100).toFixed(1)}% (Markup: ${(c > 0 ? (((p - c) / c) * 100).toFixed(1) : 0)}%)` : '—';
+                            })()}
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* GAAP GL Accounts */}
+                    <div className="p-4 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] space-y-3 shadow-2xs">
+                      <h4 className="font-bold text-[var(--color-text-strong)] flex items-center gap-2 border-b border-[var(--color-border)] pb-2">
+                        <Layers className="w-4 h-4 text-violet-500" /> General Ledger Accounts
+                      </h4>
+                      <div className="grid grid-cols-1 gap-2 text-[11px]">
+                        <div><span className="text-[var(--color-text-muted)]">Income / Revenue GL Account:</span> <p className="font-semibold text-[var(--color-text-strong)]">{accounts.find((a: any) => a.id === form.incomeAccountId)?.name || 'Default Sales Revenue'}</p></div>
+                        <div><span className="text-[var(--color-text-muted)]">COGS / Expense GL Account:</span> <p className="font-semibold text-[var(--color-text-strong)]">{accounts.find((a: any) => a.id === form.expenseAccountId)?.name || 'Default Cost of Goods Sold'}</p></div>
+                        {form.type === 'Physical' && (
+                          <div><span className="text-[var(--color-text-muted)]">Inventory Asset Account:</span> <p className="font-semibold text-[var(--color-text-strong)]">{accounts.find((a: any) => a.id === form.inventoryAccountId)?.name || 'Default Merchandise Inventory'}</p></div>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Tax & Compliance */}
+                    <div className="p-4 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] space-y-3 shadow-2xs">
+                      <h4 className="font-bold text-[var(--color-text-strong)] flex items-center gap-2 border-b border-[var(--color-border)] pb-2">
+                        <Receipt className="w-4 h-4 text-amber-500" /> Tax & Classification
+                      </h4>
+                      <div className="grid grid-cols-2 gap-2 text-[11px]">
+                        <div><span className="text-[var(--color-text-muted)]">Default Tax Code:</span> <p className="font-semibold text-[var(--color-text-strong)]">{taxCodes.find((t: any) => t.id === form.taxCodeId)?.code || 'Standard Tax Code'}</p></div>
+                        <div><span className="text-[var(--color-text-muted)]">Inventory Valuation:</span> <p className="font-semibold text-[var(--color-text-strong)]">FIFO / Weighted Average</p></div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
             </div>
 
             {/* Modal Footer */}
             <div className="px-6 py-3.5 border-t border-[var(--color-border)] bg-[var(--color-surface-muted)]/50 flex items-center justify-between gap-3">
               <div className="text-[11px] text-[var(--color-text-muted)] flex items-center gap-1.5">
                 <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 inline-block" />
-                <span>Auto-draft protection active</span>
+                <span>{modalTab === 'preview' ? 'Ready for final verification & creation' : 'Auto-draft protection active'}</span>
               </div>
 
               <div className="flex items-center gap-2">
@@ -746,30 +843,33 @@ export default function ProductsAndServices({
                 >
                   Cancel
                 </button>
-                <button
-                  type="button"
-                  className="h-8.5 px-3.5 rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] text-xs font-medium text-[var(--color-text-muted)] hover:text-[var(--color-text-strong)] transition-colors"
-                  onClick={(e) => { e.preventDefault(); saveDraft(); notify('Item draft saved locally.'); }}
-                >
-                  Save Draft
-                </button>
+                {modalTab !== 'preview' && (
+                  <button
+                    type="button"
+                    className="h-8.5 px-3.5 rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] text-xs font-medium text-[var(--color-text-muted)] hover:text-[var(--color-text-strong)] transition-colors"
+                    onClick={(e) => { e.preventDefault(); saveDraft(); notify('Item draft saved locally.'); }}
+                  >
+                    Save Draft
+                  </button>
+                )}
 
                 {modalTab !== 'info' && (
                   <button
                     type="button"
                     onClick={() => {
-                      if (modalTab === 'tax') setModalTab('accounting')
+                      if (modalTab === 'preview') setModalTab('tax')
+                      else if (modalTab === 'tax') setModalTab('accounting')
                       else if (modalTab === 'accounting') setModalTab('pricing')
                       else if (modalTab === 'pricing') setModalTab('info')
                     }}
                     className="h-8.5 px-3 rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] text-xs font-medium text-[var(--color-text)] hover:bg-[var(--color-surface-muted)] transition-colors flex items-center gap-1"
                   >
                     <ArrowLeft className="w-3.5 h-3.5" />
-                    <span>Back</span>
+                    <span>{modalTab === 'preview' ? 'Back to Edit' : 'Back'}</span>
                   </button>
                 )}
 
-                {modalTab !== 'tax' ? (
+                {modalTab !== 'preview' ? (
                   <button
                     type="button"
                     onClick={() => {
@@ -783,20 +883,24 @@ export default function ProductsAndServices({
                         setModalTab('accounting')
                       } else if (modalTab === 'accounting') {
                         setModalTab('tax')
+                      } else if (modalTab === 'tax') {
+                        setModalTab('preview')
                       }
                     }}
                     className="primary h-8.5 px-4 rounded-lg text-xs font-semibold shadow-xs flex items-center gap-1.5"
                   >
-                    <span>Next: {modalTab === 'info' ? 'Pricing & Costing' : modalTab === 'pricing' ? 'GAAP GL Accounts' : 'Tax & Classification'}</span>
-                    <ArrowRight className="w-3.5 h-3.5" />
+                    <span>
+                      {modalTab === 'info' ? 'Next: Pricing & Costing' : modalTab === 'pricing' ? 'Next: GAAP GL Accounts' : modalTab === 'accounting' ? 'Next: Tax & Classification' : 'Preview & Review'}
+                    </span>
+                    {modalTab === 'tax' ? <Eye className="w-3.5 h-3.5" /> : <ArrowRight className="w-3.5 h-3.5" />}
                   </button>
                 ) : (
                   <button
                     type="submit"
-                    className="primary h-8.5 px-4.5 rounded-lg text-xs font-semibold shadow-xs flex items-center gap-1.5 bg-emerald-600 hover:bg-emerald-700 text-white"
+                    className="primary h-8.5 px-5 rounded-lg text-xs font-semibold shadow-xs flex items-center gap-1.5 bg-emerald-600 hover:bg-emerald-700 text-white"
                   >
                     <Check className="w-3.5 h-3.5" />
-                    <span>{editingProduct ? 'Save Changes' : 'Create Item'}</span>
+                    <span>{editingProduct ? 'Confirm & Save Changes' : 'Confirm & Create Item'}</span>
                   </button>
                 )}
               </div>

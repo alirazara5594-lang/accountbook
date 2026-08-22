@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo } from 'react'
 import {
   FileText, Plus, Check, X, ArrowRight,
-  ArrowLeft, Coins, CheckCircle2, Hash, Users, ArrowUpRight
+  ArrowLeft, Coins, CheckCircle2, Hash, Users, ArrowUpRight, Eye
 } from 'lucide-react'
 import { useSalesStore, useCustomersStore, useProductsStore } from './stores'
 import { useFormDraft } from './hooks/useFormDraft'
@@ -55,7 +55,7 @@ export const EstimatesAndQuotes: React.FC<{ activeEntityId: string; entities?: a
 
   const [loading, setLoading] = useState(true)
   const [showForm, setShowForm] = useState(false)
-  const [modalTab, setModalTab] = useState<'details' | 'lines' | 'summary'>('details')
+  const [modalTab, setModalTab] = useState<'details' | 'lines' | 'summary' | 'preview'>('details')
   const [convertModal, setConvertModal] = useState<any>(null)
   const [toast, setToast] = useState('')
   const [query, setQuery] = useState('')
@@ -488,6 +488,18 @@ export const EstimatesAndQuotes: React.FC<{ activeEntityId: string; entities?: a
               >
                 <FileText className="w-3.5 h-3.5" /> 3. Terms & Summary
               </button>
+
+              <button
+                type="button"
+                onClick={() => setModalTab('preview')}
+                className={`flex items-center gap-2 px-4 py-2.5 text-xs font-semibold rounded-t-lg border-b-2 transition-all whitespace-nowrap ${
+                  modalTab === 'preview'
+                    ? 'border-emerald-600 text-emerald-600 bg-emerald-500/10'
+                    : 'border-transparent text-[var(--color-text-muted)] hover:text-[var(--color-text-strong)]'
+                }`}
+              >
+                <Eye className="w-3.5 h-3.5" /> 4. One-Page Preview
+              </button>
             </div>
 
             {/* Modal Body */}
@@ -742,13 +754,114 @@ export const EstimatesAndQuotes: React.FC<{ activeEntityId: string; entities?: a
                   </div>
                 </div>
               )}
+
+              {modalTab === 'preview' && (
+                <div className="space-y-6">
+                  {/* Quote Header Card */}
+                  <div className="p-5 rounded-2xl bg-gradient-to-r from-indigo-500/10 via-purple-500/5 to-sky-500/10 border border-indigo-500/20 flex flex-col md:flex-row md:items-center justify-between gap-4">
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <span className="text-base font-bold text-[var(--color-text-strong)]">Quotation / Estimate: {form.reference || 'Auto-generated'}</span>
+                        <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-indigo-500/10 text-indigo-600 border border-indigo-500/20">Draft Quotation</span>
+                      </div>
+                      <p className="text-xs text-[var(--color-text-muted)] mt-1">
+                        Client: <strong className="text-[var(--color-text-strong)]">{customers.find((c: any) => c.id === form.customerId)?.name || 'Selected Customer'}</strong> • Currency: <span className="font-mono font-bold">{form.currencyCode || 'PKR'}</span>
+                      </p>
+                    </div>
+                    <div className="flex items-center gap-4 text-xs">
+                      <div>
+                        <span className="text-[var(--color-text-muted)] block text-[11px]">Estimate Date:</span>
+                        <strong className="text-[var(--color-text-strong)]">{form.estimateDate}</strong>
+                      </div>
+                      <div>
+                        <span className="text-[var(--color-text-muted)] block text-[11px]">Expiration Date:</span>
+                        <strong className="text-[var(--color-text-strong)]">{form.expiryDate}</strong>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Line Items Table */}
+                  <div className="border border-[var(--color-border)] rounded-xl overflow-hidden shadow-2xs">
+                    <div className="px-4 py-2.5 bg-[var(--color-surface-muted)] border-b border-[var(--color-border)] text-xs font-bold text-[var(--color-text-strong)]">
+                      Quotation Items & Cost Breakdown
+                    </div>
+                    <table className="w-full text-xs">
+                      <thead>
+                        <tr className="border-b border-[var(--color-border)] bg-[var(--color-surface)] text-[var(--color-text-muted)]">
+                          <th className="text-left px-3.5 py-2 font-semibold">#</th>
+                          <th className="text-left px-3.5 py-2 font-semibold">Description</th>
+                          <th className="text-center px-3.5 py-2 font-semibold">Qty</th>
+                          <th className="text-right px-3.5 py-2 font-semibold">Unit Price</th>
+                          <th className="text-right px-3.5 py-2 font-semibold">Discount</th>
+                          <th className="text-right px-3.5 py-2 font-semibold">Tax</th>
+                          <th className="text-right px-3.5 py-2 font-semibold">Line Total</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-[var(--color-border)]">
+                        {lines.map((l, i) => {
+                          const q = parseFloat(l.quantity) || 0;
+                          const p = parseFloat(l.unitPrice) || 0;
+                          const gross = q * p;
+                          const dVal = parseFloat(l.discountValue) || 0;
+                          const dAmt = l.discountType === 0 ? (gross * dVal) / 100 : dVal;
+                          const taxable = Math.max(0, gross - dAmt);
+                          const tAmt = (taxable * (parseFloat(l.taxPercent) || 0)) / 100;
+                          const total = taxable + tAmt;
+                          return (
+                            <tr key={i} className="hover:bg-[var(--color-surface-muted)]/50">
+                              <td className="px-3.5 py-2 text-[var(--color-text-muted)] font-mono">{i + 1}</td>
+                              <td className="px-3.5 py-2 font-semibold text-[var(--color-text-strong)]">{l.description || '—'}</td>
+                              <td className="px-3.5 py-2 text-center font-mono">{q}</td>
+                              <td className="px-3.5 py-2 text-right font-mono">{money(p)}</td>
+                              <td className="px-3.5 py-2 text-right font-mono text-rose-500">{dAmt > 0 ? `-${money(dAmt)}` : '—'}</td>
+                              <td className="px-3.5 py-2 text-right font-mono text-amber-600">{tAmt > 0 ? `+${money(tAmt)}` : '—'}</td>
+                              <td className="px-3.5 py-2 text-right font-mono font-bold text-[var(--color-text-strong)]">{money(total)}</td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
+
+                  {/* Bottom Financial Grid */}
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs">
+                    <div className="p-4 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] space-y-2">
+                      <p className="font-bold text-[var(--color-text-strong)]">Terms, Conditions & Expiration</p>
+                      <p className="text-[11px] text-[var(--color-text-muted)] leading-relaxed">{form.terms || 'Standard quotation terms apply.'}</p>
+                    </div>
+
+                    <div className="p-4 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] space-y-2 shadow-2xs">
+                      <div className="flex justify-between text-[11px] text-[var(--color-text-muted)]">
+                        <span>Gross Items Subtotal:</span>
+                        <span className="font-mono font-semibold text-[var(--color-text-strong)]">{money(totals.sub)}</span>
+                      </div>
+                      {totals.disc > 0 && (
+                        <div className="flex justify-between text-[11px] text-rose-500 font-mono">
+                          <span>Total Discount:</span>
+                          <span>-{money(totals.disc)}</span>
+                        </div>
+                      )}
+                      {totals.tax > 0 && (
+                        <div className="flex justify-between text-[11px] text-amber-600 font-mono">
+                          <span>Sales Tax / VAT:</span>
+                          <span>+{money(totals.tax)}</span>
+                        </div>
+                      )}
+                      <div className="border-t border-[var(--color-border)] pt-2 flex justify-between text-sm font-bold text-[var(--color-text-strong)]">
+                        <span>Total Estimated Quote:</span>
+                        <span className="text-indigo-600 font-mono text-base">{money(totals.total)}</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
             </div>
 
             {/* Modal Footer */}
             <div className="px-6 py-3.5 border-t border-[var(--color-border)] bg-[var(--color-surface-muted)]/50 flex items-center justify-between gap-3">
               <div className="text-[11px] text-[var(--color-text-muted)] flex items-center gap-1.5">
                 <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 inline-block" />
-                <span>Auto-draft protection active</span>
+                <span>{modalTab === 'preview' ? 'Ready for final verification & creation' : 'Auto-draft protection active'}</span>
               </div>
 
               <div className="flex items-center gap-2">
@@ -759,29 +872,32 @@ export const EstimatesAndQuotes: React.FC<{ activeEntityId: string; entities?: a
                 >
                   Cancel
                 </button>
-                <button
-                  type="button"
-                  className="h-8.5 px-3.5 rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] text-xs font-medium text-[var(--color-text-muted)] hover:text-[var(--color-text-strong)] transition-colors"
-                  onClick={(e) => { e.preventDefault(); saveDraft(); notify('Estimate draft saved locally.'); }}
-                >
-                  Save Draft
-                </button>
+                {modalTab !== 'preview' && (
+                  <button
+                    type="button"
+                    className="h-8.5 px-3.5 rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] text-xs font-medium text-[var(--color-text-muted)] hover:text-[var(--color-text-strong)] transition-colors"
+                    onClick={(e) => { e.preventDefault(); saveDraft(); notify('Estimate draft saved locally.'); }}
+                  >
+                    Save Draft
+                  </button>
+                )}
 
                 {modalTab !== 'details' && (
                   <button
                     type="button"
                     onClick={() => {
-                      if (modalTab === 'summary') setModalTab('lines')
+                      if (modalTab === 'preview') setModalTab('summary')
+                      else if (modalTab === 'summary') setModalTab('lines')
                       else if (modalTab === 'lines') setModalTab('details')
                     }}
                     className="h-8.5 px-3 rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] text-xs font-medium text-[var(--color-text)] hover:bg-[var(--color-surface-muted)] transition-colors flex items-center gap-1"
                   >
                     <ArrowLeft className="w-3.5 h-3.5" />
-                    <span>Back</span>
+                    <span>{modalTab === 'preview' ? 'Back to Edit' : 'Back'}</span>
                   </button>
                 )}
 
-                {modalTab !== 'summary' ? (
+                {modalTab !== 'preview' ? (
                   <button
                     type="button"
                     onClick={() => {
@@ -793,21 +909,25 @@ export const EstimatesAndQuotes: React.FC<{ activeEntityId: string; entities?: a
                         setModalTab('lines')
                       } else if (modalTab === 'lines') {
                         setModalTab('summary')
+                      } else if (modalTab === 'summary') {
+                        setModalTab('preview')
                       }
                     }}
                     className="primary h-8.5 px-4 rounded-lg text-xs font-semibold shadow-xs flex items-center gap-1.5"
                   >
-                    <span>Next: {modalTab === 'details' ? 'Items & Pricing' : 'Terms & Summary'}</span>
-                    <ArrowRight className="w-3.5 h-3.5" />
+                    <span>
+                      {modalTab === 'details' ? 'Next: Items & Pricing' : modalTab === 'lines' ? 'Next: Terms & Summary' : 'Preview & Review'}
+                    </span>
+                    {modalTab === 'summary' ? <Eye className="w-3.5 h-3.5" /> : <ArrowRight className="w-3.5 h-3.5" />}
                   </button>
                 ) : (
                   <button
                     type="button"
                     onClick={saveEstimate}
-                    className="primary h-8.5 px-4.5 rounded-lg text-xs font-semibold shadow-xs flex items-center gap-1.5 bg-indigo-600 hover:bg-indigo-700 text-white"
+                    className="primary h-8.5 px-5 rounded-lg text-xs font-semibold shadow-xs flex items-center gap-1.5 bg-indigo-600 hover:bg-indigo-700 text-white"
                   >
                     <Check className="w-3.5 h-3.5" />
-                    <span>Save Estimate</span>
+                    <span>Confirm & Create Estimate</span>
                   </button>
                 )}
               </div>

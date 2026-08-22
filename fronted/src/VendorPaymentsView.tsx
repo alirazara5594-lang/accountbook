@@ -4,7 +4,7 @@ import { vendorPaymentsApi, type VendorPayment, type WithdrawAccount, type Vendo
 import { useFormDraft } from './hooks/useFormDraft'
 import {
   Check, X, ArrowRight, ArrowLeft, Coins,
-  CheckCircle2, Users, CreditCard, ShieldCheck, FileText
+  CheckCircle2, Users, CreditCard, ShieldCheck, FileText, Eye
 } from 'lucide-react'
 import { DataToolbar } from '@/components/ui/data-toolbar'
 import { money } from '@/lib/currency'
@@ -46,7 +46,7 @@ export const VendorPaymentsView: React.FC<VendorPaymentsViewProps> = ({
   const [query, setQuery] = useState('')
   const [selectedMode, setSelectedMode] = useState('All')
   const [isModalOpen, setIsModalOpen] = useState(false)
-  const [modalTab, setModalTab] = useState<'vendor' | 'account' | 'summary'>('vendor')
+  const [modalTab, setModalTab] = useState<'vendor' | 'account' | 'summary' | 'preview'>('vendor')
   const [withdrawAccounts, setWithdrawAccounts] = useState<WithdrawAccount[]>([])
   const [bills, setBills] = useState<VendorBillLite[]>([])
   const [formError, setFormError] = useState('')
@@ -404,6 +404,18 @@ export const VendorPaymentsView: React.FC<VendorPaymentsViewProps> = ({
               >
                 <FileText className="w-3.5 h-3.5" /> 3. Verification & Settle
               </button>
+
+              <button
+                type="button"
+                onClick={() => setModalTab('preview')}
+                className={`flex items-center gap-2 px-4 py-2.5 text-xs font-semibold rounded-t-lg border-b-2 transition-all whitespace-nowrap ${
+                  modalTab === 'preview'
+                    ? 'border-emerald-600 text-emerald-600 bg-emerald-500/10'
+                    : 'border-transparent text-[var(--color-text-muted)] hover:text-[var(--color-text-strong)]'
+                }`}
+              >
+                <Eye className="w-3.5 h-3.5" /> 4. One-Page Preview
+              </button>
             </div>
 
             {/* Modal Body */}
@@ -578,81 +590,83 @@ export const VendorPaymentsView: React.FC<VendorPaymentsViewProps> = ({
                   </div>
                 </div>
               )}
+
+              {modalTab === 'preview' && (
+                <div className="space-y-6">
+                  <div className="p-5 rounded-2xl bg-gradient-to-r from-emerald-500/10 via-teal-500/5 to-green-500/10 border border-emerald-500/20 flex flex-col md:flex-row md:items-center justify-between gap-4">
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <span className="text-base font-bold text-[var(--color-text-strong)]">Vendor Payment Voucher</span>
+                        <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/10 text-emerald-600 border border-emerald-500/20">Pending Confirmation</span>
+                      </div>
+                      <p className="text-xs text-[var(--color-text-muted)] mt-1">
+                        Vendor: <strong>{vendors.find((v: any) => v.id === form.vendorId)?.name || 'Selected Vendor'}</strong>
+                      </p>
+                    </div>
+                    <div className="flex items-center gap-4 text-xs">
+                      <div><span className="text-[var(--color-text-muted)] block text-[11px]">Payment Date:</span><strong>{form.paymentDate}</strong></div>
+                      <div><span className="text-[var(--color-text-muted)] block text-[11px]">Currency:</span><strong className="font-mono">{form.currency}</strong></div>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs">
+                    <div className="p-4 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] space-y-2 shadow-2xs">
+                      <p className="font-bold text-[var(--color-text-strong)] border-b border-[var(--color-border)] pb-2">Payment Details</p>
+                      <div className="flex justify-between"><span className="text-[var(--color-text-muted)]">Payment Method:</span><span className="font-semibold">{form.paymentMode}</span></div>
+                      <div className="flex justify-between"><span className="text-[var(--color-text-muted)]">Reference / Cheque #:</span><span className="font-mono">{form.reference || '—'}</span></div>
+                      {form.billId && <div className="flex justify-between"><span className="text-[var(--color-text-muted)]">Applied to Bill:</span><span className="font-mono">{bills.find(b => b.id === form.billId)?.billNumber || form.billId}</span></div>}
+                      <div className="flex justify-between font-bold text-emerald-600 font-mono border-t border-[var(--color-border)] pt-2">
+                        <span>Total Amount Paid:</span>
+                        <span className="text-base">{money(parseFloat(form.amount || '0'))}</span>
+                      </div>
+                    </div>
+                    <div className="p-4 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] space-y-2">
+                      <p className="font-bold text-[var(--color-text-strong)] border-b border-[var(--color-border)] pb-2">Memo & Journal Impact</p>
+                      <p className="text-[11px] text-[var(--color-text-muted)] leading-relaxed">{form.description || 'No memo provided.'}</p>
+                      <div className="mt-2 p-2.5 rounded-lg bg-emerald-500/5 border border-emerald-500/20 text-[10px] text-emerald-700">
+                        <strong>GAAP Journal Entry (Auto-posted):</strong><br />
+                        Dr Accounts Payable 20000<br />
+                        Cr Funding Bank Account 10100
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
             </div>
 
             {/* Modal Footer */}
             <div className="px-6 py-3.5 border-t border-[var(--color-border)] bg-[var(--color-surface-muted)]/50 flex items-center justify-between gap-3">
               <div className="text-[11px] text-[var(--color-text-muted)] flex items-center gap-1.5">
                 <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 inline-block" />
-                <span>Auto-draft protection active</span>
+                <span>{modalTab === 'preview' ? 'Ready for final verification & creation' : 'Auto-draft protection active'}</span>
               </div>
 
               <div className="flex items-center gap-2">
-                <button
-                  type="button"
-                  className="h-8.5 px-3.5 rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] text-xs font-medium text-[var(--color-text)] hover:bg-[var(--color-surface-muted)] transition-colors"
-                  onClick={() => setIsModalOpen(false)}
-                >
-                  Cancel
-                </button>
-                <button
-                  type="button"
-                  className="h-8.5 px-3.5 rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] text-xs font-medium text-[var(--color-text-muted)] hover:text-[var(--color-text-strong)] transition-colors"
-                  onClick={(e) => { e.preventDefault(); saveDraft(); notify('Payment draft saved locally.'); }}
-                >
-                  Save Draft
-                </button>
+                <button type="button" className="h-8.5 px-3.5 rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] text-xs font-medium text-[var(--color-text)] hover:bg-[var(--color-surface-muted)] transition-colors" onClick={() => setIsModalOpen(false)}>Cancel</button>
+                {modalTab !== 'preview' && (
+                  <button type="button" className="h-8.5 px-3.5 rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] text-xs font-medium text-[var(--color-text-muted)] hover:text-[var(--color-text-strong)] transition-colors" onClick={(e) => { e.preventDefault(); saveDraft(); notify('Payment draft saved locally.'); }}>Save Draft</button>
+                )}
 
                 {modalTab !== 'vendor' && (
-                  <button
-                    type="button"
-                    onClick={() => {
-                      if (modalTab === 'summary') setModalTab('account')
-                      else if (modalTab === 'account') setModalTab('vendor')
-                    }}
-                    className="h-8.5 px-3 rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] text-xs font-medium text-[var(--color-text)] hover:bg-[var(--color-surface-muted)] transition-colors flex items-center gap-1"
-                  >
+                  <button type="button" onClick={() => { if (modalTab === 'preview') setModalTab('summary'); else if (modalTab === 'summary') setModalTab('account'); else if (modalTab === 'account') setModalTab('vendor'); }} className="h-8.5 px-3 rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] text-xs font-medium text-[var(--color-text)] hover:bg-[var(--color-surface-muted)] transition-colors flex items-center gap-1">
                     <ArrowLeft className="w-3.5 h-3.5" />
-                    <span>Back</span>
+                    <span>{modalTab === 'preview' ? 'Back to Edit' : 'Back'}</span>
                   </button>
                 )}
 
-                {modalTab !== 'summary' ? (
-                  <button
-                    type="button"
-                    onClick={() => {
-                      if (modalTab === 'vendor') {
-                        if (!form.vendorId) {
-                          setFormError('Please select a vendor.')
-                          return
-                        }
-                        setModalTab('account')
-                      } else if (modalTab === 'account') {
-                        if (!form.withdrawFromAccountId) {
-                          setFormError('Please select a bank account.')
-                          return
-                        }
-                        if (parseFloat(form.amount || '0') <= 0) {
-                          setFormError('Please enter a valid amount.')
-                          return
-                        }
-                        setModalTab('summary')
-                      }
-                    }}
-                    className="primary h-8.5 px-4 rounded-lg text-xs font-semibold shadow-xs flex items-center gap-1.5"
-                  >
-                    <span>Next: {modalTab === 'vendor' ? 'Funding Bank' : 'Summary & Settle'}</span>
-                    <ArrowRight className="w-3.5 h-3.5" />
+                {modalTab !== 'preview' ? (
+                  <button type="button" onClick={() => {
+                    if (modalTab === 'vendor') { if (!form.vendorId) { setFormError('Please select a vendor.'); return } setModalTab('account') }
+                    else if (modalTab === 'account') { if (!form.withdrawFromAccountId) { setFormError('Please select a bank account.'); return } if (parseFloat(form.amount || '0') <= 0) { setFormError('Please enter a valid amount.'); return } setModalTab('summary') }
+                    else if (modalTab === 'summary') { setModalTab('preview') }
+                  }} className="primary h-8.5 px-4 rounded-lg text-xs font-semibold shadow-xs flex items-center gap-1.5">
+                    <span>{modalTab === 'vendor' ? 'Next: Funding Bank' : modalTab === 'account' ? 'Next: Verification & Settle' : 'Preview & Review'}</span>
+                    {modalTab === 'summary' ? <Eye className="w-3.5 h-3.5" /> : <ArrowRight className="w-3.5 h-3.5" />}
                   </button>
                 ) : (
-                  <button
-                    type="button"
-                    onClick={handleCreatePayment}
-                    disabled={saving}
-                    className="primary h-8.5 px-4.5 rounded-lg text-xs font-semibold shadow-xs flex items-center gap-1.5 bg-emerald-600 hover:bg-emerald-700 text-white disabled:opacity-40"
-                  >
+                  <button type="button" onClick={handleCreatePayment} disabled={saving} className="primary h-8.5 px-5 rounded-lg text-xs font-semibold shadow-xs flex items-center gap-1.5 bg-emerald-600 hover:bg-emerald-700 text-white disabled:opacity-40">
                     <Check className="w-3.5 h-3.5" />
-                    <span>{saving ? 'Recording...' : 'Record Payment'}</span>
+                    <span>{saving ? 'Recording...' : 'Confirm & Record Payment'}</span>
                   </button>
                 )}
               </div>

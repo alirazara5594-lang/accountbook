@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo } from 'react'
 import {
   FileText, Check, X, ArrowRight, ArrowLeft, Coins,
-  CheckCircle2, Users, ShieldCheck, Trash2
+  CheckCircle2, Users, ShieldCheck, Trash2, Eye
 } from 'lucide-react'
 import { useVendorsStore, useCompanyStore } from './stores'
 import { useFormDraft } from './hooks/useFormDraft'
@@ -37,7 +37,7 @@ export const DebitNotes: React.FC<{ activeEntityId: string; entities?: any[] }> 
 
   const [notes, setNotes] = useState<DebitNoteItem[]>([])
   const [showCreate, setShowCreate] = useState(false)
-  const [modalTab, setModalTab] = useState<'details' | 'items' | 'summary'>('details')
+  const [modalTab, setModalTab] = useState<'details' | 'items' | 'summary' | 'preview'>('details')
   const [query, setQuery] = useState('')
   const [statusFilter, setStatusFilter] = useState<string>('all')
   const [toast, setToast] = useState('')
@@ -394,6 +394,18 @@ export const DebitNotes: React.FC<{ activeEntityId: string; entities?: any[] }> 
               >
                 <FileText className="w-3.5 h-3.5" /> 3. Return Reason & Summary
               </button>
+
+              <button
+                type="button"
+                onClick={() => setModalTab('preview')}
+                className={`flex items-center gap-2 px-4 py-2.5 text-xs font-semibold rounded-t-lg border-b-2 transition-all whitespace-nowrap ${
+                  modalTab === 'preview'
+                    ? 'border-emerald-600 text-emerald-600 bg-emerald-500/10'
+                    : 'border-transparent text-[var(--color-text-muted)] hover:text-[var(--color-text-strong)]'
+                }`}
+              >
+                <Eye className="w-3.5 h-3.5" /> 4. One-Page Preview
+              </button>
             </div>
 
             {/* Modal Body */}
@@ -529,72 +541,75 @@ export const DebitNotes: React.FC<{ activeEntityId: string; entities?: any[] }> 
                   </div>
                 </div>
               )}
+
+              {modalTab === 'preview' && (
+                <div className="space-y-6">
+                  <div className="p-5 rounded-2xl bg-gradient-to-r from-amber-500/10 via-orange-500/5 to-yellow-500/10 border border-amber-500/20 flex flex-col md:flex-row md:items-center justify-between gap-4">
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <span className="text-base font-bold text-[var(--color-text-strong)]">Debit Note: Auto-generated</span>
+                        <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-500/10 text-amber-600 border border-amber-500/20">Draft Debit Note</span>
+                      </div>
+                      <p className="text-xs text-[var(--color-text-muted)] mt-1">
+                        Vendor: <strong>{vendors.find((v: any) => v.id === form.vendorId)?.name || 'Selected Vendor'}</strong>
+                      </p>
+                    </div>
+                    <div className="flex items-center gap-4 text-xs">
+                      <div><span className="text-[var(--color-text-muted)] block text-[11px]">Debit Note Date:</span><strong>{form.date}</strong></div>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs">
+                    <div className="p-4 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] space-y-2 shadow-2xs">
+                      <p className="font-bold text-[var(--color-text-strong)] border-b border-[var(--color-border)] pb-2">Debit Amount Breakdown</p>
+                      <div className="flex justify-between"><span className="text-[var(--color-text-muted)]">Claim Principal:</span><span className="font-semibold font-mono text-[var(--color-text-strong)]">{money(Number(form.amount) || 0)}</span></div>
+                      <div className="flex justify-between text-amber-600 font-mono"><span>Input Tax Reversal:</span><span>+{money(Number(form.taxAmount) || 0)}</span></div>
+                      <div className="flex justify-between font-bold text-amber-600 font-mono border-t border-[var(--color-border)] pt-2">
+                        <span>Total Debit Claim:</span>
+                        <span className="text-base">{money((Number(form.amount) || 0) + (Number(form.taxAmount) || 0))}</span>
+                      </div>
+                    </div>
+                    <div className="p-4 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] space-y-2">
+                      <p className="font-bold text-[var(--color-text-strong)] border-b border-[var(--color-border)] pb-2">Return Reason & Journal Impact</p>
+                      <p className="text-[11px] text-[var(--color-text-muted)] leading-relaxed">{form.reason || 'Reason not specified.'}</p>
+                      <div className="mt-2 p-2.5 rounded-lg bg-amber-500/5 border border-amber-500/20 text-[10px] text-amber-700">
+                        <strong>GAAP Journal Entry (Auto-posted):</strong><br />
+                        Dr Accounts Payable (Reduce Supplier Balance)<br />
+                        Cr Purchase Returns / Input Tax Recovery
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
             </div>
 
             {/* Modal Footer */}
             <div className="px-6 py-3.5 border-t border-[var(--color-border)] bg-[var(--color-surface-muted)]/50 flex items-center justify-between gap-3">
               <div className="text-[11px] text-[var(--color-text-muted)] flex items-center gap-1.5">
                 <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 inline-block" />
-                <span>Auto-draft protection active</span>
+                <span>{modalTab === 'preview' ? 'Ready for final verification & creation' : 'Auto-draft protection active'}</span>
               </div>
 
               <div className="flex items-center gap-2">
-                <button
-                  type="button"
-                  className="h-8.5 px-3.5 rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] text-xs font-medium text-[var(--color-text)] hover:bg-[var(--color-surface-muted)] transition-colors"
-                  onClick={() => setShowCreate(false)}
-                >
-                  Cancel
-                </button>
-                <button
-                  type="button"
-                  className="h-8.5 px-3.5 rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] text-xs font-medium text-[var(--color-text-muted)] hover:text-[var(--color-text-strong)] transition-colors"
-                  onClick={(e) => { e.preventDefault(); saveDraft(); notify('Debit note draft saved locally.'); }}
-                >
-                  Save Draft
-                </button>
-
+                <button type="button" className="h-8.5 px-3.5 rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] text-xs font-medium text-[var(--color-text)] hover:bg-[var(--color-surface-muted)] transition-colors" onClick={() => setShowCreate(false)}>Cancel</button>
+                {modalTab !== 'preview' && (
+                  <button type="button" className="h-8.5 px-3.5 rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] text-xs font-medium text-[var(--color-text-muted)] hover:text-[var(--color-text-strong)] transition-colors" onClick={(e) => { e.preventDefault(); saveDraft(); notify('Debit note draft saved locally.'); }}>Save Draft</button>
+                )}
                 {modalTab !== 'details' && (
-                  <button
-                    type="button"
-                    onClick={() => {
-                      if (modalTab === 'summary') setModalTab('items')
-                      else if (modalTab === 'items') setModalTab('details')
-                    }}
-                    className="h-8.5 px-3 rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] text-xs font-medium text-[var(--color-text)] hover:bg-[var(--color-surface-muted)] transition-colors flex items-center gap-1"
-                  >
+                  <button type="button" onClick={() => { if (modalTab === 'preview') setModalTab('summary'); else if (modalTab === 'summary') setModalTab('items'); else if (modalTab === 'items') setModalTab('details'); }} className="h-8.5 px-3 rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] text-xs font-medium text-[var(--color-text)] hover:bg-[var(--color-surface-muted)] transition-colors flex items-center gap-1">
                     <ArrowLeft className="w-3.5 h-3.5" />
-                    <span>Back</span>
+                    <span>{modalTab === 'preview' ? 'Back to Edit' : 'Back'}</span>
                   </button>
                 )}
-
-                {modalTab !== 'summary' ? (
-                  <button
-                    type="button"
-                    onClick={() => {
-                      if (modalTab === 'details') {
-                        if (!form.vendorId) {
-                          notify('Please select a vendor.')
-                          return
-                        }
-                        setModalTab('items')
-                      } else if (modalTab === 'items') {
-                        setModalTab('summary')
-                      }
-                    }}
-                    className="primary h-8.5 px-4 rounded-lg text-xs font-semibold shadow-xs flex items-center gap-1.5"
-                  >
-                    <span>Next: {modalTab === 'details' ? 'Amount & Tax' : 'Reason & Summary'}</span>
-                    <ArrowRight className="w-3.5 h-3.5" />
+                {modalTab !== 'preview' ? (
+                  <button type="button" onClick={() => { if (modalTab === 'details') { if (!form.vendorId) { notify('Please select a vendor.'); return } setModalTab('items') } else if (modalTab === 'items') { setModalTab('summary') } else if (modalTab === 'summary') { setModalTab('preview') } }} className="primary h-8.5 px-4 rounded-lg text-xs font-semibold shadow-xs flex items-center gap-1.5">
+                    <span>{modalTab === 'details' ? 'Next: Amount & Tax' : modalTab === 'items' ? 'Next: Reason & Summary' : 'Preview & Review'}</span>
+                    {modalTab === 'summary' ? <Eye className="w-3.5 h-3.5" /> : <ArrowRight className="w-3.5 h-3.5" />}
                   </button>
                 ) : (
-                  <button
-                    type="button"
-                    onClick={handleCreate}
-                    className="primary h-8.5 px-4.5 rounded-lg text-xs font-semibold shadow-xs flex items-center gap-1.5 bg-amber-600 hover:bg-amber-700 text-white"
-                  >
+                  <button type="button" onClick={handleCreate} className="primary h-8.5 px-5 rounded-lg text-xs font-semibold shadow-xs flex items-center gap-1.5 bg-amber-600 hover:bg-amber-700 text-white">
                     <Check className="w-3.5 h-3.5" />
-                    <span>Create Debit Note</span>
+                    <span>Confirm & Create Debit Note</span>
                   </button>
                 )}
               </div>

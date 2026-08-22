@@ -126,7 +126,7 @@ export default function CustomerManagement({
   const [companyFilter, setCompanyFilter] = useState<string>('all')
   const [statusFilter, setStatusFilter] = useState<string>('all')
   const [modalOpen, setModalOpen] = useState(false)
-  const [modalTab, setModalTab] = useState<'general' | 'address' | 'financial' | 'tax'>('general')
+  const [modalTab, setModalTab] = useState<'general' | 'address' | 'financial' | 'tax' | 'preview'>('general')
   const [editingCustomer, setEditingCustomer] = useState<Customer | null>(null)
   const [form, setForm] = useState<CustomerForm>(blankForm())
   const { saveDraft, clearDraft } = useFormDraft('customer', form, setForm, modalOpen)
@@ -548,6 +548,18 @@ export default function CustomerManagement({
               >
                 <Receipt className="w-3.5 h-3.5" /> Tax & Compliance
               </button>
+
+              <button
+                type="button"
+                onClick={() => setModalTab('preview')}
+                className={`flex items-center gap-2 px-4 py-2.5 text-xs font-semibold rounded-t-lg border-b-2 transition-all whitespace-nowrap ${
+                  modalTab === 'preview'
+                    ? 'border-emerald-600 text-emerald-600 bg-emerald-500/10'
+                    : 'border-transparent text-[var(--color-text-muted)] hover:text-[var(--color-text-strong)]'
+                }`}
+              >
+                <Eye className="w-3.5 h-3.5" /> 5. One-Page Preview
+              </button>
             </div>
 
             {/* Modal Body / Tab Content */}
@@ -862,13 +874,100 @@ export default function CustomerManagement({
                   </div>
                 </div>
               )}
+
+              {modalTab === 'preview' && (
+                <div className="space-y-6">
+                  {/* Summary Banner */}
+                  <div className="p-4 rounded-2xl bg-gradient-to-r from-sky-500/10 via-blue-500/5 to-indigo-500/10 border border-sky-500/20 flex flex-col md:flex-row md:items-center justify-between gap-4">
+                    <div className="flex items-center gap-3.5">
+                      <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-sky-500 to-blue-600 flex items-center justify-center text-white text-lg font-bold shadow-sm shrink-0">
+                        {form.name ? form.name.charAt(0).toUpperCase() : 'C'}
+                      </div>
+                      <div>
+                        <div className="flex items-center gap-2">
+                          <h3 className="text-base font-bold text-[var(--color-text-strong)]">
+                            {form.name || 'Unnamed Customer'}
+                          </h3>
+                          <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/10 text-emerald-600 border border-emerald-500/20">
+                            Active
+                          </span>
+                        </div>
+                        <p className="text-xs text-[var(--color-text-muted)] mt-0.5">
+                          Assigned Entity: {assignedCompany ? assignedCompany.name : 'Global Group Customer'}
+                        </p>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs font-semibold px-3 py-1.5 rounded-lg bg-[var(--color-surface)] border border-[var(--color-border)] text-[var(--color-text-strong)]">
+                        Credit Limit: {money(parseFloat(form.creditLimit) || 0, form.currencyCode)}
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Details Grid */}
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs">
+                    {/* General & Primary Contact */}
+                    <div className="p-4 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] space-y-3 shadow-2xs">
+                      <h4 className="font-bold text-[var(--color-text-strong)] flex items-center gap-2 border-b border-[var(--color-border)] pb-2">
+                        <Users className="w-4 h-4 text-sky-500" /> General & Primary Contact
+                      </h4>
+                      <div className="grid grid-cols-2 gap-2 text-[11px]">
+                        <div><span className="text-[var(--color-text-muted)]">Customer Number:</span> <p className="font-semibold font-mono text-[var(--color-text-strong)]">{form.customerNumber || 'Auto-generated'}</p></div>
+                        <div><span className="text-[var(--color-text-muted)]">Company Assignment:</span> <p className="font-semibold text-[var(--color-text-strong)]">{assignedCompany?.name || 'Global'}</p></div>
+                        <div><span className="text-[var(--color-text-muted)]">Email:</span> <p className="font-semibold text-[var(--color-text-strong)]">{form.email || '—'}</p></div>
+                        <div><span className="text-[var(--color-text-muted)]">Phone:</span> <p className="font-semibold text-[var(--color-text-strong)]">{form.phone || '—'}</p></div>
+                        <div><span className="text-[var(--color-text-muted)]">Contact Person:</span> <p className="font-semibold text-[var(--color-text-strong)]">{form.contactPerson || '—'}</p></div>
+                        <div><span className="text-[var(--color-text-muted)]">Contact Person Phone:</span> <p className="font-semibold text-[var(--color-text-strong)]">{form.contactPhone || '—'}</p></div>
+                      </div>
+                    </div>
+
+                    {/* Address & Location */}
+                    <div className="p-4 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] space-y-3 shadow-2xs">
+                      <h4 className="font-bold text-[var(--color-text-strong)] flex items-center gap-2 border-b border-[var(--color-border)] pb-2">
+                        <MapPin className="w-4 h-4 text-emerald-500" /> Address & Location
+                      </h4>
+                      <div className="grid grid-cols-2 gap-2 text-[11px]">
+                        <div className="col-span-2"><span className="text-[var(--color-text-muted)]">Address:</span> <p className="font-semibold text-[var(--color-text-strong)]">{[form.addressLine1, form.addressLine2].filter(Boolean).join(', ') || '—'}</p></div>
+                        <div><span className="text-[var(--color-text-muted)]">City:</span> <p className="font-semibold text-[var(--color-text-strong)]">{form.city || '—'}</p></div>
+                        <div><span className="text-[var(--color-text-muted)]">State / Province:</span> <p className="font-semibold text-[var(--color-text-strong)]">{form.state || '—'}</p></div>
+                        <div><span className="text-[var(--color-text-muted)]">Postal / ZIP Code:</span> <p className="font-semibold text-[var(--color-text-strong)]">{form.postalCode || '—'}</p></div>
+                        <div><span className="text-[var(--color-text-muted)]">Country:</span> <p className="font-semibold text-[var(--color-text-strong)]">{form.country || 'Pakistan'}</p></div>
+                      </div>
+                    </div>
+
+                    {/* Financial Terms */}
+                    <div className="p-4 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] space-y-3 shadow-2xs">
+                      <h4 className="font-bold text-[var(--color-text-strong)] flex items-center gap-2 border-b border-[var(--color-border)] pb-2">
+                        <CreditCard className="w-4 h-4 text-violet-500" /> Terms & Financials
+                      </h4>
+                      <div className="grid grid-cols-2 gap-2 text-[11px]">
+                        <div><span className="text-[var(--color-text-muted)]">Default Currency:</span> <p className="font-semibold text-[var(--color-text-strong)] font-mono">{form.currencyCode || 'PKR'}</p></div>
+                        <div><span className="text-[var(--color-text-muted)]">Credit Limit:</span> <p className="font-semibold text-[var(--color-text-strong)] font-mono">{money(form.creditLimit, form.currencyCode)}</p></div>
+                        <div><span className="text-[var(--color-text-muted)]">Payment Terms:</span> <p className="font-semibold text-[var(--color-text-strong)]">Net {form.paymentTermsDays || 30} Days</p></div>
+                        <div><span className="text-[var(--color-text-muted)]">Account Status:</span> <p className="font-semibold text-[var(--color-text-strong)]">{form.status}</p></div>
+                      </div>
+                    </div>
+
+                    {/* Tax & Compliance */}
+                    <div className="p-4 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] space-y-3 shadow-2xs">
+                      <h4 className="font-bold text-[var(--color-text-strong)] flex items-center gap-2 border-b border-[var(--color-border)] pb-2">
+                        <Receipt className="w-4 h-4 text-amber-500" /> Tax & Compliance
+                      </h4>
+                      <div className="grid grid-cols-2 gap-2 text-[11px]">
+                        <div><span className="text-[var(--color-text-muted)]">Tax / NTN / STRN ID:</span> <p className="font-semibold font-mono text-[var(--color-text-strong)]">{form.taxId || '—'}</p></div>
+                        <div><span className="text-[var(--color-text-muted)]">B2B E-Invoicing:</span> <p className="font-semibold text-emerald-600">Eligible</p></div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
             </div>
 
             {/* Modal Footer */}
             <div className="px-6 py-3.5 border-t border-[var(--color-border)] bg-[var(--color-surface-muted)]/50 flex items-center justify-between gap-3">
               <div className="text-[11px] text-[var(--color-text-muted)] flex items-center gap-1.5">
                 <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 inline-block" />
-                <span>Auto-draft protection active</span>
+                <span>{modalTab === 'preview' ? 'Ready for final verification & creation' : 'Auto-draft protection active'}</span>
               </div>
 
               <div className="flex items-center gap-2">
@@ -879,30 +978,33 @@ export default function CustomerManagement({
                 >
                   Cancel
                 </button>
-                <button
-                  type="button"
-                  className="h-8.5 px-3.5 rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] text-xs font-medium text-[var(--color-text-muted)] hover:text-[var(--color-text-strong)] transition-colors"
-                  onClick={(e) => { e.preventDefault(); saveDraft(); notify('Customer draft saved locally.'); }}
-                >
-                  Save Draft
-                </button>
+                {modalTab !== 'preview' && (
+                  <button
+                    type="button"
+                    className="h-8.5 px-3.5 rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] text-xs font-medium text-[var(--color-text-muted)] hover:text-[var(--color-text-strong)] transition-colors"
+                    onClick={(e) => { e.preventDefault(); saveDraft(); notify('Customer draft saved locally.'); }}
+                  >
+                    Save Draft
+                  </button>
+                )}
 
                 {modalTab !== 'general' && (
                   <button
                     type="button"
                     onClick={() => {
-                      if (modalTab === 'tax') setModalTab('financial')
+                      if (modalTab === 'preview') setModalTab('tax')
+                      else if (modalTab === 'tax') setModalTab('financial')
                       else if (modalTab === 'financial') setModalTab('address')
                       else if (modalTab === 'address') setModalTab('general')
                     }}
                     className="h-8.5 px-3 rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] text-xs font-medium text-[var(--color-text)] hover:bg-[var(--color-surface-muted)] transition-colors flex items-center gap-1"
                   >
                     <ArrowLeft className="w-3.5 h-3.5" />
-                    <span>Back</span>
+                    <span>{modalTab === 'preview' ? 'Back to Edit' : 'Back'}</span>
                   </button>
                 )}
 
-                {modalTab !== 'tax' ? (
+                {modalTab !== 'preview' ? (
                   <button
                     type="button"
                     onClick={() => {
@@ -916,20 +1018,24 @@ export default function CustomerManagement({
                         setModalTab('financial')
                       } else if (modalTab === 'financial') {
                         setModalTab('tax')
+                      } else if (modalTab === 'tax') {
+                        setModalTab('preview')
                       }
                     }}
                     className="primary h-8.5 px-4 rounded-lg text-xs font-semibold shadow-xs flex items-center gap-1.5"
                   >
-                    <span>Next: {modalTab === 'general' ? 'Address & Location' : modalTab === 'address' ? 'Terms & Financials' : 'Tax & Compliance'}</span>
-                    <ArrowRight className="w-3.5 h-3.5" />
+                    <span>
+                      {modalTab === 'general' ? 'Next: Address & Location' : modalTab === 'address' ? 'Next: Terms & Financials' : modalTab === 'financial' ? 'Next: Tax & Compliance' : 'Preview & Review'}
+                    </span>
+                    {modalTab === 'tax' ? <Eye className="w-3.5 h-3.5" /> : <ArrowRight className="w-3.5 h-3.5" />}
                   </button>
                 ) : (
                   <button
                     type="submit"
-                    className="primary h-8.5 px-4.5 rounded-lg text-xs font-semibold shadow-xs flex items-center gap-1.5 bg-emerald-600 hover:bg-emerald-700 text-white"
+                    className="primary h-8.5 px-5 rounded-lg text-xs font-semibold shadow-xs flex items-center gap-1.5 bg-emerald-600 hover:bg-emerald-700 text-white"
                   >
                     <Check className="w-3.5 h-3.5" />
-                    <span>{editingCustomer ? 'Save Changes' : 'Create Customer'}</span>
+                    <span>{editingCustomer ? 'Confirm & Save Changes' : 'Confirm & Create Customer'}</span>
                   </button>
                 )}
               </div>

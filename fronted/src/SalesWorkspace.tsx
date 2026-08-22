@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo } from 'react'
 import {
   Receipt, Plus, Check, X, ShieldCheck, ArrowRight,
-  ArrowLeft, Hash, Users, FileText, Coins, CheckCircle2
+  ArrowLeft, Hash, Users, FileText, Coins, CheckCircle2, Eye
 } from 'lucide-react'
 import { useSalesStore, useCustomersStore, useProductsStore, useCoaStore } from './stores'
 import { useFormDraft } from './hooks/useFormDraft'
@@ -36,7 +36,7 @@ export const SalesWorkspace: React.FC<{ activeEntityId: string; entities?: any[]
 
   const [loading, setLoading] = useState(true)
   const [showForm, setShowForm] = useState(false)
-  const [modalTab, setModalTab] = useState<'details' | 'lines' | 'summary'>('details')
+  const [modalTab, setModalTab] = useState<'details' | 'lines' | 'summary' | 'preview'>('details')
   const [postModal, setPostModal] = useState<any>(null)
   const [toast, setToast] = useState('')
   const [query, setQuery] = useState('')
@@ -465,6 +465,18 @@ export const SalesWorkspace: React.FC<{ activeEntityId: string; entities?: any[]
               >
                 <Coins className="w-3.5 h-3.5" /> 3. Summary & Posting
               </button>
+
+              <button
+                type="button"
+                onClick={() => setModalTab('preview')}
+                className={`flex items-center gap-2 px-4 py-2.5 text-xs font-semibold rounded-t-lg border-b-2 transition-all whitespace-nowrap ${
+                  modalTab === 'preview'
+                    ? 'border-emerald-600 text-emerald-600 bg-emerald-500/10'
+                    : 'border-transparent text-[var(--color-text-muted)] hover:text-[var(--color-text-strong)]'
+                }`}
+              >
+                <Eye className="w-3.5 h-3.5" /> 4. One-Page Preview
+              </button>
             </div>
 
             {/* Modal Body */}
@@ -706,13 +718,111 @@ export const SalesWorkspace: React.FC<{ activeEntityId: string; entities?: any[]
                   </div>
                 </div>
               )}
+
+              {modalTab === 'preview' && (
+                <div className="space-y-6">
+                  {/* Invoice Header Card */}
+                  <div className="p-5 rounded-2xl bg-gradient-to-r from-sky-500/10 via-blue-500/5 to-indigo-500/10 border border-sky-500/20 flex flex-col md:flex-row md:items-center justify-between gap-4">
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <span className="text-base font-bold text-[var(--color-text-strong)]">Sales Invoice: {form.reference || 'Auto-generated'}</span>
+                        <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-sky-500/10 text-sky-600 border border-sky-500/20">Draft Voucher</span>
+                      </div>
+                      <p className="text-xs text-[var(--color-text-muted)] mt-1">
+                        Customer: <strong className="text-[var(--color-text-strong)]">{customers.find((c: any) => c.id === form.customerId)?.name || 'Selected Customer'}</strong> • Currency: <span className="font-mono font-bold">{form.currencyCode || 'PKR'}</span>
+                      </p>
+                    </div>
+                    <div className="flex items-center gap-4 text-xs">
+                      <div>
+                        <span className="text-[var(--color-text-muted)] block text-[11px]">Invoice Date:</span>
+                        <strong className="text-[var(--color-text-strong)]">{form.invoiceDate}</strong>
+                      </div>
+                      <div>
+                        <span className="text-[var(--color-text-muted)] block text-[11px]">Due Date:</span>
+                        <strong className="text-[var(--color-text-strong)]">{form.dueDate}</strong>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Line Items Table */}
+                  <div className="border border-[var(--color-border)] rounded-xl overflow-hidden shadow-2xs">
+                    <div className="px-4 py-2.5 bg-[var(--color-surface-muted)] border-b border-[var(--color-border)] text-xs font-bold text-[var(--color-text-strong)]">
+                      Billed Items & Service Lines
+                    </div>
+                    <table className="w-full text-xs">
+                      <thead>
+                        <tr className="border-b border-[var(--color-border)] bg-[var(--color-surface)] text-[var(--color-text-muted)]">
+                          <th className="text-left px-3.5 py-2 font-semibold">#</th>
+                          <th className="text-left px-3.5 py-2 font-semibold">Description</th>
+                          <th className="text-center px-3.5 py-2 font-semibold">Qty</th>
+                          <th className="text-right px-3.5 py-2 font-semibold">Unit Price</th>
+                          <th className="text-right px-3.5 py-2 font-semibold">Discount</th>
+                          <th className="text-right px-3.5 py-2 font-semibold">Tax</th>
+                          <th className="text-right px-3.5 py-2 font-semibold">Line Total</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-[var(--color-border)]">
+                        {lines.map((l, i) => {
+                          const q = parseFloat(l.quantity) || 0;
+                          const p = parseFloat(l.unitPrice) || 0;
+                          const d = parseFloat(l.discountAmount) || 0;
+                          const t = parseFloat(l.taxAmount) || 0;
+                          const total = q * p - d + t;
+                          return (
+                            <tr key={i} className="hover:bg-[var(--color-surface-muted)]/50">
+                              <td className="px-3.5 py-2 text-[var(--color-text-muted)] font-mono">{i + 1}</td>
+                              <td className="px-3.5 py-2 font-semibold text-[var(--color-text-strong)]">{l.description || '—'}</td>
+                              <td className="px-3.5 py-2 text-center font-mono">{q}</td>
+                              <td className="px-3.5 py-2 text-right font-mono">{money(p)}</td>
+                              <td className="px-3.5 py-2 text-right font-mono text-rose-500">{d > 0 ? `-${money(d)}` : '—'}</td>
+                              <td className="px-3.5 py-2 text-right font-mono text-amber-600">{t > 0 ? `+${money(t)}` : '—'}</td>
+                              <td className="px-3.5 py-2 text-right font-mono font-bold text-[var(--color-text-strong)]">{money(total)}</td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
+
+                  {/* Bottom Financial Grid */}
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs">
+                    <div className="p-4 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] space-y-2">
+                      <p className="font-bold text-[var(--color-text-strong)]">Notes & Payment Instructions</p>
+                      <p className="text-[11px] text-[var(--color-text-muted)] leading-relaxed">{form.notes || 'No payment instructions specified.'}</p>
+                    </div>
+
+                    <div className="p-4 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] space-y-2 shadow-2xs">
+                      <div className="flex justify-between text-[11px] text-[var(--color-text-muted)]">
+                        <span>Items Subtotal:</span>
+                        <span className="font-mono font-semibold text-[var(--color-text-strong)]">{money(subTotal)}</span>
+                      </div>
+                      {discountTotal > 0 && (
+                        <div className="flex justify-between text-[11px] text-rose-500 font-mono">
+                          <span>Total Discount:</span>
+                          <span>-{money(discountTotal)}</span>
+                        </div>
+                      )}
+                      {taxTotal > 0 && (
+                        <div className="flex justify-between text-[11px] text-amber-600 font-mono">
+                          <span>Total Sales Tax / VAT:</span>
+                          <span>+{money(taxTotal)}</span>
+                        </div>
+                      )}
+                      <div className="border-t border-[var(--color-border)] pt-2 flex justify-between text-sm font-bold text-[var(--color-text-strong)]">
+                        <span>Total Invoice Amount:</span>
+                        <span className="text-sky-600 font-mono text-base">{money(netTotal)}</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
             </div>
 
             {/* Modal Footer */}
             <div className="px-6 py-3.5 border-t border-[var(--color-border)] bg-[var(--color-surface-muted)]/50 flex items-center justify-between gap-3">
               <div className="text-[11px] text-[var(--color-text-muted)] flex items-center gap-1.5">
                 <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 inline-block" />
-                <span>Auto-draft protection active</span>
+                <span>{modalTab === 'preview' ? 'Ready for final verification & creation' : 'Auto-draft protection active'}</span>
               </div>
 
               <div className="flex items-center gap-2">
@@ -723,29 +833,32 @@ export const SalesWorkspace: React.FC<{ activeEntityId: string; entities?: any[]
                 >
                   Cancel
                 </button>
-                <button
-                  type="button"
-                  className="h-8.5 px-3.5 rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] text-xs font-medium text-[var(--color-text-muted)] hover:text-[var(--color-text-strong)] transition-colors"
-                  onClick={(e) => { e.preventDefault(); saveDraft(); notify('Invoice draft saved locally.'); }}
-                >
-                  Save Draft
-                </button>
+                {modalTab !== 'preview' && (
+                  <button
+                    type="button"
+                    className="h-8.5 px-3.5 rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] text-xs font-medium text-[var(--color-text-muted)] hover:text-[var(--color-text-strong)] transition-colors"
+                    onClick={(e) => { e.preventDefault(); saveDraft(); notify('Invoice draft saved locally.'); }}
+                  >
+                    Save Draft
+                  </button>
+                )}
 
                 {modalTab !== 'details' && (
                   <button
                     type="button"
                     onClick={() => {
-                      if (modalTab === 'summary') setModalTab('lines')
+                      if (modalTab === 'preview') setModalTab('summary')
+                      else if (modalTab === 'summary') setModalTab('lines')
                       else if (modalTab === 'lines') setModalTab('details')
                     }}
                     className="h-8.5 px-3 rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] text-xs font-medium text-[var(--color-text)] hover:bg-[var(--color-surface-muted)] transition-colors flex items-center gap-1"
                   >
                     <ArrowLeft className="w-3.5 h-3.5" />
-                    <span>Back</span>
+                    <span>{modalTab === 'preview' ? 'Back to Edit' : 'Back'}</span>
                   </button>
                 )}
 
-                {modalTab !== 'summary' ? (
+                {modalTab !== 'preview' ? (
                   <button
                     type="button"
                     onClick={() => {
@@ -757,21 +870,25 @@ export const SalesWorkspace: React.FC<{ activeEntityId: string; entities?: any[]
                         setModalTab('lines')
                       } else if (modalTab === 'lines') {
                         setModalTab('summary')
+                      } else if (modalTab === 'summary') {
+                        setModalTab('preview')
                       }
                     }}
                     className="primary h-8.5 px-4 rounded-lg text-xs font-semibold shadow-xs flex items-center gap-1.5"
                   >
-                    <span>Next: {modalTab === 'details' ? 'Line Items' : 'Summary & Posting'}</span>
-                    <ArrowRight className="w-3.5 h-3.5" />
+                    <span>
+                      {modalTab === 'details' ? 'Next: Line Items' : modalTab === 'lines' ? 'Next: Summary & Posting' : 'Preview & Review'}
+                    </span>
+                    {modalTab === 'summary' ? <Eye className="w-3.5 h-3.5" /> : <ArrowRight className="w-3.5 h-3.5" />}
                   </button>
                 ) : (
                   <button
                     type="button"
                     onClick={saveInvoice}
-                    className="primary h-8.5 px-4.5 rounded-lg text-xs font-semibold shadow-xs flex items-center gap-1.5 bg-emerald-600 hover:bg-emerald-700 text-white"
+                    className="primary h-8.5 px-5 rounded-lg text-xs font-semibold shadow-xs flex items-center gap-1.5 bg-emerald-600 hover:bg-emerald-700 text-white"
                   >
                     <Check className="w-3.5 h-3.5" />
-                    <span>Create Invoice (Draft)</span>
+                    <span>Confirm & Create Invoice (Draft)</span>
                   </button>
                 )}
               </div>

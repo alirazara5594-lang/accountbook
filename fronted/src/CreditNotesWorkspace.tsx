@@ -2,7 +2,7 @@ import { useState, useEffect, useMemo } from 'react'
 import type { FormEvent } from 'react'
 import {
   FileText, Check, X, ArrowRight, ArrowLeft, Coins,
-  CheckCircle2, Users, Trash2, Send, ShieldCheck
+  CheckCircle2, Users, Trash2, Send, ShieldCheck, Eye
 } from 'lucide-react'
 import { useCreditNotesStore } from './stores/useCreditNotesStore'
 import { useCustomersStore, useCompanyStore } from './stores'
@@ -29,7 +29,7 @@ export function CreditNotesWorkspace({
 
   const currentEntityId = activeEntityId || storeEntityId || ''
   const [showCreate, setShowCreate] = useState(false)
-  const [modalTab, setModalTab] = useState<'details' | 'items' | 'summary'>('details')
+  const [modalTab, setModalTab] = useState<'details' | 'items' | 'summary' | 'preview'>('details')
   const [query, setQuery] = useState('')
   const [statusFilter, setStatusFilter] = useState<string>('all')
   const [toast, setToast] = useState('')
@@ -366,6 +366,18 @@ export function CreditNotesWorkspace({
               >
                 <FileText className="w-3.5 h-3.5" /> 3. Reason & Confirmation
               </button>
+
+              <button
+                type="button"
+                onClick={() => setModalTab('preview')}
+                className={`flex items-center gap-2 px-4 py-2.5 text-xs font-semibold rounded-t-lg border-b-2 transition-all whitespace-nowrap ${
+                  modalTab === 'preview'
+                    ? 'border-emerald-600 text-emerald-600 bg-emerald-500/10'
+                    : 'border-transparent text-[var(--color-text-muted)] hover:text-[var(--color-text-strong)]'
+                }`}
+              >
+                <Eye className="w-3.5 h-3.5" /> 4. One-Page Preview
+              </button>
             </div>
 
             {/* Modal Body */}
@@ -501,13 +513,55 @@ export function CreditNotesWorkspace({
                   </div>
                 </div>
               )}
+
+              {modalTab === 'preview' && (
+                <div className="space-y-6">
+                  {/* Header */}
+                  <div className="p-5 rounded-2xl bg-gradient-to-r from-rose-500/10 via-pink-500/5 to-orange-500/10 border border-rose-500/20 flex flex-col md:flex-row md:items-center justify-between gap-4">
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <span className="text-base font-bold text-[var(--color-text-strong)]">Credit Note: Auto-generated</span>
+                        <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-rose-500/10 text-rose-600 border border-rose-500/20">Draft Credit Note</span>
+                      </div>
+                      <p className="text-xs text-[var(--color-text-muted)] mt-1">
+                        Customer: <strong className="text-[var(--color-text-strong)]">{customers.find((c: any) => c.id === form.customerId)?.name || 'Selected Customer'}</strong>
+                      </p>
+                    </div>
+                    <div className="flex items-center gap-4 text-xs">
+                      <div><span className="text-[var(--color-text-muted)] block text-[11px]">Credit Note Date:</span><strong>{form.creditNoteDate}</strong></div>
+                    </div>
+                  </div>
+
+                  {/* Details */}
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs">
+                    <div className="p-4 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] space-y-2 shadow-2xs">
+                      <p className="font-bold text-[var(--color-text-strong)] border-b border-[var(--color-border)] pb-2">Credit Amount Breakdown</p>
+                      <div className="flex justify-between"><span className="text-[var(--color-text-muted)]">Principal Credit Amount:</span><span className="font-semibold font-mono text-[var(--color-text-strong)]">{money(Number(form.amount) || 0)}</span></div>
+                      <div className="flex justify-between text-amber-600 font-mono"><span>Tax Reversal (VAT/Sales Tax):</span><span>+{money(Number(form.tax) || 0)}</span></div>
+                      <div className="flex justify-between font-bold text-rose-600 font-mono border-t border-[var(--color-border)] pt-2">
+                        <span>Total Credit to Customer:</span>
+                        <span className="text-base">{money((Number(form.amount) || 0) + (Number(form.tax) || 0))}</span>
+                      </div>
+                    </div>
+                    <div className="p-4 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] space-y-2">
+                      <p className="font-bold text-[var(--color-text-strong)] border-b border-[var(--color-border)] pb-2">Reason & Journal Impact</p>
+                      <p className="text-[11px] text-[var(--color-text-muted)] leading-relaxed">{form.notes || 'Reason not specified.'}</p>
+                      <div className="mt-2 p-2.5 rounded-lg bg-rose-500/5 border border-rose-500/20 text-[10px] text-rose-600">
+                        <strong>GAAP Journal Entry (Auto-posted):</strong><br />
+                        Dr Sales Revenue / AR Reversal<br />
+                        Cr Accounts Receivable (Customer Balance Reduced)
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
             </div>
 
             {/* Modal Footer */}
             <div className="px-6 py-3.5 border-t border-[var(--color-border)] bg-[var(--color-surface-muted)]/50 flex items-center justify-between gap-3">
               <div className="text-[11px] text-[var(--color-text-muted)] flex items-center gap-1.5">
                 <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 inline-block" />
-                <span>Auto-draft protection active</span>
+                <span>{modalTab === 'preview' ? 'Ready for final verification & creation' : 'Auto-draft protection active'}</span>
               </div>
 
               <div className="flex items-center gap-2">
@@ -518,55 +572,57 @@ export function CreditNotesWorkspace({
                 >
                   Cancel
                 </button>
-                <button
-                  type="button"
-                  className="h-8.5 px-3.5 rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] text-xs font-medium text-[var(--color-text-muted)] hover:text-[var(--color-text-strong)] transition-colors"
-                  onClick={(e) => { e.preventDefault(); saveDraft(); notify('Credit note draft saved locally.'); }}
-                >
-                  Save Draft
-                </button>
+                {modalTab !== 'preview' && (
+                  <button
+                    type="button"
+                    className="h-8.5 px-3.5 rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] text-xs font-medium text-[var(--color-text-muted)] hover:text-[var(--color-text-strong)] transition-colors"
+                    onClick={(e) => { e.preventDefault(); saveDraft(); notify('Credit note draft saved locally.'); }}
+                  >
+                    Save Draft
+                  </button>
+                )}
 
                 {modalTab !== 'details' && (
                   <button
                     type="button"
                     onClick={() => {
-                      if (modalTab === 'summary') setModalTab('items')
+                      if (modalTab === 'preview') setModalTab('summary')
+                      else if (modalTab === 'summary') setModalTab('items')
                       else if (modalTab === 'items') setModalTab('details')
                     }}
                     className="h-8.5 px-3 rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] text-xs font-medium text-[var(--color-text)] hover:bg-[var(--color-surface-muted)] transition-colors flex items-center gap-1"
                   >
                     <ArrowLeft className="w-3.5 h-3.5" />
-                    <span>Back</span>
+                    <span>{modalTab === 'preview' ? 'Back to Edit' : 'Back'}</span>
                   </button>
                 )}
 
-                {modalTab !== 'summary' ? (
+                {modalTab !== 'preview' ? (
                   <button
                     type="button"
                     onClick={() => {
                       if (modalTab === 'details') {
-                        if (!form.customerId) {
-                          notify('Please select a customer.')
-                          return
-                        }
+                        if (!form.customerId) { notify('Please select a customer.'); return }
                         setModalTab('items')
                       } else if (modalTab === 'items') {
                         setModalTab('summary')
+                      } else if (modalTab === 'summary') {
+                        setModalTab('preview')
                       }
                     }}
                     className="primary h-8.5 px-4 rounded-lg text-xs font-semibold shadow-xs flex items-center gap-1.5"
                   >
-                    <span>Next: {modalTab === 'details' ? 'Amount & Tax' : 'Reason & Summary'}</span>
-                    <ArrowRight className="w-3.5 h-3.5" />
+                    <span>{modalTab === 'details' ? 'Next: Amount & Tax' : modalTab === 'items' ? 'Next: Reason & Confirmation' : 'Preview & Review'}</span>
+                    {modalTab === 'summary' ? <Eye className="w-3.5 h-3.5" /> : <ArrowRight className="w-3.5 h-3.5" />}
                   </button>
                 ) : (
                   <button
                     type="button"
                     onClick={handleCreate as any}
-                    className="primary h-8.5 px-4.5 rounded-lg text-xs font-semibold shadow-xs flex items-center gap-1.5 bg-rose-600 hover:bg-rose-700 text-white"
+                    className="primary h-8.5 px-5 rounded-lg text-xs font-semibold shadow-xs flex items-center gap-1.5 bg-rose-600 hover:bg-rose-700 text-white"
                   >
                     <Check className="w-3.5 h-3.5" />
-                    <span>Issue Credit Note</span>
+                    <span>Confirm & Issue Credit Note</span>
                   </button>
                 )}
               </div>
