@@ -1,170 +1,498 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import { usePayrollStore } from './stores';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Card } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
-import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@/components/ui/select';
-import { FormSection } from '@/components/ui/form-section';
-import { FormField } from '@/components/ui/form-field';
-import { PageHeader } from '@/components/ui/page-header';
-import { StatCard } from '@/components/ui/stat-card';
-import { Plus, Clock, CheckCircle2, XCircle, AlertTriangle, User, ArrowLeft, Save } from 'lucide-react';
+import {
+  Clock, CheckCircle2, XCircle, AlertTriangle,
+  Upload, FileSpreadsheet,
+  FileText, Search, RefreshCw, X, Building2, Factory
+} from 'lucide-react';
+import { downloadCSV, downloadExcel } from './lib/exportUtils';
+import type { AttendancePolicy } from './AttendancePoliciesView';
+import { DEFAULT_POLICIES } from './AttendancePoliciesView';
 
-const EMPTY_FORM = { employeeId: '', date: new Date().toISOString().split('T')[0], clockIn: '09:00', clockOut: '17:00', breakStart: '', breakEnd: '', regularHours: 8, overtimeHours: 0, nightHours: 0, status: 'Present', notes: '' };
+const today = () => new Date().toISOString().split('T')[0];
 
 export default function AttendanceTracker() {
   const { attendanceRecords, employees, fetchAttendance, fetchEmployees, recordAttendance } = usePayrollStore();
-  const [dateFilter, setDateFilter] = useState('');
-  const [empFilter, setEmpFilter] = useState('');
-  const [view, setView] = useState<'list' | 'form'>('list');
-  const [form, setForm] = useState(EMPTY_FORM);
+
+  const [dateFilter, setDateFilter] = useState(today());
+  const [empFilter, setEmpFilter] = useState('All');
+  const [statusFilter, setStatusFilter] = useState('All');
+  const [branchFilter, setBranchFilter] = useState('All');
+  const [query, setQuery] = useState('');
+
+  const [importModalOpen, setImportModalOpen] = useState(false);
   const [saving, setSaving] = useState(false);
 
-  useEffect(() => { fetchEmployees(); fetchAttendance(); }, []);
+  // Biometric Import State
+  const [rawImportText, setRawImportText] = useState('');
+  const [importBranch, setImportBranch] = useState('Head Office');
+  const [importResults, setImportResults] = useState<{ success: number; failed: number } | null>(null);
 
-  const filtered = attendanceRecords.filter(r => {
-    if (dateFilter && r.date !== dateFilter) return false;
-    if (empFilter && r.employeeId !== empFilter) return false;
-    return true;
-  });
+  useEffect(() => {
+    fetchEmployees();
+    fetchAttendance();
+  }, []);
 
-  const set = (k: string, v: any) => setForm(f => ({ ...f, [k]: v }));
+  const policies = useMemo<AttendancePolicy[]>(() => {
+    const saved = localStorage.getItem('ab_attendance_policies');
+    return saved ? JSON.parse(saved) : DEFAULT_POLICIES;
+  }, []);
 
-  const handleSubmit = async () => {
-    setSaving(true);
-    try {
-      await recordAttendance({ ...form, regularHours: Number(form.regularHours) || 0, overtimeHours: Number(form.overtimeHours) || 0, nightHours: Number(form.nightHours) || 0 });
-    } finally {
-      setSaving(false);
+  const getEmpBranch = (id: string) => {
+    const e = employees.find(x => x.id === id);
+    if (!e) return 'Head Office';
+    const dept = ((e as any).department || (e as any).departmentId || '').toString().toLowerCase();
+    if (dept.includes('factory') || dept.includes('operations') || dept.includes('warehouse') || dept.includes('mfg') || dept.includes('plant')) {
+      return 'Factory / Plant 1';
     }
-    setView('list');
-    setForm(EMPTY_FORM);
+    return 'Head Office';
   };
 
-  const getEmpName = (id: string) => { const e = employees.find(x => x.id === id); return e ? `${e.firstName} ${e.lastName}` : 'Unknown'; };
-  const getEmpNumber = (id: string) => employees.find(x => x.id === id)?.employeeNumber || '';
+  const filtered = useMemo(() => {
+    return attendanceRecords.filter(r => {
+      const matchDate = !dateFilter || r.date === dateFilter;
+      const matchEmp = empFilter === 'All' || r.employeeId === empFilter;
+      const matchStatus = statusFilter === 'All' || r.status === statusFilter;
 
-  const todayPresent = attendanceRecords.filter(r => r.date === new Date().toISOString().split('T')[0] && r.status === 'Present').length;
-  const todayAbsent = attendanceRecords.filter(r => r.date === new Date().toISOString().split('T')[0] && r.status === 'Absent').length;
-  const todayLate = attendanceRecords.filter(r => r.date === new Date().toISOString().split('T')[0] && r.status === 'Late').length;
+      const empBranch = getEmpBranch(r.employeeId);
+      const matchBranch = branchFilter === 'All' || empBranch === branchFilter || (r.notes || '').includes(branchFilter);
 
-  if (view === 'form') {
-    return (
-      <div className="p-6 max-w-[1100px] mx-auto space-y-5">
-        <div className="flex items-center gap-4">
-          <Button variant="outline" onClick={() => setView('list')}><ArrowLeft className="mr-1.5 h-4 w-4" /> Back</Button>
-          <PageHeader
-            title="Record Attendance"
-            description="Log a daily attendance entry with clock times and work hours"
-          />
-          <Button onClick={handleSubmit} disabled={saving}><Save className="mr-1.5 h-4 w-4" />{saving ? 'Saving...' : 'Save Record'}</Button>
-        </div>
+      const emp = employees.find(e => e.id === r.employeeId);
+      const empName = emp ? `${emp.firstName} ${emp.lastName} ${emp.employeeNumber}`.toLowerCase() : '';
+      const matchQ = !query || empName.includes(query.toLowerCase()) || (r.notes || '').toLowerCase().includes(query.toLowerCase());
 
-        <div className="space-y-4">
-          <FormSection icon={User} title="Employee & Date" tone="teal">
-            <FormField label="Employee" required className="col-span-full"><Select value={form.employeeId} onValueChange={v => set('employeeId', v)}>
-              <SelectTrigger><SelectValue placeholder="Select employee" /></SelectTrigger>
-              <SelectContent>{employees.filter(e => e.status === 'Active').map(e => <SelectItem key={e.id} value={e.id}>{e.firstName} {e.lastName} ({e.employeeNumber})</SelectItem>)}</SelectContent>
-            </Select></FormField>
-            <FormField label="Date" required><Input type="date" value={form.date} onChange={e => set('date', e.target.value)} /></FormField>
-            <FormField label="Status"><Select value={form.status} onValueChange={v => v !== null && set('status', v)}>
-              <SelectTrigger><SelectValue /></SelectTrigger>
-              <SelectContent>
-                <SelectItem value="Present">Present</SelectItem><SelectItem value="Absent">Absent</SelectItem>
-                <SelectItem value="Late">Late</SelectItem><SelectItem value="HalfDay">Half Day</SelectItem>
-                <SelectItem value="OnLeave">On Leave</SelectItem><SelectItem value="Holiday">Holiday</SelectItem>
-              </SelectContent>
-            </Select></FormField>
-          </FormSection>
+      return matchDate && matchEmp && matchStatus && matchBranch && matchQ;
+    });
+  }, [attendanceRecords, dateFilter, empFilter, statusFilter, branchFilter, query, employees]);
 
-          <FormSection icon={Clock} title="Clock Times" tone="blue" columns={4}>
-            <FormField label="Clock In"><Input type="time" value={form.clockIn} onChange={e => set('clockIn', e.target.value)} /></FormField>
-            <FormField label="Clock Out"><Input type="time" value={form.clockOut} onChange={e => set('clockOut', e.target.value)} /></FormField>
-            <FormField label="Break Start"><Input type="time" value={form.breakStart} onChange={e => set('breakStart', e.target.value)} /></FormField>
-            <FormField label="Break End"><Input type="time" value={form.breakEnd} onChange={e => set('breakEnd', e.target.value)} /></FormField>
-          </FormSection>
+  const getEmpName = (id: string) => {
+    const e = employees.find(x => x.id === id);
+    return e ? `${e.firstName} ${e.lastName}` : 'Employee';
+  };
 
-          <FormSection icon={Clock} title="Work Hours" tone="emerald">
-            <FormField label="Regular Hours"><Input type="number" step="0.5" value={form.regularHours} onChange={e => set('regularHours', e.target.value)} /></FormField>
-            <FormField label="Overtime Hours"><Input type="number" step="0.5" value={form.overtimeHours} onChange={e => set('overtimeHours', e.target.value)} /></FormField>
-            <FormField label="Night Shift Hours"><Input type="number" step="0.5" value={form.nightHours} onChange={e => set('nightHours', e.target.value)} /></FormField>
-          </FormSection>
+  const getEmpNumber = (id: string) => {
+    return employees.find(x => x.id === id)?.employeeNumber || 'EMP';
+  };
 
-          <FormSection icon={User} title="Additional Notes" tone="slate">
-            <FormField label="Notes"><Input value={form.notes} onChange={e => set('notes', e.target.value)} placeholder="Optional notes..." /></FormField>
-          </FormSection>
-        </div>
+  // Shift & Attendance Analytics
+  const todayRecords = useMemo(() => attendanceRecords.filter(r => r.date === dateFilter), [attendanceRecords, dateFilter]);
+  const presentCount = todayRecords.filter(r => r.status === 'Present').length;
+  const lateCount = todayRecords.filter(r => r.status === 'Late').length;
+  const absentCount = todayRecords.filter(r => r.status === 'Absent').length;
+  const totalOvertime = todayRecords.reduce((s, r) => s + (r.overtimeHours || 0), 0);
 
-        <div className="flex items-center justify-end gap-3 border-t pt-4 sticky bottom-0 bg-background py-3">
-          <Button variant="outline" onClick={() => setView('list')}>Cancel</Button>
-          <Button onClick={handleSubmit} disabled={saving}><Save className="mr-1.5 h-4 w-4" />{saving ? 'Saving...' : 'Save Record'}</Button>
-        </div>
-      </div>
-    );
-  }
+  // Process Biometric Machine Logs with Location Policy Binding
+  const handleProcessBiometricLog = async () => {
+    if (!rawImportText.trim()) return;
+
+    setSaving(true);
+    let success = 0;
+    let failed = 0;
+
+    const branchPolicy = policies.find(p => p.assignedBranch === importBranch && p.isDefault) ||
+      policies.find(p => p.assignedBranch === importBranch) ||
+      policies[0];
+
+    const lines = rawImportText.trim().split('\n');
+
+    for (const line of lines) {
+      const parts = line.split(/[,\t;]+/).map(p => p.trim());
+      if (parts.length >= 3) {
+        const empCode = parts[0];
+        const date = parts[1] || today();
+        const clockIn = parts[2] || '09:00';
+        const clockOut = parts[3] || '17:00';
+
+        const emp = employees.find(e => e.employeeNumber === empCode || e.id === empCode || `${e.firstName} ${e.lastName}`.toLowerCase() === empCode.toLowerCase());
+
+        if (emp) {
+          const [shiftH, shiftM] = branchPolicy.shiftStartTime.split(':').map(Number);
+          const [inH, inM] = clockIn.split(':').map(Number);
+          const shiftInMinutes = shiftH * 60 + shiftM;
+          const actualInMinutes = inH * 60 + inM;
+          const diffMinutes = actualInMinutes - shiftInMinutes;
+
+          const isLate = diffMinutes > branchPolicy.gracePeriodMinutes;
+
+          const [shiftEndH, shiftEndM] = branchPolicy.shiftEndTime.split(':').map(Number);
+          const [outH, outM] = clockOut.split(':').map(Number);
+          const shiftEndMinutes = shiftEndH * 60 + shiftEndM;
+          const actualOutMinutes = outH * 60 + outM;
+          const otMinutes = Math.max(0, actualOutMinutes - shiftEndMinutes);
+
+          const overtimeHours = otMinutes >= branchPolicy.overtimeMinThresholdMinutes
+            ? Math.round((otMinutes / 60) * 10) / 10
+            : 0;
+
+          await recordAttendance({
+            employeeId: emp.id,
+            date,
+            clockIn,
+            clockOut,
+            regularHours: branchPolicy.standardHoursPerDay,
+            overtimeHours,
+            nightHours: 0,
+            status: isLate ? 'Late' : 'Present',
+            notes: `Biometric Sync · Facility: ${importBranch} (${branchPolicy.name})`,
+          });
+          success++;
+        } else {
+          failed++;
+        }
+      } else {
+        failed++;
+      }
+    }
+
+    setSaving(false);
+    setImportResults({ success, failed });
+    fetchAttendance();
+  };
+
+  // Export Attendance Register
+  const handleExportCSV = () => {
+    const headers = ['Employee Code', 'Employee Name', 'Facility / Branch', 'Date', 'Clock In', 'Clock Out', 'Regular Hours', 'Overtime Hours', 'Attendance Status', 'Notes / Device Ref'];
+    const rows = filtered.map(r => [
+      getEmpNumber(r.employeeId),
+      getEmpName(r.employeeId),
+      getEmpBranch(r.employeeId),
+      r.date,
+      r.clockIn || '—',
+      r.clockOut || '—',
+      r.regularHours || 0,
+      r.overtimeHours || 0,
+      r.status,
+      r.notes || 'Biometric Cloud Terminal'
+    ]);
+    downloadCSV(`Attendance_Register_${dateFilter || 'All'}`, headers, rows);
+  };
+
+  const handleExportExcel = () => {
+    const headers = ['Employee Code', 'Employee Name', 'Facility / Branch', 'Date', 'Clock In', 'Clock Out', 'Regular Hours', 'Overtime Hours', 'Attendance Status', 'Notes / Device Ref'];
+    const rows = filtered.map(r => [
+      getEmpNumber(r.employeeId),
+      getEmpName(r.employeeId),
+      getEmpBranch(r.employeeId),
+      r.date,
+      r.clockIn || '—',
+      r.clockOut || '—',
+      r.regularHours || 0,
+      r.overtimeHours || 0,
+      r.status,
+      r.notes || 'Biometric Cloud Terminal'
+    ]);
+    downloadExcel(`Attendance_Register_${dateFilter || 'All'}`, 'Attendance_Log', headers, rows);
+  };
 
   return (
-    <div className="p-6 max-w-[1400px] mx-auto space-y-4">
-      <PageHeader
-        title="Attendance Tracker"
-        description="Track daily attendance, clock-in/out, and work hours"
-        actions={<Button onClick={() => setView('form')}><Plus className="mr-2 h-4 w-4" /> Record Attendance</Button>}
-      />
+    <div className="p-6 max-w-[1500px] mx-auto space-y-6">
+      {/* Header */}
+      <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 border-b border-[var(--color-border)] pb-4">
+        <div className="min-w-0 flex-1">
+          <h1 className="text-xl font-black tracking-tight text-[var(--color-text-strong)] flex items-center gap-2.5">
+            <div className="p-2 rounded-xl bg-teal-500/10 text-teal-600 border border-teal-500/20 shrink-0">
+              <Clock className="w-5 h-5" />
+            </div>
+            Daily Biometric Attendance Register (Multi-Facility)
+          </h1>
+          <p className="text-xs text-[var(--color-text-muted)] mt-1">
+            Real-time biometric punch logs from **Head Office** and **Factory / Plant** terminals, overtime calculations, and shift verification.
+          </p>
+        </div>
 
-      <div className="grid grid-cols-3 gap-4">
-        <StatCard icon={CheckCircle2} label="Present Today" value={todayPresent} tone="green" />
-        <StatCard icon={XCircle} label="Absent Today" value={todayAbsent} tone="red" />
-        <StatCard icon={AlertTriangle} label="Late Today" value={todayLate} tone="amber" />
+        {/* Global Toolbar */}
+        <div className="flex items-center gap-2 shrink-0 flex-nowrap overflow-x-auto">
+          <button
+            onClick={() => { fetchAttendance(); fetchEmployees(); }}
+            title="Refresh Attendance"
+            className="p-2 rounded-xl border border-[var(--color-border)] hover:bg-[var(--color-surface-muted)] text-[var(--color-text-muted)] transition-colors"
+          >
+            <RefreshCw className="w-4 h-4 text-teal-600" />
+          </button>
+
+          <button
+            onClick={handleExportCSV}
+            className="inline-flex items-center gap-1.5 px-3 py-2 border border-[var(--color-border)] hover:bg-[var(--color-surface-muted)] text-[var(--color-text-strong)] rounded-xl text-xs font-semibold shadow-xs transition-all"
+          >
+            <FileText className="w-4 h-4 text-blue-600" /> CSV
+          </button>
+
+          <button
+            onClick={handleExportExcel}
+            className="inline-flex items-center gap-1.5 px-3 py-2 border border-[var(--color-border)] hover:bg-[var(--color-surface-muted)] text-[var(--color-text-strong)] rounded-xl text-xs font-semibold shadow-xs transition-all"
+          >
+            <FileSpreadsheet className="w-4 h-4 text-emerald-600" /> Excel
+          </button>
+
+          <button
+            onClick={() => setImportModalOpen(true)}
+            className="inline-flex items-center gap-1.5 px-4 py-2 bg-teal-600 hover:bg-teal-700 text-white rounded-xl text-xs font-bold shadow-xs transition-all"
+          >
+            <Upload className="w-4 h-4" /> Import Biometric Logs
+          </button>
+        </div>
       </div>
 
-      <div className="flex gap-3 items-center">
-        <Input type="date" value={dateFilter} onChange={e => setDateFilter(e.target.value)} className="w-[180px]" />
-        <Select value={empFilter} onValueChange={v => v !== null && setEmpFilter(v)}>
-          <SelectTrigger className="w-[220px]"><SelectValue placeholder="All Employees" /></SelectTrigger>
-          <SelectContent>
-            <SelectItem value="">All Employees</SelectItem>
-            {employees.filter(e => e.status === 'Active').map(e => <SelectItem key={e.id} value={e.id}>{e.firstName} {e.lastName}</SelectItem>)}
-          </SelectContent>
-        </Select>
+      {/* 4 Core Attendance KPI Tiles */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className="p-4 rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)] shadow-xs space-y-1">
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-semibold text-[var(--color-text-muted)] uppercase">Present Today</span>
+            <div className="p-1.5 rounded-lg bg-emerald-500/10 text-emerald-600"><CheckCircle2 className="w-4 h-4" /></div>
+          </div>
+          <div className="text-2xl font-black text-emerald-600 font-mono">{presentCount} / {employees.length}</div>
+          <div className="text-[10.5px] text-[var(--color-text-muted)]">Workforce Across All Locations</div>
+        </div>
+
+        <div className="p-4 rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)] shadow-xs space-y-1">
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-semibold text-[var(--color-text-muted)] uppercase">Late Arrivals</span>
+            <div className="p-1.5 rounded-lg bg-amber-500/10 text-amber-600"><AlertTriangle className="w-4 h-4" /></div>
+          </div>
+          <div className="text-2xl font-black text-amber-600 font-mono">{lateCount}</div>
+          <div className="text-[10.5px] text-[var(--color-text-muted)]">Arrived past location grace period</div>
+        </div>
+
+        <div className="p-4 rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)] shadow-xs space-y-1">
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-semibold text-[var(--color-text-muted)] uppercase">Unexplained Absences</span>
+            <div className="p-1.5 rounded-lg bg-rose-500/10 text-rose-600"><XCircle className="w-4 h-4" /></div>
+          </div>
+          <div className="text-2xl font-black text-rose-600 font-mono">{absentCount}</div>
+          <div className="text-[10.5px] text-[var(--color-text-muted)]">Flagged for salary deduction</div>
+        </div>
+
+        <div className="p-4 rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)] shadow-xs space-y-1">
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-semibold text-[var(--color-text-muted)] uppercase">Accumulated Overtime</span>
+            <div className="p-1.5 rounded-lg bg-purple-500/10 text-purple-600"><Clock className="w-4 h-4" /></div>
+          </div>
+          <div className="text-2xl font-black text-purple-600 font-mono">{totalOvertime} Hours</div>
+          <div className="text-[10.5px] text-[var(--color-text-muted)]">Calculated for monthly payrun</div>
+        </div>
       </div>
 
-      <Card className="overflow-hidden">
-        <table className="w-full text-sm">
-          <thead>
-            <tr className="border-b bg-muted/50">
-              <th className="text-left p-3 font-medium">Employee</th>
-              <th className="text-left p-3 font-medium">Date</th>
-              <th className="text-left p-3 font-medium">Clock In</th>
-              <th className="text-left p-3 font-medium">Clock Out</th>
-              <th className="text-center p-3 font-medium">Hours</th>
-              <th className="text-center p-3 font-medium">Status</th>
-              <th className="text-left p-3 font-medium">Notes</th>
-            </tr>
-          </thead>
-          <tbody>
-            {filtered.map(r => (
-              <tr key={r.id} className="border-b hover:bg-muted/30 transition-colors">
-                <td className="p-3">
-                  <div className="flex items-center gap-2">
-                    <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center text-primary font-semibold text-xs"><User className="h-3.5 w-3.5" /></div>
-                    <div><div className="font-medium">{getEmpName(r.employeeId)}</div><div className="text-xs text-muted-foreground">{getEmpNumber(r.employeeId)}</div></div>
-                  </div>
-                </td>
-                <td className="p-3 font-mono">{r.date}</td>
-                <td className="p-3"><div className="flex items-center gap-1"><Clock className="h-3.5 w-3.5 text-green-600" />{r.clockIn || '-'}</div></td>
-                <td className="p-3"><div className="flex items-center gap-1"><Clock className="h-3.5 w-3.5 text-red-600" />{r.clockOut || '-'}</div></td>
-                <td className="p-3 text-center font-mono">{(r.regularHours || 0) + (r.overtimeHours || 0) + (r.nightHours || 0)}h</td>
-                <td className="p-3 text-center">
-                  <Badge variant={r.status === 'Present' ? 'default' : r.status === 'Absent' ? 'destructive' : r.status === 'Late' ? 'secondary' : 'outline'}>{r.status}</Badge>
-                </td>
-                <td className="p-3 text-muted-foreground">{r.notes || '-'}</td>
+      {/* Control & Search Toolbar with Location / Branch Filter */}
+      <div className="p-4 rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)] shadow-xs space-y-3">
+        <div className="flex flex-col lg:flex-row items-stretch lg:items-center justify-between gap-3">
+          <div className="relative flex-1 flex items-center">
+            <Search className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-[var(--color-text-muted)] pointer-events-none" />
+            <input
+              type="text"
+              value={query}
+              onChange={e => setQuery(e.target.value)}
+              placeholder="Search attendance by employee name, code, or terminal reference..."
+              className="w-full pl-11 pr-8 py-2.5 text-xs bg-[var(--color-surface-muted)] border border-[var(--color-border)] rounded-xl outline-none text-[var(--color-text-strong)] focus:border-teal-500 transition-colors"
+            />
+          </div>
+
+          <div className="flex items-center gap-2 flex-wrap">
+            <input
+              type="date"
+              value={dateFilter}
+              onChange={e => setDateFilter(e.target.value)}
+              className="px-3 py-2 text-xs bg-[var(--color-surface-muted)] border border-[var(--color-border)] rounded-xl text-[var(--color-text)] outline-none font-mono"
+            />
+
+            {/* Location / Branch Filter */}
+            <select
+              value={branchFilter}
+              onChange={e => setBranchFilter(e.target.value)}
+              className="px-3 py-2 text-xs bg-[var(--color-surface-muted)] border border-[var(--color-border)] rounded-xl text-[var(--color-text)] font-semibold outline-none"
+            >
+              <option value="All">All Facilities / Branches</option>
+              <option value="Head Office">🏢 Head Office</option>
+              <option value="Factory / Plant 1">🏭 Factory / Plant 1</option>
+              <option value="Warehouse & Logistics">📦 Warehouse</option>
+            </select>
+
+            <select
+              value={empFilter}
+              onChange={e => setEmpFilter(e.target.value)}
+              className="px-3 py-2 text-xs bg-[var(--color-surface-muted)] border border-[var(--color-border)] rounded-xl text-[var(--color-text)] outline-none"
+            >
+              <option value="All">All Employees</option>
+              {employees.map(e => <option key={e.id} value={e.id}>{e.firstName} {e.lastName} ({e.employeeNumber})</option>)}
+            </select>
+
+            <select
+              value={statusFilter}
+              onChange={e => setStatusFilter(e.target.value)}
+              className="px-3 py-2 text-xs bg-[var(--color-surface-muted)] border border-[var(--color-border)] rounded-xl text-[var(--color-text)] outline-none"
+            >
+              <option value="All">All Statuses</option>
+              <option value="Present">Present</option>
+              <option value="Late">Late</option>
+              <option value="Absent">Absent</option>
+              <option value="HalfDay">Half Day</option>
+              <option value="OnLeave">On Leave</option>
+            </select>
+          </div>
+        </div>
+      </div>
+
+      {/* Attendance Records Table */}
+      <div className="rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)] shadow-xs overflow-hidden">
+        <div className="overflow-x-auto">
+          <table className="w-full text-left text-xs border-collapse">
+            <thead>
+              <tr className="bg-[var(--color-surface-muted)] border-b border-[var(--color-border)] text-[var(--color-text-muted)] font-semibold uppercase tracking-wider text-[10px]">
+                <th className="p-3.5 pl-5">Employee & Code</th>
+                <th className="p-3.5">Facility / Location</th>
+                <th className="p-3.5">Date</th>
+                <th className="p-3.5">Clock In (Machine)</th>
+                <th className="p-3.5">Clock Out (Machine)</th>
+                <th className="p-3.5 text-center">Regular Hours</th>
+                <th className="p-3.5 text-center">Overtime</th>
+                <th className="p-3.5 text-center">Attendance Status</th>
+                <th className="p-3.5 pr-5">Device / Verification Source</th>
               </tr>
-            ))}
-            {filtered.length === 0 && <tr><td colSpan={7} className="p-8 text-center text-muted-foreground">No attendance records found</td></tr>}
-          </tbody>
-        </table>
-      </Card>
+            </thead>
+            <tbody className="divide-y divide-[var(--color-border)]">
+              {filtered.map(r => {
+                const branch = getEmpBranch(r.employeeId);
+                return (
+                  <tr key={r.id} className="hover:bg-[var(--color-surface-muted)]/50 transition-colors">
+                    <td className="p-3.5 pl-5">
+                      <div className="font-bold text-[var(--color-text-strong)]">{getEmpName(r.employeeId)}</div>
+                      <div className="font-mono text-[10.5px] text-[var(--color-text-muted)]">{getEmpNumber(r.employeeId)}</div>
+                    </td>
+
+                    <td className="p-3.5">
+                      <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-md text-[10.5px] font-semibold bg-indigo-50 dark:bg-indigo-950/40 text-indigo-700 dark:text-indigo-300 border border-indigo-200">
+                        {branch.includes('Factory') ? <Factory className="w-3 h-3" /> : <Building2 className="w-3 h-3" />}
+                        {branch}
+                      </span>
+                    </td>
+
+                    <td className="p-3.5 font-mono text-[11px] text-[var(--color-text-strong)]">{r.date}</td>
+
+                    <td className="p-3.5">
+                      <div className="flex items-center gap-1.5 font-mono font-semibold text-emerald-600">
+                        <Clock className="w-3.5 h-3.5" />
+                        <span>{r.clockIn || '—'}</span>
+                      </div>
+                    </td>
+
+                    <td className="p-3.5">
+                      <div className="flex items-center gap-1.5 font-mono font-semibold text-rose-600">
+                        <Clock className="w-3.5 h-3.5" />
+                        <span>{r.clockOut || '—'}</span>
+                      </div>
+                    </td>
+
+                    <td className="p-3.5 text-center font-mono font-bold">{r.regularHours || 8}h</td>
+
+                    <td className="p-3.5 text-center font-mono font-bold text-purple-600">
+                      {r.overtimeHours && r.overtimeHours > 0 ? `+${r.overtimeHours}h OT` : '—'}
+                    </td>
+
+                    <td className="p-3.5 text-center">
+                      <span className={`px-2.5 py-1 rounded-full text-[10px] font-bold border ${
+                        r.status === 'Present' ? 'bg-emerald-50 text-emerald-700 border-emerald-200' :
+                        r.status === 'Late' ? 'bg-amber-50 text-amber-700 border-amber-200' :
+                        r.status === 'Absent' ? 'bg-rose-50 text-rose-700 border-rose-200' :
+                        'bg-slate-100 text-slate-700 border-slate-200'
+                      }`}>
+                        {r.status}
+                      </span>
+                    </td>
+
+                    <td className="p-3.5 pr-5 text-[11px] text-[var(--color-text-muted)] font-mono">
+                      {r.notes || 'Biometric Cloud Terminal'}
+                    </td>
+                  </tr>
+                );
+              })}
+              {filtered.length === 0 && (
+                <tr>
+                  <td colSpan={9} className="p-8 text-center text-xs text-[var(--color-text-muted)]">
+                    No attendance punch records found for this date and location filter.
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      {/* MODAL: 1-CLICK BIOMETRIC LOG FILE / DATA IMPORT WITH FACILITY SELECTION */}
+      {importModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs">
+          <div className="w-full max-w-xl bg-[var(--color-surface)] border border-[var(--color-border)] rounded-2xl shadow-2xl overflow-hidden animate-in fade-in">
+            <div className="flex items-center justify-between p-4 border-b border-[var(--color-border)] bg-[var(--color-surface-muted)]">
+              <div className="flex items-center gap-2">
+                <div className="p-2 rounded-xl bg-teal-500/10 text-teal-600">
+                  <Upload className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="font-bold text-sm text-[var(--color-text-strong)]">Import Biometric Machine Punch Logs</h3>
+                  <p className="text-[11px] text-[var(--color-text-muted)]">Select the terminal location and upload punch records</p>
+                </div>
+              </div>
+              <button onClick={() => setImportModalOpen(false)} className="p-1.5 rounded-xl text-[var(--color-text-muted)] hover:bg-[var(--color-surface)]">
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <div className="p-5 space-y-4 text-xs">
+              <div className="space-y-1">
+                <label className="font-semibold text-[var(--color-text-strong)]">Which Facility did these logs come from? *</label>
+                <select
+                  value={importBranch}
+                  onChange={e => setImportBranch(e.target.value)}
+                  className="w-full px-3 py-2 bg-[var(--color-surface-muted)] border border-[var(--color-border)] rounded-xl outline-none text-[var(--color-text)] font-semibold"
+                >
+                  <option value="Head Office">🏢 Head Office Terminal (Applies 5-Day Corporate Policy)</option>
+                  <option value="Factory / Plant 1">🏭 Factory Plant 1 Terminal (Applies 6-Day Manufacturing Policy)</option>
+                  <option value="Warehouse & Logistics">📦 Warehouse Terminal</option>
+                </select>
+              </div>
+
+              <div className="space-y-1">
+                <label className="font-semibold text-[var(--color-text-strong)]">
+                  Paste Biometric Log Data (Format: EmployeeCode, Date, ClockIn, ClockOut)
+                </label>
+                <textarea
+                  rows={5}
+                  value={rawImportText}
+                  onChange={e => setRawImportText(e.target.value)}
+                  placeholder={`EMP-1001, 2026-08-23, 08:52, 17:15\nEMP-1002, 2026-08-23, 09:25, 17:00\nEMP-1003, 2026-08-23, 08:45, 18:30`}
+                  className="w-full p-3 font-mono text-[11px] bg-[var(--color-surface-muted)] border border-[var(--color-border)] rounded-xl outline-none text-[var(--color-text)]"
+                />
+                <p className="text-[10.5px] text-[var(--color-text-muted)]">
+                  Accepts CSV, Tab-delimited ZKTeco `.dat` logs, or text exports from biometric terminals.
+                </p>
+              </div>
+
+              {importResults && (
+                <div className="p-3 bg-emerald-50 dark:bg-emerald-950/40 text-emerald-800 rounded-xl border border-emerald-200 text-xs flex items-center justify-between">
+                  <span>✓ Successfully processed <strong>{importResults.success}</strong> attendance punch records for <strong>{importBranch}</strong>.</span>
+                  {importResults.failed > 0 && <span className="text-amber-700">({importResults.failed} unmatched lines)</span>}
+                </div>
+              )}
+
+              <div className="flex items-center justify-end gap-2 pt-2 border-t border-[var(--color-border)]">
+                <button
+                  type="button"
+                  onClick={() => setImportModalOpen(false)}
+                  className="px-4 py-2 border border-[var(--color-border)] rounded-xl text-xs font-semibold"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  onClick={handleProcessBiometricLog}
+                  disabled={saving || !rawImportText.trim()}
+                  className="px-5 py-2 bg-teal-600 hover:bg-teal-700 text-white rounded-xl text-xs font-bold transition-all disabled:opacity-50 flex items-center gap-1.5"
+                >
+                  <Upload className="w-4 h-4" /> {saving ? 'Processing...' : `Import & Apply ${importBranch} Rules`}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

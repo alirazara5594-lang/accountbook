@@ -37,6 +37,8 @@ import { ExpenseClaimsView } from './ExpenseClaimsView';
 import { PurchaseReportsView } from './PurchaseReportsView';
 import EmployeeDirectory from './EmployeeDirectory';
 import AttendanceTracker from './AttendanceTracker';
+import AttendancePoliciesView from './AttendancePoliciesView';
+import BiometricDevicesView from './BiometricDevicesView';
 import LeaveManagement from './LeaveManagement';
 import PayrollProcessing from './PayrollProcessing';
 import SalarySlipsView from './SalarySlipsView';
@@ -357,6 +359,9 @@ export default function App() {
     'Payroll & HR.Salary': 'payroll-salary',
     'Payroll & HR.Loans & Advances': 'payroll-loans',
     'Payroll & HR.HR Reports': 'payroll-reports',
+    'Payroll & HR.Attendance Policy': 'payroll-attendance-policies',
+    'Payroll & HR.Attendance Policies': 'payroll-attendance-policies',
+    'Payroll & HR.Biometric Configuration': 'payroll-biometric-config',
     'Survey & Field Operations.Summary': 'field-summary',
     'Survey & Field Operations.Surveys': 'field-surveys',
     'Survey & Field Operations.Field Visits': 'field-visits',
@@ -398,6 +403,7 @@ export default function App() {
     'Administration.Branches': 'admin-branches',
     'Administration.Approval Workflows': 'admin-approvals',
     'Administration.System Settings': 'settings',
+    'Administration.Biometric Configuration': 'admin-biometric-config',
     'Administration.Chart of Accounts Mapping': 'coa-mapping',
     'Administration.Number Series': 'admin-number-series',
     'Administration.Currency': 'admin-currency',
@@ -556,11 +562,13 @@ export default function App() {
   {activeView === 'purchase-reports' && <PurchaseReportsView activeEntityId={activeEntityId} entities={entities as any} />}
   {activeView === 'payroll-employees' && <EmployeeDirectory />}
   {activeView === 'payroll-attendance' && <AttendanceTracker />}
+  {activeView === 'payroll-attendance-policies' && <AttendancePoliciesView />}
   {activeView === 'payroll-leave' && <LeaveManagement />}
   {activeView === 'payroll-processing' && <PayrollProcessing />}
   {activeView === 'payroll-salary' && <SalarySlipsView />}
   {activeView === 'payroll-loans' && <LoansAdvancesView />}
   {activeView === 'payroll-reports' && <HRReportsView />}
+  {activeView === 'payroll-biometric-config' && <BiometricDevicesView />}
   {activeView === 'projects-summary' && <ProjectsSummaryView />}
   {activeView === 'projects-list' && <ProjectsListView activeEntityId={activeEntityId} />}
   {activeView === 'projects-planning' && <ProjectPlanningView activeEntityId={activeEntityId} />}
@@ -600,6 +608,7 @@ export default function App() {
   {activeView === 'admin-companies' && <CompaniesView activeEntityId={activeEntityId} setPage={setPage} notify={notify} />}
   {activeView === 'admin-branches' && <BranchesView activeEntityId={activeEntityId} notify={notify} />}
   {activeView === 'admin-approvals' && <ApprovalWorkflowsView activeEntityId={activeEntityId} notify={notify} />}
+  {activeView === 'admin-biometric-config' && <BiometricDevicesView />}
   {activeView === 'admin-number-series' && <NumberSeriesView activeEntityId={activeEntityId} notify={notify} />}
   {activeView === 'admin-currency' && <CurrencyView activeEntityId={activeEntityId} notify={notify} />}
   {activeView === 'admin-audit' && <AuditLogsView activeEntityId={activeEntityId} entities={entities as any} notify={notify} />}
