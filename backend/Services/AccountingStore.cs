@@ -625,6 +625,39 @@ public IReadOnlyList<EmployeeCompensation> EmployeeCompensations => _employeeCom
         }
     }
 
+    public bool UpdateCashBankAccount(Guid id, CashBankAccountRequest request, bool bankOnly, out Account? account, out string? error)
+    {
+        lock (_lock)
+        {
+            account = null; error = null;
+            var a = Find(id);
+            if (a == null) { error = "Account not found."; return false; }
+            if (string.IsNullOrWhiteSpace(request.Name)) { error = "Account name is required."; return false; }
+
+            var code = request.Code?.Trim();
+            if (!string.IsNullOrWhiteSpace(code) && code != a.Code)
+            {
+                if (code.Length != 5 || !code.All(char.IsDigit)) { error = "Account code must contain exactly 5 numeric digits."; return false; }
+                if (_accounts.Any(x => x.Id != id && x.Code.Equals(code, StringComparison.OrdinalIgnoreCase))) { error = $"Account code '{code}' already exists."; return false; }
+                a.Code = code;
+            }
+
+            a.Name = request.Name.Trim();
+            a.Currency = string.IsNullOrWhiteSpace(request.Currency) ? a.Currency : request.Currency;
+            a.OpeningBalance = request.OpeningBalance;
+            a.ReconciliationEnabled = request.ReconciliationEnabled;
+            if (!string.IsNullOrWhiteSpace(request.BankName))
+                a.CustomFields["BankName"] = request.BankName;
+            a.UpdatedAt = DateTime.UtcNow;
+            if (!_history.ContainsKey(id)) _history[id] = [];
+            _history[id].Add(new(DateTime.UtcNow, "Updated", "Bank/Cash account details changed"));
+            RecalculateHierarchy();
+            Persist();
+            account = a;
+            return true;
+        }
+    }
+
     public bool CreateVendorPayment(VendorPaymentRequest request, out VendorPayment? payment, out string? error)
     {
         lock (_lock)

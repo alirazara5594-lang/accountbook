@@ -1,27 +1,26 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { Card, CardContent } from '@/components/ui/card';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Building2, Search, Plus, CheckCircle2, AlertCircle, Edit3, FileText, Globe } from 'lucide-react';
-import { DataToolbar } from '@/components/ui/data-toolbar';
+import {
+  Building2, Search, Plus, CheckCircle2,
+  FileSpreadsheet, Download, Printer, RefreshCw,
+  Landmark, CreditCard, DollarSign, X, Edit3
+} from 'lucide-react';
 import type { Entity } from './EntitySettings';
 import { apiClient } from './api/client';
+import { money } from './lib/currency';
+import { downloadExcel, downloadCSV } from './lib/exportUtils';
+import jsPDF from 'jspdf';
+import autoTable from 'jspdf-autotable';
 
 export interface BankAccountRecord {
   id: string;
   code: string;
   name: string;
   bankName: string;
-  branchName: string;
-  accountNumber: string;
-  iban: string;
-  swift: string;
   currency: string;
   balance: number;
+  openingBalance: number;
   status: 'Active' | 'Inactive';
-  reconciledStatus: 'Reconciled' | 'Pending Sync' | 'Needs Attention';
-  connectionType: 'Live Feed API' | 'Manual Import';
+  reconciliationEnabled: boolean;
   updatedAt: string;
 }
 
@@ -44,7 +43,7 @@ interface BankAccountDto {
 }
 
 export const BankAccountsView: React.FC<BankAccountsViewProps> = ({ activeEntityId, entities }) => {
-  const currentEntity = entities.find(e => e.id === activeEntityId);
+  const currentEntity = entities.find((e) => e.id === activeEntityId) || entities[0];
   const [bankAccounts, setBankAccounts] = useState<BankAccountRecord[]>([]);
   const [query, setQuery] = useState('');
   const [selectedCurrency, setSelectedCurrency] = useState('All');
@@ -55,45 +54,38 @@ export const BankAccountsView: React.FC<BankAccountsViewProps> = ({ activeEntity
   // Modal State
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingAccount, setEditingAccount] = useState<BankAccountRecord | null>(null);
+  const [saving, setSaving] = useState(false);
 
   const [form, setForm] = useState({
-    code: '11105',
+    code: '11205',
     name: '',
     bankName: '',
-    branchName: '',
-    accountNumber: '',
-    iban: '',
-    swift: '',
-    currency: 'PKR',
+    currency: currentEntity?.currencyCode || 'PKR',
     openingBalance: '0',
+    reconciliationEnabled: true,
     status: 'Active' as 'Active' | 'Inactive',
-    connectionType: 'Live Feed API' as 'Live Feed API' | 'Manual Import'
   });
-
-  const formatCurrency = (val: number, currency: string) => {
-    return new Intl.NumberFormat('en-US', { style: 'currency', currency, maximumFractionDigits: 2 }).format(val);
-  };
 
   const loadBankAccounts = async () => {
     setLoading(true);
     try {
-      const data = await apiClient<BankAccountDto[]>('/bank-accounts');
-      setBankAccounts(data.map((a) => ({
-        id: a.id,
-        code: a.code,
-        name: a.name,
-        bankName: a.bankName || a.name,
-        branchName: '',
-        accountNumber: a.code,
-        iban: '',
-        swift: '',
-        currency: a.currency,
-        balance: a.balance,
-        status: a.status as 'Active' | 'Inactive',
-        reconciledStatus: a.reconciliationEnabled ? 'Reconciled' : 'Pending Sync',
-        connectionType: 'Manual Import',
-        updatedAt: a.updatedAt,
-      })));
+      const data = await apiClient<BankAccountDto[]>('/bank-accounts', {
+        params: { companyId: activeEntityId },
+      });
+      setBankAccounts(
+        data.map((a) => ({
+          id: a.id,
+          code: a.code,
+          name: a.name,
+          bankName: a.bankName || a.name,
+          currency: a.currency || currentEntity?.currencyCode || 'PKR',
+          balance: a.balance || 0,
+          openingBalance: a.openingBalance || 0,
+          status: (a.status === 'Active' ? 'Active' : 'Inactive') as 'Active' | 'Inactive',
+          reconciliationEnabled: a.reconciliationEnabled ?? true,
+          updatedAt: a.updatedAt || new Date().toISOString(),
+        }))
+      );
       setError('');
     } catch (e: any) {
       setError(e?.message || 'Failed to load bank accounts.');
@@ -102,481 +94,668 @@ export const BankAccountsView: React.FC<BankAccountsViewProps> = ({ activeEntity
     }
   };
 
-  useEffect(() => { loadBankAccounts(); }, [activeEntityId]);
+  useEffect(() => {
+    loadBankAccounts();
+  }, [activeEntityId]);
 
-  // Filtered Accounts
+  const uniqueCurrencies = useMemo(() => {
+    const list = Array.from(new Set(bankAccounts.map((b) => b.currency))).filter(Boolean);
+    return ['All', ...list];
+  }, [bankAccounts]);
+
   const filtered = useMemo(() => {
-    return bankAccounts.filter(acc => {
-      if (selectedCurrency !== 'All' && acc.currency !== selectedCurrency) return false;
-      if (selectedStatus !== 'All' && acc.status !== selectedStatus) return false;
+    return bankAccounts.filter((b) => {
+      if (selectedCurrency !== 'All' && b.currency !== selectedCurrency) return false;
+      if (selectedStatus !== 'All' && b.status !== selectedStatus) return false;
+
       if (query.trim()) {
-        const lower = query.toLowerCase();
-        const matchesName = acc.name.toLowerCase().includes(lower);
-        const matchesBank = acc.bankName.toLowerCase().includes(lower);
-        const matchesNum = acc.accountNumber.toLowerCase().includes(lower);
-        const matchesCode = acc.code.toLowerCase().includes(lower);
-        const matchesIban = acc.iban.toLowerCase().includes(lower);
-        if (!matchesName && !matchesBank && !matchesNum && !matchesCode && !matchesIban) return false;
+        const q = query.toLowerCase();
+        const matchesName = b.name.toLowerCase().includes(q);
+        const matchesBank = b.bankName.toLowerCase().includes(q);
+        const matchesCode = b.code.toLowerCase().includes(q);
+        const matchesCurr = b.currency.toLowerCase().includes(q);
+        if (!matchesName && !matchesBank && !matchesCode && !matchesCurr) return false;
       }
       return true;
     });
-  }, [bankAccounts, query, selectedCurrency, selectedStatus]);
+  }, [bankAccounts, selectedCurrency, selectedStatus, query]);
 
-  // Summaries
-  const totalPKR = useMemo(() => {
-    return bankAccounts.filter(a => a.currency === 'PKR').reduce((sum, a) => sum + a.balance, 0);
-  }, [bankAccounts]);
+  // 4 Top Financial KPIs
+  const totalBalance = filtered.reduce((s, b) => s + b.balance, 0);
+  const activeCount = filtered.filter((b) => b.status === 'Active').length;
+  const reconciledCount = filtered.filter((b) => b.reconciliationEnabled).length;
+  const avgBalance = filtered.length > 0 ? totalBalance / filtered.length : 0;
 
-  const totalUSD = useMemo(() => {
-    return bankAccounts.filter(a => a.currency === 'USD').reduce((sum, a) => sum + a.balance, 0);
-  }, [bankAccounts]);
-
-  const openCreateModal = () => {
+  const openAddModal = () => {
     setEditingAccount(null);
     setForm({
-      code: `1110${bankAccounts.length + 1}`,
+      code: `1120${bankAccounts.length + 1}`,
       name: '',
       bankName: '',
-      branchName: '',
-      accountNumber: '',
-      iban: '',
-      swift: '',
-      currency: 'PKR',
+      currency: currentEntity?.currencyCode || 'PKR',
       openingBalance: '0',
+      reconciliationEnabled: true,
       status: 'Active',
-      connectionType: 'Live Feed API'
     });
+    setError('');
     setIsModalOpen(true);
   };
 
-  const openEditModal = (acc: BankAccountRecord) => {
-    setEditingAccount(acc);
+  const openEditModal = (b: BankAccountRecord) => {
+    setEditingAccount(b);
     setForm({
-      code: acc.code,
-      name: acc.name,
-      bankName: acc.bankName,
-      branchName: acc.branchName,
-      accountNumber: acc.accountNumber,
-      iban: acc.iban,
-      swift: acc.swift,
-      currency: acc.currency,
-      openingBalance: String(acc.balance),
-      status: acc.status,
-      connectionType: acc.connectionType
+      code: b.code,
+      name: b.name,
+      bankName: b.bankName,
+      currency: b.currency,
+      openingBalance: String(b.openingBalance),
+      reconciliationEnabled: b.reconciliationEnabled,
+      status: b.status,
     });
+    setError('');
     setIsModalOpen(true);
   };
 
-  const handleSaveAccount = async (e: React.FormEvent) => {
+  const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!form.name) {
-      alert('Please fill in Account Name.');
+    if (!form.name.trim()) {
+      setError('Account name is required.');
+      return;
+    }
+    if (!form.code.trim()) {
+      setError('GL Account code is required.');
       return;
     }
 
+    setSaving(true);
+    setError('');
     try {
       if (editingAccount) {
-        alert('Editing bank accounts is handled via the Chart of Accounts. Please update the COA account directly.');
+        await apiClient(`/bank-accounts/${editingAccount.id}`, {
+          method: 'PUT',
+          body: {
+            name: form.name.trim(),
+            code: form.code.trim(),
+            currency: form.currency,
+            openingBalance: parseFloat(form.openingBalance) || 0,
+            reconciliationEnabled: form.reconciliationEnabled,
+            bankName: form.bankName.trim() || form.name.trim(),
+            companyId: activeEntityId,
+          },
+        });
       } else {
         await apiClient('/bank-accounts', {
           method: 'POST',
           body: {
-            name: form.name,
-            code: form.code,
+            name: form.name.trim(),
+            code: form.code.trim(),
             currency: form.currency,
             openingBalance: parseFloat(form.openingBalance) || 0,
-            reconciliationEnabled: true,
-            bankName: form.bankName,
-            companyId: activeEntityId || undefined,
+            reconciliationEnabled: form.reconciliationEnabled,
+            bankName: form.bankName.trim() || form.name.trim(),
+            companyId: activeEntityId,
           },
         });
       }
+
       setIsModalOpen(false);
       await loadBankAccounts();
     } catch (err: any) {
-      alert(err?.data?.error || err?.message || 'Failed to save bank account.');
+      setError(err?.data?.error || err?.message || 'Failed to save bank account.');
+    } finally {
+      setSaving(false);
     }
   };
 
-  const exportHeaders = ['GL CODE', 'BANK ACCOUNT NAME', 'BANK INSTITUTION', 'BRANCH', 'ACCOUNT NUMBER', 'IBAN', 'SWIFT', 'CURRENCY', 'BALANCE', 'STATUS'];
-  const exportRows = filtered.map(a => [
-    a.code, a.name, a.bankName, a.branchName, a.accountNumber, a.iban, a.swift, a.currency, a.balance, a.status,
-  ]);
-  const totalBalance = filtered.reduce((s, a) => s + (a.balance || 0), 0);
+  // ─── Branded Bank Account Statement / Certificate PDF ───────────────────────
+  const generateAccountPDF = (b: BankAccountRecord) => {
+    const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
+    const pageWidth = doc.internal.pageSize.getWidth();
+    const margin = 14;
+    const contentWidth = pageWidth - margin * 2;
+
+    const primaryColor: [number, number, number] = [15, 76, 129];
+    const darkColor: [number, number, number] = [15, 23, 42];
+    const grayColor: [number, number, number] = [100, 116, 139];
+    const lightBg: [number, number, number] = [248, 250, 252];
+    const borderGray: [number, number, number] = [226, 232, 240];
+
+    // Header
+    doc.setFillColor(...primaryColor);
+    doc.rect(0, 0, pageWidth, 28, 'F');
+
+    doc.setTextColor(255, 255, 255);
+    doc.setFontSize(16);
+    doc.setFont('helvetica', 'bold');
+    doc.text('BANK ACCOUNT PROFILE & CERTIFICATE', margin, 14);
+
+    doc.setFontSize(8.5);
+    doc.setFont('helvetica', 'normal');
+    doc.text(`Account Code: ${b.code}`, margin, 21);
+    doc.text(`Generated: ${new Date().toISOString().slice(0, 10)}`, pageWidth - margin, 14, { align: 'right' });
+    doc.text(`Entity: ${currentEntity?.name || 'Company ERP'}`, pageWidth - margin, 21, { align: 'right' });
+
+    // Details Grid
+    const boxY = 34;
+    const boxH = 36;
+    const colW = (contentWidth - 6) / 2;
+
+    // Company Box
+    doc.setFillColor(...lightBg);
+    doc.setDrawColor(...borderGray);
+    doc.roundedRect(margin, boxY, colW, boxH, 2, 2, 'FD');
+
+    doc.setTextColor(...primaryColor);
+    doc.setFontSize(9);
+    doc.setFont('helvetica', 'bold');
+    doc.text(currentEntity?.name || 'Company ERP', margin + 4, boxY + 7);
+
+    doc.setTextColor(...darkColor);
+    doc.setFontSize(7.5);
+    doc.setFont('helvetica', 'normal');
+    const compAny = currentEntity as any;
+    let compY = boxY + 13;
+    if (compAny?.taxId || compAny?.ntn) {
+      doc.text(`Tax ID / NTN: ${compAny.taxId || compAny.ntn}`, margin + 4, compY);
+      compY += 4.5;
+    }
+    if (compAny?.country || compAny?.legalName) {
+      doc.text(`${compAny.legalName || ''} • ${compAny.country || ''}`.trim(), margin + 4, compY);
+      compY += 4.5;
+    }
+    doc.text(`Base Currency: ${currentEntity?.currencyCode || 'PKR'}`, margin + 4, compY);
+
+    // Bank Account Details Box
+    const bankX = margin + colW + 6;
+    doc.setFillColor(...lightBg);
+    doc.roundedRect(bankX, boxY, colW, boxH, 2, 2, 'FD');
+
+    doc.setTextColor(...primaryColor);
+    doc.setFontSize(8.5);
+    doc.setFont('helvetica', 'bold');
+    doc.text('INSTITUTIONAL ACCOUNT DETAILS', bankX + 4, boxY + 7);
+
+    doc.setTextColor(...darkColor);
+    doc.setFontSize(9.5);
+    doc.text(b.name, bankX + 4, boxY + 14);
+
+    doc.setFontSize(7.5);
+    doc.setFont('helvetica', 'normal');
+    doc.text(`Bank Name: ${b.bankName}`, bankX + 4, boxY + 20);
+    doc.text(`Account Currency: ${b.currency}`, bankX + 4, boxY + 25);
+    doc.text(`Status: ${b.status} • Reconciliation: ${b.reconciliationEnabled ? 'Active' : 'Disabled'}`, bankX + 4, boxY + 30);
+
+    // Balance Banner
+    const bannerY = boxY + boxH + 6;
+    doc.setFillColor(238, 242, 255);
+    doc.setDrawColor(199, 210, 254);
+    doc.roundedRect(margin, bannerY, contentWidth, 18, 2, 2, 'FD');
+
+    doc.setTextColor(30, 58, 138);
+    doc.setFontSize(8);
+    doc.setFont('helvetica', 'bold');
+    doc.text('CURRENT GENERAL LEDGER BOOK BALANCE', margin + 4, bannerY + 6.5);
+
+    doc.setFontSize(14);
+    doc.text(money(b.balance, b.currency), margin + 4, bannerY + 14);
+
+    // Financial Profile Table
+    const tableStartY = bannerY + 24;
+    const tableHeaders = ['Financial Metric', 'GL Value', 'Notes'];
+    const tableRows = [
+      ['General Ledger Code', b.code, 'IAS 1 / GAAP Asset Account Classification'],
+      ['Opening Book Balance', money(b.openingBalance, b.currency), 'Initial brought forward balance'],
+      ['Current Ledger Balance', money(b.balance, b.currency), 'Live synchronized position'],
+      ['Reconciliation Status', b.reconciliationEnabled ? 'Enabled (Automated Check)' : 'Manual', 'Bank statement matching'],
+      ['Account Status', b.status, 'Operational state'],
+    ];
+
+    autoTable(doc, {
+      startY: tableStartY,
+      head: [tableHeaders],
+      body: tableRows,
+      margin: { left: margin, right: margin },
+      styles: { fontSize: 8, cellPadding: 3, textColor: darkColor },
+      headStyles: { fillColor: primaryColor, textColor: 255, fontStyle: 'bold' },
+      columnStyles: {
+        1: { fontStyle: 'bold' },
+      },
+    });
+
+    const pageHeight = doc.internal.pageSize.getHeight();
+    doc.setTextColor(...grayColor);
+    doc.setFontSize(7);
+    doc.text('Official Account Profile Verification. Generated from AccountBook Banking & Payments Module.', margin, pageHeight - 8);
+
+    const safeName = (b.name || 'Bank').replace(/[^a-zA-Z0-9_-]/g, '_');
+    doc.save(`Bank_Account_${b.code}_${safeName}.pdf`);
+  };
+
+  // ─── Excel & CSV Exports ───────────────────────────────────────────────────
+  const exportAccountsExcel = () => {
+    const headers = ['GL Code', 'Account Name', 'Bank Institution', 'Currency', 'Current Balance', 'Reconciliation', 'Status'];
+    const rows = filtered.map((b) => [
+      b.code,
+      b.name,
+      b.bankName,
+      b.currency,
+      b.balance,
+      b.reconciliationEnabled ? 'Enabled' : 'Disabled',
+      b.status,
+    ]);
+    downloadExcel(`Bank_Accounts_Register_${new Date().toISOString().slice(0, 10)}`, 'Bank Accounts', headers, rows);
+  };
+
+  const exportAccountsCSV = () => {
+    const headers = ['GL Code', 'Account Name', 'Bank Institution', 'Currency', 'Current Balance', 'Reconciliation', 'Status'];
+    const rows = filtered.map((b) => [
+      b.code,
+      b.name,
+      b.bankName,
+      b.currency,
+      b.balance,
+      b.reconciliationEnabled ? 'Enabled' : 'Disabled',
+      b.status,
+    ]);
+    downloadCSV(`Bank_Accounts_${new Date().toISOString().slice(0, 10)}.csv`, headers, rows);
+  };
 
   return (
-    <div className="space-y-6">
-      {/* Top Header & Context */}
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-3 bg-[var(--color-surface)] p-3.5 rounded-xl border border-[var(--color-border)] shadow-sm">
+    <div className="space-y-4 max-w-7xl mx-auto pb-10">
+      {/* Header Banner */}
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-3 bg-[var(--color-surface)] p-3.5 rounded-xl border border-[var(--color-border)] shadow-xs">
         <div>
           <h1 className="text-base font-bold text-[var(--color-text-strong)] tracking-tight flex items-center gap-2">
-            <span className="text-lg">🏦</span> Bank Accounts
+            <Building2 className="w-4 h-4 text-blue-600" /> Bank Accounts Management
           </h1>
-          <p className="text-xs text-[var(--color-text-muted)] mt-0.5">
-            Commercial bank account balances, IBAN & SWIFT records, and live account management for {currentEntity?.name || 'Active Entity'}.
+          <p className="text-[var(--color-text-muted)] text-xs mt-0.5">
+            Manage institutional bank accounts, currency denominations, GL mappings, and bank feeds for {currentEntity?.name || 'Active Company'}.
           </p>
         </div>
 
-        <div className="flex items-center gap-2 shrink-0">
-          <DataToolbar
-            exportFileName={`bank_accounts_summary_${new Date().toISOString().slice(0, 10)}`}
-            exportSheetName="Bank Accounts"
-            exportTitle="Bank Accounts Summary"
-            exportSubtitle={`Commercial bank account balances for ${currentEntity?.name || 'Active Entity'}.`}
-            exportHeaders={exportHeaders}
-            exportRows={exportRows}
-            exportTotals={[{ label: 'Total Balance', value: totalBalance }]}
-            onRefresh={loadBankAccounts}
-          />
-
+        {/* Global Action Buttons */}
+        <div className="flex items-center gap-2 shrink-0 flex-wrap">
           <button
-            onClick={openCreateModal}
-            className="primary h-9 px-4 rounded-xl text-xs font-semibold"
+            onClick={exportAccountsExcel}
+            className="secondary h-8.5 px-3 rounded-lg text-xs font-semibold flex items-center gap-1.5 shadow-xs"
+            title="Export bank accounts to Excel"
           >
-            ＋ Add Bank Account
+            <FileSpreadsheet className="w-3.5 h-3.5 text-emerald-600" /> Excel
+          </button>
+          <button
+            onClick={exportAccountsCSV}
+            className="secondary h-8.5 px-2.5 rounded-lg text-xs font-semibold"
+          >
+            CSV
+          </button>
+          <button
+            onClick={() => window.print()}
+            className="secondary h-8.5 px-2.5 rounded-lg text-xs font-semibold flex items-center gap-1"
+          >
+            <Printer className="w-3.5 h-3.5" /> Print
+          </button>
+          <button
+            onClick={loadBankAccounts}
+            className="secondary h-8.5 w-8.5 rounded-lg flex items-center justify-center text-xs text-[var(--color-text)]"
+            title="Refresh accounts"
+          >
+            <RefreshCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin' : ''}`} />
+          </button>
+          <button
+            onClick={openAddModal}
+            className="primary h-8.5 px-3.5 rounded-lg text-xs font-semibold flex items-center gap-1.5 shadow-xs"
+          >
+            <Plus className="w-3.5 h-3.5" /> Add Bank Account
           </button>
         </div>
       </div>
 
-      {/* KPI Cards Bar */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3">
-        <Card className="bg-white border-slate-200 shadow-xs">
-          <CardContent className="p-3 flex items-center gap-2.5">
-            <div className="p-2 bg-emerald-50 rounded-lg text-emerald-600 border border-emerald-100">
-              <Building2 className="w-4 h-4" />
-            </div>
-            <div className="min-w-0">
-              <p className="text-[10px] font-semibold uppercase tracking-wider text-slate-500">Total Commercial Bank Accounts</p>
-              <h3 className="text-base font-bold text-slate-900">{bankAccounts.length} Active Accounts</h3>
-              <p className="text-[10px] text-emerald-600 font-medium">Commercial & Corporate Banks</p>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card className="bg-white border-slate-200 shadow-xs">
-          <CardContent className="p-3 flex items-center gap-2.5">
-            <div className="p-2 bg-blue-50 rounded-lg text-blue-600 border border-blue-100">
-              <Globe className="w-4 h-4" />
-            </div>
-            <div className="min-w-0">
-              <p className="text-[10px] font-semibold uppercase tracking-wider text-slate-500">PKR Liquid Reserves</p>
-              <h3 className="text-base font-bold text-slate-900">{formatCurrency(totalPKR, 'PKR')}</h3>
-              <p className="text-[10px] text-blue-600 font-medium">HBL & Meezan Bank Accounts</p>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card className="bg-white border-slate-200 shadow-xs">
-          <CardContent className="p-3 flex items-center gap-2.5">
-            <div className="p-2 bg-indigo-50 rounded-lg text-indigo-600 border border-indigo-100">
-              <FileText className="w-4 h-4" />
-            </div>
-            <div className="min-w-0">
-              <p className="text-[10px] font-semibold uppercase tracking-wider text-slate-500">USD Foreign Reserves</p>
-              <h3 className="text-base font-bold text-slate-900">{formatCurrency(totalUSD, 'USD')}</h3>
-              <p className="text-[10px] text-indigo-600 font-medium">Standard Chartered US Trade</p>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card className="bg-white border-slate-200 shadow-xs">
-          <CardContent className="p-3 flex items-center gap-2.5">
-            <div className="p-2 bg-amber-50 rounded-lg text-amber-600 border border-amber-100">
-              <CheckCircle2 className="w-4 h-4" />
-            </div>
-            <div className="min-w-0">
-              <p className="text-[10px] font-semibold uppercase tracking-wider text-slate-500">Statement Reconciled Status</p>
-              <h3 className="text-base font-bold text-slate-900">{bankAccounts.filter(a => a.reconciledStatus === 'Reconciled').length} of {bankAccounts.length} Reconciled</h3>
-              <p className="text-[10px] text-amber-600 font-medium">{bankAccounts.length - bankAccounts.filter(a => a.reconciledStatus === 'Reconciled').length} Account Pending Sync</p>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-
-      {loading && <p className="text-xs text-slate-500">Loading bank accounts…</p>}
-      {error && <p className="text-xs text-rose-600">{error}</p>}
-
-      {/* Control Filter Bar matching COA layout */}
-      <div className="flex flex-col md:flex-row items-center justify-between gap-3 p-3 bg-slate-50 border border-slate-200/80 rounded-xl shadow-xs">
-        <div className="flex items-center gap-3 w-full md:w-auto">
-          {/* Search Box */}
-          <div className="relative w-72">
-            <Search className="absolute left-3 top-2.5 h-4 w-4 text-slate-400" />
-            <Input
-              placeholder="Search by Bank Name, IBAN, Code..."
-              value={query}
-              onChange={e => setQuery(e.target.value)}
-              className="pl-9 h-9 bg-white border border-slate-200 rounded-lg text-xs"
-            />
+      {/* 4 Financial Metric Cards - 4 in 1 Row */}
+      <section className="stats" style={{ gridTemplateColumns: 'repeat(4, minmax(0, 1fr))' }}>
+        <article>
+          <span className="stat-icon blue"><Landmark className="w-4 h-4" /></span>
+          <div>
+            <small>TOTAL BANK LIQUIDITY</small>
+            <h2 className="text-blue-600 dark:text-blue-400">{money(totalBalance, currentEntity?.currencyCode)}</h2>
+            <p>Across {filtered.length} bank accounts</p>
           </div>
+        </article>
+        <article>
+          <span className="stat-icon teal"><CheckCircle2 className="w-4 h-4 text-emerald-600" /></span>
+          <div>
+            <small>ACTIVE ACCOUNTS</small>
+            <h2 className="text-emerald-600 dark:text-emerald-400">{activeCount}</h2>
+            <p>Operational institutional accounts</p>
+          </div>
+        </article>
+        <article>
+          <span className="stat-icon violet"><CreditCard className="w-4 h-4 text-violet-500" /></span>
+          <div>
+            <small>RECONCILIATION READY</small>
+            <h2 className="text-violet-600 dark:text-violet-400">{reconciledCount}</h2>
+            <p>Statement matching enabled</p>
+          </div>
+        </article>
+        <article>
+          <span className="stat-icon blue"><DollarSign className="w-4 h-4" /></span>
+          <div>
+            <small>AVERAGE BALANCE</small>
+            <h2>{money(avgBalance, currentEntity?.currencyCode)}</h2>
+            <p>Per account average</p>
+          </div>
+        </article>
+      </section>
 
-          {/* Currency Filter Dropdown */}
-          <select
-            value={selectedCurrency}
-            onChange={e => setSelectedCurrency(e.target.value)}
-            className="h-9 px-3 bg-white border border-slate-200 rounded-lg text-xs font-medium text-slate-700 outline-none cursor-pointer"
-          >
-            <option value="All">All Currencies</option>
-            <option value="PKR">PKR (Pakistani Rupee)</option>
-            <option value="USD">USD (US Dollar)</option>
-            <option value="EUR">EUR (Euro)</option>
-            <option value="GBP">GBP (British Pound)</option>
-            <option value="AED">AED (UAE Dirham)</option>
-            <option value="SAR">SAR (Saudi Riyal)</option>
-          </select>
-
-          {/* Status Filter Dropdown */}
+      {/* Filter Toolbar & Non-Overlapping Search Box */}
+      <div className="flex flex-wrap items-center justify-between gap-3 bg-[var(--color-surface)] p-3 rounded-xl border border-[var(--color-border)] shadow-xs">
+        {/* Filters */}
+        <div className="flex items-center gap-2 flex-wrap">
+          {/* Status Filter */}
           <select
             value={selectedStatus}
-            onChange={e => setSelectedStatus(e.target.value)}
-            className="h-9 px-3 bg-white border border-slate-200 rounded-lg text-xs font-medium text-slate-700 outline-none cursor-pointer"
+            onChange={(e) => setSelectedStatus(e.target.value)}
+            className="h-8 px-2.5 rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] text-xs text-[var(--color-text)] outline-none focus:border-blue-500 transition-colors"
           >
-            <option value="All">All Statuses</option>
-            <option value="Active">Active</option>
-            <option value="Inactive">Inactive</option>
+            <option value="All">📋 All Statuses</option>
+            <option value="Active">Active Only</option>
+            <option value="Inactive">Inactive Only</option>
           </select>
+
+          {/* Currency Filter */}
+          {uniqueCurrencies.length > 1 && (
+            <select
+              value={selectedCurrency}
+              onChange={(e) => setSelectedCurrency(e.target.value)}
+              className="h-8 px-2.5 rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] text-xs text-[var(--color-text)] outline-none focus:border-blue-500 transition-colors"
+            >
+              {uniqueCurrencies.map((c) => (
+                <option key={c} value={c}>{c === 'All' ? '🌐 All Currencies' : `Currency: ${c}`}</option>
+              ))}
+            </select>
+          )}
         </div>
 
-        <div className="text-xs font-medium text-slate-500">
-          Showing <span className="font-bold text-slate-800">{filtered.length}</span> bank accounts
+        {/* Robust Search Box - Guaranteed Zero Text/Icon Overlap */}
+        <div className="flex items-center h-8 w-60 px-2.5 bg-[var(--color-surface)] border border-[var(--color-border)] rounded-lg text-xs focus-within:border-blue-500 focus-within:ring-1 focus-within:ring-blue-200 transition-all shadow-2xs">
+          <Search className="w-3.5 h-3.5 text-gray-400 mr-2 shrink-0 pointer-events-none" />
+          <input
+            type="text"
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            placeholder="Search bank name, GL code..."
+            style={{
+              border: 'none',
+              outline: 'none',
+              background: 'transparent',
+              padding: '0 !important',
+              width: '100%',
+              fontSize: '12px',
+              color: 'var(--color-text)',
+              boxShadow: 'none',
+            }}
+            className="!p-0 !border-0 !outline-none !bg-transparent w-full text-xs text-[var(--color-text)]"
+          />
+          {query && (
+            <button
+              type="button"
+              onClick={() => setQuery('')}
+              className="text-gray-400 hover:text-gray-600 text-sm px-1 leading-none font-bold"
+            >
+              ×
+            </button>
+          )}
         </div>
       </div>
 
-      {/* Main Bank Accounts Summary Table */}
-      <div className="bg-white border border-slate-200 rounded-xl overflow-hidden shadow-xs">
-        <Table>
-          <TableHeader className="bg-slate-50 border-b border-slate-200">
-            <TableRow>
-              <TableHead className="w-28 text-[11px] font-bold text-slate-500 uppercase tracking-wider pl-4">GL CODE</TableHead>
-              <TableHead className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">BANK ACCOUNT NAME</TableHead>
-              <TableHead className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">INSTITUTION & BRANCH</TableHead>
-              <TableHead className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">ACCOUNT NUMBER / IBAN</TableHead>
-              <TableHead className="w-28 text-[11px] font-bold text-slate-500 uppercase tracking-wider">SWIFT / BIC</TableHead>
-              <TableHead className="w-24 text-[11px] font-bold text-slate-500 uppercase tracking-wider">CURRENCY</TableHead>
-              <TableHead className="w-40 text-right text-[11px] font-bold text-slate-500 uppercase tracking-wider">BOOK BALANCE</TableHead>
-              <TableHead className="w-32 text-[11px] font-bold text-slate-500 uppercase tracking-wider">RECONCILED</TableHead>
-              <TableHead className="w-36 text-right text-[11px] font-bold text-slate-500 uppercase tracking-wider pr-4">ACTIONS</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody className="divide-y divide-slate-100">
-            {filtered.map(acc => (
-              <TableRow key={acc.id} className="hover:bg-slate-50/80 transition-colors">
-                <TableCell className="py-3.5 pl-4 font-mono text-xs font-semibold text-slate-600">
-                  {acc.code}
-                </TableCell>
-                <TableCell className="py-3.5 font-bold text-xs text-slate-800">
-                  {acc.name}
-                </TableCell>
-                <TableCell className="py-3.5 text-xs text-slate-600">
-                  <div className="font-medium text-slate-800">{acc.bankName}</div>
-                  <div className="text-[11px] text-slate-400">{acc.branchName}</div>
-                </TableCell>
-                <TableCell className="py-3.5 font-mono text-xs text-slate-600">
-                  <div>{acc.accountNumber}</div>
-                  {acc.iban && <div className="text-[10px] text-slate-400">{acc.iban}</div>}
-                </TableCell>
-                <TableCell className="py-3.5 font-mono text-xs font-semibold text-slate-600">
-                  {acc.swift}
-                </TableCell>
-                <TableCell className="py-3.5 font-mono text-xs font-bold text-slate-700">
-                  {acc.currency}
-                </TableCell>
-                <TableCell className="py-3.5 text-right font-mono text-xs font-bold text-slate-900">
-                  {formatCurrency(acc.balance, acc.currency)}
-                </TableCell>
-                <TableCell className="py-3.5">
-                  {acc.reconciledStatus === 'Reconciled' ? (
-                    <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-medium bg-emerald-100/80 text-emerald-800 border border-emerald-200/60">
-                      <CheckCircle2 className="w-3 h-3 text-emerald-600" /> Reconciled
-                    </span>
-                  ) : (
-                    <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-medium bg-amber-100/80 text-amber-800 border border-amber-200/60">
-                      <AlertCircle className="w-3 h-3 text-amber-600" /> Pending Sync
-                    </span>
-                  )}
-                </TableCell>
-                <TableCell className="py-3.5 text-right pr-4">
-                  <div className="flex items-center justify-end gap-1.5">
-                    <button
-                      onClick={() => openEditModal(acc)}
-                      className="p-1 text-slate-400 hover:text-slate-700 rounded-md hover:bg-slate-100 transition-colors"
-                      title="Edit Bank Account"
-                    >
-                      <Edit3 className="w-3.5 h-3.5" />
-                    </button>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => alert(`Opening ledger for ${acc.name}...`)}
-                      className="h-7 text-[11px] font-medium text-slate-700 px-2 bg-white border-slate-200 hover:bg-slate-50"
-                    >
-                      Ledger
-                    </Button>
-                  </div>
-                </TableCell>
-              </TableRow>
-            ))}
+      {/* Bank Accounts Table */}
+      <div className="bg-[var(--color-surface)] border border-[var(--color-border)] rounded-xl shadow-xs overflow-hidden">
+        <div className="p-3 border-b border-[var(--color-border)] flex justify-between items-center bg-gray-50/50 dark:bg-gray-900/50">
+          <span className="text-xs font-bold text-[var(--color-text-strong)] flex items-center gap-2">
+            <Landmark className="w-3.5 h-3.5 text-blue-600" /> Bank Accounts Directory ({filtered.length})
+          </span>
+          <span className="text-[11px] text-[var(--color-text-muted)]">
+            Click <strong>Certificate PDF</strong> to download an official account balance certificate.
+          </span>
+        </div>
 
-            {filtered.length === 0 && (
-              <TableRow>
-                <TableCell colSpan={9} className="py-16 text-center text-slate-400">
-                  <div className="max-w-xs mx-auto space-y-2">
-                    <p className="text-sm font-medium text-slate-600">No bank accounts found</p>
-                    <p className="text-xs text-slate-400">Click "+ Add Bank Account" to create your first bank account record.</p>
-                    <Button
-                      size="sm"
-                      onClick={openCreateModal}
-                      className="mt-2 h-8 text-xs bg-[#143e2b] text-white hover:bg-[#0f3222]"
-                    >
-                      <Plus className="w-3.5 h-3.5 mr-1" /> Add Bank Account
-                    </Button>
-                  </div>
-                </TableCell>
-              </TableRow>
+        <div className="overflow-x-auto">
+          <table className="w-full text-left text-xs">
+            <thead className="bg-gray-50 dark:bg-gray-900/80 text-[var(--color-text-muted)] border-b border-[var(--color-border)] text-[10px] uppercase font-bold tracking-wider">
+              <tr>
+                <th className="py-2.5 px-3.5">GL Code</th>
+                <th className="py-2.5 px-3">Account Name</th>
+                <th className="py-2.5 px-3">Bank Institution</th>
+                <th className="py-2.5 px-3 text-center">Currency</th>
+                <th className="py-2.5 px-3 text-right">Book Balance</th>
+                <th className="py-2.5 px-3 text-center">Reconciliation</th>
+                <th className="py-2.5 px-3 text-center">Status</th>
+                <th className="py-2.5 px-3.5 text-right">Certificate</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-[var(--color-border)]">
+              {loading ? (
+                <tr>
+                  <td colSpan={8} className="py-12 text-center text-[var(--color-text-muted)]">
+                    <div className="flex flex-col items-center gap-2">
+                      <RefreshCw className="w-6 h-6 animate-spin text-blue-600" />
+                      <p className="font-semibold text-xs">Loading bank accounts...</p>
+                    </div>
+                  </td>
+                </tr>
+              ) : filtered.length === 0 ? (
+                <tr>
+                  <td colSpan={8} className="py-12 text-center text-[var(--color-text-muted)]">
+                    <div className="flex flex-col items-center gap-2">
+                      <CheckCircle2 className="w-8 h-8 text-gray-400" />
+                      <p className="font-semibold text-xs">No bank accounts match your search.</p>
+                    </div>
+                  </td>
+                </tr>
+              ) : (
+                filtered.map((b) => (
+                  <tr key={b.id} className="hover:bg-gray-50/50 dark:hover:bg-gray-900/30 transition-colors">
+                    <td className="py-2.5 px-3.5 font-mono font-bold text-blue-600 dark:text-blue-400">
+                      {b.code}
+                    </td>
+                    <td className="py-2.5 px-3 font-semibold text-[var(--color-text-strong)]">
+                      {b.name}
+                    </td>
+                    <td className="py-2.5 px-3 text-[var(--color-text)]">
+                      {b.bankName}
+                    </td>
+                    <td className="py-2.5 px-3 text-center font-mono">
+                      <span className="px-2 py-0.5 bg-gray-100 dark:bg-gray-800 rounded font-semibold text-[10px]">
+                        {b.currency}
+                      </span>
+                    </td>
+                    <td className="py-2.5 px-3 text-right font-mono font-extrabold text-blue-600 dark:text-blue-400 text-sm">
+                      {money(b.balance, b.currency)}
+                    </td>
+                    <td className="py-2.5 px-3 text-center">
+                      <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
+                        b.reconciliationEnabled
+                          ? 'bg-emerald-50 dark:bg-emerald-900/30 text-emerald-700 border border-emerald-200'
+                          : 'bg-gray-100 text-gray-500'
+                      }`}>
+                        {b.reconciliationEnabled ? 'Automated' : 'Manual'}
+                      </span>
+                    </td>
+                    <td className="py-2.5 px-3 text-center">
+                      <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
+                        b.status === 'Active'
+                          ? 'bg-emerald-50 dark:bg-emerald-900/30 text-emerald-700 border border-emerald-200'
+                          : 'bg-rose-50 dark:bg-rose-900/30 text-rose-700 border border-rose-200'
+                      }`}>
+                        {b.status}
+                      </span>
+                    </td>
+                    <td className="py-2.5 px-3.5 text-right whitespace-nowrap">
+                      <div className="flex items-center justify-end gap-1.5">
+                        <button
+                          onClick={() => openEditModal(b)}
+                          className="inline-flex items-center gap-1 px-2.5 py-1 bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300 border border-gray-200 dark:border-gray-700 rounded-lg text-[11px] font-semibold transition-all shadow-2xs"
+                          title="Edit Bank Account"
+                        >
+                          <Edit3 className="w-3 h-3 text-blue-600" /> Edit
+                        </button>
+                        <button
+                          onClick={() => generateAccountPDF(b)}
+                          className="inline-flex items-center gap-1 px-2.5 py-1 bg-blue-50 dark:bg-blue-900/30 hover:bg-blue-100 dark:hover:bg-blue-900/50 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-800 rounded-lg text-[11px] font-semibold transition-all shadow-2xs"
+                          title="Download Account Verification Certificate PDF"
+                        >
+                          <Download className="w-3 h-3" /> Certificate PDF
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                ))
+              )}
+            </tbody>
+            {filtered.length > 0 && (
+              <tfoot className="bg-gray-50 dark:bg-gray-900 border-t-2 border-[var(--color-border)] font-bold text-xs">
+                <tr>
+                  <td colSpan={4} className="py-3 px-3.5 uppercase tracking-wider text-[var(--color-text-muted)] text-right">
+                    Total Bank Balances:
+                  </td>
+                  <td className="py-3 px-3 text-right font-extrabold text-blue-600 dark:text-blue-400 text-sm">
+                    {money(totalBalance, currentEntity?.currencyCode)}
+                  </td>
+                  <td colSpan={3}></td>
+                </tr>
+              </tfoot>
             )}
-          </TableBody>
-        </Table>
+          </table>
+        </div>
       </div>
 
-      {/* Modal: Create / Edit Bank Account */}
+      {/* Add / Edit Bank Account Modal */}
       {isModalOpen && (
-        <div className="overlay">
-          <form className="modal" onSubmit={handleSaveAccount} >
-            <div className="modal-head">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-xs p-4" onClick={() => setIsModalOpen(false)}>
+          <div className="bg-[var(--color-surface)] border border-[var(--color-border)] rounded-2xl shadow-2xl w-full max-w-lg overflow-hidden flex flex-col max-h-[90vh]" onClick={(e) => e.stopPropagation()}>
+            <div className="flex items-center justify-between p-4 border-b border-[var(--color-border)] bg-gray-50/50 dark:bg-gray-900/50">
               <div>
-                <p className="eyebrow">BANKING & PAYMENTS</p>
-                <h2>{editingAccount ? 'Edit Bank Account' : 'Add New Bank Account'}</h2>
+                <h2 className="text-base font-bold text-[var(--color-text-strong)] flex items-center gap-2">
+                  <Landmark className="w-4 h-4 text-blue-600" /> {editingAccount ? 'Edit Institutional Bank Account' : 'Add Institutional Bank Account'}
+                </h2>
+                <p className="text-xs text-[var(--color-text-muted)] mt-0.5">
+                  {editingAccount ? `Update configuration and details for ${editingAccount.name}.` : 'Register a corporate bank account with General Ledger mapping.'}
+                </p>
               </div>
-              <button type="button" className="close" onClick={() => setIsModalOpen(false)}>×</button>
+              <button onClick={() => setIsModalOpen(false)} className="h-7 w-7 flex items-center justify-center rounded-lg hover:bg-gray-200 dark:hover:bg-gray-800 text-gray-500">
+                <X className="w-4 h-4" />
+              </button>
             </div>
 
-            <div className="form-grid">
+            <form onSubmit={handleSave} className="p-5 space-y-4 overflow-y-auto">
+              {error && (
+                <div className="p-3 bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-800 rounded-xl text-rose-700 dark:text-rose-300 text-xs font-semibold">
+                  {error}
+                </div>
+              )}
+
               <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="text-xs font-semibold text-slate-700 block mb-1">1. GL Account Code</label>
-                  <Input
-                    required
+                <div className="space-y-1">
+                  <label className="text-xs font-bold text-[var(--color-text-strong)]">GL Account Code *</label>
+                  <input
+                    type="text"
                     value={form.code}
-                    onChange={e => setForm({ ...form, code: e.target.value })}
-                    className="h-9 text-xs font-mono"
+                    onChange={(e) => setForm({ ...form, code: e.target.value })}
+                    placeholder="e.g. 11210"
+                    className="w-full h-9 px-3 rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] text-xs text-[var(--color-text)] font-mono font-bold outline-none focus:border-blue-500"
+                    required
                   />
                 </div>
-                <div>
-                  <label className="text-xs font-semibold text-slate-700 block mb-1">Currency</label>
+                <div className="space-y-1">
+                  <label className="text-xs font-bold text-[var(--color-text-strong)]">Currency *</label>
                   <select
                     value={form.currency}
-                    onChange={e => setForm({ ...form, currency: e.target.value })}
-                    className="w-full h-9 px-3 bg-white border border-slate-200 rounded-lg text-xs font-mono font-semibold text-slate-700"
+                    onChange={(e) => setForm({ ...form, currency: e.target.value })}
+                    className="w-full h-9 px-3 rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] text-xs text-[var(--color-text)] outline-none focus:border-blue-500"
+                    required
                   >
-                    <option value="PKR">PKR (Pakistani Rupee)</option>
-                    <option value="USD">USD (US Dollar)</option>
-                    <option value="EUR">EUR (Euro)</option>
-                    <option value="GBP">GBP (British Pound)</option>
-                    <option value="AED">AED (UAE Dirham)</option>
-                    <option value="SAR">SAR (Saudi Riyal)</option>
-                    <option value="CAD">CAD (Canadian Dollar)</option>
+                    <option value="PKR">PKR - Pakistani Rupee</option>
+                    <option value="USD">USD - US Dollar</option>
+                    <option value="AED">AED - UAE Dirham</option>
+                    <option value="SAR">SAR - Saudi Riyal</option>
+                    <option value="GBP">GBP - British Pound</option>
+                    <option value="EUR">EUR - Euro</option>
+                    <option value="CAD">CAD - Canadian Dollar</option>
                   </select>
                 </div>
               </div>
 
-              <div>
-                <label className="text-xs font-semibold text-slate-700 block mb-1">2. Bank Account Name</label>
-                <Input
-                  required
-                  placeholder="e.g. Habib Bank Limited — Main Operating"
+              <div className="space-y-1">
+                <label className="text-xs font-bold text-[var(--color-text-strong)]">Account Display Name *</label>
+                <input
+                  type="text"
                   value={form.name}
-                  onChange={e => setForm({ ...form, name: e.target.value })}
-                  className="h-9 text-xs"
+                  onChange={(e) => setForm({ ...form, name: e.target.value })}
+                  placeholder="e.g. HBL Corporate Operating Account"
+                  className="w-full h-9 px-3 rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] text-xs text-[var(--color-text)] outline-none focus:border-blue-500"
+                  required
                 />
               </div>
 
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="text-xs font-semibold text-slate-700 block mb-1">3. Bank / Institution Name</label>
-                  <Input
-                    required
-                    placeholder="e.g. Habib Bank Limited"
-                    value={form.bankName}
-                    onChange={e => setForm({ ...form, bankName: e.target.value })}
-                    className="h-9 text-xs"
-                  />
-                </div>
-                <div>
-                  <label className="text-xs font-semibold text-slate-700 block mb-1">4. Branch Name & City</label>
-                  <Input
-                    placeholder="e.g. Corporate Branch, Karachi"
-                    value={form.branchName}
-                    onChange={e => setForm({ ...form, branchName: e.target.value })}
-                    className="h-9 text-xs"
-                  />
-                </div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="text-xs font-semibold text-slate-700 block mb-1">5. Account Number</label>
-                  <Input
-                    required
-                    placeholder="00012345678901"
-                    value={form.accountNumber}
-                    onChange={e => setForm({ ...form, accountNumber: e.target.value })}
-                    className="h-9 text-xs font-mono"
-                  />
-                </div>
-                <div>
-                  <label className="text-xs font-semibold text-slate-700 block mb-1">6. SWIFT / BIC Code</label>
-                  <Input
-                    placeholder="HABBPKKA"
-                    value={form.swift}
-                    onChange={e => setForm({ ...form, swift: e.target.value })}
-                    className="h-9 text-xs font-mono"
-                  />
-                </div>
-              </div>
-
-              <div>
-                <label className="text-xs font-semibold text-slate-700 block mb-1">7. IBAN (International Bank Account Number)</label>
-                <Input
-                  placeholder="PK12HABB00012345678901"
-                  value={form.iban}
-                  onChange={e => setForm({ ...form, iban: e.target.value })}
-                  className="h-9 text-xs font-mono"
+              <div className="space-y-1">
+                <label className="text-xs font-bold text-[var(--color-text-strong)]">Bank / Financial Institution *</label>
+                <input
+                  type="text"
+                  value={form.bankName}
+                  onChange={(e) => setForm({ ...form, bankName: e.target.value })}
+                  placeholder="e.g. Habib Bank Limited / Chase / Barclays"
+                  className="w-full h-9 px-3 rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] text-xs text-[var(--color-text)] outline-none focus:border-blue-500"
+                  required
                 />
               </div>
 
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="text-xs font-semibold text-slate-700 block mb-1">8. Opening Balance</label>
-                  <Input
-                    type="number"
-                    placeholder="0.00"
-                    value={form.openingBalance}
-                    onChange={e => setForm({ ...form, openingBalance: e.target.value })}
-                    className="h-9 text-xs font-mono"
-                  />
-                </div>
-                <div>
-                  <label className="text-xs font-semibold text-slate-700 block mb-1">Integration Mode</label>
-                  <select
-                    value={form.connectionType}
-                    onChange={e => setForm({ ...form, connectionType: e.target.value as any })}
-                    className="w-full h-9 px-3 bg-white border border-slate-200 rounded-lg text-xs"
-                  >
-                    <option value="Live Feed API">Live Feed API</option>
-                    <option value="Manual Import">Manual Import</option>
-                  </select>
-                </div>
+              <div className="space-y-1">
+                <label className="text-xs font-bold text-[var(--color-text-strong)]">Opening Balance ({form.currency})</label>
+                <input
+                  type="number"
+                  step="0.01"
+                  value={form.openingBalance}
+                  onChange={(e) => setForm({ ...form, openingBalance: e.target.value })}
+                  placeholder="0.00"
+                  className="w-full h-9 px-3 rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] text-xs text-[var(--color-text)] font-mono outline-none focus:border-blue-500"
+                />
               </div>
 
-            </div>
-            <div className="modal-footer">
-              <button type="button" className="secondary btn-cancel" onClick={() => setIsModalOpen(false)}>Cancel</button>
-              <button type="button" className="secondary btn-draft" onClick={(e) => { e.preventDefault(); alert("��� Draft saved locally"); }}>Save Draft</button>
-              <button type="submit" className="primary btn-finalize">Save Bank Account</button>
-            </div>
-          </form>
+              <div className="flex items-center gap-2 p-3 bg-gray-50 dark:bg-gray-900 rounded-xl border border-[var(--color-border)]">
+                <input
+                  type="checkbox"
+                  id="reconCheck"
+                  checked={form.reconciliationEnabled}
+                  onChange={(e) => setForm({ ...form, reconciliationEnabled: e.target.checked })}
+                  className="w-4 h-4 text-blue-600 rounded"
+                />
+                <label htmlFor="reconCheck" className="text-xs text-[var(--color-text)] cursor-pointer">
+                  <strong>Enable Automated Bank Reconciliation</strong> (Support bank statement import and automated matching)
+                </label>
+              </div>
+
+              <div className="flex items-center justify-end gap-2 pt-2 border-t border-[var(--color-border)]">
+                <button
+                  type="button"
+                  onClick={() => setIsModalOpen(false)}
+                  className="secondary h-9 px-4 rounded-lg text-xs font-semibold"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={saving}
+                  className="primary h-9 px-4 rounded-lg text-xs font-semibold flex items-center gap-1.5 shadow-xs"
+                >
+                  {saving ? <RefreshCw className="w-3.5 h-3.5 animate-spin" /> : <CheckCircle2 className="w-3.5 h-3.5" />}
+                  {editingAccount ? 'Update Bank Account' : 'Save Bank Account'}
+                </button>
+              </div>
+            </form>
+          </div>
         </div>
       )}
     </div>
   );
 };
+
+export default BankAccountsView;

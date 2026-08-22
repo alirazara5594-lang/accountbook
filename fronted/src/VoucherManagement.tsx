@@ -1,11 +1,16 @@
 import React, { useState, useMemo, useEffect } from 'react';
-import { useFormDraft } from './hooks/useFormDraft';
-import { useVendorsStore, useCustomersStore, useVouchersStore, useBankingStore } from './stores';
-import type { FormEvent } from 'react';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Input } from '@/components/ui/input';
-import { Search, Download, Plus, CheckCircle2, Layers, Send, ArrowDownLeft, Wallet, Building2, BookOpen } from 'lucide-react';
+import {
+  Layers, Search, Plus, CheckCircle2,
+  FileSpreadsheet, Download, Printer, RefreshCw,
+  Send, ArrowDownLeft, Wallet, Building2, BookOpen,
+  DollarSign, Clock, X, FileText
+} from 'lucide-react';
 import type { Entity } from './EntitySettings';
+import { useVendorsStore, useCustomersStore, useVouchersStore, useBankingStore } from './stores';
+import { money } from './lib/currency';
+import { downloadExcel, downloadCSV } from './lib/exportUtils';
+import jsPDF from 'jspdf';
+import autoTable from 'jspdf-autotable';
 
 export type VoucherType = 'BPV' | 'BRV' | 'CPV' | 'CRV' | 'JV';
 
@@ -32,90 +37,88 @@ interface VoucherManagementProps {
 }
 
 export const VoucherManagement: React.FC<VoucherManagementProps> = ({ activeEntityId, entities }) => {
-  const currentEntity = entities.find(e => e.id === activeEntityId);
+  const currentEntity = entities.find((e) => e.id === activeEntityId) || entities[0];
   const [vouchers, setVouchers] = useState<VoucherRecord[]>([]);
   const [vendors, setVendors] = useState<any[]>([]);
   const [customers, setCustomers] = useState<any[]>([]);
   const [bankAccounts, setBankAccounts] = useState<{ id: string; code: string; name: string }[]>([]);
   const [cashAccounts, setCashAccounts] = useState<{ id: string; code: string; name: string }[]>([]);
-  const { vouchers: storeVouchers, fetchVouchers, createVoucher } = useVouchersStore();
+  const { vouchers: storeVouchers, fetchVouchers, createVoucher, loading } = useVouchersStore();
   const { bankAccounts: storeBankAccounts, cashAccounts: storeCashAccounts, fetchBankAccounts, fetchCashAccounts } = useBankingStore();
 
-  // Modal Dialog Open State & Active Voucher Type
+  // Modal State
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedVoucherType, setSelectedVoucherType] = useState<VoucherType>('BPV');
+  const [selectedDetailVoucher, setSelectedDetailVoucher] = useState<VoucherRecord | null>(null);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState('');
 
   const [query, setQuery] = useState('');
-  const [tableTypeFilter, setTableTypeFilter] = useState<string>('All');
+  const [typeFilter, setTypeFilter] = useState<string>('All');
 
-  // Modal Form State
+  // Form State
   const [form, setForm] = useState({
     date: new Date().toISOString().slice(0, 10),
-    accountName: 'Habib Bank Limited (HBL)',
+    accountName: '',
     partyName: '',
     paymentMode: 'Wire Transfer',
     chequeNumber: '',
     amount: '',
-    currency: 'PKR',
-    narration: ''
+    currency: currentEntity?.currencyCode || 'PKR',
+    narration: '',
   });
-
-  const { saveDraft, clearDraft } = useFormDraft('voucher', form, setForm, isModalOpen);
 
   const fetchVendors = useVendorsStore((s) => s.fetchVendors);
   const fetchCustomers = useCustomersStore((s) => s.fetchCustomers);
 
-  useEffect(() => {
-    fetchVendors(activeEntityId).then((data) => {
-      if (Array.isArray(data)) setVendors(data as any[]);
-    });
+  const loadData = async () => {
+    await Promise.all([
+      fetchVouchers(activeEntityId),
+      fetchBankAccounts(activeEntityId),
+      fetchCashAccounts(activeEntityId),
+      fetchVendors(activeEntityId).then((d) => Array.isArray(d) && setVendors(d)),
+      fetchCustomers(activeEntityId).then((d) => Array.isArray(d) && setCustomers(d)),
+    ]);
+  };
 
-    fetchCustomers(activeEntityId).then((data) => {
-      if (Array.isArray(data)) setCustomers(data as any[]);
-    });
+  useEffect(() => {
+    loadData();
   }, [activeEntityId]);
 
   useEffect(() => {
-    fetchVouchers(activeEntityId);
-  }, [activeEntityId]);
-
-  useEffect(() => {
-    fetchBankAccounts(activeEntityId);
-    fetchCashAccounts(activeEntityId);
-  }, [activeEntityId]);
-
-  useEffect(() => {
-    setBankAccounts(storeBankAccounts.map(a => ({ id: a.id, code: a.code, name: a.name })));
+    setBankAccounts(storeBankAccounts.map((a) => ({ id: a.id, code: a.code, name: a.name })));
   }, [storeBankAccounts]);
 
   useEffect(() => {
-    setCashAccounts(storeCashAccounts.map(a => ({ id: a.id, code: a.code, name: a.name })));
+    setCashAccounts(storeCashAccounts.map((a) => ({ id: a.id, code: a.code, name: a.name })));
   }, [storeCashAccounts]);
 
   useEffect(() => {
-    setVouchers(storeVouchers.map(v => ({
-      id: v.id,
-      voucherNumber: v.voucherNumber,
-      voucherType: v.voucherType,
-      date: v.date,
-      accountName: v.accountName,
-      partyType: v.partyType,
-      partyName: v.partyName,
-      paymentMode: v.paymentMode,
-      chequeNumber: v.chequeNumber,
-      amount: v.amount,
-      currency: v.currency,
-      narration: v.narration,
-      status: v.status
-    })));
-  }, [storeVouchers]);
+    setVouchers(
+      storeVouchers.map((v) => ({
+        id: v.id,
+        voucherNumber: v.voucherNumber,
+        voucherType: v.voucherType,
+        date: v.date,
+        accountName: v.accountName,
+        partyType: v.partyType,
+        partyName: v.partyName,
+        paymentMode: v.paymentMode,
+        chequeNumber: v.chequeNumber,
+        amount: v.amount,
+        currency: v.currency || currentEntity?.currencyCode || 'PKR',
+        narration: v.narration,
+        status: v.status,
+      }))
+    );
+  }, [storeVouchers, currentEntity]);
 
-  // Open Modal ONLY for the clicked voucher type (Exact Customer Management style)
   const openVoucherModal = (type: VoucherType) => {
     setSelectedVoucherType(type);
+    setError('');
 
-    const bankAcc = bankAccounts.length > 0 ? bankAccounts[0].name : 'Habib Bank Limited (HBL)';
-    const cashAcc = cashAccounts.length > 0 ? cashAccounts[0].name : 'Head Office Petty Cash Vault';
+    const bankAcc = bankAccounts.length > 0 ? bankAccounts[0].name : 'Commercial Bank Account';
+    const cashAcc = cashAccounts.length > 0 ? cashAccounts[0].name : 'Main Cash Register Vault';
     let defaultAcc = bankAcc;
     let defaultMode = 'Wire Transfer';
     let defaultParty = '';
@@ -123,23 +126,23 @@ export const VoucherManagement: React.FC<VoucherManagementProps> = ({ activeEnti
     if (type === 'BPV') {
       defaultAcc = bankAcc;
       defaultMode = 'Wire Transfer';
-      defaultParty = vendors.length > 0 ? vendors[0].name : 'Allied Engineering Supplies Ltd';
+      defaultParty = vendors.length > 0 ? vendors[0].name : '';
     } else if (type === 'BRV') {
       defaultAcc = bankAcc;
       defaultMode = 'Wire Transfer';
-      defaultParty = customers.length > 0 ? customers[0].name : 'Apex Global Logistics USA';
+      defaultParty = customers.length > 0 ? customers[0].name : '';
     } else if (type === 'CPV') {
       defaultAcc = cashAcc;
       defaultMode = 'Cash';
-      defaultParty = vendors.length > 0 ? vendors[0].name : 'Office Express Stationary';
+      defaultParty = vendors.length > 0 ? vendors[0].name : '';
     } else if (type === 'CRV') {
       defaultAcc = cashAcc;
       defaultMode = 'Cash';
-      defaultParty = customers.length > 0 ? customers[0].name : 'Crescent Retail Store';
+      defaultParty = customers.length > 0 ? customers[0].name : '';
     } else if (type === 'JV') {
       defaultAcc = 'General Ledger Adjustments';
       defaultMode = 'N/A';
-      defaultParty = 'General Ledger Adjustments';
+      defaultParty = 'General Ledger Adjustment';
     }
 
     setForm({
@@ -149,18 +152,19 @@ export const VoucherManagement: React.FC<VoucherManagementProps> = ({ activeEnti
       paymentMode: defaultMode,
       chequeNumber: '',
       amount: '',
-      currency: 'PKR',
-      narration: ''
+      currency: currentEntity?.currencyCode || 'PKR',
+      narration: '',
     });
 
     setIsModalOpen(true);
   };
 
-  const handlePostVoucher = async (e: FormEvent) => {
+  const handlePostVoucher = async (e: React.FormEvent) => {
     e.preventDefault();
+    setError('');
     const amt = parseFloat(form.amount);
     if (isNaN(amt) || amt <= 0) {
-      alert('Please enter a valid Voucher Amount.');
+      setError('Please enter a valid positive voucher amount.');
       return;
     }
 
@@ -169,456 +173,1012 @@ export const VoucherManagement: React.FC<VoucherManagementProps> = ({ activeEnti
       BRV: 'Customer',
       CPV: 'Vendor',
       CRV: 'Customer',
-      JV: 'General Ledger'
+      JV: 'General Ledger',
     };
 
+    setSaving(true);
     try {
-      const created = await createVoucher({
+      await createVoucher({
         type: selectedVoucherType,
         date: form.date,
         accountName: form.accountName,
         partyType: partyTypeMap[selectedVoucherType],
-        partyName: form.partyName,
+        partyName: form.partyName || (selectedVoucherType === 'JV' ? 'General Ledger' : 'Standard Counterparty'),
         paymentMode: form.paymentMode,
         chequeNumber: form.chequeNumber || undefined,
         amount: amt,
         currency: form.currency,
-        narration: form.narration || `${selectedVoucherType} Entry`,
-        companyId: activeEntityId
+        narration: form.narration || `${selectedVoucherType} Posted Entry`,
+        companyId: activeEntityId,
       });
 
-      clearDraft();
       setIsModalOpen(false);
-      alert(`Voucher ${created.voucherNumber} posted successfully to General Ledger!`);
+      await fetchVouchers(activeEntityId);
     } catch (err: any) {
-      alert(`Failed to post voucher: ${err.message || 'Unknown error'}`);
+      setError(err?.message || 'Failed to post voucher.');
+    } finally {
+      setSaving(false);
     }
   };
 
-  const formatCurrency = (val: number, currency: string) => {
-    return new Intl.NumberFormat('en-US', { style: 'currency', currency, maximumFractionDigits: 2 }).format(val);
-  };
-
   const filteredVouchers = useMemo(() => {
-    return vouchers.filter(v => {
-      if (tableTypeFilter !== 'All' && v.voucherType !== tableTypeFilter) return false;
+    return vouchers.filter((v) => {
+      if (typeFilter !== 'All' && v.voucherType !== typeFilter) return false;
       if (query.trim()) {
         const lower = query.toLowerCase();
         const matchesNum = v.voucherNumber.toLowerCase().includes(lower);
         const matchesParty = v.partyName.toLowerCase().includes(lower);
         const matchesAcc = v.accountName.toLowerCase().includes(lower);
         const matchesNarr = v.narration.toLowerCase().includes(lower);
-        if (!matchesNum && !matchesParty && !matchesAcc && !matchesNarr) return false;
+        const matchesChq = (v.chequeNumber || '').toLowerCase().includes(lower);
+        if (!matchesNum && !matchesParty && !matchesAcc && !matchesNarr && !matchesChq) return false;
       }
       return true;
     });
-  }, [vouchers, tableTypeFilter, query]);
+  }, [vouchers, typeFilter, query]);
 
-  const handleExportCSV = () => {
-    const headers = ['VOUCHER NO', 'TYPE', 'DATE', 'ACCOUNT / VAULT', 'PARTY NAME', 'PAYMENT MODE', 'REF / CHEQUE', 'AMOUNT', 'CURRENCY', 'NARRATION', 'STATUS'];
-    const rows = filteredVouchers.map(v => [
-      `"${v.voucherNumber}"`,
-      `"${v.voucherType}"`,
-      `"${v.date}"`,
-      `"${v.accountName}"`,
-      `"${v.partyName}"`,
-      `"${v.paymentMode}"`,
-      `"${v.chequeNumber || ''}"`,
-      v.amount,
-      `"${v.currency}"`,
-      `"${v.narration}"`,
-      `"${v.status}"`
-    ]);
+  // 4 Top Financial KPIs
+  const totalDisbursements = filteredVouchers
+    .filter((v) => v.voucherType === 'BPV' || v.voucherType === 'CPV')
+    .reduce((s, v) => s + v.amount, 0);
 
-    const csvContent = 'data:text/csv;charset=utf-8,' + [headers.join(','), ...rows.map(r => r.join(','))].join('\n');
-    const encodedUri = encodeURI(csvContent);
-    const link = document.createElement('a');
-    link.setAttribute('href', encodedUri);
-    link.setAttribute('download', `vouchers_ledger_${new Date().toISOString().slice(0, 10)}.csv`);
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-  };
+  const totalReceipts = filteredVouchers
+    .filter((v) => v.voucherType === 'BRV' || v.voucherType === 'CRV')
+    .reduce((s, v) => s + v.amount, 0);
+
+  const netLiquidity = totalReceipts - totalDisbursements;
+  const totalCount = filteredVouchers.length;
 
   const getVoucherBadgeStyle = (type: VoucherType) => {
     switch (type) {
-      case 'BPV': return 'bg-rose-100 text-rose-800 border-rose-200';
-      case 'BRV': return 'bg-emerald-100 text-emerald-800 border-emerald-200';
-      case 'CPV': return 'bg-amber-100 text-amber-800 border-amber-200';
-      case 'CRV': return 'bg-teal-100 text-teal-800 border-teal-200';
-      case 'JV': return 'bg-indigo-100 text-indigo-800 border-indigo-200';
-      default: return 'bg-slate-100 text-slate-800 border-slate-200';
+      case 'BPV':
+        return 'bg-rose-50 dark:bg-rose-900/30 text-rose-700 dark:text-rose-300 border border-rose-200 dark:border-rose-800';
+      case 'BRV':
+        return 'bg-emerald-50 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800';
+      case 'CPV':
+        return 'bg-amber-50 dark:bg-amber-900/30 text-amber-700 dark:text-amber-300 border border-amber-200 dark:border-amber-800';
+      case 'CRV':
+        return 'bg-teal-50 dark:bg-teal-900/30 text-teal-700 dark:text-teal-300 border border-teal-200 dark:border-teal-800';
+      case 'JV':
+        return 'bg-indigo-50 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800';
+      default:
+        return 'bg-gray-100 text-gray-700 border border-gray-200';
     }
   };
 
-  const getVoucherTitle = (type: VoucherType) => {
+  const getVoucherFullTitle = (type: VoucherType) => {
     switch (type) {
-      case 'BPV': return 'Create Bank Payment Voucher (BPV)';
-      case 'BRV': return 'Create Bank Receipt Voucher (BRV)';
-      case 'CPV': return 'Create Cash Payment Voucher (CPV)';
-      case 'CRV': return 'Create Cash Receipt Voucher (CRV)';
-      case 'JV': return 'Create Journal Voucher (JV)';
+      case 'BPV': return 'BANK PAYMENT VOUCHER (BPV)';
+      case 'BRV': return 'BANK RECEIPT VOUCHER (BRV)';
+      case 'CPV': return 'CASH PAYMENT VOUCHER (CPV)';
+      case 'CRV': return 'CASH RECEIPT VOUCHER (CRV)';
+      case 'JV': return 'JOURNAL VOUCHER (JV)';
     }
+  };
+
+  // ─── Branded Official Voucher PDF Generator ─────────────────────────────────
+  const generateVoucherPDF = (v: VoucherRecord) => {
+    const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
+    const pageWidth = doc.internal.pageSize.getWidth();
+    const margin = 14;
+    const contentWidth = pageWidth - margin * 2;
+
+    const isPayment = v.voucherType === 'BPV' || v.voucherType === 'CPV';
+    const isReceipt = v.voucherType === 'BRV' || v.voucherType === 'CRV';
+
+    const primaryColor: [number, number, number] = isPayment
+      ? [225, 29, 72]
+      : isReceipt
+      ? [16, 185, 129]
+      : [79, 70, 229];
+
+    const darkColor: [number, number, number] = [15, 23, 42];
+    const grayColor: [number, number, number] = [100, 116, 139];
+    const lightBg: [number, number, number] = [248, 250, 252];
+    const borderGray: [number, number, number] = [226, 232, 240];
+
+    // Header
+    doc.setFillColor(...primaryColor);
+    doc.rect(0, 0, pageWidth, 28, 'F');
+
+    doc.setTextColor(255, 255, 255);
+    doc.setFontSize(16);
+    doc.setFont('helvetica', 'bold');
+    doc.text(getVoucherFullTitle(v.voucherType), margin, 14);
+
+    doc.setFontSize(8.5);
+    doc.setFont('helvetica', 'normal');
+    doc.text(`Voucher Number: ${v.voucherNumber}`, margin, 21);
+    doc.text(`Date: ${v.date}`, pageWidth - margin, 14, { align: 'right' });
+    doc.text(`Status: ${v.status}`, pageWidth - margin, 21, { align: 'right' });
+
+    // Details Grid
+    const boxY = 34;
+    const boxH = 38;
+    const colW = (contentWidth - 6) / 2;
+
+    // Company Profile Box
+    doc.setFillColor(...lightBg);
+    doc.setDrawColor(...borderGray);
+    doc.roundedRect(margin, boxY, colW, boxH, 2, 2, 'FD');
+
+    doc.setTextColor(...primaryColor);
+    doc.setFontSize(9);
+    doc.setFont('helvetica', 'bold');
+    doc.text(currentEntity?.name || 'Company ERP', margin + 4, boxY + 7);
+
+    doc.setTextColor(...darkColor);
+    doc.setFontSize(7.5);
+    doc.setFont('helvetica', 'normal');
+    const compAny = currentEntity as any;
+    let compY = boxY + 13;
+    if (compAny?.taxId || compAny?.ntn) {
+      doc.text(`Tax Registration / NTN: ${compAny.taxId || compAny.ntn}`, margin + 4, compY);
+      compY += 4.5;
+    }
+    if (compAny?.country || compAny?.legalName) {
+      doc.text(`${compAny.legalName || ''} • ${compAny.country || ''}`.trim(), margin + 4, compY);
+      compY += 4.5;
+    }
+    doc.text(`Base Currency: ${currentEntity?.currencyCode || 'PKR'}`, margin + 4, compY);
+
+    // Counterparty & Account Box
+    const rightX = margin + colW + 6;
+    doc.setFillColor(...lightBg);
+    doc.roundedRect(rightX, boxY, colW, boxH, 2, 2, 'FD');
+
+    doc.setTextColor(...primaryColor);
+    doc.setFontSize(8.5);
+    doc.setFont('helvetica', 'bold');
+    doc.text('ACCOUNT & BENEFICIARY INFORMATION', rightX + 4, boxY + 7);
+
+    doc.setTextColor(...darkColor);
+    doc.setFontSize(9);
+    doc.text(v.partyName, rightX + 4, boxY + 14);
+
+    doc.setFontSize(7.5);
+    doc.setFont('helvetica', 'normal');
+    doc.text(`Posting Account: ${v.accountName}`, rightX + 4, boxY + 20);
+    doc.text(`Payment Mode: ${v.paymentMode}`, rightX + 4, boxY + 25);
+    if (v.chequeNumber) {
+      doc.text(`Cheque / Ref #: ${v.chequeNumber}`, rightX + 4, boxY + 30);
+    } else {
+      doc.text(`Party Classification: ${v.partyType}`, rightX + 4, boxY + 30);
+    }
+
+    // Amount Banner
+    const bannerY = boxY + boxH + 6;
+    doc.setFillColor(isPayment ? 255 : 236, isPayment ? 241 : 253, isPayment ? 242 : 245);
+    doc.setDrawColor(isPayment ? 254 : 167, isPayment ? 205 : 243, isPayment ? 211 : 208);
+    doc.roundedRect(margin, bannerY, contentWidth, 18, 2, 2, 'FD');
+
+    doc.setTextColor(...primaryColor);
+    doc.setFontSize(8);
+    doc.setFont('helvetica', 'bold');
+    doc.text(
+      isPayment ? 'TOTAL AMOUNT DISBURSED' : isReceipt ? 'TOTAL AMOUNT RECEIVED' : 'TOTAL ADJUSTMENT VALUE',
+      margin + 4,
+      bannerY + 6.5
+    );
+
+    doc.setFontSize(14);
+    doc.text(money(v.amount, v.currency), margin + 4, bannerY + 14);
+
+    // General Ledger Breakdown Table
+    const tableStartY = bannerY + 24;
+    const tableHeaders = ['Account Code & Description', 'Narration / Ref', 'Debit', 'Credit'];
+
+    let debitAcc = '';
+    let creditAcc = '';
+    if (isPayment) {
+      debitAcc = `${v.partyType} Account: ${v.partyName}`;
+      creditAcc = `Bank / Cash Account: ${v.accountName}`;
+    } else if (isReceipt) {
+      debitAcc = `Bank / Cash Account: ${v.accountName}`;
+      creditAcc = `${v.partyType} Account: ${v.partyName}`;
+    } else {
+      debitAcc = `Adjustment Debit Account: ${v.partyName}`;
+      creditAcc = `Adjustment Credit Account: ${v.accountName}`;
+    }
+
+    const tableRows = [
+      [debitAcc, v.narration || v.voucherNumber, money(v.amount, v.currency), '—'],
+      [creditAcc, v.narration || v.voucherNumber, '—', money(v.amount, v.currency)],
+    ];
+
+    autoTable(doc, {
+      startY: tableStartY,
+      head: [tableHeaders],
+      body: tableRows,
+      margin: { left: margin, right: margin },
+      styles: { fontSize: 8, cellPadding: 3.5, textColor: darkColor },
+      headStyles: { fillColor: primaryColor, textColor: 255, fontStyle: 'bold' },
+      alternateRowStyles: { fillColor: [249, 250, 251] },
+      columnStyles: {
+        2: { halign: 'right', fontStyle: 'bold', textColor: isReceipt ? [16, 185, 129] : darkColor },
+        3: { halign: 'right', fontStyle: 'bold', textColor: isPayment ? [225, 29, 72] : darkColor },
+      },
+    });
+
+    // Signatures Quadruple Block
+    const signY = 200;
+    const signColW = (contentWidth - 18) / 4;
+
+    const signLabels = ['Prepared By / Cashier', 'Checked By', 'Verified & Approved', 'Received By / Payee'];
+    signLabels.forEach((label, idx) => {
+      const curX = margin + idx * (signColW + 6);
+      doc.setDrawColor(...borderGray);
+      doc.line(curX, signY, curX + signColW, signY);
+      doc.setTextColor(...grayColor);
+      doc.setFontSize(7);
+      doc.text(label, curX, signY + 4);
+    });
+
+    const pageHeight = doc.internal.pageSize.getHeight();
+    doc.setTextColor(...grayColor);
+    doc.setFontSize(7);
+    doc.text('Official Financial Voucher. Generated from AccountBook General Ledger & Voucher Module.', margin, pageHeight - 8);
+
+    const safeNum = (v.voucherNumber || 'Voucher').replace(/[^a-zA-Z0-9_-]/g, '_');
+    doc.save(`Voucher_${v.voucherType}_${safeNum}.pdf`);
+  };
+
+  // ─── Excel & CSV Exports ───────────────────────────────────────────────────
+  const exportVouchersExcel = () => {
+    const headers = ['Voucher No', 'Type', 'Date', 'Account / Vault', 'Party Name', 'Party Type', 'Payment Mode', 'Cheque / Ref', 'Amount', 'Currency', 'Narration', 'Status'];
+    const rows = filteredVouchers.map((v) => [
+      v.voucherNumber,
+      v.voucherType,
+      v.date,
+      v.accountName,
+      v.partyName,
+      v.partyType,
+      v.paymentMode,
+      v.chequeNumber || '—',
+      v.amount,
+      v.currency,
+      v.narration,
+      v.status,
+    ]);
+    downloadExcel(`Vouchers_Register_${new Date().toISOString().slice(0, 10)}`, 'Vouchers Register', headers, rows);
+  };
+
+  const exportVouchersCSV = () => {
+    const headers = ['Voucher No', 'Type', 'Date', 'Account / Vault', 'Party Name', 'Party Type', 'Payment Mode', 'Cheque / Ref', 'Amount', 'Currency', 'Narration', 'Status'];
+    const rows = filteredVouchers.map((v) => [
+      v.voucherNumber,
+      v.voucherType,
+      v.date,
+      v.accountName,
+      v.partyName,
+      v.partyType,
+      v.paymentMode,
+      v.chequeNumber || '—',
+      v.amount,
+      v.currency,
+      v.narration,
+      v.status,
+    ]);
+    downloadCSV(`Vouchers_${new Date().toISOString().slice(0, 10)}.csv`, headers, rows);
   };
 
   return (
-    <div className="space-y-4 font-sans text-slate-800 p-2 md:p-6">
-      {/* Top Header */}
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-3 bg-white p-3 rounded-xl border border-gray-200 shadow-sm">
+    <div className="space-y-4 max-w-7xl mx-auto pb-10">
+      {/* Header Banner */}
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-3 bg-[var(--color-surface)] p-3.5 rounded-xl border border-[var(--color-border)] shadow-xs">
         <div>
-          <h1 className="text-base font-bold text-slate-900 tracking-tight flex items-center gap-2">
-            <Layers className="w-4 h-4 text-emerald-600" /> Voucher Management
+          <h1 className="text-base font-bold text-[var(--color-text-strong)] tracking-tight flex items-center gap-2">
+            <Layers className="w-4 h-4 text-emerald-600" /> Voucher Management & General Ledger Journals
           </h1>
-          <p className="text-[10px] text-slate-500 mt-0.5">
-            Select a Voucher Type below to open its dedicated data entry form for {currentEntity?.name || 'Active Entity'}.
+          <p className="text-[var(--color-text-muted)] text-xs mt-0.5">
+            Create, post, and audit Bank Payment (BPV), Bank Receipt (BRV), Cash Payment (CPV), Cash Receipt (CRV), and Journal Vouchers (JV) for {currentEntity?.name || 'Active Company'}.
           </p>
         </div>
 
-        <div className="flex items-center gap-1.5 shrink-0">
-          <button onClick={handleExportCSV}
-            className="h-8 px-2.5 bg-white border border-gray-200 hover:bg-gray-50 text-gray-700 text-[11px] font-semibold rounded-lg shrink-0 whitespace-nowrap flex items-center gap-1">
-            <Download className="w-3.5 h-3.5 text-slate-500" /> CSV
+        {/* Global Action Buttons */}
+        <div className="flex items-center gap-2 shrink-0 flex-wrap">
+          <button
+            onClick={exportVouchersExcel}
+            className="secondary h-8.5 px-3 rounded-lg text-xs font-semibold flex items-center gap-1.5 shadow-xs"
+            title="Export vouchers register to Excel"
+          >
+            <FileSpreadsheet className="w-3.5 h-3.5 text-emerald-600" /> Excel
           </button>
-          <button onClick={() => openVoucherModal('BPV')}
-            className="h-8 px-2.5 bg-[#143e2b] hover:bg-[#0f3222] text-white text-[11px] font-semibold rounded-lg shrink-0 whitespace-nowrap flex items-center gap-1">
-            <Plus className="w-3.5 h-3.5" /> Add Voucher
+          <button
+            onClick={exportVouchersCSV}
+            className="secondary h-8.5 px-2.5 rounded-lg text-xs font-semibold"
+          >
+            CSV
+          </button>
+          <button
+            onClick={() => window.print()}
+            className="secondary h-8.5 px-2.5 rounded-lg text-xs font-semibold flex items-center gap-1"
+          >
+            <Printer className="w-3.5 h-3.5" /> Print
+          </button>
+          <button
+            onClick={loadData}
+            className="secondary h-8.5 w-8.5 rounded-lg flex items-center justify-center text-xs text-[var(--color-text)]"
+            title="Refresh vouchers"
+          >
+            <RefreshCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin' : ''}`} />
+          </button>
+          <button
+            onClick={() => openVoucherModal('BPV')}
+            className="primary h-8.5 px-3.5 rounded-lg text-xs font-semibold flex items-center gap-1.5 shadow-xs"
+          >
+            <Plus className="w-3.5 h-3.5" /> Post New Voucher
           </button>
         </div>
       </div>
 
-      {/* 5 Interactive Voucher Type Cards at the Top */}
+      {/* 5 Quick Voucher Action Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
-        {/* BPV Card */}
+        {/* BPV */}
         <button
           type="button"
           onClick={() => openVoucherModal('BPV')}
-          className="p-4 rounded-xl border text-left transition-all cursor-pointer bg-white border-slate-200 hover:border-rose-300 hover:bg-rose-50/40 shadow-xs"
+          className="p-3.5 rounded-xl border text-left transition-all cursor-pointer bg-[var(--color-surface)] border-[var(--color-border)] hover:border-rose-400 hover:bg-rose-50/30 dark:hover:bg-rose-950/20 shadow-2xs group"
         >
-          <div className="flex items-center justify-between mb-2">
-            <span className="p-2 rounded-lg bg-rose-100 text-rose-700">
+          <div className="flex items-center justify-between mb-1.5">
+            <span className="p-2 rounded-lg bg-rose-100 dark:bg-rose-900/40 text-rose-700 dark:text-rose-300">
               <Send className="w-4 h-4" />
             </span>
-            <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-rose-100 text-rose-800">BPV</span>
+            <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-rose-100 dark:bg-rose-900/50 text-rose-800 dark:text-rose-200">
+              BPV
+            </span>
           </div>
-          <h3 className="text-sm font-bold text-slate-900">BPV — Bank Payment</h3>
-          <p className="text-[11px] text-slate-500 mt-0.5">Disburse vendor payments & bills from commercial bank accounts.</p>
+          <h3 className="text-xs font-bold text-[var(--color-text-strong)] group-hover:text-rose-600 transition-colors">
+            Bank Payment
+          </h3>
+          <p className="text-[10px] text-[var(--color-text-muted)] mt-0.5 leading-tight">
+            Disburse supplier payments & bills from bank accounts.
+          </p>
         </button>
 
-        {/* BRV Card */}
+        {/* BRV */}
         <button
           type="button"
           onClick={() => openVoucherModal('BRV')}
-          className="p-4 rounded-xl border text-left transition-all cursor-pointer bg-white border-slate-200 hover:border-emerald-300 hover:bg-emerald-50/40 shadow-xs"
+          className="p-3.5 rounded-xl border text-left transition-all cursor-pointer bg-[var(--color-surface)] border-[var(--color-border)] hover:border-emerald-400 hover:bg-emerald-50/30 dark:hover:bg-emerald-950/20 shadow-2xs group"
         >
-          <div className="flex items-center justify-between mb-2">
-            <span className="p-2 rounded-lg bg-emerald-100 text-emerald-700">
+          <div className="flex items-center justify-between mb-1.5">
+            <span className="p-2 rounded-lg bg-emerald-100 dark:bg-emerald-900/40 text-emerald-700 dark:text-emerald-300">
               <ArrowDownLeft className="w-4 h-4" />
             </span>
-            <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800">BRV</span>
+            <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-100 dark:bg-emerald-900/50 text-emerald-800 dark:text-emerald-200">
+              BRV
+            </span>
           </div>
-          <h3 className="text-sm font-bold text-slate-900">BRV — Bank Receipt</h3>
-          <p className="text-[11px] text-slate-500 mt-0.5">Collect customer invoice payments directly into bank accounts.</p>
+          <h3 className="text-xs font-bold text-[var(--color-text-strong)] group-hover:text-emerald-600 transition-colors">
+            Bank Receipt
+          </h3>
+          <p className="text-[10px] text-[var(--color-text-muted)] mt-0.5 leading-tight">
+            Collect customer invoice payments directly into bank accounts.
+          </p>
         </button>
 
-        {/* CPV Card */}
+        {/* CPV */}
         <button
           type="button"
           onClick={() => openVoucherModal('CPV')}
-          className="p-4 rounded-xl border text-left transition-all cursor-pointer bg-white border-slate-200 hover:border-amber-300 hover:bg-amber-50/40 shadow-xs"
+          className="p-3.5 rounded-xl border text-left transition-all cursor-pointer bg-[var(--color-surface)] border-[var(--color-border)] hover:border-amber-400 hover:bg-amber-50/30 dark:hover:bg-amber-950/20 shadow-2xs group"
         >
-          <div className="flex items-center justify-between mb-2">
-            <span className="p-2 rounded-lg bg-amber-100 text-amber-700">
+          <div className="flex items-center justify-between mb-1.5">
+            <span className="p-2 rounded-lg bg-amber-100 dark:bg-amber-900/40 text-amber-700 dark:text-amber-300">
               <Wallet className="w-4 h-4" />
             </span>
-            <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-100 text-amber-800">CPV</span>
+            <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-100 dark:bg-amber-900/50 text-amber-800 dark:text-amber-200">
+              CPV
+            </span>
           </div>
-          <h3 className="text-sm font-bold text-slate-900">CPV — Cash Payment</h3>
-          <p className="text-[11px] text-slate-500 mt-0.5">Pay petty cash expenses or cash purchases from physical vaults.</p>
+          <h3 className="text-xs font-bold text-[var(--color-text-strong)] group-hover:text-amber-600 transition-colors">
+            Cash Payment
+          </h3>
+          <p className="text-[10px] text-[var(--color-text-muted)] mt-0.5 leading-tight">
+            Pay petty cash expenses or cash purchases from registers.
+          </p>
         </button>
 
-        {/* CRV Card */}
+        {/* CRV */}
         <button
           type="button"
           onClick={() => openVoucherModal('CRV')}
-          className="p-4 rounded-xl border text-left transition-all cursor-pointer bg-white border-slate-200 hover:border-teal-300 hover:bg-teal-50/40 shadow-xs"
+          className="p-3.5 rounded-xl border text-left transition-all cursor-pointer bg-[var(--color-surface)] border-[var(--color-border)] hover:border-teal-400 hover:bg-teal-50/30 dark:hover:bg-teal-950/20 shadow-2xs group"
         >
-          <div className="flex items-center justify-between mb-2">
-            <span className="p-2 rounded-lg bg-teal-100 text-teal-700">
+          <div className="flex items-center justify-between mb-1.5">
+            <span className="p-2 rounded-lg bg-teal-100 dark:bg-teal-900/40 text-teal-700 dark:text-teal-300">
               <Building2 className="w-4 h-4" />
             </span>
-            <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-teal-100 text-teal-800">CRV</span>
+            <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-teal-100 dark:bg-teal-900/50 text-teal-800 dark:text-teal-200">
+              CRV
+            </span>
           </div>
-          <h3 className="text-sm font-bold text-slate-900">CRV — Cash Receipt</h3>
-          <p className="text-[11px] text-slate-500 mt-0.5">Collect cash sales or cash receipts into cash registers.</p>
+          <h3 className="text-xs font-bold text-[var(--color-text-strong)] group-hover:text-teal-600 transition-colors">
+            Cash Receipt
+          </h3>
+          <p className="text-[10px] text-[var(--color-text-muted)] mt-0.5 leading-tight">
+            Receive customer cash settlements into physical vaults.
+          </p>
         </button>
 
-        {/* JV Card */}
+        {/* JV */}
         <button
           type="button"
           onClick={() => openVoucherModal('JV')}
-          className="p-4 rounded-xl border text-left transition-all cursor-pointer bg-white border-slate-200 hover:border-indigo-300 hover:bg-indigo-50/40 shadow-xs"
+          className="p-3.5 rounded-xl border text-left transition-all cursor-pointer bg-[var(--color-surface)] border-[var(--color-border)] hover:border-indigo-400 hover:bg-indigo-50/30 dark:hover:bg-indigo-950/20 shadow-2xs group"
         >
-          <div className="flex items-center justify-between mb-2">
-            <span className="p-2 rounded-lg bg-indigo-100 text-indigo-700">
+          <div className="flex items-center justify-between mb-1.5">
+            <span className="p-2 rounded-lg bg-indigo-100 dark:bg-indigo-900/40 text-indigo-700 dark:text-indigo-300">
               <BookOpen className="w-4 h-4" />
             </span>
-            <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-indigo-100 text-indigo-800">JV</span>
+            <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-indigo-100 dark:bg-indigo-900/50 text-indigo-800 dark:text-indigo-200">
+              JV
+            </span>
           </div>
-          <h3 className="text-sm font-bold text-slate-900">JV — Journal Voucher</h3>
-          <p className="text-[11px] text-slate-500 mt-0.5">Record non-cash GL entries, period accruals & adjustments.</p>
+          <h3 className="text-xs font-bold text-[var(--color-text-strong)] group-hover:text-indigo-600 transition-colors">
+            Journal Voucher
+          </h3>
+          <p className="text-[10px] text-[var(--color-text-muted)] mt-0.5 leading-tight">
+            Post General Ledger adjustments & non-cash corrections.
+          </p>
         </button>
       </div>
 
-      {/* Voucher History Register Table */}
-      <div className="space-y-3">
-        <div className="flex flex-col md:flex-row items-center justify-between gap-3 p-3 bg-slate-50 border border-slate-200 rounded-xl">
-          <div className="flex flex-wrap items-center gap-3 w-full md:w-auto">
-            <div className="relative w-72">
-              <Search className="absolute left-3 top-2.5 h-4 w-4 text-slate-400" />
-              <Input
-                placeholder="Search Voucher #, Party Name, Account..."
-                value={query}
-                onChange={e => setQuery(e.target.value)}
-                className="pl-9 h-9 bg-white border border-slate-200 rounded-lg text-xs"
-              />
-            </div>
-
-            <select
-              value={tableTypeFilter}
-              onChange={e => setTableTypeFilter(e.target.value)}
-              className="h-9 px-3 bg-white border border-slate-200 rounded-lg text-xs font-semibold text-slate-700 outline-none cursor-pointer"
-            >
-              <option value="All">All Voucher Types</option>
-              <option value="BPV">BPV — Bank Payment Voucher</option>
-              <option value="BRV">BRV — Bank Receipt Voucher</option>
-              <option value="CPV">CPV — Cash Payment Voucher</option>
-              <option value="CRV">CRV — Cash Receipt Voucher</option>
-              <option value="JV">JV — Journal Voucher</option>
-            </select>
+      {/* 4 Financial Metric Cards - 4 in 1 Row */}
+      <section className="stats" style={{ gridTemplateColumns: 'repeat(4, minmax(0, 1fr))' }}>
+        <article>
+          <span className="stat-icon blue"><Send className="w-4 h-4 text-rose-600" /></span>
+          <div>
+            <small>PAYMENTS (BPV + CPV)</small>
+            <h2 className="text-rose-600 dark:text-rose-400">{money(totalDisbursements, currentEntity?.currencyCode)}</h2>
+            <p>Disbursements to vendors</p>
           </div>
-
-          <div className="text-xs font-medium text-slate-500">
-            Showing <span className="font-bold text-slate-800">{filteredVouchers.length}</span> posted vouchers
+        </article>
+        <article>
+          <span className="stat-icon teal"><ArrowDownLeft className="w-4 h-4 text-emerald-600" /></span>
+          <div>
+            <small>RECEIPTS (BRV + CRV)</small>
+            <h2 className="text-emerald-600 dark:text-emerald-400">{money(totalReceipts, currentEntity?.currencyCode)}</h2>
+            <p>Collections from customers</p>
           </div>
+        </article>
+        <article>
+          <span className="stat-icon blue"><DollarSign className="w-4 h-4" /></span>
+          <div>
+            <small>NET VOUCHER LIQUIDITY</small>
+            <h2 className={netLiquidity >= 0 ? 'text-blue-600 dark:text-blue-400' : 'text-amber-600 dark:text-amber-400'}>
+              {money(netLiquidity, currentEntity?.currencyCode)}
+            </h2>
+            <p>{netLiquidity >= 0 ? 'Net positive liquidity' : 'Net disbursement surplus'}</p>
+          </div>
+        </article>
+        <article>
+          <span className="stat-icon violet"><Clock className="w-4 h-4" /></span>
+          <div>
+            <small>VOUCHERS COUNT</small>
+            <h2>{totalCount}</h2>
+            <p>Posted financial vouchers</p>
+          </div>
+        </article>
+      </section>
+
+      {/* Filter Toolbar & Non-Overlapping Search Box */}
+      <div className="flex flex-wrap items-center justify-between gap-3 bg-[var(--color-surface)] p-3 rounded-xl border border-[var(--color-border)] shadow-xs">
+        {/* Voucher Type Tabs */}
+        <div className="flex items-center gap-1 flex-wrap">
+          <span className="text-xs font-bold text-[var(--color-text-muted)] mr-1 flex items-center gap-1">
+            <Layers className="w-3.5 h-3.5" /> Type:
+          </span>
+          {(['All', 'BPV', 'BRV', 'CPV', 'CRV', 'JV'] as const).map((t) => {
+            const active = typeFilter === t;
+            return (
+              <button
+                key={t}
+                onClick={() => setTypeFilter(t)}
+                className={`h-7.5 px-2.5 rounded-md text-xs font-semibold transition-all ${
+                  active
+                    ? 'bg-blue-600 text-white shadow-2xs font-bold'
+                    : 'bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 text-[var(--color-text)]'
+                }`}
+              >
+                {t === 'All' ? '⚡ All Vouchers' : t}
+              </button>
+            );
+          })}
         </div>
 
-        <div className="bg-white border border-slate-200 rounded-xl overflow-hidden shadow-xs">
-          <Table>
-            <TableHeader className="bg-slate-50 border-b border-slate-200">
-              <TableRow>
-                <TableHead className="w-32 text-[11px] font-bold text-slate-500 uppercase tracking-wider pl-4">VOUCHER NO</TableHead>
-                <TableHead className="w-24 text-[11px] font-bold text-slate-500 uppercase tracking-wider">TYPE</TableHead>
-                <TableHead className="w-28 text-[11px] font-bold text-slate-500 uppercase tracking-wider">DATE</TableHead>
-                <TableHead className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">BANK / CASH ACCOUNT</TableHead>
-                <TableHead className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">PARTY NAME</TableHead>
-                <TableHead className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">MODE & REF</TableHead>
-                <TableHead className="w-36 text-right text-[11px] font-bold text-slate-500 uppercase tracking-wider">AMOUNT</TableHead>
-                <TableHead className="w-28 text-[11px] font-bold text-slate-500 uppercase tracking-wider pr-4">STATUS</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody className="divide-y divide-slate-100">
-              {filteredVouchers.map(v => (
-                <TableRow key={v.id} className="hover:bg-slate-50/80">
-                  <TableCell className="py-3.5 pl-4 font-mono text-xs font-bold text-slate-900">
-                    {v.voucherNumber}
-                  </TableCell>
-                  <TableCell className="py-3.5">
-                    <span className={`inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-bold border ${getVoucherBadgeStyle(v.voucherType)}`}>
-                      {v.voucherType}
-                    </span>
-                  </TableCell>
-                  <TableCell className="py-3.5 font-mono text-xs text-slate-600">
-                    {v.date}
-                  </TableCell>
-                  <TableCell className="py-3.5 text-xs text-slate-700 font-medium">
-                    {v.accountName}
-                  </TableCell>
-                  <TableCell className="py-3.5 text-xs font-bold text-slate-800">
-                    {v.partyName}
-                  </TableCell>
-                  <TableCell className="py-3.5 text-xs text-slate-600">
-                    <span className="font-semibold">{v.paymentMode}</span>
-                    {v.chequeNumber && <span className="text-[11px] text-slate-400 block font-mono">{v.chequeNumber}</span>}
-                  </TableCell>
-                  <TableCell className="py-3.5 text-right font-mono text-xs font-bold text-slate-900">
-                    {formatCurrency(v.amount, v.currency)}
-                  </TableCell>
-                  <TableCell className="py-3.5 pr-4">
-                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-medium bg-emerald-50 text-emerald-700 border border-emerald-200">
-                      <CheckCircle2 className="w-3 h-3" /> {v.status}
-                    </span>
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
+        {/* Robust Search Box - Guaranteed Zero Text/Icon Overlap */}
+        <div className="flex items-center h-8 w-64 px-2.5 bg-[var(--color-surface)] border border-[var(--color-border)] rounded-lg text-xs focus-within:border-blue-500 focus-within:ring-1 focus-within:ring-blue-200 transition-all shadow-2xs">
+          <Search className="w-3.5 h-3.5 text-gray-400 mr-2 shrink-0 pointer-events-none" />
+          <input
+            type="text"
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            placeholder="Search voucher #, party, account..."
+            style={{
+              border: 'none',
+              outline: 'none',
+              background: 'transparent',
+              padding: '0 !important',
+              width: '100%',
+              fontSize: '12px',
+              color: 'var(--color-text)',
+              boxShadow: 'none',
+            }}
+            className="!p-0 !border-0 !outline-none !bg-transparent w-full text-xs text-[var(--color-text)]"
+          />
+          {query && (
+            <button
+              type="button"
+              onClick={() => setQuery('')}
+              className="text-gray-400 hover:text-gray-600 text-sm px-1 leading-none font-bold"
+            >
+              ×
+            </button>
+          )}
         </div>
       </div>
 
-      {/* EXACT CUSTOMER MANAGEMENT MODAL OVERLAY FORMAT (.overlay & .modal) */}
+      {/* Vouchers Register Table */}
+      <div className="bg-[var(--color-surface)] border border-[var(--color-border)] rounded-xl shadow-xs overflow-hidden">
+        <div className="p-3 border-b border-[var(--color-border)] flex justify-between items-center bg-gray-50/50 dark:bg-gray-900/50">
+          <span className="text-xs font-bold text-[var(--color-text-strong)] flex items-center gap-2">
+            <BookOpen className="w-3.5 h-3.5 text-emerald-600" /> Vouchers Register Ledger ({filteredVouchers.length})
+          </span>
+          <span className="text-[11px] text-[var(--color-text-muted)]">
+            Click <strong>Voucher PDF</strong> to generate an official double-entry voucher slip.
+          </span>
+        </div>
+
+        <div className="overflow-x-auto">
+          <table className="w-full text-left text-xs">
+            <thead className="bg-gray-50 dark:bg-gray-900/80 text-[var(--color-text-muted)] border-b border-[var(--color-border)] text-[10px] uppercase font-bold tracking-wider">
+              <tr>
+                <th className="py-2.5 px-3.5">Voucher #</th>
+                <th className="py-2.5 px-3 text-center">Type</th>
+                <th className="py-2.5 px-3">Date</th>
+                <th className="py-2.5 px-3">Posting Account</th>
+                <th className="py-2.5 px-3">Party / Beneficiary</th>
+                <th className="py-2.5 px-3">Mode & Ref</th>
+                <th className="py-2.5 px-3 text-right">Amount</th>
+                <th className="py-2.5 px-3 text-center">Status</th>
+                <th className="py-2.5 px-3.5 text-right">Action</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-[var(--color-border)]">
+              {loading ? (
+                <tr>
+                  <td colSpan={9} className="py-12 text-center text-[var(--color-text-muted)]">
+                    <div className="flex flex-col items-center gap-2">
+                      <RefreshCw className="w-6 h-6 animate-spin text-emerald-600" />
+                      <p className="font-semibold text-xs">Loading financial vouchers...</p>
+                    </div>
+                  </td>
+                </tr>
+              ) : filteredVouchers.length === 0 ? (
+                <tr>
+                  <td colSpan={9} className="py-12 text-center text-[var(--color-text-muted)]">
+                    <div className="flex flex-col items-center gap-2">
+                      <CheckCircle2 className="w-8 h-8 text-gray-400" />
+                      <p className="font-semibold text-xs">No vouchers found for the selected criteria.</p>
+                    </div>
+                  </td>
+                </tr>
+              ) : (
+                filteredVouchers.map((v) => {
+                  const isDisbursement = v.voucherType === 'BPV' || v.voucherType === 'CPV';
+                  const isCollection = v.voucherType === 'BRV' || v.voucherType === 'CRV';
+
+                  return (
+                    <tr key={v.id} className="hover:bg-gray-50/50 dark:hover:bg-gray-900/30 transition-colors">
+                      <td className="py-2.5 px-3.5 font-mono font-bold text-blue-600 dark:text-blue-400">
+                        <button
+                          onClick={() => setSelectedDetailVoucher(v)}
+                          className="hover:underline text-left font-mono"
+                          title="View voucher audit breakdown"
+                        >
+                          {v.voucherNumber}
+                        </button>
+                      </td>
+                      <td className="py-2.5 px-3 text-center">
+                        <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${getVoucherBadgeStyle(v.voucherType)}`}>
+                          {v.voucherType}
+                        </span>
+                      </td>
+                      <td className="py-2.5 px-3 font-mono text-[var(--color-text)] whitespace-nowrap">
+                        {v.date}
+                      </td>
+                      <td className="py-2.5 px-3 font-semibold text-[var(--color-text-strong)]">
+                        {v.accountName}
+                      </td>
+                      <td className="py-2.5 px-3 text-[var(--color-text)] max-w-xs truncate" title={v.partyName}>
+                        <span className="font-semibold">{v.partyName}</span>
+                        {v.partyType && <span className="text-[10px] text-[var(--color-text-muted)] ml-1">({v.partyType})</span>}
+                      </td>
+                      <td className="py-2.5 px-3 text-[var(--color-text)] text-[11px]">
+                        <span>{v.paymentMode}</span>
+                        {v.chequeNumber && (
+                          <span className="font-mono text-gray-400 ml-1">#{v.chequeNumber}</span>
+                        )}
+                      </td>
+                      <td className={`py-2.5 px-3 text-right font-mono font-extrabold ${
+                        isCollection
+                          ? 'text-emerald-600 dark:text-emerald-400'
+                          : isDisbursement
+                          ? 'text-rose-600 dark:text-rose-400'
+                          : 'text-indigo-600 dark:text-indigo-400'
+                      }`}>
+                        {money(v.amount, v.currency)}
+                      </td>
+                      <td className="py-2.5 px-3 text-center">
+                        <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-50 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800">
+                          {v.status}
+                        </span>
+                      </td>
+                      <td className="py-2.5 px-3.5 text-right whitespace-nowrap">
+                        <button
+                          onClick={() => generateVoucherPDF(v)}
+                          className="inline-flex items-center gap-1 px-2.5 py-1 bg-blue-50 dark:bg-blue-900/30 hover:bg-blue-100 dark:hover:bg-blue-900/50 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-800 rounded-lg text-[11px] font-semibold transition-all shadow-2xs"
+                          title="Download Official Voucher PDF"
+                        >
+                          <Download className="w-3 h-3" /> Voucher PDF
+                        </button>
+                      </td>
+                    </tr>
+                  );
+                })
+              )}
+            </tbody>
+            {filteredVouchers.length > 0 && (
+              <tfoot className="bg-gray-50 dark:bg-gray-900 border-t-2 border-[var(--color-border)] font-bold text-xs">
+                <tr>
+                  <td colSpan={6} className="py-3 px-3.5 uppercase tracking-wider text-[var(--color-text-muted)] text-right">
+                    Total Voucher Volume ({filteredVouchers.length}):
+                  </td>
+                  <td className="py-3 px-3 text-right font-extrabold text-blue-600 dark:text-blue-400 text-sm">
+                    {money(filteredVouchers.reduce((s, v) => s + v.amount, 0), currentEntity?.currencyCode)}
+                  </td>
+                  <td colSpan={2}></td>
+                </tr>
+              </tfoot>
+            )}
+          </table>
+        </div>
+      </div>
+
+      {/* Post Voucher Modal Dialog */}
       {isModalOpen && (
-        <div className="overlay">
-          <form className="modal" style={{ maxWidth: '800px' }} onSubmit={handlePostVoucher}>
-            <div className="modal-head">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-xs p-4" onClick={() => setIsModalOpen(false)}>
+          <div className="bg-[var(--color-surface)] border border-[var(--color-border)] rounded-2xl shadow-2xl w-full max-w-xl overflow-hidden flex flex-col max-h-[90vh]" onClick={(e) => e.stopPropagation()}>
+            <div className="flex items-center justify-between p-4 border-b border-[var(--color-border)] bg-gray-50/50 dark:bg-gray-900/50">
               <div>
-                <p className="eyebrow">BANKING & PAYMENTS • VOUCHER DATA ENTRY</p>
-                <h2>{getVoucherTitle(selectedVoucherType)}</h2>
+                <h2 className="text-base font-bold text-[var(--color-text-strong)] flex items-center gap-2">
+                  <FileText className="w-4 h-4 text-emerald-600" /> Post {getVoucherFullTitle(selectedVoucherType)}
+                </h2>
+                <p className="text-xs text-[var(--color-text-muted)] mt-0.5">
+                  Posts automated double-entry transaction to General Ledger for {currentEntity?.name || 'Active Company'}.
+                </p>
               </div>
-              <button type="button" className="close" onClick={() => setIsModalOpen(false)}>
-                ×
+              <button onClick={() => setIsModalOpen(false)} className="h-7 w-7 flex items-center justify-center rounded-lg hover:bg-gray-200 dark:hover:bg-gray-800 text-gray-500">
+                <X className="w-4 h-4" />
               </button>
             </div>
 
-            <div className="form-grid">
-              <label>
-                Voucher Date *
-                <input
-                  type="date"
-                  required
-                  value={form.date}
-                  onChange={e => setForm({ ...form, date: e.target.value })}
-                />
-              </label>
+            <form onSubmit={handlePostVoucher} className="p-5 space-y-4 overflow-y-auto">
+              {error && (
+                <div className="p-3 bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-800 rounded-xl text-rose-700 dark:text-rose-300 text-xs font-semibold">
+                  {error}
+                </div>
+              )}
 
-              <label>
-                {selectedVoucherType.startsWith('B') ? 'Bank Account' : selectedVoucherType.startsWith('C') ? 'Cash Vault / Register' : 'Account Category'}
+              {/* Voucher Type Tabs */}
+              <div className="grid grid-cols-5 gap-1.5 p-1 bg-gray-100 dark:bg-gray-800 rounded-xl">
+                {(['BPV', 'BRV', 'CPV', 'CRV', 'JV'] as VoucherType[]).map((t) => (
+                  <button
+                    key={t}
+                    type="button"
+                    onClick={() => openVoucherModal(t)}
+                    className={`py-1.5 text-xs font-bold rounded-lg transition-all ${
+                      selectedVoucherType === t
+                        ? 'bg-white dark:bg-gray-900 text-blue-600 shadow-xs'
+                        : 'text-gray-500 hover:text-gray-800 dark:hover:text-gray-200'
+                    }`}
+                  >
+                    {t}
+                  </button>
+                ))}
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1">
+                  <label className="text-xs font-bold text-[var(--color-text-strong)]">Voucher Date *</label>
+                  <input
+                    type="date"
+                    value={form.date}
+                    onChange={(e) => setForm({ ...form, date: e.target.value })}
+                    className="w-full h-9 px-3 rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] text-xs text-[var(--color-text)] outline-none focus:border-blue-500"
+                    required
+                  />
+                </div>
+                <div className="space-y-1">
+                  <label className="text-xs font-bold text-[var(--color-text-strong)]">Currency *</label>
+                  <select
+                    value={form.currency}
+                    onChange={(e) => setForm({ ...form, currency: e.target.value })}
+                    className="w-full h-9 px-3 rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] text-xs text-[var(--color-text)] outline-none focus:border-blue-500"
+                    required
+                  >
+                    <option value="PKR">PKR - Pakistani Rupee</option>
+                    <option value="USD">USD - US Dollar</option>
+                    <option value="AED">AED - UAE Dirham</option>
+                    <option value="SAR">SAR - Saudi Riyal</option>
+                    <option value="GBP">GBP - British Pound</option>
+                    <option value="EUR">EUR - Euro</option>
+                    <option value="CAD">CAD - Canadian Dollar</option>
+                  </select>
+                </div>
+              </div>
+
+              {/* Posting Bank/Cash/GL Account */}
+              <div className="space-y-1">
+                <label className="text-xs font-bold text-[var(--color-text-strong)]">
+                  {selectedVoucherType === 'BPV' || selectedVoucherType === 'BRV'
+                    ? 'Commercial Bank Account *'
+                    : selectedVoucherType === 'CPV' || selectedVoucherType === 'CRV'
+                    ? 'Cash Register / Vault Account *'
+                    : 'GL Adjustment Account *'}
+                </label>
                 <select
                   value={form.accountName}
-                  onChange={e => setForm({ ...form, accountName: e.target.value })}
+                  onChange={(e) => setForm({ ...form, accountName: e.target.value })}
+                  className="w-full h-9 px-3 rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] text-xs text-[var(--color-text)] outline-none focus:border-blue-500"
+                  required
                 >
-                  {selectedVoucherType.startsWith('B') ? (
+                  {selectedVoucherType === 'BPV' || selectedVoucherType === 'BRV' ? (
                     bankAccounts.length > 0 ? (
-                      bankAccounts.map(a => <option key={a.id} value={a.name}>{a.code} — {a.name}</option>)
+                      bankAccounts.map((b) => <option key={b.id} value={b.name}>{b.code} — {b.name}</option>)
                     ) : (
-                      <>
-                        <option value="Habib Bank Limited (HBL)">11101 — Habib Bank Limited (HBL)</option>
-                        <option value="Meezan Bank Limited">11102 — Meezan Bank Limited</option>
-                        <option value="Standard Chartered (USD)">11103 — Standard Chartered (USD)</option>
-                      </>
+                      <option value="Habib Bank Limited (HBL)">11201 — Habib Bank Limited (HBL)</option>
                     )
-                  ) : selectedVoucherType.startsWith('C') ? (
+                  ) : selectedVoucherType === 'CPV' || selectedVoucherType === 'CRV' ? (
                     cashAccounts.length > 0 ? (
-                      cashAccounts.map(a => <option key={a.id} value={a.name}>{a.code} — {a.name}</option>)
+                      cashAccounts.map((c) => <option key={c.id} value={c.name}>{c.code} — {c.name}</option>)
                     ) : (
-                      <>
-                        <option value="Head Office Petty Cash Vault">11104 — Head Office Petty Cash Vault</option>
-                        <option value="Branch Office Cash Register">11105 — Branch Office Cash Register</option>
-                      </>
+                      <option value="Main Cash Register Vault">11101 — Main Cash Register Vault</option>
                     )
                   ) : (
-                    <option value="General Ledger Adjustments">General Ledger Adjustments</option>
+                    <option value="General Ledger Adjustments">11000 — General Ledger Adjustments</option>
                   )}
                 </select>
-              </label>
+              </div>
 
-              <label style={{ gridColumn: '1 / -1' }}>
-                {selectedVoucherType === 'BPV' || selectedVoucherType === 'CPV' ? 'Select Vendor / Payee (from Vendor Management) *' : selectedVoucherType === 'BRV' || selectedVoucherType === 'CRV' ? 'Select Customer / Payer (from Customer Management) *' : 'Party / Account Narration *'}
+              {/* Counterparty / Beneficiary */}
+              <div className="space-y-1">
+                <label className="text-xs font-bold text-[var(--color-text-strong)]">
+                  {selectedVoucherType === 'BPV' || selectedVoucherType === 'CPV'
+                    ? 'Payee / Supplier (Vendor) *'
+                    : selectedVoucherType === 'BRV' || selectedVoucherType === 'CRV'
+                    ? 'Payer / Client (Customer) *'
+                    : 'Party / Adjusting Account Narration *'}
+                </label>
                 {selectedVoucherType === 'BPV' || selectedVoucherType === 'CPV' ? (
                   <select
                     value={form.partyName}
-                    onChange={e => setForm({ ...form, partyName: e.target.value })}
+                    onChange={(e) => setForm({ ...form, partyName: e.target.value })}
+                    className="w-full h-9 px-3 rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] text-xs text-[var(--color-text)] outline-none focus:border-blue-500"
+                    required
                   >
-                    {vendors.length > 0 ? (
-                      vendors.map(v => <option key={v.id} value={v.name}>{v.vendorNumber ? `${v.vendorNumber} — ${v.name}` : v.name}</option>)
-                    ) : (
-                      <>
-                        <option value="Allied Engineering Supplies Ltd">V-1001 — Allied Engineering Supplies Ltd</option>
-                        <option value="Cloud Infrastructure Services USA">V-1002 — Cloud Infrastructure Services USA</option>
-                        <option value="National Electric Equipment Co">V-1003 — National Electric Equipment Co</option>
-                      </>
-                    )}
+                    <option value="">-- Select Vendor / Payee --</option>
+                    {vendors.map((v) => (
+                      <option key={v.id} value={v.name}>{v.name} ({v.vendorNumber || 'Vendor'})</option>
+                    ))}
                   </select>
                 ) : selectedVoucherType === 'BRV' || selectedVoucherType === 'CRV' ? (
                   <select
                     value={form.partyName}
-                    onChange={e => setForm({ ...form, partyName: e.target.value })}
+                    onChange={(e) => setForm({ ...form, partyName: e.target.value })}
+                    className="w-full h-9 px-3 rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] text-xs text-[var(--color-text)] outline-none focus:border-blue-500"
+                    required
                   >
-                    {customers.length > 0 ? (
-                      customers.map(c => <option key={c.id} value={c.name}>{c.customerNumber ? `${c.customerNumber} — ${c.name}` : c.name}</option>)
-                    ) : (
-                      <>
-                        <option value="Apex Global Logistics USA">C-1001 — Apex Global Logistics USA</option>
-                        <option value="Crescent Textile Mills Pakistan">C-1002 — Crescent Textile Mills Pakistan</option>
-                      </>
-                    )}
+                    <option value="">-- Select Customer / Payer --</option>
+                    {customers.map((c) => (
+                      <option key={c.id} value={c.name}>{c.name} ({c.customerNumber || 'Customer'})</option>
+                    ))}
                   </select>
                 ) : (
-                  <input placeholder="General Ledger Adjustment" value={form.partyName} onChange={e => setForm({ ...form, partyName: e.target.value })} />
+                  <input
+                    type="text"
+                    value={form.partyName}
+                    onChange={(e) => setForm({ ...form, partyName: e.target.value })}
+                    placeholder="e.g. Accrued Payroll / Audit Adjustment"
+                    className="w-full h-9 px-3 rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] text-xs text-[var(--color-text)] outline-none focus:border-blue-500"
+                    required
+                  />
                 )}
-              </label>
+              </div>
 
-              <label>
-                Payment Mode
-                <select
-                  value={form.paymentMode}
-                  onChange={e => setForm({ ...form, paymentMode: e.target.value })}
-                >
-                  <option value="Wire Transfer">Wire Transfer</option>
-                  <option value="ACH">ACH Electronic</option>
-                  <option value="Cheque / Pay Order">Cheque / Pay Order</option>
-                  <option value="RTGS">RTGS Real-Time</option>
-                  <option value="SWIFT">SWIFT International</option>
-                  <option value="Cash">Physical Cash</option>
-                  <option value="N/A">N/A (Journal Entry)</option>
-                </select>
-              </label>
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1">
+                  <label className="text-xs font-bold text-[var(--color-text-strong)]">Payment Mode</label>
+                  <select
+                    value={form.paymentMode}
+                    onChange={(e) => setForm({ ...form, paymentMode: e.target.value })}
+                    className="w-full h-9 px-3 rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] text-xs text-[var(--color-text)] outline-none focus:border-blue-500"
+                  >
+                    <option value="Wire Transfer">Wire Transfer</option>
+                    <option value="Bank Transfer">Bank Transfer / Online</option>
+                    <option value="Cheque">Cheque / Check</option>
+                    <option value="Pay Order">Pay Order</option>
+                    <option value="Cash">Physical Cash</option>
+                    <option value="ACH">ACH Electronic</option>
+                    <option value="RTGS">RTGS Real-Time</option>
+                    <option value="N/A">N/A (Journal Adjustment)</option>
+                  </select>
+                </div>
+                <div className="space-y-1">
+                  <label className="text-xs font-bold text-[var(--color-text-strong)]">Cheque / Reference Number</label>
+                  <input
+                    type="text"
+                    value={form.chequeNumber}
+                    onChange={(e) => setForm({ ...form, chequeNumber: e.target.value })}
+                    placeholder="e.g. CHQ-99182 / TXN-8172"
+                    className="w-full h-9 px-3 rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] text-xs text-[var(--color-text)] font-mono outline-none focus:border-blue-500"
+                  />
+                </div>
+              </div>
 
-              <label>
-                Cheque / Reference No.
+              <div className="space-y-1">
+                <label className="text-xs font-bold text-[var(--color-text-strong)]">Voucher Amount ({form.currency}) *</label>
                 <input
-                  placeholder="e.g. CHQ-99182"
-                  value={form.chequeNumber}
-                  onChange={e => setForm({ ...form, chequeNumber: e.target.value })}
-                />
-              </label>
-
-              <label>
-                Voucher Amount *
-                <input
-                  required
                   type="number"
-                  placeholder="0.00"
+                  step="0.01"
                   value={form.amount}
-                  onChange={e => setForm({ ...form, amount: e.target.value })}
+                  onChange={(e) => setForm({ ...form, amount: e.target.value })}
+                  placeholder="0.00"
+                  className="w-full h-9 px-3 rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] text-xs text-[var(--color-text)] font-mono font-bold outline-none focus:border-blue-500"
+                  required
                 />
-              </label>
+              </div>
 
-              <label>
-                Currency
-                <select
-                  value={form.currency}
-                  onChange={e => setForm({ ...form, currency: e.target.value })}
-                >
-                  <option value="PKR">PKR (Pakistani Rupee)</option>
-                  <option value="USD">USD (US Dollar)</option>
-                  <option value="EUR">EUR (Euro)</option>
-                  <option value="GBP">GBP (British Pound)</option>
-                </select>
-              </label>
-
-              <label style={{ gridColumn: '1 / -1' }}>
-                Narration / Audit Trail Description
+              <div className="space-y-1">
+                <label className="text-xs font-bold text-[var(--color-text-strong)]">Narration / Audit Trail Description</label>
                 <input
-                  placeholder="Describe transaction audit details..."
+                  type="text"
                   value={form.narration}
-                  onChange={e => setForm({ ...form, narration: e.target.value })}
+                  onChange={(e) => setForm({ ...form, narration: e.target.value })}
+                  placeholder="e.g. Settlement of Invoice #INV-1092 via bank wire"
+                  className="w-full h-9 px-3 rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] text-xs text-[var(--color-text)] outline-none focus:border-blue-500"
                 />
-              </label>
+              </div>
+
+              {/* Double-Entry Preview Box */}
+              <div className="p-3 bg-blue-50/50 dark:bg-blue-950/20 rounded-xl border border-blue-200 dark:border-blue-800 text-xs space-y-1.5">
+                <span className="font-bold text-blue-800 dark:text-blue-300 block text-[11px] uppercase tracking-wider">
+                  Double-Entry General Ledger Preview
+                </span>
+                <div className="flex justify-between text-xs">
+                  <span className="text-[var(--color-text)] font-medium">
+                    Debit (+): {selectedVoucherType === 'BRV' || selectedVoucherType === 'CRV' ? form.accountName || 'Cash/Bank' : form.partyName || 'Party / Expense'}
+                  </span>
+                  <span className="font-mono font-bold text-emerald-600">
+                    {money(parseFloat(form.amount) || 0, form.currency)}
+                  </span>
+                </div>
+                <div className="flex justify-between text-xs">
+                  <span className="text-[var(--color-text)] font-medium">
+                    Credit (-): {selectedVoucherType === 'BPV' || selectedVoucherType === 'CPV' ? form.accountName || 'Cash/Bank' : form.partyName || 'Party / Revenue'}
+                  </span>
+                  <span className="font-mono font-bold text-rose-600">
+                    {money(parseFloat(form.amount) || 0, form.currency)}
+                  </span>
+                </div>
+              </div>
+
+              <div className="flex items-center justify-end gap-2 pt-2 border-t border-[var(--color-border)]">
+                <button
+                  type="button"
+                  onClick={() => setIsModalOpen(false)}
+                  className="secondary h-9 px-4 rounded-lg text-xs font-semibold"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={saving}
+                  className="primary h-9 px-4 rounded-lg text-xs font-semibold flex items-center gap-1.5 shadow-xs"
+                >
+                  {saving ? <RefreshCw className="w-3.5 h-3.5 animate-spin" /> : <CheckCircle2 className="w-3.5 h-3.5" />}
+                  Post {selectedVoucherType} Voucher
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Voucher Detail Audit Modal */}
+      {selectedDetailVoucher && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-xs p-4" onClick={() => setSelectedDetailVoucher(null)}>
+          <div className="bg-[var(--color-surface)] border border-[var(--color-border)] rounded-2xl shadow-2xl w-full max-w-lg overflow-hidden flex flex-col max-h-[90vh]" onClick={(e) => e.stopPropagation()}>
+            <div className="flex items-center justify-between p-4 border-b border-[var(--color-border)] bg-gray-50/50 dark:bg-gray-900/50">
+              <div>
+                <h2 className="text-base font-bold text-[var(--color-text-strong)] flex items-center gap-2">
+                  <FileText className="w-4 h-4 text-emerald-600" /> Voucher #{selectedDetailVoucher.voucherNumber}
+                </h2>
+                <p className="text-xs text-[var(--color-text-muted)] mt-0.5">
+                  {getVoucherFullTitle(selectedDetailVoucher.voucherType)}
+                </p>
+              </div>
+              <button onClick={() => setSelectedDetailVoucher(null)} className="h-7 w-7 flex items-center justify-center rounded-lg hover:bg-gray-200 dark:hover:bg-gray-800 text-gray-500">
+                <X className="w-4 h-4" />
+              </button>
             </div>
 
-{/* Modal Footer */}
-            <div className="modal-footer">
-              <button type="button" className="secondary btn-cancel" onClick={() => setIsModalOpen(false)}>
-                Cancel
-              </button>
-              <button type="button" className="secondary btn-draft" onClick={(e) => { e.preventDefault(); saveDraft(); alert("��� Voucher draft saved successfully!"); }}>Save Draft</button>
-              <button type="submit" className="primary btn-finalize">
-                Finalize & Post {selectedVoucherType} Voucher
-              </button>
+            <div className="p-5 space-y-4 overflow-y-auto text-xs">
+              <div className="p-3 bg-gray-50 dark:bg-gray-900 rounded-xl border border-[var(--color-border)] space-y-2">
+                <div className="flex justify-between">
+                  <span className="text-[var(--color-text-muted)]">Voucher Type:</span>
+                  <span className={`font-bold px-2 py-0.5 rounded-md ${getVoucherBadgeStyle(selectedDetailVoucher.voucherType)}`}>
+                    {selectedDetailVoucher.voucherType}
+                  </span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-[var(--color-text-muted)]">Date:</span>
+                  <span className="font-semibold text-[var(--color-text-strong)]">{selectedDetailVoucher.date}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-[var(--color-text-muted)]">Posting Account:</span>
+                  <span className="font-semibold text-[var(--color-text-strong)]">{selectedDetailVoucher.accountName}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-[var(--color-text-muted)]">Beneficiary / Party:</span>
+                  <span className="font-semibold text-[var(--color-text-strong)]">{selectedDetailVoucher.partyName} ({selectedDetailVoucher.partyType})</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-[var(--color-text-muted)]">Payment Mode & Cheque:</span>
+                  <span className="font-medium text-[var(--color-text-strong)]">
+                    {selectedDetailVoucher.paymentMode} {selectedDetailVoucher.chequeNumber ? `(#${selectedDetailVoucher.chequeNumber})` : ''}
+                  </span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-[var(--color-text-muted)]">Voucher Amount:</span>
+                  <span className="font-mono font-extrabold text-sm text-blue-600 dark:text-blue-400">
+                    {money(selectedDetailVoucher.amount, selectedDetailVoucher.currency)}
+                  </span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-[var(--color-text-muted)]">Narration:</span>
+                  <span className="font-medium text-[var(--color-text-strong)]">{selectedDetailVoucher.narration || '—'}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-[var(--color-text-muted)]">Status:</span>
+                  <span className="font-bold text-emerald-600">{selectedDetailVoucher.status}</span>
+                </div>
+              </div>
+
+              <div className="flex items-center justify-end gap-2 pt-2 border-t border-[var(--color-border)]">
+                <button
+                  type="button"
+                  onClick={() => setSelectedDetailVoucher(null)}
+                  className="secondary h-9 px-4 rounded-lg text-xs font-semibold"
+                >
+                  Close
+                </button>
+                <button
+                  type="button"
+                  onClick={() => generateVoucherPDF(selectedDetailVoucher)}
+                  className="primary h-9 px-4 rounded-lg text-xs font-semibold flex items-center gap-1.5 shadow-xs"
+                >
+                  <Download className="w-3.5 h-3.5" /> Download Voucher PDF
+                </button>
+              </div>
             </div>
-          </form>
+          </div>
         </div>
       )}
     </div>
   );
 };
+
+export default VoucherManagement;

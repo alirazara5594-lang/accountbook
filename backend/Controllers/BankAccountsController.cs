@@ -21,6 +21,14 @@ public class BankAccountsController(AccountingStore store) : ControllerBase
             return BadRequest(new { Error = error });
         return Created($"/api/v1/bank-accounts/{account!.Id}", account);
     }
+
+    [HttpPut("{id:guid}")]
+    public IActionResult UpdateBankAccount(Guid id, [FromBody] CashBankAccountRequest request)
+    {
+        if (!store.UpdateCashBankAccount(id, request, bankOnly: true, out var account, out var error))
+            return BadRequest(new { Error = error });
+        return Ok(account);
+    }
 }
 
 [ApiController]
@@ -39,5 +47,13 @@ public class CashAccountsController(AccountingStore store) : ControllerBase
         if (!store.CreateCashBankAccount(request, bankOnly: false, out var account, out var error))
             return BadRequest(new { Error = error });
         return Created($"/api/v1/cash-accounts/{account!.Id}", account);
+    }
+
+    [HttpPut("{id:guid}")]
+    public IActionResult UpdateCashAccount(Guid id, [FromBody] CashBankAccountRequest request)
+    {
+        if (!store.UpdateCashBankAccount(id, request, bankOnly: false, out var account, out var error))
+            return BadRequest(new { Error = error });
+        return Ok(account);
     }
 }
