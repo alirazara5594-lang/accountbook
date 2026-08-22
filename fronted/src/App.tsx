@@ -61,6 +61,7 @@ import {
 import {
   ManufacturingSummaryView, ManufacturingWorkspaceView, BillOfMaterialsView, WorkOrdersMfgView, JobCostingView
 } from './ManufacturingViews';
+import { SystemSettingsView } from './SystemSettingsView';
 
 import { SystemAccountMapping } from './components/SystemAccountMapping'
 import { ModuleSummary } from './ModuleSummary'
@@ -111,7 +112,6 @@ export default function App() {
   const fetchAccounts = useCoaStore((s) => s.fetchAccounts)
   const saveAccountStore = useCoaStore((s) => s.saveAccount)
   const toggleAccountStatusStore = useCoaStore((s) => s.toggleAccountStatus)
-  const resetDatabaseStore = useCoaStore((s) => s.resetDatabase)
 
   const entries = useJournalsStore((s) => s.entries as Journal[])
   const fetchJournalEntries = useJournalsStore((s) => s.fetchJournalEntries)
@@ -331,6 +331,7 @@ export default function App() {
     'Accounting.General Ledger': 'general-ledger',
     'Accounting.Accounts Receivable': 'accounts-receivable',
     'Accounting.Accounts Payable': 'accounts-payable',
+    'Accounting.Tax Accounting': 'tax-accounting',
     'Administration.Tax Accounting': 'tax-accounting',
     'Accounting.Budgets': 'budgets',
     'Accounting.Financial Reports': 'financial-reports',
@@ -420,28 +421,95 @@ export default function App() {
     return <OnboardingWizard currentUser={currentUser} />;
   }
 
-  return <div className="app"><UniqueSidebar activePage={page} onNavigate={setPage} modules={activeEntity?.modules || []} currentUser={currentUser} onLogout={handleLogout} /><div className="main-col"><TopHeader currentUser={currentUser} entities={entities} activeEntityId={activeEntityId} onSelectEntity={setActiveEntityId} page={page} setPage={setPage} accounts={accounts} notify={notify} onLogout={handleLogout} theme={theme} onThemeChange={setTheme} /><main>{readOnly && <div style={{ display: 'flex', alignItems: 'center', gap: 10, background: '#fef3c7', border: '1px solid #f59e0b', color: '#92400e', borderRadius: 10, padding: '10px 14px', marginBottom: 16, fontSize: 12.5, fontWeight: 600 }}><ShieldAlert size={16} style={{ flexShrink: 0 }} /><span>{activeEntity?.name} is <b>Deactivated</b> — read-only mode. You can view data and download reports, but editing is disabled.</span><button onClick={() => setPage('Administration.Companies')} style={{ marginLeft: 'auto', background: '#fff7ed', border: '1px solid #f59e0b', borderRadius: 8, padding: '4px 10px', fontSize: 11, fontWeight: 700, color: '#92400e', cursor: 'pointer' }}>Manage Companies</button></div>}<div className="module-workspace">
-    <header className="module-head">
-      <div className="module-title">
-        <span className="module-icon">{(() => { const MIcon = activeGroup?.icon; return MIcon ? <MIcon size={20} strokeWidth={1.8} /> : '▦'; })()}</span>
-        <div>
-          <p className="eyebrow">MODULE</p>
-          <h1>{activeGroup?.label || group}</h1>
+  return (
+    <div className="app">
+      <UniqueSidebar
+        activePage={page}
+        onNavigate={setPage}
+        modules={activeEntity?.modules || []}
+        currentUser={currentUser}
+        onLogout={handleLogout}
+      />
+      <div className="main-col">
+        <TopHeader
+          currentUser={currentUser}
+          entities={entities}
+          activeEntityId={activeEntityId}
+          onSelectEntity={setActiveEntityId}
+          page={page}
+          setPage={setPage}
+          accounts={accounts}
+          notify={notify}
+          onLogout={handleLogout}
+          theme={theme}
+          onThemeChange={setTheme}
+        />
+        <div className="module-workspace">
+          <header className="module-head">
+            <div className="module-title">
+              <span className="module-icon">
+                {(() => {
+                  const MIcon = activeGroup?.icon;
+                  return MIcon ? <MIcon size={20} strokeWidth={1.8} /> : '▦';
+                })()}
+              </span>
+              <div>
+                <p className="eyebrow">MODULE</p>
+                <h1>{activeGroup?.label || group}</h1>
+              </div>
+            </div>
+            <div className="module-actions">
+              <label className="entity-picker">
+                Working in
+                <select value={activeEntityId} onChange={e => setActiveEntityId(e.target.value)}>
+                  {entities.map(x => (
+                    <option key={x.id} value={x.id}>
+                      {x.name}{x.code ? ` · ${x.code}` : ''}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              {activeView === 'journal' && (
+                <button
+                  className="primary"
+                  onClick={() => document.getElementById('journal-form')?.scrollIntoView({ behavior: 'smooth' })}
+                  disabled={readOnly}
+                  style={readOnly ? { opacity: 0.5, cursor: 'not-allowed' } : undefined}
+                >
+                  ＋ New entry
+                </button>
+              )}
+            </div>
+          </header>
+          <nav className="module-tabs">
+            <button
+              className={'tab' + (module === 'Summary' || module === 'Dashboard' ? ' active' : '')}
+              onClick={() => setPage(`${group}.Summary`)}
+            >
+              Dashboard
+            </button>
+            {activeGroupItems.map((item: string) => {
+              const key = `${group}.${item}`;
+              return (
+                <button
+                  key={item}
+                  className={'tab' + (page === key ? ' active' : '')}
+                  onClick={() => setPage(key)}
+                >
+                  {item}
+                </button>
+              );
+            })}
+          </nav>
         </div>
-      </div>
-      <div className="module-actions">
-        <label className="entity-picker">Working in<select value={activeEntityId} onChange={e => setActiveEntityId(e.target.value)}>{entities.map(x => <option key={x.id} value={x.id}>{x.name}{x.code ? ` · ${x.code}` : ''}</option>)}</select></label>
-        {activeView === 'journal' && <button className="primary" onClick={() => document.getElementById('journal-form')?.scrollIntoView({ behavior: 'smooth' })} disabled={readOnly} style={readOnly ? { opacity: 0.5, cursor: 'not-allowed' } : undefined}>＋ New entry</button>}
-      </div>
-    </header>
-    <nav className="module-tabs">
-      <button className={'tab' + (module === 'Summary' || module === 'Dashboard' ? ' active' : '')} onClick={() => setPage(`${group}.Summary`)}>Dashboard</button>
-      {activeGroupItems.map((item: string) => {
-        const key = `${group}.${item}`;
-        return <button key={item} className={'tab' + (page === key ? ' active' : '')} onClick={() => setPage(key)}>{item}</button>;
-      })}
-    </nav>
-  </div>
+        <main>
+          {readOnly && (
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10, background: '#fef3c7', border: '1px solid #f59e0b', color: '#92400e', borderRadius: 10, padding: '10px 14px', marginBottom: 16, fontSize: 12.5, fontWeight: 600 }}>
+              <ShieldAlert size={16} style={{ flexShrink: 0 }} />
+              <span>{activeEntity?.name} is <b>Deactivated</b> — read-only mode. You can view data and download reports, but editing is disabled.</span>
+              <button onClick={() => setPage('Administration.Companies')} style={{ marginLeft: 'auto', background: '#fff7ed', border: '1px solid #f59e0b', borderRadius: 8, padding: '4px 10px', fontSize: 11, fontWeight: 700, color: '#92400e', cursor: 'pointer' }}>Manage Companies</button>
+            </div>
+          )}
   {activeView === 'dashboard-hub' && <DashboardHub setPage={setPage} accounts={accounts} activeEntityId={activeEntityId} currentUser={currentUser} />}
   {activeView === 'dashboard-overview' && (
     <ErrorBoundary>
@@ -471,21 +539,7 @@ export default function App() {
   {activeView === 'journal' && <JournalEntriesView accounts={accounts.filter(a => a.status === 'Active')} initialEntries={entries} onEntriesChange={async () => { await fetchJournalEntries(); }} />}
   {activeView === 'intercompany' && <Intercompany allocations={allocations} reload={load} notify={notify} />}
   {activeView === 'settings' && settingsView === 'home' && (
-    <SettingsHome 
-      openEntities={() => setSettingsView('entities')} 
-      openMappings={() => setSettingsView('mappings')} 
-      onReset={async () => {
-        if (window.confirm("⚠️ WARNING: This will permanently delete all transactions, journals, customers, products, vendors, and custom configurations to start completely clean. Standard chart templates and tax rates will be reseeded. Are you sure you want to proceed?")) {
-          try {
-            await resetDatabaseStore();
-            notify("✓ Database reset successfully. System cleared.");
-            window.location.reload();
-          } catch (err: any) {
-            notify(err.message || "Failed to reset database");
-          }
-        }
-      }}
-    />
+    <SystemSettingsView setPage={setPage} notify={notify} />
   )}
   {activeView === 'settings' && settingsView === 'mappings' && <SystemAccountMapping accounts={accounts} close={() => setSettingsView('home')} notify={notify} />}
   {activeView === 'coa-mapping' && <SystemAccountMapping accounts={accounts} close={() => setPage('Overview.Dashboard')} notify={notify} />}
@@ -540,15 +594,15 @@ export default function App() {
   {activeView === 'analytics-inventory' && <InventoryAnalyticsView />}
   {activeView === 'analytics-forecast' && <ForecastingView />}
   {activeView === 'analytics-insights' && <AIInsightsView />}
-  {activeView === 'admin-summary' && <AdministrationSummaryView />}
-  {activeView === 'admin-users' && <UsersView />}
-  {activeView === 'admin-roles' && <RolesPermissionsView />}
-  {activeView === 'admin-companies' && <CompaniesView />}
-  {activeView === 'admin-branches' && <BranchesView />}
-  {activeView === 'admin-approvals' && <ApprovalWorkflowsView />}
-  {activeView === 'admin-number-series' && <NumberSeriesView />}
-  {activeView === 'admin-currency' && <CurrencyView />}
-  {activeView === 'admin-audit' && <AuditLogsView activeEntityId={activeEntityId} />}
+  {activeView === 'admin-summary' && <AdministrationSummaryView setPage={setPage} />}
+  {activeView === 'admin-users' && <UsersView activeEntityId={activeEntityId} notify={notify} />}
+  {activeView === 'admin-roles' && <RolesPermissionsView activeEntityId={activeEntityId} notify={notify} />}
+  {activeView === 'admin-companies' && <CompaniesView activeEntityId={activeEntityId} setPage={setPage} notify={notify} />}
+  {activeView === 'admin-branches' && <BranchesView activeEntityId={activeEntityId} notify={notify} />}
+  {activeView === 'admin-approvals' && <ApprovalWorkflowsView activeEntityId={activeEntityId} notify={notify} />}
+  {activeView === 'admin-number-series' && <NumberSeriesView activeEntityId={activeEntityId} notify={notify} />}
+  {activeView === 'admin-currency' && <CurrencyView activeEntityId={activeEntityId} notify={notify} />}
+  {activeView === 'admin-audit' && <AuditLogsView activeEntityId={activeEntityId} entities={entities as any} notify={notify} />}
   {activeView === 'bills' && <VendorBills activeEntityId={activeEntityId} />}
   {activeView === 'vendor-statements' && <VendorStatementsWorkspace activeEntityId={activeEntityId} />}
   {activeView === 'payables-aging' && <PayablesAgingWorkspace activeEntityId={activeEntityId} />}
@@ -578,50 +632,13 @@ export default function App() {
   {activeView === 'customer-statements' && <CustomerStatementsWorkspace activeEntityId={activeEntityId} />}
   {activeView === 'customer-aging' && <CustomerAgingWorkspace activeEntityId={activeEntityId} />}
   {activeView === 'sales-reports' && <SalesReportsWorkspace activeEntityId={activeEntityId} />}
-  {activeView === 'placeholder' && <div style={{ padding: 40, textAlign: 'center', color: '#666' }}><span style={{ fontSize: 48, opacity: 0.2, display: 'block', marginBottom: 20 }}>🏗</span><h3>Under Construction</h3><p>This module ({module}) is part of the layout but not yet developed.</p></div>}
-  </main></div>{modal && <AccountModal form={form} setForm={setForm} accounts={accounts} editing={editing} close={() => setModal(false)} save={saveAccount} />}{toast && <div className="toast">✓ {toast}</div>}</div>
-}
-
-function SettingsHome({ openEntities, openMappings, onReset }: { openEntities: () => void; openMappings: () => void; onReset: () => void }) { 
-  return (
-    <section className="settings-grid">
-      <button className="settings-card font-sans" onClick={openEntities}>
-        <span>▦</span>
-        <div>
-          <strong>Entity management</strong>
-          <small>Create entities, manage the hierarchy, and select each entity's books.</small>
-        </div>
-        <b>→</b>
-      </button>
-      <button className="settings-card font-sans" onClick={openMappings}>
-        <span>⚙️</span>
-        <div>
-          <strong>System Account Mapping</strong>
-          <small>Map default operational accounts (Accounts Receivable, Accounts Payable, Taxes) for posting.</small>
-        </div>
-        <b>→</b>
-      </button>
-      <button className="settings-card font-sans" disabled>
-        <span>⌘</span>
-        <div>
-          <strong>Chart of accounts</strong>
-          <small>Account structure and financial reporting settings.</small>
-        </div>
-        <b>→</b>
-      </button>
-      <button 
-        className="settings-card border border-red-200/50 hover:bg-rose-50/40 font-sans group cursor-pointer" 
-        onClick={onReset}
-      >
-        <span className="text-red-500 scale-105">⚠️</span>
-        <div>
-          <strong className="text-red-700">Danger Zone: Reset Database</strong>
-          <small className="text-red-500">Wipe all posted transactions, journals, customers, vendors, and products to start clean.</small>
-        </div>
-        <b className="text-red-500">→</b>
-      </button>
-    </section>
-  ); 
+          {activeView === 'placeholder' && <div style={{ padding: 40, textAlign: 'center', color: '#666' }}><span style={{ fontSize: 48, opacity: 0.2, display: 'block', marginBottom: 20 }}>🏗</span><h3>Under Construction</h3><p>This module ({module}) is part of the layout but not yet developed.</p></div>}
+        </main>
+      </div>
+      {modal && <AccountModal form={form} setForm={setForm} accounts={accounts} editing={editing} close={() => setModal(false)} save={saveAccount} />}
+      {toast && <div className="toast">✓ {toast}</div>}
+    </div>
+  );
 }
 
 const subtypesMap: Record<string, string[]> = {

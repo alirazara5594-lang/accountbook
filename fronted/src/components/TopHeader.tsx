@@ -152,21 +152,19 @@ export default function TopHeader(props: Props) {
 
   const dropdownBase: React.CSSProperties = {
     position: 'absolute',
-    top: 'calc(100% + 6px)',
-    right: 0,
-    minWidth: 240,
+    top: 'calc(100% + 8px)',
     background: 'var(--color-surface)',
     border: '1px solid var(--color-border)',
     borderRadius: 12,
-    boxShadow: '0 16px 40px rgba(0, 0, 0, 0.45)',
-    zIndex: 60,
+    boxShadow: '0 20px 45px rgba(0, 0, 0, 0.35)',
+    zIndex: 9999,
     overflow: 'hidden',
   };
 
   return (
     <header className="topbar" style={{ background: 'var(--color-surface)', borderBottom: '1px solid var(--color-border)', position: 'sticky', top: 0, zIndex: 2000, boxShadow: 'var(--shadow-sm)' }}>
       {/* Strict 1-line flex container */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '0 24px', height: 52, maxWidth: 1450, margin: '0 auto', flexWrap: 'nowrap', boxSizing: 'border-box', overflow: 'hidden' }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '0 24px', height: 52, maxWidth: 1450, margin: '0 auto', flexWrap: 'nowrap', boxSizing: 'border-box', position: 'relative' }}>
         
         {/* Working entity switcher — moved slightly left */}
         <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexShrink: 0, marginLeft: -8 }}>
@@ -188,19 +186,30 @@ export default function TopHeader(props: Props) {
               <ChevronDown size={13} style={{ color: 'var(--color-text-muted)' }} />
             </button>
             {entityOpen && (
-              <div style={dropdownBase}>
-                <div style={{ padding: '8px 14px', fontSize: 10, fontWeight: 800, letterSpacing: 1, color: 'var(--color-text-muted)', textTransform: 'uppercase' }}>Working entity</div>
+              <div style={{ ...dropdownBase, left: 0, right: 'auto', minWidth: 260 }}>
+                <div style={{ padding: '8px 14px', fontSize: 10, fontWeight: 800, letterSpacing: 1, color: 'var(--color-text-muted)', textTransform: 'uppercase', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <span>Working Entity</span>
+                  <span style={{ fontSize: 10, color: 'var(--color-primary)', fontWeight: 700 }}>{entities.length} total</span>
+                </div>
                 {entities.length === 0 ? (
-                  <div style={{ padding: '16px 14px', fontSize: 12, color: 'var(--color-text-muted)', textAlign: 'center' }}>No entities yet</div>
+                  <div style={{ padding: '16px 14px', fontSize: 12, color: 'var(--color-text-muted)', textAlign: 'center' }}>
+                    <p>No entities found</p>
+                    <button
+                      onClick={() => { setPage('Administration.Companies'); setEntityOpen(false); }}
+                      style={{ marginTop: 8, padding: '4px 10px', background: 'var(--color-primary)', color: '#fff', border: 0, borderRadius: 6, fontSize: 11, fontWeight: 700, cursor: 'pointer' }}
+                    >
+                      + Add Company
+                    </button>
+                  </div>
                 ) : (
                   <div style={{ maxHeight: 280, overflowY: 'auto' }}>
                     {entities.map(e => (
                       <button
                         key={e.id}
                         onClick={() => { onSelectEntity(e.id); notify(`Switched to ${e.name}`); setEntityOpen(false); }}
-                        style={{ display: 'flex', alignItems: 'center', gap: 10, width: '100%', padding: '9px 14px', border: 0, background: 'transparent', cursor: 'pointer', textAlign: 'left', color: 'var(--color-text)', fontSize: 12.5, borderBottom: '1px solid var(--color-border-subtle)' }}
+                        style={{ display: 'flex', alignItems: 'center', gap: 10, width: '100%', padding: '9px 14px', border: 0, background: e.id === activeEntityId ? 'var(--color-surface-muted)' : 'transparent', cursor: 'pointer', textAlign: 'left', color: 'var(--color-text)', fontSize: 12.5, borderBottom: '1px solid var(--color-border-subtle)' }}
                         onMouseEnter={ev => (ev.currentTarget.style.background = 'var(--color-surface-muted)')}
-                        onMouseLeave={ev => (ev.currentTarget.style.background = 'transparent')}
+                        onMouseLeave={ev => (ev.currentTarget.style.background = e.id === activeEntityId ? 'var(--color-surface-muted)' : 'transparent')}
                       >
                         <span className="avatar small" style={{ width: 24, height: 24, fontSize: 10 }}>{e.code?.[0] || e.name?.[0] || 'E'}</span>
                         <span style={{ flex: 1, minWidth: 0 }}>
@@ -210,6 +219,14 @@ export default function TopHeader(props: Props) {
                         {e.id === activeEntityId && <Check size={14} style={{ color: 'var(--color-primary)', flexShrink: 0 }} />}
                       </button>
                     ))}
+                    <div style={{ padding: '6px 14px', borderTop: '1px solid var(--color-border)' }}>
+                      <button
+                        onClick={() => { setPage('Administration.Companies'); setEntityOpen(false); }}
+                        style={{ width: '100%', textAlign: 'center', padding: '6px 0', background: 'transparent', border: 0, color: 'var(--color-primary)', fontSize: 11.5, fontWeight: 700, cursor: 'pointer' }}
+                      >
+                        ⚙️ Manage All Companies
+                      </button>
+                    </div>
                   </div>
                 )}
               </div>
@@ -240,7 +257,7 @@ export default function TopHeader(props: Props) {
             {query && <button onClick={() => { setQuery(''); setSearchOpen(false); }} style={{ border: 0, background: 'none', cursor: 'pointer', padding: 0, color: 'var(--color-text-muted)' }}><X size={13} /></button>}
           </div>
           {searchOpen && (
-            <div style={dropdownBase}>
+            <div style={{ ...dropdownBase, left: 'auto', right: 0, minWidth: 280 }}>
               {results.length === 0 ? (
                 <div style={{ padding: '16px 14px', fontSize: 12, color: 'var(--color-text-muted)', textAlign: 'center' }}>
                   {query ? 'No matches found' : 'Type to search pages, accounts or companies'}
@@ -294,7 +311,7 @@ export default function TopHeader(props: Props) {
               <Plus size={13} /> Quick
             </button>
             {actionsOpen && (
-              <div style={dropdownBase}>
+              <div style={{ ...dropdownBase, right: 0, left: 'auto', minWidth: 220 }}>
                 <div style={{ padding: '8px 14px', fontSize: 10, fontWeight: 800, letterSpacing: 1, color: 'var(--color-text-muted)', textTransform: 'uppercase' }}>Create New</div>
                 {quickActions.map((qa, i) => (
                   <button key={i} onClick={() => { qa.action(); setActionsOpen(false); }} style={{ display: 'flex', alignItems: 'center', gap: 9, width: '100%', padding: '9px 14px', border: 0, background: 'transparent', cursor: 'pointer', textAlign: 'left', color: 'var(--color-text)', fontSize: 12.5 }} onMouseEnter={e => (e.currentTarget.style.background = 'var(--color-surface-muted)')} onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}>
@@ -346,7 +363,7 @@ export default function TopHeader(props: Props) {
               {notifCount > 0 && <span style={{ position: 'absolute', top: -3, right: -3, background: '#f43f5e', color: '#fff', fontSize: 9, fontWeight: 800, borderRadius: 99, minWidth: 15, height: 15, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '0 3px' }}>{notifCount}</span>}
             </button>
             {notifOpen && (
-              <div style={dropdownBase}>
+              <div style={{ ...dropdownBase, right: 0, left: 'auto', minWidth: 260 }}>
                 <div style={{ padding: '8px 14px', fontSize: 10, fontWeight: 800, letterSpacing: 1, color: 'var(--color-text-muted)', textTransform: 'uppercase' }}>Alerts</div>
                 {alerts.length === 0 ? (
                   <div style={{ padding: '16px 14px', fontSize: 12, color: 'var(--color-text-muted)', textAlign: 'center' }}>All caught up 🎉</div>
