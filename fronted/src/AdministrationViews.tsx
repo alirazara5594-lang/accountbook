@@ -7,8 +7,7 @@ import type { Entity } from './api/modules/entities.api';
 import { setActiveCurrency } from './lib/currency';
 import {
   Users, ShieldCheck, Building2, GitBranch, CheckCircle2, Hash, Coins, ScrollText, Plus, Trash2, Pencil, KeyRound, Lock, Globe, Search,
-  Power, X, Download, FileSpreadsheet, Eye, RefreshCw, ArrowRight, FileText, Mail, Phone, Shield, UserCheck, UserX, AlertCircle,
-  Sparkles, LayoutGrid, ListFilter, Copy, Check, LockKeyhole, ShieldAlert
+  Power, X, Download, FileSpreadsheet, Eye, RefreshCw, ArrowRight, FileText, Shield, UserCheck, LayoutGrid, ListFilter, Copy, Check
 } from 'lucide-react';
 import { downloadExcel, downloadCSV } from './lib/exportUtils';
 import jsPDF from 'jspdf';
@@ -453,32 +452,32 @@ export function UsersView({ activeEntityId, notify }: { activeEntityId?: string;
 
   // Exports
   const handleExportCSV = () => {
-    const data = filteredUsers.map(u => ({
-      'Full Name': u.fullName,
-      'Username': u.userName,
-      'Email': u.email,
-      'Role': u.role,
-      'Status': u.status,
-      'Company ID': u.companyId || 'Global',
-      'Last Login': u.lastLogin ? new Date(u.lastLogin).toLocaleString() : 'Never',
-      'Created Date': u.createdAt ? new Date(u.createdAt).toLocaleDateString() : 'N/A'
-    }));
-    downloadCSV(data, 'Enterprise_Users_Directory');
+    const headers = ['Full Name', 'Username', 'Email', 'Role', 'Status', 'Company Scope', 'Last Login'];
+    const rows = filteredUsers.map(u => [
+      u.fullName,
+      u.userName || u.email,
+      u.email,
+      u.role || 'Operator',
+      u.status,
+      entities.find(e => e.id === u.companyId)?.name || 'Default Entity',
+      u.lastLogin ? new Date(u.lastLogin).toLocaleString() : 'Never'
+    ]);
+    downloadCSV('Enterprise_Users_Directory', headers, rows);
     notify?.('✓ Users directory exported to CSV');
   };
 
   const handleExportExcel = () => {
-    const data = filteredUsers.map(u => ({
-      'Full Name': u.fullName,
-      'Username': u.userName,
-      'Email': u.email,
-      'Role': u.role,
-      'Status': u.status,
-      'Company ID': u.companyId || 'Global',
-      'Last Login': u.lastLogin ? new Date(u.lastLogin).toLocaleString() : 'Never',
-      'Created Date': u.createdAt ? new Date(u.createdAt).toLocaleDateString() : 'N/A'
-    }));
-    downloadExcel(data, 'Enterprise_Users_Directory', 'System_Users');
+    const headers = ['Full Name', 'Username', 'Email', 'Role', 'Status', 'Company Scope', 'Last Login'];
+    const rows = filteredUsers.map(u => [
+      u.fullName,
+      u.userName || u.email,
+      u.email,
+      u.role || 'Operator',
+      u.status,
+      entities.find(e => e.id === u.companyId)?.name || 'Default Entity',
+      u.lastLogin ? new Date(u.lastLogin).toLocaleString() : 'Never'
+    ]);
+    downloadExcel('Enterprise_Users_Directory', 'System_Users', headers, rows);
     notify?.('✓ Users directory exported to Excel (.xlsx)');
   };
 
@@ -516,10 +515,10 @@ export function UsersView({ activeEntityId, notify }: { activeEntityId?: string;
   return (
     <div className="p-6 max-w-[1500px] mx-auto space-y-6">
       {/* Header */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-[var(--color-border)] pb-4">
-        <div>
+      <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 border-b border-[var(--color-border)] pb-4">
+        <div className="min-w-0 flex-1">
           <h1 className="text-xl font-black tracking-tight text-[var(--color-text-strong)] flex items-center gap-2.5">
-            <div className="p-2 rounded-xl bg-teal-500/10 text-teal-600 border border-teal-500/20">
+            <div className="p-2 rounded-xl bg-teal-500/10 text-teal-600 border border-teal-500/20 shrink-0">
               <Users className="w-5 h-5" />
             </div>
             Users & Operator Management Suite
@@ -529,13 +528,20 @@ export function UsersView({ activeEntityId, notify }: { activeEntityId?: string;
           </p>
         </div>
 
-        <div className="flex items-center gap-2 flex-wrap">
+        <div className="flex items-center gap-2 shrink-0 flex-nowrap overflow-x-auto">
           <button
             onClick={fetchUsers}
             title="Refresh Users Directory"
             className="p-2 rounded-xl border border-[var(--color-border)] hover:bg-[var(--color-surface-muted)] text-[var(--color-text-muted)] transition-colors"
           >
             <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin text-teal-600' : ''}`} />
+          </button>
+
+          <button
+            onClick={handleExportCSV}
+            className="inline-flex items-center gap-1.5 px-3 py-2 border border-[var(--color-border)] hover:bg-[var(--color-surface-muted)] text-[var(--color-text-strong)] rounded-xl text-xs font-semibold shadow-xs transition-all"
+          >
+            <FileText className="w-4 h-4 text-blue-600" /> CSV
           </button>
 
           <button
@@ -603,15 +609,24 @@ export function UsersView({ activeEntityId, notify }: { activeEntityId?: string;
       {/* Control & Filter Center */}
       <div className="p-4 rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)] shadow-xs space-y-3">
         <div className="flex flex-col lg:flex-row items-stretch lg:items-center justify-between gap-3">
-          <div className="relative flex-1">
-            <Search className="w-4 h-4 absolute left-3.5 top-3 text-[var(--color-text-muted)]" />
+          <div className="relative flex-1 flex items-center">
+            <Search className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-[var(--color-text-muted)] pointer-events-none" />
             <input
               type="text"
               value={query}
               onChange={e => setQuery(e.target.value)}
               placeholder="Search operators by legal name, email address, username, or role..."
-              className="w-full pl-10 pr-4 py-2 text-xs bg-[var(--color-surface-muted)] border border-[var(--color-border)] rounded-xl outline-none text-[var(--color-text-strong)] focus:border-teal-500"
+              className="w-full pl-11 pr-8 py-2.5 text-xs bg-[var(--color-surface-muted)] border border-[var(--color-border)] rounded-xl outline-none text-[var(--color-text-strong)] focus:border-teal-500 transition-colors"
             />
+            {query && (
+              <button
+                type="button"
+                onClick={() => setQuery('')}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-[var(--color-text-muted)] hover:text-[var(--color-text-strong)] p-1"
+              >
+                <X className="w-3.5 h-3.5" />
+              </button>
+            )}
           </div>
 
           <div className="flex items-center gap-2 flex-wrap">
@@ -1903,15 +1918,24 @@ export function CompaniesView({ activeEntityId, notify }: { activeEntityId?: str
       </div>
 
       {/* Search Bar */}
-      <div className="relative">
-        <Search className="w-4 h-4 absolute left-3 top-3 text-[var(--color-text-muted)]" />
+      <div className="relative flex items-center">
+        <Search className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-[var(--color-text-muted)] pointer-events-none" />
         <input
           type="text"
           value={query}
           onChange={e => setQuery(e.target.value)}
           placeholder="Filter by company name, entity code, or jurisdiction..."
-          className="w-full pl-9 pr-3 py-2 text-xs bg-[var(--color-surface)] border border-[var(--color-border)] rounded-xl outline-none text-[var(--color-text-strong)]"
+          className="w-full pl-11 pr-8 py-2.5 text-xs bg-[var(--color-surface)] border border-[var(--color-border)] rounded-xl outline-none text-[var(--color-text-strong)] focus:border-teal-500 transition-colors"
         />
+        {query && (
+          <button
+            type="button"
+            onClick={() => setQuery('')}
+            className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-[var(--color-text-muted)] hover:text-[var(--color-text-strong)] p-1"
+          >
+            <X className="w-3.5 h-3.5" />
+          </button>
+        )}
       </div>
 
       {/* Companies Grid */}
@@ -3281,15 +3305,24 @@ export function AuditLogsView({ activeEntityId, notify }: { activeEntityId?: str
 
       {/* Filter Bar */}
       <div className="flex flex-col sm:flex-row items-center gap-3 p-3 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)]">
-        <div className="relative flex-1 w-full">
-          <Search className="w-4 h-4 absolute left-3 top-2.5 text-[var(--color-text-muted)]" />
+        <div className="relative flex-1 w-full flex items-center">
+          <Search className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-[var(--color-text-muted)] pointer-events-none" />
           <input
             type="text"
             value={query}
             onChange={e => setQuery(e.target.value)}
             placeholder="Search forensic audit trail by action, entity, or description..."
-            className="w-full pl-9 pr-3 py-1.5 text-xs bg-[var(--color-surface-muted)] border border-[var(--color-border)] rounded-lg outline-none text-[var(--color-text-strong)]"
+            className="w-full pl-11 pr-8 py-2 text-xs bg-[var(--color-surface-muted)] border border-[var(--color-border)] rounded-xl outline-none text-[var(--color-text-strong)] focus:border-teal-500 transition-colors"
           />
+          {query && (
+            <button
+              type="button"
+              onClick={() => setQuery('')}
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-[var(--color-text-muted)] hover:text-[var(--color-text-strong)] p-1"
+            >
+              <X className="w-3.5 h-3.5" />
+            </button>
+          )}
         </div>
         <div className="flex items-center gap-2 w-full sm:w-auto">
           <select

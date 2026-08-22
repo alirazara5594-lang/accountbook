@@ -56,3 +56,31 @@ div[class*="fixed inset-0"],
 div[data-state="open"] {
   z-index: 99999 !important;
 }
+
+/* ─────────────────────────────────────────────────────────────────────────────
+   GLOBAL PERMANENT FIX 1: Search Inputs Left Padding
+   Guarantees magnifying glass icon NEVER overlaps placeholder/text across ALL modules
+   ───────────────────────────────────────────────────────────────────────────── */
+input[type="text"][class*="pl-"],
+input[type="search"][class*="pl-"],
+input[class*="pl-9"],
+input[class*="pl-10"],
+input[class*="pl-11"],
+input[class*="pl-12"],
+input[class*="pl-14"],
+.search-input,
+.erp-search-input {
+  padding-left: 42px !important;
+  padding-right: 32px !important;
+}
+
+/* ─────────────────────────────────────────────────────────────────────────────
+   GLOBAL PERMANENT FIX 2: Header Action Buttons Single Row
+   Guarantees header CTA & export buttons never wrap awkwardly across ALL modules
+   ───────────────────────────────────────────────────────────────────────────── */
+.header-actions,
+div[class*="border-b"] > div[class*="flex items-center gap-2"] {
+  flex-wrap: nowrap !important;
+  flex-shrink: 0 !important;
+}
+
