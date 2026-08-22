@@ -88,6 +88,138 @@ public class ReportsController(AccountingStore store) : ControllerBase
     [HttpGet("cash-flow")]
     public IActionResult CashFlow([FromQuery] Guid? companyId, [FromQuery] string? from, [FromQuery] string? to)
     {
+        var allAccounts = store.Accounts.ToDictionary(a => a.Id);
+        var cashAccountIds = store.Accounts
+            .Where(a => a.Code.StartsWith("111") || a.Code.StartsWith("112") || a.Name.Contains("Cash", StringComparison.OrdinalIgnoreCase) || a.Name.Contains("Bank", StringComparison.OrdinalIgnoreCase))
+            .Select(a => a.Id)
+            .ToHashSet();
+
+        // Calculate opening cash balance (before 'from' date)
+        decimal openingCash = 0m;
+        foreach (var id in cashAccountIds)
+        {
+            if (allAccounts.TryGetValue(id, out var acc))
+                openingCash += acc.OpeningBalance;
+        }
+
+        if (DateOnly.TryParse(from, out var fromDate))
+        {
+            var priorEntries = store.Entries
+                .Where(e => e.Status == JournalStatus.Posted && (companyId == null || e.CompanyId == companyId) && e.Date < fromDate);
+            foreach (var line in priorEntries.SelectMany(e => e.Lines))
+            {
+                if (cashAccountIds.Contains(line.AccountId))
+                    openingCash += (line.Debit - line.Credit);
+            }
+        }
+
+        // Process period posted entries
+        var periodEntries = PostedEntries(store, companyId, from, to).ToList();
+
+        decimal customerCollections = 0m;
+        decimal supplierPayments = 0m;
+        decimal payrollPayments = 0m;
+        decimal taxPayments = 0m;
+        decimal opexPayments = 0m;
+        decimal otherOperatingInflow = 0m;
+
+        decimal capexPurchases = 0m;
+        decimal assetDisposalProceeds = 0m;
+        decimal investmentInflows = 0m;
+        decimal investmentOutflows = 0m;
+
+        decimal equityInjections = 0m;
+        decimal dividendDrawings = 0m;
+        decimal loanProceeds = 0m;
+        decimal loanRepayments = 0m;
+
+        var operatingItems = new List<object>();
+        var investingItems = new List<object>();
+        var financingItems = new List<object>();
+
+        foreach (var entry in periodEntries)
+        {
+            var cashLines = entry.Lines.Where(l => cashAccountIds.Contains(l.AccountId)).ToList();
+            if (cashLines.Count == 0) continue;
+
+            var netCashImpact = cashLines.Sum(l => l.Debit - l.Credit);
+            var otherLines = entry.Lines.Where(l => !cashAccountIds.Contains(l.AccountId)).ToList();
+
+            foreach (var other in otherLines)
+            {
+                if (!allAccounts.TryGetValue(other.AccountId, out var otherAcc)) continue;
+                var amount = other.Credit - other.Debit; // Positive if cash received, negative if cash paid
+
+                if (otherAcc.Code.StartsWith("12") || IsRevenue(otherAcc.Type))
+                {
+                    if (amount >= 0) customerCollections += amount;
+                    else customerCollections += amount;
+                }
+                else if (otherAcc.Code.StartsWith("21") || otherAcc.Code.StartsWith("5"))
+                {
+                    supplierPayments += (other.Debit - other.Credit);
+                }
+                else if (otherAcc.Code.StartsWith("611") || otherAcc.Name.Contains("Salaries", StringComparison.OrdinalIgnoreCase) || otherAcc.Name.Contains("Payroll", StringComparison.OrdinalIgnoreCase))
+                {
+                    payrollPayments += (other.Debit - other.Credit);
+                }
+                else if (otherAcc.Code.StartsWith("213") || otherAcc.Code.StartsWith("617") || otherAcc.Name.Contains("Tax", StringComparison.OrdinalIgnoreCase))
+                {
+                    taxPayments += (other.Debit - other.Credit);
+                }
+                else if (IsExpense(otherAcc.Type) || otherAcc.Code.StartsWith("6"))
+                {
+                    opexPayments += (other.Debit - other.Credit);
+                }
+                else if (otherAcc.Code.StartsWith("15") || otherAcc.Name.Contains("Equipment", StringComparison.OrdinalIgnoreCase) || otherAcc.Name.Contains("Vehicle", StringComparison.OrdinalIgnoreCase) || otherAcc.Name.Contains("Asset", StringComparison.OrdinalIgnoreCase))
+                {
+                    if (other.Debit > other.Credit) capexPurchases += (other.Debit - other.Credit);
+                    else assetDisposalProceeds += (other.Credit - other.Debit);
+                }
+                else if (otherAcc.Code.StartsWith("31") || otherAcc.Type == AccountType.Equity)
+                {
+                    if (other.Credit > other.Debit) equityInjections += (other.Credit - other.Debit);
+                    else dividendDrawings += (other.Debit - other.Credit);
+                }
+                else if (otherAcc.Code.StartsWith("25") || otherAcc.Code.StartsWith("26") || otherAcc.Name.Contains("Loan", StringComparison.OrdinalIgnoreCase))
+                {
+                    if (other.Credit > other.Debit) loanProceeds += (other.Credit - other.Debit);
+                    else loanRepayments += (other.Debit - other.Credit);
+                }
+                else
+                {
+                    if (netCashImpact > 0) otherOperatingInflow += netCashImpact;
+                    else opexPayments += -netCashImpact;
+                }
+            }
+        }
+
+        // Construct Operating Activities breakdown
+        if (customerCollections != 0) operatingItems.Add(new { title = "Cash Receipts from Customers & Sales Invoices", amount = customerCollections, type = "inflow", category = "Operating Inflow" });
+        if (supplierPayments != 0) operatingItems.Add(new { title = "Cash Paid to Vendors, Suppliers & Direct Costs", amount = -supplierPayments, type = "outflow", category = "Operating Outflow" });
+        if (payrollPayments != 0) operatingItems.Add(new { title = "Cash Paid for Employee Salaries & Benefits", amount = -payrollPayments, type = "outflow", category = "Operating Outflow" });
+        if (taxPayments != 0) operatingItems.Add(new { title = "Tax Payments (Income, Sales Tax & Withholdings)", amount = -taxPayments, type = "outflow", category = "Operating Outflow" });
+        if (opexPayments != 0) operatingItems.Add(new { title = "Cash Paid for Administrative & Operating Expenses", amount = -opexPayments, type = "outflow", category = "Operating Outflow" });
+        if (otherOperatingInflow != 0) operatingItems.Add(new { title = "Other Operating Receipts & Income", amount = otherOperatingInflow, type = "inflow", category = "Operating Inflow" });
+
+        var netOperating = customerCollections - supplierPayments - payrollPayments - taxPayments - opexPayments + otherOperatingInflow;
+
+        // Construct Investing Activities breakdown
+        if (capexPurchases != 0) investingItems.Add(new { title = "Purchase of Property, Plant & Equipment (CapEx)", amount = -capexPurchases, type = "outflow", category = "Investing Outflow" });
+        if (assetDisposalProceeds != 0) investingItems.Add(new { title = "Proceeds from Sale of Fixed Assets", amount = assetDisposalProceeds, type = "inflow", category = "Investing Inflow" });
+        var netInvesting = assetDisposalProceeds - capexPurchases;
+
+        // Construct Financing Activities breakdown
+        if (equityInjections != 0) financingItems.Add(new { title = "Capital Contributions & Equity Injections", amount = equityInjections, type = "inflow", category = "Financing Inflow" });
+        if (dividendDrawings != 0) financingItems.Add(new { title = "Owner Drawings & Dividend Distributions", amount = -dividendDrawings, type = "outflow", category = "Financing Outflow" });
+        if (loanProceeds != 0) financingItems.Add(new { title = "Proceeds from Bank Borrowings & Notes Payable", amount = loanProceeds, type = "inflow", category = "Financing Inflow" });
+        if (loanRepayments != 0) financingItems.Add(new { title = "Repayment of Bank Loans & Long-term Debt", amount = -loanRepayments, type = "outflow", category = "Financing Outflow" });
+        var netFinancing = equityInjections - dividendDrawings + loanProceeds - loanRepayments;
+
+        var netCashFlow = netOperating + netInvesting + netFinancing;
+        var closingCash = openingCash + netCashFlow;
+
+        // Income Statement numbers for Indirect Method
         var balances = AccountBalances(store, companyId, from, to);
         var rows = PostingAccounts(store)
             .Where(a => IsRevenue(a.Type) || IsExpense(a.Type))
@@ -96,7 +228,54 @@ public class ReportsController(AccountingStore store) : ControllerBase
         var revenue = rows.Where(r => IsRevenue(r.Type)).Sum(r => r.Amount);
         var expenses = rows.Where(r => IsExpense(r.Type)).Sum(r => r.Amount);
         var netIncome = revenue - expenses;
-        return Ok(new { netIncome, operatingCashFlow = netIncome, investingCashFlow = 0m, financingCashFlow = 0m, netCashFlow = netIncome, rows });
+
+        var bankAccounts = store.GetCashBankAccounts(bankOnly: true, companyId);
+        var cashAccounts = store.GetCashBankAccounts(bankOnly: false, companyId);
+
+        return Ok(new
+        {
+            summary = new
+            {
+                operatingCashFlow = netOperating,
+                investingCashFlow = netInvesting,
+                financingCashFlow = netFinancing,
+                netCashFlow,
+                openingCash,
+                closingCash,
+                netIncome,
+                totalBankAccounts = bankAccounts.Count,
+                totalCashRegisters = cashAccounts.Count
+            },
+            directMethod = new
+            {
+                operatingActivities = operatingItems,
+                netOperating,
+                investingActivities = investingItems,
+                netInvesting,
+                financingActivities = financingItems,
+                netFinancing,
+                netCashFlow,
+                openingCash,
+                closingCash
+            },
+            indirectMethod = new
+            {
+                netIncome,
+                adjustments = new List<object>(),
+                workingCapitalChanges = new
+                {
+                    accountsReceivable = 0m,
+                    inventory = 0m,
+                    accountsPayable = 0m
+                },
+                netOperating,
+                netInvesting,
+                netFinancing,
+                netCashFlow,
+                openingCash,
+                closingCash
+            }
+        });
     }
 
     [HttpGet("general-ledger")]
