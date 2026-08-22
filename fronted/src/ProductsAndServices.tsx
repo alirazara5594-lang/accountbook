@@ -13,6 +13,8 @@ import { DataToolbar } from '@/components/ui/data-toolbar'
 import { useProductsStore, useCoaStore, useTaxStore } from './stores'
 import { useFormDraft } from './hooks/useFormDraft'
 import { money } from './lib/currency'
+import type { Account } from './api/modules/coa.api'
+import type { TaxCode } from './api/modules/tax.api'
 
 export type ProductType = 'Physical' | 'Service' | 'NonInventory' | 'Bundle'
 export type ProductStatus = 'Active' | 'Inactive' | 'Discontinued'
@@ -25,11 +27,13 @@ export type Product = {
   type: ProductType
   category?: string
   unit: string
+  currencyCode?: string
   unitPrice: number
   costPrice: number
   incomeAccountId?: string
   expenseAccountId?: string
   inventoryAccountId?: string
+  assetAccountId?: string
   taxCodeId?: string
   status: ProductStatus
   barcode?: string
@@ -45,11 +49,13 @@ export type ProductForm = {
   type: ProductType
   category: string
   unit: string
+  currencyCode: string
   unitPrice: string
   costPrice: string
   incomeAccountId: string
   expenseAccountId: string
   inventoryAccountId: string
+  assetAccountId: string
   taxCodeId: string
   status: ProductStatus
   barcode: string
@@ -64,11 +70,13 @@ const blankForm = (): ProductForm => ({
   type: 'Physical',
   category: 'General',
   unit: 'Unit',
+  currencyCode: 'PKR',
   unitPrice: '0',
   costPrice: '0',
   incomeAccountId: '',
   expenseAccountId: '',
   inventoryAccountId: '',
+  assetAccountId: '',
   taxCodeId: '',
   status: 'Active',
   barcode: '',
@@ -181,7 +189,12 @@ export default function ProductsAndServices({
       taxCodeId: p.taxCodeId || '',
       incomeAccountId: p.incomeAccountId || '',
       expenseAccountId: p.expenseAccountId || '',
-      assetAccountId: p.assetAccountId || ''
+      inventoryAccountId: p.inventoryAccountId || '',
+      assetAccountId: p.assetAccountId || '',
+      status: p.status || 'Active',
+      barcode: p.barcode || '',
+      sku: p.sku || '',
+      reorderPoint: String(p.reorderPoint || 0)
     })
     setModalTab('info')
     setModalOpen(true)

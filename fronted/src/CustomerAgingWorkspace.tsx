@@ -3,8 +3,8 @@ import { useSalesStore, useCustomersStore, useCompanyStore } from './stores';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell } from 'recharts';
 import {
   Users, DollarSign, AlertTriangle, Clock, FileSpreadsheet,
-  FileText, ArrowLeft, Search, Download, Printer, RefreshCw,
-  Building2, ChevronRight, CheckCircle2, ShieldAlert
+  ArrowLeft, Search, Download, Printer, RefreshCw,
+  ChevronRight, CheckCircle2, ShieldAlert
 } from 'lucide-react';
 import { downloadExcel } from './lib/exportUtils';
 import { money, moneyCompact } from './lib/currency';
@@ -250,7 +250,6 @@ export function CustomerAgingWorkspace({ activeEntityId }: Props) {
 
     const primaryColor: [number, number, number] = [15, 76, 129];
     const darkColor: [number, number, number] = [30, 41, 59];
-    const grayColor: [number, number, number] = [100, 116, 139];
     const borderGray: [number, number, number] = [226, 232, 240];
 
     // Header Banner
@@ -652,8 +651,8 @@ export function CustomerAgingWorkspace({ activeEntityId }: Props) {
         </div>
       </div>
 
-      {/* KPI Stats */}
-      <section className="stats">
+      {/* KPI Stats - 4 in one row */}
+      <section className="stats" style={{ gridTemplateColumns: 'repeat(4, minmax(0, 1fr))' }}>
         <article>
           <span className="stat-icon blue"><DollarSign className="w-4 h-4" /></span>
           <div>

@@ -8,7 +8,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuLabel,
 } from '@/components/ui/dropdown-menu';
-import { Search, Download, FileText, FileSpreadsheet, Printer, UploadCloud, X } from 'lucide-react';
+import { Search, Download, FileText, FileSpreadsheet, Printer, UploadCloud } from 'lucide-react';
 import { downloadCSV, downloadExcel, downloadPDF, readUploadedFile, type ExportRow } from '@/lib/exportUtils';
 
 export interface DataToolbarProps {

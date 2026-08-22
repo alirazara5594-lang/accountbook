@@ -2,13 +2,13 @@ import React, { useEffect, useMemo, useState } from 'react';
 import {
   BarChart3, Search, Download, Printer,
   FileSpreadsheet, RefreshCw, ShoppingCart,
-  CreditCard, DollarSign, Clock, Users,
-  ArrowUpRight, ArrowDownRight, Layers, FileText, CheckCircle2
+  CreditCard, Clock, Users,
+  Layers, FileText, CheckCircle2
 } from 'lucide-react';
 import type { Entity } from './EntitySettings';
 import { reportsApi } from './api/modules/reports.api';
 import { money } from './lib/currency';
-import { downloadExcel, downloadCSV } from './lib/exportUtils';
+import { downloadExcel } from './lib/exportUtils';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 
@@ -334,8 +334,8 @@ export const PurchaseReportsView: React.FC<{ activeEntityId: string; entities: E
         </div>
       </div>
 
-      {/* 4 Financial Metric Cards */}
-      <section className="stats">
+      {/* 4 Financial Metric Cards (4 in one row) */}
+      <section className="stats" style={{ gridTemplateColumns: 'repeat(4, minmax(0, 1fr))' }}>
         <article>
           <span className="stat-icon blue"><ShoppingCart className="w-4 h-4" /></span>
           <div>

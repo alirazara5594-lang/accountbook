@@ -1,12 +1,18 @@
-import { useEffect, useState, useMemo } from 'react';
+import React, { useEffect, useState, useMemo } from 'react';
 import { useCustomerPaymentsStore } from './stores/useCustomerPaymentsStore';
 import { salesApi, type Invoice } from './api/modules/sales.api';
 import { customersApi, type Customer } from './api/modules/customers.api';
 import { apiClient } from './api/client';
 import { useCompanyStore } from './stores';
-import { DataToolbar } from '@/components/ui/data-toolbar';
-import { money } from '@/lib/currency';
-import { Plus, X, DollarSign, Receipt, Building2, Clock } from 'lucide-react';
+import { money } from './lib/currency';
+import { downloadExcel, downloadCSV } from './lib/exportUtils';
+import {
+  Plus, X, DollarSign, Receipt,
+  Search, Download, FileSpreadsheet,
+  CheckCircle2, Users, CreditCard, RefreshCw
+} from 'lucide-react';
+import jsPDF from 'jspdf';
+import autoTable from 'jspdf-autotable';
 
 const PAYMENT_METHODS = [
   { value: 'Cash', label: 'Cash', region: 'Global' },
@@ -20,7 +26,7 @@ const PAYMENT_METHODS = [
   { value: 'CreditCard', label: 'Credit Card', region: 'Global' },
   { value: 'DebitCard', label: 'Debit Card', region: 'Global' },
   { value: 'OnlineBanking', label: 'Online Banking', region: 'Global' },
-  { value: 'MobilePayment', label: 'Mobile Payment', region: 'PK / UAE / KSA' },
+  { value: 'MobilePayment', label: 'Mobile Payment (JazzCash / EasyPaisa)', region: 'PK' },
   { value: 'PayPal', label: 'PayPal', region: 'Global' },
   { value: 'DirectDebit', label: 'Direct Debit', region: 'UK / EU' },
   { value: 'Other', label: 'Other', region: '' },
@@ -38,15 +44,15 @@ const emptyForm = {
   invoiceId: '',
   paymentDate: new Date().toISOString().slice(0, 10),
   amount: '',
-  paymentMethod: 'Cash',
+  paymentMethod: 'BankTransfer',
   depositToAccountId: '',
   reference: '',
   memo: '',
 };
 
-function CustomerPaymentsWorkspace() {
+export function CustomerPaymentsWorkspace() {
   const { payments, loading, fetchAll, create } = useCustomerPaymentsStore();
-  const { activeEntityId } = useCompanyStore();
+  const { activeEntityId, entities, fetchCompanies } = useCompanyStore();
 
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [customers, setCustomers] = useState<Customer[]>([]);
@@ -54,9 +60,23 @@ function CustomerPaymentsWorkspace() {
   const [depositAccounts, setDepositAccounts] = useState<DepositAccount[]>([]);
   const [formData, setFormData] = useState({ ...emptyForm });
   const [formError, setFormError] = useState('');
+  const [saving, setSaving] = useState(false);
   const [query, setQuery] = useState('');
+  const [methodFilter, setMethodFilter] = useState('all');
+  const [statusFilter, setStatusFilter] = useState('all');
 
-  useEffect(() => { fetchAll(activeEntityId); }, []);
+  const activeCompany = useMemo(() => {
+    return entities.find((e) => e.id === activeEntityId) || entities[0];
+  }, [entities, activeEntityId]);
+
+  const loadData = () => {
+    fetchAll(activeEntityId);
+    fetchCompanies();
+  };
+
+  useEffect(() => {
+    loadData();
+  }, [activeEntityId]);
 
   useEffect(() => {
     if (!isModalOpen) return;
@@ -68,14 +88,19 @@ function CustomerPaymentsWorkspace() {
           apiClient<DepositAccount[]>('/customer-payments/deposit-accounts'),
         ]);
         setCustomers(custs);
-        setInvoices(invs.filter(i => i.status !== 'Paid' && i.status !== 'Void'));
+        setInvoices(invs.filter((i: any) => String(i.status).toLowerCase() !== 'paid' && String(i.status).toLowerCase() !== 'void'));
         setDepositAccounts(accts);
-      } catch { /* silently degrade */ }
+        if (accts.length > 0 && !formData.depositToAccountId) {
+          setFormData((prev) => ({ ...prev, depositToAccountId: accts[0].id }));
+        }
+      } catch {
+        /* fallback gracefully */
+      }
     })();
-  }, [isModalOpen]);
+  }, [isModalOpen, activeEntityId]);
 
   const filteredInvoices = formData.customerId
-    ? invoices.filter(i => i.customerId === formData.customerId)
+    ? invoices.filter((i: any) => i.customerId === formData.customerId)
     : invoices;
 
   const onCustomerChange = (customerId: string) => {
@@ -83,7 +108,7 @@ function CustomerPaymentsWorkspace() {
   };
 
   const onInvoiceChange = (invoiceId: string) => {
-    const inv = invoices.find(i => i.id === invoiceId);
+    const inv = invoices.find((i: any) => i.id === invoiceId);
     setFormData({
       ...formData,
       invoiceId,
@@ -100,7 +125,7 @@ function CustomerPaymentsWorkspace() {
       depositToAccountId: needsBank
         ? (formData.depositToAccountId || depositAccounts[0]?.id || '')
         : (method === 'Cash'
-          ? (depositAccounts.find(a => a.name.toLowerCase().includes('cash'))?.id || depositAccounts[0]?.id || '')
+          ? (depositAccounts.find((a) => a.name.toLowerCase().includes('cash'))?.id || depositAccounts[0]?.id || '')
           : formData.depositToAccountId),
     });
   };
@@ -111,8 +136,9 @@ function CustomerPaymentsWorkspace() {
     const amt = parseFloat(formData.amount);
     if (!formData.customerId) { setFormError('Please select a customer.'); return; }
     if (!amt || amt <= 0) { setFormError('Amount must be greater than zero.'); return; }
-    if (!formData.depositToAccountId) { setFormError('Please select a Deposit To account.'); return; }
+    if (!formData.depositToAccountId) { setFormError('Please select a Deposit To bank/cash account.'); return; }
 
+    setSaving(true);
     try {
       await create({
         companyId: activeEntityId,
@@ -128,8 +154,10 @@ function CustomerPaymentsWorkspace() {
       setIsModalOpen(false);
       setFormData({ ...emptyForm, paymentDate: new Date().toISOString().slice(0, 10) });
       fetchAll(activeEntityId);
-    } catch (e: any) {
-      setFormError(e?.data?.error || e?.message || 'Failed to create payment.');
+    } catch (err: any) {
+      setFormError(err?.data?.error || err?.message || 'Failed to record customer receipt.');
+    } finally {
+      setSaving(false);
     }
   };
 
@@ -140,313 +168,545 @@ function CustomerPaymentsWorkspace() {
   };
 
   const filteredPayments = useMemo(() => {
-    if (!query.trim()) return payments;
-    const q = query.toLowerCase();
-    return payments.filter((p: any) =>
-      (p.receiptNumber || '').toLowerCase().includes(q) ||
-      (p.customerName || p.customerId || '').toLowerCase().includes(q) ||
-      (p.invoiceNumber || '').toLowerCase().includes(q) ||
-      (p.paymentMethod || '').toLowerCase().includes(q) ||
-      (p.reference || '').toLowerCase().includes(q)
-    );
-  }, [payments, query]);
+    return payments.filter((p: any) => {
+      if (methodFilter !== 'all' && p.paymentMethod !== methodFilter) return false;
+      if (statusFilter !== 'all' && String(p.status).toLowerCase() !== statusFilter.toLowerCase()) return false;
+
+      if (query.trim()) {
+        const q = query.toLowerCase();
+        const matchesRef = (p.receiptNumber || '').toLowerCase().includes(q) || (p.reference || '').toLowerCase().includes(q);
+        const matchesCust = (p.customerName || p.customerId || '').toLowerCase().includes(q);
+        const matchesInv = (p.invoiceNumber || '').toLowerCase().includes(q);
+        const matchesBank = (p.depositToAccountName || '').toLowerCase().includes(q);
+        if (!matchesRef && !matchesCust && !matchesInv && !matchesBank) return false;
+      }
+      return true;
+    });
+  }, [payments, query, methodFilter, statusFilter]);
 
   const totalReceived = filteredPayments.reduce((s: number, p: any) => s + (p.amount || 0), 0);
-  const todayPayments = filteredPayments.filter((p: any) => p.date === new Date().toISOString().slice(0, 10)).length;
-  const pendingCount = filteredPayments.filter((p: any) => p.status === 'Draft').length;
+  const totalCount = filteredPayments.length;
+  const avgReceipt = totalCount > 0 ? totalReceived / totalCount : 0;
+  const uniqueCustomers = new Set(filteredPayments.map((p: any) => p.customerName || p.customerId)).size;
 
-  const exportHeaders = ['Receipt #', 'Date', 'Customer', 'Invoice', 'Amount', 'Method', 'Deposit To', 'Reference', 'Status'];
-  const exportRows = filteredPayments.map((p: any) => [
-    p.receiptNumber, p.date, p.customerName || p.customerId, p.invoiceNumber || '', p.amount,
-    p.paymentMethod, p.depositToAccountName || '', p.reference || '', p.status,
-  ]);
+  const generateReceiptPDF = (p: any) => {
+    const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
+    const pageWidth = doc.internal.pageSize.getWidth();
+    const margin = 14;
+    const contentWidth = pageWidth - margin * 2;
+
+    const primaryColor: [number, number, number] = [15, 76, 129];
+    const darkColor: [number, number, number] = [15, 23, 42];
+    const grayColor: [number, number, number] = [100, 116, 139];
+    const lightBg: [number, number, number] = [248, 250, 252];
+    const borderGray: [number, number, number] = [226, 232, 240];
+
+    doc.setFillColor(...primaryColor);
+    doc.rect(0, 0, pageWidth, 28, 'F');
+
+    doc.setTextColor(255, 255, 255);
+    doc.setFontSize(16);
+    doc.setFont('helvetica', 'bold');
+    doc.text('OFFICIAL PAYMENT RECEIPT', margin, 14);
+
+    doc.setFontSize(8.5);
+    doc.setFont('helvetica', 'normal');
+    doc.text(`Receipt #: ${p.receiptNumber || 'RCPT'}`, margin, 21);
+    doc.text(`Receipt Date: ${p.date}`, pageWidth - margin, 14, { align: 'right' });
+    doc.text(`Status: ${p.status || 'Posted'}`, pageWidth - margin, 21, { align: 'right' });
+
+    const boxY = 34;
+    const boxH = 34;
+    const colW = (contentWidth - 6) / 2;
+
+    doc.setFillColor(...lightBg);
+    doc.setDrawColor(...borderGray);
+    doc.roundedRect(margin, boxY, colW, boxH, 2, 2, 'FD');
+
+    doc.setTextColor(...primaryColor);
+    doc.setFontSize(9);
+    doc.setFont('helvetica', 'bold');
+    doc.text(activeCompany?.name || 'Company ERP', margin + 4, boxY + 7);
+
+    doc.setTextColor(...darkColor);
+    doc.setFontSize(7.5);
+    doc.setFont('helvetica', 'normal');
+    const compAny = activeCompany as any;
+    let compY = boxY + 13;
+    if (compAny?.taxId || compAny?.ntn) {
+      doc.text(`Tax ID / NTN: ${compAny.taxId || compAny.ntn}`, margin + 4, compY);
+      compY += 4.5;
+    }
+    if (compAny?.country || compAny?.legalName) {
+      doc.text(`${compAny.legalName || ''} • ${compAny.country || ''}`.trim(), margin + 4, compY);
+      compY += 4.5;
+    }
+    doc.text(`Base Currency: ${activeCompany?.currencyCode || 'PKR'}`, margin + 4, compY);
+
+    const custX = margin + colW + 6;
+    doc.setFillColor(...lightBg);
+    doc.roundedRect(custX, boxY, colW, boxH, 2, 2, 'FD');
+
+    doc.setTextColor(...primaryColor);
+    doc.setFontSize(8.5);
+    doc.setFont('helvetica', 'bold');
+    doc.text('RECEIVED FROM (CUSTOMER)', custX + 4, boxY + 7);
+
+    doc.setTextColor(...darkColor);
+    doc.setFontSize(10);
+    doc.text(p.customerName || p.customerId || 'Customer', custX + 4, boxY + 14);
+
+    doc.setFontSize(7.5);
+    doc.setFont('helvetica', 'normal');
+    doc.text(`Payment Mode: ${p.paymentMethod || 'Bank Transfer'}`, custX + 4, boxY + 20);
+    doc.text(`Deposit Account: ${p.depositToAccountName || 'Main Operating Account'}`, custX + 4, boxY + 25);
+    if (p.reference) {
+      doc.text(`Reference / Check #: ${p.reference}`, custX + 4, boxY + 30);
+    }
+
+    const bannerY = boxY + boxH + 6;
+    doc.setFillColor(238, 242, 255);
+    doc.setDrawColor(199, 210, 254);
+    doc.roundedRect(margin, bannerY, contentWidth, 18, 2, 2, 'FD');
+
+    doc.setTextColor(30, 58, 138);
+    doc.setFontSize(8);
+    doc.setFont('helvetica', 'bold');
+    doc.text('TOTAL AMOUNT RECEIVED', margin + 4, bannerY + 6.5);
+
+    doc.setFontSize(14);
+    doc.text(money(p.amount || 0), margin + 4, bannerY + 14);
+
+    const tableStartY = bannerY + 24;
+    const tableHeaders = ['Invoice Number', 'Payment Date', 'Payment Method', 'Deposit Account', 'Amount Applied'];
+    const tableRows = [[
+      p.invoiceNumber || 'Unallocated / On-Account',
+      p.date,
+      p.paymentMethod,
+      p.depositToAccountName || 'Operating Bank',
+      money(p.amount || 0),
+    ]];
+
+    autoTable(doc, {
+      startY: tableStartY,
+      head: [tableHeaders],
+      body: tableRows,
+      margin: { left: margin, right: margin },
+      styles: { fontSize: 8, cellPadding: 3, textColor: darkColor },
+      headStyles: { fillColor: primaryColor, textColor: 255, fontStyle: 'bold' },
+      columnStyles: {
+        4: { halign: 'right', fontStyle: 'bold' },
+      },
+    });
+
+    const pageHeight = doc.internal.pageSize.getHeight();
+    doc.setTextColor(...grayColor);
+    doc.setFontSize(7);
+    doc.text('Official Customer Receipt Acknowledgement. Generated from ERP Accounts Receivable Module.', margin, pageHeight - 9);
+
+    const cleanReceipt = (p.receiptNumber || 'Receipt').replace(/[^a-zA-Z0-9_-]/g, '_');
+    doc.save(`Customer_Receipt_${cleanReceipt}.pdf`);
+  };
+
+  const exportPaymentsExcel = () => {
+    const headers = ['Receipt #', 'Date', 'Customer', 'Invoice #', 'Amount', 'Payment Method', 'Deposit Account', 'Reference', 'Status'];
+    const rows = filteredPayments.map((p: any) => [
+      p.receiptNumber || '',
+      p.date,
+      p.customerName || p.customerId,
+      p.invoiceNumber || 'On-Account',
+      p.amount,
+      p.paymentMethod,
+      p.depositToAccountName || '',
+      p.reference || '',
+      p.status,
+    ]);
+    downloadExcel(`Customer_Payments_Register_${new Date().toISOString().slice(0, 10)}`, 'Payments', headers, rows);
+  };
+
+  const exportPaymentsCSV = () => {
+    const headers = ['Receipt #', 'Date', 'Customer', 'Invoice #', 'Amount', 'Payment Method', 'Deposit Account', 'Reference', 'Status'];
+    const rows = filteredPayments.map((p: any) => [
+      p.receiptNumber || '',
+      p.date,
+      p.customerName || p.customerId,
+      p.invoiceNumber || 'On-Account',
+      p.amount,
+      p.paymentMethod,
+      p.depositToAccountName || '',
+      p.reference || '',
+      p.status,
+    ]);
+    downloadCSV(`Customer_Payments_${new Date().toISOString().slice(0, 10)}.csv`, headers, rows);
+  };
 
   return (
-    <div className="p-4 max-w-7xl mx-auto space-y-4">
-      {/* Header */}
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-3 bg-white p-3 rounded-xl border border-gray-200 shadow-sm">
+    <div className="space-y-4 max-w-7xl mx-auto pb-10">
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-3 bg-[var(--color-surface)] p-3.5 rounded-xl border border-[var(--color-border)] shadow-xs">
         <div>
-          <h1 className="text-base font-bold text-gray-900 tracking-tight flex items-center gap-2">
-            <span className="text-lg">💰</span> Customer Payments
+          <h1 className="text-base font-bold text-[var(--color-text-strong)] tracking-tight flex items-center gap-2">
+            <span className="text-lg">💰</span> Customer Payments & Receipts
           </h1>
-          <p className="text-gray-500 text-[10px] mt-0.5">Record and manage payments received from customers against invoices.</p>
+          <p className="text-[var(--color-text-muted)] text-xs mt-0.5">
+            Record customer collections, apply remittances against invoices, and manage bank deposit reconciliations.
+          </p>
         </div>
-        <div className="flex items-center gap-1.5 shrink-0">
-          <DataToolbar
-            query={query}
-            setQuery={setQuery}
-            searchPlaceholder="Search receipt #, customer, invoice..."
-            exportFileName="customer-payments"
-            exportSheetName="Customer Payments"
-            exportTitle="Customer Payments"
-            exportSubtitle="Payments received from customers applied to invoices."
-            exportHeaders={exportHeaders}
-            exportRows={exportRows}
-            exportTotals={[{ label: 'Total Received', value: totalReceived }]}
-            onRefresh={() => fetchAll(activeEntityId)}
-          />
+
+        <div className="flex items-center gap-2 shrink-0 flex-wrap">
+          <div className="flex items-center h-8.5 w-60 px-2.5 bg-[var(--color-surface)] border border-[var(--color-border)] rounded-lg text-xs focus-within:border-blue-500 focus-within:ring-1 focus-within:ring-blue-200 transition-all shadow-2xs">
+            <Search className="w-3.5 h-3.5 text-gray-400 mr-2 shrink-0 pointer-events-none" />
+            <input
+              type="text"
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              placeholder="Search receipt, customer, ref..."
+              className="!p-0 !border-0 !outline-none !bg-transparent w-full text-xs text-[var(--color-text)]"
+            />
+            {query && (
+              <button
+                type="button"
+                onClick={() => setQuery('')}
+                className="text-gray-400 hover:text-gray-600 text-sm px-1 leading-none font-bold"
+              >
+                ×
+              </button>
+            )}
+          </div>
+
+          <select
+            value={methodFilter}
+            onChange={(e) => setMethodFilter(e.target.value)}
+            className="h-8.5 px-2.5 rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] text-xs text-[var(--color-text)] outline-none focus:border-blue-500 transition-colors"
+          >
+            <option value="all">⚡ All Methods</option>
+            <option value="BankTransfer">🏦 Bank Transfer</option>
+            <option value="Cash">💵 Cash</option>
+            <option value="Cheque">📜 Cheque</option>
+            <option value="CreditCard">💳 Credit Card</option>
+            <option value="WireTransfer">🌐 Wire Transfer</option>
+            <option value="MobilePayment">📱 Mobile Payment</option>
+          </select>
+
+          <select
+            value={statusFilter}
+            onChange={(e) => setStatusFilter(e.target.value)}
+            className="h-8.5 px-2.5 rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] text-xs text-[var(--color-text)] outline-none focus:border-blue-500 transition-colors"
+          >
+            <option value="all">📋 All Statuses</option>
+            <option value="posted">Posted</option>
+            <option value="draft">Draft</option>
+            <option value="void">Void</option>
+          </select>
+
+          <button
+            onClick={exportPaymentsExcel}
+            className="secondary h-8.5 px-3 rounded-lg text-xs font-semibold flex items-center gap-1.5 shadow-xs"
+            title="Export payments register to Excel"
+          >
+            <FileSpreadsheet className="w-3.5 h-3.5 text-emerald-600" /> Excel
+          </button>
+          <button
+            onClick={exportPaymentsCSV}
+            className="secondary h-8.5 px-2.5 rounded-lg text-xs font-semibold"
+          >
+            CSV
+          </button>
+
+          <button
+            onClick={loadData}
+            className="secondary h-8.5 w-8.5 rounded-lg flex items-center justify-center text-xs text-[var(--color-text)]"
+          >
+            <RefreshCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin' : ''}`} />
+          </button>
+
           <button
             onClick={openModal}
-            className="h-8 px-2.5 bg-blue-600 hover:bg-blue-700 text-white text-[11px] font-semibold rounded-lg shrink-0 whitespace-nowrap flex items-center gap-1"
+            className="primary h-8.5 px-3 rounded-lg text-xs font-semibold flex items-center gap-1.5 shadow-xs"
           >
             <Plus className="w-3.5 h-3.5" /> Receive Payment
           </button>
         </div>
       </div>
 
-      {/* Stats */}
-      <section className="stats">
+      <section className="stats" style={{ gridTemplateColumns: 'repeat(4, minmax(0, 1fr))' }}>
         <article>
           <span className="stat-icon blue"><DollarSign className="w-4 h-4" /></span>
           <div>
-            <small>TOTAL RECEIVED</small>
+            <small>TOTAL COLLECTED</small>
             <h2>{money(totalReceived)}</h2>
-            <p>All recorded payments</p>
+            <p>Customer payments received</p>
           </div>
         </article>
         <article>
           <span className="stat-icon teal"><Receipt className="w-4 h-4" /></span>
           <div>
-            <small>PAYMENT COUNT</small>
-            <h2>{filteredPayments.length}</h2>
-            <p>Total transactions</p>
+            <small>TOTAL RECEIPTS</small>
+            <h2>{totalCount}</h2>
+            <p>Settlement transactions</p>
           </div>
         </article>
         <article>
-          <span className="stat-icon violet"><Clock className="w-4 h-4" /></span>
+          <span className="stat-icon violet"><Users className="w-4 h-4" /></span>
           <div>
-            <small>TODAY'S PAYMENTS</small>
-            <h2>{todayPayments}</h2>
-            <p>Received today</p>
+            <small>PAYING CUSTOMERS</small>
+            <h2>{uniqueCustomers}</h2>
+            <p>Active accounts settled</p>
           </div>
         </article>
         <article>
-          <span className="stat-icon blue"><Building2 className="w-4 h-4" /></span>
+          <span className="stat-icon blue"><CreditCard className="w-4 h-4 text-emerald-600" /></span>
           <div>
-            <small>DRAFT PAYMENTS</small>
-            <h2>{pendingCount}</h2>
-            <p>Awaiting posting</p>
+            <small>AVERAGE RECEIPT</small>
+            <h2 className="text-emerald-600 dark:text-emerald-400">{money(avgReceipt)}</h2>
+            <p>Per receipt average</p>
           </div>
         </article>
       </section>
 
-      {/* Table */}
-      <div className="bg-white border border-gray-200 rounded-xl shadow-sm overflow-hidden">
-        <table className="w-full text-left text-sm">
-          <thead className="bg-gray-50 text-gray-500 border-b border-gray-100 text-[10px] uppercase tracking-wider">
-            <tr>
-              <th className="py-2.5 px-4">Receipt #</th>
-              <th className="py-2.5 px-4">Date</th>
-              <th className="py-2.5 px-4">Customer</th>
-              <th className="py-2.5 px-4">Invoice</th>
-              <th className="py-2.5 px-4 text-right">Amount</th>
-              <th className="py-2.5 px-4">Method</th>
-              <th className="py-2.5 px-4">Deposit To</th>
-              <th className="py-2.5 px-4">Reference</th>
-              <th className="py-2.5 px-4 text-center">Status</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-gray-100">
-            {filteredPayments.length === 0 && !loading && (
+      <div className="bg-[var(--color-surface)] border border-[var(--color-border)] rounded-xl shadow-xs overflow-hidden">
+        <div className="p-3 border-b border-[var(--color-border)] flex justify-between items-center bg-gray-50/50 dark:bg-gray-900/50">
+          <span className="text-xs font-bold text-[var(--color-text-strong)] flex items-center gap-2">
+            <Receipt className="w-3.5 h-3.5 text-blue-600" /> Collections & Receipts Register ({filteredPayments.length})
+          </span>
+          <span className="text-[11px] text-[var(--color-text-muted)]">
+            Click <strong>Receipt PDF</strong> on any row to download an official payment receipt slip.
+          </span>
+        </div>
+
+        <div className="overflow-x-auto">
+          <table className="w-full text-left text-xs">
+            <thead className="bg-gray-50 dark:bg-gray-900/80 text-[var(--color-text-muted)] border-b border-[var(--color-border)] text-[10px] uppercase font-bold tracking-wider">
               <tr>
-                <td colSpan={9} className="py-12 text-center text-gray-400">
-                  <div className="flex flex-col items-center gap-2">
-                    <span className="text-3xl">💰</span>
-                    <p className="text-sm font-semibold">No payments recorded</p>
-                    <p className="text-[10px]">Click "Receive Payment" to record your first payment.</p>
-                  </div>
-                </td>
+                <th className="py-2.5 px-3.5">Receipt #</th>
+                <th className="py-2.5 px-3">Date</th>
+                <th className="py-2.5 px-3">Customer</th>
+                <th className="py-2.5 px-3">Invoice Applied</th>
+                <th className="py-2.5 px-3 text-right">Amount Received</th>
+                <th className="py-2.5 px-3">Method</th>
+                <th className="py-2.5 px-3">Deposit To Account</th>
+                <th className="py-2.5 px-3 text-center">Status</th>
+                <th className="py-2.5 px-3.5 text-right">Receipt Slip</th>
               </tr>
+            </thead>
+            <tbody className="divide-y divide-[var(--color-border)]">
+              {loading ? (
+                <tr>
+                  <td colSpan={9} className="py-12 text-center text-[var(--color-text-muted)]">
+                    <div className="flex flex-col items-center gap-2">
+                      <RefreshCw className="w-6 h-6 animate-spin text-blue-600" />
+                      <p className="font-semibold text-xs">Loading customer payments...</p>
+                    </div>
+                  </td>
+                </tr>
+              ) : filteredPayments.length === 0 ? (
+                <tr>
+                  <td colSpan={9} className="py-12 text-center text-[var(--color-text-muted)]">
+                    <div className="flex flex-col items-center gap-2">
+                      <CheckCircle2 className="w-8 h-8 text-gray-400" />
+                      <p className="font-semibold text-xs">No customer payment records found.</p>
+                    </div>
+                  </td>
+                </tr>
+              ) : (
+                filteredPayments.map((p: any) => (
+                  <tr key={p.id} className="hover:bg-gray-50/50 dark:hover:bg-gray-900/30 transition-colors">
+                    <td className="py-2.5 px-3.5 font-mono font-bold text-blue-600 dark:text-blue-400">
+                      {p.receiptNumber}
+                    </td>
+                    <td className="py-2.5 px-3 text-[var(--color-text)] whitespace-nowrap">{p.date}</td>
+                    <td className="py-2.5 px-3 font-semibold text-[var(--color-text-strong)]">
+                      {p.customerName || p.customerId}
+                    </td>
+                    <td className="py-2.5 px-3 font-mono text-[var(--color-text)]">
+                      {p.invoiceNumber || <span className="text-gray-400 italic">On-Account</span>}
+                    </td>
+                    <td className="py-2.5 px-3 text-right font-extrabold text-emerald-600 dark:text-emerald-400 font-mono">
+                      {money(p.amount || 0)}
+                    </td>
+                    <td className="py-2.5 px-3">
+                      <span className="px-2 py-0.5 rounded-md bg-gray-100 dark:bg-gray-800 text-[var(--color-text)] font-semibold text-[10px]">
+                        {p.paymentMethod}
+                      </span>
+                    </td>
+                    <td className="py-2.5 px-3 text-[var(--color-text-muted)]">
+                      {p.depositToAccountName || 'Bank Account'}
+                    </td>
+                    <td className="py-2.5 px-3 text-center">
+                      <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-50 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800">
+                        {p.status || 'Posted'}
+                      </span>
+                    </td>
+                    <td className="py-2.5 px-3.5 text-right">
+                      <button
+                        onClick={() => generateReceiptPDF(p)}
+                        className="inline-flex items-center gap-1 px-2.5 py-1 bg-blue-50 dark:bg-blue-900/30 hover:bg-blue-100 dark:hover:bg-blue-900/50 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-800 rounded-lg text-[11px] font-semibold transition-all shadow-2xs"
+                        title="Download Payment Receipt PDF"
+                      >
+                        <Download className="w-3 h-3" /> Receipt PDF
+                      </button>
+                    </td>
+                  </tr>
+                ))
+              )}
+            </tbody>
+            {filteredPayments.length > 0 && (
+              <tfoot className="bg-gray-50 dark:bg-gray-900 border-t-2 border-[var(--color-border)] font-bold text-xs">
+                <tr>
+                  <td colSpan={4} className="py-3 px-3.5 uppercase tracking-wider text-[var(--color-text-muted)] text-right">
+                    Total Collections Received:
+                  </td>
+                  <td className="py-3 px-3 text-right text-base text-emerald-600 dark:text-emerald-400 font-extrabold">
+                    {money(totalReceived)}
+                  </td>
+                  <td colSpan={4}></td>
+                </tr>
+              </tfoot>
             )}
-            {filteredPayments.map((p: any) => (
-              <tr key={p.id} className="hover:bg-gray-50/50 transition-colors">
-                <td className="py-2.5 px-4 font-medium text-blue-600">{p.receiptNumber}</td>
-                <td className="py-2.5 px-4 text-gray-600">{p.date}</td>
-                <td className="py-2.5 px-4 font-medium text-gray-900">{p.customerName || p.customerId}</td>
-                <td className="py-2.5 px-4 text-gray-600">{p.invoiceNumber || '—'}</td>
-                <td className="py-2.5 px-4 text-right font-bold text-gray-900">
-                  {money(p.amount || 0)}
-                </td>
-                <td className="py-2.5 px-4">
-                  <span className="px-2 py-0.5 bg-gray-100 text-gray-600 rounded text-[10px] font-semibold">
-                    {p.paymentMethod}
-                  </span>
-                </td>
-                <td className="py-2.5 px-4 text-gray-600 text-[11px]">{p.depositToAccountName || '—'}</td>
-                <td className="py-2.5 px-4 text-gray-500 text-[11px]">{p.reference || '—'}</td>
-                <td className="py-2.5 px-4 text-center">
-                  <span className={`px-2 py-0.5 rounded-full text-[10px] font-semibold ${
-                    p.status === 'Posted' ? 'bg-emerald-100 text-emerald-700' :
-                    p.status === 'Void' ? 'bg-rose-100 text-rose-700' :
-                    'bg-gray-100 text-gray-600'
-                  }`}>
-                    {p.status}
-                  </span>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
+          </table>
+        </div>
       </div>
 
-      {/* Receive Payment Modal */}
       {isModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40" onClick={() => setIsModalOpen(false)}>
-          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg mx-4 overflow-hidden" onClick={(e) => e.stopPropagation()}>
-            {/* Modal Header */}
-            <div className="flex items-center justify-between p-4 border-b border-gray-200">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-xs p-4" onClick={() => setIsModalOpen(false)}>
+          <div className="bg-[var(--color-surface)] border border-[var(--color-border)] rounded-2xl shadow-2xl w-full max-w-lg overflow-hidden flex flex-col max-h-[90vh]" onClick={(e) => e.stopPropagation()}>
+            <div className="flex items-center justify-between p-4 border-b border-[var(--color-border)] bg-gray-50/50 dark:bg-gray-900/50">
               <div>
-                <h2 className="text-base font-bold text-gray-900 flex items-center gap-2">
-                  <span className="text-lg">💰</span> Receive Payment
+                <h2 className="text-base font-bold text-[var(--color-text-strong)] flex items-center gap-2">
+                  <span className="text-lg">💰</span> Receive Customer Payment
                 </h2>
-                <p className="text-[10px] text-gray-500 mt-0.5">Record a payment received from a customer</p>
+                <p className="text-xs text-[var(--color-text-muted)] mt-0.5">Record customer collection and reconcile against invoice.</p>
               </div>
-              <button onClick={() => setIsModalOpen(false)} className="h-7 w-7 flex items-center justify-center rounded-lg hover:bg-gray-100 text-gray-400 hover:text-gray-600">
+              <button onClick={() => setIsModalOpen(false)} className="h-7 w-7 flex items-center justify-center rounded-lg hover:bg-gray-200 dark:hover:bg-gray-800 text-gray-500">
                 <X className="w-4 h-4" />
               </button>
             </div>
 
-            {/* Modal Body */}
-            <form onSubmit={handleCreate} className="p-4 space-y-4">
+            <form onSubmit={handleCreate} className="p-5 space-y-4 overflow-y-auto">
               {formError && (
-                <div className="p-2 bg-rose-50 border border-rose-200 rounded-lg text-rose-700 text-[11px]">
+                <div className="p-3 bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-800 rounded-xl text-rose-700 dark:text-rose-300 text-xs font-semibold">
                   {formError}
                 </div>
               )}
 
-              {/* Customer */}
-              <div className="space-y-1.5">
-                <label className="text-[10px] font-semibold text-gray-500 uppercase tracking-wider">Customer *</label>
+              <div className="space-y-1">
+                <label className="text-xs font-bold text-[var(--color-text-strong)]">Customer *</label>
                 <select
-                  required
                   value={formData.customerId}
-                  onChange={e => onCustomerChange(e.target.value)}
-                  className="w-full h-9 px-3 bg-white border border-gray-200 rounded-lg text-xs text-gray-700 outline-none focus:border-blue-400"
+                  onChange={(e) => onCustomerChange(e.target.value)}
+                  className="w-full h-9 px-3 rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] text-xs text-[var(--color-text)] outline-none focus:border-blue-500"
+                  required
                 >
-                  <option value="">Select customer</option>
-                  {customers.map(c => (
-                    <option key={c.id} value={c.id}>{c.name}</option>
+                  <option value="">Select customer...</option>
+                  {customers.map((c: any) => (
+                    <option key={c.id} value={c.id}>
+                      {c.name} {c.customerNumber ? `(${c.customerNumber})` : ''}
+                    </option>
                   ))}
                 </select>
               </div>
 
-              {/* Invoice + Date */}
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-1.5">
-                  <label className="text-[10px] font-semibold text-gray-500 uppercase tracking-wider">Against Invoice</label>
-                  <select
-                    value={formData.invoiceId}
-                    onChange={e => onInvoiceChange(e.target.value)}
-                    className="w-full h-9 px-3 bg-white border border-gray-200 rounded-lg text-xs text-gray-700 outline-none focus:border-blue-400"
-                  >
-                    <option value="">On Account (no invoice)</option>
-                    {filteredInvoices.map(inv => (
-                      <option key={inv.id} value={inv.id}>
-                        {inv.invoiceNumber} — Due: {(inv.amountDue ?? inv.totalAmount)?.toLocaleString()}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-
-                <div className="space-y-1.5">
-                  <label className="text-[10px] font-semibold text-gray-500 uppercase tracking-wider">Payment Date *</label>
-                  <input
-                    required
-                    type="date"
-                    value={formData.paymentDate}
-                    onChange={e => setFormData({ ...formData, paymentDate: e.target.value })}
-                    className="w-full h-9 px-3 bg-white border border-gray-200 rounded-lg text-xs text-gray-700 outline-none focus:border-blue-400"
-                  />
-                </div>
+              <div className="space-y-1">
+                <label className="text-xs font-bold text-[var(--color-text-strong)]">Apply to Invoice (Optional)</label>
+                <select
+                  value={formData.invoiceId}
+                  onChange={(e) => onInvoiceChange(e.target.value)}
+                  className="w-full h-9 px-3 rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] text-xs text-[var(--color-text)] outline-none focus:border-blue-500"
+                >
+                  <option value="">On-Account (Unapplied collection)</option>
+                  {filteredInvoices.map((inv: any) => (
+                    <option key={inv.id} value={inv.id}>
+                      {inv.invoiceNumber} — Balance Due: {money(inv.amountDue ?? inv.totalAmount)} (Date: {inv.invoiceDate || inv.date})
+                    </option>
+                  ))}
+                </select>
               </div>
 
-              {/* Amount + Method */}
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-1.5">
-                  <label className="text-[10px] font-semibold text-gray-500 uppercase tracking-wider">Amount Received *</label>
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1">
+                  <label className="text-xs font-bold text-[var(--color-text-strong)]">Amount Received *</label>
                   <input
-                    required
                     type="number"
                     step="0.01"
-                    min="0"
-                    placeholder="0.00"
+                    min="0.01"
                     value={formData.amount}
-                    onChange={e => setFormData({ ...formData, amount: e.target.value })}
-                    className="w-full h-9 px-3 bg-white border border-gray-200 rounded-lg text-xs text-gray-700 outline-none focus:border-blue-400 placeholder:text-gray-400"
+                    onChange={(e) => setFormData({ ...formData, amount: e.target.value })}
+                    placeholder="0.00"
+                    className="w-full h-9 px-3 rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] text-xs text-[var(--color-text)] font-mono font-bold outline-none focus:border-blue-500"
+                    required
                   />
                 </div>
+                <div className="space-y-1">
+                  <label className="text-xs font-bold text-[var(--color-text-strong)]">Payment Date *</label>
+                  <input
+                    type="date"
+                    value={formData.paymentDate}
+                    onChange={(e) => setFormData({ ...formData, paymentDate: e.target.value })}
+                    className="w-full h-9 px-3 rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] text-xs text-[var(--color-text)] outline-none focus:border-blue-500"
+                    required
+                  />
+                </div>
+              </div>
 
-                <div className="space-y-1.5">
-                  <label className="text-[10px] font-semibold text-gray-500 uppercase tracking-wider">Payment Method *</label>
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1">
+                  <label className="text-xs font-bold text-[var(--color-text-strong)]">Payment Method *</label>
                   <select
                     value={formData.paymentMethod}
-                    onChange={e => onMethodChange(e.target.value)}
-                    className="w-full h-9 px-3 bg-white border border-gray-200 rounded-lg text-xs text-gray-700 outline-none focus:border-blue-400"
+                    onChange={(e) => onMethodChange(e.target.value)}
+                    className="w-full h-9 px-3 rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] text-xs text-[var(--color-text)] outline-none focus:border-blue-500"
+                    required
                   >
-                    {PAYMENT_METHODS.map(m => (
-                      <option key={m.value} value={m.value}>
-                        {m.label}{m.region ? ` (${m.region})` : ''}
-                      </option>
+                    {PAYMENT_METHODS.map((m) => (
+                      <option key={m.value} value={m.value}>{m.label}</option>
+                    ))}
+                  </select>
+                </div>
+                <div className="space-y-1">
+                  <label className="text-xs font-bold text-[var(--color-text-strong)]">Deposit To Account *</label>
+                  <select
+                    value={formData.depositToAccountId}
+                    onChange={(e) => setFormData({ ...formData, depositToAccountId: e.target.value })}
+                    className="w-full h-9 px-3 rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] text-xs text-[var(--color-text)] outline-none focus:border-blue-500"
+                    required
+                  >
+                    <option value="">Select funding account...</option>
+                    {depositAccounts.map((a) => (
+                      <option key={a.id} value={a.id}>{a.code} - {a.name}</option>
                     ))}
                   </select>
                 </div>
               </div>
 
-              {/* Deposit To */}
-              <div className="space-y-1.5">
-                <label className="text-[10px] font-semibold text-gray-500 uppercase tracking-wider">
-                  Deposit To *
-                  <span className="text-gray-400 font-normal normal-case ml-1">
-                    {NEEDS_BANK_ACCOUNT.includes(formData.paymentMethod)
-                      ? '(Select bank account receiving funds)'
-                      : formData.paymentMethod === 'Cash'
-                        ? '(Select cash-in-hand account)'
-                        : '(Select account to debit)'}
-                  </span>
-                </label>
-                <select
-                  required
-                  value={formData.depositToAccountId}
-                  onChange={e => setFormData({ ...formData, depositToAccountId: e.target.value })}
-                  className="w-full h-9 px-3 bg-white border border-gray-200 rounded-lg text-xs text-gray-700 outline-none focus:border-blue-400"
-                >
-                  <option value="">Select account</option>
-                  {depositAccounts.map(a => (
-                    <option key={a.id} value={a.id}>{a.code} — {a.name}</option>
-                  ))}
-                </select>
+              {/* Reference & Memo */}
+              <div className="space-y-1">
+                <label className="text-xs font-bold text-[var(--color-text-strong)]">Reference / Transaction ID</label>
+                <input
+                  type="text"
+                  value={formData.reference}
+                  onChange={(e) => setFormData({ ...formData, reference: e.target.value })}
+                  placeholder="e.g. Wire confirmation, cheque #, JazzCash TID"
+                  className="w-full h-9 px-3 rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] text-xs text-[var(--color-text)] outline-none focus:border-blue-500"
+                />
               </div>
 
-              {/* Reference + Memo */}
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-1.5">
-                  <label className="text-[10px] font-semibold text-gray-500 uppercase tracking-wider">Reference / Cheque #</label>
-                  <input
-                    placeholder="e.g. CHQ-001, ACH-REF-123"
-                    value={formData.reference}
-                    onChange={e => setFormData({ ...formData, reference: e.target.value })}
-                    className="w-full h-9 px-3 bg-white border border-gray-200 rounded-lg text-xs text-gray-700 outline-none focus:border-blue-400 placeholder:text-gray-400"
-                  />
-                </div>
-
-                <div className="space-y-1.5">
-                  <label className="text-[10px] font-semibold text-gray-500 uppercase tracking-wider">Memo</label>
-                  <input
-                    placeholder="Internal notes"
-                    value={formData.memo}
-                    onChange={e => setFormData({ ...formData, memo: e.target.value })}
-                    className="w-full h-9 px-3 bg-white border border-gray-200 rounded-lg text-xs text-gray-700 outline-none focus:border-blue-400 placeholder:text-gray-400"
-                  />
-                </div>
+              <div className="space-y-1">
+                <label className="text-xs font-bold text-[var(--color-text-strong)]">Notes / Memo</label>
+                <textarea
+                  rows={2}
+                  value={formData.memo}
+                  onChange={(e) => setFormData({ ...formData, memo: e.target.value })}
+                  placeholder="Internal notes regarding this collection..."
+                  className="w-full p-2.5 rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] text-xs text-[var(--color-text)] outline-none focus:border-blue-500 resize-none"
+                />
               </div>
 
-              {/* Journal Preview */}
+              {/* Double Entry Preview */}
               {formData.amount && formData.depositToAccountId && (
-                <div className="p-3 bg-gray-50 rounded-lg border border-gray-200">
-                  <p className="text-[10px] font-bold text-gray-500 uppercase tracking-wider mb-2">Double-Entry Preview</p>
+                <div className="p-3 bg-gray-50 dark:bg-gray-900 rounded-lg border border-[var(--color-border)]">
+                  <p className="text-[10px] font-bold text-[var(--color-text-muted)] uppercase tracking-wider mb-2">Double-Entry Accounting Preview</p>
                   <table className="w-full text-xs">
                     <thead>
-                      <tr className="border-b border-gray-200 text-gray-500">
+                      <tr className="border-b border-[var(--color-border)] text-[var(--color-text-muted)] text-[10px]">
                         <th className="text-left pb-1">Account</th>
                         <th className="text-right pb-1">Debit</th>
                         <th className="text-right pb-1">Credit</th>
@@ -454,34 +714,36 @@ function CustomerPaymentsWorkspace() {
                     </thead>
                     <tbody>
                       <tr>
-                        <td className="py-1 text-gray-700">{depositAccounts.find(a => a.id === formData.depositToAccountId)?.name || 'Bank/Cash'}</td>
-                        <td className="py-1 text-right font-semibold">{parseFloat(formData.amount)?.toLocaleString(undefined, { minimumFractionDigits: 2 })}</td>
-                        <td className="py-1 text-right text-gray-400">—</td>
+                        <td className="py-1 text-[var(--color-text)]">{depositAccounts.find(a => a.id === formData.depositToAccountId)?.name || 'Cash & Bank Asset'}</td>
+                        <td className="py-1 text-right font-bold text-emerald-600">{money(parseFloat(formData.amount) || 0)}</td>
+                        <td className="py-1 text-right text-[var(--color-text-muted)]">—</td>
                       </tr>
                       <tr>
-                        <td className="py-1 text-gray-700">Accounts Receivable</td>
-                        <td className="py-1 text-right text-gray-400">—</td>
-                        <td className="py-1 text-right font-semibold">{parseFloat(formData.amount)?.toLocaleString(undefined, { minimumFractionDigits: 2 })}</td>
+                        <td className="py-1 text-[var(--color-text)]">Accounts Receivable Asset</td>
+                        <td className="py-1 text-right text-[var(--color-text-muted)]">—</td>
+                        <td className="py-1 text-right font-bold text-blue-600">{money(parseFloat(formData.amount) || 0)}</td>
                       </tr>
                     </tbody>
                   </table>
                 </div>
               )}
 
-              {/* Actions */}
-              <div className="flex justify-end gap-2 pt-2">
+              {/* Modal Actions */}
+              <div className="flex items-center justify-end gap-2 pt-2 border-t border-[var(--color-border)]">
                 <button
                   type="button"
                   onClick={() => setIsModalOpen(false)}
-                  className="h-8 px-4 text-[11px] font-semibold text-gray-600 bg-gray-100 hover:bg-gray-200 rounded-lg"
+                  className="secondary h-9 px-4 rounded-lg text-xs font-semibold"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
-                  className="h-8 px-4 text-[11px] font-semibold text-white bg-blue-600 hover:bg-blue-700 rounded-lg flex items-center gap-1"
+                  disabled={saving}
+                  className="primary h-9 px-4 rounded-lg text-xs font-semibold flex items-center gap-1.5 shadow-xs"
                 >
-                  <DollarSign className="w-3.5 h-3.5" /> Save Payment
+                  {saving ? <RefreshCw className="w-3.5 h-3.5 animate-spin" /> : <CheckCircle2 className="w-3.5 h-3.5" />}
+                  Record Receipt
                 </button>
               </div>
             </form>

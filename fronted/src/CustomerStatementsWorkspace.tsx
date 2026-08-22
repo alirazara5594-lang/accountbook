@@ -829,7 +829,7 @@ export function CustomerStatementsWorkspace({ activeEntityId }: Props) {
         </div>
 
         {/* 4 Key Financial Summary Cards */}
-        <section className="stats">
+        <section className="stats" style={{ gridTemplateColumns: 'repeat(4, minmax(0, 1fr))' }}>
           <article>
             <span className="stat-icon blue"><Clock className="w-4 h-4" /></span>
             <div>
@@ -1135,7 +1135,7 @@ export function CustomerStatementsWorkspace({ activeEntityId }: Props) {
       </div>
 
       {/* 4 Summary Metric Cards */}
-      <section className="stats">
+      <section className="stats" style={{ gridTemplateColumns: 'repeat(4, minmax(0, 1fr))' }}>
         <article>
           <span className="stat-icon blue"><Users className="w-4 h-4" /></span>
           <div>

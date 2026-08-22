@@ -942,9 +942,9 @@ export default function CustomerManagement({
                       </h4>
                       <div className="grid grid-cols-2 gap-2 text-[11px]">
                         <div><span className="text-[var(--color-text-muted)]">Default Currency:</span> <p className="font-semibold text-[var(--color-text-strong)] font-mono">{form.currencyCode || 'PKR'}</p></div>
-                        <div><span className="text-[var(--color-text-muted)]">Credit Limit:</span> <p className="font-semibold text-[var(--color-text-strong)] font-mono">{money(form.creditLimit, form.currencyCode)}</p></div>
+                        <div><span className="text-[var(--color-text-muted)]">Credit Limit:</span> <p className="font-semibold text-[var(--color-text-strong)] font-mono">{money(Number(form.creditLimit) || 0, form.currencyCode)}</p></div>
                         <div><span className="text-[var(--color-text-muted)]">Payment Terms:</span> <p className="font-semibold text-[var(--color-text-strong)]">Net {form.paymentTermsDays || 30} Days</p></div>
-                        <div><span className="text-[var(--color-text-muted)]">Account Status:</span> <p className="font-semibold text-[var(--color-text-strong)]">{form.status}</p></div>
+                        <div><span className="text-[var(--color-text-muted)]">Account Status:</span> <p className="font-semibold text-[var(--color-text-strong)]">Active</p></div>
                       </div>
                     </div>
 

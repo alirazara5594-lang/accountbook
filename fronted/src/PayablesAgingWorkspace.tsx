@@ -1,13 +1,12 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useVendorsStore, useCompanyStore, useProcurementStore } from './stores';
 import {
-  Clock, DollarSign, Download, ArrowLeft,
-  Search, Printer, FileSpreadsheet, Building2,
-  Mail, Phone, AlertTriangle, CheckCircle2,
-  ChevronRight, RefreshCw, Layers
+  Clock, Download, ArrowLeft,
+  Search, Printer, FileSpreadsheet,
+  CheckCircle2, ChevronRight, RefreshCw, Layers
 } from 'lucide-react';
 import { money } from './lib/currency';
-import { downloadExcel, downloadCSV } from './lib/exportUtils';
+import { downloadExcel } from './lib/exportUtils';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 
@@ -987,4 +986,3 @@ export function PayablesAgingWorkspace({ activeEntityId }: PayablesAgingProps) {
 }
 
 export default PayablesAgingWorkspace;
-e;

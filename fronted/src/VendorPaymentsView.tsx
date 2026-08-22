@@ -4,7 +4,7 @@ import { vendorPaymentsApi, type VendorPayment, type WithdrawAccount, type Vendo
 import { useFormDraft } from './hooks/useFormDraft'
 import {
   Check, X, ArrowRight, ArrowLeft, Coins,
-  CheckCircle2, Users, CreditCard, ShieldCheck, FileText, Eye, Download, Printer
+  CheckCircle2, Users, CreditCard, ShieldCheck, FileText, Eye, Download
 } from 'lucide-react'
 import { DataToolbar } from '@/components/ui/data-toolbar'
 import { money } from '@/lib/currency'
@@ -198,7 +198,6 @@ export const VendorPaymentsView: React.FC<VendorPaymentsViewProps> = ({
     const margin = 14;
     const contentWidth = pageWidth - margin * 2;
 
-    const primaryColor: [number, number, number] = [16, 185, 129]; // Emerald
     const darkColor: [number, number, number] = [15, 23, 42];
     const grayColor: [number, number, number] = [100, 116, 139];
     const lightBg: [number, number, number] = [248, 250, 252];
@@ -357,8 +356,8 @@ export const VendorPaymentsView: React.FC<VendorPaymentsViewProps> = ({
         </div>
       </div>
 
-      {/* Stats Cards (Row 2) */}
-      <section className="stats">
+      {/* Stats Cards (4 in one row) */}
+      <section className="stats" style={{ gridTemplateColumns: 'repeat(4, minmax(0, 1fr))' }}>
         <article>
           <span className="stat-icon blue">
             <Coins className="w-4 h-4" />
