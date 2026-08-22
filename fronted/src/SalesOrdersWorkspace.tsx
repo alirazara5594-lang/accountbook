@@ -365,7 +365,7 @@ export const SalesOrdersWorkspace: React.FC<{ activeEntityId: string; entities?:
                             className="p-1 rounded text-[var(--color-text-muted)] hover:text-[var(--color-text-strong)] hover:bg-[var(--color-surface-muted)]"
                             title="View Details"
                           >
-                            <Eye className="w-3.5 h-3.5" />
+                            <Eye className="w-3 h-3" />
                           </button>
 
                           {o.status === 'Draft' && (
@@ -381,7 +381,7 @@ export const SalesOrdersWorkspace: React.FC<{ activeEntityId: string; entities?:
                                 className="p-1 rounded text-rose-500 hover:bg-rose-500/10"
                                 title="Cancel Order"
                               >
-                                <XCircle className="w-3.5 h-3.5" />
+                                <XCircle className="w-3 h-3" />
                               </button>
                             </>
                           )}
@@ -441,53 +441,53 @@ export const SalesOrdersWorkspace: React.FC<{ activeEntityId: string; entities?:
             </div>
 
             {/* Modal Tabs */}
-            <div className="flex items-center gap-2 px-6 pt-3 border-b border-[var(--color-border)] bg-[var(--color-surface)]">
+            <div className="flex items-center gap-1 px-4 pt-3 border-b border-[var(--color-border)] bg-[var(--color-surface)]">
               <button
                 type="button"
                 onClick={() => setModalTab('details')}
-                className={`flex items-center gap-2 px-4 py-2.5 text-xs font-semibold rounded-t-lg border-b-2 transition-all whitespace-nowrap ${
+                className={`flex items-center gap-1.5 px-2.5 py-1.5 text-[11px] font-semibold rounded-t-lg border-b-2 transition-all whitespace-nowrap ${
                   modalTab === 'details'
                     ? 'border-[var(--color-primary)] text-[var(--color-primary)] bg-[var(--color-primary)]/5'
                     : 'border-transparent text-[var(--color-text-muted)] hover:text-[var(--color-text-strong)]'
                 }`}
               >
-                <Users className="w-3.5 h-3.5" /> 1. Customer & Delivery
+                <Users className="w-3 h-3" /> 1. Customer & Delivery
               </button>
 
               <button
                 type="button"
                 onClick={() => setModalTab('lines')}
-                className={`flex items-center gap-2 px-4 py-2.5 text-xs font-semibold rounded-t-lg border-b-2 transition-all whitespace-nowrap ${
+                className={`flex items-center gap-1.5 px-2.5 py-1.5 text-[11px] font-semibold rounded-t-lg border-b-2 transition-all whitespace-nowrap ${
                   modalTab === 'lines'
                     ? 'border-[var(--color-primary)] text-[var(--color-primary)] bg-[var(--color-primary)]/5'
                     : 'border-transparent text-[var(--color-text-muted)] hover:text-[var(--color-text-strong)]'
                 }`}
               >
-                <Coins className="w-3.5 h-3.5" /> 2. Items & Quantities ({lines.length})
+                <Coins className="w-3 h-3" /> 2. Items & Quantities ({lines.length})
               </button>
 
               <button
                 type="button"
                 onClick={() => setModalTab('summary')}
-                className={`flex items-center gap-2 px-4 py-2.5 text-xs font-semibold rounded-t-lg border-b-2 transition-all whitespace-nowrap ${
+                className={`flex items-center gap-1.5 px-2.5 py-1.5 text-[11px] font-semibold rounded-t-lg border-b-2 transition-all whitespace-nowrap ${
                   modalTab === 'summary'
                     ? 'border-[var(--color-primary)] text-[var(--color-primary)] bg-[var(--color-primary)]/5'
                     : 'border-transparent text-[var(--color-text-muted)] hover:text-[var(--color-text-strong)]'
                 }`}
               >
-                <FileText className="w-3.5 h-3.5" /> 3. Terms & Confirmation
+                <FileText className="w-3 h-3" /> 3. Terms & Confirmation
               </button>
 
               <button
                 type="button"
                 onClick={() => setModalTab('preview')}
-                className={`flex items-center gap-2 px-4 py-2.5 text-xs font-semibold rounded-t-lg border-b-2 transition-all whitespace-nowrap ${
+                className={`flex items-center gap-1.5 px-2.5 py-1.5 text-[11px] font-semibold rounded-t-lg border-b-2 transition-all whitespace-nowrap ${
                   modalTab === 'preview'
                     ? 'border-emerald-600 text-emerald-600 bg-emerald-500/10'
                     : 'border-transparent text-[var(--color-text-muted)] hover:text-[var(--color-text-strong)]'
                 }`}
               >
-                <Eye className="w-3.5 h-3.5" /> 4. One-Page Preview
+                <Eye className="w-3 h-3" /> Preview
               </button>
             </div>
 
@@ -664,7 +664,7 @@ export const SalesOrdersWorkspace: React.FC<{ activeEntityId: string; entities?:
                                   onClick={() => removeLine(i)}
                                   className="w-6 h-6 rounded flex items-center justify-center text-rose-500 hover:bg-rose-500/10"
                                 >
-                                  <X className="w-3.5 h-3.5" />
+                                  <X className="w-3 h-3" />
                                 </button>
                               )}
                             </td>
@@ -680,7 +680,7 @@ export const SalesOrdersWorkspace: React.FC<{ activeEntityId: string; entities?:
                       onClick={addLine}
                       className="h-8 px-3.5 rounded-lg border border-[var(--color-primary)] text-[var(--color-primary)] text-xs font-semibold hover:bg-[var(--color-primary)]/10 transition-colors flex items-center gap-1.5 shadow-2xs"
                     >
-                      <Plus className="w-3.5 h-3.5" /> Add Line
+                      <Plus className="w-3 h-3" /> Add Line
                     </button>
                   </div>
                 </div>
@@ -855,7 +855,7 @@ export const SalesOrdersWorkspace: React.FC<{ activeEntityId: string; entities?:
                     }}
                     className="h-8.5 px-3 rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] text-xs font-medium text-[var(--color-text)] hover:bg-[var(--color-surface-muted)] transition-colors flex items-center gap-1"
                   >
-                    <ArrowLeft className="w-3.5 h-3.5" />
+                    <ArrowLeft className="w-3 h-3" />
                     <span>{modalTab === 'preview' ? 'Back to Edit' : 'Back'}</span>
                   </button>
                 )}
@@ -876,7 +876,7 @@ export const SalesOrdersWorkspace: React.FC<{ activeEntityId: string; entities?:
                     className="primary h-8.5 px-4 rounded-lg text-xs font-semibold shadow-xs flex items-center gap-1.5"
                   >
                     <span>{modalTab === 'details' ? 'Next: Order Lines' : modalTab === 'lines' ? 'Next: Terms & Confirmation' : 'Preview & Review'}</span>
-                    {modalTab === 'summary' ? <Eye className="w-3.5 h-3.5" /> : <ArrowRight className="w-3.5 h-3.5" />}
+                    {modalTab === 'summary' ? <Eye className="w-3 h-3" /> : <ArrowRight className="w-3 h-3" />}
                   </button>
                 ) : (
                   <button
@@ -884,7 +884,7 @@ export const SalesOrdersWorkspace: React.FC<{ activeEntityId: string; entities?:
                     onClick={handleSave}
                     className="primary h-8.5 px-5 rounded-lg text-xs font-semibold shadow-xs flex items-center gap-1.5 bg-blue-600 hover:bg-blue-700 text-white"
                   >
-                    <Check className="w-3.5 h-3.5" />
+                    <Check className="w-3 h-3" />
                     <span>Confirm & Create Sales Order</span>
                   </button>
                 )}

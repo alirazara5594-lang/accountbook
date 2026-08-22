@@ -308,7 +308,7 @@ export const DebitNotes: React.FC<{ activeEntityId: string; entities?: any[] }> 
                               className="p-1 rounded text-rose-500 hover:bg-rose-500/10"
                               title="Void"
                             >
-                              <Trash2 className="w-3.5 h-3.5" />
+                              <Trash2 className="w-3 h-3" />
                             </button>
                           )}
                         </div>
@@ -358,53 +358,53 @@ export const DebitNotes: React.FC<{ activeEntityId: string; entities?: any[] }> 
             </div>
 
             {/* Modal Tabs */}
-            <div className="flex items-center gap-2 px-6 pt-3 border-b border-[var(--color-border)] bg-[var(--color-surface)]">
+            <div className="flex items-center gap-1 px-4 pt-3 border-b border-[var(--color-border)] bg-[var(--color-surface)]">
               <button
                 type="button"
                 onClick={() => setModalTab('details')}
-                className={`flex items-center gap-2 px-4 py-2.5 text-xs font-semibold rounded-t-lg border-b-2 transition-all whitespace-nowrap ${
+                className={`flex items-center gap-1.5 px-2.5 py-1.5 text-[11px] font-semibold rounded-t-lg border-b-2 transition-all whitespace-nowrap ${
                   modalTab === 'details'
                     ? 'border-[var(--color-primary)] text-[var(--color-primary)] bg-[var(--color-primary)]/5'
                     : 'border-transparent text-[var(--color-text-muted)] hover:text-[var(--color-text-strong)]'
                 }`}
               >
-                <Users className="w-3.5 h-3.5" /> 1. Vendor & Date
+                <Users className="w-3 h-3" /> 1. Vendor & Date
               </button>
 
               <button
                 type="button"
                 onClick={() => setModalTab('items')}
-                className={`flex items-center gap-2 px-4 py-2.5 text-xs font-semibold rounded-t-lg border-b-2 transition-all whitespace-nowrap ${
+                className={`flex items-center gap-1.5 px-2.5 py-1.5 text-[11px] font-semibold rounded-t-lg border-b-2 transition-all whitespace-nowrap ${
                   modalTab === 'items'
                     ? 'border-[var(--color-primary)] text-[var(--color-primary)] bg-[var(--color-primary)]/5'
                     : 'border-transparent text-[var(--color-text-muted)] hover:text-[var(--color-text-strong)]'
                 }`}
               >
-                <Coins className="w-3.5 h-3.5" /> 2. Debit Amount & Tax
+                <Coins className="w-3 h-3" /> 2. Debit Amount & Tax
               </button>
 
               <button
                 type="button"
                 onClick={() => setModalTab('summary')}
-                className={`flex items-center gap-2 px-4 py-2.5 text-xs font-semibold rounded-t-lg border-b-2 transition-all whitespace-nowrap ${
+                className={`flex items-center gap-1.5 px-2.5 py-1.5 text-[11px] font-semibold rounded-t-lg border-b-2 transition-all whitespace-nowrap ${
                   modalTab === 'summary'
                     ? 'border-[var(--color-primary)] text-[var(--color-primary)] bg-[var(--color-primary)]/5'
                     : 'border-transparent text-[var(--color-text-muted)] hover:text-[var(--color-text-strong)]'
                 }`}
               >
-                <FileText className="w-3.5 h-3.5" /> 3. Return Reason & Summary
+                <FileText className="w-3 h-3" /> 3. Return Reason & Summary
               </button>
 
               <button
                 type="button"
                 onClick={() => setModalTab('preview')}
-                className={`flex items-center gap-2 px-4 py-2.5 text-xs font-semibold rounded-t-lg border-b-2 transition-all whitespace-nowrap ${
+                className={`flex items-center gap-1.5 px-2.5 py-1.5 text-[11px] font-semibold rounded-t-lg border-b-2 transition-all whitespace-nowrap ${
                   modalTab === 'preview'
                     ? 'border-emerald-600 text-emerald-600 bg-emerald-500/10'
                     : 'border-transparent text-[var(--color-text-muted)] hover:text-[var(--color-text-strong)]'
                 }`}
               >
-                <Eye className="w-3.5 h-3.5" /> 4. One-Page Preview
+                <Eye className="w-3 h-3" /> Preview
               </button>
             </div>
 
@@ -597,18 +597,18 @@ export const DebitNotes: React.FC<{ activeEntityId: string; entities?: any[] }> 
                 )}
                 {modalTab !== 'details' && (
                   <button type="button" onClick={() => { if (modalTab === 'preview') setModalTab('summary'); else if (modalTab === 'summary') setModalTab('items'); else if (modalTab === 'items') setModalTab('details'); }} className="h-8.5 px-3 rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] text-xs font-medium text-[var(--color-text)] hover:bg-[var(--color-surface-muted)] transition-colors flex items-center gap-1">
-                    <ArrowLeft className="w-3.5 h-3.5" />
+                    <ArrowLeft className="w-3 h-3" />
                     <span>{modalTab === 'preview' ? 'Back to Edit' : 'Back'}</span>
                   </button>
                 )}
                 {modalTab !== 'preview' ? (
                   <button type="button" onClick={() => { if (modalTab === 'details') { if (!form.vendorId) { notify('Please select a vendor.'); return } setModalTab('items') } else if (modalTab === 'items') { setModalTab('summary') } else if (modalTab === 'summary') { setModalTab('preview') } }} className="primary h-8.5 px-4 rounded-lg text-xs font-semibold shadow-xs flex items-center gap-1.5">
                     <span>{modalTab === 'details' ? 'Next: Amount & Tax' : modalTab === 'items' ? 'Next: Reason & Summary' : 'Preview & Review'}</span>
-                    {modalTab === 'summary' ? <Eye className="w-3.5 h-3.5" /> : <ArrowRight className="w-3.5 h-3.5" />}
+                    {modalTab === 'summary' ? <Eye className="w-3 h-3" /> : <ArrowRight className="w-3 h-3" />}
                   </button>
                 ) : (
                   <button type="button" onClick={handleCreate} className="primary h-8.5 px-5 rounded-lg text-xs font-semibold shadow-xs flex items-center gap-1.5 bg-amber-600 hover:bg-amber-700 text-white">
-                    <Check className="w-3.5 h-3.5" />
+                    <Check className="w-3 h-3" />
                     <span>Confirm & Create Debit Note</span>
                   </button>
                 )}

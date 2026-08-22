@@ -426,65 +426,65 @@ export default function ProductsAndServices({
             </div>
 
             {/* Modal Tabs Navigation */}
-            <div className="flex items-center gap-2 px-6 pt-3 border-b border-[var(--color-border)] bg-[var(--color-surface)]">
+            <div className="flex items-center gap-1 px-4 pt-3 border-b border-[var(--color-border)] bg-[var(--color-surface)]">
               <button
                 type="button"
                 onClick={() => setModalTab('info')}
-                className={`flex items-center gap-2 px-4 py-2.5 text-xs font-semibold rounded-t-lg border-b-2 transition-all whitespace-nowrap ${
+                className={`flex items-center gap-1.5 px-2.5 py-1.5 text-[11px] font-semibold rounded-t-lg border-b-2 transition-all whitespace-nowrap ${
                   modalTab === 'info'
                     ? 'border-[var(--color-primary)] text-[var(--color-primary)] bg-[var(--color-primary)]/5'
                     : 'border-transparent text-[var(--color-text-muted)] hover:text-[var(--color-text-strong)]'
                 }`}
               >
-                <Package className="w-3.5 h-3.5" /> Item Info & Type
+                <Package className="w-3 h-3" /> Item Info & Type
               </button>
 
               <button
                 type="button"
                 onClick={() => setModalTab('pricing')}
-                className={`flex items-center gap-2 px-4 py-2.5 text-xs font-semibold rounded-t-lg border-b-2 transition-all whitespace-nowrap ${
+                className={`flex items-center gap-1.5 px-2.5 py-1.5 text-[11px] font-semibold rounded-t-lg border-b-2 transition-all whitespace-nowrap ${
                   modalTab === 'pricing'
                     ? 'border-[var(--color-primary)] text-[var(--color-primary)] bg-[var(--color-primary)]/5'
                     : 'border-transparent text-[var(--color-text-muted)] hover:text-[var(--color-text-strong)]'
                 }`}
               >
-                <Coins className="w-3.5 h-3.5" /> Pricing & Costing
+                <Coins className="w-3 h-3" /> Pricing & Costing
               </button>
 
               <button
                 type="button"
                 onClick={() => setModalTab('accounting')}
-                className={`flex items-center gap-2 px-4 py-2.5 text-xs font-semibold rounded-t-lg border-b-2 transition-all whitespace-nowrap ${
+                className={`flex items-center gap-1.5 px-2.5 py-1.5 text-[11px] font-semibold rounded-t-lg border-b-2 transition-all whitespace-nowrap ${
                   modalTab === 'accounting'
                     ? 'border-[var(--color-primary)] text-[var(--color-primary)] bg-[var(--color-primary)]/5'
                     : 'border-transparent text-[var(--color-text-muted)] hover:text-[var(--color-text-strong)]'
                 }`}
               >
-                <Layers className="w-3.5 h-3.5" /> GAAP GL Accounts
+                <Layers className="w-3 h-3" /> GAAP GL Accounts
               </button>
 
               <button
                 type="button"
                 onClick={() => setModalTab('tax')}
-                className={`flex items-center gap-2 px-4 py-2.5 text-xs font-semibold rounded-t-lg border-b-2 transition-all whitespace-nowrap ${
+                className={`flex items-center gap-1.5 px-2.5 py-1.5 text-[11px] font-semibold rounded-t-lg border-b-2 transition-all whitespace-nowrap ${
                   modalTab === 'tax'
                     ? 'border-[var(--color-primary)] text-[var(--color-primary)] bg-[var(--color-primary)]/5'
                     : 'border-transparent text-[var(--color-text-muted)] hover:text-[var(--color-text-strong)]'
                 }`}
               >
-                <Receipt className="w-3.5 h-3.5" /> Tax & Classification
+                <Receipt className="w-3 h-3" /> Tax & Classification
               </button>
 
               <button
                 type="button"
                 onClick={() => setModalTab('preview')}
-                className={`flex items-center gap-2 px-4 py-2.5 text-xs font-semibold rounded-t-lg border-b-2 transition-all whitespace-nowrap ${
+                className={`flex items-center gap-1.5 px-2.5 py-1.5 text-[11px] font-semibold rounded-t-lg border-b-2 transition-all whitespace-nowrap ${
                   modalTab === 'preview'
                     ? 'border-emerald-600 text-emerald-600 bg-emerald-500/10'
                     : 'border-transparent text-[var(--color-text-muted)] hover:text-[var(--color-text-strong)]'
                 }`}
               >
-                <Eye className="w-3.5 h-3.5" /> 5. One-Page Preview
+                <Eye className="w-3 h-3" /> Preview
               </button>
             </div>
 

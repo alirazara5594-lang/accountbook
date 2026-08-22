@@ -500,65 +500,65 @@ export default function CustomerManagement({
             </div>
 
             {/* Modal Tabs Navigation */}
-            <div className="flex items-center gap-2 px-6 pt-3 border-b border-[var(--color-border)] bg-[var(--color-surface)]">
+            <div className="flex items-center gap-1 px-4 pt-3 border-b border-[var(--color-border)] bg-[var(--color-surface)]">
               <button
                 type="button"
                 onClick={() => setModalTab('general')}
-                className={`flex items-center gap-2 px-4 py-2.5 text-xs font-semibold rounded-t-lg border-b-2 transition-all whitespace-nowrap ${
+                className={`flex items-center gap-1.5 px-2.5 py-1.5 text-[11px] font-semibold rounded-t-lg border-b-2 transition-all whitespace-nowrap ${
                   modalTab === 'general'
                     ? 'border-[var(--color-primary)] text-[var(--color-primary)] bg-[var(--color-primary)]/5'
                     : 'border-transparent text-[var(--color-text-muted)] hover:text-[var(--color-text-strong)]'
                 }`}
               >
-                <Users className="w-3.5 h-3.5" /> General & Contact
+                <Users className="w-3 h-3" /> General & Contact
               </button>
 
               <button
                 type="button"
                 onClick={() => setModalTab('address')}
-                className={`flex items-center gap-2 px-4 py-2.5 text-xs font-semibold rounded-t-lg border-b-2 transition-all whitespace-nowrap ${
+                className={`flex items-center gap-1.5 px-2.5 py-1.5 text-[11px] font-semibold rounded-t-lg border-b-2 transition-all whitespace-nowrap ${
                   modalTab === 'address'
                     ? 'border-[var(--color-primary)] text-[var(--color-primary)] bg-[var(--color-primary)]/5'
                     : 'border-transparent text-[var(--color-text-muted)] hover:text-[var(--color-text-strong)]'
                 }`}
               >
-                <MapPin className="w-3.5 h-3.5" /> Address & Location
+                <MapPin className="w-3 h-3" /> Address & Location
               </button>
 
               <button
                 type="button"
                 onClick={() => setModalTab('financial')}
-                className={`flex items-center gap-2 px-4 py-2.5 text-xs font-semibold rounded-t-lg border-b-2 transition-all whitespace-nowrap ${
+                className={`flex items-center gap-1.5 px-2.5 py-1.5 text-[11px] font-semibold rounded-t-lg border-b-2 transition-all whitespace-nowrap ${
                   modalTab === 'financial'
                     ? 'border-[var(--color-primary)] text-[var(--color-primary)] bg-[var(--color-primary)]/5'
                     : 'border-transparent text-[var(--color-text-muted)] hover:text-[var(--color-text-strong)]'
                 }`}
               >
-                <CreditCard className="w-3.5 h-3.5" /> Terms & Financials
+                <CreditCard className="w-3 h-3" /> Terms & Financials
               </button>
 
               <button
                 type="button"
                 onClick={() => setModalTab('tax')}
-                className={`flex items-center gap-2 px-4 py-2.5 text-xs font-semibold rounded-t-lg border-b-2 transition-all whitespace-nowrap ${
+                className={`flex items-center gap-1.5 px-2.5 py-1.5 text-[11px] font-semibold rounded-t-lg border-b-2 transition-all whitespace-nowrap ${
                   modalTab === 'tax'
                     ? 'border-[var(--color-primary)] text-[var(--color-primary)] bg-[var(--color-primary)]/5'
                     : 'border-transparent text-[var(--color-text-muted)] hover:text-[var(--color-text-strong)]'
                 }`}
               >
-                <Receipt className="w-3.5 h-3.5" /> Tax & Compliance
+                <Receipt className="w-3 h-3" /> Tax & Compliance
               </button>
 
               <button
                 type="button"
                 onClick={() => setModalTab('preview')}
-                className={`flex items-center gap-2 px-4 py-2.5 text-xs font-semibold rounded-t-lg border-b-2 transition-all whitespace-nowrap ${
+                className={`flex items-center gap-1.5 px-2.5 py-1.5 text-[11px] font-semibold rounded-t-lg border-b-2 transition-all whitespace-nowrap ${
                   modalTab === 'preview'
                     ? 'border-emerald-600 text-emerald-600 bg-emerald-500/10'
                     : 'border-transparent text-[var(--color-text-muted)] hover:text-[var(--color-text-strong)]'
                 }`}
               >
-                <Eye className="w-3.5 h-3.5" /> 5. One-Page Preview
+                <Eye className="w-3 h-3" /> Preview
               </button>
             </div>
 

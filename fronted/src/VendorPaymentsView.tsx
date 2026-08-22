@@ -368,53 +368,53 @@ export const VendorPaymentsView: React.FC<VendorPaymentsViewProps> = ({
             </div>
 
             {/* Modal Tabs */}
-            <div className="flex items-center gap-2 px-6 pt-3 border-b border-[var(--color-border)] bg-[var(--color-surface)]">
+            <div className="flex items-center gap-1 px-4 pt-3 border-b border-[var(--color-border)] bg-[var(--color-surface)]">
               <button
                 type="button"
                 onClick={() => setModalTab('vendor')}
-                className={`flex items-center gap-2 px-4 py-2.5 text-xs font-semibold rounded-t-lg border-b-2 transition-all whitespace-nowrap ${
+                className={`flex items-center gap-1.5 px-2.5 py-1.5 text-[11px] font-semibold rounded-t-lg border-b-2 transition-all whitespace-nowrap ${
                   modalTab === 'vendor'
                     ? 'border-[var(--color-primary)] text-[var(--color-primary)] bg-[var(--color-primary)]/5'
                     : 'border-transparent text-[var(--color-text-muted)] hover:text-[var(--color-text-strong)]'
                 }`}
               >
-                <Users className="w-3.5 h-3.5" /> 1. Vendor & Bill Reference
+                <Users className="w-3 h-3" /> 1. Vendor & Bill Reference
               </button>
 
               <button
                 type="button"
                 onClick={() => setModalTab('account')}
-                className={`flex items-center gap-2 px-4 py-2.5 text-xs font-semibold rounded-t-lg border-b-2 transition-all whitespace-nowrap ${
+                className={`flex items-center gap-1.5 px-2.5 py-1.5 text-[11px] font-semibold rounded-t-lg border-b-2 transition-all whitespace-nowrap ${
                   modalTab === 'account'
                     ? 'border-[var(--color-primary)] text-[var(--color-primary)] bg-[var(--color-primary)]/5'
                     : 'border-transparent text-[var(--color-text-muted)] hover:text-[var(--color-text-strong)]'
                 }`}
               >
-                <Coins className="w-3.5 h-3.5" /> 2. Bank Account & Amount
+                <Coins className="w-3 h-3" /> 2. Bank Account & Amount
               </button>
 
               <button
                 type="button"
                 onClick={() => setModalTab('summary')}
-                className={`flex items-center gap-2 px-4 py-2.5 text-xs font-semibold rounded-t-lg border-b-2 transition-all whitespace-nowrap ${
+                className={`flex items-center gap-1.5 px-2.5 py-1.5 text-[11px] font-semibold rounded-t-lg border-b-2 transition-all whitespace-nowrap ${
                   modalTab === 'summary'
                     ? 'border-[var(--color-primary)] text-[var(--color-primary)] bg-[var(--color-primary)]/5'
                     : 'border-transparent text-[var(--color-text-muted)] hover:text-[var(--color-text-strong)]'
                 }`}
               >
-                <FileText className="w-3.5 h-3.5" /> 3. Verification & Settle
+                <FileText className="w-3 h-3" /> 3. Verification & Settle
               </button>
 
               <button
                 type="button"
                 onClick={() => setModalTab('preview')}
-                className={`flex items-center gap-2 px-4 py-2.5 text-xs font-semibold rounded-t-lg border-b-2 transition-all whitespace-nowrap ${
+                className={`flex items-center gap-1.5 px-2.5 py-1.5 text-[11px] font-semibold rounded-t-lg border-b-2 transition-all whitespace-nowrap ${
                   modalTab === 'preview'
                     ? 'border-emerald-600 text-emerald-600 bg-emerald-500/10'
                     : 'border-transparent text-[var(--color-text-muted)] hover:text-[var(--color-text-strong)]'
                 }`}
               >
-                <Eye className="w-3.5 h-3.5" /> 4. One-Page Preview
+                <Eye className="w-3 h-3" /> Preview
               </button>
             </div>
 
@@ -649,7 +649,7 @@ export const VendorPaymentsView: React.FC<VendorPaymentsViewProps> = ({
 
                 {modalTab !== 'vendor' && (
                   <button type="button" onClick={() => { if (modalTab === 'preview') setModalTab('summary'); else if (modalTab === 'summary') setModalTab('account'); else if (modalTab === 'account') setModalTab('vendor'); }} className="h-8.5 px-3 rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] text-xs font-medium text-[var(--color-text)] hover:bg-[var(--color-surface-muted)] transition-colors flex items-center gap-1">
-                    <ArrowLeft className="w-3.5 h-3.5" />
+                    <ArrowLeft className="w-3 h-3" />
                     <span>{modalTab === 'preview' ? 'Back to Edit' : 'Back'}</span>
                   </button>
                 )}
@@ -661,11 +661,11 @@ export const VendorPaymentsView: React.FC<VendorPaymentsViewProps> = ({
                     else if (modalTab === 'summary') { setModalTab('preview') }
                   }} className="primary h-8.5 px-4 rounded-lg text-xs font-semibold shadow-xs flex items-center gap-1.5">
                     <span>{modalTab === 'vendor' ? 'Next: Funding Bank' : modalTab === 'account' ? 'Next: Verification & Settle' : 'Preview & Review'}</span>
-                    {modalTab === 'summary' ? <Eye className="w-3.5 h-3.5" /> : <ArrowRight className="w-3.5 h-3.5" />}
+                    {modalTab === 'summary' ? <Eye className="w-3 h-3" /> : <ArrowRight className="w-3 h-3" />}
                   </button>
                 ) : (
                   <button type="button" onClick={handleCreatePayment} disabled={saving} className="primary h-8.5 px-5 rounded-lg text-xs font-semibold shadow-xs flex items-center gap-1.5 bg-emerald-600 hover:bg-emerald-700 text-white disabled:opacity-40">
-                    <Check className="w-3.5 h-3.5" />
+                    <Check className="w-3 h-3" />
                     <span>{saving ? 'Recording...' : 'Confirm & Record Payment'}</span>
                   </button>
                 )}
