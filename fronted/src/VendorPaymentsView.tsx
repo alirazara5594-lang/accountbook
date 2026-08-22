@@ -4,11 +4,13 @@ import { vendorPaymentsApi, type VendorPayment, type WithdrawAccount, type Vendo
 import { useFormDraft } from './hooks/useFormDraft'
 import {
   Check, X, ArrowRight, ArrowLeft, Coins,
-  CheckCircle2, Users, CreditCard, ShieldCheck, FileText, Eye
+  CheckCircle2, Users, CreditCard, ShieldCheck, FileText, Eye, Download, Printer
 } from 'lucide-react'
 import { DataToolbar } from '@/components/ui/data-toolbar'
 import { money } from '@/lib/currency'
 import type { Entity } from './EntitySettings'
+import jsPDF from 'jspdf'
+import autoTable from 'jspdf-autotable'
 
 type PaymentMode = 'ACH' | 'Wire Transfer' | 'Cheque / Pay Order' | 'SWIFT' | 'RTGS' | 'Credit Card' | 'Direct Debit' | 'Online Banking'
 
@@ -190,6 +192,117 @@ export const VendorPaymentsView: React.FC<VendorPaymentsViewProps> = ({
   const totalDisbursed = filtered.reduce((s, p) => s + (p.amount || 0), 0)
   const bankPaymentsCount = filtered.filter(p => p.paymentMethod === 'WireTransfer' || p.paymentMethod === 'BankTransfer' || p.paymentMethod === 'ACH').length
 
+  const generateRemittancePDF = (p: VendorPayment) => {
+    const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
+    const pageWidth = doc.internal.pageSize.getWidth();
+    const margin = 14;
+    const contentWidth = pageWidth - margin * 2;
+
+    const primaryColor: [number, number, number] = [16, 185, 129]; // Emerald
+    const darkColor: [number, number, number] = [15, 23, 42];
+    const grayColor: [number, number, number] = [100, 116, 139];
+    const lightBg: [number, number, number] = [248, 250, 252];
+    const borderGray: [number, number, number] = [226, 232, 240];
+
+    // Header
+    doc.setFillColor(15, 23, 42);
+    doc.rect(0, 0, pageWidth, 28, 'F');
+
+    doc.setTextColor(255, 255, 255);
+    doc.setFontSize(16);
+    doc.setFont('helvetica', 'bold');
+    doc.text('PAYMENT REMITTANCE ADVICE', margin, 14);
+
+    doc.setFontSize(8.5);
+    doc.setFont('helvetica', 'normal');
+    doc.text(`Payment Ref: ${p.paymentNumber || p.reference || 'PAY'}`, margin, 21);
+    doc.text(`Disbursement Date: ${p.date}`, pageWidth - margin, 14, { align: 'right' });
+    doc.text(`Entity: ${currentEntity?.name || 'Company ERP'}`, pageWidth - margin, 21, { align: 'right' });
+
+    // Details Grid
+    const boxY = 34;
+    const boxH = 36;
+    const colW = (contentWidth - 6) / 2;
+
+    // Supplier Box
+    doc.setFillColor(...lightBg);
+    doc.setDrawColor(...borderGray);
+    doc.roundedRect(margin, boxY, colW, boxH, 2, 2, 'FD');
+
+    doc.setTextColor(15, 23, 42);
+    doc.setFontSize(8.5);
+    doc.setFont('helvetica', 'bold');
+    doc.text('BENEFICIARY / SUPPLIER', margin + 4, boxY + 7);
+
+    doc.setFontSize(10);
+    doc.text(p.vendorName || 'Supplier', margin + 4, boxY + 14);
+
+    doc.setFontSize(7.5);
+    doc.setFont('helvetica', 'normal');
+    doc.text(`Supplier ID: ${p.vendorId.slice(0, 12)}`, margin + 4, boxY + 20);
+    doc.text(`Status: ${p.status || 'Completed'}`, margin + 4, boxY + 25);
+
+    // Payment Channel Box
+    const chanX = margin + colW + 6;
+    doc.setFillColor(...lightBg);
+    doc.roundedRect(chanX, boxY, colW, boxH, 2, 2, 'FD');
+
+    doc.setFontSize(8.5);
+    doc.setFont('helvetica', 'bold');
+    doc.text('DISBURSEMENT CHANNEL & BANK', chanX + 4, boxY + 7);
+
+    doc.setFontSize(8);
+    doc.setFont('helvetica', 'normal');
+    doc.text(`Funding Account: ${p.withdrawFromAccountName || p.bankAccountName || 'Main Operating Account'}`, chanX + 4, boxY + 14);
+    doc.text(`Payment Method: ${p.paymentMethod}`, chanX + 4, boxY + 20);
+    doc.text(`Transaction Reference: ${p.reference || 'N/A'}`, chanX + 4, boxY + 26);
+
+    // Amount Banner
+    const bannerY = boxY + boxH + 6;
+    doc.setFillColor(240, 253, 244);
+    doc.setDrawColor(187, 247, 208);
+    doc.roundedRect(margin, bannerY, contentWidth, 18, 2, 2, 'FD');
+
+    doc.setTextColor(22, 101, 52);
+    doc.setFontSize(8);
+    doc.setFont('helvetica', 'bold');
+    doc.text('TOTAL AMOUNT DISBURSED', margin + 4, bannerY + 6.5);
+
+    doc.setFontSize(14);
+    doc.text(money(p.amount), margin + 4, bannerY + 14);
+
+    // Settled Invoices Table
+    const tableStartY = bannerY + 24;
+    const tableHeaders = ['Bill Reference #', 'Payment Date', 'Payment Mode', 'Funding Bank Account', 'Amount Settled'];
+    const tableRows = [[
+      p.billNumber || 'Unallocated / On-Account',
+      p.date,
+      p.paymentMethod,
+      p.withdrawFromAccountName || p.bankAccountName || 'Operating Bank',
+      money(p.amount),
+    ]];
+
+    autoTable(doc, {
+      startY: tableStartY,
+      head: [tableHeaders],
+      body: tableRows,
+      margin: { left: margin, right: margin },
+      styles: { fontSize: 8, cellPadding: 3, textColor: darkColor },
+      headStyles: { fillColor: [15, 23, 42], textColor: 255, fontStyle: 'bold' },
+      columnStyles: {
+        4: { halign: 'right', fontStyle: 'bold' },
+      },
+    });
+
+    const pageHeight = doc.internal.pageSize.getHeight();
+    doc.setTextColor(...grayColor);
+    doc.setFontSize(7);
+    doc.text('Official Disbursement Remittance Advice. Generated from ERP Accounts Payable Module.', margin, pageHeight - 9);
+
+    const cleanRef = (p.paymentNumber || p.reference || 'Payment').replace(/[^a-zA-Z0-9_-]/g, '_');
+    doc.save(`Remittance_Advice_${cleanRef}.pdf`);
+  };
+
   return (
     <div className="space-y-6">
       {toast && (
@@ -304,6 +417,7 @@ export const VendorPaymentsView: React.FC<VendorPaymentsViewProps> = ({
                   <th className="text-left px-3 py-2 font-semibold text-[var(--color-text-muted)]">Mode</th>
                   <th className="text-right px-3 py-2 font-semibold text-[var(--color-text-muted)]">Amount (Rs)</th>
                   <th className="text-center px-3 py-2 font-semibold text-[var(--color-text-muted)]">Status</th>
+                  <th className="text-right px-3 py-2 font-semibold text-[var(--color-text-muted)]">Remittance Advice</th>
                 </tr>
               </thead>
               <tbody>
@@ -312,16 +426,25 @@ export const VendorPaymentsView: React.FC<VendorPaymentsViewProps> = ({
                   return (
                     <tr key={p.id} className="border-b border-[var(--color-border)] hover:bg-[var(--color-surface-muted)] transition-colors">
                       <td className="px-3 py-2 font-mono font-semibold text-[var(--color-text-strong)]">{p.paymentNumber || p.reference || '—'}</td>
-                      <td className="px-3 py-2 text-[var(--color-text-muted)]">{p.date}</td>
+                      <td className="px-3 py-2 text-[var(--color-text-muted)] whitespace-nowrap">{p.date}</td>
                       <td className="px-3 py-2 font-semibold text-[var(--color-text-strong)]">{p.vendorName || '—'}</td>
                       <td className="px-3 py-2 font-mono text-[var(--color-text-muted)]">{p.billNumber || '—'}</td>
                       <td className="px-3 py-2 text-[var(--color-text-muted)]">{p.withdrawFromAccountName || p.bankAccountName || 'Bank Account'}</td>
                       <td className="px-3 py-2 text-[var(--color-text-muted)]">{p.paymentMethod}</td>
-                      <td className="px-3 py-2 text-right font-bold text-sky-600 font-mono">{money(p.amount)}</td>
+                      <td className="px-3 py-2 text-right font-bold text-emerald-600 dark:text-emerald-400 font-mono">{money(p.amount)}</td>
                       <td className="px-3 py-2 text-center">
                         <span className={`inline-block px-2 py-0.5 rounded-full text-[10px] font-semibold ${badge.class}`}>
                           {badge.label}
                         </span>
+                      </td>
+                      <td className="px-3 py-2 text-right">
+                        <button
+                          onClick={() => generateRemittancePDF(p)}
+                          className="inline-flex items-center gap-1 px-2.5 py-1 bg-emerald-50 dark:bg-emerald-950/30 hover:bg-emerald-100 dark:hover:bg-emerald-900/50 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800 rounded-lg text-[11px] font-semibold transition-all shadow-2xs"
+                          title="Download Remittance Advice PDF"
+                        >
+                          <Download className="w-3 h-3" /> Remittance PDF
+                        </button>
                       </td>
                     </tr>
                   )

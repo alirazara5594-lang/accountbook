@@ -60,24 +60,33 @@ export function DataToolbar({
   return (
     <div className="flex items-center gap-1.5 flex-wrap">
       {setQuery && (
-        <div className="relative flex items-center">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-[var(--color-text-muted)] pointer-events-none z-10" />
+        <div className="flex items-center h-9 w-60 px-2.5 bg-[var(--color-surface)] border border-[var(--color-border)] rounded-xl text-xs focus-within:border-[var(--color-primary)] focus-within:ring-1 focus-within:ring-blue-100 transition-all shadow-2xs box-border">
+          <Search className="h-3.5 w-3.5 text-[var(--color-text-muted)] mr-2 shrink-0 pointer-events-none" />
           <input
             type="text"
             value={query || ''}
             onChange={e => setQuery(e.target.value)}
             placeholder={searchPlaceholder}
-            className="!pl-9 pr-7 h-9 w-60 bg-[var(--color-surface)] border border-[var(--color-border)] rounded-xl text-xs text-[var(--color-text-strong)] placeholder:text-[var(--color-text-muted)] focus:border-[var(--color-primary)] focus:outline-none transition-all shadow-2xs box-border"
-            style={{ paddingLeft: '34px', paddingTop: '0px', paddingBottom: '0px' }}
+            style={{
+              border: 'none',
+              outline: 'none',
+              background: 'transparent',
+              padding: '0 !important',
+              width: '100%',
+              fontSize: '12px',
+              color: 'var(--color-text-strong)',
+              boxShadow: 'none',
+            }}
+            className="!p-0 !border-0 !outline-none !bg-transparent w-full text-xs text-[var(--color-text-strong)] placeholder:text-[var(--color-text-muted)]"
           />
           {query ? (
             <button
               type="button"
               onClick={() => setQuery('')}
-              className="absolute right-2 top-1/2 -translate-y-1/2 text-[var(--color-text-muted)] hover:text-[var(--color-text-strong)]"
+              className="text-[var(--color-text-muted)] hover:text-[var(--color-text-strong)] text-sm px-1 font-bold leading-none shrink-0"
               aria-label="Clear search"
             >
-              <X className="h-3.5 w-3.5" />
+              ×
             </button>
           ) : null}
         </div>

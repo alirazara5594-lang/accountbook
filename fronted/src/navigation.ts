@@ -26,7 +26,7 @@ export interface NavGroup {
 
 export const NAVIGATION: NavGroup[] = [
   { name: 'Overview', label: 'Dashboard', icon: LayoutDashboard, short: 'Home', items: ['Overview'], moduleId: 'overview' },
-  { name: 'Sales & Customers', label: 'Sales', icon: ShoppingCart, short: 'Sales', items: ['Customers', 'Products & Services', 'Sales Workspace', 'Estimates & Quotes', 'Sales Orders', 'Credit Notes', 'Customer Payments', 'Customer Statements', 'Customer Aging', 'Sales Reports'], moduleId: 'sales' },
+  { name: 'Sales & Customers', label: 'Sales', icon: ShoppingCart, short: 'Sales', items: ['Customers', 'Products & Services', 'Estimates & Quotes', 'Sales Invoices', 'Sales Orders', 'Credit Notes', 'Customer Payments', 'Customer Statements', 'Customer Aging', 'Sales Reports'], moduleId: 'sales' },
   { name: 'Procurement', label: 'Purchasing', icon: ShoppingBag, short: 'Purchase', items: ['Vendors', 'Procurement Workspace', 'Bills', 'Debit Notes', 'Expense Claims', 'Vendor Payments', 'Vendor Statements', 'Payables Aging', 'Purchase Reports'], moduleId: 'procurement' },
   { name: 'Banking & Payments', label: 'Banking & Payments', icon: Landmark, short: 'Bank', items: ['Bank Accounts', 'Cash Accounts', 'Bank Connection', 'Bank Import', 'Transactions', 'Bank Reconciliation', 'Voucher Management', 'Fund Transfers', 'Cash Flow Statements'], moduleId: 'banking' },
   { name: 'Accounting', label: 'Accounting', icon: BookOpen, short: 'Accounting', items: ['Chart of Accounts', 'Journal Entries', 'Fixed Assets', 'General Ledger', 'Accounts Receivable', 'Accounts Payable', 'Budgets', 'Financial Reports', 'Period Closing', 'Audit Trail', 'Intercompany Allocations', 'Lease Accounting'], moduleId: 'accounting' },

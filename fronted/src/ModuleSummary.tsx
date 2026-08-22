@@ -140,7 +140,7 @@ export const ModuleSummary: React.FC<ModuleSummaryProps> = ({
       case 'Sales & Customers':
         return [
           { label: 'Add New Customer', desc: 'Register customer contact details, tax identification numbers, and credit terms.', page: 'Sales & Customers.Customers' },
-          { label: 'Sales Invoicing & Ledger', desc: 'Issue billing statements, record local VAT/sales tax, and trace balances due.', page: 'Sales & Customers.Sales Workspace' },
+          { label: 'Sales Invoicing & Ledger', desc: 'Issue billing statements, record local VAT/sales tax, and trace balances due.', page: 'Sales & Customers.Sales Invoices' },
         ];
       case 'Procurement':
         return [
@@ -178,7 +178,7 @@ export const ModuleSummary: React.FC<ModuleSummaryProps> = ({
   const getSubList = () => {
     switch (moduleName) {
       case 'Sales & Customers':
-        return ['Customers', 'Products & Services', 'Sales Workspace', 'Estimates & Quotes', 'Sales Reports'];
+        return ['Customers', 'Products & Services', 'Sales Invoices', 'Estimates & Quotes', 'Sales Reports'];
       case 'Procurement':
         return ['Vendors', 'Procurement Workspace', 'Bills', 'Expense Claims', 'Purchase Reports'];
       case 'Banking & Payments':

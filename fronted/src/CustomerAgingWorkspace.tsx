@@ -1,7 +1,11 @@
 import { useEffect, useMemo, useState } from 'react';
-import { useSalesStore, useCustomersStore } from './stores';
+import { useSalesStore, useCustomersStore, useCompanyStore } from './stores';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell } from 'recharts';
-import { Users, DollarSign, AlertTriangle, Clock, FileSpreadsheet, FileText, ArrowLeft, Search } from 'lucide-react';
+import {
+  Users, DollarSign, AlertTriangle, Clock, FileSpreadsheet,
+  FileText, ArrowLeft, Search, Download, Printer, RefreshCw,
+  Building2, ChevronRight, CheckCircle2, ShieldAlert
+} from 'lucide-react';
 import { downloadExcel } from './lib/exportUtils';
 import { money, moneyCompact } from './lib/currency';
 import jsPDF from 'jspdf';
@@ -10,19 +14,20 @@ import autoTable from 'jspdf-autotable';
 type Props = { activeEntityId: string };
 
 const BUCKETS = ['Current', '1-30', '31-60', '61-90', '90+'] as const;
-const BUCKET_COLORS: Record<string, string> = {
-  Current: 'var(--color-success)',
-  '1-30': 'var(--color-warning)',
-  '31-60': 'var(--color-warning)',
-  '61-90': 'var(--color-danger)',
-  '90+': 'var(--color-danger)',
+type AgingBucket = typeof BUCKETS[number];
+
+const BUCKET_COLORS: Record<AgingBucket, string> = {
+  Current: '#10b981', // Emerald
+  '1-30': '#f59e0b',  // Amber
+  '31-60': '#f97316', // Orange
+  '61-90': '#ef4444', // Red
+  '90+': '#b91c1c',   // Dark Red
 };
 
-function agingBucket(dueDate: string): string {
-  if (!dueDate) return 'Current';
-  const now = new Date();
-  const due = new Date(dueDate);
-  const diffDays = Math.floor((now.getTime() - due.getTime()) / 86400000);
+function calculateAgingBucket(dueDateStr: string, asOfDate: Date): AgingBucket {
+  if (!dueDateStr) return 'Current';
+  const due = new Date(dueDateStr);
+  const diffDays = Math.floor((asOfDate.getTime() - due.getTime()) / 86400000);
   if (diffDays <= 0) return 'Current';
   if (diffDays <= 30) return '1-30';
   if (diffDays <= 60) return '31-60';
@@ -30,146 +35,263 @@ function agingBucket(dueDate: string): string {
   return '90+';
 }
 
-function CustomerAgingWorkspace({ activeEntityId }: Props) {
-  const invoices = useSalesStore((s) => s.invoices);
+function calculateDaysPastDue(dueDateStr: string, asOfDate: Date): number {
+  if (!dueDateStr) return 0;
+  const due = new Date(dueDateStr);
+  return Math.max(0, Math.floor((asOfDate.getTime() - due.getTime()) / 86400000));
+}
+
+export function CustomerAgingWorkspace({ activeEntityId }: Props) {
+  const invoices = useSalesStore((s) => s.invoices as any[]);
   const fetchInvoices = useSalesStore((s) => s.fetchInvoices);
+  const customers = useCustomersStore((s) => s.customers as any[]);
   const fetchCustomers = useCustomersStore((s) => s.fetchCustomers);
+  const { entities, fetchCompanies } = useCompanyStore();
+
+  const [loading, setLoading] = useState(true);
   const [query, setQuery] = useState('');
+  const [selectedRiskFilter, setSelectedRiskFilter] = useState<'all' | AgingBucket>('all');
   const [selectedCustomerId, setSelectedCustomerId] = useState<string | null>(null);
+  const [asOfDateStr, setAsOfDateStr] = useState(new Date().toISOString().slice(0, 10));
+
+  const loadData = async () => {
+    setLoading(true);
+    try {
+      await Promise.all([
+        fetchCompanies(),
+        fetchInvoices(activeEntityId),
+        fetchCustomers(activeEntityId),
+      ]);
+    } catch (e) {
+      console.error('Failed to load aging data', e);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   useEffect(() => {
-    fetchInvoices(activeEntityId);
-    fetchCustomers(activeEntityId);
+    loadData();
   }, [activeEntityId]);
+
+  const activeCompany = useMemo(() => {
+    return entities.find((e) => e.id === activeEntityId) || entities[0];
+  }, [entities, activeEntityId]);
+
+  const asOfDate = useMemo(() => {
+    return asOfDateStr ? new Date(asOfDateStr) : new Date();
+  }, [asOfDateStr]);
 
   const fmt = (n?: number) => money(n || 0);
 
-  // Compute aging per customer
-  const customerAging = useMemo(() => {
+  // Compute aging data per customer based on asOfDate
+  const customerAgingList = useMemo(() => {
     const map: Record<string, {
       customerId: string;
+      customerCode: string;
       customerName: string;
+      email?: string;
+      phone?: string;
       outstanding: number;
-      buckets: Record<string, number>;
+      buckets: Record<AgingBucket, number>;
       oldestDays: number;
+      invoiceCount: number;
+      worstBucket: AgingBucket;
     }> = {};
 
-    const openInvoices = invoices.filter((i: any) => i.status !== 2 && i.status !== 3 && (i.amountDue || 0) > 0);
+    // Filter open/unpaid invoices
+    const openInvoices = invoices.filter(
+      (i: any) => i.status !== 2 && i.status !== 3 && String(i.status).toLowerCase() !== 'void' && (i.amountDue || 0) > 0
+    );
 
     openInvoices.forEach((inv: any) => {
       const cid = inv.customerId || 'unknown';
+      const custRecord = customers.find((c: any) => c.id === cid);
+
       if (!map[cid]) {
         map[cid] = {
           customerId: cid,
-          customerName: inv.customerName || cid,
+          customerCode: custRecord?.customerNumber || 'CUST',
+          customerName: custRecord?.name || inv.customerName || cid,
+          email: custRecord?.email,
+          phone: custRecord?.phone,
           outstanding: 0,
           buckets: { Current: 0, '1-30': 0, '31-60': 0, '61-90': 0, '90+': 0 },
           oldestDays: 0,
+          invoiceCount: 0,
+          worstBucket: 'Current',
         };
       }
-      const bucket = agingBucket(inv.dueDate);
-      map[cid].outstanding += inv.amountDue || 0;
-      map[cid].buckets[bucket] += inv.amountDue || 0;
 
-      const now = new Date();
-      const due = new Date(inv.dueDate || now);
-      const days = Math.max(0, Math.floor((now.getTime() - due.getTime()) / 86400000));
-      if (days > map[cid].oldestDays) map[cid].oldestDays = days;
+      const bucket = calculateAgingBucket(inv.dueDate || inv.invoiceDate, asOfDate);
+      const amountDue = inv.amountDue || (inv.totalAmount - (inv.paidAmount || 0)) || 0;
+      
+      map[cid].outstanding += amountDue;
+      map[cid].buckets[bucket] += amountDue;
+      map[cid].invoiceCount += 1;
+
+      const days = calculateDaysPastDue(inv.dueDate || inv.invoiceDate, asOfDate);
+      if (days > map[cid].oldestDays) {
+        map[cid].oldestDays = days;
+      }
     });
 
-    return Object.values(map).sort((a, b) => b.outstanding - a.outstanding);
-  }, [invoices]);
+    // Derive worst bucket per customer
+    return Object.values(map).map((c) => {
+      let worst: AgingBucket = 'Current';
+      if (c.buckets['90+'] > 0) worst = '90+';
+      else if (c.buckets['61-90'] > 0) worst = '61-90';
+      else if (c.buckets['31-60'] > 0) worst = '31-60';
+      else if (c.buckets['1-30'] > 0) worst = '1-30';
 
+      return {
+        ...c,
+        worstBucket: worst,
+      };
+    }).sort((a, b) => b.outstanding - a.outstanding);
+  }, [invoices, customers, asOfDate]);
+
+  // Overall KPI & bucket totals
+  const totalOutstanding = useMemo(() => {
+    return customerAgingList.reduce((s, c) => s + c.outstanding, 0);
+  }, [customerAgingList]);
+
+  const bucketTotals = useMemo(() => {
+    const totals: Record<AgingBucket, number> = { Current: 0, '1-30': 0, '31-60': 0, '61-90': 0, '90+': 0 };
+    customerAgingList.forEach((c) => {
+      BUCKETS.forEach((b) => {
+        totals[b] += c.buckets[b];
+      });
+    });
+    return totals;
+  }, [customerAgingList]);
+
+  const overdueAmount = useMemo(() => {
+    return bucketTotals['1-30'] + bucketTotals['31-60'] + bucketTotals['61-90'] + bucketTotals['90+'];
+  }, [bucketTotals]);
+
+  const criticalCount = useMemo(() => {
+    return customerAgingList.filter((c) => c.buckets['90+'] > 0).length;
+  }, [customerAgingList]);
+
+  // Filtered customer aging list
   const filteredCustomerAging = useMemo(() => {
-    if (!query.trim()) return customerAging;
-    const q = query.toLowerCase();
-    return customerAging.filter(c => c.customerName.toLowerCase().includes(q) || c.customerId.toLowerCase().includes(q));
-  }, [customerAging, query]);
+    return customerAgingList.filter((c) => {
+      const q = query.toLowerCase().trim();
+      const matchesQuery =
+        !q ||
+        c.customerName.toLowerCase().includes(q) ||
+        c.customerCode.toLowerCase().includes(q) ||
+        (c.email || '').toLowerCase().includes(q) ||
+        (c.phone || '').toLowerCase().includes(q);
+
+      if (!matchesQuery) return false;
+
+      if (selectedRiskFilter !== 'all') {
+        return c.buckets[selectedRiskFilter] > 0;
+      }
+
+      return true;
+    });
+  }, [customerAgingList, query, selectedRiskFilter]);
 
   // Selected customer details
   const selectedCustomer = useMemo(() => {
     if (!selectedCustomerId) return null;
-    return customerAging.find(c => c.customerId === selectedCustomerId) || null;
-  }, [selectedCustomerId, customerAging]);
+    return customerAgingList.find((c) => c.customerId === selectedCustomerId) || null;
+  }, [selectedCustomerId, customerAgingList]);
 
-  const customerOpenInvoices = useMemo(() => {
+  const selectedCustomerInvoices = useMemo(() => {
     if (!selectedCustomerId) return [];
-    const open = invoices.filter((i: any) =>
-      i.customerId === selectedCustomerId &&
-      i.status !== 2 &&
-      i.status !== 3 &&
-      (i.amountDue || 0) > 0
+    const open = invoices.filter(
+      (i: any) =>
+        i.customerId === selectedCustomerId &&
+        i.status !== 2 &&
+        i.status !== 3 &&
+        String(i.status).toLowerCase() !== 'void' &&
+        (i.amountDue || 0) > 0
     );
+
     return open.map((inv: any) => {
-      const bucket = agingBucket(inv.dueDate);
-      const now = new Date();
-      const due = new Date(inv.dueDate || now);
-      const daysPastDue = Math.max(0, Math.floor((now.getTime() - due.getTime()) / 86400000));
+      const bucket = calculateAgingBucket(inv.dueDate || inv.invoiceDate, asOfDate);
+      const daysPastDue = calculateDaysPastDue(inv.dueDate || inv.invoiceDate, asOfDate);
       return {
         ...inv,
         bucket,
         daysPastDue,
+        amountDue: inv.amountDue || (inv.totalAmount - (inv.paidAmount || 0)) || 0,
       };
     }).sort((a: any, b: any) => b.daysPastDue - a.daysPastDue);
-  }, [selectedCustomerId, invoices]);
+  }, [selectedCustomerId, invoices, asOfDate]);
 
-  // Summary stats
-  const totalOutstanding = customerAging.reduce((s, c) => s + c.outstanding, 0);
-  const totalCustomers = customerAging.length;
-  const overdueAmount = customerAging.reduce((s, c) => s + c.buckets['1-30'] + c.buckets['31-60'] + c.buckets['61-90'] + c.buckets['90+'], 0);
-  const criticalCount = customerAging.filter(c => c.buckets['90+'] > 0).length;
+  // Chart data for visualization
+  const chartData = useMemo(() => {
+    return BUCKETS.map((b) => ({
+      name: b === 'Current' ? 'Current' : `${b} Days`,
+      value: bucketTotals[b],
+      fill: BUCKET_COLORS[b],
+    }));
+  }, [bucketTotals]);
 
-  // Bucket totals
-  const bucketTotals = useMemo(() => {
-    const totals: Record<string, number> = { Current: 0, '1-30': 0, '31-60': 0, '61-90': 0, '90+': 0 };
-    customerAging.forEach(c => {
-      BUCKETS.forEach(b => { totals[b] += c.buckets[b]; });
-    });
-    return totals;
-  }, [customerAging]);
-
-  // Chart data
-  const chartData = BUCKETS.map(b => ({
-    name: b === 'Current' ? 'Current' : b + ' Days',
-    value: bucketTotals[b],
-    fill: BUCKET_COLORS[b],
-  }));
-
-  // Download per customer PDF
-  const downloadCustomerPDF = (c: typeof customerAging[0]) => {
-    const customerInvs = invoices.filter((i: any) =>
-      i.customerId === c.customerId &&
-      i.status !== 2 &&
-      i.status !== 3 &&
-      (i.amountDue || 0) > 0
+  // ─── PDF Report Generator ──────────────────────────────────────────────────
+  const downloadCustomerPDF = (c: typeof customerAgingList[0]) => {
+    const custInvs = invoices.filter(
+      (i: any) =>
+        i.customerId === c.customerId &&
+        i.status !== 2 &&
+        i.status !== 3 &&
+        String(i.status).toLowerCase() !== 'void' &&
+        (i.amountDue || 0) > 0
     );
 
-    const doc = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4' });
+    const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
     const pageWidth = doc.internal.pageSize.getWidth();
     const margin = 14;
+    const contentWidth = pageWidth - margin * 2;
 
-    // Header banner
-    doc.setFillColor(30, 64, 175);
+    const primaryColor: [number, number, number] = [15, 76, 129];
+    const darkColor: [number, number, number] = [30, 41, 59];
+    const grayColor: [number, number, number] = [100, 116, 139];
+    const borderGray: [number, number, number] = [226, 232, 240];
+
+    // Header Banner
+    doc.setFillColor(...primaryColor);
     doc.rect(0, 0, pageWidth, 28, 'F');
 
     doc.setTextColor(255, 255, 255);
-    doc.setFontSize(18);
+    doc.setFontSize(17);
     doc.setFont('helvetica', 'bold');
-    doc.text('CUSTOMER AGING REPORT', margin, 15);
+    doc.text('CUSTOMER AGING REPORT', margin, 14);
 
-    doc.setFontSize(9);
+    doc.setFontSize(8.5);
     doc.setFont('helvetica', 'normal');
-    doc.text(`Entity: ${activeEntityId}  |  Generated: ${new Date().toLocaleDateString()}`, margin, 22);
+    doc.text(`As of Date: ${asOfDate.toLocaleDateString()}`, margin, 21);
+
+    doc.text(`Generated: ${new Date().toLocaleString()}`, pageWidth - margin, 14, { align: 'right' });
+    doc.text(`Entity: ${activeCompany?.name || 'Main Entity'}`, pageWidth - margin, 21, { align: 'right' });
 
     // Customer Info Card
-    doc.setTextColor(31, 41, 55);
+    const boxY = 34;
+    const boxH = 26;
+    doc.setFillColor(248, 250, 252);
+    doc.setDrawColor(...borderGray);
+    doc.roundedRect(margin, boxY, contentWidth, boxH, 2, 2, 'FD');
+
+    doc.setTextColor(...primaryColor);
     doc.setFontSize(11);
     doc.setFont('helvetica', 'bold');
-    doc.text(`Customer: ${c.customerName}`, margin, 36);
+    doc.text(c.customerName, margin + 4, boxY + 8);
+
+    doc.setTextColor(...darkColor);
+    doc.setFontSize(8);
+    doc.setFont('helvetica', 'normal');
+    doc.text(`Customer ID: ${c.customerCode}`, margin + 4, boxY + 14);
+    if (c.email || c.phone) {
+      doc.text(`${c.phone || ''} ${c.email ? `• ${c.email}` : ''}`.trim(), margin + 4, boxY + 20);
+    }
 
     doc.setFontSize(9);
-    doc.setFont('helvetica', 'normal');
-    doc.text(`Total Outstanding: ${fmt(c.outstanding)}`, margin, 42);
+    doc.setFont('helvetica', 'bold');
+    doc.text(`Total Outstanding Due: ${fmt(c.outstanding)}`, pageWidth - margin - 4, boxY + 8, { align: 'right' });
 
     // Aging Buckets Summary Table
     const bucketHeaders = ['Current (Not Due)', '1 - 30 Days', '31 - 60 Days', '61 - 90 Days', '90+ Days (Critical)', 'Total Due'];
@@ -183,46 +305,47 @@ function CustomerAgingWorkspace({ activeEntityId }: Props) {
     ];
 
     autoTable(doc, {
-      startY: 47,
+      startY: boxY + boxH + 4,
       head: [bucketHeaders],
       body: [bucketRow],
-      styles: { fontSize: 8, cellPadding: 3, halign: 'right' },
-      headStyles: { fillColor: [51, 65, 85], textColor: 255, fontStyle: 'bold', halign: 'right' },
       margin: { left: margin, right: margin },
+      styles: { fontSize: 7.5, cellPadding: 2.5, halign: 'right', textColor: darkColor },
+      headStyles: { fillColor: [51, 65, 85], textColor: 255, fontStyle: 'bold', halign: 'right' },
     });
 
     // Invoices breakdown
     const invHeaders = ['Invoice #', 'Date', 'Due Date', 'Days Overdue', 'Aging Bucket', 'Total Amount', 'Paid', 'Amount Due'];
-    const invRows = customerInvs.map((i: any) => {
-      const b = agingBucket(i.dueDate);
-      const now = new Date();
-      const due = new Date(i.dueDate || now);
-      const days = Math.max(0, Math.floor((now.getTime() - due.getTime()) / 86400000));
+    const invRows = custInvs.map((i: any) => {
+      const b = calculateAgingBucket(i.dueDate || i.invoiceDate, asOfDate);
+      const days = calculateDaysPastDue(i.dueDate || i.invoiceDate, asOfDate);
+      const amountDue = i.amountDue || (i.totalAmount - (i.paidAmount || 0)) || 0;
+
       return [
         i.invoiceNumber || '-',
-        i.invoiceDate || i.date || '-',
-        i.dueDate || '-',
+        (i.invoiceDate || i.date || '').slice(0, 10),
+        (i.dueDate || '').slice(0, 10) || '-',
         days > 0 ? `${days} d` : '0 d',
         b === 'Current' ? 'Current' : `${b} Days`,
         fmt(i.totalAmount || 0),
-        fmt(i.amountPaid || 0),
-        fmt(i.amountDue || 0),
+        fmt(i.paidAmount || i.amountPaid || 0),
+        fmt(amountDue),
       ];
     });
 
-    const finalY = (doc as any).lastAutoTable?.finalY || 65;
-    doc.setFontSize(11);
+    const finalY = (doc as any).lastAutoTable.finalY + 6;
+    doc.setFontSize(9);
     doc.setFont('helvetica', 'bold');
-    doc.setTextColor(31, 41, 55);
-    doc.text('Outstanding Invoices Breakdown', margin, finalY + 8);
+    doc.setTextColor(...darkColor);
+    doc.text('Outstanding Invoices Breakdown', margin, finalY + 4);
 
     autoTable(doc, {
-      startY: finalY + 12,
+      startY: finalY + 6,
       head: [invHeaders],
       body: invRows.length ? invRows : [['No open invoices found', '', '', '', '', '', '', '']],
-      styles: { fontSize: 8, cellPadding: 2.5 },
-      headStyles: { fillColor: [30, 64, 175], textColor: 255, fontStyle: 'bold' },
-      alternateRowStyles: { fillColor: [248, 250, 252] },
+      margin: { left: margin, right: margin },
+      styles: { fontSize: 7.5, cellPadding: 2.2, textColor: darkColor },
+      headStyles: { fillColor: primaryColor, textColor: 255, fontStyle: 'bold', fontSize: 7.5 },
+      alternateRowStyles: { fillColor: [249, 250, 251] },
       columnStyles: {
         3: { halign: 'center' },
         4: { halign: 'center' },
@@ -230,165 +353,216 @@ function CustomerAgingWorkspace({ activeEntityId }: Props) {
         6: { halign: 'right' },
         7: { halign: 'right', fontStyle: 'bold' },
       },
-      margin: { left: margin, right: margin },
     });
 
     const safeName = c.customerName.replace(/[^a-zA-Z0-9-_]/g, '_');
-    doc.save(`Aging_${safeName}_${new Date().toISOString().slice(0, 10)}.pdf`);
+    doc.save(`Aging_${safeName}_${asOfDateStr}.pdf`);
   };
 
-  // Download per customer Excel
-  const downloadCustomerExcel = (c: typeof customerAging[0]) => {
-    const customerInvs = invoices.filter((i: any) =>
-      i.customerId === c.customerId &&
-      i.status !== 2 &&
-      i.status !== 3 &&
-      (i.amountDue || 0) > 0
+  // ─── Individual Excel Export ───────────────────────────────────────────────
+  const downloadCustomerExcel = (c: typeof customerAgingList[0]) => {
+    const custInvs = invoices.filter(
+      (i: any) =>
+        i.customerId === c.customerId &&
+        i.status !== 2 &&
+        i.status !== 3 &&
+        String(i.status).toLowerCase() !== 'void' &&
+        (i.amountDue || 0) > 0
     );
 
     const headers = ['Invoice Number', 'Invoice Date', 'Due Date', 'Days Overdue', 'Aging Bucket', 'Total Amount', 'Amount Paid', 'Amount Due'];
-    const rows = customerInvs.map((i: any) => {
-      const b = agingBucket(i.dueDate);
-      const now = new Date();
-      const due = new Date(i.dueDate || now);
-      const days = Math.max(0, Math.floor((now.getTime() - due.getTime()) / 86400000));
+    const rows = custInvs.map((i: any) => {
+      const b = calculateAgingBucket(i.dueDate || i.invoiceDate, asOfDate);
+      const days = calculateDaysPastDue(i.dueDate || i.invoiceDate, asOfDate);
+      const amountDue = i.amountDue || (i.totalAmount - (i.paidAmount || 0)) || 0;
+
       return [
         i.invoiceNumber || '',
-        i.invoiceDate || i.date || '',
-        i.dueDate || '',
+        (i.invoiceDate || i.date || '').slice(0, 10),
+        (i.dueDate || '').slice(0, 10),
         days,
         b,
         i.totalAmount || 0,
-        i.amountPaid || 0,
-        i.amountDue || 0,
+        i.paidAmount || i.amountPaid || 0,
+        amountDue,
       ];
     });
 
     const safeName = c.customerName.replace(/[^a-zA-Z0-9-_]/g, '_');
-    downloadExcel(`Aging_${safeName}_${new Date().toISOString().slice(0, 10)}`, 'Customer Aging', headers, rows);
+    downloadExcel(`Aging_${safeName}_${asOfDateStr}`, 'Customer Aging', headers, rows);
   };
 
-  // View specific customer detailed report
+  // ─── Global Export All Customers Aging ────────────────────────────────────
+  const exportAllAgingExcel = () => {
+    const headers = ['Customer Code', 'Customer Name', 'Total Outstanding', 'Current', '1-30 Days', '31-60 Days', '61-90 Days', '90+ Days', 'Oldest Overdue (Days)', 'Risk Status'];
+    const rows = filteredCustomerAging.map((c) => [
+      c.customerCode,
+      c.customerName,
+      c.outstanding,
+      c.buckets.Current,
+      c.buckets['1-30'],
+      c.buckets['31-60'],
+      c.buckets['61-90'],
+      c.buckets['90+'],
+      c.oldestDays,
+      c.worstBucket === 'Current' ? 'Current' : c.worstBucket === '90+' ? 'Critical' : 'Overdue',
+    ]);
+
+    downloadExcel(`Receivables_Aging_Report_${asOfDateStr}`, 'Aging Report', headers, rows);
+  };
+
+  // ════════════════════════════════════════════════════════════════════════════
+  // ─── VIEW 2: INDIVIDUAL CUSTOMER DETAILED AGING VIEW ───────────────────────
+  // ════════════════════════════════════════════════════════════════════════════
   if (selectedCustomer) {
     return (
-      <div className="p-4 max-w-7xl mx-auto space-y-4">
-        {/* Detail Header */}
-        <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-3 bg-white p-3 rounded-xl border border-gray-200 shadow-sm">
+      <div className="space-y-4 max-w-7xl mx-auto pb-10">
+        {/* Detail Header Banner */}
+        <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-3 bg-[var(--color-surface)] p-3.5 rounded-xl border border-[var(--color-border)] shadow-xs">
           <div className="flex items-center gap-3">
             <button
               onClick={() => setSelectedCustomerId(null)}
-              className="h-8 w-8 flex items-center justify-center rounded-lg hover:bg-gray-100 text-gray-500 transition-colors"
-              title="Back to all customers"
+              className="h-8.5 px-3 bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-colors"
             >
-              <ArrowLeft className="w-4 h-4" />
+              <ArrowLeft className="w-3.5 h-3.5" /> Back to Aging Summary
             </button>
+            <div className="h-5 w-px bg-gray-200 dark:bg-gray-700" />
             <div>
-              <h1 className="text-base font-bold text-gray-900 tracking-tight flex items-center gap-2">
+              <h1 className="text-base font-bold text-[var(--color-text-strong)] tracking-tight flex items-center gap-2">
                 <span className="text-lg">👤</span> {selectedCustomer.customerName}
+                <span className="text-xs px-2 py-0.5 rounded-full bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-800 font-mono">
+                  {selectedCustomer.customerCode}
+                </span>
               </h1>
-              <p className="text-gray-500 text-[10px] mt-0.5">Receivables Aging & Overdue Invoices Breakdown</p>
+              <p className="text-[var(--color-text-muted)] text-xs mt-0.5">
+                Receivables aging schedule and overdue open invoices breakdown.
+              </p>
             </div>
           </div>
-          <div className="flex items-center gap-1.5 shrink-0">
+
+          {/* Export Actions */}
+          <div className="flex items-center gap-1.5 shrink-0 flex-wrap">
+            <button
+              onClick={() => downloadCustomerPDF(selectedCustomer)}
+              className="primary h-8.5 px-3 rounded-lg text-xs font-semibold flex items-center gap-1.5 shadow-xs"
+              title="Download Aging PDF for this customer"
+            >
+              <Download className="w-3.5 h-3.5" /> Download PDF
+            </button>
             <button
               onClick={() => downloadCustomerExcel(selectedCustomer)}
-              className="h-8 px-2.5 bg-emerald-600 hover:bg-emerald-700 text-white text-[11px] font-semibold rounded-lg flex items-center gap-1.5 transition-colors"
+              className="h-8.5 px-3 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-semibold flex items-center gap-1.5 shadow-xs transition-colors"
+              title="Download Aging Excel"
             >
               <FileSpreadsheet className="w-3.5 h-3.5" /> Excel
             </button>
             <button
-              onClick={() => downloadCustomerPDF(selectedCustomer)}
-              className="h-8 px-2.5 bg-blue-600 hover:bg-blue-700 text-white text-[11px] font-semibold rounded-lg flex items-center gap-1.5 transition-colors"
+              onClick={() => window.print()}
+              className="secondary h-8.5 px-2.5 rounded-lg text-xs font-semibold flex items-center gap-1"
+              title="Print"
             >
-              <FileText className="w-3.5 h-3.5" /> PDF
+              <Printer className="w-3.5 h-3.5" />
             </button>
           </div>
         </div>
 
         {/* Customer Aging Bucket Cards */}
-        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
-          <div className="bg-white p-3 rounded-xl border border-gray-200 shadow-sm">
-            <p className="text-[10px] font-semibold text-gray-500 uppercase tracking-wider">Total Due</p>
-            <p className="text-base font-bold text-gray-900 mt-0.5">{fmt(selectedCustomer.outstanding)}</p>
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2.5">
+          <div className="bg-[var(--color-surface)] p-3 rounded-xl border border-[var(--color-border)] shadow-2xs">
+            <p className="text-[10px] font-bold text-[var(--color-text-muted)] uppercase tracking-wider">Total Due</p>
+            <p className="text-sm font-extrabold text-[var(--color-text-strong)] mt-1">{fmt(selectedCustomer.outstanding)}</p>
           </div>
-          <div className="bg-white p-3 rounded-xl border border-emerald-200 bg-emerald-50/20 shadow-sm">
-            <p className="text-[10px] font-semibold text-emerald-700 uppercase tracking-wider">Current</p>
-            <p className="text-base font-bold text-emerald-600 mt-0.5">{fmt(selectedCustomer.buckets.Current)}</p>
+          <div className="p-3 rounded-xl border border-emerald-200 dark:border-emerald-800 bg-emerald-50/50 dark:bg-emerald-950/20 shadow-2xs">
+            <p className="text-[10px] font-bold text-emerald-700 dark:text-emerald-300 uppercase tracking-wider">Current</p>
+            <p className="text-sm font-extrabold text-emerald-600 dark:text-emerald-400 mt-1">{fmt(selectedCustomer.buckets.Current)}</p>
           </div>
-          <div className="bg-white p-3 rounded-xl border border-amber-200 bg-amber-50/20 shadow-sm">
-            <p className="text-[10px] font-semibold text-amber-700 uppercase tracking-wider">1-30 Days</p>
-            <p className="text-base font-bold text-amber-600 mt-0.5">{fmt(selectedCustomer.buckets['1-30'])}</p>
+          <div className="p-3 rounded-xl border border-amber-200 dark:border-amber-800 bg-amber-50/50 dark:bg-amber-950/20 shadow-2xs">
+            <p className="text-[10px] font-bold text-amber-700 dark:text-amber-300 uppercase tracking-wider">1-30 Days</p>
+            <p className="text-sm font-extrabold text-amber-600 dark:text-amber-400 mt-1">{fmt(selectedCustomer.buckets['1-30'])}</p>
           </div>
-          <div className="bg-white p-3 rounded-xl border border-orange-200 bg-orange-50/20 shadow-sm">
-            <p className="text-[10px] font-semibold text-orange-700 uppercase tracking-wider">31-60 Days</p>
-            <p className="text-base font-bold text-orange-600 mt-0.5">{fmt(selectedCustomer.buckets['31-60'])}</p>
+          <div className="p-3 rounded-xl border border-orange-200 dark:border-orange-800 bg-orange-50/50 dark:bg-orange-950/20 shadow-2xs">
+            <p className="text-[10px] font-bold text-orange-700 dark:text-orange-300 uppercase tracking-wider">31-60 Days</p>
+            <p className="text-sm font-extrabold text-orange-600 dark:text-orange-400 mt-1">{fmt(selectedCustomer.buckets['31-60'])}</p>
           </div>
-          <div className="bg-white p-3 rounded-xl border border-red-200 bg-red-50/20 shadow-sm">
-            <p className="text-[10px] font-semibold text-red-700 uppercase tracking-wider">61-90 Days</p>
-            <p className="text-base font-bold text-red-600 mt-0.5">{fmt(selectedCustomer.buckets['61-90'])}</p>
+          <div className="p-3 rounded-xl border border-rose-200 dark:border-rose-800 bg-rose-50/50 dark:bg-rose-950/20 shadow-2xs">
+            <p className="text-[10px] font-bold text-rose-700 dark:text-rose-300 uppercase tracking-wider">61-90 Days</p>
+            <p className="text-sm font-extrabold text-rose-600 dark:text-rose-400 mt-1">{fmt(selectedCustomer.buckets['61-90'])}</p>
           </div>
-          <div className="bg-white p-3 rounded-xl border border-red-300 bg-red-100/30 shadow-sm">
-            <p className="text-[10px] font-semibold text-red-800 uppercase tracking-wider">90+ Days</p>
-            <p className="text-base font-bold text-red-700 mt-0.5">{fmt(selectedCustomer.buckets['90+'])}</p>
+          <div className="p-3 rounded-xl border border-rose-300 dark:border-rose-700 bg-rose-100/60 dark:bg-rose-950/40 shadow-2xs">
+            <p className="text-[10px] font-bold text-rose-800 dark:text-rose-200 uppercase tracking-wider">90+ Days (Critical)</p>
+            <p className="text-sm font-extrabold text-rose-700 dark:text-rose-300 mt-1">{fmt(selectedCustomer.buckets['90+'])}</p>
           </div>
         </div>
 
         {/* Customer Open Invoices Table */}
-        <div className="bg-white border border-gray-200 rounded-xl shadow-sm overflow-hidden">
-          <div className="px-4 py-2.5 border-b border-gray-100 flex items-center justify-between">
-            <h3 className="text-xs font-bold text-gray-700">Open Invoices ({customerOpenInvoices.length})</h3>
-            <span className="text-[11px] text-gray-500">Sorted by overdue days</span>
+        <div className="bg-[var(--color-surface)] border border-[var(--color-border)] rounded-xl shadow-xs overflow-hidden">
+          <div className="p-3 border-b border-[var(--color-border)] flex items-center justify-between bg-gray-50/50 dark:bg-gray-900/50">
+            <h3 className="text-xs font-bold text-[var(--color-text-strong)] flex items-center gap-2">
+              <Clock className="w-3.5 h-3.5 text-blue-600" /> Open Unpaid Invoices ({selectedCustomerInvoices.length})
+            </h3>
+            <span className="text-[11px] text-[var(--color-text-muted)]">
+              Ranked by days overdue
+            </span>
           </div>
+
           <div className="overflow-x-auto">
-            <table className="w-full text-left text-sm">
-              <thead className="bg-gray-50 text-gray-500 border-b border-gray-100 text-[10px] uppercase tracking-wider">
+            <table className="w-full text-left text-xs">
+              <thead className="bg-gray-50 dark:bg-gray-900/80 text-[var(--color-text-muted)] border-b border-[var(--color-border)] text-[10px] uppercase font-bold tracking-wider">
                 <tr>
-                  <th className="py-2.5 px-4">Invoice #</th>
-                  <th className="py-2.5 px-4">Date</th>
-                  <th className="py-2.5 px-4">Due Date</th>
-                  <th className="py-2.5 px-4 text-center">Days Overdue</th>
-                  <th className="py-2.5 px-4 text-center">Bucket</th>
-                  <th className="py-2.5 px-4 text-right">Total</th>
-                  <th className="py-2.5 px-4 text-right">Paid</th>
-                  <th className="py-2.5 px-4 text-right">Amount Due</th>
+                  <th className="py-2.5 px-3.5">Invoice #</th>
+                  <th className="py-2.5 px-3">Date</th>
+                  <th className="py-2.5 px-3">Due Date</th>
+                  <th className="py-2.5 px-3 text-center">Days Overdue</th>
+                  <th className="py-2.5 px-3 text-center">Aging Bucket</th>
+                  <th className="py-2.5 px-3 text-right">Total Amount</th>
+                  <th className="py-2.5 px-3 text-right">Paid</th>
+                  <th className="py-2.5 px-3.5 text-right">Amount Due</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-gray-100">
-                {customerOpenInvoices.length === 0 && (
+              <tbody className="divide-y divide-[var(--color-border)]">
+                {selectedCustomerInvoices.length === 0 ? (
                   <tr>
-                    <td colSpan={8} className="py-10 text-center text-gray-400">
-                      No open invoices found for this customer.
+                    <td colSpan={8} className="py-12 text-center text-[var(--color-text-muted)]">
+                      <div className="flex flex-col items-center gap-2">
+                        <CheckCircle2 className="w-8 h-8 text-emerald-500" />
+                        <p className="font-semibold text-xs">All invoices settled! No open balances for this customer.</p>
+                      </div>
                     </td>
                   </tr>
+                ) : (
+                  selectedCustomerInvoices.map((inv: any) => (
+                    <tr key={inv.id || inv.invoiceNumber} className="hover:bg-gray-50/50 dark:hover:bg-gray-900/30 transition-colors">
+                      <td className="py-2.5 px-3.5 font-mono font-bold text-[var(--color-text-strong)]">{inv.invoiceNumber}</td>
+                      <td className="py-2.5 px-3 text-[var(--color-text-muted)]">{(inv.invoiceDate || inv.date || '').slice(0, 10)}</td>
+                      <td className="py-2.5 px-3 text-[var(--color-text-muted)]">{(inv.dueDate || '').slice(0, 10) || '-'}</td>
+                      <td className="py-2.5 px-3 text-center font-bold">
+                        {inv.daysPastDue > 0 ? (
+                          <span className="text-rose-600 dark:text-rose-400">{inv.daysPastDue} days</span>
+                        ) : (
+                          <span className="text-emerald-600 dark:text-emerald-400 font-semibold">On time</span>
+                        )}
+                      </td>
+                      <td className="py-2.5 px-3 text-center">
+                        <span
+                          className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
+                            inv.bucket === 'Current'
+                              ? 'bg-emerald-50 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800'
+                              : inv.bucket === '1-30'
+                              ? 'bg-amber-50 dark:bg-amber-900/30 text-amber-700 dark:text-amber-300 border border-amber-200 dark:border-amber-800'
+                              : inv.bucket === '31-60'
+                              ? 'bg-orange-50 dark:bg-orange-900/30 text-orange-700 dark:text-orange-300 border border-orange-200 dark:border-orange-800'
+                              : 'bg-rose-50 dark:bg-rose-900/30 text-rose-700 dark:text-rose-300 border border-rose-200 dark:border-rose-800'
+                          }`}
+                        >
+                          {inv.bucket === 'Current' ? 'Current' : `${inv.bucket} Days`}
+                        </span>
+                      </td>
+                      <td className="py-2.5 px-3 text-right text-[var(--color-text)]">{fmt(inv.totalAmount)}</td>
+                      <td className="py-2.5 px-3 text-right text-emerald-600 dark:text-emerald-400">{fmt(inv.paidAmount || inv.amountPaid || 0)}</td>
+                      <td className="py-2.5 px-3.5 text-right font-bold text-rose-600 dark:text-rose-400 text-sm">{fmt(inv.amountDue)}</td>
+                    </tr>
+                  ))
                 )}
-                {customerOpenInvoices.map((inv: any) => (
-                  <tr key={inv.id || inv.invoiceNumber} className="hover:bg-gray-50/50 transition-colors">
-                    <td className="py-2.5 px-4 font-semibold text-gray-900">{inv.invoiceNumber}</td>
-                    <td className="py-2.5 px-4 text-gray-600">{inv.invoiceDate || inv.date}</td>
-                    <td className="py-2.5 px-4 text-gray-600">{inv.dueDate}</td>
-                    <td className="py-2.5 px-4 text-center font-medium text-gray-700">
-                      {inv.daysPastDue > 0 ? (
-                        <span className="text-red-600 font-semibold">{inv.daysPastDue} days</span>
-                      ) : (
-                        <span className="text-emerald-600 font-medium">On time</span>
-                      )}
-                    </td>
-                    <td className="py-2.5 px-4 text-center">
-                      <span className={`px-2 py-0.5 rounded-full text-[10px] font-semibold ${
-                        inv.bucket === 'Current' ? 'bg-emerald-100 text-emerald-700' :
-                        inv.bucket === '1-30' ? 'bg-amber-100 text-amber-700' :
-                        inv.bucket === '31-60' ? 'bg-orange-100 text-orange-700' :
-                        inv.bucket === '61-90' ? 'bg-red-100 text-red-700' :
-                        'bg-red-200 text-red-800'
-                      }`}>
-                        {inv.bucket === 'Current' ? 'Current' : `${inv.bucket} Days`}
-                      </span>
-                    </td>
-                    <td className="py-2.5 px-4 text-right text-gray-600">{fmt(inv.totalAmount)}</td>
-                    <td className="py-2.5 px-4 text-right text-emerald-600">{fmt(inv.amountPaid || 0)}</td>
-                    <td className="py-2.5 px-4 text-right font-bold text-red-600">{fmt(inv.amountDue)}</td>
-                  </tr>
-                ))}
               </tbody>
             </table>
           </div>
@@ -397,28 +571,84 @@ function CustomerAgingWorkspace({ activeEntityId }: Props) {
     );
   }
 
-  // All Customers Aging View
+  // ════════════════════════════════════════════════════════════════════════════
+  // ─── VIEW 1: AGING SUMMARY & DIRECT DOWNLOAD DIRECTORY ─────────────────────
+  // ════════════════════════════════════════════════════════════════════════════
   return (
-    <div className="p-4 max-w-7xl mx-auto space-y-4">
-      {/* Header */}
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-3 bg-white p-3 rounded-xl border border-gray-200 shadow-sm">
+    <div className="space-y-4 max-w-7xl mx-auto pb-10">
+      {/* Header Banner */}
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-3 bg-[var(--color-surface)] p-3.5 rounded-xl border border-[var(--color-border)] shadow-xs">
         <div>
-          <h1 className="text-base font-bold text-gray-900 tracking-tight flex items-center gap-2">
-            <span className="text-lg">📊</span> Receivables Aging
+          <h1 className="text-base font-bold text-[var(--color-text-strong)] tracking-tight flex items-center gap-2">
+            <span className="text-lg">📊</span> Receivables Aging Schedule
           </h1>
-          <p className="text-gray-500 text-[10px] mt-0.5">Outstanding customer balances by age bucket. Click any customer to view details & download individual PDF/Excel.</p>
+          <p className="text-[var(--color-text-muted)] text-xs mt-0.5">
+            Monitor receivables by maturity, overdue risk buckets, and download customer aging schedules.
+          </p>
         </div>
-        <div className="flex items-center gap-2 shrink-0">
-          <div className="relative">
-            <Search className="w-3.5 h-3.5 absolute left-2.5 top-1/2 -translate-y-1/2 text-gray-400" />
+
+        {/* Search, As-Of Date & Global Export Actions */}
+        <div className="flex items-center gap-2 shrink-0 flex-wrap">
+          {/* Robust Search Box - Icon and Input in normal flow */}
+          <div className="flex items-center h-8.5 w-60 px-2.5 bg-[var(--color-surface)] border border-[var(--color-border)] rounded-lg text-xs focus-within:border-blue-500 focus-within:ring-1 focus-within:ring-blue-200 transition-all shadow-2xs">
+            <Search className="w-3.5 h-3.5 text-gray-400 mr-2 shrink-0 pointer-events-none" />
             <input
               type="text"
               value={query}
-              onChange={e => setQuery(e.target.value)}
-              placeholder="Search customer..."
-              className="h-8 pl-8 pr-2.5 bg-white border border-gray-200 rounded-lg text-[11px] text-gray-700 outline-none w-44 focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+              onChange={(e) => setQuery(e.target.value)}
+              placeholder="Search customer, ID, phone..."
+              style={{
+                border: 'none',
+                outline: 'none',
+                background: 'transparent',
+                padding: '0 !important',
+                width: '100%',
+                fontSize: '12px',
+                color: 'var(--color-text)',
+                boxShadow: 'none',
+              }}
+              className="!p-0 !border-0 !outline-none !bg-transparent w-full text-xs text-[var(--color-text)]"
+            />
+            {query && (
+              <button
+                type="button"
+                onClick={() => setQuery('')}
+                className="text-gray-400 hover:text-gray-600 text-sm px-1 leading-none font-bold"
+                title="Clear"
+              >
+                ×
+              </button>
+            )}
+          </div>
+
+          {/* As Of Date Picker */}
+          <div className="flex items-center gap-1.5 bg-[var(--color-surface)] border border-[var(--color-border)] rounded-lg px-2.5 h-8.5 text-xs shadow-2xs">
+            <span className="text-[10px] font-bold text-[var(--color-text-muted)] uppercase">As of:</span>
+            <input
+              type="date"
+              value={asOfDateStr}
+              onChange={(e) => setAsOfDateStr(e.target.value)}
+              className="bg-transparent border-0 text-xs text-[var(--color-text)] outline-none cursor-pointer"
             />
           </div>
+
+          {/* Export All Report */}
+          <button
+            onClick={exportAllAgingExcel}
+            className="secondary h-8.5 px-3 rounded-lg text-xs font-semibold flex items-center gap-1.5 shadow-xs"
+            title="Export aging report to Excel"
+          >
+            <FileSpreadsheet className="w-3.5 h-3.5 text-emerald-600" /> Export Aging
+          </button>
+
+          {/* Refresh Data */}
+          <button
+            onClick={loadData}
+            className="secondary h-8.5 w-8.5 rounded-lg flex items-center justify-center text-xs text-[var(--color-text)]"
+            title="Refresh"
+          >
+            <RefreshCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin' : ''}`} />
+          </button>
         </div>
       </div>
 
@@ -427,184 +657,266 @@ function CustomerAgingWorkspace({ activeEntityId }: Props) {
         <article>
           <span className="stat-icon blue"><DollarSign className="w-4 h-4" /></span>
           <div>
-            <small>TOTAL OUTSTANDING</small>
+            <small>TOTAL RECEIVABLES</small>
             <h2>{fmt(totalOutstanding)}</h2>
-            <p>Amount due from customers</p>
+            <p>Outstanding customer balances</p>
           </div>
         </article>
         <article>
           <span className="stat-icon teal"><Users className="w-4 h-4" /></span>
           <div>
             <small>CUSTOMERS WITH BALANCE</small>
-            <h2>{totalCustomers}</h2>
-            <p>Active receivables</p>
+            <h2>{customerAgingList.length}</h2>
+            <p>Active debtors</p>
           </div>
         </article>
         <article>
-          <span className="stat-icon violet"><AlertTriangle className="w-4 h-4" /></span>
+          <span className="stat-icon violet"><AlertTriangle className="w-4 h-4 text-amber-500" /></span>
           <div>
-            <small>OVERDUE AMOUNT</small>
-            <h2>{fmt(overdueAmount)}</h2>
-            <p>Past due date</p>
+            <small>TOTAL OVERDUE</small>
+            <h2 className="text-amber-600 dark:text-amber-400">{fmt(overdueAmount)}</h2>
+            <p>Past invoice due dates</p>
           </div>
         </article>
         <article>
-          <span className="stat-icon blue"><Clock className="w-4 h-4" /></span>
+          <span className="stat-icon blue"><ShieldAlert className="w-4 h-4 text-rose-500" /></span>
           <div>
             <small>CRITICAL (90+ DAYS)</small>
-            <h2>{criticalCount}</h2>
-            <p>Customers over 90 days</p>
+            <h2 className="text-rose-600 dark:text-rose-400">{criticalCount}</h2>
+            <p>High delinquency accounts</p>
           </div>
         </article>
       </section>
 
-      {/* Aging Breakdown Bar */}
-      <div className="bg-white p-4 rounded-xl border border-gray-200 shadow-sm">
-        <h3 className="text-xs font-bold text-gray-700 mb-3">Aging Distribution</h3>
-        <ResponsiveContainer width="100%" height={200}>
-          <BarChart data={chartData} layout="vertical">
-            <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
-            <XAxis type="number" tick={{ fontSize: 10 }} stroke="#94a3b8" tickFormatter={(v: number) => moneyCompact(v)} />
-            <YAxis type="category" dataKey="name" tick={{ fontSize: 10 }} stroke="#94a3b8" width={80} />
-            <Tooltip formatter={(value) => fmt(Number(value))} contentStyle={{ fontSize: 11, borderRadius: 8 }} />
-            <Bar dataKey="value" radius={[0, 4, 4, 0]}>
-              {chartData.map((entry, index) => (
-                <Cell key={index} fill={entry.fill} />
+      {/* Aging Distribution Chart & Bucket Chips */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-3">
+        {/* Horizontal Bar Chart */}
+        <div className="lg:col-span-2 bg-[var(--color-surface)] p-4 rounded-xl border border-[var(--color-border)] shadow-xs">
+          <div className="flex items-center justify-between mb-2">
+            <h3 className="text-xs font-bold text-[var(--color-text-strong)] flex items-center gap-1.5">
+              <Clock className="w-3.5 h-3.5 text-blue-600" /> Aging Exposure Distribution
+            </h3>
+            <span className="text-[11px] text-[var(--color-text-muted)]">
+              {totalOutstanding > 0 ? '100% of outstanding receivables' : 'No receivables'}
+            </span>
+          </div>
+          <div className="h-44">
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart data={chartData} layout="vertical" margin={{ top: 5, right: 30, left: 10, bottom: 5 }}>
+                <CartesianGrid strokeDasharray="3 3" stroke="rgba(148, 163, 184, 0.15)" />
+                <XAxis type="number" tick={{ fontSize: 10 }} stroke="#94a3b8" tickFormatter={(v: number) => moneyCompact(v)} />
+                <YAxis type="category" dataKey="name" tick={{ fontSize: 10 }} stroke="#94a3b8" width={80} />
+                <Tooltip
+                  formatter={(value) => [fmt(Number(value)), 'Amount Due']}
+                  contentStyle={{
+                    fontSize: 11,
+                    borderRadius: 8,
+                    backgroundColor: 'var(--color-surface)',
+                    borderColor: 'var(--color-border)',
+                  }}
+                />
+                <Bar dataKey="value" radius={[0, 4, 4, 0]}>
+                  {chartData.map((entry, index) => (
+                    <Cell key={index} fill={entry.fill} />
+                  ))}
+                </Bar>
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
+        </div>
+
+        {/* Interactive Bucket Cards Filter */}
+        <div className="bg-[var(--color-surface)] p-4 rounded-xl border border-[var(--color-border)] shadow-xs flex flex-col justify-between space-y-2">
+          <div>
+            <h3 className="text-xs font-bold text-[var(--color-text-strong)] mb-2">Filter by Aging Risk</h3>
+            <div className="space-y-1.5">
+              <button
+                onClick={() => setSelectedRiskFilter('all')}
+                className={`w-full flex items-center justify-between p-1.5 px-2.5 rounded-lg text-xs font-semibold transition-all ${
+                  selectedRiskFilter === 'all'
+                    ? 'bg-blue-600 text-white shadow-2xs'
+                    : 'bg-gray-50 dark:bg-gray-900/40 text-gray-700 dark:text-gray-300 hover:bg-gray-100'
+                }`}
+              >
+                <span>⚡ All Accounts</span>
+                <span>{customerAgingList.length}</span>
+              </button>
+
+              {BUCKETS.map((b) => (
+                <button
+                  key={b}
+                  onClick={() => setSelectedRiskFilter(b)}
+                  className={`w-full flex items-center justify-between p-1.5 px-2.5 rounded-lg text-xs font-semibold transition-all ${
+                    selectedRiskFilter === b
+                      ? 'bg-blue-600 text-white shadow-2xs'
+                      : 'bg-gray-50 dark:bg-gray-900/40 text-gray-700 dark:text-gray-300 hover:bg-gray-100'
+                  }`}
+                >
+                  <span className="flex items-center gap-1.5">
+                    <span className="w-2 h-2 rounded-full" style={{ backgroundColor: BUCKET_COLORS[b] }} />
+                    {b === 'Current' ? 'Current' : `${b} Days`}
+                  </span>
+                  <span className="font-bold">{fmt(bucketTotals[b])}</span>
+                </button>
               ))}
-            </Bar>
-          </BarChart>
-        </ResponsiveContainer>
+            </div>
+          </div>
+        </div>
       </div>
 
-      {/* Aging Summary Table */}
-      <div className="bg-white border border-gray-200 rounded-xl shadow-sm overflow-hidden">
-        <div className="px-4 py-2.5 border-b border-gray-100">
-          <h3 className="text-xs font-bold text-gray-700">Aging Summary by Bucket</h3>
+      {/* Customer Aging Schedule Table */}
+      <div className="bg-[var(--color-surface)] border border-[var(--color-border)] rounded-xl shadow-xs overflow-hidden">
+        <div className="p-3 border-b border-[var(--color-border)] flex justify-between items-center bg-gray-50/50 dark:bg-gray-900/50">
+          <span className="text-xs font-bold text-[var(--color-text-strong)] flex items-center gap-2">
+            <Users className="w-3.5 h-3.5 text-blue-600" /> Customer Aging Schedule ({filteredCustomerAging.length})
+          </span>
+          <span className="text-[11px] text-[var(--color-text-muted)]">
+            Click any row or export action to download an individual customer aging report.
+          </span>
         </div>
-        <table className="w-full text-left text-sm">
-          <thead className="bg-gray-50 text-gray-500 border-b border-gray-100 text-[10px] uppercase tracking-wider">
-            <tr>
-              <th className="py-2.5 px-4">Age Range</th>
-              <th className="py-2.5 px-4 text-right">Amount</th>
-              <th className="py-2.5 px-4 text-right">% of Total</th>
-              <th className="py-2.5 px-4">Risk Level</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-gray-100">
-            {BUCKETS.map(b => (
-              <tr key={b} className="hover:bg-gray-50/50">
-                <td className="py-2.5 px-4 font-medium text-gray-900">
-                  <span className="flex items-center gap-2">
-                    <span className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: BUCKET_COLORS[b] }}></span>
-                    {b === 'Current' ? 'Current (Not Due)' : b + ' Days'}
-                  </span>
-                </td>
-                <td className="py-2.5 px-4 text-right font-bold text-gray-900">{fmt(bucketTotals[b])}</td>
-                <td className="py-2.5 px-4 text-right text-gray-500">{totalOutstanding > 0 ? ((bucketTotals[b] / totalOutstanding) * 100).toFixed(1) : 0}%</td>
-                <td className="py-2.5 px-4">
-                  <span className={`px-2 py-0.5 rounded-full text-[10px] font-semibold ${
-                    b === 'Current' ? 'bg-emerald-100 text-emerald-700' :
-                    b === '1-30' ? 'bg-amber-100 text-amber-700' :
-                    b === '31-60' ? 'bg-orange-100 text-orange-700' :
-                    b === '61-90' ? 'bg-red-100 text-red-700' :
-                    'bg-red-200 text-red-800'
-                  }`}>
-                    {b === 'Current' ? 'Low' : b === '1-30' ? 'Medium' : b === '31-60' ? 'High' : 'Critical'}
-                  </span>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
 
-      {/* Customer Detail Table */}
-      <div className="bg-white border border-gray-200 rounded-xl shadow-sm overflow-hidden">
-        <div className="px-4 py-2.5 border-b border-gray-100 flex items-center justify-between">
-          <h3 className="text-xs font-bold text-gray-700">Customer Aging Details</h3>
-          <span className="text-[11px] text-gray-400">Click any row or export action to download</span>
-        </div>
         <div className="overflow-x-auto">
-          <table className="w-full text-left text-sm">
-            <thead className="bg-gray-50 text-gray-500 border-b border-gray-100 text-[10px] uppercase tracking-wider">
+          <table className="w-full text-left text-xs">
+            <thead className="bg-gray-50 dark:bg-gray-900/80 text-[var(--color-text-muted)] border-b border-[var(--color-border)] text-[10px] uppercase font-bold tracking-wider">
               <tr>
-                <th className="py-2.5 px-4">Customer</th>
-                <th className="py-2.5 px-4 text-right">Outstanding</th>
-                <th className="py-2.5 px-4 text-right">Current</th>
-                <th className="py-2.5 px-4 text-right">1-30 Days</th>
-                <th className="py-2.5 px-4 text-right">31-60 Days</th>
-                <th className="py-2.5 px-4 text-right">61-90 Days</th>
-                <th className="py-2.5 px-4 text-right">90+ Days</th>
-                <th className="py-2.5 px-4 text-center">Status</th>
-                <th className="py-2.5 px-4 text-right">Export</th>
+                <th className="py-2.5 px-3.5">Customer & ID</th>
+                <th className="py-2.5 px-3 text-right">Total Outstanding</th>
+                <th className="py-2.5 px-3 text-right">Current</th>
+                <th className="py-2.5 px-3 text-right">1-30 Days</th>
+                <th className="py-2.5 px-3 text-right">31-60 Days</th>
+                <th className="py-2.5 px-3 text-right">61-90 Days</th>
+                <th className="py-2.5 px-3 text-right">90+ Days</th>
+                <th className="py-2.5 px-3 text-center">Status</th>
+                <th className="py-2.5 px-3.5 text-right">Individual Export & Actions</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-gray-100">
-              {filteredCustomerAging.length === 0 && (
+            <tbody className="divide-y divide-[var(--color-border)]">
+              {loading ? (
                 <tr>
-                  <td colSpan={9} className="py-12 text-center text-gray-400">
+                  <td colSpan={9} className="py-12 text-center text-[var(--color-text-muted)]">
                     <div className="flex flex-col items-center gap-2">
-                      <span className="text-3xl">📊</span>
-                      <p className="text-sm font-semibold">No outstanding receivables found</p>
+                      <RefreshCw className="w-6 h-6 animate-spin text-blue-600" />
+                      <p className="font-semibold text-xs">Calculating receivables aging schedules...</p>
                     </div>
                   </td>
                 </tr>
-              )}
-              {filteredCustomerAging.map((c, idx) => {
-                const worstBucket = c.buckets['90+'] > 0 ? '90+' :
-                  c.buckets['61-90'] > 0 ? '61-90' :
-                  c.buckets['31-60'] > 0 ? '31-60' :
-                  c.buckets['1-30'] > 0 ? '1-30' : 'Current';
-                return (
+              ) : filteredCustomerAging.length === 0 ? (
+                <tr>
+                  <td colSpan={9} className="py-12 text-center text-[var(--color-text-muted)]">
+                    <div className="flex flex-col items-center gap-2">
+                      <Users className="w-8 h-8 text-gray-400" />
+                      <p className="font-semibold text-xs">No outstanding receivables matching your filters.</p>
+                    </div>
+                  </td>
+                </tr>
+              ) : (
+                filteredCustomerAging.map((c) => (
                   <tr
-                    key={idx}
+                    key={c.customerId}
                     onClick={() => setSelectedCustomerId(c.customerId)}
-                    className="hover:bg-blue-50/40 transition-colors cursor-pointer group"
+                    className="hover:bg-gray-50/60 dark:hover:bg-gray-900/40 transition-colors group cursor-pointer"
                   >
-                    <td className="py-2.5 px-4 font-semibold text-gray-900 group-hover:text-blue-600 flex items-center gap-1.5">
-                      {c.customerName}
+                    {/* Customer Info */}
+                    <td className="py-3 px-3.5">
+                      <div className="flex items-center gap-2.5">
+                        <div className="w-8 h-8 rounded-lg bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 font-bold flex items-center justify-center text-xs shrink-0">
+                          {c.customerName.slice(0, 2).toUpperCase()}
+                        </div>
+                        <div>
+                          <span className="font-bold text-[var(--color-text-strong)] group-hover:text-blue-600 transition-colors block">
+                            {c.customerName}
+                          </span>
+                          <span className="text-[10px] text-[var(--color-text-muted)] font-mono">
+                            {c.customerCode} • {c.invoiceCount} Open Inv
+                          </span>
+                        </div>
+                      </div>
                     </td>
-                    <td className="py-2.5 px-4 text-right font-bold text-gray-900">{fmt(c.outstanding)}</td>
-                    <td className="py-2.5 px-4 text-right text-emerald-600">{fmt(c.buckets.Current)}</td>
-                    <td className="py-2.5 px-4 text-right text-amber-600">{fmt(c.buckets['1-30'])}</td>
-                    <td className="py-2.5 px-4 text-right text-orange-600">{fmt(c.buckets['31-60'])}</td>
-                    <td className="py-2.5 px-4 text-right text-red-600">{fmt(c.buckets['61-90'])}</td>
-                    <td className="py-2.5 px-4 text-right font-bold text-red-700">{fmt(c.buckets['90+'])}</td>
-                    <td className="py-2.5 px-4 text-center">
-                      <span className={`px-2 py-0.5 rounded-full text-[10px] font-semibold ${
-                        worstBucket === 'Current' ? 'bg-emerald-100 text-emerald-700' :
-                        worstBucket === '1-30' ? 'bg-amber-100 text-amber-700' :
-                        worstBucket === '31-60' ? 'bg-orange-100 text-orange-700' :
-                        worstBucket === '61-90' ? 'bg-red-100 text-red-700' :
-                        'bg-red-200 text-red-800'
-                      }`}>
-                        {worstBucket === 'Current' ? 'Current' :
-                         worstBucket === '1-30' ? 'Overdue' :
-                         worstBucket === '31-60' ? 'Delinquent' :
-                         worstBucket === '61-90' ? 'Severe' : 'Critical'}
+
+                    {/* Total Outstanding */}
+                    <td className="py-3 px-3 text-right font-bold text-[var(--color-text-strong)] text-sm">
+                      {fmt(c.outstanding)}
+                    </td>
+
+                    {/* Current */}
+                    <td className="py-3 px-3 text-right font-medium text-emerald-600 dark:text-emerald-400">
+                      {c.buckets.Current > 0 ? fmt(c.buckets.Current) : '—'}
+                    </td>
+
+                    {/* 1-30 */}
+                    <td className="py-3 px-3 text-right font-medium text-amber-600 dark:text-amber-400">
+                      {c.buckets['1-30'] > 0 ? fmt(c.buckets['1-30']) : '—'}
+                    </td>
+
+                    {/* 31-60 */}
+                    <td className="py-3 px-3 text-right font-medium text-orange-600 dark:text-orange-400">
+                      {c.buckets['31-60'] > 0 ? fmt(c.buckets['31-60']) : '—'}
+                    </td>
+
+                    {/* 61-90 */}
+                    <td className="py-3 px-3 text-right font-medium text-rose-600 dark:text-rose-400">
+                      {c.buckets['61-90'] > 0 ? fmt(c.buckets['61-90']) : '—'}
+                    </td>
+
+                    {/* 90+ */}
+                    <td className="py-3 px-3 text-right font-bold text-rose-700 dark:text-rose-300">
+                      {c.buckets['90+'] > 0 ? fmt(c.buckets['90+']) : '—'}
+                    </td>
+
+                    {/* Risk Badge */}
+                    <td className="py-3 px-3 text-center">
+                      <span
+                        className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
+                          c.worstBucket === 'Current'
+                            ? 'bg-emerald-50 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800'
+                            : c.worstBucket === '1-30'
+                            ? 'bg-amber-50 dark:bg-amber-900/30 text-amber-700 dark:text-amber-300 border border-amber-200 dark:border-amber-800'
+                            : c.worstBucket === '31-60'
+                            ? 'bg-orange-50 dark:bg-orange-900/30 text-orange-700 dark:text-orange-300 border border-orange-200 dark:border-orange-800'
+                            : 'bg-rose-100 dark:bg-rose-900/40 text-rose-800 dark:text-rose-200 border border-rose-300 dark:border-rose-700'
+                        }`}
+                      >
+                        {c.worstBucket === 'Current'
+                          ? 'Current'
+                          : c.worstBucket === '1-30'
+                          ? 'Overdue'
+                          : c.worstBucket === '31-60'
+                          ? 'Delinquent'
+                          : c.worstBucket === '61-90'
+                          ? 'Severe'
+                          : 'Critical'}
                       </span>
                     </td>
-                    <td className="py-2.5 px-4 text-right">
-                      <div className="flex items-center justify-end gap-1" onClick={e => e.stopPropagation()}>
-                        <button
-                          onClick={() => downloadCustomerExcel(c)}
-                          className="h-6 px-2 text-[10px] font-semibold text-emerald-700 bg-emerald-50 hover:bg-emerald-100 rounded border border-emerald-200 flex items-center gap-1 transition-colors"
-                          title="Download Excel"
-                        >
-                          <FileSpreadsheet className="w-3 h-3" /> XLS
-                        </button>
+
+                    {/* Individual Download Buttons */}
+                    <td className="py-3 px-3.5 text-right" onClick={(e) => e.stopPropagation()}>
+                      <div className="flex items-center justify-end gap-1.5">
                         <button
                           onClick={() => downloadCustomerPDF(c)}
-                          className="h-6 px-2 text-[10px] font-semibold text-blue-700 bg-blue-50 hover:bg-blue-100 rounded border border-blue-200 flex items-center gap-1 transition-colors"
-                          title="Download PDF"
+                          className="h-7.5 px-2.5 bg-blue-50 dark:bg-blue-900/30 hover:bg-blue-100 dark:hover:bg-blue-900/50 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-800 rounded-lg text-[11px] font-semibold flex items-center gap-1 transition-all shadow-2xs"
+                          title="Download Aging PDF"
                         >
-                          <FileText className="w-3 h-3" /> PDF
+                          <Download className="w-3 h-3" /> PDF
+                        </button>
+                        <button
+                          onClick={() => downloadCustomerExcel(c)}
+                          className="h-7.5 px-2 bg-emerald-50 dark:bg-emerald-900/30 hover:bg-emerald-100 dark:hover:bg-emerald-900/50 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800 rounded-lg text-[11px] font-semibold flex items-center gap-1 transition-all shadow-2xs"
+                          title="Download Aging Excel"
+                        >
+                          <FileSpreadsheet className="w-3 h-3" />
+                        </button>
+                        <button
+                          onClick={() => setSelectedCustomerId(c.customerId)}
+                          className="h-7.5 px-2.5 bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-lg text-[11px] font-semibold flex items-center gap-1 transition-colors"
+                          title="Open details"
+                        >
+                          View <ChevronRight className="w-3 h-3" />
                         </button>
                       </div>
                     </td>
                   </tr>
-                );
-              })}
+                ))
+              )}
             </tbody>
           </table>
         </div>

@@ -293,13 +293,13 @@ export const ProcurementWorkspace: React.FC<{ activeEntityId: string; entities?:
   };
 
   const tabsList: { id: Tab; label: string; icon: string }[] = [
-    { id: 'pr', label: 'PR', icon: '📋' },
-    { id: 'rfq', label: 'RFQs', icon: '📩' },
-    { id: 'compare', label: 'Compare', icon: '⚖️' },
-    { id: 'po', label: 'POs', icon: '📜' },
+    { id: 'pr', label: 'Purchase Requests', icon: '📋' },
+    { id: 'rfq', label: 'RFQ', icon: '📩' },
+    { id: 'compare', label: 'Quote Comparison', icon: '⚖️' },
+    { id: 'po', label: 'Purchase Orders', icon: '📜' },
     { id: 'grn', label: 'GRN', icon: '📦' },
-    { id: 'bills', label: 'Bills', icon: '💳' },
-    { id: 'matching', label: '3-Way', icon: '🔍' },
+    { id: 'bills', label: 'Vendor Bills', icon: '💳' },
+    { id: 'matching', label: '3-Way Match', icon: '🔍' },
     { id: 'transfers', label: 'Transfers', icon: '🔄' },
   ];
 
@@ -348,17 +348,17 @@ export const ProcurementWorkspace: React.FC<{ activeEntityId: string; entities?:
       </div>
 
       {/* Tabs Bar */}
-      <div className="flex items-center border border-gray-200 gap-0 bg-gray-50/80 p-1 rounded-xl">
+      <div className="flex items-center border border-gray-200 gap-0 bg-gray-50/80 p-1 rounded-xl flex-nowrap w-full">
         {tabsList.map((t, i) => (
           <React.Fragment key={t.id}>
             <button
               onClick={() => setActiveTab(t.id)}
-              className={`flex items-center gap-1 px-2 py-1 rounded-lg font-semibold text-[10px] whitespace-nowrap transition-all ${activeTab === t.id ? 'bg-white text-blue-700 shadow-xs border border-gray-200/60 font-bold' : 'text-gray-600 hover:text-gray-900 hover:bg-gray-100/60'}`}
+              className={`flex items-center gap-1 px-1.5 py-1 rounded-lg font-semibold text-[9.5px] whitespace-nowrap transition-all flex-1 justify-center ${activeTab === t.id ? 'bg-white text-blue-700 shadow-xs border border-gray-200/60 font-bold' : 'text-gray-600 hover:text-gray-900 hover:bg-gray-100/60'}`}
             >
-              <span className="text-[10px]">{t.icon}</span> {t.label}
+              <span>{t.icon}</span> {t.label}
             </button>
             {i < tabsList.length - 1 && (
-              <span className="text-gray-400 text-[9px] px-0.5 select-none">→</span>
+              <span className="text-gray-400 text-[9px] px-0.5 select-none shrink-0">→</span>
             )}
           </React.Fragment>
         ))}

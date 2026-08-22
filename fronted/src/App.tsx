@@ -300,7 +300,7 @@ export default function App() {
     'Sales & Customers.Summary': 'sales-summary',
     'Sales & Customers.Customers': 'customers',
     'Sales & Customers.Products & Services': 'products',
-    'Sales & Customers.Sales Workspace': 'sales-workspace',
+    'Sales & Customers.Sales Invoices': 'sales-workspace',
     'Sales & Customers.Estimates & Quotes': 'estimates-quotes',
     'Sales & Customers.Sales Orders': 'sales-orders',
     'Sales & Customers.Credit Notes': 'credit-notes',

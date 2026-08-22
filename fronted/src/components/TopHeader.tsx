@@ -138,7 +138,7 @@ export default function TopHeader(props: Props) {
 
   const quickActions: { icon: ReactNode; label: string; action: () => void }[] = [
     { icon: <ClipboardList size={14} />, label: 'New Journal Entry', action: () => { if (page === 'Accounting.Journal Entries') { document.getElementById('journal-form')?.scrollIntoView({ behavior: 'smooth' }); } else { setPage('Accounting.Journal Entries'); } } },
-    { icon: <Receipt size={14} />, label: 'New Invoice', action: () => setPage('Sales & Customers.Sales Workspace') },
+    { icon: <Receipt size={14} />, label: 'New Invoice', action: () => setPage('Sales & Customers.Sales Invoices') },
     { icon: <FileText size={14} />, label: 'New Vendor Bill', action: () => setPage('Procurement.Bills') },
     { icon: <Users size={14} />, label: 'New Customer', action: () => setPage('Sales & Customers.Customers') },
     { icon: <Building2 size={14} />, label: 'New Vendor', action: () => setPage('Procurement.Vendors') },

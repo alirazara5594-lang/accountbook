@@ -278,7 +278,7 @@ export function SalesSummaryView({ activeEntityId, setPage }: { activeEntityId?:
           subtitle="Latest billing transactions"
           icon={Receipt}
           iconColor="#3b82f6"
-          actions={<button onClick={() => setPage?.('Sales & Customers.Sales Workspace')} className="hover:text-primary transition-colors text-[9px] font-extrabold uppercase">View All →</button>}
+          actions={<button onClick={() => setPage?.('Sales & Customers.Sales Invoices')} className="hover:text-primary transition-colors text-[9px] font-extrabold uppercase">View All →</button>}
           className="col-span-12 lg:col-span-7"
         >
           <div className="overflow-x-auto">

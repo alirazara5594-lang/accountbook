@@ -20,7 +20,7 @@ export function DashboardHub({ setPage, accounts = [], currentUser }: DashboardH
   const netWorth = totalAssets - totalLiabilities;
 
   const quickShortcuts = [
-    { label: 'Sales Invoice', page: 'Sales & Customers.Sales Workspace', icon: Receipt, color: '#3b82f6' },
+    { label: 'Sales Invoice', page: 'Sales & Customers.Sales Invoices', icon: Receipt, color: '#3b82f6' },
     { label: 'Vendor Bill', page: 'Procurement.Bills', icon: CreditCard, color: '#ef4444' },
     { label: 'Journal Entry', page: 'Accounting.Journal Entries', icon: BookOpen, color: '#8b5cf6' },
     { label: 'Bank Transfer', page: 'Banking & Payments.Fund Transfers', icon: Landmark, color: '#10b981' },

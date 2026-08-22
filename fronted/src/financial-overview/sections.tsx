@@ -955,7 +955,7 @@ export function CompanySnapshot({ data }: { data: FinancialData }) {
 export function QuickAdd({ setPage }: { setPage: (p: string) => void }) {
   const [open, setOpen] = useState(false);
   const actions = [
-    { label: 'Customer Invoice', page: 'Sales & Customers.Sales Workspace' },
+    { label: 'Customer Invoice', page: 'Sales & Customers.Sales Invoices' },
     { label: 'Customer Receipt', page: 'Sales & Customers.Customer Payments' },
     { label: 'Vendor Bill', page: 'Procurement.Bills' },
     { label: 'Vendor Payment', page: 'Procurement.Vendor Payments' },
