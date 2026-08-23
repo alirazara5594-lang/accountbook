@@ -1,60 +1,126 @@
 import React, { useEffect, useState, useMemo } from 'react';
 import { assetsInventoryApi } from './api/modules/assetsInventory.api';
 import type { FixedAsset, DepreciationRunResult } from './api/modules/assetsInventory.api';
+import { procurementApi } from './api/modules/procurement.api';
 import { coaApi } from './api/modules/coa.api';
 import type { Account } from './api/modules/coa.api';
 import {
-  Building, Plus, Search, X, CheckCircle2, ShieldCheck,
-  Download, FileSpreadsheet, RefreshCw, Zap, Trash2,
-  FileText, TrendingDown, DollarSign, Tag
+  Building, Plus, Search, CheckCircle2,
+  RefreshCw, Zap, Trash2,
+  FileText, TrendingDown, DollarSign,
+  Wrench, Activity, ShoppingCart, Truck, Factory,
+  Check, ArrowRight, Gauge, Cpu,
+  QrCode, Layers, Pencil
 } from 'lucide-react';
 import { money } from './lib/currency';
 import { downloadExcel, downloadCSV } from './lib/exportUtils';
+import ExportDropdown from './components/ExportDropdown';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 
 const ASSET_CATEGORIES = [
   'Plant & Machinery',
+  'Factory Equipment & Tools',
+  'Heavy Vehicles & Forklifts',
   'Office Equipment',
   'Computer Hardware & IT',
   'Furniture & Fixtures',
-  'Motor Vehicles',
   'Land & Buildings',
   'Leasehold Improvements',
+];
+
+const FACTORY_WORK_CENTERS = [
+  'Factory Floor - CNC Machining Center',
+  'Assembly & Packaging Line 1',
+  'Assembly & Packaging Line 2',
+  'Boiler & Utilities Room',
+  'Raw Material Staging & Cutting',
+  'Quality Control & Testing Lab',
+  'Central Warehouse & Staging',
+  'Corporate Head Office',
 ];
 
 export const FixedAssets: React.FC<{ activeEntityId: string }> = ({ activeEntityId }) => {
   const [assets, setAssets] = useState<FixedAsset[]>([]);
   const [accounts, setAccounts] = useState<Account[]>([]);
+  const [procurementBills, setProcurementBills] = useState<any[]>([]);
+  const [procurementOrders, setProcurementOrders] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
   const [actingId, setActingId] = useState<string | null>(null);
   const [toastMessage, setToastMessage] = useState('');
   const [error, setError] = useState('');
   const [query, setQuery] = useState('');
-  const [statusFilter, setStatusFilter] = useState<'All' | 'Active' | 'FullyDepreciated' | 'Disposed'>('All');
+  const [categoryFilter, setCategoryFilter] = useState('All');
+  const [statusFilter, setStatusFilter] = useState<'All' | 'Active' | 'UnderMaintenance' | 'FullyDepreciated' | 'Disposed'>('All');
+  const [allocationFilter, setAllocationFilter] = useState<'All' | 'Admin' | 'FactoryMOH'>('All');
+
+  // Active Tab: register, factory, procurement, maintenance, depreciation
+  const [activeTab, setActiveTab] = useState<'register' | 'factory' | 'procurement' | 'maintenance' | 'depreciation'>('register');
 
   // Modals
   const [isCreateOpen, setIsCreateOpen] = useState(false);
+  const [editingAsset, setEditingAsset] = useState<FixedAsset | null>(null);
   const [deprModal, setDeprModal] = useState<FixedAsset | null>(null);
   const [disposeModal, setDisposeModal] = useState<FixedAsset | null>(null);
   const [detailModal, setDetailModal] = useState<FixedAsset | null>(null);
+  const [maintenanceModal, setMaintenanceModal] = useState<FixedAsset | null>(null);
+  const [transferModal, setTransferModal] = useState<FixedAsset | null>(null);
   const [batchModalOpen, setBatchModalOpen] = useState(false);
   const [batchResults, setBatchResults] = useState<DepreciationRunResult[] | null>(null);
 
   // Forms
-  const [createForm, setCreateForm] = useState({
-    assetTag: `AST-${new Date().getFullYear()}-${String(Math.floor(1000 + Math.random() * 9000))}`,
+  const [assetForm, setAssetForm] = useState({
+    assetTag: '',
     name: '',
     description: '',
     category: ASSET_CATEGORIES[0],
+    serialNumber: '',
+    modelNumber: '',
+    manufacturer: '',
     purchaseDate: new Date().toISOString().slice(0, 10),
     purchasePrice: '',
     salvageValue: '0',
     usefulLifeYears: '5',
-    depreciationMethod: 0, // 0 = StraightLine, 1 = DecliningBalance
+    depreciationMethod: 'StraightLine',
+    costAllocation: 'AdministrativeExpense',
+    status: 'Active',
+    // Procurement
+    vendorName: '',
+    purchaseOrderNumber: '',
+    vendorBillNumber: '',
+    grnNumber: '',
+    warrantyExpiryDate: '',
+    // Factory
+    location: 'Main Plant Floor',
+    department: 'Manufacturing',
+    workCenterName: FACTORY_WORK_CENTERS[0],
+    assignedCustodianName: '',
+    machineHealth: 'Operating',
+    currentMeterHours: '0',
+    totalCapacityUnits: '0',
+    // Accounts
     assetAccountId: '',
     accumulatedDepreciationAccountId: '',
     depreciationExpenseAccountId: '',
+  });
+
+  const [maintForm, setMaintForm] = useState({
+    date: new Date().toISOString().slice(0, 10),
+    maintenanceType: 'Preventive',
+    description: '',
+    cost: '0',
+    technicianName: '',
+    downTimeHours: '0',
+    partsReplaced: '',
+    nextServiceDueDate: '',
+  });
+
+  const [transferForm, setTransferForm] = useState({
+    transferDate: new Date().toISOString().slice(0, 10),
+    toLocation: '',
+    toWorkCenter: FACTORY_WORK_CENTERS[0],
+    authorizedBy: '',
+    remarks: '',
   });
 
   const [deprForm, setDeprForm] = useState({
@@ -93,9 +159,23 @@ export const FixedAssets: React.FC<{ activeEntityId: string }> = ({ activeEntity
     }
   };
 
+  const fetchProcurementData = async () => {
+    try {
+      const [bills, orders] = await Promise.all([
+        procurementApi.getBills(activeEntityId).catch(() => []),
+        procurementApi.getOrders(activeEntityId).catch(() => []),
+      ]);
+      setProcurementBills(bills || []);
+      setProcurementOrders(orders || []);
+    } catch {
+      // ignore
+    }
+  };
+
   useEffect(() => {
     fetchAssets();
     fetchAccounts();
+    fetchProcurementData();
   }, [activeEntityId]);
 
   const notify = (msg: string) => {
@@ -103,818 +183,1339 @@ export const FixedAssets: React.FC<{ activeEntityId: string }> = ({ activeEntity
     setTimeout(() => setToastMessage(''), 4000);
   };
 
-  // Helper check
-  const isActive = (a: FixedAsset) => String(a.status) === '0' || a.status === 'Active';
-  const isFullyDepreciated = (a: FixedAsset) => a.status === 'Depreciated' || a.status === 'FullyDepreciated' || String(a.status) === '2';
-  const isDisposed = (a: FixedAsset) => String(a.status) === '1' || a.status === 'Disposed';
+  // Helper filters
+  const filteredAssets = useMemo(() => {
+    return assets.filter((a) => {
+      const matchQuery =
+        !query ||
+        a.name?.toLowerCase().includes(query.toLowerCase()) ||
+        a.assetTag?.toLowerCase().includes(query.toLowerCase()) ||
+        a.serialNumber?.toLowerCase().includes(query.toLowerCase()) ||
+        a.workCenterName?.toLowerCase().includes(query.toLowerCase()) ||
+        a.vendorName?.toLowerCase().includes(query.toLowerCase());
 
-  // ─── Create Asset ────────────────────────────────────────────────────────
-  const openCreateModal = () => {
+      const matchCat = categoryFilter === 'All' || a.category === categoryFilter;
+      const matchStatus =
+        statusFilter === 'All' ||
+        (statusFilter === 'Active' && (a.status === 'Active' || String(a.status) === '0')) ||
+        (statusFilter === 'UnderMaintenance' && (a.status === 'UnderMaintenance' || a.machineHealth === 'UnderMaintenance' || a.machineHealth === 'Breakdown')) ||
+        (statusFilter === 'FullyDepreciated' && (a.status === 'Depreciated' || a.status === 'FullyDepreciated' || String(a.status) === '2')) ||
+        (statusFilter === 'Disposed' && (a.status === 'Disposed' || String(a.status) === '1'));
+
+      const matchAlloc =
+        allocationFilter === 'All' ||
+        (allocationFilter === 'FactoryMOH' && a.costAllocation === 'ManufacturingOverhead') ||
+        (allocationFilter === 'Admin' && a.costAllocation !== 'ManufacturingOverhead');
+
+      return matchQuery && matchCat && matchStatus && matchAlloc;
+    });
+  }, [assets, query, categoryFilter, statusFilter, allocationFilter]);
+
+  // KPI calculations
+  const totalCost = useMemo(() => assets.reduce((sum, a) => sum + (Number(a.purchasePrice || a.cost) || 0), 0), [assets]);
+  const totalAccumDepr = useMemo(() => assets.reduce((sum, a) => sum + (Number(a.accumulatedDepreciation) || 0), 0), [assets]);
+  const totalNBV = useMemo(() => Math.max(0, totalCost - totalAccumDepr), [totalCost, totalAccumDepr]);
+  const plantMachineryCount = useMemo(() => assets.filter(a => a.category?.includes('Plant') || a.category?.includes('Machinery') || a.costAllocation === 'ManufacturingOverhead').length, [assets]);
+  const underMaintenanceCount = useMemo(() => assets.filter(a => a.machineHealth === 'UnderMaintenance' || a.machineHealth === 'Breakdown' || a.status === 'UnderMaintenance').length, [assets]);
+
+  // Procurement items destined for Fixed Assets
+  const uncapitalizedProcurementLines = useMemo(() => {
+    const lines: Array<{
+      source: string;
+      docNumber: string;
+      date: string;
+      vendorName: string;
+      description: string;
+      amount: number;
+      poId?: string;
+      billId?: string;
+    }> = [];
+
+    procurementBills.forEach((b: any) => {
+      b.lines?.forEach((l: any) => {
+        if (l.destination === 'FixedAsset' || l.description?.toLowerCase().includes('machine') || l.description?.toLowerCase().includes('equipment')) {
+          lines.push({
+            source: 'Vendor Bill',
+            docNumber: b.billNumber,
+            date: b.date,
+            vendorName: b.vendorName || 'Vendor',
+            description: l.description,
+            amount: Number(l.totalAmount || (l.quantity * l.unitPrice) || 0),
+            billId: b.id,
+          });
+        }
+      });
+    });
+
+    procurementOrders.forEach((p: any) => {
+      p.lines?.forEach((l: any) => {
+        if (l.destination === 'FixedAsset') {
+          lines.push({
+            source: 'Purchase Order',
+            docNumber: p.poNumber,
+            date: p.date,
+            vendorName: p.vendorName || 'Vendor',
+            description: l.description,
+            amount: Number(l.totalAmount || (l.quantity * l.unitPrice) || 0),
+            poId: p.id,
+          });
+        }
+      });
+    });
+
+    return lines;
+  }, [procurementBills, procurementOrders]);
+
+  // ─── Modal Openers ─────────────────────────────────────────────────────────
+  const openCreateModal = (prefill?: Partial<typeof assetForm>) => {
     setError('');
-    setCreateForm({
+    setEditingAsset(null);
+    setAssetForm({
       assetTag: `AST-${new Date().getFullYear()}-${String(Math.floor(1000 + Math.random() * 9000))}`,
-      name: '',
-      description: '',
-      category: ASSET_CATEGORIES[0],
-      purchaseDate: new Date().toISOString().slice(0, 10),
-      purchasePrice: '',
-      salvageValue: '0',
-      usefulLifeYears: '5',
-      depreciationMethod: 0,
-      assetAccountId: accounts.find((a) => a.type === 'FixedAsset' || a.type === 'Asset')?.id || '',
-      accumulatedDepreciationAccountId: accounts.find((a) => a.type === 'ContraAsset' || a.name?.toLowerCase().includes('accumulated'))?.id || '',
-      depreciationExpenseAccountId: accounts.find((a) => a.type === 'Expense' && a.name?.toLowerCase().includes('depreciation'))?.id || '',
+      name: prefill?.name || '',
+      description: prefill?.description || '',
+      category: prefill?.category || ASSET_CATEGORIES[0],
+      serialNumber: prefill?.serialNumber || '',
+      modelNumber: prefill?.modelNumber || '',
+      manufacturer: prefill?.manufacturer || '',
+      purchaseDate: prefill?.purchaseDate || new Date().toISOString().slice(0, 10),
+      purchasePrice: prefill?.purchasePrice || '',
+      salvageValue: prefill?.salvageValue || '0',
+      usefulLifeYears: prefill?.usefulLifeYears || '5',
+      depreciationMethod: 'StraightLine',
+      costAllocation: prefill?.category?.includes('Plant') || prefill?.category?.includes('Machinery') ? 'ManufacturingOverhead' : 'AdministrativeExpense',
+      status: 'Active',
+      vendorName: prefill?.vendorName || '',
+      purchaseOrderNumber: prefill?.purchaseOrderNumber || '',
+      vendorBillNumber: prefill?.vendorBillNumber || '',
+      grnNumber: prefill?.grnNumber || '',
+      warrantyExpiryDate: prefill?.warrantyExpiryDate || '',
+      location: 'Main Factory Plant Floor',
+      department: 'Manufacturing',
+      workCenterName: FACTORY_WORK_CENTERS[0],
+      assignedCustodianName: '',
+      machineHealth: 'Operating',
+      currentMeterHours: '0',
+      totalCapacityUnits: '10000',
+      assetAccountId: accounts.find(a => a.code === '15100' || a.name?.toLowerCase().includes('fixed assets'))?.id || '',
+      accumulatedDepreciationAccountId: accounts.find(a => a.code === '15200' || a.name?.toLowerCase().includes('accumulated'))?.id || '',
+      depreciationExpenseAccountId: accounts.find(a => a.code === '61300' || a.code === '61100')?.id || '',
     });
     setIsCreateOpen(true);
   };
 
-  const handleCreateAsset = async (e: React.FormEvent) => {
+  const openEditModal = (asset: FixedAsset) => {
+    setError('');
+    setEditingAsset(asset);
+    setAssetForm({
+      assetTag: asset.assetTag,
+      name: asset.name,
+      description: asset.description || '',
+      category: asset.category || ASSET_CATEGORIES[0],
+      serialNumber: asset.serialNumber || '',
+      modelNumber: asset.modelNumber || '',
+      manufacturer: asset.manufacturer || '',
+      purchaseDate: asset.purchaseDate,
+      purchasePrice: String(asset.purchasePrice || asset.cost || 0),
+      salvageValue: String(asset.salvageValue || 0),
+      usefulLifeYears: String(asset.usefulLifeYears || 5),
+      depreciationMethod: String(asset.depreciationMethod || 'StraightLine'),
+      costAllocation: String(asset.costAllocation || 'AdministrativeExpense'),
+      status: String(asset.status || 'Active'),
+      vendorName: asset.vendorName || '',
+      purchaseOrderNumber: asset.purchaseOrderNumber || '',
+      vendorBillNumber: asset.vendorBillNumber || '',
+      grnNumber: asset.grnNumber || '',
+      warrantyExpiryDate: asset.warrantyExpiryDate || '',
+      location: asset.location || 'Main Factory Plant Floor',
+      department: asset.department || 'Manufacturing',
+      workCenterName: asset.workCenterName || FACTORY_WORK_CENTERS[0],
+      assignedCustodianName: asset.assignedCustodianName || '',
+      machineHealth: String(asset.machineHealth || 'Operating'),
+      currentMeterHours: String(asset.currentMeterHours || 0),
+      totalCapacityUnits: String(asset.totalCapacityUnits || 0),
+      assetAccountId: asset.assetAccountId || '',
+      accumulatedDepreciationAccountId: asset.accumulatedDepreciationAccountId || '',
+      depreciationExpenseAccountId: asset.depreciationExpenseAccountId || '',
+    });
+    setIsCreateOpen(true);
+  };
+
+  const handleSaveAsset = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
-
-    const cost = parseFloat(createForm.purchasePrice);
-    if (!createForm.name.trim()) { setError('Asset name is required.'); return; }
+    const cost = parseFloat(assetForm.purchasePrice);
+    if (!assetForm.name.trim()) { setError('Asset name is required.'); return; }
     if (isNaN(cost) || cost <= 0) { setError('Valid purchase cost is required.'); return; }
 
     setLoading(true);
     try {
-      await assetsInventoryApi.createFixedAsset({
-        assetTag: createForm.assetTag,
-        name: createForm.name,
-        description: `${createForm.category} — ${createForm.description}`.trim(),
-        purchaseDate: createForm.purchaseDate,
+      const payload: any = {
+        assetTag: assetForm.assetTag,
+        name: assetForm.name,
+        description: assetForm.description,
+        category: assetForm.category,
+        serialNumber: assetForm.serialNumber,
+        modelNumber: assetForm.modelNumber,
+        manufacturer: assetForm.manufacturer,
+        purchaseDate: assetForm.purchaseDate,
         purchasePrice: cost,
-        salvageValue: parseFloat(createForm.salvageValue) || 0,
-        usefulLifeYears: parseInt(createForm.usefulLifeYears) || 3,
-        depreciationMethod: Number(createForm.depreciationMethod),
-        assetAccountId: createForm.assetAccountId || undefined,
-        accumulatedDepreciationAccountId: createForm.accumulatedDepreciationAccountId || undefined,
-        depreciationExpenseAccountId: createForm.depreciationExpenseAccountId || undefined,
+        salvageValue: parseFloat(assetForm.salvageValue) || 0,
+        usefulLifeYears: parseInt(assetForm.usefulLifeYears) || 5,
+        depreciationMethod: assetForm.depreciationMethod,
+        costAllocation: assetForm.costAllocation,
+        status: assetForm.status,
+        vendorName: assetForm.vendorName,
+        purchaseOrderNumber: assetForm.purchaseOrderNumber,
+        vendorBillNumber: assetForm.vendorBillNumber,
+        grnNumber: assetForm.grnNumber,
+        warrantyExpiryDate: assetForm.warrantyExpiryDate || undefined,
+        location: assetForm.location,
+        department: assetForm.department,
+        workCenterName: assetForm.workCenterName,
+        assignedCustodianName: assetForm.assignedCustodianName,
+        machineHealth: assetForm.machineHealth,
+        currentMeterHours: parseFloat(assetForm.currentMeterHours) || 0,
+        totalCapacityUnits: parseFloat(assetForm.totalCapacityUnits) || 0,
+        assetAccountId: assetForm.assetAccountId || undefined,
+        accumulatedDepreciationAccountId: assetForm.accumulatedDepreciationAccountId || undefined,
+        depreciationExpenseAccountId: assetForm.depreciationExpenseAccountId || undefined,
         companyId: activeEntityId || undefined,
-      });
+      };
 
-      notify('✓ Fixed asset successfully registered in the Asset Register.');
+      if (editingAsset) {
+        await assetsInventoryApi.updateFixedAsset(editingAsset.id, payload);
+        notify(`✓ Updated asset ${assetForm.assetTag} - ${assetForm.name}`);
+      } else {
+        await assetsInventoryApi.createFixedAsset(payload);
+        notify(`✓ Capitalized new fixed asset ${assetForm.assetTag}`);
+      }
+
       setIsCreateOpen(false);
-      await fetchAssets();
+      fetchAssets();
     } catch (err: any) {
-      setError(err?.data?.error || err?.data?.message || err?.message || 'Failed to register asset.');
+      setError(err?.message || 'Failed to save fixed asset.');
     } finally {
       setLoading(false);
     }
   };
 
-  // ─── Single Asset Depreciation ───────────────────────────────────────────
-  const openDeprModal = (a: FixedAsset) => {
-    setError('');
-    setDeprForm({
-      expenseAccId: a.depreciationExpenseAccountId || accounts.find((acc) => acc.type === 'Expense' && acc.name.toLowerCase().includes('depreciation'))?.id || '',
-      accumAccId: a.accumulatedDepreciationAccountId || accounts.find((acc) => acc.type === 'ContraAsset' || acc.name.toLowerCase().includes('accumulated'))?.id || '',
-    });
-    setDeprModal(a);
+  // ─── Machine Status Quick Toggle ───────────────────────────────────────────
+  const handleToggleMachineHealth = async (asset: FixedAsset, newHealth: string) => {
+    try {
+      await assetsInventoryApi.updateMachineStatus(asset.id, newHealth, asset.currentMeterHours || 0);
+      notify(`✓ Equipment ${asset.assetTag} status changed to ${newHealth}`);
+      fetchAssets();
+    } catch (err: any) {
+      setError(err?.message || 'Failed to update machine health status');
+    }
   };
 
-  const handleRunDepreciation = async (e: React.FormEvent) => {
+  // ─── Log Maintenance Record ───────────────────────────────────────────────
+  const handleSaveMaintenance = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!maintenanceModal) return;
+    try {
+      await assetsInventoryApi.logMaintenance(maintenanceModal.id, {
+        date: maintForm.date,
+        maintenanceType: maintForm.maintenanceType as any,
+        description: maintForm.description,
+        cost: parseFloat(maintForm.cost) || 0,
+        technicianName: maintForm.technicianName,
+        downTimeHours: parseFloat(maintForm.downTimeHours) || 0,
+        partsReplaced: maintForm.partsReplaced,
+        nextServiceDueDate: maintForm.nextServiceDueDate || undefined,
+      });
+      notify(`✓ Maintenance service logged for ${maintenanceModal.assetTag}`);
+      setMaintenanceModal(null);
+      fetchAssets();
+    } catch (err: any) {
+      setError(err?.message || 'Failed to log maintenance record');
+    }
+  };
+
+  // ─── Transfer Asset ────────────────────────────────────────────────────────
+  const handleSaveTransfer = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!transferModal) return;
+    try {
+      await assetsInventoryApi.transferAsset(transferModal.id, {
+        transferDate: transferForm.transferDate,
+        toLocation: transferForm.toLocation,
+        toWorkCenter: transferForm.toWorkCenter,
+        authorizedBy: transferForm.authorizedBy,
+        remarks: transferForm.remarks,
+      });
+      notify(`✓ Asset ${transferModal.assetTag} relocated to ${transferForm.toLocation}`);
+      setTransferModal(null);
+      fetchAssets();
+    } catch (err: any) {
+      setError(err?.message || 'Failed to transfer asset');
+    }
+  };
+
+  // ─── Run Depreciation Single & Batch ──────────────────────────────────────
+  const handleRunSingleDepreciation = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!deprModal) return;
     setActingId(deprModal.id);
-    setError('');
     try {
       await assetsInventoryApi.runDepreciation(deprModal.id, deprForm.expenseAccId, deprForm.accumAccId);
-      notify(`✓ Monthly depreciation for ${deprModal.name} posted to General Ledger.`);
+      notify(`✓ Monthly depreciation posted to General Ledger for ${deprModal.name}`);
       setDeprModal(null);
-      await fetchAssets();
+      fetchAssets();
     } catch (err: any) {
-      setError(err?.data?.error || err?.data?.message || err?.message || 'Failed to post depreciation.');
+      setError(err?.message || 'Failed to post depreciation');
     } finally {
       setActingId(null);
     }
   };
 
-  // ─── Month-End Batch Depreciation ─────────────────────────────────────────
-  const handleBatchDepreciation = async () => {
+  const handleRunBatchDepreciation = async () => {
     setLoading(true);
     setError('');
     try {
       const res = await assetsInventoryApi.runBatchDepreciation();
       setBatchResults(res.results || []);
       setBatchModalOpen(true);
-      notify(res.message || '✓ Batch depreciation posted to General Ledger.');
-      await fetchAssets();
+      notify(res.message || 'Batch depreciation run posted successfully');
+      fetchAssets();
     } catch (err: any) {
-      setError(err?.data?.error || err?.data?.message || err?.message || 'Failed to run batch depreciation.');
+      setError(err?.message || 'Failed to run batch depreciation');
     } finally {
       setLoading(false);
     }
   };
 
-  // ─── Asset Disposal (IAS 16 Derecognition) ─────────────────────────────────
-  const openDisposeModal = (a: FixedAsset) => {
-    setError('');
-    setDisposeForm({
-      disposalDate: new Date().toISOString().slice(0, 10),
-      proceeds: '0',
-      cashAccountId: accounts.find((acc) => acc.type === 'Asset' && (acc.name.toLowerCase().includes('bank') || acc.name.toLowerCase().includes('cash')))?.id || '',
-      assetAccountId: a.assetAccountId || accounts.find((acc) => acc.type === 'FixedAsset' || acc.type === 'Asset')?.id || '',
-      accumDeprAccountId: a.accumulatedDepreciationAccountId || accounts.find((acc) => acc.type === 'ContraAsset' || acc.name.toLowerCase().includes('accumulated'))?.id || '',
-      gainLossAccountId: accounts.find((acc) => acc.name.toLowerCase().includes('gain') || acc.name.toLowerCase().includes('loss') || acc.type === 'Expense')?.id || '',
-    });
-    setDisposeModal(a);
-  };
-
+  // ─── Disposal ─────────────────────────────────────────────────────────────
   const handleDisposeAsset = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!disposeModal) return;
-    const proceeds = parseFloat(disposeForm.proceeds);
-    if (isNaN(proceeds) || proceeds < 0) { setError('Proceeds cannot be negative.'); return; }
-
     setActingId(disposeModal.id);
-    setError('');
     try {
       await assetsInventoryApi.disposeAsset(disposeModal.id, {
         disposalDate: disposeForm.disposalDate,
-        proceeds,
+        proceeds: parseFloat(disposeForm.proceeds) || 0,
+        cashAccountId: disposeForm.cashAccountId || undefined,
         assetAccountId: disposeForm.assetAccountId || undefined,
         accumDeprAccountId: disposeForm.accumDeprAccountId || undefined,
         gainLossAccountId: disposeForm.gainLossAccountId || undefined,
-        cashAccountId: disposeForm.cashAccountId || undefined,
       });
-
-      notify(`✓ Asset ${disposeModal.name} disposed and gain/loss journal posted to General Ledger.`);
+      notify(`✓ Asset ${disposeModal.name} disposed and gain/loss journal posted.`);
       setDisposeModal(null);
-      await fetchAssets();
+      fetchAssets();
     } catch (err: any) {
-      setError(err?.data?.error || err?.data?.message || err?.message || 'Failed to dispose asset.');
+      setError(err?.message || 'Failed to dispose asset.');
     } finally {
       setActingId(null);
     }
   };
 
-  // ─── 4 Top Financial KPIs ────────────────────────────────────────────────
-  const activeAssets = assets.filter(isActive);
-  const totalCost = activeAssets.reduce((sum, a) => sum + (a.purchasePrice || (a as any).cost || 0), 0);
-  const totalAccumDepr = assets.reduce((sum, a) => sum + (a.accumulatedDepreciation || 0), 0);
-  const totalNBV = activeAssets.reduce((sum, a) => {
-    const cost = a.purchasePrice || (a as any).cost || 0;
-    const depr = a.accumulatedDepreciation || 0;
-    return sum + (cost - depr);
-  }, 0);
-
-  const filteredAssets = useMemo(() => {
-    return assets.filter((a) => {
-      if (statusFilter === 'Active' && !isActive(a)) return false;
-      if (statusFilter === 'FullyDepreciated' && !isFullyDepreciated(a)) return false;
-      if (statusFilter === 'Disposed' && !isDisposed(a)) return false;
-
-      if (query.trim()) {
-        const q = query.toLowerCase();
-        const matchesTag = (a.assetTag || (a as any).assetCode || '').toLowerCase().includes(q);
-        const matchesName = (a.name || '').toLowerCase().includes(q);
-        const matchesDesc = (a.description || '').toLowerCase().includes(q);
-        if (!matchesTag && !matchesName && !matchesDesc) return false;
-      }
-      return true;
-    });
-  }, [assets, statusFilter, query]);
-
-  // ─── Branded Official Asset PDF Certificate ──────────────────────────────
-  const generateAssetPDF = (asset: FixedAsset) => {
-    const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
-    const pageWidth = doc.internal.pageSize.getWidth();
-    const margin = 14;
-    const contentWidth = pageWidth - margin * 2;
-
-    const primaryColor: [number, number, number] = [20, 62, 43]; // Institutional Deep Forest
-    const grayColor: [number, number, number] = [100, 116, 139];
-
-    // Banner Header
-    doc.setFillColor(...primaryColor);
-    doc.rect(0, 0, pageWidth, 28, 'F');
-
-    doc.setTextColor(255, 255, 255);
+  // ─── Exports ──────────────────────────────────────────────────────────────
+  const handleExportPDF = () => {
+    const doc = new jsPDF({ orientation: 'landscape' });
     doc.setFontSize(16);
-    doc.setFont('helvetica', 'bold');
-    doc.text('FIXED ASSET CERTIFICATE & REGISTER', margin, 14);
+    doc.text('Fixed Assets & Equipment Register (IAS 16)', 14, 15);
+    doc.setFontSize(9);
+    doc.text(`Total Assets: ${assets.length} | Capitalized: ${money(totalCost)} | NBV: ${money(totalNBV)} | As of ${new Date().toLocaleDateString()}`, 14, 22);
 
-    doc.setFontSize(8.5);
-    doc.setFont('helvetica', 'normal');
-    doc.text(`Asset Tag: ${asset.assetTag || asset.id.slice(0, 8)}`, margin, 21);
-    doc.text(`Standard: IAS 16 (PPE)`, pageWidth - margin, 14, { align: 'right' });
-    doc.text(`Date Generated: ${new Date().toISOString().slice(0, 10)}`, pageWidth - margin, 21, { align: 'right' });
-
-    let yPos = 36;
-
-    // Asset Info Card
-    doc.setFillColor(248, 250, 252);
-    doc.setDrawColor(226, 232, 240);
-    doc.roundedRect(margin, yPos, contentWidth, 34, 2, 2, 'FD');
-
-    doc.setFontSize(11);
-    doc.setFont('helvetica', 'bold');
-    doc.setTextColor(30, 41, 59);
-    doc.text(asset.name, margin + 4, yPos + 7);
-
-    doc.setFontSize(8);
-    doc.setFont('helvetica', 'normal');
-    doc.setTextColor(71, 85, 105);
-    doc.text(`Description / Category: ${asset.description || 'Capital Asset'}`, margin + 4, yPos + 13);
-    doc.text(`Acquisition Date: ${(asset.purchaseDate || (asset as any).acquisitionDate || '').slice(0, 10)}`, margin + 4, yPos + 19);
-    doc.text(`Useful Life: ${asset.usefulLifeYears || 5} Years | Depreciation Method: Straight-Line (IAS 16)`, margin + 4, yPos + 25);
-    doc.text(`Status: ${isActive(asset) ? 'ACTIVE' : isFullyDepreciated(asset) ? 'FULLY DEPRECIATED' : 'DISPOSED'}`, margin + 4, yPos + 31);
-
-    yPos += 42;
-
-    // Financial Values Breakdown Table
-    const cost = asset.purchasePrice || (asset as any).cost || 0;
-    const depr = asset.accumulatedDepreciation || 0;
-    const nbv = asset.netBookValue ?? (cost - depr);
-    const monthlyDepr = ((cost - (asset.salvageValue || 0)) / (asset.usefulLifeYears || 5)) / 12;
-
-    const tableBody = [
-      ['Gross Acquisition Cost (Historical)', money(cost)],
-      ['Estimated Residual / Salvage Value', money(asset.salvageValue || 0)],
-      ['Depreciable Base Amount', money(cost - (asset.salvageValue || 0))],
-      ['Monthly Depreciation Expense (GL Dr/Cr)', money(monthlyDepr)],
-      ['Cumulative Accumulated Depreciation to Date', `- ${money(depr)}`],
-      ['CURRENT NET BOOK VALUE (CARRYING AMOUNT)', money(nbv)],
-    ];
+    const tableData = filteredAssets.map(a => [
+      a.assetTag,
+      a.name,
+      a.category || 'Plant',
+      a.workCenterName || a.location || '-',
+      a.purchaseDate,
+      money(a.purchasePrice || a.cost || 0),
+      money(a.accumulatedDepreciation || 0),
+      money(a.netBookValue || a.bookValue || ((a.purchasePrice || 0) - (a.accumulatedDepreciation || 0))),
+      a.costAllocation === 'ManufacturingOverhead' ? 'Factory MOH' : 'Admin OPEX',
+      String(a.machineHealth || a.status || 'Active'),
+    ]);
 
     autoTable(doc, {
-      startY: yPos,
-      head: [['CAPITAL ASSET FINANCIAL PARAMETER', 'AMOUNT (PKR)']],
-      body: tableBody,
+      startY: 26,
+      head: [['Tag', 'Asset Name', 'Category', 'Work Center / Location', 'Acquired', 'Cost', 'Accum. Depr', 'Net Book Value', 'Allocation', 'Health']],
+      body: tableData,
       theme: 'striped',
-      styles: { fontSize: 8.5, cellPadding: 3.5, textColor: [30, 41, 59] },
-      headStyles: { fillColor: [15, 23, 42], textColor: [255, 255, 255], fontStyle: 'bold' },
-      columnStyles: {
-        0: { cellWidth: 110, fontStyle: 'bold' },
-        1: { cellWidth: 72, halign: 'right', fontStyle: 'bold' },
-      },
-      margin: { left: margin, right: margin },
+      styles: { fontSize: 8 },
+      headStyles: { fillColor: [13, 148, 136] },
     });
 
-    const finalY = (doc as any).lastAutoTable?.finalY || 160;
-
-    // Signatures
-    const sigY = Math.max(finalY + 25, 220);
-    const colW = contentWidth / 3;
-
-    ['Asset Custodian', 'Internal Auditor', 'Finance Director / Controller'].forEach((title, idx) => {
-      const x = margin + idx * colW + 4;
-      doc.setDrawColor(180, 180, 180);
-      doc.line(x, sigY, x + colW - 8, sigY);
-      doc.setFontSize(7.5);
-      doc.setFont('helvetica', 'normal');
-      doc.setTextColor(...grayColor);
-      doc.text(title, x + (colW - 8) / 2, sigY + 4.5, { align: 'center' });
-    });
-
-    doc.save(`Asset_Register_${asset.assetTag || asset.name}_${new Date().toISOString().slice(0, 10)}.pdf`);
+    doc.save(`Fixed_Assets_Register_${new Date().toISOString().slice(0, 10)}.pdf`);
   };
 
-  // ─── Export Excel & CSV ───────────────────────────────────────────────────
-  const exportData = (type: 'excel' | 'csv') => {
-    const headers = ['Asset Tag', 'Name', 'Description', 'Acquisition Date', 'Cost', 'Accumulated Depreciation', 'Net Book Value', 'Status'];
-    const rows = filteredAssets.map((a) => {
-      const cost = a.purchasePrice || (a as any).cost || 0;
-      const depr = a.accumulatedDepreciation || 0;
-      const nbv = a.netBookValue ?? (cost - depr);
-      return [
-        a.assetTag || (a as any).assetCode || '',
-        a.name,
-        a.description || '',
-        (a.purchaseDate || (a as any).acquisitionDate || '').slice(0, 10),
-        cost,
-        depr,
-        nbv,
-        isActive(a) ? 'Active' : isFullyDepreciated(a) ? 'Fully Depreciated' : 'Disposed',
-      ];
-    });
+  const handleExportExcel = () => {
+    const headers = ['Tag', 'Name', 'Category', 'Work Center', 'Cost', 'Accum. Depr', 'Net Book Value', 'Allocation', 'Status'];
+    const rows = filteredAssets.map(a => [
+      a.assetTag,
+      a.name,
+      a.category || '',
+      a.workCenterName || a.location || '',
+      a.purchasePrice || a.cost || 0,
+      a.accumulatedDepreciation || 0,
+      a.netBookValue || a.bookValue || ((a.purchasePrice || 0) - (a.accumulatedDepreciation || 0)),
+      String(a.costAllocation || 'AdministrativeExpense'),
+      String(a.status || 'Active'),
+    ]);
+    downloadExcel('Fixed_Assets_Schedule', 'Fixed Assets', headers, rows);
+  };
 
-    if (type === 'excel') {
-      downloadExcel('Fixed_Assets_Register', 'FixedAssets', headers, rows);
-    } else {
-      downloadCSV('Fixed_Assets_Register', headers, rows);
-    }
+  const handleExportCSV = () => {
+    const headers = ['AssetTag', 'Name', 'Category', 'WorkCenter', 'Cost', 'AccumulatedDepreciation', 'NetBookValue', 'Allocation', 'Status'];
+    const rows = filteredAssets.map(a => [
+      a.assetTag,
+      a.name,
+      a.category || '',
+      a.workCenterName || a.location || '',
+      a.purchasePrice || a.cost || 0,
+      a.accumulatedDepreciation || 0,
+      a.netBookValue || a.bookValue || ((a.purchasePrice || 0) - (a.accumulatedDepreciation || 0)),
+      String(a.costAllocation || 'AdministrativeExpense'),
+      String(a.status || 'Active'),
+    ]);
+    downloadCSV('Fixed_Assets_Register', headers, rows);
   };
 
   return (
-    <div className="space-y-4 font-sans text-slate-800 p-2 md:p-6 min-h-screen">
-      {/* ─── Top Control & Action Bar ─── */}
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 bg-[var(--color-surface)] p-4 rounded-2xl border border-[var(--color-border)] shadow-xs">
-        <div className="flex items-center gap-3">
-          <div className="p-2.5 bg-emerald-50 dark:bg-emerald-950/40 text-emerald-600 rounded-xl border border-emerald-200 dark:border-emerald-800 shrink-0">
-            <Building className="w-5 h-5" />
-          </div>
-          <div>
-            <h1 className="text-base font-bold text-[var(--color-text-strong)] flex items-center gap-2">
-              Fixed Assets Register <span className="text-[10px] px-2 py-0.5 rounded-full bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 font-semibold border border-blue-200 dark:border-blue-800">IAS 16 (PPE) / IAS 36</span>
-            </h1>
-            <p className="text-xs text-[var(--color-text-muted)] mt-0.5">
-              Capital assets register with automated straight-line depreciation, derecognition & General Ledger integration.
-            </p>
-          </div>
-        </div>
-
-        <div className="flex items-center gap-1.5 shrink-0 flex-wrap">
-          <button
-            onClick={openCreateModal}
-            className="inline-flex items-center gap-1.5 h-9 px-4 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold transition-all shadow-xs"
-          >
-            <Plus className="w-3.5 h-3.5" /> Register Asset
-          </button>
-          <button
-            onClick={handleBatchDepreciation}
-            disabled={loading}
-            className="inline-flex items-center gap-1.5 h-9 px-3 bg-blue-50 dark:bg-blue-950/40 hover:bg-blue-100 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-800 rounded-xl text-xs font-bold transition-all shadow-2xs"
-            title="Post one month depreciation across all active assets"
-          >
-            <Zap className="w-3.5 h-3.5" /> Batch Depreciate
-          </button>
-          <button
-            onClick={() => exportData('excel')}
-            className="inline-flex items-center gap-1.5 h-9 px-3 bg-[var(--color-surface)] hover:bg-gray-50 dark:hover:bg-gray-800 text-[var(--color-text)] border border-[var(--color-border)] rounded-xl text-xs font-semibold transition-all shadow-2xs"
-            title="Export to Excel (.xls)"
-          >
-            <FileSpreadsheet className="w-3.5 h-3.5 text-emerald-600" /> Excel
-          </button>
-          <button
-            onClick={() => exportData('csv')}
-            className="inline-flex items-center gap-1.5 h-9 px-3 bg-[var(--color-surface)] hover:bg-gray-50 dark:hover:bg-gray-800 text-[var(--color-text)] border border-[var(--color-border)] rounded-xl text-xs font-semibold transition-all shadow-2xs"
-            title="Export to CSV (.csv)"
-          >
-            CSV
-          </button>
-          <button
-            onClick={fetchAssets}
-            disabled={loading}
-            className="h-9 w-9 flex items-center justify-center bg-[var(--color-surface)] hover:bg-gray-50 dark:hover:bg-gray-800 text-[var(--color-text-muted)] border border-[var(--color-border)] rounded-xl transition-all shadow-2xs"
-            title="Refresh Assets"
-          >
-            <RefreshCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin' : ''}`} />
-          </button>
-        </div>
-      </div>
-
-      {/* ─── 4-in-1 Top Financial KPI Cards ─── */}
-      <div className="grid gap-3" style={{ gridTemplateColumns: 'repeat(4, minmax(0, 1fr))' }}>
-        {/* Gross Cost */}
-        <div className="bg-[var(--color-surface)] border border-[var(--color-border)] rounded-2xl p-4 shadow-xs flex flex-col justify-between hover:border-emerald-500/30 transition-all">
-          <div className="flex items-center justify-between">
-            <span className="text-[10px] font-extrabold uppercase tracking-wider text-[var(--color-text-muted)]">
-              GROSS ASSET COST (HISTORICAL)
-            </span>
-            <div className="p-1.5 rounded-lg bg-emerald-50 dark:bg-emerald-950/40 text-emerald-600">
-              <DollarSign className="w-4 h-4" />
-            </div>
-          </div>
-          <div className="mt-2">
-            <div className="text-xl font-mono font-extrabold text-[var(--color-text-strong)]">
-              {money(totalCost)}
-            </div>
-            <p className="text-[10px] text-[var(--color-text-muted)] mt-0.5">Capitalized acquisition base</p>
-          </div>
-        </div>
-
-        {/* Accumulated Depr */}
-        <div className="bg-[var(--color-surface)] border border-[var(--color-border)] rounded-2xl p-4 shadow-xs flex flex-col justify-between hover:border-purple-500/30 transition-all">
-          <div className="flex items-center justify-between">
-            <span className="text-[10px] font-extrabold uppercase tracking-wider text-[var(--color-text-muted)]">
-              ACCUMULATED DEPRECIATION
-            </span>
-            <div className="p-1.5 rounded-lg bg-purple-50 dark:bg-purple-950/40 text-purple-600">
-              <TrendingDown className="w-4 h-4" />
-            </div>
-          </div>
-          <div className="mt-2">
-            <div className="text-xl font-mono font-extrabold text-purple-600 dark:text-purple-400">
-              - {money(totalAccumDepr)}
-            </div>
-            <p className="text-[10px] text-[var(--color-text-muted)] mt-0.5">Recognized wear & tear expense</p>
-          </div>
-        </div>
-
-        {/* Net Book Value */}
-        <div className="bg-[var(--color-surface)] border border-[var(--color-border)] rounded-2xl p-4 shadow-xs flex flex-col justify-between hover:border-emerald-500/30 transition-all">
-          <div className="flex items-center justify-between">
-            <span className="text-[10px] font-extrabold uppercase tracking-wider text-[var(--color-text-muted)]">
-              NET BOOK VALUE (NBV)
-            </span>
-            <div className="p-1.5 rounded-lg bg-emerald-50 dark:bg-emerald-950/40 text-emerald-600">
-              <Building className="w-4 h-4" />
-            </div>
-          </div>
-          <div className="mt-2">
-            <div className="text-xl font-mono font-extrabold text-emerald-600 dark:text-emerald-400">
-              {money(totalNBV)}
-            </div>
-            <p className="text-[10px] text-[var(--color-text-muted)] mt-0.5">Balance sheet carrying amount</p>
-          </div>
-        </div>
-
-        {/* Active Capital Assets */}
-        <div className="bg-[var(--color-surface)] border border-[var(--color-border)] rounded-2xl p-4 shadow-xs flex flex-col justify-between hover:border-blue-500/30 transition-all">
-          <div className="flex items-center justify-between">
-            <span className="text-[10px] font-extrabold uppercase tracking-wider text-[var(--color-text-muted)]">
-              ACTIVE CAPITAL ASSETS
-            </span>
-            <div className="p-1.5 rounded-lg bg-blue-50 dark:bg-blue-950/40 text-blue-600">
-              <Tag className="w-4 h-4" />
-            </div>
-          </div>
-          <div className="mt-2">
-            <div className="text-xl font-mono font-extrabold text-blue-600 dark:text-blue-400">
-              {activeAssets.length} Assets
-            </div>
-            <p className="text-[10px] text-[var(--color-text-muted)] mt-0.5">{assets.length} total in register</p>
-          </div>
-        </div>
-      </div>
-
-      {/* ─── Search & Status Filter Toolbar (Zero Overlap Guaranteed) ─── */}
-      <div className="bg-[var(--color-surface)] p-3 rounded-2xl border border-[var(--color-border)] shadow-xs flex flex-wrap items-center justify-between gap-3">
-        {/* Zero Overlap Search Box */}
-        <div className="inline-flex items-center h-9 px-3 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] focus-within:border-emerald-500 w-full sm:w-80 shadow-2xs">
-          <Search className="w-4 h-4 text-[var(--color-text-muted)] shrink-0 mr-2" />
-          <input
-            type="text"
-            placeholder="Search asset tag, name, category..."
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-            className="w-full text-xs text-[var(--color-text)] placeholder:text-[var(--color-text-muted)] !p-0 !border-0 !outline-none !bg-transparent focus:!ring-0"
-          />
-          {query && (
-            <button onClick={() => setQuery('')} className="p-0.5 text-gray-400 hover:text-gray-600 shrink-0 ml-1">
-              <X className="w-3.5 h-3.5" />
-            </button>
-          )}
-        </div>
-
-        {/* Status Filter Tabs & Integrity Pill */}
-        <div className="flex items-center gap-2 flex-wrap">
-          <div className="inline-flex p-1 bg-gray-100 dark:bg-gray-800/60 rounded-xl border border-[var(--color-border)] text-xs font-semibold">
-            {(['All', 'Active', 'FullyDepreciated', 'Disposed'] as const).map((s) => (
-              <button
-                key={s}
-                onClick={() => setStatusFilter(s)}
-                className={`px-3 py-1 rounded-lg transition-all ${
-                  statusFilter === s
-                    ? 'bg-[var(--color-surface)] text-emerald-700 dark:text-emerald-300 shadow-2xs font-bold'
-                    : 'text-[var(--color-text-muted)] hover:text-[var(--color-text-strong)]'
-                }`}
-              >
-                {s === 'FullyDepreciated' ? 'Fully Depreciated' : s}
-              </button>
-            ))}
-          </div>
-
-          <div className="inline-flex items-center gap-1 px-2.5 py-1.5 bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800 rounded-xl text-xs font-semibold">
-            <ShieldCheck className="w-3.5 h-3.5" />
-            <span>IAS 16 Compliant</span>
-          </div>
-        </div>
-      </div>
-
+    <div className="p-6 max-w-[1500px] mx-auto space-y-6 animate-in fade-in">
+      {/* Toast Notification */}
       {toastMessage && (
-        <div className="p-3.5 bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800 rounded-xl text-emerald-700 dark:text-emerald-300 text-xs font-semibold flex items-center justify-between">
-          <span>{toastMessage}</span>
-          <button onClick={() => setToastMessage('')} className="text-emerald-500 hover:text-emerald-700 font-bold ml-2">✕</button>
+        <div className="fixed bottom-6 right-6 bg-teal-600 text-white px-4 py-3 rounded-2xl shadow-xl z-50 flex items-center gap-2 text-xs font-bold animate-in slide-in-from-bottom">
+          <CheckCircle2 className="w-4 h-4" /> {toastMessage}
         </div>
       )}
 
-      {error && (
-        <div className="p-3.5 bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-800 rounded-xl text-rose-700 dark:text-rose-300 text-xs font-semibold flex items-center justify-between">
-          <span>{error}</span>
-          <button onClick={() => setError('')} className="text-rose-500 hover:text-rose-700 font-bold ml-2">✕</button>
+      {/* Top Banner & Action Controls */}
+      <div className="flex items-center justify-between border-b border-[var(--color-border)] pb-4 flex-wrap gap-4">
+        <div>
+          <div className="flex items-center gap-2">
+            <span className="p-2 bg-teal-50 dark:bg-teal-950/50 text-teal-600 rounded-xl">
+              <Factory className="w-5 h-5" />
+            </span>
+            <div>
+              <h1 className="text-xl font-bold text-[var(--color-text-strong)] flex items-center gap-2">
+                Fixed Assets & Factory Equipment Hub
+                <span className="text-[10px] font-mono font-normal px-2 py-0.5 rounded-full bg-teal-100 dark:bg-teal-900/60 text-teal-700 dark:text-teal-300">
+                  IAS 16 / IFRS 16
+                </span>
+              </h1>
+              <p className="text-[var(--color-text-muted)] text-xs mt-0.5">
+                Integrated capital asset register, plant machine runtime health, procurement bridge, and MOH depreciation routing.
+              </p>
+            </div>
+          </div>
         </div>
-      )}
 
-      {/* ─── Fixed Assets Table ─── */}
-      <div className="bg-[var(--color-surface)] border border-[var(--color-border)] rounded-2xl shadow-xs overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="w-full text-xs text-left border-collapse">
-            <thead>
-              <tr className="border-b border-[var(--color-border)] bg-gray-50/50 dark:bg-gray-900/50 text-[10px] uppercase tracking-wider text-[var(--color-text-muted)] font-extrabold">
-                <th className="py-3.5 px-4">ASSET TAG</th>
-                <th className="py-3.5 px-4">ASSET NAME & DESCRIPTION</th>
-                <th className="py-3.5 px-4">ACQUISITION DATE</th>
-                <th className="py-3.5 px-4 text-right">COST</th>
-                <th className="py-3.5 px-4 text-right">ACCUM. DEPR.</th>
-                <th className="py-3.5 px-4 text-right">NET BOOK VALUE</th>
-                <th className="py-3.5 px-4 text-center">STATUS</th>
-                <th className="py-3.5 px-4 text-right pr-6">ACTIONS</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-[var(--color-border)]">
-              {filteredAssets.length === 0 ? (
-                <tr>
-                  <td colSpan={8} className="py-12 text-center text-[var(--color-text-muted)]">
-                    <div className="max-w-xs mx-auto space-y-2">
-                      <Building className="w-8 h-8 text-gray-300 dark:text-gray-700 mx-auto" />
-                      <p className="font-semibold text-xs text-[var(--color-text-strong)]">No fixed assets found</p>
-                      <p className="text-[11px]">Click "Register Asset" to record plant, equipment, or machinery.</p>
-                    </div>
-                  </td>
-                </tr>
-              ) : (
-                filteredAssets.map((asset) => {
-                  const cost = asset.purchasePrice || (asset as any).cost || 0;
-                  const depr = asset.accumulatedDepreciation || 0;
-                  const nbv = asset.netBookValue ?? (cost - depr);
-                  const active = isActive(asset);
+        <div className="flex flex-wrap items-center gap-2">
+          <ExportDropdown
+            label="Export Assets"
+            onPDF={handleExportPDF}
+            onExcel={handleExportExcel}
+            onCSV={handleExportCSV}
+            onPrint={() => window.print()}
+          />
+          <button
+            onClick={handleRunBatchDepreciation}
+            disabled={loading}
+            className="px-3.5 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-bold shadow-xs flex items-center gap-1.5 transition-all cursor-pointer disabled:opacity-50"
+            title="Execute monthly depreciation run across all assets"
+          >
+            <Zap className="w-3.5 h-3.5" /> Batch Depreciation
+          </button>
+          <button
+            onClick={() => openCreateModal()}
+            className="primary px-4 py-2 rounded-xl text-xs font-bold flex items-center gap-1.5 shadow-sm cursor-pointer"
+          >
+            <Plus className="w-4 h-4" /> Capitalize New Asset
+          </button>
+        </div>
+      </div>
 
-                  return (
-                    <tr key={asset.id} className="hover:bg-gray-50/50 dark:hover:bg-gray-900/30 transition-colors">
-                      <td className="py-3 px-4 font-mono font-bold text-blue-600 dark:text-blue-400">
-                        {asset.assetTag || (asset as any).assetCode || asset.id.slice(0, 8)}
-                      </td>
-                      <td className="py-3 px-4">
-                        <span className="font-bold text-[var(--color-text-strong)] block">
-                          {asset.name}
-                        </span>
-                        <span className="text-[10px] text-[var(--color-text-muted)] block truncate max-w-xs">
-                          {asset.description || 'Capital Asset'}
-                        </span>
-                      </td>
-                      <td className="py-3 px-4 font-mono text-[var(--color-text)]">
-                        {(asset.purchaseDate || (asset as any).acquisitionDate || '').slice(0, 10) || '—'}
-                      </td>
-                      <td className="py-3 px-4 text-right font-mono font-bold text-[var(--color-text-strong)]">
-                        {money(cost)}
-                      </td>
-                      <td className="py-3 px-4 text-right font-mono font-bold text-purple-600 dark:text-purple-400">
-                        {depr > 0 ? `- ${money(depr)}` : '—'}
-                      </td>
-                      <td className="py-3 px-4 text-right font-mono font-bold text-emerald-600 dark:text-emerald-400">
-                        {money(nbv)}
-                      </td>
-                      <td className="py-3 px-4 text-center">
-                        <span
-                          className={`inline-flex px-2.5 py-0.5 rounded-full text-[10px] font-bold border ${
-                            active
-                              ? 'bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800'
-                              : isFullyDepreciated(asset)
-                              ? 'bg-amber-50 dark:bg-amber-950/40 text-amber-700 dark:text-amber-300 border-amber-200 dark:border-amber-800'
-                              : 'bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 border-gray-300 dark:border-gray-700'
-                          }`}
-                        >
-                          {active ? 'Active' : isFullyDepreciated(asset) ? 'Fully Depr.' : 'Disposed'}
-                        </span>
-                      </td>
-                      <td className="py-3 px-4 text-right pr-6">
-                        <div className="flex items-center justify-end gap-1.5">
-                          <button
-                            onClick={() => setDetailModal(asset)}
-                            className="p-1.5 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg text-gray-500 hover:text-[var(--color-text-strong)] transition-all"
-                            title="View Asset Details & Financial Schedule"
-                          >
-                            <FileText className="w-3.5 h-3.5" />
-                          </button>
-                          <button
-                            onClick={() => generateAssetPDF(asset)}
-                            className="p-1.5 hover:bg-emerald-50 dark:hover:bg-emerald-950/40 rounded-lg text-emerald-600 transition-all"
-                            title="Download IAS 16 PDF Certificate"
-                          >
-                            <Download className="w-3.5 h-3.5" />
-                          </button>
+      {/* KPI Cards */}
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
+        <div className="bg-[var(--color-surface)] border border-[var(--color-border)] rounded-2xl p-3.5 shadow-2xs space-y-1">
+          <div className="flex items-center justify-between text-[11px] font-semibold text-[var(--color-text-muted)]">
+            <span>Capitalized Cost</span>
+            <DollarSign className="w-3.5 h-3.5 text-blue-600" />
+          </div>
+          <p className="text-base font-bold text-[var(--color-text-strong)] font-mono">{money(totalCost)}</p>
+          <p className="text-[10px] text-blue-600 font-semibold">{assets.length} Total Assets</p>
+        </div>
 
-                          {active && (
-                            <>
-                              <button
-                                disabled={actingId === asset.id}
-                                onClick={() => openDeprModal(asset)}
-                                className="h-7 px-2.5 bg-blue-50 dark:bg-blue-950/40 hover:bg-blue-100 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-800 rounded-lg text-[11px] font-bold transition-all flex items-center gap-1"
-                              >
-                                <Zap className="w-3 h-3" /> Depr.
-                              </button>
-                              <button
-                                disabled={actingId === asset.id}
-                                onClick={() => openDisposeModal(asset)}
-                                className="h-7 px-2.5 bg-rose-50 dark:bg-rose-950/40 hover:bg-rose-100 text-rose-700 dark:text-rose-300 border border-rose-200 dark:border-rose-800 rounded-lg text-[11px] font-bold transition-all flex items-center gap-1"
-                              >
-                                <Trash2 className="w-3 h-3" /> Dispose
-                              </button>
-                            </>
-                          )}
-                        </div>
+        <div className="bg-[var(--color-surface)] border border-[var(--color-border)] rounded-2xl p-3.5 shadow-2xs space-y-1">
+          <div className="flex items-center justify-between text-[11px] font-semibold text-[var(--color-text-muted)]">
+            <span>Accum. Depreciation</span>
+            <TrendingDown className="w-3.5 h-3.5 text-amber-600" />
+          </div>
+          <p className="text-base font-bold text-amber-600 font-mono">{money(totalAccumDepr)}</p>
+          <p className="text-[10px] text-[var(--color-text-muted)]">Contra-Asset Balance</p>
+        </div>
+
+        <div className="bg-[var(--color-surface)] border border-[var(--color-border)] rounded-2xl p-3.5 shadow-2xs space-y-1">
+          <div className="flex items-center justify-between text-[11px] font-semibold text-[var(--color-text-muted)]">
+            <span>Net Book Value (NBV)</span>
+            <Building className="w-3.5 h-3.5 text-teal-600" />
+          </div>
+          <p className="text-base font-bold text-teal-600 font-mono">{money(totalNBV)}</p>
+          <p className="text-[10px] text-[var(--color-text-muted)]">Carrying Value</p>
+        </div>
+
+        <div className="bg-[var(--color-surface)] border border-[var(--color-border)] rounded-2xl p-3.5 shadow-2xs space-y-1">
+          <div className="flex items-center justify-between text-[11px] font-semibold text-[var(--color-text-muted)]">
+            <span>Factory Machinery</span>
+            <Cpu className="w-3.5 h-3.5 text-purple-600" />
+          </div>
+          <p className="text-base font-bold text-purple-600 font-mono">{plantMachineryCount}</p>
+          <p className="text-[10px] text-purple-600/80 font-semibold">MOH Cost Centers</p>
+        </div>
+
+        <div className="bg-[var(--color-surface)] border border-[var(--color-border)] rounded-2xl p-3.5 shadow-2xs space-y-1">
+          <div className="flex items-center justify-between text-[11px] font-semibold text-[var(--color-text-muted)]">
+            <span>Under Maintenance</span>
+            <Wrench className="w-3.5 h-3.5 text-rose-600" />
+          </div>
+          <p className="text-base font-bold text-rose-600 font-mono">{underMaintenanceCount}</p>
+          <p className="text-[10px] text-rose-600/80 font-semibold">Service Tickets</p>
+        </div>
+
+        <div className="bg-[var(--color-surface)] border border-[var(--color-border)] rounded-2xl p-3.5 shadow-2xs space-y-1">
+          <div className="flex items-center justify-between text-[11px] font-semibold text-[var(--color-text-muted)]">
+            <span>Procurement Pending</span>
+            <ShoppingCart className="w-3.5 h-3.5 text-emerald-600" />
+          </div>
+          <p className="text-base font-bold text-emerald-600 font-mono">{uncapitalizedProcurementLines.length}</p>
+          <p className="text-[10px] text-emerald-600 font-semibold">Capital Goods Lines</p>
+        </div>
+      </div>
+
+      {/* Navigation Tabs */}
+      <div className="flex items-center justify-between flex-wrap gap-3 bg-[var(--color-surface-muted)] p-2 rounded-2xl border border-[var(--color-border)]">
+        <div className="flex items-center gap-1.5 overflow-x-auto text-xs font-semibold">
+          {[
+            { id: 'register', label: '🏢 Asset Register & Schedule', count: assets.length },
+            { id: 'factory', label: '🏭 Factory & Machine Health', count: plantMachineryCount },
+            { id: 'procurement', label: '🛒 Procurement Integration Bridge', count: uncapitalizedProcurementLines.length },
+            { id: 'maintenance', label: '🔧 Maintenance & Service Logs', count: underMaintenanceCount },
+            { id: 'depreciation', label: '⚡ Depreciation Engine' },
+          ].map(tab => (
+            <button
+              key={tab.id}
+              onClick={() => setActiveTab(tab.id as any)}
+              className={`px-3.5 py-2 rounded-xl transition-all cursor-pointer flex items-center gap-2 ${
+                activeTab === tab.id
+                  ? 'bg-teal-600 text-white shadow-xs'
+                  : 'text-[var(--color-text-muted)] hover:text-[var(--color-text-strong)]'
+              }`}
+            >
+              <span>{tab.label}</span>
+              {tab.count !== undefined && (
+                <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-mono ${
+                  activeTab === tab.id ? 'bg-white/20 text-white' : 'bg-[var(--color-surface)] text-[var(--color-text-muted)]'
+                }`}>
+                  {tab.count}
+                </span>
+              )}
+            </button>
+          ))}
+        </div>
+
+        <button
+          onClick={fetchAssets}
+          className="p-2 border border-[var(--color-border)] rounded-xl text-xs hover:bg-[var(--color-surface)] text-[var(--color-text-muted)] cursor-pointer"
+          title="Refresh Assets"
+        >
+          <RefreshCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin' : ''}`} />
+        </button>
+      </div>
+
+      {/* ─── TAB 1: ASSET REGISTER & SCHEDULE ─────────────────────────────────── */}
+      {activeTab === 'register' && (
+        <div className="space-y-4">
+          {/* Filters Bar */}
+          <div className="p-4 bg-[var(--color-surface)] rounded-2xl border border-[var(--color-border)] flex flex-wrap items-center gap-3">
+            <div className="relative flex-1 min-w-[240px]">
+              <Search className="w-4 h-4 text-[var(--color-text-muted)] absolute left-3 top-1/2 -translate-y-1/2" />
+              <input
+                type="text"
+                value={query}
+                onChange={e => setQuery(e.target.value)}
+                placeholder="Search tag, asset name, serial number, work center, vendor..."
+                className="w-full pl-9 pr-3 py-2 bg-[var(--color-surface-muted)] border border-[var(--color-border)] rounded-xl text-xs text-[var(--color-text)] outline-none focus:border-teal-500"
+              />
+            </div>
+
+            <select
+              value={categoryFilter}
+              onChange={e => setCategoryFilter(e.target.value)}
+              className="px-3 py-2 bg-[var(--color-surface-muted)] border border-[var(--color-border)] rounded-xl text-xs text-[var(--color-text)] outline-none focus:border-teal-500 font-semibold"
+            >
+              <option value="All">All Categories</option>
+              {ASSET_CATEGORIES.map(c => (
+                <option key={c} value={c}>{c}</option>
+              ))}
+            </select>
+
+            <select
+              value={statusFilter}
+              onChange={e => setStatusFilter(e.target.value as any)}
+              className="px-3 py-2 bg-[var(--color-surface-muted)] border border-[var(--color-border)] rounded-xl text-xs text-[var(--color-text)] outline-none focus:border-teal-500 font-semibold"
+            >
+              <option value="All">All Statuses</option>
+              <option value="Active">Active Operating</option>
+              <option value="UnderMaintenance">Under Maintenance</option>
+              <option value="FullyDepreciated">Fully Depreciated</option>
+              <option value="Disposed">Disposed / Sold</option>
+            </select>
+
+            <select
+              value={allocationFilter}
+              onChange={e => setAllocationFilter(e.target.value as any)}
+              className="px-3 py-2 bg-[var(--color-surface-muted)] border border-[var(--color-border)] rounded-xl text-xs text-[var(--color-text)] outline-none focus:border-teal-500 font-semibold"
+            >
+              <option value="All">All Allocations</option>
+              <option value="FactoryMOH">🏭 Factory MOH</option>
+              <option value="Admin">🏢 Admin OPEX</option>
+            </select>
+          </div>
+
+          {/* Table */}
+          <div className="bg-[var(--color-surface)] border border-[var(--color-border)] rounded-2xl overflow-hidden shadow-2xs">
+            <div className="overflow-x-auto">
+              <table className="w-full text-left text-xs border-collapse">
+                <thead>
+                  <tr className="bg-[var(--color-surface-muted)] border-b border-[var(--color-border)] text-[var(--color-text-muted)] font-semibold uppercase tracking-wider text-[10px]">
+                    <th className="py-3 px-4">Asset Tag & Name</th>
+                    <th className="py-3 px-3">Category & Location</th>
+                    <th className="py-3 px-3">Acquired</th>
+                    <th className="py-3 px-3 text-right">Capitalized Cost</th>
+                    <th className="py-3 px-3 text-right">Accum. Depr</th>
+                    <th className="py-3 px-3 text-right">Net Book Value</th>
+                    <th className="py-3 px-3 text-center">Cost Allocation</th>
+                    <th className="py-3 px-3 text-center">Health & Status</th>
+                    <th className="py-3 px-4 text-right">Actions</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-[var(--color-border)]">
+                  {filteredAssets.length === 0 ? (
+                    <tr>
+                      <td colSpan={9} className="py-12 text-center text-[var(--color-text-muted)] text-xs">
+                        <Building className="w-8 h-8 mx-auto mb-2 opacity-30 text-teal-600" />
+                        No fixed assets found matching the selected filters.
                       </td>
                     </tr>
-                  );
-                })
-              )}
-            </tbody>
-          </table>
-        </div>
-      </div>
+                  ) : (
+                    filteredAssets.map(asset => {
+                      const cost = asset.purchasePrice || asset.cost || 0;
+                      const accum = asset.accumulatedDepreciation || 0;
+                      const nbv = asset.netBookValue || asset.bookValue || (cost - accum);
+                      const isDisposed = asset.status === 'Disposed' || String(asset.status) === '1';
 
-      {/* ─── Capital Asset Registration Modal ─── */}
-      {isCreateOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs p-3 md:p-6 overflow-y-auto" onClick={() => setIsCreateOpen(false)}>
-          <div
-            className="bg-[var(--color-surface)] border border-[var(--color-border)] rounded-2xl shadow-2xl w-full max-w-3xl overflow-hidden flex flex-col my-auto max-h-[94vh] transition-all animate-in fade-in zoom-in-95 duration-200"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div className="flex items-center justify-between px-6 py-4 border-b border-[var(--color-border)] bg-gray-50/70 dark:bg-gray-900/70">
-              <div className="flex items-center gap-3">
-                <div className="p-2.5 bg-emerald-50 dark:bg-emerald-950/40 text-emerald-600 rounded-xl border border-emerald-200 dark:border-emerald-800">
-                  <Building className="w-5 h-5" />
+                      return (
+                        <tr key={asset.id} className="hover:bg-[var(--color-surface-muted)]/40 transition-colors">
+                          <td className="py-3 px-4">
+                            <div className="flex items-center gap-2.5">
+                              <span className="p-2 bg-teal-50 dark:bg-teal-950/50 text-teal-600 rounded-xl font-mono text-[10px] font-bold shrink-0">
+                                <QrCode className="w-3.5 h-3.5" />
+                              </span>
+                              <div>
+                                <p className="font-bold text-[var(--color-text-strong)]">{asset.name}</p>
+                                <p className="text-[10px] text-[var(--color-text-muted)] font-mono font-semibold">
+                                  {asset.assetTag} {asset.serialNumber ? `• S/N: ${asset.serialNumber}` : ''}
+                                </p>
+                              </div>
+                            </div>
+                          </td>
+
+                          <td className="py-3 px-3">
+                            <p className="font-semibold text-[var(--color-text-strong)]">{asset.category || 'Plant & Machinery'}</p>
+                            <p className="text-[10px] text-[var(--color-text-muted)] truncate max-w-[180px]">
+                              {asset.workCenterName || asset.location || 'Main Factory Floor'}
+                            </p>
+                          </td>
+
+                          <td className="py-3 px-3 text-[var(--color-text-muted)] font-mono">
+                            {asset.purchaseDate}
+                          </td>
+
+                          <td className="py-3 px-3 text-right font-mono font-bold text-[var(--color-text-strong)]">
+                            {money(cost)}
+                          </td>
+
+                          <td className="py-3 px-3 text-right font-mono text-amber-600">
+                            {money(accum)}
+                          </td>
+
+                          <td className="py-3 px-3 text-right font-mono font-bold text-teal-600">
+                            {money(nbv)}
+                          </td>
+
+                          <td className="py-3 px-3 text-center">
+                            <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold ${
+                              asset.costAllocation === 'ManufacturingOverhead'
+                                ? 'bg-purple-50 dark:bg-purple-950/50 text-purple-700 dark:text-purple-300 border border-purple-200 dark:border-purple-800'
+                                : 'bg-blue-50 dark:bg-blue-950/50 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-800'
+                            }`}>
+                              {asset.costAllocation === 'ManufacturingOverhead' ? '🏭 Factory MOH' : '🏢 Admin OPEX'}
+                            </span>
+                          </td>
+
+                          <td className="py-3 px-3 text-center">
+                            <span className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold ${
+                              isDisposed
+                                ? 'bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400'
+                                : asset.machineHealth === 'Breakdown'
+                                ? 'bg-rose-100 dark:bg-rose-950/60 text-rose-700 dark:text-rose-300 animate-pulse'
+                                : asset.machineHealth === 'UnderMaintenance'
+                                ? 'bg-amber-100 dark:bg-amber-950/60 text-amber-700 dark:text-amber-300'
+                                : 'bg-emerald-100 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300'
+                            }`}>
+                              <span className="w-1.5 h-1.5 rounded-full bg-current"></span>
+                              {isDisposed ? 'Disposed' : asset.machineHealth || asset.status}
+                            </span>
+                          </td>
+
+                          <td className="py-3 px-4 text-right">
+                            <div className="flex items-center justify-end gap-1">
+                              <button
+                                onClick={() => setDetailModal(asset)}
+                                className="p-1.5 hover:bg-teal-50 dark:hover:bg-teal-950/50 text-teal-600 rounded-lg transition-colors cursor-pointer"
+                                title="View Asset Card & Maintenance Logs"
+                              >
+                                <FileText className="w-3.5 h-3.5" />
+                              </button>
+                              <button
+                                onClick={() => openEditModal(asset)}
+                                className="p-1.5 hover:bg-blue-50 dark:hover:bg-blue-950/50 text-blue-600 rounded-lg transition-colors cursor-pointer"
+                                title="Edit Asset Properties"
+                              >
+                                <Pencil className="w-3.5 h-3.5" />
+                              </button>
+                              <button
+                                onClick={() => {
+                                  setMaintenanceModal(asset);
+                                  setMaintForm({
+                                    date: new Date().toISOString().slice(0, 10),
+                                    maintenanceType: 'Preventive',
+                                    description: '',
+                                    cost: '0',
+                                    technicianName: '',
+                                    downTimeHours: '0',
+                                    partsReplaced: '',
+                                    nextServiceDueDate: '',
+                                  });
+                                }}
+                                className="p-1.5 hover:bg-amber-50 dark:hover:bg-amber-950/50 text-amber-600 rounded-lg transition-colors cursor-pointer"
+                                title="Log Maintenance Ticket"
+                              >
+                                <Wrench className="w-3.5 h-3.5" />
+                              </button>
+                              <button
+                                onClick={() => {
+                                  setTransferModal(asset);
+                                  setTransferForm({
+                                    transferDate: new Date().toISOString().slice(0, 10),
+                                    toLocation: '',
+                                    toWorkCenter: FACTORY_WORK_CENTERS[0],
+                                    authorizedBy: '',
+                                    remarks: '',
+                                  });
+                                }}
+                                className="p-1.5 hover:bg-purple-50 dark:hover:bg-purple-950/50 text-purple-600 rounded-lg transition-colors cursor-pointer"
+                                title="Transfer to another Factory Work Center"
+                              >
+                                <Truck className="w-3.5 h-3.5" />
+                              </button>
+                              {!isDisposed && (
+                                <button
+                                  onClick={() => {
+                                    setDeprModal(asset);
+                                    setDeprForm({
+                                      expenseAccId: asset.depreciationExpenseAccountId || '',
+                                      accumAccId: asset.accumulatedDepreciationAccountId || '',
+                                    });
+                                  }}
+                                  className="p-1.5 hover:bg-indigo-50 dark:hover:bg-indigo-950/50 text-indigo-600 rounded-lg transition-colors cursor-pointer"
+                                  title="Run Monthly Depreciation"
+                                >
+                                  <Zap className="w-3.5 h-3.5" />
+                                </button>
+                              )}
+                              {!isDisposed && (
+                                <button
+                                  onClick={() => {
+                                    setDisposeModal(asset);
+                                    setDisposeForm({
+                                      disposalDate: new Date().toISOString().slice(0, 10),
+                                      proceeds: '0',
+                                      cashAccountId: accounts.find(a => a.code === '11100' || a.code === '11200')?.id || '',
+                                      assetAccountId: asset.assetAccountId || '',
+                                      accumDeprAccountId: asset.accumulatedDepreciationAccountId || '',
+                                      gainLossAccountId: accounts.find(a => a.name?.toLowerCase().includes('gain/loss') || a.code === '51000')?.id || '',
+                                    });
+                                  }}
+                                  className="p-1.5 hover:bg-rose-50 dark:hover:bg-rose-950/50 text-rose-600 rounded-lg transition-colors cursor-pointer"
+                                  title="Dispose / Sell Asset"
+                                >
+                                  <Trash2 className="w-3.5 h-3.5" />
+                                </button>
+                              )}
+                            </div>
+                          </td>
+                        </tr>
+                      );
+                    })
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ─── TAB 2: FACTORY & MACHINERY CENTER ─────────────────────────────────── */}
+      {activeTab === 'factory' && (
+        <div className="space-y-4">
+          <div className="p-4 bg-teal-50 dark:bg-teal-950/30 rounded-2xl border border-teal-200 dark:border-teal-900/60 flex items-center justify-between flex-wrap gap-3">
+            <div>
+              <h3 className="font-bold text-sm text-teal-900 dark:text-teal-200 flex items-center gap-2">
+                <Factory className="w-4 h-4 text-teal-600" /> Plant Equipment & Production Work Centers
+              </h3>
+              <p className="text-xs text-teal-700 dark:text-teal-400 mt-0.5">
+                Real-time machine health, runtime meter hours, and overhead cost allocation into Manufacturing Work Orders.
+              </p>
+            </div>
+            <button
+              onClick={() => openCreateModal({ category: 'Plant & Machinery', costAllocation: 'ManufacturingOverhead' })}
+              className="px-3.5 py-2 bg-teal-600 hover:bg-teal-700 text-white rounded-xl text-xs font-bold flex items-center gap-1.5 shadow-2xs cursor-pointer"
+            >
+              <Plus className="w-3.5 h-3.5" /> Register Factory Machine
+            </button>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {assets.filter(a => a.category?.includes('Plant') || a.category?.includes('Machinery') || a.costAllocation === 'ManufacturingOverhead').map(machine => {
+              const cost = machine.purchasePrice || machine.cost || 0;
+              const accum = machine.accumulatedDepreciation || 0;
+              const nbv = machine.netBookValue || machine.bookValue || (cost - accum);
+
+              return (
+                <div key={machine.id} className="p-4 bg-[var(--color-surface)] rounded-2xl border border-[var(--color-border)] shadow-xs space-y-3">
+                  <div className="flex items-start justify-between gap-2">
+                    <div>
+                      <p className="text-[10px] font-mono font-bold text-teal-600">{machine.assetTag}</p>
+                      <h4 className="font-bold text-sm text-[var(--color-text-strong)]">{machine.name}</h4>
+                      <p className="text-[11px] text-[var(--color-text-muted)]">{machine.workCenterName || 'CNC Workshop'}</p>
+                    </div>
+                    <span className={`px-2 py-1 rounded-xl text-[10px] font-bold flex items-center gap-1 ${
+                      machine.machineHealth === 'Breakdown'
+                        ? 'bg-rose-100 text-rose-700 dark:bg-rose-950/60 dark:text-rose-300'
+                        : machine.machineHealth === 'UnderMaintenance'
+                        ? 'bg-amber-100 text-amber-700 dark:bg-amber-950/60 dark:text-amber-300'
+                        : 'bg-emerald-100 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-300'
+                    }`}>
+                      <Activity className="w-3 h-3" />
+                      {machine.machineHealth || 'Operating'}
+                    </span>
+                  </div>
+
+                  {/* Machine Metrics */}
+                  <div className="grid grid-cols-3 gap-2 py-2 border-y border-[var(--color-border)] text-center text-xs">
+                    <div>
+                      <p className="text-[10px] text-[var(--color-text-muted)]">Meter Hours</p>
+                      <p className="font-mono font-bold text-[var(--color-text-strong)] flex items-center justify-center gap-1">
+                        <Gauge className="w-3 h-3 text-blue-600" />
+                        {machine.currentMeterHours || 0} hrs
+                      </p>
+                    </div>
+                    <div>
+                      <p className="text-[10px] text-[var(--color-text-muted)]">Net Book Value</p>
+                      <p className="font-mono font-bold text-teal-600">
+                        {money(nbv)}
+                      </p>
+                    </div>
+                    <div>
+                      <p className="text-[10px] text-[var(--color-text-muted)]">Useful Life</p>
+                      <p className="font-mono font-bold text-[var(--color-text-strong)]">{machine.usefulLifeYears} Yrs</p>
+                    </div>
+                  </div>
+
+                  {/* Quick Machine Health Controls */}
+                  <div className="flex items-center justify-between pt-1">
+                    <p className="text-[10px] font-semibold text-[var(--color-text-muted)]">Live Machine Status:</p>
+                    <div className="flex items-center gap-1">
+                      <button
+                        onClick={() => handleToggleMachineHealth(machine, 'Operating')}
+                        className={`px-2 py-1 rounded-lg text-[10px] font-bold transition-all cursor-pointer ${
+                          machine.machineHealth === 'Operating'
+                            ? 'bg-emerald-600 text-white'
+                            : 'bg-[var(--color-surface-muted)] text-[var(--color-text-muted)] hover:bg-emerald-50'
+                        }`}
+                      >
+                        🟢 Running
+                      </button>
+                      <button
+                        onClick={() => handleToggleMachineHealth(machine, 'UnderMaintenance')}
+                        className={`px-2 py-1 rounded-lg text-[10px] font-bold transition-all cursor-pointer ${
+                          machine.machineHealth === 'UnderMaintenance'
+                            ? 'bg-amber-600 text-white'
+                            : 'bg-[var(--color-surface-muted)] text-[var(--color-text-muted)] hover:bg-amber-50'
+                        }`}
+                      >
+                        🟡 Service
+                      </button>
+                      <button
+                        onClick={() => handleToggleMachineHealth(machine, 'Breakdown')}
+                        className={`px-2 py-1 rounded-lg text-[10px] font-bold transition-all cursor-pointer ${
+                          machine.machineHealth === 'Breakdown'
+                            ? 'bg-rose-600 text-white'
+                            : 'bg-[var(--color-surface-muted)] text-[var(--color-text-muted)] hover:bg-rose-50'
+                        }`}
+                      >
+                        🔴 Down
+                      </button>
+                    </div>
+                  </div>
                 </div>
-                <div>
-                  <h2 className="text-base font-bold text-[var(--color-text-strong)]">
-                    Register Capital Fixed Asset
-                  </h2>
-                  <p className="text-xs text-[var(--color-text-muted)] mt-0.5">
-                    Record Property, Plant & Equipment under IAS 16 with automated depreciation parameters.
-                  </p>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
+      {/* ─── TAB 3: PROCUREMENT INTEGRATION BRIDGE ───────────────────────────── */}
+      {activeTab === 'procurement' && (
+        <div className="space-y-4">
+          <div className="p-4 bg-emerald-50 dark:bg-emerald-950/30 rounded-2xl border border-emerald-200 dark:border-emerald-900/60 flex items-center justify-between flex-wrap gap-3">
+            <div>
+              <h3 className="font-bold text-sm text-emerald-900 dark:text-emerald-200 flex items-center gap-2">
+                <ShoppingCart className="w-4 h-4 text-emerald-600" /> Procurement Integration Bridge (Capital Goods Ingestion)
+              </h3>
+              <p className="text-xs text-emerald-700 dark:text-emerald-400 mt-0.5">
+                Detects capital machinery & equipment line items from Purchase Orders and Vendor Bills for 1-click capitalization.
+              </p>
+            </div>
+          </div>
+
+          <div className="bg-[var(--color-surface)] border border-[var(--color-border)] rounded-2xl overflow-hidden shadow-2xs">
+            <table className="w-full text-left text-xs border-collapse">
+              <thead>
+                <tr className="bg-[var(--color-surface-muted)] border-b border-[var(--color-border)] text-[var(--color-text-muted)] font-semibold uppercase tracking-wider text-[10px]">
+                  <th className="py-3 px-4">Document Type & Number</th>
+                  <th className="py-3 px-3">Date</th>
+                  <th className="py-3 px-3">Vendor / Supplier</th>
+                  <th className="py-3 px-3">Item Description</th>
+                  <th className="py-3 px-3 text-right">Procured Amount</th>
+                  <th className="py-3 px-4 text-right">Action</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-[var(--color-border)]">
+                {uncapitalizedProcurementLines.length === 0 ? (
+                  <tr>
+                    <td colSpan={6} className="py-10 text-center text-[var(--color-text-muted)]">
+                      <Check className="w-6 h-6 mx-auto mb-1 text-emerald-600" />
+                      All capital equipment purchase orders and bills are fully capitalized.
+                    </td>
+                  </tr>
+                ) : (
+                  uncapitalizedProcurementLines.map((line, idx) => (
+                    <tr key={idx} className="hover:bg-[var(--color-surface-muted)]/40 transition-colors">
+                      <td className="py-3 px-4 font-bold text-[var(--color-text-strong)] flex items-center gap-2">
+                        <span className="p-1.5 bg-emerald-100 dark:bg-emerald-950 text-emerald-700 rounded-lg text-[10px]">
+                          {line.source}
+                        </span>
+                        {line.docNumber}
+                      </td>
+                      <td className="py-3 px-3 text-[var(--color-text-muted)] font-mono">{line.date}</td>
+                      <td className="py-3 px-3 font-semibold text-[var(--color-text-strong)]">{line.vendorName}</td>
+                      <td className="py-3 px-3 text-[var(--color-text-muted)]">{line.description}</td>
+                      <td className="py-3 px-3 text-right font-mono font-bold text-emerald-600">{money(line.amount)}</td>
+                      <td className="py-3 px-4 text-right">
+                        <button
+                          onClick={() => {
+                            openCreateModal({
+                              name: line.description,
+                              description: `Procured via ${line.source} ${line.docNumber}`,
+                              purchasePrice: String(line.amount),
+                              purchaseDate: line.date,
+                              vendorName: line.vendorName,
+                              purchaseOrderNumber: line.source === 'Purchase Order' ? line.docNumber : undefined,
+                              vendorBillNumber: line.source === 'Vendor Bill' ? line.docNumber : undefined,
+                            });
+                          }}
+                          className="px-3 py-1.5 bg-teal-600 hover:bg-teal-700 text-white rounded-xl text-xs font-bold flex items-center gap-1 ml-auto shadow-2xs cursor-pointer"
+                        >
+                          <ArrowRight className="w-3.5 h-3.5" /> Capitalize as Asset
+                        </button>
+                      </td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+
+      {/* ─── TAB 4: MAINTENANCE & SERVICE SCHEDULE ───────────────────────────── */}
+      {activeTab === 'maintenance' && (
+        <div className="space-y-4">
+          <div className="p-4 bg-amber-50 dark:bg-amber-950/30 rounded-2xl border border-amber-200 dark:border-amber-900/60 flex items-center justify-between flex-wrap gap-3">
+            <div>
+              <h3 className="font-bold text-sm text-amber-900 dark:text-amber-200 flex items-center gap-2">
+                <Wrench className="w-4 h-4 text-amber-600" /> Equipment Maintenance & Calibration Schedules
+              </h3>
+              <p className="text-xs text-amber-700 dark:text-amber-400 mt-0.5">
+                Preventive servicing, emergency breakdown repairs, technician assignments, and overhaul records.
+              </p>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {assets.filter(a => a.maintenanceHistory && a.maintenanceHistory.length > 0).map(asset => (
+              <div key={asset.id} className="p-4 bg-[var(--color-surface)] rounded-2xl border border-[var(--color-border)] shadow-xs space-y-3">
+                <div className="flex items-center justify-between border-b border-[var(--color-border)] pb-2">
+                  <div>
+                    <h4 className="font-bold text-xs text-[var(--color-text-strong)]">{asset.name}</h4>
+                    <p className="text-[10px] text-teal-600 font-mono font-bold">{asset.assetTag} • {asset.workCenterName}</p>
+                  </div>
+                  <button
+                    onClick={() => {
+                      setMaintenanceModal(asset);
+                      setMaintForm({
+                        date: new Date().toISOString().slice(0, 10),
+                        maintenanceType: 'Preventive',
+                        description: '',
+                        cost: '0',
+                        technicianName: '',
+                        downTimeHours: '0',
+                        partsReplaced: '',
+                        nextServiceDueDate: '',
+                      });
+                    }}
+                    className="px-2.5 py-1 bg-amber-50 hover:bg-amber-100 text-amber-700 rounded-lg text-xs font-semibold flex items-center gap-1 cursor-pointer"
+                  >
+                    <Plus className="w-3 h-3" /> Log Service
+                  </button>
+                </div>
+
+                <div className="space-y-2">
+                  {asset.maintenanceHistory?.map((m, idx) => (
+                    <div key={idx} className="p-2.5 bg-[var(--color-surface-muted)]/50 rounded-xl text-xs space-y-1">
+                      <div className="flex items-center justify-between">
+                        <span className="font-bold text-amber-700 dark:text-amber-300 font-mono text-[11px]">{m.maintenanceType}</span>
+                        <span className="text-[10px] text-[var(--color-text-muted)] font-mono">{m.date}</span>
+                      </div>
+                      <p className="text-[11px] text-[var(--color-text-strong)]">{m.description}</p>
+                      <div className="flex items-center justify-between text-[10px] text-[var(--color-text-muted)] pt-1 border-t border-[var(--color-border)]/50 font-mono">
+                        <span>Technician: <strong>{m.technicianName || 'Internal Team'}</strong></span>
+                        <span>Cost: <strong>{money(m.cost)}</strong></span>
+                      </div>
+                    </div>
+                  ))}
                 </div>
               </div>
+            ))}
+          </div>
+        </div>
+      )}
 
+      {/* ─── TAB 5: DEPRECIATION ENGINE ──────────────────────────────────────── */}
+      {activeTab === 'depreciation' && (
+        <div className="space-y-4">
+          <div className="p-5 bg-indigo-50 dark:bg-indigo-950/30 rounded-2xl border border-indigo-200 dark:border-indigo-900/60 flex items-center justify-between flex-wrap gap-4">
+            <div>
+              <h3 className="font-bold text-sm text-indigo-950 dark:text-indigo-200 flex items-center gap-2">
+                <Zap className="w-4 h-4 text-indigo-600" /> Automated Monthly Depreciation Engine
+              </h3>
+              <p className="text-xs text-indigo-800 dark:text-indigo-300 mt-1 max-w-xl">
+                Executes Straight-Line & Declining-Balance depreciation schedules. Automatically routes Plant Machinery wear & tear to <strong>Manufacturing Overhead (61100)</strong> and Office Assets to <strong>Administrative Depreciation (61300)</strong>.
+              </p>
+            </div>
+            <button
+              onClick={handleRunBatchDepreciation}
+              disabled={loading}
+              className="px-5 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-bold shadow-md flex items-center gap-2 cursor-pointer transition-all disabled:opacity-50"
+            >
+              <Zap className="w-4 h-4" /> Run Monthly Depreciation Now
+            </button>
+          </div>
+
+          <div className="bg-[var(--color-surface)] border border-[var(--color-border)] rounded-2xl overflow-hidden p-4 space-y-3">
+            <h4 className="font-bold text-xs text-[var(--color-text-strong)] flex items-center gap-2">
+              <Layers className="w-4 h-4 text-teal-600" /> Live Asset Depreciation Projections
+            </h4>
+            <div className="overflow-x-auto">
+              <table className="w-full text-left text-xs border-collapse">
+                <thead>
+                  <tr className="bg-[var(--color-surface-muted)] text-[var(--color-text-muted)] text-[10px] uppercase">
+                    <th className="py-2.5 px-3">Asset Tag & Name</th>
+                    <th className="py-2.5 px-3">Method</th>
+                    <th className="py-2.5 px-3">Allocation</th>
+                    <th className="py-2.5 px-3 text-right">Cost</th>
+                    <th className="py-2.5 px-3 text-right">Monthly Charge</th>
+                    <th className="py-2.5 px-3 text-right">Projected NBV</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-[var(--color-border)]">
+                  {assets.filter(a => a.status === 'Active' || String(a.status) === '0').map(asset => {
+                    const cost = asset.purchasePrice || asset.cost || 0;
+                    const accum = asset.accumulatedDepreciation || 0;
+                    const annual = (cost - (asset.salvageValue || 0)) / (asset.usefulLifeYears || 5);
+                    const monthly = Math.round(annual / 12);
+                    const currentNbv = asset.netBookValue || asset.bookValue || (cost - accum);
+                    const projectedNbv = Math.max(0, currentNbv - monthly);
+
+                    return (
+                      <tr key={asset.id} className="hover:bg-[var(--color-surface-muted)]/30">
+                        <td className="py-2 px-3 font-semibold text-[var(--color-text-strong)]">{asset.assetTag} — {asset.name}</td>
+                        <td className="py-2 px-3 font-mono">{asset.depreciationMethod || 'StraightLine'}</td>
+                        <td className="py-2 px-3 font-mono text-[10px]">{asset.costAllocation === 'ManufacturingOverhead' ? '🏭 Factory MOH (61100)' : '🏢 Admin OPEX (61300)'}</td>
+                        <td className="py-2 px-3 text-right font-mono">{money(cost)}</td>
+                        <td className="py-2 px-3 text-right font-mono font-bold text-amber-600">{money(monthly)}</td>
+                        <td className="py-2 px-3 text-right font-mono font-bold text-teal-600">{money(projectedNbv)}</td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ─── MODAL: CREATE / EDIT FIXED ASSET ─────────────────────────────────── */}
+      {isCreateOpen && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-xs flex items-center justify-center z-50 p-4 animate-in fade-in">
+          <div className="bg-[var(--color-surface)] border border-[var(--color-border)] rounded-2xl max-w-3xl w-full max-h-[90vh] overflow-y-auto shadow-2xl space-y-4 p-6">
+            <div className="flex items-center justify-between border-b border-[var(--color-border)] pb-3">
+              <div>
+                <p className="text-[10px] font-bold text-teal-600 uppercase tracking-wider font-mono">
+                  {editingAsset ? 'Edit Capital Ledger' : 'Capital Asset Ingestion (IAS 16)'}
+                </p>
+                <h3 className="text-lg font-bold text-[var(--color-text-strong)]">
+                  {editingAsset ? `Edit Asset: ${editingAsset.name}` : 'Register / Capitalize Fixed Asset'}
+                </h3>
+              </div>
               <button
+                type="button"
                 onClick={() => setIsCreateOpen(false)}
-                className="h-8 w-8 flex items-center justify-center rounded-xl hover:bg-gray-200 dark:hover:bg-gray-800 text-[var(--color-text-muted)] hover:text-[var(--color-text-strong)] transition-all"
+                className="p-1 text-[var(--color-text-muted)] hover:text-[var(--color-text-strong)] rounded-lg text-lg cursor-pointer"
               >
-                <X className="w-5 h-5" />
+                ✕
               </button>
             </div>
 
-            <form onSubmit={handleCreateAsset} className="flex-1 overflow-y-auto p-6 space-y-4">
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div className="space-y-1.5">
-                  <label className="text-xs font-bold text-[var(--color-text-strong)]">Asset Tag / Identifier *</label>
+            {error && (
+              <div className="p-3 bg-rose-50 text-rose-700 text-xs rounded-xl border border-rose-200">
+                {error}
+              </div>
+            )}
+
+            <form onSubmit={handleSaveAsset} className="space-y-4 text-xs">
+              {/* Row 1: Identification */}
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                <div className="space-y-1">
+                  <label className="font-bold text-[var(--color-text-strong)]">Asset Tag #</label>
                   <input
-                    type="text"
-                    value={createForm.assetTag}
-                    onChange={(e) => setCreateForm({ ...createForm, assetTag: e.target.value })}
-                    className="w-full h-9 px-3 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] text-xs text-[var(--color-text)] font-mono font-bold outline-none focus:border-emerald-500 shadow-2xs"
                     required
+                    value={assetForm.assetTag}
+                    onChange={e => setAssetForm(f => ({ ...f, assetTag: e.target.value }))}
+                    className="w-full px-3 py-2 bg-[var(--color-surface-muted)] border border-[var(--color-border)] rounded-xl outline-none font-mono font-bold text-teal-700 dark:text-teal-300"
                   />
                 </div>
 
-                <div className="space-y-1.5">
-                  <label className="text-xs font-bold text-[var(--color-text-strong)]">Asset Category *</label>
+                <div className="sm:col-span-2 space-y-1">
+                  <label className="font-bold text-[var(--color-text-strong)]">Asset Name / Title</label>
+                  <input
+                    required
+                    value={assetForm.name}
+                    onChange={e => setAssetForm(f => ({ ...f, name: e.target.value }))}
+                    placeholder="e.g. 5-Axis CNC Milling Machine Model X"
+                    className="w-full px-3 py-2 bg-[var(--color-surface-muted)] border border-[var(--color-border)] rounded-xl outline-none font-semibold text-[var(--color-text)]"
+                  />
+                </div>
+              </div>
+
+              {/* Row 2: Category & Specs */}
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                <div className="space-y-1">
+                  <label className="font-bold text-[var(--color-text-strong)]">Category</label>
                   <select
-                    value={createForm.category}
-                    onChange={(e) => setCreateForm({ ...createForm, category: e.target.value })}
-                    className="w-full h-9 px-3 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] text-xs text-[var(--color-text)] outline-none focus:border-emerald-500 shadow-2xs"
+                    value={assetForm.category}
+                    onChange={e => setAssetForm(f => ({ ...f, category: e.target.value }))}
+                    className="w-full px-3 py-2 bg-[var(--color-surface-muted)] border border-[var(--color-border)] rounded-xl outline-none"
                   >
-                    {ASSET_CATEGORIES.map((c) => (
+                    {ASSET_CATEGORIES.map(c => (
                       <option key={c} value={c}>{c}</option>
                     ))}
                   </select>
                 </div>
 
-                <div className="space-y-1.5 sm:col-span-2">
-                  <label className="text-xs font-bold text-[var(--color-text-strong)]">Asset Name / Title *</label>
+                <div className="space-y-1">
+                  <label className="font-bold text-[var(--color-text-strong)]">Serial Number</label>
                   <input
-                    type="text"
-                    value={createForm.name}
-                    onChange={(e) => setCreateForm({ ...createForm, name: e.target.value })}
-                    placeholder="e.g. Caterpillar Heavy Generator 150kVA / MacBook Pro M3 Max"
-                    className="w-full h-9 px-3 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] text-xs text-[var(--color-text)] outline-none focus:border-emerald-500 shadow-2xs"
-                    required
+                    value={assetForm.serialNumber}
+                    onChange={e => setAssetForm(f => ({ ...f, serialNumber: e.target.value }))}
+                    placeholder="e.g. SN-993821-K"
+                    className="w-full px-3 py-2 bg-[var(--color-surface-muted)] border border-[var(--color-border)] rounded-xl outline-none font-mono"
                   />
                 </div>
 
-                <div className="space-y-1.5 sm:col-span-2">
-                  <label className="text-xs font-bold text-[var(--color-text-strong)]">Description & Serial Details</label>
+                <div className="space-y-1">
+                  <label className="font-bold text-[var(--color-text-strong)]">Manufacturer / Brand</label>
                   <input
-                    type="text"
-                    value={createForm.description}
-                    onChange={(e) => setCreateForm({ ...createForm, description: e.target.value })}
-                    placeholder="Serial number, custodian department, location..."
-                    className="w-full h-9 px-3 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] text-xs text-[var(--color-text)] outline-none focus:border-emerald-500 shadow-2xs"
-                  />
-                </div>
-
-                <div className="space-y-1.5">
-                  <label className="text-xs font-bold text-[var(--color-text-strong)]">Acquisition / Capitalization Date *</label>
-                  <input
-                    type="date"
-                    value={createForm.purchaseDate}
-                    onChange={(e) => setCreateForm({ ...createForm, purchaseDate: e.target.value })}
-                    className="w-full h-9 px-3 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] text-xs text-[var(--color-text)] font-mono outline-none focus:border-emerald-500 shadow-2xs"
-                    required
-                  />
-                </div>
-
-                <div className="space-y-1.5">
-                  <label className="text-xs font-bold text-[var(--color-text-strong)]">Gross Purchase Cost (PKR) *</label>
-                  <input
-                    type="number"
-                    step="0.01"
-                    min="0"
-                    placeholder="0.00"
-                    value={createForm.purchasePrice}
-                    onChange={(e) => setCreateForm({ ...createForm, purchasePrice: e.target.value })}
-                    className="w-full h-9 px-3 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] text-xs text-right font-mono font-bold text-emerald-600 dark:text-emerald-400 outline-none focus:border-emerald-500 shadow-2xs"
-                    required
-                  />
-                </div>
-
-                <div className="space-y-1.5">
-                  <label className="text-xs font-bold text-[var(--color-text-strong)]">Salvage / Residual Value (PKR)</label>
-                  <input
-                    type="number"
-                    step="0.01"
-                    min="0"
-                    placeholder="0.00"
-                    value={createForm.salvageValue}
-                    onChange={(e) => setCreateForm({ ...createForm, salvageValue: e.target.value })}
-                    className="w-full h-9 px-3 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] text-xs text-right font-mono outline-none focus:border-emerald-500 shadow-2xs"
-                  />
-                </div>
-
-                <div className="space-y-1.5">
-                  <label className="text-xs font-bold text-[var(--color-text-strong)]">Useful Economic Life (Years) *</label>
-                  <input
-                    type="number"
-                    min="1"
-                    max="50"
-                    value={createForm.usefulLifeYears}
-                    onChange={(e) => setCreateForm({ ...createForm, usefulLifeYears: e.target.value })}
-                    className="w-full h-9 px-3 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] text-xs text-right font-mono outline-none focus:border-emerald-500 shadow-2xs"
-                    required
+                    value={assetForm.manufacturer}
+                    onChange={e => setAssetForm(f => ({ ...f, manufacturer: e.target.value }))}
+                    placeholder="e.g. Haas Automation / Caterpillar"
+                    className="w-full px-3 py-2 bg-[var(--color-surface-muted)] border border-[var(--color-border)] rounded-xl outline-none"
                   />
                 </div>
               </div>
 
-              {/* Monthly Depreciation Preview Bar */}
-              {parseFloat(createForm.purchasePrice) > 0 && (
-                <div className="p-3.5 bg-emerald-50 dark:bg-emerald-950/40 rounded-xl border border-emerald-200 dark:border-emerald-800 flex items-center justify-between text-xs">
-                  <span className="font-bold text-emerald-800 dark:text-emerald-300">
-                    Estimated Monthly Straight-Line Depreciation:
-                  </span>
-                  <span className="font-mono font-extrabold text-sm text-emerald-700 dark:text-emerald-300">
-                    {money(
-                      ((parseFloat(createForm.purchasePrice) - (parseFloat(createForm.salvageValue) || 0)) / (parseInt(createForm.usefulLifeYears) || 5)) / 12
-                    )} / mo
-                  </span>
-                </div>
-              )}
+              {/* Row 3: Financials */}
+              <div className="p-3 bg-teal-50/40 dark:bg-teal-950/20 rounded-xl border border-teal-200/60 dark:border-teal-900/40 space-y-3">
+                <h4 className="font-bold text-xs text-teal-800 dark:text-teal-300 uppercase tracking-wider">
+                  💰 Financial Valuation & Depreciation
+                </h4>
+                <div className="grid grid-cols-1 sm:grid-cols-4 gap-3">
+                  <div className="space-y-1">
+                    <label className="font-bold text-[var(--color-text-strong)]">Capitalized Cost</label>
+                    <input
+                      type="number"
+                      step="0.01"
+                      required
+                      value={assetForm.purchasePrice}
+                      onChange={e => setAssetForm(f => ({ ...f, purchasePrice: e.target.value }))}
+                      placeholder="0.00"
+                      className="w-full px-3 py-2 bg-[var(--color-surface)] border border-[var(--color-border)] rounded-xl outline-none font-mono font-bold text-teal-700 dark:text-teal-300"
+                    />
+                  </div>
 
-              {/* GL Accounts Section */}
-              <div className="pt-2 space-y-3">
-                <span className="text-xs font-extrabold uppercase tracking-wider text-[var(--color-text-strong)] block">
-                  General Ledger Chart of Accounts Mapping
-                </span>
+                  <div className="space-y-1">
+                    <label className="font-bold text-[var(--color-text-strong)]">Acquisition Date</label>
+                    <input
+                      type="date"
+                      required
+                      value={assetForm.purchaseDate}
+                      onChange={e => setAssetForm(f => ({ ...f, purchaseDate: e.target.value }))}
+                      className="w-full px-3 py-2 bg-[var(--color-surface)] border border-[var(--color-border)] rounded-xl outline-none font-mono"
+                    />
+                  </div>
+
+                  <div className="space-y-1">
+                    <label className="font-bold text-[var(--color-text-strong)]">Useful Life (Years)</label>
+                    <input
+                      type="number"
+                      required
+                      value={assetForm.usefulLifeYears}
+                      onChange={e => setAssetForm(f => ({ ...f, usefulLifeYears: e.target.value }))}
+                      className="w-full px-3 py-2 bg-[var(--color-surface)] border border-[var(--color-border)] rounded-xl outline-none font-mono"
+                    />
+                  </div>
+
+                  <div className="space-y-1">
+                    <label className="font-bold text-[var(--color-text-strong)]">Cost Allocation</label>
+                    <select
+                      value={assetForm.costAllocation}
+                      onChange={e => setAssetForm(f => ({ ...f, costAllocation: e.target.value }))}
+                      className="w-full px-3 py-2 bg-[var(--color-surface)] border border-[var(--color-border)] rounded-xl outline-none font-semibold text-purple-700 dark:text-purple-300"
+                    >
+                      <option value="AdministrativeExpense">🏢 Administrative OPEX (61300)</option>
+                      <option value="ManufacturingOverhead">🏭 Factory MOH (61100)</option>
+                    </select>
+                  </div>
+                </div>
+              </div>
+
+              {/* Row 4: Factory Assignment */}
+              <div className="p-3 bg-[var(--color-surface-muted)]/50 rounded-xl border border-[var(--color-border)] space-y-3">
+                <h4 className="font-bold text-xs text-[var(--color-text-strong)] uppercase tracking-wider flex items-center gap-1.5">
+                  <Factory className="w-3.5 h-3.5 text-teal-600" /> Factory Location & Work Center
+                </h4>
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                   <div className="space-y-1">
-                    <label className="text-[11px] font-semibold text-[var(--color-text-muted)]">Fixed Asset Account (Dr)</label>
+                    <label className="font-bold text-[var(--color-text-strong)]">Factory Work Center</label>
                     <select
-                      value={createForm.assetAccountId}
-                      onChange={(e) => setCreateForm({ ...createForm, assetAccountId: e.target.value })}
-                      className="w-full h-8 px-2.5 rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] text-xs text-[var(--color-text)] outline-none focus:border-emerald-500"
+                      value={assetForm.workCenterName}
+                      onChange={e => setAssetForm(f => ({ ...f, workCenterName: e.target.value }))}
+                      className="w-full px-3 py-2 bg-[var(--color-surface)] border border-[var(--color-border)] rounded-xl outline-none"
                     >
-                      <option value="">-- Default Asset Account --</option>
-                      {accounts.map((a) => (
-                        <option key={a.id} value={a.id}>{a.code} - {a.name}</option>
+                      {FACTORY_WORK_CENTERS.map(w => (
+                        <option key={w} value={w}>{w}</option>
                       ))}
                     </select>
                   </div>
 
                   <div className="space-y-1">
-                    <label className="text-[11px] font-semibold text-[var(--color-text-muted)]">Accumulated Depr. (Cr)</label>
-                    <select
-                      value={createForm.accumulatedDepreciationAccountId}
-                      onChange={(e) => setCreateForm({ ...createForm, accumulatedDepreciationAccountId: e.target.value })}
-                      className="w-full h-8 px-2.5 rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] text-xs text-[var(--color-text)] outline-none focus:border-emerald-500"
-                    >
-                      <option value="">-- Default Accum. Depr. --</option>
-                      {accounts.map((a) => (
-                        <option key={a.id} value={a.id}>{a.code} - {a.name}</option>
-                      ))}
-                    </select>
+                    <label className="font-bold text-[var(--color-text-strong)]">Physical Location / Bay</label>
+                    <input
+                      value={assetForm.location}
+                      onChange={e => setAssetForm(f => ({ ...f, location: e.target.value }))}
+                      placeholder="e.g. Bay 4 - Plant A"
+                      className="w-full px-3 py-2 bg-[var(--color-surface)] border border-[var(--color-border)] rounded-xl outline-none"
+                    />
                   </div>
 
                   <div className="space-y-1">
-                    <label className="text-[11px] font-semibold text-[var(--color-text-muted)]">Depr. Expense (Dr)</label>
-                    <select
-                      value={createForm.depreciationExpenseAccountId}
-                      onChange={(e) => setCreateForm({ ...createForm, depreciationExpenseAccountId: e.target.value })}
-                      className="w-full h-8 px-2.5 rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] text-xs text-[var(--color-text)] outline-none focus:border-emerald-500"
-                    >
-                      <option value="">-- Default Depr. Expense --</option>
-                      {accounts.map((a) => (
-                        <option key={a.id} value={a.id}>{a.code} - {a.name}</option>
-                      ))}
-                    </select>
+                    <label className="font-bold text-[var(--color-text-strong)]">Assigned Custodian / Operator</label>
+                    <input
+                      value={assetForm.assignedCustodianName}
+                      onChange={e => setAssetForm(f => ({ ...f, assignedCustodianName: e.target.value }))}
+                      placeholder="e.g. Lead Machinist / John Doe"
+                      className="w-full px-3 py-2 bg-[var(--color-surface)] border border-[var(--color-border)] rounded-xl outline-none"
+                    />
                   </div>
                 </div>
               </div>
 
-              <div className="flex items-center justify-end gap-2 pt-4 border-t border-[var(--color-border)]">
+              {/* Row 5: Procurement Bridge Info */}
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                <div className="space-y-1">
+                  <label className="font-bold text-[var(--color-text-strong)]">Vendor / Supplier</label>
+                  <input
+                    value={assetForm.vendorName}
+                    onChange={e => setAssetForm(f => ({ ...f, vendorName: e.target.value }))}
+                    placeholder="e.g. Machinery Supply Corp"
+                    className="w-full px-3 py-2 bg-[var(--color-surface-muted)] border border-[var(--color-border)] rounded-xl outline-none"
+                  />
+                </div>
+
+                <div className="space-y-1">
+                  <label className="font-bold text-[var(--color-text-strong)]">Purchase Order / Bill #</label>
+                  <input
+                    value={assetForm.purchaseOrderNumber || assetForm.vendorBillNumber}
+                    onChange={e => setAssetForm(f => ({ ...f, purchaseOrderNumber: e.target.value }))}
+                    placeholder="e.g. PO-2026-0042"
+                    className="w-full px-3 py-2 bg-[var(--color-surface-muted)] border border-[var(--color-border)] rounded-xl outline-none font-mono"
+                  />
+                </div>
+
+                <div className="space-y-1">
+                  <label className="font-bold text-[var(--color-text-strong)]">Warranty Expiry Date</label>
+                  <input
+                    type="date"
+                    value={assetForm.warrantyExpiryDate}
+                    onChange={e => setAssetForm(f => ({ ...f, warrantyExpiryDate: e.target.value }))}
+                    className="w-full px-3 py-2 bg-[var(--color-surface-muted)] border border-[var(--color-border)] rounded-xl outline-none font-mono"
+                  />
+                </div>
+              </div>
+
+              <div className="flex items-center justify-end gap-2 pt-3 border-t border-[var(--color-border)]">
                 <button
                   type="button"
                   onClick={() => setIsCreateOpen(false)}
-                  className="secondary h-9 px-4 rounded-xl text-xs font-semibold"
+                  className="px-4 py-2 border border-[var(--color-border)] rounded-xl font-semibold hover:bg-[var(--color-surface-muted)] text-[var(--color-text)] cursor-pointer"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
                   disabled={loading}
-                  className="primary h-9 px-5 rounded-xl text-xs font-bold shadow-xs"
+                  className="px-5 py-2 bg-teal-600 hover:bg-teal-700 text-white rounded-xl font-bold shadow-xs flex items-center gap-1.5 disabled:opacity-50 cursor-pointer"
                 >
-                  {loading ? 'Saving...' : 'Register Asset in Register'}
+                  <Check className="w-4 h-4" />
+                  {loading ? 'Saving...' : editingAsset ? 'Update Asset' : 'Capitalize Asset'}
                 </button>
               </div>
             </form>
@@ -922,98 +1523,235 @@ export const FixedAssets: React.FC<{ activeEntityId: string }> = ({ activeEntity
         </div>
       )}
 
-      {/* ─── Single Asset Depreciation Modal ─── */}
-      {deprModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs p-3 md:p-6" onClick={() => setDeprModal(null)}>
-          <div
-            className="bg-[var(--color-surface)] border border-[var(--color-border)] rounded-2xl shadow-2xl w-full max-w-lg overflow-hidden flex flex-col max-h-[92vh] transition-all animate-in fade-in zoom-in-95 duration-200"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div className="flex items-center justify-between p-5 border-b border-[var(--color-border)] bg-gray-50/70 dark:bg-gray-900/70">
-              <div className="flex items-center gap-3">
-                <div className="p-2 bg-blue-50 dark:bg-blue-950/40 text-blue-600 rounded-xl border border-blue-200 dark:border-blue-800">
-                  <Zap className="w-5 h-5" />
-                </div>
-                <div>
-                  <h2 className="text-base font-bold text-[var(--color-text-strong)]">
-                    Post Monthly Depreciation
-                  </h2>
-                  <p className="text-xs text-[var(--color-text-muted)] mt-0.5">
-                    Asset: <strong>{deprModal.name}</strong> ({deprModal.assetTag})
-                  </p>
-                </div>
+      {/* ─── MODAL: MAINTENANCE LOGGING ─────────────────────────────────────── */}
+      {maintenanceModal && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-xs flex items-center justify-center z-50 p-4 animate-in fade-in">
+          <div className="bg-[var(--color-surface)] border border-[var(--color-border)] rounded-2xl max-w-md w-full p-6 shadow-2xl space-y-4">
+            <div className="flex items-center justify-between border-b border-[var(--color-border)] pb-3">
+              <div>
+                <p className="text-[10px] font-mono font-bold text-amber-600">{maintenanceModal.assetTag}</p>
+                <h3 className="text-base font-bold text-[var(--color-text-strong)]">Log Service & Repair</h3>
               </div>
-
-              <button
-                onClick={() => setDeprModal(null)}
-                className="h-8 w-8 flex items-center justify-center rounded-xl hover:bg-gray-200 dark:hover:bg-gray-800 text-[var(--color-text-muted)] hover:text-[var(--color-text-strong)] transition-all"
-              >
-                <X className="w-5 h-5" />
-              </button>
+              <button onClick={() => setMaintenanceModal(null)} className="text-lg cursor-pointer">✕</button>
             </div>
 
-            <form onSubmit={handleRunDepreciation} className="p-5 space-y-4 text-xs">
-              <div className="p-3.5 bg-blue-50/60 dark:bg-blue-950/40 rounded-xl border border-blue-100 dark:border-blue-900/50 space-y-1.5">
-                <div className="flex justify-between">
-                  <span className="text-[var(--color-text-muted)]">Historical Cost:</span>
-                  <span className="font-mono font-bold text-[var(--color-text-strong)]">{money(deprModal.purchasePrice || (deprModal as any).cost || 0)}</span>
+            <form onSubmit={handleSaveMaintenance} className="space-y-3 text-xs">
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1">
+                  <label className="font-bold text-[var(--color-text-strong)]">Date</label>
+                  <input
+                    type="date"
+                    required
+                    value={maintForm.date}
+                    onChange={e => setMaintForm(f => ({ ...f, date: e.target.value }))}
+                    className="w-full px-3 py-2 bg-[var(--color-surface-muted)] border border-[var(--color-border)] rounded-xl outline-none font-mono"
+                  />
                 </div>
-                <div className="flex justify-between">
-                  <span className="text-[var(--color-text-muted)]">Accumulated to Date:</span>
-                  <span className="font-mono font-bold text-purple-600">{money(deprModal.accumulatedDepreciation || 0)}</span>
-                </div>
-                <div className="flex justify-between border-t border-blue-200 dark:border-blue-800 pt-1.5">
-                  <span className="font-bold text-blue-900 dark:text-blue-200">Monthly Depreciation to Post:</span>
-                  <span className="font-mono font-extrabold text-blue-700 dark:text-blue-300 text-sm">
-                    {money((((deprModal.purchasePrice || (deprModal as any).cost || 0) - (deprModal.salvageValue || 0)) / (deprModal.usefulLifeYears || 5)) / 12)}
-                  </span>
+
+                <div className="space-y-1">
+                  <label className="font-bold text-[var(--color-text-strong)]">Maintenance Type</label>
+                  <select
+                    value={maintForm.maintenanceType}
+                    onChange={e => setMaintForm(f => ({ ...f, maintenanceType: e.target.value }))}
+                    className="w-full px-3 py-2 bg-[var(--color-surface-muted)] border border-[var(--color-border)] rounded-xl outline-none font-semibold"
+                  >
+                    <option value="Preventive">Preventive Service</option>
+                    <option value="BreakdownRepair">Breakdown Repair</option>
+                    <option value="Calibration">Calibration & Inspection</option>
+                    <option value="Overhaul">Major Overhaul</option>
+                  </select>
                 </div>
               </div>
 
-              <div className="space-y-3">
+              <div className="space-y-1">
+                <label className="font-bold text-[var(--color-text-strong)]">Work Performed</label>
+                <textarea
+                  required
+                  value={maintForm.description}
+                  onChange={e => setMaintForm(f => ({ ...f, description: e.target.value }))}
+                  placeholder="e.g. Replaced hydraulic seal, calibrated spindle alignment"
+                  className="w-full px-3 py-2 bg-[var(--color-surface-muted)] border border-[var(--color-border)] rounded-xl outline-none h-16 resize-none"
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-1">
-                  <label className="font-bold text-[var(--color-text-strong)]">Depreciation Expense Account (Dr)</label>
-                  <select
-                    value={deprForm.expenseAccId}
-                    onChange={(e) => setDeprForm({ ...deprForm, expenseAccId: e.target.value })}
-                    className="w-full h-8 px-2.5 rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] text-xs text-[var(--color-text)] outline-none focus:border-emerald-500"
-                  >
-                    <option value="">-- Use System Default Mapping --</option>
-                    {accounts.map((a) => (
-                      <option key={a.id} value={a.id}>{a.code} - {a.name}</option>
-                    ))}
-                  </select>
+                  <label className="font-bold text-[var(--color-text-strong)]">Repair Cost</label>
+                  <input
+                    type="number"
+                    step="0.01"
+                    value={maintForm.cost}
+                    onChange={e => setMaintForm(f => ({ ...f, cost: e.target.value }))}
+                    className="w-full px-3 py-2 bg-[var(--color-surface-muted)] border border-[var(--color-border)] rounded-xl outline-none font-mono"
+                  />
                 </div>
 
                 <div className="space-y-1">
-                  <label className="font-bold text-[var(--color-text-strong)]">Accumulated Depreciation Account (Cr)</label>
-                  <select
-                    value={deprForm.accumAccId}
-                    onChange={(e) => setDeprForm({ ...deprForm, accumAccId: e.target.value })}
-                    className="w-full h-8 px-2.5 rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] text-xs text-[var(--color-text)] outline-none focus:border-emerald-500"
-                  >
-                    <option value="">-- Use System Default Mapping --</option>
-                    {accounts.map((a) => (
-                      <option key={a.id} value={a.id}>{a.code} - {a.name}</option>
-                    ))}
-                  </select>
+                  <label className="font-bold text-[var(--color-text-strong)]">Technician Name</label>
+                  <input
+                    value={maintForm.technicianName}
+                    onChange={e => setMaintForm(f => ({ ...f, technicianName: e.target.value }))}
+                    placeholder="e.g. Master Tech Alex"
+                    className="w-full px-3 py-2 bg-[var(--color-surface-muted)] border border-[var(--color-border)] rounded-xl outline-none"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1">
+                  <label className="font-bold text-[var(--color-text-strong)]">Downtime (Hours)</label>
+                  <input
+                    type="number"
+                    step="0.1"
+                    value={maintForm.downTimeHours}
+                    onChange={e => setMaintForm(f => ({ ...f, downTimeHours: e.target.value }))}
+                    className="w-full px-3 py-2 bg-[var(--color-surface-muted)] border border-[var(--color-border)] rounded-xl outline-none font-mono"
+                  />
+                </div>
+
+                <div className="space-y-1">
+                  <label className="font-bold text-[var(--color-text-strong)]">Next Service Due Date</label>
+                  <input
+                    type="date"
+                    value={maintForm.nextServiceDueDate}
+                    onChange={e => setMaintForm(f => ({ ...f, nextServiceDueDate: e.target.value }))}
+                    className="w-full px-3 py-2 bg-[var(--color-surface-muted)] border border-[var(--color-border)] rounded-xl outline-none font-mono"
+                  />
                 </div>
               </div>
 
               <div className="flex items-center justify-end gap-2 pt-3 border-t border-[var(--color-border)]">
                 <button
                   type="button"
+                  onClick={() => setMaintenanceModal(null)}
+                  className="px-3 py-2 border border-[var(--color-border)] rounded-xl font-semibold cursor-pointer"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="px-4 py-2 bg-amber-600 hover:bg-amber-700 text-white rounded-xl font-bold shadow-xs cursor-pointer"
+                >
+                  Save Service Record
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* ─── MODAL: ASSET TRANSFER ───────────────────────────────────────────── */}
+      {transferModal && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-xs flex items-center justify-center z-50 p-4 animate-in fade-in">
+          <div className="bg-[var(--color-surface)] border border-[var(--color-border)] rounded-2xl max-w-md w-full p-6 shadow-2xl space-y-4">
+            <div className="flex items-center justify-between border-b border-[var(--color-border)] pb-3">
+              <div>
+                <p className="text-[10px] font-mono font-bold text-purple-600">{transferModal.assetTag}</p>
+                <h3 className="text-base font-bold text-[var(--color-text-strong)]">Transfer Equipment Location</h3>
+              </div>
+              <button onClick={() => setTransferModal(null)} className="text-lg cursor-pointer">✕</button>
+            </div>
+
+            <form onSubmit={handleSaveTransfer} className="space-y-3 text-xs">
+              <div className="space-y-1">
+                <label className="font-bold text-[var(--color-text-strong)]">Transfer Date</label>
+                <input
+                  type="date"
+                  required
+                  value={transferForm.transferDate}
+                  onChange={e => setTransferForm(f => ({ ...f, transferDate: e.target.value }))}
+                  className="w-full px-3 py-2 bg-[var(--color-surface-muted)] border border-[var(--color-border)] rounded-xl outline-none font-mono"
+                />
+              </div>
+
+              <div className="space-y-1">
+                <label className="font-bold text-[var(--color-text-strong)]">Target Factory Work Center</label>
+                <select
+                  value={transferForm.toWorkCenter}
+                  onChange={e => setTransferForm(f => ({ ...f, toWorkCenter: e.target.value }))}
+                  className="w-full px-3 py-2 bg-[var(--color-surface-muted)] border border-[var(--color-border)] rounded-xl outline-none font-semibold"
+                >
+                  {FACTORY_WORK_CENTERS.map(w => (
+                    <option key={w} value={w}>{w}</option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="space-y-1">
+                <label className="font-bold text-[var(--color-text-strong)]">Destination Plant / Location</label>
+                <input
+                  required
+                  value={transferForm.toLocation}
+                  onChange={e => setTransferForm(f => ({ ...f, toLocation: e.target.value }))}
+                  placeholder="e.g. Plant B - Assembly Workshop 2"
+                  className="w-full px-3 py-2 bg-[var(--color-surface-muted)] border border-[var(--color-border)] rounded-xl outline-none"
+                />
+              </div>
+
+              <div className="space-y-1">
+                <label className="font-bold text-[var(--color-text-strong)]">Authorized By</label>
+                <input
+                  value={transferForm.authorizedBy}
+                  onChange={e => setTransferForm(f => ({ ...f, authorizedBy: e.target.value }))}
+                  placeholder="e.g. Operations Director"
+                  className="w-full px-3 py-2 bg-[var(--color-surface-muted)] border border-[var(--color-border)] rounded-xl outline-none"
+                />
+              </div>
+
+              <div className="flex items-center justify-end gap-2 pt-3 border-t border-[var(--color-border)]">
+                <button
+                  type="button"
+                  onClick={() => setTransferModal(null)}
+                  className="px-3 py-2 border border-[var(--color-border)] rounded-xl font-semibold cursor-pointer"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-xl font-bold shadow-xs cursor-pointer"
+                >
+                  Confirm Transfer
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* ─── MODAL: SINGLE DEPRECIATION ───────────────────────────────────────── */}
+      {deprModal && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-xs flex items-center justify-center z-50 p-4 animate-in fade-in">
+          <div className="bg-[var(--color-surface)] border border-[var(--color-border)] rounded-2xl max-w-md w-full p-6 shadow-2xl space-y-4">
+            <div className="flex items-center justify-between border-b border-[var(--color-border)] pb-3">
+              <div>
+                <p className="text-[10px] font-mono font-bold text-indigo-600">{deprModal.assetTag}</p>
+                <h3 className="text-base font-bold text-[var(--color-text-strong)]">Post Monthly Depreciation</h3>
+              </div>
+              <button onClick={() => setDeprModal(null)} className="text-lg cursor-pointer">✕</button>
+            </div>
+
+            <div className="p-3 bg-indigo-50 dark:bg-indigo-950/30 rounded-xl text-xs space-y-1 text-indigo-800 dark:text-indigo-300 font-mono">
+              <p>Asset: <strong>{deprModal.name}</strong></p>
+              <p>Cost: <strong>{money(deprModal.purchasePrice || deprModal.cost || 0)}</strong></p>
+              <p>Net Book Value: <strong>{money(deprModal.netBookValue || deprModal.bookValue || ((deprModal.purchasePrice || 0) - (deprModal.accumulatedDepreciation || 0)))}</strong></p>
+              <p>Cost Allocation: <strong>{deprModal.costAllocation === 'ManufacturingOverhead' ? '🏭 Factory MOH (61100)' : '🏢 Admin OPEX (61300)'}</strong></p>
+            </div>
+
+            <form onSubmit={handleRunSingleDepreciation} className="space-y-3 text-xs">
+              <div className="flex items-center justify-end gap-2 pt-3 border-t border-[var(--color-border)]">
+                <button
+                  type="button"
                   onClick={() => setDeprModal(null)}
-                  className="secondary h-9 px-4 rounded-xl text-xs font-semibold"
+                  className="px-3 py-2 border border-[var(--color-border)] rounded-xl font-semibold cursor-pointer"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
                   disabled={actingId === deprModal.id}
-                  className="primary h-9 px-5 rounded-xl text-xs font-bold shadow-xs flex items-center gap-1.5"
+                  className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-bold shadow-xs cursor-pointer disabled:opacity-50"
                 >
-                  <Zap className="w-3.5 h-3.5" /> Post Journal Entry
+                  {actingId === deprModal.id ? 'Posting...' : 'Post Depreciation Journal'}
                 </button>
               </div>
             </form>
@@ -1021,93 +1759,62 @@ export const FixedAssets: React.FC<{ activeEntityId: string }> = ({ activeEntity
         </div>
       )}
 
-      {/* ─── Asset Disposal Modal (IAS 16 Derecognition) ─── */}
+      {/* ─── MODAL: DISPOSAL ─────────────────────────────────────────────────── */}
       {disposeModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs p-3 md:p-6" onClick={() => setDisposeModal(null)}>
-          <div
-            className="bg-[var(--color-surface)] border border-[var(--color-border)] rounded-2xl shadow-2xl w-full max-w-lg overflow-hidden flex flex-col max-h-[92vh] transition-all animate-in fade-in zoom-in-95 duration-200"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div className="flex items-center justify-between p-5 border-b border-[var(--color-border)] bg-gray-50/70 dark:bg-gray-900/70">
-              <div className="flex items-center gap-3">
-                <div className="p-2 bg-rose-50 dark:bg-rose-950/40 text-rose-600 rounded-xl border border-rose-200 dark:border-rose-800">
-                  <Trash2 className="w-5 h-5" />
-                </div>
-                <div>
-                  <h2 className="text-base font-bold text-[var(--color-text-strong)]">
-                    Dispose / Derecognize Capital Asset
-                  </h2>
-                  <p className="text-xs text-[var(--color-text-muted)] mt-0.5">
-                    Asset: <strong>{disposeModal.name}</strong> (NBV: {money(disposeModal.netBookValue ?? ((disposeModal.purchasePrice || 0) - (disposeModal.accumulatedDepreciation || 0)))})
-                  </p>
-                </div>
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-xs flex items-center justify-center z-50 p-4 animate-in fade-in">
+          <div className="bg-[var(--color-surface)] border border-[var(--color-border)] rounded-2xl max-w-md w-full p-6 shadow-2xl space-y-4">
+            <div className="flex items-center justify-between border-b border-[var(--color-border)] pb-3">
+              <div>
+                <p className="text-[10px] font-mono font-bold text-rose-600">{disposeModal.assetTag}</p>
+                <h3 className="text-base font-bold text-[var(--color-text-strong)]">Dispose / Sell Fixed Asset</h3>
               </div>
-
-              <button
-                onClick={() => setDisposeModal(null)}
-                className="h-8 w-8 flex items-center justify-center rounded-xl hover:bg-gray-200 dark:hover:bg-gray-800 text-[var(--color-text-muted)] hover:text-[var(--color-text-strong)] transition-all"
-              >
-                <X className="w-5 h-5" />
-              </button>
+              <button onClick={() => setDisposeModal(null)} className="text-lg cursor-pointer">✕</button>
             </div>
 
-            <form onSubmit={handleDisposeAsset} className="p-5 space-y-4 text-xs">
-              <div className="grid grid-cols-2 gap-3">
-                <div className="space-y-1">
-                  <label className="font-bold text-[var(--color-text-strong)]">Disposal Date *</label>
-                  <input
-                    type="date"
-                    value={disposeForm.disposalDate}
-                    onChange={(e) => setDisposeForm({ ...disposeForm, disposalDate: e.target.value })}
-                    className="w-full h-8 px-2.5 rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] text-xs text-[var(--color-text)] outline-none focus:border-emerald-500 font-mono"
-                    required
-                  />
-                </div>
+            <div className="p-3 bg-amber-50 dark:bg-amber-950/30 rounded-xl text-xs space-y-1 text-amber-800 dark:text-amber-300">
+              <p>Cost: <strong>{money(disposeModal.purchasePrice || disposeModal.cost || 0)}</strong></p>
+              <p>Accumulated Depr: <strong>{money(disposeModal.accumulatedDepreciation || 0)}</strong></p>
+              <p>Carrying NBV: <strong>{money(disposeModal.netBookValue || disposeModal.bookValue || ((disposeModal.purchasePrice || 0) - (disposeModal.accumulatedDepreciation || 0)))}</strong></p>
+            </div>
 
-                <div className="space-y-1">
-                  <label className="font-bold text-[var(--color-text-strong)]">Disposal Proceeds (PKR)</label>
-                  <input
-                    type="number"
-                    step="0.01"
-                    min="0"
-                    placeholder="0.00"
-                    value={disposeForm.proceeds}
-                    onChange={(e) => setDisposeForm({ ...disposeForm, proceeds: e.target.value })}
-                    className="w-full h-8 px-2.5 rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] text-xs text-right font-mono font-bold text-emerald-600 outline-none focus:border-emerald-500"
-                  />
-                </div>
+            <form onSubmit={handleDisposeAsset} className="space-y-3 text-xs">
+              <div className="space-y-1">
+                <label className="font-bold text-[var(--color-text-strong)]">Disposal Date</label>
+                <input
+                  type="date"
+                  required
+                  value={disposeForm.disposalDate}
+                  onChange={e => setDisposeForm(f => ({ ...f, disposalDate: e.target.value }))}
+                  className="w-full px-3 py-2 bg-[var(--color-surface-muted)] border border-[var(--color-border)] rounded-xl outline-none font-mono"
+                />
               </div>
 
-              <div className="space-y-3">
-                <div className="space-y-1">
-                  <label className="font-bold text-[var(--color-text-strong)]">Proceeds Deposited To (Cash/Bank Account)</label>
-                  <select
-                    value={disposeForm.cashAccountId}
-                    onChange={(e) => setDisposeForm({ ...disposeForm, cashAccountId: e.target.value })}
-                    className="w-full h-8 px-2.5 rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] text-xs text-[var(--color-text)] outline-none focus:border-emerald-500"
-                  >
-                    <option value="">-- No Proceeds (Scrapped / Written Off) --</option>
-                    {accounts.map((a) => (
-                      <option key={a.id} value={a.id}>{a.code} - {a.name}</option>
-                    ))}
-                  </select>
-                </div>
+              <div className="space-y-1">
+                <label className="font-bold text-[var(--color-text-strong)]">Proceeds / Sale Price</label>
+                <input
+                  type="number"
+                  step="0.01"
+                  required
+                  value={disposeForm.proceeds}
+                  onChange={e => setDisposeForm(f => ({ ...f, proceeds: e.target.value }))}
+                  className="w-full px-3 py-2 bg-[var(--color-surface-muted)] border border-[var(--color-border)] rounded-xl outline-none font-mono font-bold text-teal-700"
+                />
               </div>
 
               <div className="flex items-center justify-end gap-2 pt-3 border-t border-[var(--color-border)]">
                 <button
                   type="button"
                   onClick={() => setDisposeModal(null)}
-                  className="secondary h-9 px-4 rounded-xl text-xs font-semibold"
+                  className="px-3 py-2 border border-[var(--color-border)] rounded-xl font-semibold cursor-pointer"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
                   disabled={actingId === disposeModal.id}
-                  className="h-9 px-5 bg-rose-600 hover:bg-rose-700 text-white rounded-xl text-xs font-bold shadow-xs flex items-center gap-1.5"
+                  className="px-4 py-2 bg-rose-600 hover:bg-rose-700 text-white rounded-xl font-bold shadow-xs cursor-pointer disabled:opacity-50"
                 >
-                  <Trash2 className="w-3.5 h-3.5" /> Dispose & Post Gain/Loss
+                  {actingId === disposeModal.id ? 'Processing...' : 'Confirm Disposal & Post Journal'}
                 </button>
               </div>
             </form>
@@ -1115,140 +1822,110 @@ export const FixedAssets: React.FC<{ activeEntityId: string }> = ({ activeEntity
         </div>
       )}
 
-      {/* ─── Asset Detail Inspection Modal ─── */}
-      {detailModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs p-3 md:p-6" onClick={() => setDetailModal(null)}>
-          <div
-            className="bg-[var(--color-surface)] border border-[var(--color-border)] rounded-2xl shadow-2xl w-full max-w-xl overflow-hidden flex flex-col max-h-[92vh] transition-all animate-in fade-in zoom-in-95 duration-200"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div className="flex items-center justify-between p-5 border-b border-[var(--color-border)] bg-gray-50/70 dark:bg-gray-900/70">
-              <div className="flex items-center gap-3">
-                <div className="p-2.5 bg-emerald-50 dark:bg-emerald-950/40 text-emerald-600 rounded-xl border border-emerald-200 dark:border-emerald-800">
-                  <Building className="w-5 h-5" />
-                </div>
-                <div>
-                  <h2 className="text-base font-bold text-[var(--color-text-strong)]">
-                    {detailModal.name}
-                  </h2>
-                  <p className="text-xs text-[var(--color-text-muted)] mt-0.5">
-                    Tag: <strong>{detailModal.assetTag || detailModal.id.slice(0, 8)}</strong> | IAS 16 Capital Asset
-                  </p>
-                </div>
-              </div>
-
-              <button
-                onClick={() => setDetailModal(null)}
-                className="h-8 w-8 flex items-center justify-center rounded-xl hover:bg-gray-200 dark:hover:bg-gray-800 text-[var(--color-text-muted)] hover:text-[var(--color-text-strong)] transition-all"
-              >
-                <X className="w-5 h-5" />
-              </button>
+      {/* ─── MODAL: BATCH DEPRECIATION RESULTS ─────────────────────────────────── */}
+      {batchModalOpen && batchResults && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-xs flex items-center justify-center z-50 p-4 animate-in fade-in">
+          <div className="bg-[var(--color-surface)] border border-[var(--color-border)] rounded-2xl max-w-2xl w-full p-6 shadow-2xl space-y-4 max-h-[85vh] overflow-y-auto">
+            <div className="flex items-center justify-between border-b border-[var(--color-border)] pb-3">
+              <h3 className="text-base font-bold text-[var(--color-text-strong)] flex items-center gap-2">
+                <CheckCircle2 className="w-5 h-5 text-teal-600" /> Batch Depreciation Execution Summary
+              </h3>
+              <button onClick={() => setBatchModalOpen(false)} className="text-lg cursor-pointer">✕</button>
             </div>
 
-            <div className="p-6 space-y-4 overflow-y-auto text-xs">
-              <div className="grid grid-cols-2 gap-3 p-3.5 bg-gray-50 dark:bg-gray-900 rounded-xl border border-[var(--color-border)]">
-                <div>
-                  <span className="text-[10px] text-[var(--color-text-muted)] uppercase font-bold block">Acquisition Date</span>
-                  <span className="font-mono font-bold text-[var(--color-text-strong)]">{(detailModal.purchaseDate || (detailModal as any).acquisitionDate || '').slice(0, 10)}</span>
+            <div className="divide-y divide-[var(--color-border)] text-xs">
+              {batchResults.map((r, idx) => (
+                <div key={idx} className="py-2.5 flex items-center justify-between">
+                  <div>
+                    <p className="font-bold text-[var(--color-text-strong)]">{r.assetTag} — {r.assetName}</p>
+                    <p className="text-[10px] text-[var(--color-text-muted)] font-mono">GL Expense Code: {r.expenseAccountCode || '61300'}</p>
+                  </div>
+                  <div className="text-right font-mono">
+                    <p className="font-bold text-amber-600">{money(r.amountPosted)}</p>
+                    <p className="text-[10px] text-teal-600 font-semibold">New NBV: {money(r.netBookValue)}</p>
+                  </div>
                 </div>
-                <div>
-                  <span className="text-[10px] text-[var(--color-text-muted)] uppercase font-bold block">Useful Life</span>
-                  <span className="font-mono font-bold text-[var(--color-text-strong)]">{detailModal.usefulLifeYears || 5} Years</span>
-                </div>
-                <div>
-                  <span className="text-[10px] text-[var(--color-text-muted)] uppercase font-bold block">Gross Cost</span>
-                  <span className="font-mono font-bold text-emerald-600">{money(detailModal.purchasePrice || (detailModal as any).cost || 0)}</span>
-                </div>
-                <div>
-                  <span className="text-[10px] text-[var(--color-text-muted)] uppercase font-bold block">Carrying Value (NBV)</span>
-                  <span className="font-mono font-bold text-emerald-700">{money(detailModal.netBookValue ?? ((detailModal.purchasePrice || 0) - (detailModal.accumulatedDepreciation || 0)))}</span>
-                </div>
-              </div>
+              ))}
+            </div>
 
-              <div className="flex items-center justify-end gap-2 pt-3 border-t border-[var(--color-border)]">
-                <button
-                  type="button"
-                  onClick={() => setDetailModal(null)}
-                  className="secondary h-9 px-4 rounded-xl text-xs font-semibold"
-                >
-                  Close
-                </button>
-                <button
-                  type="button"
-                  onClick={() => generateAssetPDF(detailModal)}
-                  className="primary h-9 px-4 rounded-xl text-xs font-bold flex items-center gap-1.5 shadow-xs"
-                >
-                  <Download className="w-3.5 h-3.5" /> Download IAS 16 Certificate
-                </button>
-              </div>
+            <div className="flex justify-end pt-3 border-t border-[var(--color-border)]">
+              <button
+                onClick={() => setBatchModalOpen(false)}
+                className="px-4 py-2 bg-teal-600 text-white rounded-xl text-xs font-bold cursor-pointer"
+              >
+                Done
+              </button>
             </div>
           </div>
         </div>
       )}
 
-      {/* ─── Batch Depreciation Results Modal ─── */}
-      {batchModalOpen && batchResults && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs p-3 md:p-6" onClick={() => setBatchModalOpen(false)}>
-          <div
-            className="bg-[var(--color-surface)] border border-[var(--color-border)] rounded-2xl shadow-2xl w-full max-w-2xl overflow-hidden flex flex-col max-h-[92vh] transition-all animate-in fade-in zoom-in-95 duration-200"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div className="flex items-center justify-between p-5 border-b border-[var(--color-border)] bg-gray-50/70 dark:bg-gray-900/70">
-              <div className="flex items-center gap-3">
-                <div className="p-2 bg-emerald-50 dark:bg-emerald-950/40 text-emerald-600 rounded-xl border border-emerald-200 dark:border-emerald-800">
-                  <CheckCircle2 className="w-5 h-5" />
-                </div>
-                <div>
-                  <h2 className="text-base font-bold text-[var(--color-text-strong)]">
-                    Month-End Batch Depreciation Summary
-                  </h2>
-                  <p className="text-xs text-[var(--color-text-muted)] mt-0.5">
-                    Depreciation journals posted to General Ledger for {batchResults.length} active capital assets.
-                  </p>
-                </div>
+      {/* ─── MODAL: ASSET DETAILS DRAWER ─────────────────────────────────────── */}
+      {detailModal && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-xs flex items-center justify-center z-50 p-4 animate-in fade-in">
+          <div className="bg-[var(--color-surface)] border border-[var(--color-border)] rounded-2xl max-w-xl w-full p-6 shadow-2xl space-y-4 max-h-[85vh] overflow-y-auto">
+            <div className="flex items-center justify-between border-b border-[var(--color-border)] pb-3">
+              <div>
+                <p className="text-[10px] font-mono font-bold text-teal-600">{detailModal.assetTag}</p>
+                <h3 className="text-base font-bold text-[var(--color-text-strong)]">{detailModal.name}</h3>
               </div>
-
-              <button
-                onClick={() => setBatchModalOpen(false)}
-                className="h-8 w-8 flex items-center justify-center rounded-xl hover:bg-gray-200 dark:hover:bg-gray-800 text-[var(--color-text-muted)] hover:text-[var(--color-text-strong)] transition-all"
-              >
-                <X className="w-5 h-5" />
-              </button>
+              <button onClick={() => setDetailModal(null)} className="text-lg cursor-pointer">✕</button>
             </div>
 
-            <div className="p-5 overflow-y-auto space-y-3">
-              <div className="border border-[var(--color-border)] rounded-xl overflow-hidden">
-                <table className="w-full text-xs text-left">
-                  <thead className="bg-gray-50 dark:bg-gray-900 font-extrabold text-[10px] text-[var(--color-text-muted)] uppercase border-b border-[var(--color-border)]">
-                    <tr>
-                      <th className="py-2.5 px-3">ASSET TAG</th>
-                      <th className="py-2.5 px-3">ASSET NAME</th>
-                      <th className="py-2.5 px-3 text-right">POSTED DEPR.</th>
-                      <th className="py-2.5 px-3 text-right">CLOSING NBV</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-[var(--color-border)] font-mono">
-                    {batchResults.map((r, i) => (
-                      <tr key={i}>
-                        <td className="py-2 px-3 font-bold text-blue-600">{r.assetTag}</td>
-                        <td className="py-2 px-3 font-sans font-medium text-[var(--color-text-strong)]">{r.assetName}</td>
-                        <td className="py-2 px-3 text-right font-bold text-purple-600">{money(r.amountPosted)}</td>
-                        <td className="py-2 px-3 text-right font-bold text-emerald-600">{money(r.netBookValue)}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
+            <div className="grid grid-cols-2 gap-3 text-xs p-3 bg-[var(--color-surface-muted)]/50 rounded-xl">
+              <div>
+                <p className="text-[10px] text-[var(--color-text-muted)]">Cost Allocation</p>
+                <p className="font-bold text-[var(--color-text-strong)]">{detailModal.costAllocation === 'ManufacturingOverhead' ? '🏭 Factory MOH (61100)' : '🏢 Admin OPEX (61300)'}</p>
               </div>
+              <div>
+                <p className="text-[10px] text-[var(--color-text-muted)]">Work Center</p>
+                <p className="font-bold text-[var(--color-text-strong)]">{detailModal.workCenterName || 'Main Factory Floor'}</p>
+              </div>
+              <div>
+                <p className="text-[10px] text-[var(--color-text-muted)]">Capitalized Cost</p>
+                <p className="font-bold text-[var(--color-text-strong)] font-mono">{money(detailModal.purchasePrice || detailModal.cost || 0)}</p>
+              </div>
+              <div>
+                <p className="text-[10px] text-[var(--color-text-muted)]">Net Book Value</p>
+                <p className="font-bold text-teal-600 font-mono">{money(detailModal.netBookValue || detailModal.bookValue || ((detailModal.purchasePrice || 0) - (detailModal.accumulatedDepreciation || 0)))}</p>
+              </div>
+              <div>
+                <p className="text-[10px] text-[var(--color-text-muted)]">Vendor</p>
+                <p className="font-semibold text-[var(--color-text-strong)]">{detailModal.vendorName || 'N/A'}</p>
+              </div>
+              <div>
+                <p className="text-[10px] text-[var(--color-text-muted)]">Warranty Until</p>
+                <p className="font-mono text-[var(--color-text-strong)]">{detailModal.warrantyExpiryDate || 'N/A'}</p>
+              </div>
+            </div>
 
-              <div className="flex justify-end pt-3">
-                <button
-                  type="button"
-                  onClick={() => setBatchModalOpen(false)}
-                  className="primary h-9 px-5 rounded-xl text-xs font-bold"
-                >
-                  Done
-                </button>
-              </div>
+            {/* Maintenance History */}
+            <div className="space-y-2 text-xs">
+              <h4 className="font-bold text-[var(--color-text-strong)] flex items-center gap-1.5">
+                <Wrench className="w-3.5 h-3.5 text-amber-600" /> Maintenance & Repair Records
+              </h4>
+              {(!detailModal.maintenanceHistory || detailModal.maintenanceHistory.length === 0) ? (
+                <p className="text-[11px] text-[var(--color-text-muted)]">No maintenance history recorded for this asset.</p>
+              ) : (
+                detailModal.maintenanceHistory.map((m, idx) => (
+                  <div key={idx} className="p-2 border border-[var(--color-border)] rounded-lg space-y-0.5">
+                    <div className="flex justify-between font-mono text-[10px]">
+                      <span className="font-bold text-amber-600">{m.maintenanceType}</span>
+                      <span className="text-[var(--color-text-muted)]">{m.date}</span>
+                    </div>
+                    <p className="text-[11px]">{m.description}</p>
+                  </div>
+                ))
+              )}
+            </div>
+
+            <div className="flex justify-end pt-3 border-t border-[var(--color-border)]">
+              <button
+                onClick={() => setDetailModal(null)}
+                className="px-4 py-2 border border-[var(--color-border)] rounded-xl text-xs font-semibold cursor-pointer"
+              >
+                Close
+              </button>
             </div>
           </div>
         </div>

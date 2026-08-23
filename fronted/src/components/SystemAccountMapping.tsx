@@ -622,15 +622,17 @@ export const SystemAccountMapping: React.FC<SystemAccountMappingProps> = ({ acco
         {(activeCategory === 'all' || activeCategory === 'assets') && (
           <div className="p-5 rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)] shadow-sm space-y-4 text-xs">
             <h3 className="font-bold text-sm text-[var(--color-text-strong)] flex items-center gap-2 border-b border-[var(--color-border)] pb-2.5">
-              <Building2 className="w-4 h-4 text-amber-600" /> Fixed Assets & Leases (IFRS 16)
+              <Building2 className="w-4 h-4 text-amber-600" /> Fixed Assets & Factory Plant Machinery (IAS 16 / IFRS 16)
             </h3>
-            {renderField('Property, Plant & Equipment (Cost)', mappings.fixedAssetAccountId, 'fixedAssetAccountId', assetAccounts, 'Code 15100')}
-            {renderField('Accumulated Depreciation (Contra Asset)', mappings.accumulatedDepreciationAccountId, 'accumulatedDepreciationAccountId', assetAccounts, 'Code 15200')}
-            {renderField('Depreciation Expense', mappings.depreciationExpenseAccountId, 'depreciationExpenseAccountId', expenseAccounts, 'Code 61300')}
-            {renderField('Gain / Loss on Disposal', mappings.gainLossDisposalAccountId, 'gainLossDisposalAccountId', expenseAccounts, 'Code 51000')}
-            {renderField('Right of Use (ROU) Asset', mappings.rouAssetAccountId, 'rouAssetAccountId', assetAccounts, 'Code 15110')}
-            {renderField('Lease Liability (Present Value)', mappings.leaseLiabilityAccountId, 'leaseLiabilityAccountId', liabilityAccounts, 'Code 21600')}
-            {renderField('Lease Interest Expense', mappings.interestExpenseAccountId, 'interestExpenseAccountId', expenseAccounts, 'Code 61400')}
+            {renderField('Property, Plant & Equipment (Cost Asset)', mappings.fixedAssetAccountId, 'fixedAssetAccountId', assetAccounts, 'Capitalized gross asset purchase cost | Code 15100')}
+            {renderField('Accumulated Depreciation (Contra Asset)', mappings.accumulatedDepreciationAccountId, 'accumulatedDepreciationAccountId', assetAccounts, 'Carrying reduction contra account | Code 15200')}
+            {renderField('Administrative Depreciation Expense (OPEX)', mappings.depreciationExpenseAccountId, 'depreciationExpenseAccountId', expenseAccounts, 'Standard office & IT asset depreciation | Code 61300')}
+            {renderField('Factory Machinery Overhead (MOH)', mappings.manufacturingOverheadAccountId, 'manufacturingOverheadAccountId', expenseAccounts, 'Direct allocation to production WIP & Job Costing | Code 61100')}
+            {renderField('Capital Goods Input VAT (Recoverable)', mappings.capitalGoodsTaxAccountId, 'capitalGoodsTaxAccountId', assetAccounts, 'VAT paid on plant & capital machinery | Code 14130')}
+            {renderField('Gain / Loss on Disposal', mappings.gainLossDisposalAccountId, 'gainLossDisposalAccountId', expenseAccounts, 'Profit/loss on asset sale or write-off | Code 51000')}
+            {renderField('Right of Use (ROU) Asset (IFRS 16)', mappings.rouAssetAccountId, 'rouAssetAccountId', assetAccounts, 'Leased assets capitalization | Code 15110')}
+            {renderField('Lease Liability (Present Value)', mappings.leaseLiabilityAccountId, 'leaseLiabilityAccountId', liabilityAccounts, 'Present value lease debt | Code 21600')}
+            {renderField('Lease Interest Expense', mappings.interestExpenseAccountId, 'interestExpenseAccountId', expenseAccounts, 'Accrued lease financing charge | Code 61400')}
           </div>
         )}
 

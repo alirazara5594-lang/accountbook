@@ -627,8 +627,40 @@ public record GoodsReceiptNoteLineRequest(Guid PurchaseOrderLineId, decimal Quan
 public record GoodsReceiptNoteRequest(string? GrnNumber, Guid PurchaseOrderId, DateOnly DateReceived, List<GoodsReceiptNoteLineRequest> Lines, string? Notes);
 public record GoodsReceiptProcessRequest();
 
-public enum AssetStatus { Active, Disposed, Depreciated }
-public enum DepreciationMethod { StraightLine, DecliningBalance }
+public enum AssetStatus { Active, Disposed, Depreciated, UnderMaintenance, Inactive }
+public enum DepreciationMethod { StraightLine, DecliningBalance, UnitsOfProduction, SumOfYearsDigits }
+public enum MachineStatus { Operating, InProduction, UnderMaintenance, Breakdown, Idle, Retired }
+public enum DepreciationAllocation { AdministrativeExpense, ManufacturingOverhead }
+public enum MaintenanceType { Preventive, BreakdownRepair, Calibration, Inspection, Overhaul }
+
+public class AssetMaintenanceRecord
+{
+    public Guid Id { get; set; } = Guid.NewGuid();
+    public Guid AssetId { get; set; }
+    public DateOnly Date { get; set; } = DateOnly.FromDateTime(DateTime.UtcNow);
+    public MaintenanceType MaintenanceType { get; set; } = MaintenanceType.Preventive;
+    public string Description { get; set; } = string.Empty;
+    public decimal Cost { get; set; } = 0m;
+    public string? TechnicianName { get; set; }
+    public decimal DownTimeHours { get; set; } = 0m;
+    public string? PartsReplaced { get; set; }
+    public DateOnly? NextServiceDueDate { get; set; }
+    public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
+}
+
+public class AssetTransferRecord
+{
+    public Guid Id { get; set; } = Guid.NewGuid();
+    public Guid AssetId { get; set; }
+    public DateOnly TransferDate { get; set; } = DateOnly.FromDateTime(DateTime.UtcNow);
+    public string? FromLocation { get; set; }
+    public string ToLocation { get; set; } = string.Empty;
+    public string? FromWorkCenter { get; set; }
+    public string? ToWorkCenter { get; set; }
+    public string? AuthorizedBy { get; set; }
+    public string? Remarks { get; set; }
+    public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
+}
 
 public class FixedAsset
 {
@@ -636,23 +668,64 @@ public class FixedAsset
     public required string AssetTag { get; set; }
     public required string Name { get; set; }
     public string? Description { get; set; }
+    public string? Category { get; set; } = "Plant & Machinery";
+    public string? SerialNumber { get; set; }
+    public string? ModelNumber { get; set; }
+    public string? Manufacturer { get; set; }
+
+    // Financial & Valuation (IAS 16)
     public DateOnly PurchaseDate { get; set; }
     public decimal PurchasePrice { get; set; }
     public decimal SalvageValue { get; set; } = 0m;
-    public int UsefulLifeYears { get; set; } = 3;
+    public int UsefulLifeYears { get; set; } = 5;
     public DepreciationMethod DepreciationMethod { get; set; } = DepreciationMethod.StraightLine;
     public decimal AccumulatedDepreciation { get; set; } = 0m;
-    public decimal NetBookValue => PurchasePrice - AccumulatedDepreciation;
+    public decimal NetBookValue => Math.Max(0, PurchasePrice - AccumulatedDepreciation);
     public AssetStatus Status { get; set; } = AssetStatus.Active;
+    public DepreciationAllocation CostAllocation { get; set; } = DepreciationAllocation.AdministrativeExpense;
+
+    // Procurement Integration Linkage
+    public Guid? VendorId { get; set; }
+    public string? VendorName { get; set; }
+    public Guid? PurchaseOrderId { get; set; }
+    public string? PurchaseOrderNumber { get; set; }
+    public Guid? VendorBillId { get; set; }
+    public string? VendorBillNumber { get; set; }
+    public string? GrnNumber { get; set; }
+    public DateOnly? WarrantyExpiryDate { get; set; }
+
+    // Factory / Plant Location & Custodianship
+    public string? Location { get; set; } = "Main Plant Floor";
+    public string? Department { get; set; } = "Manufacturing";
+    public Guid? WorkCenterId { get; set; }
+    public string? WorkCenterName { get; set; }
+    public Guid? AssignedCustodianId { get; set; }
+    public string? AssignedCustodianName { get; set; }
+
+    // Factory Machinery Health & Operating Metrics
+    public MachineStatus MachineHealth { get; set; } = MachineStatus.Operating;
+    public decimal CurrentMeterHours { get; set; } = 0m;
+    public decimal TotalCapacityUnits { get; set; } = 0m;
+    public decimal UnitsProduced { get; set; } = 0m;
+    public DateOnly? LastMaintenanceDate { get; set; }
+    public DateOnly? NextMaintenanceDueDate { get; set; }
+
+    // General Ledger Account Overrides (falls back to COA System Mappings)
     public Guid? AssetAccountId { get; set; }
     public Guid? AccumulatedDepreciationAccountId { get; set; }
     public Guid? DepreciationExpenseAccountId { get; set; }
+    public Guid? GainLossDisposalAccountId { get; set; }
     public Guid? CompanyId { get; set; }
+
+    // Child records
+    public List<AssetMaintenanceRecord> MaintenanceHistory { get; set; } = [];
+    public List<AssetTransferRecord> TransferHistory { get; set; } = [];
+
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
     public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
 }
 
-public record DepreciationRunResult(Guid AssetId, string AssetTag, string AssetName, decimal AmountPosted, string Status, decimal Cost, decimal AccumulatedDepreciation, decimal NetBookValue);
+public record DepreciationRunResult(Guid AssetId, string AssetTag, string AssetName, decimal AmountPosted, string Status, decimal Cost, decimal AccumulatedDepreciation, decimal NetBookValue, string ExpenseAccountCode);
 
 public class Warehouse
 {

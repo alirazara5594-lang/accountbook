@@ -16,6 +16,8 @@ export interface BillOfMaterials {
   finishedProductId: string;
   finishedProductName: string;
   quantityProduced: number;
+  estimatedLaborHours?: number;
+  estimatedMachineHours?: number;
   notes?: string;
   companyId?: string;
   createdAt?: string;
@@ -34,6 +36,20 @@ export interface WorkOrderLine {
   totalCost: number;
 }
 
+export interface QcInspectionRecord {
+  id?: string;
+  workOrderId: string;
+  inspectionDate?: string;
+  inspectorName: string;
+  quantityInspected: number;
+  quantityPassed: number;
+  quantityRejected: number;
+  scrapCost?: number;
+  defectReason?: string;
+  status: 'Pending' | 'Passed' | 'Failed' | 'ConditionalPass' | number | string;
+  notes?: string;
+}
+
 export interface WorkOrder {
   id: string;
   workOrderNumber: string;
@@ -44,16 +60,44 @@ export interface WorkOrder {
   finishedGoodsWarehouseId: string;
   quantityToProduce: number;
   quantityProduced: number;
-  status: any;
+  status: 'Draft' | 'Released' | 'InProgress' | 'Completed' | 'Cancelled' | number | string;
   startDate: string;
   completionDate?: string;
+
+  // Machine & Work Center Linkage
+  workCenterName?: string;
+  machineAssetId?: string;
+  machineAssetTag?: string;
+  machineAssetName?: string;
+  machineRunHours?: number;
+  machineHourlyRate?: number;
+
+  // Direct Labor
+  assignedTechnicianName?: string;
+  laborHours?: number;
+  laborHourlyRate?: number;
+
+  // Cost Accounting Elements
+  totalMaterialCost: number;
   directLaborCost: number;
   overheadCost: number;
-  totalMaterialCost: number;
   totalCost: number;
   unitCost: number;
+
+  // Quality Control
+  qcStatus?: 'Pending' | 'Passed' | 'Failed' | 'ConditionalPass' | number | string;
+  acceptedQuantity?: number;
+  scrapQuantity?: number;
+  scrapReason?: string;
+  inspectorName?: string;
+  inspectionNotes?: string;
+  inspectedAt?: string;
+
   companyId?: string;
+  createdAt?: string;
+  updatedAt?: string;
   lines: WorkOrderLine[];
+  qcHistory?: QcInspectionRecord[];
 }
 
 export const manufacturingApi = {
@@ -75,6 +119,20 @@ export const manufacturingApi = {
 
   startWorkOrder: async (id: string): Promise<void> => {
     return apiClient(`/manufacturing/work-orders/${id}/start`, { method: 'POST' });
+  },
+
+  logMachineHours: async (id: string, additionalHours: number, hourlyRate?: number): Promise<void> => {
+    return apiClient(`/manufacturing/work-orders/${id}/machine-hours`, {
+      method: 'POST',
+      body: { additionalHours, hourlyRate },
+    });
+  },
+
+  performQcInspection: async (id: string, data: QcInspectionRecord): Promise<{ message: string; record: QcInspectionRecord }> => {
+    return apiClient(`/manufacturing/work-orders/${id}/qc`, {
+      method: 'POST',
+      body: data,
+    });
   },
 
   completeWorkOrder: async (id: string, data: { actualProducedQty: number; directLabor: number; overhead: number }): Promise<void> => {

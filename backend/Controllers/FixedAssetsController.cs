@@ -21,7 +21,15 @@ public class FixedAssetsController : ControllerBase
         var query = _store.FixedAssets.AsEnumerable();
         if (companyId.HasValue)
             query = query.Where(a => a.CompanyId == companyId.Value);
-        return Ok(query);
+        return Ok(query.OrderByDescending(a => a.CreatedAt));
+    }
+
+    [HttpGet("{id}")]
+    public IActionResult GetFixedAsset(Guid id)
+    {
+        var asset = _store.FixedAssets.FirstOrDefault(a => a.Id == id);
+        if (asset == null) return NotFound(new { message = "Asset not found" });
+        return Ok(asset);
     }
 
     [HttpPost]
@@ -30,6 +38,38 @@ public class FixedAssetsController : ControllerBase
         if (!_store.CreateFixedAsset(asset, out var error))
             return BadRequest(new { error });
         return Ok(asset);
+    }
+
+    [HttpPut("{id}")]
+    public IActionResult UpdateFixedAsset(Guid id, [FromBody] FixedAsset asset)
+    {
+        if (!_store.UpdateFixedAsset(id, asset, out var error))
+            return BadRequest(new { error });
+        return Ok(asset);
+    }
+
+    [HttpPost("{id}/maintenance")]
+    public IActionResult LogMaintenance(Guid id, [FromBody] AssetMaintenanceRecord record)
+    {
+        if (!_store.LogAssetMaintenance(id, record, out var error))
+            return BadRequest(new { error });
+        return Ok(new { message = "Maintenance record logged successfully.", record });
+    }
+
+    [HttpPost("{id}/transfer")]
+    public IActionResult TransferAsset(Guid id, [FromBody] AssetTransferRecord transfer)
+    {
+        if (!_store.TransferAsset(id, transfer, out var error))
+            return BadRequest(new { error });
+        return Ok(new { message = "Asset transfer recorded successfully.", transfer });
+    }
+
+    [HttpPost("{id}/machine-status")]
+    public IActionResult UpdateMachineStatus(Guid id, [FromBody] MachineStatusUpdateRequest request)
+    {
+        if (!_store.UpdateMachineStatus(id, request.Status, request.CurrentMeterHours, out var error))
+            return BadRequest(new { error });
+        return Ok(new { message = "Machine health status updated." });
     }
 
     [HttpPost("{id}/run-depreciation")]
@@ -61,4 +101,5 @@ public record DepreciationRequest(Guid? DepreciationExpenseAccountId, Guid? Accu
 
 public record AssetDisposalRequest(DateOnly DisposalDate, decimal Proceeds, Guid? AssetAccountId, Guid? AccumDeprAccountId, Guid? GainLossAccountId, Guid? CashAccountId);
 
-public record DepreciationRunResult(Guid AssetId, string AssetTag, string AssetName, decimal AmountPosted, string Status, decimal Cost, decimal AccumulatedDepreciation, decimal NetBookValue);
+public record MachineStatusUpdateRequest(MachineStatus Status, decimal CurrentMeterHours);
+

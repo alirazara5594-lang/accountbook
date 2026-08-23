@@ -1409,6 +1409,17 @@ public IReadOnlyList<EmployeeCompensation> EmployeeCompensations => _employeeCom
             wo.TotalMaterialCost = totalMatCost;
             wo.Status = WorkOrderStatus.InProgress;
 
+            // Link Machine Status to InProduction in Fixed Assets
+            if (wo.MachineAssetId.HasValue)
+            {
+                var machine = _fixedAssets.FirstOrDefault(a => a.Id == wo.MachineAssetId.Value);
+                if (machine is not null)
+                {
+                    machine.MachineHealth = MachineStatus.InProduction;
+                    machine.UpdatedAt = DateTime.UtcNow;
+                }
+            }
+
             // Post WIP journal: Dr Work in Progress / Cr Raw Materials Inventory
             if (totalMatCost > 0)
             {
@@ -1439,6 +1450,66 @@ public IReadOnlyList<EmployeeCompensation> EmployeeCompensations => _employeeCom
         }
     }
 
+    public bool LogMachineHours(string workOrderId, decimal additionalHours, decimal? hourlyRate, out string? error)
+    {
+        error = null;
+        lock (_lock)
+        {
+            var wo = _workOrders.FirstOrDefault(x => x.Id == workOrderId);
+            if (wo is null) { error = "Work Order not found."; return false; }
+
+            wo.MachineRunHours += additionalHours;
+            if (hourlyRate.HasValue && hourlyRate.Value > 0)
+            {
+                wo.MachineHourlyRate = hourlyRate.Value;
+            }
+            wo.OverheadCost = Math.Round(wo.MachineRunHours * wo.MachineHourlyRate, 2);
+            wo.TotalCost = wo.TotalMaterialCost + wo.DirectLaborCost + wo.OverheadCost;
+            wo.UpdatedAt = DateTime.UtcNow;
+
+            // Increment Fixed Asset Runtime Meter Hours
+            if (wo.MachineAssetId.HasValue)
+            {
+                var machine = _fixedAssets.FirstOrDefault(a => a.Id == wo.MachineAssetId.Value);
+                if (machine is not null)
+                {
+                    machine.CurrentMeterHours += additionalHours;
+                    machine.UpdatedAt = DateTime.UtcNow;
+                }
+            }
+
+            Persist();
+            return true;
+        }
+    }
+
+    public bool PerformQcInspection(string workOrderId, QcInspectionRecord qc, out string? error)
+    {
+        error = null;
+        lock (_lock)
+        {
+            var wo = _workOrders.FirstOrDefault(x => x.Id == workOrderId);
+            if (wo is null) { error = "Work Order not found."; return false; }
+
+            qc.Id = Guid.NewGuid().ToString();
+            qc.WorkOrderId = workOrderId;
+            qc.InspectionDate = DateTime.UtcNow;
+            wo.QcHistory.Add(qc);
+
+            wo.QcStatus = qc.Status;
+            wo.AcceptedQuantity = qc.QuantityPassed;
+            wo.ScrapQuantity = qc.QuantityRejected;
+            wo.ScrapReason = qc.DefectReason;
+            wo.InspectorName = qc.InspectorName;
+            wo.InspectionNotes = qc.Notes;
+            wo.InspectedAt = DateTime.UtcNow;
+            wo.UpdatedAt = DateTime.UtcNow;
+
+            Persist();
+            return true;
+        }
+    }
+
     public bool CompleteWorkOrder(string id, decimal actualProducedQty, decimal directLabor, decimal overhead, out string? error)
     {
         error = null;
@@ -1448,10 +1519,11 @@ public IReadOnlyList<EmployeeCompensation> EmployeeCompensations => _employeeCom
             if (wo is null) { error = "Work Order not found."; return false; }
             if (wo.Status != WorkOrderStatus.InProgress && wo.Status != WorkOrderStatus.Released) { error = "Work Order must be in progress to complete."; return false; }
 
-            var produceQty = actualProducedQty > 0 ? actualProducedQty : wo.QuantityToProduce;
-            wo.DirectLaborCost = directLabor;
-            wo.OverheadCost = overhead;
-            wo.TotalCost = wo.TotalMaterialCost + directLabor + overhead;
+            var produceQty = actualProducedQty > 0 ? actualProducedQty : (wo.AcceptedQuantity > 0 ? wo.AcceptedQuantity : wo.QuantityToProduce);
+            if (directLabor > 0) wo.DirectLaborCost = directLabor;
+            if (overhead > 0) wo.OverheadCost = overhead;
+
+            wo.TotalCost = wo.TotalMaterialCost + wo.DirectLaborCost + wo.OverheadCost;
             wo.UnitCost = produceQty > 0 ? Math.Round(wo.TotalCost / produceQty, 2) : 0;
             wo.QuantityProduced = produceQty;
 
@@ -1494,11 +1566,22 @@ public IReadOnlyList<EmployeeCompensation> EmployeeCompensations => _employeeCom
                 level.MovingAverageCost = level.QuantityOnHand > 0 ? Math.Round(totalVal / level.QuantityOnHand, 2) : wo.UnitCost;
             }
 
-            // Update Finished Product Cost & Unit Price
+            // Update Finished Product Cost Price
             var finishedProduct = _products.FirstOrDefault(p => p.Id == finishedProdId);
             if (finishedProduct is not null)
             {
                 finishedProduct.CostPrice = wo.UnitCost;
+            }
+
+            // Reset Machine Status to Operating in Fixed Assets
+            if (wo.MachineAssetId.HasValue)
+            {
+                var machine = _fixedAssets.FirstOrDefault(a => a.Id == wo.MachineAssetId.Value);
+                if (machine is not null)
+                {
+                    machine.MachineHealth = MachineStatus.Operating;
+                    machine.UpdatedAt = DateTime.UtcNow;
+                }
             }
 
             wo.Status = WorkOrderStatus.Completed;
@@ -1517,10 +1600,10 @@ public IReadOnlyList<EmployeeCompensation> EmployeeCompensations => _employeeCom
                     fgLines.Add(new JournalLine(fgAccId, wo.TotalCost, 0, $"Completed production: {wo.WorkOrderNumber}", null, null, 1, woCompId != Guid.Empty ? woCompId : null));
                 if (wipAccId != Guid.Empty && wo.TotalMaterialCost > 0)
                     fgLines.Add(new JournalLine(wipAccId, 0, wo.TotalMaterialCost, $"WIP transfer: {wo.WorkOrderNumber}", null, null, 1, woCompId != Guid.Empty ? woCompId : null));
-                if (laborAccId != Guid.Empty && directLabor > 0)
-                    fgLines.Add(new JournalLine(laborAccId, 0, directLabor, $"Direct labor: {wo.WorkOrderNumber}", null, null, 1, woCompId != Guid.Empty ? woCompId : null));
-                if (overheadAccId != Guid.Empty && overhead > 0)
-                    fgLines.Add(new JournalLine(overheadAccId, 0, overhead, $"Manufacturing overhead: {wo.WorkOrderNumber}", null, null, 1, woCompId != Guid.Empty ? woCompId : null));
+                if (laborAccId != Guid.Empty && wo.DirectLaborCost > 0)
+                    fgLines.Add(new JournalLine(laborAccId, 0, wo.DirectLaborCost, $"Direct labor absorption: {wo.WorkOrderNumber}", null, null, 1, woCompId != Guid.Empty ? woCompId : null));
+                if (overheadAccId != Guid.Empty && wo.OverheadCost > 0)
+                    fgLines.Add(new JournalLine(overheadAccId, 0, wo.OverheadCost, $"MOH absorption: {wo.WorkOrderNumber}", null, null, 1, woCompId != Guid.Empty ? woCompId : null));
 
                 if (fgLines.Count > 0)
                 {
@@ -1528,7 +1611,7 @@ public IReadOnlyList<EmployeeCompensation> EmployeeCompensations => _employeeCom
                     {
                         Date = DateOnly.FromDateTime(DateTime.Today),
                         Reference = $"WO-COMPLETE-{wo.WorkOrderNumber}",
-                        Description = $"Finished goods received from production for {wo.WorkOrderNumber}",
+                        Description = $"Finished goods capitalization for {wo.WorkOrderNumber}",
                         TransactionType = TransactionType.Inventory,
                         CompanyId = woCompId != Guid.Empty ? woCompId : null,
                         Lines = fgLines,
@@ -2534,7 +2617,7 @@ public IReadOnlyList<EmployeeCompensation> EmployeeCompensations => _employeeCom
             }
             if (asset.UsefulLifeYears <= 0)
             {
-                asset.UsefulLifeYears = 3;
+                asset.UsefulLifeYears = 5;
             }
 
             asset.CreatedAt = DateTime.UtcNow;
@@ -2546,7 +2629,149 @@ public IReadOnlyList<EmployeeCompensation> EmployeeCompensations => _employeeCom
         }
     }
 
-    // Fixed Asset Depreciation (posts a real double-entry journal)
+    // Update / Edit Existing Fixed Asset
+    public bool UpdateFixedAsset(Guid id, FixedAsset updated, out string? error)
+    {
+        error = null;
+        lock (_lock)
+        {
+            var existing = _fixedAssets.FirstOrDefault(a => a.Id == id);
+            if (existing == null) { error = "Asset not found."; return false; }
+
+            existing.Name = updated.Name;
+            existing.Description = updated.Description;
+            existing.Category = updated.Category ?? existing.Category;
+            existing.SerialNumber = updated.SerialNumber;
+            existing.ModelNumber = updated.ModelNumber;
+            existing.Manufacturer = updated.Manufacturer;
+            existing.PurchaseDate = updated.PurchaseDate;
+            existing.PurchasePrice = updated.PurchasePrice;
+            existing.SalvageValue = updated.SalvageValue;
+            existing.UsefulLifeYears = updated.UsefulLifeYears > 0 ? updated.UsefulLifeYears : 5;
+            existing.DepreciationMethod = updated.DepreciationMethod;
+            existing.CostAllocation = updated.CostAllocation;
+            existing.Status = updated.Status;
+
+            // Procurement Links
+            existing.VendorId = updated.VendorId;
+            existing.VendorName = updated.VendorName;
+            existing.PurchaseOrderId = updated.PurchaseOrderId;
+            existing.PurchaseOrderNumber = updated.PurchaseOrderNumber;
+            existing.VendorBillId = updated.VendorBillId;
+            existing.VendorBillNumber = updated.VendorBillNumber;
+            existing.GrnNumber = updated.GrnNumber;
+            existing.WarrantyExpiryDate = updated.WarrantyExpiryDate;
+
+            // Factory / Plant Location
+            existing.Location = updated.Location;
+            existing.Department = updated.Department;
+            existing.WorkCenterId = updated.WorkCenterId;
+            existing.WorkCenterName = updated.WorkCenterName;
+            existing.AssignedCustodianId = updated.AssignedCustodianId;
+            existing.AssignedCustodianName = updated.AssignedCustodianName;
+
+            // Machine Health & Metrics
+            existing.MachineHealth = updated.MachineHealth;
+            existing.CurrentMeterHours = updated.CurrentMeterHours;
+            existing.TotalCapacityUnits = updated.TotalCapacityUnits;
+            existing.UnitsProduced = updated.UnitsProduced;
+
+            // GL Accounts Overrides
+            existing.AssetAccountId = updated.AssetAccountId;
+            existing.AccumulatedDepreciationAccountId = updated.AccumulatedDepreciationAccountId;
+            existing.DepreciationExpenseAccountId = updated.DepreciationExpenseAccountId;
+            existing.GainLossDisposalAccountId = updated.GainLossDisposalAccountId;
+
+            existing.UpdatedAt = DateTime.UtcNow;
+            Persist();
+            return true;
+        }
+    }
+
+    // Log Maintenance Ticket / Service Record
+    public bool LogAssetMaintenance(Guid assetId, AssetMaintenanceRecord record, out string? error)
+    {
+        error = null;
+        lock (_lock)
+        {
+            var asset = _fixedAssets.FirstOrDefault(a => a.Id == assetId);
+            if (asset == null) { error = "Asset not found."; return false; }
+
+            record.Id = Guid.NewGuid();
+            record.AssetId = assetId;
+            record.CreatedAt = DateTime.UtcNow;
+            asset.MaintenanceHistory.Add(record);
+            asset.LastMaintenanceDate = record.Date;
+            if (record.NextServiceDueDate.HasValue)
+            {
+                asset.NextMaintenanceDueDate = record.NextServiceDueDate.Value;
+            }
+            if (record.MaintenanceType == MaintenanceType.BreakdownRepair && asset.MachineHealth == MachineStatus.Breakdown)
+            {
+                asset.MachineHealth = MachineStatus.Operating;
+                asset.Status = AssetStatus.Active;
+            }
+            asset.UpdatedAt = DateTime.UtcNow;
+            Persist();
+            return true;
+        }
+    }
+
+    // Transfer Asset across Factory Plants / Branches
+    public bool TransferAsset(Guid assetId, AssetTransferRecord transfer, out string? error)
+    {
+        error = null;
+        lock (_lock)
+        {
+            var asset = _fixedAssets.FirstOrDefault(a => a.Id == assetId);
+            if (asset == null) { error = "Asset not found."; return false; }
+
+            transfer.Id = Guid.NewGuid();
+            transfer.AssetId = assetId;
+            transfer.FromLocation = asset.Location;
+            transfer.FromWorkCenter = asset.WorkCenterName;
+            transfer.CreatedAt = DateTime.UtcNow;
+
+            asset.TransferHistory.Add(transfer);
+            asset.Location = transfer.ToLocation;
+            if (!string.IsNullOrWhiteSpace(transfer.ToWorkCenter))
+            {
+                asset.WorkCenterName = transfer.ToWorkCenter;
+            }
+            asset.UpdatedAt = DateTime.UtcNow;
+            Persist();
+            return true;
+        }
+    }
+
+    // Update Factory Machine Health & Meter Runtime Hours
+    public bool UpdateMachineStatus(Guid assetId, MachineStatus status, decimal meterHours, out string? error)
+    {
+        error = null;
+        lock (_lock)
+        {
+            var asset = _fixedAssets.FirstOrDefault(a => a.Id == assetId);
+            if (asset == null) { error = "Asset not found."; return false; }
+
+            asset.MachineHealth = status;
+            if (meterHours > 0) asset.CurrentMeterHours = meterHours;
+
+            if (status == MachineStatus.Breakdown || status == MachineStatus.UnderMaintenance)
+            {
+                asset.Status = AssetStatus.UnderMaintenance;
+            }
+            else if (status == MachineStatus.Operating || status == MachineStatus.InProduction || status == MachineStatus.Idle)
+            {
+                asset.Status = AssetStatus.Active;
+            }
+
+            asset.UpdatedAt = DateTime.UtcNow;
+            Persist();
+            return true;
+        }
+    }
+
+    // Fixed Asset Depreciation (posts double-entry GL journal with MOH / OPEX smart allocation)
     public bool RunDepreciation(Guid assetId, Guid? depreciationExpenseAccountId, Guid? accumulatedDepreciationAccountId, out string? error)
     {
         error = null;
@@ -2554,42 +2779,66 @@ public IReadOnlyList<EmployeeCompensation> EmployeeCompensations => _employeeCom
         {
             var asset = _fixedAssets.FirstOrDefault(a => a.Id == assetId);
             if (asset == null) { error = "Asset not found."; return false; }
-            if (asset.Status != AssetStatus.Active) { error = "Asset is not active."; return false; }
+            if (asset.Status != AssetStatus.Active && asset.Status != AssetStatus.UnderMaintenance)
+            {
+                error = "Asset is not active for depreciation.";
+                return false;
+            }
 
-            // Fall back to centralized System Account Mapping when accounts not supplied
-            var expAccId = (depreciationExpenseAccountId.HasValue && depreciationExpenseAccountId.Value != Guid.Empty) ? depreciationExpenseAccountId.Value : GetMappedAccount("Depreciation Expense");
-            var accumAccId = (accumulatedDepreciationAccountId.HasValue && accumulatedDepreciationAccountId.Value != Guid.Empty) ? accumulatedDepreciationAccountId.Value : GetMappedAccount("Accumulated Depreciation");
+            // Route expense to Manufacturing Overhead (MOH) for plant machinery or Admin OPEX for office assets
+            var defaultExpenseKey = asset.CostAllocation == DepreciationAllocation.ManufacturingOverhead 
+                ? "Manufacturing Overhead" 
+                : "Depreciation Expense";
+
+            var expAccId = (depreciationExpenseAccountId.HasValue && depreciationExpenseAccountId.Value != Guid.Empty) 
+                ? depreciationExpenseAccountId.Value 
+                : (asset.DepreciationExpenseAccountId ?? GetMappedAccount(defaultExpenseKey));
+
+            var accumAccId = (accumulatedDepreciationAccountId.HasValue && accumulatedDepreciationAccountId.Value != Guid.Empty) 
+                ? accumulatedDepreciationAccountId.Value 
+                : (asset.AccumulatedDepreciationAccountId ?? GetMappedAccount("Accumulated Depreciation"));
+
             if (expAccId == Guid.Empty || accumAccId == Guid.Empty)
             {
                 error = "Depreciation Expense or Accumulated Depreciation account is not mapped. Configure it under System Account Mapping.";
                 return false;
             }
 
-            // Straight-Line: (Cost - Salvage) / UsefulLife / 12 per month
-            var annualDepreciation = (asset.PurchasePrice - asset.SalvageValue) / asset.UsefulLifeYears;
-            var monthlyDepreciation = Math.Round(annualDepreciation / 12, 2);
-
-            if (monthlyDepreciation <= 0) { error = "No depreciation to post."; return false; }
-            if (asset.AccumulatedDepreciation + monthlyDepreciation > (asset.PurchasePrice - asset.SalvageValue))
+            decimal monthlyDepreciation = 0m;
+            if (asset.DepreciationMethod == DepreciationMethod.DecliningBalance)
             {
-                monthlyDepreciation = (asset.PurchasePrice - asset.SalvageValue) - asset.AccumulatedDepreciation;
+                var annualRate = (1.0m / asset.UsefulLifeYears) * 1.5m; // 150% declining balance
+                monthlyDepreciation = Math.Round((asset.NetBookValue * annualRate) / 12m, 2);
+            }
+            else
+            {
+                // Straight-Line: (Cost - Salvage) / UsefulLife / 12 per month
+                var annualDepreciation = (asset.PurchasePrice - asset.SalvageValue) / asset.UsefulLifeYears;
+                monthlyDepreciation = Math.Round(annualDepreciation / 12m, 2);
+            }
+
+            if (monthlyDepreciation <= 0) { error = "No depreciation remaining to post."; return false; }
+            var remainingDepreciable = (asset.PurchasePrice - asset.SalvageValue) - asset.AccumulatedDepreciation;
+            if (monthlyDepreciation > remainingDepreciable)
+            {
+                monthlyDepreciation = remainingDepreciable;
                 asset.Status = AssetStatus.Depreciated;
             }
 
             asset.AccumulatedDepreciation += monthlyDepreciation;
             asset.UpdatedAt = DateTime.UtcNow;
 
-            // Post double-entry journal: Dr Depreciation Expense / Cr Accumulated Depreciation
+            // Post double-entry journal: Dr Depreciation Expense (or MOH) / Cr Accumulated Depreciation
             var journalEntry = new JournalEntry
             {
                 Date = DateOnly.FromDateTime(DateTime.Today),
                 Reference = $"DEP-{asset.AssetTag}",
-                Description = $"Monthly depreciation for {asset.Name}",
+                Description = $"Monthly depreciation for {asset.Name} ({asset.CostAllocation})",
                 TransactionType = TransactionType.Depreciation,
                 CompanyId = asset.CompanyId,
                 Lines =
                 [
-                    new JournalLine(expAccId, monthlyDepreciation, 0, $"Depreciation: {asset.Name}", null, null, 1, asset.CompanyId),
+                    new JournalLine(expAccId, monthlyDepreciation, 0, $"Depreciation ({asset.CostAllocation}): {asset.Name}", null, null, 1, asset.CompanyId),
                     new JournalLine(accumAccId, 0, monthlyDepreciation, $"Accum. Depr: {asset.Name}", null, null, 1, asset.CompanyId)
                 ]
             };
@@ -2607,16 +2856,17 @@ public IReadOnlyList<EmployeeCompensation> EmployeeCompensations => _employeeCom
         error = null;
         lock (_lock)
         {
-            var expAccId = GetMappedAccount("Depreciation Expense");
+            var adminExpAccId = GetMappedAccount("Depreciation Expense");
+            var mohExpAccId = GetMappedAccount("Manufacturing Overhead");
             var accumAccId = GetMappedAccount("Accumulated Depreciation");
-            if (expAccId == Guid.Empty || accumAccId == Guid.Empty)
+            if (adminExpAccId == Guid.Empty || accumAccId == Guid.Empty)
             {
                 error = "Depreciation Expense or Accumulated Depreciation account is not mapped. Configure it under Administration → Chart of Accounts Mapping.";
                 return false;
             }
 
             var runDate = asOfDate ?? DateOnly.FromDateTime(DateTime.Today);
-            var activeAssets = _fixedAssets.Where(a => a.Status == AssetStatus.Active).ToList();
+            var activeAssets = _fixedAssets.Where(a => a.Status == AssetStatus.Active || a.Status == AssetStatus.UnderMaintenance).ToList();
 
             if (activeAssets.Count == 0)
             {
@@ -2626,12 +2876,25 @@ public IReadOnlyList<EmployeeCompensation> EmployeeCompensations => _employeeCom
 
             foreach (var asset in activeAssets)
             {
-                var annualDepreciation = (asset.PurchasePrice - asset.SalvageValue) / asset.UsefulLifeYears;
-                var monthlyDepreciation = Math.Round(annualDepreciation / 12, 2);
+                var expAccId = asset.CostAllocation == DepreciationAllocation.ManufacturingOverhead && mohExpAccId != Guid.Empty
+                    ? mohExpAccId
+                    : (asset.DepreciationExpenseAccountId ?? adminExpAccId);
+
+                decimal monthlyDepreciation = 0m;
+                if (asset.DepreciationMethod == DepreciationMethod.DecliningBalance)
+                {
+                    var annualRate = (1.0m / asset.UsefulLifeYears) * 1.5m;
+                    monthlyDepreciation = Math.Round((asset.NetBookValue * annualRate) / 12m, 2);
+                }
+                else
+                {
+                    var annualDepreciation = (asset.PurchasePrice - asset.SalvageValue) / asset.UsefulLifeYears;
+                    monthlyDepreciation = Math.Round(annualDepreciation / 12m, 2);
+                }
 
                 if (monthlyDepreciation <= 0)
                 {
-                    results.Add(new DepreciationRunResult(asset.Id, asset.AssetTag, asset.Name, 0, "No depreciation to post", asset.PurchasePrice, asset.AccumulatedDepreciation, asset.PurchasePrice - asset.AccumulatedDepreciation));
+                    results.Add(new DepreciationRunResult(asset.Id, asset.AssetTag, asset.Name, 0, "No depreciation remaining", asset.PurchasePrice, asset.AccumulatedDepreciation, asset.NetBookValue, "61300"));
                     continue;
                 }
 
@@ -2645,11 +2908,12 @@ public IReadOnlyList<EmployeeCompensation> EmployeeCompensations => _employeeCom
                 asset.AccumulatedDepreciation += monthlyDepreciation;
                 asset.UpdatedAt = DateTime.UtcNow;
 
+                var expAcc = Find(expAccId);
                 var journalEntry = new JournalEntry
                 {
                     Date = runDate,
                     Reference = $"DEP-{asset.AssetTag}",
-                    Description = $"Monthly depreciation for {asset.Name}",
+                    Description = $"Monthly depreciation for {asset.Name} ({asset.CostAllocation})",
                     TransactionType = TransactionType.Depreciation,
                     CompanyId = asset.CompanyId,
                     Lines =
@@ -2663,7 +2927,8 @@ public IReadOnlyList<EmployeeCompensation> EmployeeCompensations => _employeeCom
 
                 results.Add(new DepreciationRunResult(
                     asset.Id, asset.AssetTag, asset.Name, monthlyDepreciation, "Posted",
-                    asset.PurchasePrice, asset.AccumulatedDepreciation, asset.PurchasePrice - asset.AccumulatedDepreciation
+                    asset.PurchasePrice, asset.AccumulatedDepreciation, asset.NetBookValue,
+                    expAcc?.Code ?? "61300"
                 ));
             }
 

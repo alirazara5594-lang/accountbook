@@ -1,38 +1,51 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { useManufacturingStore, useProductsStore, useAssetsInventoryStore } from './stores';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { DataToolbar } from '@/components/ui/data-toolbar';
+import { assetsInventoryApi } from './api/modules/assetsInventory.api';
+import type { FixedAsset } from './api/modules/assetsInventory.api';
+import { manufacturingApi } from './api/modules/manufacturing.api';
+import type { WorkOrder } from './api/modules/manufacturing.api';
+import {
+  Factory, Plus, Search, CheckCircle2,
+  Zap, Layers, Gauge, Cpu, Check,
+  ShieldCheck, Activity
+} from 'lucide-react';
 import { money } from './lib/currency';
+import { downloadExcel, downloadCSV } from './lib/exportUtils';
+import ExportDropdown from './components/ExportDropdown';
+import jsPDF from 'jspdf';
+import autoTable from 'jspdf-autotable';
 
-const statusColors: Record<number | string, string> = {
-  0: 'bg-gray-100 text-gray-700',
-  Draft: 'bg-gray-100 text-gray-700',
-  1: 'bg-blue-100 text-blue-700',
-  Released: 'bg-blue-100 text-blue-700',
-  2: 'bg-yellow-100 text-yellow-800',
-  InProgress: 'bg-yellow-100 text-yellow-800',
-  3: 'bg-emerald-100 text-emerald-800',
-  Completed: 'bg-emerald-100 text-emerald-800',
-  4: 'bg-red-100 text-red-700',
-  Cancelled: 'bg-red-100 text-red-700'
+const statusColors: Record<string, string> = {
+  Draft: 'bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300',
+  Released: 'bg-blue-100 dark:bg-blue-950 text-blue-700 dark:text-blue-300',
+  InProgress: 'bg-amber-100 dark:bg-amber-950 text-amber-800 dark:text-amber-300 animate-pulse',
+  Completed: 'bg-emerald-100 dark:bg-emerald-950 text-emerald-800 dark:text-emerald-300',
+  Cancelled: 'bg-rose-100 dark:bg-rose-950 text-rose-700 dark:text-rose-300'
 };
 
-type Tab = 'boms' | 'orders' | 'wip' | 'costing';
+const FACTORY_WORK_CENTERS = [
+  'CNC Machining Center',
+  'Assembly & Packaging Line 1',
+  'Assembly & Packaging Line 2',
+  'Cutting & Stamping Workshop',
+  'Surface Finishing & Coating',
+  'Quality Testing & Inspection Lab',
+];
 
-export const ManufacturingWorkspace: React.FC<{ activeEntityId: string; entities?: any[]; initialTab?: Tab }> = ({ activeEntityId, initialTab }) => {
-  const [activeTab, setActiveTab] = useState<Tab>(initialTab || 'boms');
+export const ManufacturingWorkspace: React.FC<{ activeEntityId: string; entities?: any[]; initialTab?: any }> = ({ activeEntityId }) => {
+  const [activeTab, setActiveTab] = useState<'shopfloor' | 'orders' | 'boms' | 'qc' | 'costing'>('shopfloor');
   const [toast, setToast] = useState('');
+  const [machines, setMachines] = useState<FixedAsset[]>([]);
+  const [query, setQuery] = useState('');
+  const [statusFilter, setStatusFilter] = useState('All');
+  const [workCenterFilter, setWorkCenterFilter] = useState('All');
 
   const boms = useManufacturingStore((s) => s.boms);
   const workOrders = useManufacturingStore((s) => s.workOrders);
-  const loading = useManufacturingStore((s) => s.loading);
   const fetchAllManufacturing = useManufacturingStore((s) => s.fetchAllManufacturing);
   const createBomStore = useManufacturingStore((s) => s.createBom);
   const createWorkOrderStore = useManufacturingStore((s) => s.createWorkOrder);
   const startWorkOrderStore = useManufacturingStore((s) => s.startWorkOrder);
-  const completeWorkOrderStore = useManufacturingStore((s) => s.completeWorkOrder);
 
   const products = useProductsStore((s) => s.products);
   const fetchProducts = useProductsStore((s) => s.fetchProducts);
@@ -40,29 +53,106 @@ export const ManufacturingWorkspace: React.FC<{ activeEntityId: string; entities
   const warehouses = useAssetsInventoryStore((s) => s.warehouses);
   const fetchWarehouses = useAssetsInventoryStore((s) => s.fetchWarehouses);
 
+  const fetchFixedAssetMachines = async () => {
+    try {
+      const data = await assetsInventoryApi.getFixedAssets(activeEntityId);
+      const factoryEquip = (data || []).filter(a =>
+        a.category?.includes('Plant') ||
+        a.category?.includes('Machinery') ||
+        a.category?.includes('Equipment') ||
+        a.costAllocation === 'ManufacturingOverhead'
+      );
+      setMachines(factoryEquip);
+    } catch {
+      // ignore
+    }
+  };
+
   useEffect(() => {
     fetchAllManufacturing(activeEntityId);
     fetchProducts();
     fetchWarehouses(activeEntityId);
+    fetchFixedAssetMachines();
   }, [activeEntityId]);
 
   const notify = (msg: string) => { setToast(msg); setTimeout(() => setToast(''), 3500); };
 
-  // ─── BOM Modal State ───────────────────────────────────────────────────────
+  // Modals
   const [showBomModal, setShowBomModal] = useState(false);
-  const [bomForm, setBomForm] = useState({ finishedProductId: '', quantityProduced: '1', notes: '' });
+  const [showWoModal, setShowWoModal] = useState(false);
+  const [qcModalWo, setQcModalWo] = useState<WorkOrder | null>(null);
+  const [machineHoursModalWo, setMachineHoursModalWo] = useState<WorkOrder | null>(null);
+  const [completeModalWo, setCompleteModalWo] = useState<WorkOrder | null>(null);
+
+  // Forms
+  const [bomForm, setBomForm] = useState({ finishedProductId: '', quantityProduced: '1', estimatedLaborHours: '2', estimatedMachineHours: '3', notes: '' });
   const [bomLines, setBomLines] = useState([{ rawMaterialProductId: '', quantityRequired: '1', wastePercentage: '0' }]);
 
-  const addBomLine = () => setBomLines([...bomLines, { rawMaterialProductId: '', quantityRequired: '1', wastePercentage: '0' }]);
-  const removeBomLine = (idx: number) => setBomLines(bomLines.filter((_, i) => i !== idx));
+  const [woForm, setWoForm] = useState({
+    bomId: '',
+    rawMaterialWarehouseId: '',
+    finishedGoodsWarehouseId: '',
+    quantityToProduce: '10',
+    workCenterName: FACTORY_WORK_CENTERS[0],
+    machineAssetId: '',
+    assignedTechnicianName: '',
+    laborHourlyRate: '25',
+    machineHourlyRate: '35',
+  });
 
-  const saveBom = async () => {
+  const [qcForm, setQcForm] = useState({
+    inspectorName: 'Chief QC Inspector',
+    quantityInspected: '',
+    quantityPassed: '',
+    quantityRejected: '0',
+    defectReason: '',
+    notes: 'Meets ISO/GMP specifications',
+    status: 'Passed',
+  });
+
+  const [machineHoursForm, setMachineHoursForm] = useState({
+    additionalHours: '4',
+    hourlyRate: '35',
+  });
+
+  const [completeForm, setCompleteForm] = useState({
+    actualProducedQty: '',
+    directLabor: '0',
+    overhead: '0',
+  });
+
+  // KPI Computations
+  const activeJobsCount = useMemo(() => workOrders.filter(w => String(w.status) === 'InProgress' || String(w.status) === '2').length, [workOrders]);
+  const completedJobsCount = useMemo(() => workOrders.filter(w => String(w.status) === 'Completed' || String(w.status) === '3').length, [workOrders]);
+  const totalProductionCost = useMemo(() => workOrders.reduce((sum, w) => sum + (Number(w.totalCost) || 0), 0), [workOrders]);
+  const totalWipValuation = useMemo(() => workOrders.filter(w => String(w.status) === 'InProgress' || String(w.status) === '2').reduce((sum, w) => sum + (Number(w.totalMaterialCost) + Number(w.directLaborCost) + Number(w.overheadCost)), 0), [workOrders]);
+
+  const filteredWorkOrders = useMemo(() => {
+    return workOrders.filter(w => {
+      const matchQ = !query ||
+        w.workOrderNumber?.toLowerCase().includes(query.toLowerCase()) ||
+        w.finishedProductName?.toLowerCase().includes(query.toLowerCase()) ||
+        w.machineAssetName?.toLowerCase().includes(query.toLowerCase()) ||
+        w.assignedTechnicianName?.toLowerCase().includes(query.toLowerCase());
+
+      const matchStatus = statusFilter === 'All' || String(w.status) === statusFilter;
+      const matchCenter = workCenterFilter === 'All' || w.workCenterName === workCenterFilter;
+
+      return matchQ && matchStatus && matchCenter;
+    });
+  }, [workOrders, query, statusFilter, workCenterFilter]);
+
+  // ─── Actions ───────────────────────────────────────────────────────────────
+  const handleSaveBom = async (e: React.FormEvent) => {
+    e.preventDefault();
     if (!bomForm.finishedProductId || bomLines.length === 0) return alert('Finished product and at least one raw material line required.');
     const finishedProd = products.find(p => p.id === bomForm.finishedProductId);
     const body = {
       finishedProductId: bomForm.finishedProductId,
       finishedProductName: finishedProd?.name || '',
-      quantityProduced: parseFloat(bomForm.quantityProduced),
+      quantityProduced: parseFloat(bomForm.quantityProduced) || 1,
+      estimatedLaborHours: parseFloat(bomForm.estimatedLaborHours) || 0,
+      estimatedMachineHours: parseFloat(bomForm.estimatedMachineHours) || 0,
       notes: bomForm.notes,
       companyId: activeEntityId || null,
       lines: bomLines.map(l => {
@@ -70,15 +160,15 @@ export const ManufacturingWorkspace: React.FC<{ activeEntityId: string; entities
         return {
           rawMaterialProductId: l.rawMaterialProductId,
           rawMaterialProductName: rawMat?.name || '',
-          unitOfMeasure: rawMat?.unitOfMeasure || rawMat?.unit || 'Pcs',
-          quantityRequired: parseFloat(l.quantityRequired),
+          unitOfMeasure: (rawMat as any)?.unitOfMeasure || rawMat?.unit || 'Pcs',
+          quantityRequired: parseFloat(l.quantityRequired) || 1,
           wastePercentage: parseFloat(l.wastePercentage || '0')
         };
       })
     };
     try {
       await createBomStore(body);
-      notify('✓ Bill of Materials (BOM) created successfully!');
+      notify('✓ Bill of Materials (BOM) recipe created!');
       setShowBomModal(false);
       setBomLines([{ rawMaterialProductId: '', quantityRequired: '1', wastePercentage: '0' }]);
     } catch (e: any) {
@@ -86,14 +176,13 @@ export const ManufacturingWorkspace: React.FC<{ activeEntityId: string; entities
     }
   };
 
-  // ─── Work Order Modal State ─────────────────────────────────────────────────
-  const [showWoModal, setShowWoModal] = useState(false);
-  const [woForm, setWoForm] = useState({ bomId: '', rawMaterialWarehouseId: '', finishedGoodsWarehouseId: '', quantityToProduce: '10' });
-
-  const saveWo = async () => {
+  const handleSaveWorkOrder = async (e: React.FormEvent) => {
+    e.preventDefault();
     if (!woForm.bomId || !woForm.rawMaterialWarehouseId || !woForm.finishedGoodsWarehouseId) return alert('Please select BOM and Warehouses.');
     const bom = boms.find(b => b.id === woForm.bomId);
     if (!bom) return;
+
+    const selectedMachine = machines.find(m => m.id === woForm.machineAssetId);
 
     const body = {
       bomId: bom.id,
@@ -101,251 +190,497 @@ export const ManufacturingWorkspace: React.FC<{ activeEntityId: string; entities
       finishedProductName: bom.finishedProductName,
       rawMaterialWarehouseId: woForm.rawMaterialWarehouseId,
       finishedGoodsWarehouseId: woForm.finishedGoodsWarehouseId,
-      quantityToProduce: parseFloat(woForm.quantityToProduce),
+      quantityToProduce: parseFloat(woForm.quantityToProduce) || 10,
+      workCenterName: woForm.workCenterName,
+      machineAssetId: selectedMachine?.id || undefined,
+      machineAssetTag: selectedMachine?.assetTag || undefined,
+      machineAssetName: selectedMachine?.name || undefined,
+      assignedTechnicianName: woForm.assignedTechnicianName,
+      laborHourlyRate: parseFloat(woForm.laborHourlyRate) || 20,
+      machineHourlyRate: parseFloat(woForm.machineHourlyRate) || 25,
       companyId: activeEntityId || null,
-      lines: bom.lines.map(l => ({
+      lines: bom.lines?.map(l => ({
         rawMaterialProductId: l.rawMaterialProductId,
         rawMaterialProductName: l.rawMaterialProductName,
         quantityRequired: l.quantityRequired,
         quantityIssued: 0,
         unitCost: 0,
         totalCost: 0
-      }))
+      })) || []
     };
-
     try {
       await createWorkOrderStore(body);
-      notify('✓ Work Order released!');
+      notify('✓ Work Order released to Shop Floor!');
       setShowWoModal(false);
+      fetchAllManufacturing(activeEntityId);
     } catch (e: any) {
       notify(e.message || 'Error creating Work Order');
     }
   };
 
-  // ─── Complete Work Order Modal State ─────────────────────────────────────────
-  const [completeModal, setCompleteModal] = useState<any>(null);
-  const [completeForm, setCompleteForm] = useState({ actualProducedQty: '10', directLabor: '0', overhead: '0' });
-
-  const submitComplete = async () => {
+  const handleStartWorkOrder = async (id: string) => {
     try {
-      await completeWorkOrderStore(completeModal.id, {
-        actualProducedQty: parseFloat(completeForm.actualProducedQty),
-        directLabor: parseFloat(completeForm.directLabor || '0'),
-        overhead: parseFloat(completeForm.overhead || '0')
-      }, activeEntityId);
-      notify('✓ Production run completed! Finished goods received into Inventory.');
-      setCompleteModal(null);
+      await startWorkOrderStore(id);
+      notify('✓ Work Order started. Raw materials issued to WIP.');
+      fetchAllManufacturing(activeEntityId);
     } catch (e: any) {
-      notify(e.message || 'Error completing Work Order');
+      notify(e.message || 'Error starting work order');
     }
   };
 
-  const handleStartWo = async (id: string) => {
+  const handleSaveMachineHours = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!machineHoursModalWo) return;
     try {
-      await startWorkOrderStore(id, activeEntityId);
-      notify('✓ Work Order started! Raw materials issued to WIP.');
+      const hours = parseFloat(machineHoursForm.additionalHours) || 0;
+      const rate = parseFloat(machineHoursForm.hourlyRate) || 35;
+      await manufacturingApi.logMachineHours(machineHoursModalWo.id, hours, rate);
+      notify(`✓ Logged ${hours} machine run hours into Fixed Assets meter & absorbed overhead.`);
+      setMachineHoursModalWo(null);
+      fetchAllManufacturing(activeEntityId);
+      fetchFixedAssetMachines();
     } catch (e: any) {
-      notify(e.message || 'Error starting Work Order');
+      notify(e.message || 'Error logging machine hours');
     }
   };
 
-  const finishedProducts = useMemo(() => products.filter(p => p.type === 'Physical' || (p.type as any) === 'Bundle'), [products]);
-  const rawMaterials = useMemo(() => products.filter(p => p.type === 'Physical' || p.type === 'NonInventoryItem' || (p.type as any) === 'NonInventory'), [products]);
+  const handleSaveQc = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!qcModalWo) return;
+    try {
+      const inspected = parseFloat(qcForm.quantityInspected) || qcModalWo.quantityToProduce;
+      const passed = parseFloat(qcForm.quantityPassed) || inspected;
+      const rejected = parseFloat(qcForm.quantityRejected) || 0;
 
-  const tabs: { id: Tab; label: string; icon: string }[] = [
-    { id: 'boms', label: 'Bill of Materials (BOM)', icon: '📜' },
-    { id: 'orders', label: 'Work Orders', icon: '🏭' },
-    { id: 'wip', label: 'Material Requisitions & WIP', icon: '📦' },
-    { id: 'costing', label: 'Job Costing Reports', icon: '📊' },
-  ];
+      await manufacturingApi.performQcInspection(qcModalWo.id, {
+        workOrderId: qcModalWo.id,
+        inspectorName: qcForm.inspectorName,
+        quantityInspected: inspected,
+        quantityPassed: passed,
+        quantityRejected: rejected,
+        defectReason: qcForm.defectReason,
+        status: qcForm.status as any,
+        notes: qcForm.notes
+      });
 
-  const exportBomHeaders = ['BOM Number', 'Finished Product', 'Produces', 'Raw Materials'];
-  const exportBomRows = boms.map(b => [b.bomNumber, b.finishedProductName, b.quantityProduced, b.lines?.map((l: any) => `${l.rawMaterialProductName} x ${l.quantityRequired}`).join('; ') || '']);
+      notify('✓ Quality Control Inspection logged successfully!');
+      setQcModalWo(null);
+      fetchAllManufacturing(activeEntityId);
+    } catch (e: any) {
+      notify(e.message || 'Error recording QC inspection');
+    }
+  };
 
-  const exportWoHeaders = ['WO No.', 'Finished Good', 'Target Qty', 'Produced', 'Unit Cost', 'Total Cost', 'Status'];
-  const exportWoRows = workOrders.map(wo => [wo.workOrderNumber, wo.finishedProductName, wo.quantityToProduce, wo.quantityProduced || 0, wo.unitCost, wo.totalCost, String(wo.status)]);
+  const handleCompleteWorkOrder = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!completeModalWo) return;
+    try {
+      const actualQty = parseFloat(completeForm.actualProducedQty) || completeModalWo.acceptedQuantity || completeModalWo.quantityToProduce;
+      const labor = parseFloat(completeForm.directLabor) || completeModalWo.directLaborCost;
+      const overhead = parseFloat(completeForm.overhead) || completeModalWo.overheadCost;
+
+      await manufacturingApi.completeWorkOrder(completeModalWo.id, {
+        actualProducedQty: actualQty,
+        directLabor: labor,
+        overhead: overhead
+      });
+
+      notify('✓ Work order completed. Finished goods received into warehouse.');
+      setCompleteModalWo(null);
+      fetchAllManufacturing(activeEntityId);
+      fetchFixedAssetMachines();
+    } catch (e: any) {
+      notify(e.message || 'Error completing work order');
+    }
+  };
+
+  // ─── Exports ───────────────────────────────────────────────────────────────
+  const handleExportPDF = () => {
+    const doc = new jsPDF({ orientation: 'landscape' });
+    doc.setFontSize(16);
+    doc.text('Manufacturing Work Orders & Shop Floor Costing', 14, 15);
+    doc.setFontSize(9);
+    doc.text(`Active Jobs: ${activeJobsCount} | WIP Valuation: ${money(totalWipValuation)} | As of ${new Date().toLocaleDateString()}`, 14, 22);
+
+    const tableData = filteredWorkOrders.map(w => [
+      w.workOrderNumber,
+      w.finishedProductName,
+      w.workCenterName || 'Shop Floor',
+      w.machineAssetName || 'N/A',
+      `${w.quantityProduced || 0} / ${w.quantityToProduce}`,
+      money(w.totalMaterialCost || 0),
+      money(w.directLaborCost || 0),
+      money(w.overheadCost || 0),
+      money(w.totalCost || 0),
+      money(w.unitCost || 0),
+      String(w.status),
+    ]);
+
+    autoTable(doc, {
+      startY: 26,
+      head: [['WO #', 'Finished Product', 'Work Center', 'Plant Machine', 'Progress', 'Materials', 'Labor', 'Overhead', 'Total Cost', 'Unit Cost', 'Status']],
+      body: tableData,
+      theme: 'striped',
+      styles: { fontSize: 8 },
+      headStyles: { fillColor: [15, 118, 110] },
+    });
+
+    doc.save(`Work_Orders_Report_${new Date().toISOString().slice(0, 10)}.pdf`);
+  };
+
+  const handleExportExcel = () => {
+    const headers = ['WO #', 'Finished Good', 'Work Center', 'Machine', 'Target Qty', 'Produced Qty', 'Materials Cost', 'Labor Cost', 'MOH Cost', 'Total Cost', 'Unit Cost', 'Status'];
+    const rows = filteredWorkOrders.map(w => [
+      w.workOrderNumber,
+      w.finishedProductName,
+      w.workCenterName || '',
+      w.machineAssetName || '',
+      w.quantityToProduce,
+      w.quantityProduced || 0,
+      w.totalMaterialCost || 0,
+      w.directLaborCost || 0,
+      w.overheadCost || 0,
+      w.totalCost || 0,
+      w.unitCost || 0,
+      String(w.status)
+    ]);
+    downloadExcel('Work_Orders_Job_Costing', 'Shop Floor', headers, rows);
+  };
+
+  const handleExportCSV = () => {
+    const headers = ['WorkOrderNumber', 'FinishedProduct', 'WorkCenter', 'Machine', 'QuantityToProduce', 'QuantityProduced', 'TotalCost', 'UnitCost', 'Status'];
+    const rows = filteredWorkOrders.map(w => [
+      w.workOrderNumber,
+      w.finishedProductName,
+      w.workCenterName || '',
+      w.machineAssetName || '',
+      w.quantityToProduce,
+      w.quantityProduced || 0,
+      w.totalCost || 0,
+      w.unitCost || 0,
+      String(w.status)
+    ]);
+    downloadCSV('Work_Orders_Register', headers, rows);
+  };
 
   return (
-    <div className="p-4 max-w-7xl mx-auto space-y-4">
-      {toast && <div className="fixed top-6 right-6 z-50 px-5 py-3 bg-emerald-600 text-white rounded-2xl shadow-lg text-sm font-medium">{toast}</div>}
-
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-3 bg-white p-3 rounded-xl border border-gray-200 shadow-sm">
-        <div>
-          <h1 className="text-base font-bold text-gray-900 tracking-tight flex items-center gap-2">
-            <span className="text-lg">🏭</span> Manufacturing & Production
-          </h1>
-          <p className="text-gray-500 text-[10px] mt-0.5">Manage BOM recipes, work orders, WIP material issues, and IAS 2 job costing.</p>
+    <div className="p-6 max-w-[1500px] mx-auto space-y-6 animate-in fade-in">
+      {/* Toast Notification */}
+      {toast && (
+        <div className="fixed bottom-6 right-6 bg-teal-600 text-white px-4 py-3 rounded-2xl shadow-xl z-50 flex items-center gap-2 text-xs font-bold animate-in slide-in-from-bottom">
+          <CheckCircle2 className="w-4 h-4" /> {toast}
         </div>
-        <div className="flex items-center gap-1.5 shrink-0">
-          <DataToolbar
-            exportFileName="manufacturing-boms"
-            exportSheetName="BOM Recipes"
-            exportTitle="Bill of Materials"
-            exportSubtitle="BOM recipes for finished products."
-            exportHeaders={exportBomHeaders}
-            exportRows={exportBomRows}
+      )}
+
+      {/* Top Banner & Actions */}
+      <div className="flex items-center justify-between border-b border-[var(--color-border)] pb-4 flex-wrap gap-4">
+        <div className="flex items-center gap-2">
+          <span className="p-2.5 bg-teal-50 dark:bg-teal-950/50 text-teal-600 rounded-2xl">
+            <Factory className="w-6 h-6" />
+          </span>
+          <div>
+            <h1 className="text-xl font-bold text-[var(--color-text-strong)] flex items-center gap-2">
+              Factory Work Orders & Real-time Shop Floor Job Costing
+              <span className="text-[10px] font-mono font-normal px-2 py-0.5 rounded-full bg-teal-100 dark:bg-teal-900/60 text-teal-700 dark:text-teal-300">
+                IAS 2 / IAS 16
+              </span>
+            </h1>
+            <p className="text-[var(--color-text-muted)] text-xs mt-0.5">
+              Live shop floor operations, plant machinery runtime meter integration, QC inspections, and direct overhead absorption.
+            </p>
+          </div>
+        </div>
+
+        <div className="flex items-center gap-2 flex-wrap">
+          <ExportDropdown
+            label="Export Shop Floor"
+            onPDF={handleExportPDF}
+            onExcel={handleExportExcel}
+            onCSV={handleExportCSV}
+            onPrint={() => window.print()}
           />
-          <DataToolbar
-            exportFileName="manufacturing-work-orders"
-            exportSheetName="Work Orders"
-            exportTitle="Work Orders"
-            exportSubtitle="Manufacturing work orders and production costs."
-            exportHeaders={exportWoHeaders}
-            exportRows={exportWoRows}
-            onRefresh={() => fetchAllManufacturing(activeEntityId)}
-          />
-          <button onClick={() => setShowBomModal(true)}
-            className="h-8 px-2.5 bg-white border border-gray-200 hover:bg-gray-50 text-gray-700 text-[11px] font-semibold rounded-lg shrink-0 whitespace-nowrap">
-            + New BOM
+          <button
+            onClick={() => setShowBomModal(true)}
+            className="px-3.5 py-2 bg-[var(--color-surface)] border border-[var(--color-border)] hover:bg-[var(--color-surface-muted)] text-[var(--color-text-strong)] rounded-xl text-xs font-bold shadow-2xs flex items-center gap-1.5 cursor-pointer"
+          >
+            <Layers className="w-4 h-4 text-purple-600" /> Create BOM Recipe
           </button>
-          <button onClick={() => setShowWoModal(true)}
-            className="h-8 px-2.5 bg-emerald-600 hover:bg-emerald-700 text-white text-[11px] font-semibold rounded-lg shrink-0 whitespace-nowrap">
-            + New Work Order
+          <button
+            onClick={() => setShowWoModal(true)}
+            className="primary px-4 py-2 rounded-xl text-xs font-bold flex items-center gap-1.5 shadow-sm cursor-pointer"
+          >
+            <Plus className="w-4 h-4" /> Release Work Order
           </button>
         </div>
       </div>
 
-      {/* Tabs Header */}
-      <div className="flex border-b border-gray-200 gap-1 bg-gray-50/50 p-1 rounded-2xl">
-        {tabs.map(t => (
+      {/* KPI Cards */}
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+        <div className="bg-[var(--color-surface)] border border-[var(--color-border)] rounded-2xl p-4 shadow-2xs space-y-1">
+          <div className="flex items-center justify-between text-xs text-[var(--color-text-muted)] font-semibold">
+            <span>Active Shop Floor Jobs</span>
+            <Activity className="w-4 h-4 text-amber-600 animate-spin" />
+          </div>
+          <p className="text-xl font-bold text-amber-600 font-mono">{activeJobsCount}</p>
+          <p className="text-[10px] text-[var(--color-text-muted)]">In-Production Work Centers</p>
+        </div>
+
+        <div className="bg-[var(--color-surface)] border border-[var(--color-border)] rounded-2xl p-4 shadow-2xs space-y-1">
+          <div className="flex items-center justify-between text-xs text-[var(--color-text-muted)] font-semibold">
+            <span>WIP Valuation (IAS 2)</span>
+            <Layers className="w-4 h-4 text-teal-600" />
+          </div>
+          <p className="text-xl font-bold text-teal-600 font-mono">{money(totalWipValuation)}</p>
+          <p className="text-[10px] text-[var(--color-text-muted)]">Materials + Labor + Overhead</p>
+        </div>
+
+        <div className="bg-[var(--color-surface)] border border-[var(--color-border)] rounded-2xl p-4 shadow-2xs space-y-1">
+          <div className="flex items-center justify-between text-xs text-[var(--color-text-muted)] font-semibold">
+            <span>Plant Machines Engaged</span>
+            <Cpu className="w-4 h-4 text-purple-600" />
+          </div>
+          <p className="text-xl font-bold text-purple-600 font-mono">{machines.length}</p>
+          <p className="text-[10px] text-[var(--color-text-muted)]">Fixed Assets Linked</p>
+        </div>
+
+        <div className="bg-[var(--color-surface)] border border-[var(--color-border)] rounded-2xl p-4 shadow-2xs space-y-1">
+          <div className="flex items-center justify-between text-xs text-[var(--color-text-muted)] font-semibold">
+            <span>Completed Work Orders</span>
+            <CheckCircle2 className="w-4 h-4 text-emerald-600" />
+          </div>
+          <p className="text-xl font-bold text-emerald-600 font-mono">{completedJobsCount}</p>
+          <p className="text-[10px] text-emerald-600/80 font-semibold">{money(totalProductionCost)} Capitalized</p>
+        </div>
+      </div>
+
+      {/* Tabs */}
+      <div className="flex items-center gap-1.5 bg-[var(--color-surface-muted)] p-1.5 rounded-2xl border border-[var(--color-border)] overflow-x-auto text-xs font-semibold">
+        {[
+          { id: 'shopfloor', label: '🏭 Shop Floor Live Monitor', count: activeJobsCount },
+          { id: 'orders', label: '📋 Work Order Register', count: workOrders.length },
+          { id: 'boms', label: '📐 BOM Studio Recipes', count: boms.length },
+          { id: 'qc', label: '🔍 Quality Control (QC) Hub' },
+          { id: 'costing', label: '📊 IAS 2 Job Costing Breakdown' },
+        ].map(tab => (
           <button
-            key={t.id}
-            onClick={() => setActiveTab(t.id)}
-            className={`flex items-center gap-2 px-4 py-2.5 rounded-xl font-medium text-sm transition-all ${activeTab === t.id ? 'bg-white text-emerald-700 shadow-sm font-bold' : 'text-gray-500 hover:text-gray-700'}`}
+            key={tab.id}
+            onClick={() => setActiveTab(tab.id as any)}
+            className={`px-3.5 py-2 rounded-xl transition-all cursor-pointer flex items-center gap-2 ${
+              activeTab === tab.id
+                ? 'bg-teal-600 text-white shadow-xs'
+                : 'text-[var(--color-text-muted)] hover:text-[var(--color-text-strong)]'
+            }`}
           >
-            <span>{t.icon}</span> {t.label}
+            <span>{tab.label}</span>
+            {tab.count !== undefined && (
+              <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-mono ${
+                activeTab === tab.id ? 'bg-white/20 text-white' : 'bg-[var(--color-surface)] text-[var(--color-text-muted)]'
+              }`}>
+                {tab.count}
+              </span>
+            )}
           </button>
         ))}
       </div>
 
-      {/* ─── TAB 1: BOM List ────────────────────────────────────────────────── */}
-      {activeTab === 'boms' && (
+      {/* ─── TAB 1: SHOP FLOOR LIVE MONITOR ─────────────────────────────────── */}
+      {activeTab === 'shopfloor' && (
         <div className="space-y-4">
-          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-            {boms.map(b => (
-              <Card key={b.id} className="relative flex flex-col justify-between hover:shadow-md transition-shadow border-gray-200">
-                <CardHeader className="pb-2">
-                  <div className="flex justify-between items-start">
-                    <span className="font-mono text-xs font-bold text-emerald-600 bg-emerald-50 px-2 py-1 rounded">{b.bomNumber}</span>
-                    <span className="text-xs text-gray-400 font-medium">{b.lines?.length || 0} Raw Materials</span>
-                  </div>
-                  <CardTitle className="text-base font-bold text-gray-900 mt-2">{b.finishedProductName}</CardTitle>
-                  <p className="text-xs text-gray-500">Produces: {b.quantityProduced} Units</p>
-                </CardHeader>
-                <CardContent className="space-y-3 text-xs pt-2">
-                  <div className="border-t border-gray-100 pt-2 space-y-1">
-                    <p className="font-bold text-gray-700 uppercase tracking-wider text-[10px]">Recipe Ingredients:</p>
-                    {b.lines?.map((l, idx) => (
-                      <div key={idx} className="flex justify-between text-gray-600">
-                        <span>• {l.rawMaterialProductName}</span>
-                        <span className="font-semibold">{l.quantityRequired} {l.unitOfMeasure || 'Pcs'}</span>
-                      </div>
-                    ))}
-                  </div>
-                </CardContent>
-              </Card>
-            ))}
-            {!loading && boms.length === 0 && (
-              <div className="col-span-full text-center py-12 text-gray-400 bg-white rounded-2xl border border-gray-200">
-                No Bill of Materials (BOM) recipes defined. Click "+ New BOM Recipe" to create your first manufacturing recipe.
-              </div>
-            )}
-          </div>
-        </div>
-      )}
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {workOrders.filter(w => String(w.status) === 'InProgress' || String(w.status) === 'Released' || String(w.status) === '1' || String(w.status) === '2').map(wo => {
+              const isRunning = String(wo.status) === 'InProgress' || String(wo.status) === '2';
 
-      {/* ─── TAB 2: Work Orders ─────────────────────────────────────────────── */}
-      {activeTab === 'orders' && (
-        <div className="bg-white border border-gray-200 rounded-2xl shadow-sm overflow-hidden">
-          <table className="w-full text-left text-sm">
-            <thead className="bg-gray-50 text-gray-500 border-b border-gray-100 text-xs uppercase tracking-wider">
-              <tr>
-                <th className="py-3 px-4">WO No.</th>
-                <th className="py-3 px-4">Finished Good</th>
-                <th className="py-3 px-4 text-right">Target Qty</th>
-                <th className="py-3 px-4 text-right">Produced</th>
-                <th className="py-3 px-4 text-right">Unit Cost</th>
-                <th className="py-3 px-4 text-right">Total Cost</th>
-                <th className="py-3 px-4 text-center">Status</th>
-                <th className="py-3 px-4 text-right">Actions</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-50">
-              {workOrders.map(wo => (
-                <tr key={wo.id} className="hover:bg-gray-50/60 transition-colors">
-                  <td className="py-3 px-4 font-mono text-xs font-bold text-gray-900">{wo.workOrderNumber}</td>
-                  <td className="py-3 px-4 font-medium text-gray-900">{wo.finishedProductName}</td>
-                  <td className="py-3 px-4 text-right font-semibold">{wo.quantityToProduce}</td>
-                  <td className="py-3 px-4 text-right text-gray-500">{wo.quantityProduced || 0}</td>
-                  <td className="py-3 px-4 text-right font-mono text-xs">{money(wo.unitCost)}</td>
-                  <td className="py-3 px-4 text-right font-semibold text-emerald-700">{money(wo.totalCost)}</td>
-                  <td className="py-3 px-4 text-center">
-                    <span className={`px-2.5 py-1 rounded-full text-xs font-semibold ${statusColors[wo.status] || 'bg-gray-100 text-gray-700'}`}>
+              return (
+                <div key={wo.id} className="p-5 bg-[var(--color-surface)] rounded-2xl border border-[var(--color-border)] shadow-xs space-y-4 relative overflow-hidden">
+                  <div className="flex items-start justify-between">
+                    <div>
+                      <span className="text-[10px] font-mono font-bold text-teal-600">{wo.workOrderNumber}</span>
+                      <h3 className="font-bold text-sm text-[var(--color-text-strong)]">{wo.finishedProductName}</h3>
+                      <p className="text-[11px] text-[var(--color-text-muted)] flex items-center gap-1 mt-0.5">
+                        <Factory className="w-3 h-3 text-purple-600" /> {wo.workCenterName || 'CNC Center'}
+                      </p>
+                    </div>
+                    <span className={`px-2.5 py-1 rounded-full text-[10px] font-bold ${statusColors[wo.status] || 'bg-gray-100'}`}>
                       {String(wo.status)}
                     </span>
-                  </td>
-                  <td className="py-3 px-4 text-right space-x-2">
-                    {(String(wo.status) === 'Draft' || String(wo.status) === '0' || String(wo.status) === 'Released' || String(wo.status) === '1') && (
-                      <Button size="sm" variant="outline" className="text-blue-600 border-blue-200 hover:bg-blue-50" onClick={() => handleStartWo(wo.id)}>
-                        Start (Issue WIP)
-                      </Button>
+                  </div>
+
+                  {/* Machine & Technician Link */}
+                  <div className="p-3 bg-[var(--color-surface-muted)]/50 rounded-xl space-y-2 text-xs">
+                    <div className="flex items-center justify-between">
+                      <span className="text-[11px] text-[var(--color-text-muted)] flex items-center gap-1">
+                        <Cpu className="w-3 h-3 text-teal-600" /> Machine:
+                      </span>
+                      <span className="font-semibold text-[var(--color-text-strong)] font-mono text-[11px]">
+                        {wo.machineAssetName || 'Unassigned'}
+                      </span>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <span className="text-[11px] text-[var(--color-text-muted)] flex items-center gap-1">
+                        <Gauge className="w-3 h-3 text-blue-600" /> Machine Run Hours:
+                      </span>
+                      <span className="font-bold text-blue-600 font-mono">{wo.machineRunHours || 0} hrs</span>
+                    </div>
+                    <div className="flex items-center justify-between border-t border-[var(--color-border)]/60 pt-1.5">
+                      <span className="text-[11px] text-[var(--color-text-muted)]">Target Qty:</span>
+                      <span className="font-bold text-[var(--color-text-strong)] font-mono">{wo.quantityToProduce} Units</span>
+                    </div>
+                  </div>
+
+                  {/* Live Cost Accumulation Bar */}
+                  <div className="space-y-1.5">
+                    <div className="flex justify-between text-[10px] text-[var(--color-text-muted)] font-mono">
+                      <span>WIP Cost: <strong>{money(wo.totalMaterialCost + (wo.directLaborCost || 0) + (wo.overheadCost || 0))}</strong></span>
+                      <span>MOH Absorbed: <strong>{money(wo.overheadCost || 0)}</strong></span>
+                    </div>
+                  </div>
+
+                  {/* Operational Action Controls */}
+                  <div className="grid grid-cols-2 gap-2 pt-2 border-t border-[var(--color-border)]">
+                    {!isRunning ? (
+                      <button
+                        onClick={() => handleStartWorkOrder(wo.id)}
+                        className="col-span-2 py-2 bg-teal-600 hover:bg-teal-700 text-white rounded-xl text-xs font-bold shadow-2xs flex items-center justify-center gap-1 cursor-pointer"
+                      >
+                        <Zap className="w-3.5 h-3.5" /> Start Production & Issue Stock
+                      </button>
+                    ) : (
+                      <>
+                        <button
+                          onClick={() => {
+                            setMachineHoursModalWo(wo);
+                            setMachineHoursForm({ additionalHours: '4', hourlyRate: String(wo.machineHourlyRate || 35) });
+                          }}
+                          className="py-2 bg-blue-50 dark:bg-blue-950/60 text-blue-700 dark:text-blue-300 hover:bg-blue-100 rounded-xl text-[11px] font-bold flex items-center justify-center gap-1 cursor-pointer"
+                        >
+                          <Gauge className="w-3 h-3" /> Log Run Hours
+                        </button>
+                        <button
+                          onClick={() => {
+                            setQcModalWo(wo);
+                            setQcForm({
+                              inspectorName: 'Quality Lead',
+                              quantityInspected: String(wo.quantityToProduce),
+                              quantityPassed: String(wo.quantityToProduce),
+                              quantityRejected: '0',
+                              defectReason: '',
+                              notes: 'Approved',
+                              status: 'Passed'
+                            });
+                          }}
+                          className="py-2 bg-amber-50 dark:bg-amber-950/60 text-amber-700 dark:text-amber-300 hover:bg-amber-100 rounded-xl text-[11px] font-bold flex items-center justify-center gap-1 cursor-pointer"
+                        >
+                          <ShieldCheck className="w-3 h-3" /> QC Inspection
+                        </button>
+                        <button
+                          onClick={() => {
+                            setCompleteModalWo(wo);
+                            setCompleteForm({
+                              actualProducedQty: String(wo.acceptedQuantity || wo.quantityToProduce),
+                              directLabor: String(wo.directLaborCost || (wo.laborHours || 2) * (wo.laborHourlyRate || 20)),
+                              overhead: String(wo.overheadCost || (wo.machineRunHours || 2) * (wo.machineHourlyRate || 25)),
+                            });
+                          }}
+                          className="col-span-2 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold shadow-2xs flex items-center justify-center gap-1 cursor-pointer"
+                        >
+                          <Check className="w-3.5 h-3.5" /> Complete & Receive Finished Goods
+                        </button>
+                      </>
                     )}
-                    {(String(wo.status) === 'InProgress' || String(wo.status) === '2') && (
-                      <Button size="sm" className="bg-emerald-600 hover:bg-emerald-700 text-white" onClick={() => { setCompleteModal(wo); setCompleteForm({ actualProducedQty: String(wo.quantityToProduce), directLabor: '0', overhead: '0' }); }}>
-                        Complete Production
-                      </Button>
-                    )}
-                  </td>
-                </tr>
-              ))}
-              {!loading && workOrders.length === 0 && (
-                <tr><td colSpan={8} className="py-12 text-center text-gray-400">No active work orders found. Release a new work order to begin production.</td></tr>
-              )}
-            </tbody>
-          </table>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
         </div>
       )}
 
-      {/* ─── TAB 3: WIP & Material Issues ───────────────────────────────────── */}
-      {activeTab === 'wip' && (
-        <div className="space-y-6">
-          <div className="bg-white border border-gray-200 rounded-2xl p-4 shadow-sm flex justify-between items-center">
-            <div>
-              <p className="text-xs font-medium text-gray-500 uppercase tracking-wider">Active Work-In-Progress (WIP) Balance</p>
-              <p className="text-xl font-bold text-yellow-600 mt-1">
-                {money(workOrders.filter(w => String(w.status) === 'InProgress' || String(w.status) === '2').reduce((s, w) => s + (w.totalMaterialCost || 0), 0))}
-              </p>
+      {/* ─── TAB 2: WORK ORDER REGISTER ──────────────────────────────────────── */}
+      {activeTab === 'orders' && (
+        <div className="space-y-4">
+          <div className="p-4 bg-[var(--color-surface)] rounded-2xl border border-[var(--color-border)] flex flex-wrap items-center gap-3">
+            <div className="relative flex-1 min-w-[240px]">
+              <Search className="w-4 h-4 text-[var(--color-text-muted)] absolute left-3 top-1/2 -translate-y-1/2" />
+              <input
+                type="text"
+                value={query}
+                onChange={e => setQuery(e.target.value)}
+                placeholder="Search WO #, product, machine, technician..."
+                className="w-full pl-9 pr-3 py-2 bg-[var(--color-surface-muted)] border border-[var(--color-border)] rounded-xl text-xs text-[var(--color-text)] outline-none focus:border-teal-500"
+              />
             </div>
-            <div className="text-right">
-              <span className="px-3 py-1 bg-yellow-50 text-yellow-800 border border-yellow-200 rounded-full text-xs font-semibold">
-                IAS 2 / GAAP Account #13000 (WIP Inventory)
-              </span>
-            </div>
+
+            <select
+              value={statusFilter}
+              onChange={e => setStatusFilter(e.target.value)}
+              className="px-3 py-2 bg-[var(--color-surface-muted)] border border-[var(--color-border)] rounded-xl text-xs font-semibold"
+            >
+              <option value="All">All Statuses</option>
+              <option value="Draft">Draft</option>
+              <option value="Released">Released</option>
+              <option value="InProgress">InProgress</option>
+              <option value="Completed">Completed</option>
+            </select>
+
+            <select
+              value={workCenterFilter}
+              onChange={e => setWorkCenterFilter(e.target.value)}
+              className="px-3 py-2 bg-[var(--color-surface-muted)] border border-[var(--color-border)] rounded-xl text-xs font-semibold"
+            >
+              <option value="All">All Work Centers</option>
+              {FACTORY_WORK_CENTERS.map(c => (
+                <option key={c} value={c}>{c}</option>
+              ))}
+            </select>
           </div>
 
-          <div className="bg-white border border-gray-200 rounded-2xl shadow-sm overflow-hidden">
-            <div className="px-4 py-3 bg-gray-50 border-b border-gray-100 font-bold text-gray-800 text-sm">
-              Issued Raw Material Lines in Active Orders
-            </div>
-            <table className="w-full text-left text-sm">
-              <thead className="bg-gray-50/50 text-gray-500 text-xs uppercase">
-                <tr><th className="py-2.5 px-4">WO Number</th><th className="py-2.5 px-4">Raw Material Item</th><th className="py-2.5 px-4 text-right">Required Qty</th><th className="py-2.5 px-4 text-right">Issued Qty</th><th className="py-2.5 px-4 text-right">Unit Cost</th><th className="py-2.5 px-4 text-right">Total WIP Value</th></tr>
+          <div className="bg-[var(--color-surface)] border border-[var(--color-border)] rounded-2xl overflow-hidden shadow-2xs">
+            <table className="w-full text-left text-xs border-collapse">
+              <thead>
+                <tr className="bg-[var(--color-surface-muted)] border-b border-[var(--color-border)] text-[var(--color-text-muted)] font-semibold uppercase tracking-wider text-[10px]">
+                  <th className="py-3 px-4">WO Number</th>
+                  <th className="py-3 px-3">Finished Good</th>
+                  <th className="py-3 px-3">Work Center & Machine</th>
+                  <th className="py-3 px-3 text-right">Target / Produced</th>
+                  <th className="py-3 px-3 text-right">Materials</th>
+                  <th className="py-3 px-3 text-right">Labor</th>
+                  <th className="py-3 px-3 text-right">MOH (61100)</th>
+                  <th className="py-3 px-3 text-right">Total Cost</th>
+                  <th className="py-3 px-3 text-right">Unit Cost</th>
+                  <th className="py-3 px-3 text-center">Status</th>
+                </tr>
               </thead>
-              <tbody className="divide-y divide-gray-50">
-                {workOrders.filter(w => String(w.status) === 'InProgress' || String(w.status) === '2').flatMap(w =>
-                  (w.lines || []).map(l => (
-                    <tr key={l.id} className="hover:bg-gray-50/50">
-                      <td className="py-2.5 px-4 font-mono font-bold text-gray-900">{w.workOrderNumber}</td>
-                      <td className="py-2.5 px-4 font-medium">{l.rawMaterialProductName}</td>
-                      <td className="py-2.5 px-4 text-right">{l.quantityRequired}</td>
-                      <td className="py-2.5 px-4 text-right text-emerald-600 font-semibold">{l.quantityIssued || l.quantityRequired}</td>
-                      <td className="py-2.5 px-4 text-right font-mono text-xs">{money(l.unitCost)}</td>
-                      <td className="py-2.5 px-4 text-right font-semibold text-yellow-700">{money(l.totalCost)}</td>
+              <tbody className="divide-y divide-[var(--color-border)]">
+                {filteredWorkOrders.length === 0 ? (
+                  <tr>
+                    <td colSpan={10} className="py-10 text-center text-[var(--color-text-muted)] text-xs">
+                      No manufacturing work orders found.
+                    </td>
+                  </tr>
+                ) : (
+                  filteredWorkOrders.map(wo => (
+                    <tr key={wo.id} className="hover:bg-[var(--color-surface-muted)]/40 transition-colors">
+                      <td className="py-3 px-4 font-mono font-bold text-teal-700 dark:text-teal-300">{wo.workOrderNumber}</td>
+                      <td className="py-3 px-3 font-bold text-[var(--color-text-strong)]">{wo.finishedProductName}</td>
+                      <td className="py-3 px-3">
+                        <p className="font-semibold text-[var(--color-text-strong)]">{wo.workCenterName || 'Shop Floor'}</p>
+                        <p className="text-[10px] text-[var(--color-text-muted)] font-mono">{wo.machineAssetName || 'No Machine'}</p>
+                      </td>
+                      <td className="py-3 px-3 text-right font-mono font-semibold">
+                        {wo.quantityProduced || 0} / {wo.quantityToProduce}
+                      </td>
+                      <td className="py-3 px-3 text-right font-mono text-[var(--color-text-strong)]">{money(wo.totalMaterialCost || 0)}</td>
+                      <td className="py-3 px-3 text-right font-mono text-blue-600">{money(wo.directLaborCost || 0)}</td>
+                      <td className="py-3 px-3 text-right font-mono text-purple-600">{money(wo.overheadCost || 0)}</td>
+                      <td className="py-3 px-3 text-right font-mono font-bold text-teal-600">{money(wo.totalCost || 0)}</td>
+                      <td className="py-3 px-3 text-right font-mono font-bold text-[var(--color-text-strong)]">{money(wo.unitCost || 0)}</td>
+                      <td className="py-3 px-3 text-center">
+                        <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold ${statusColors[wo.status] || 'bg-gray-100'}`}>
+                          {String(wo.status)}
+                        </span>
+                      </td>
                     </tr>
                   ))
-                )}
-                {workOrders.filter(w => String(w.status) === 'InProgress' || String(w.status) === '2').length === 0 && (
-                  <tr><td colSpan={6} className="py-8 text-center text-gray-400">No active work orders in progress.</td></tr>
                 )}
               </tbody>
             </table>
@@ -353,178 +688,604 @@ export const ManufacturingWorkspace: React.FC<{ activeEntityId: string; entities
         </div>
       )}
 
-      {/* ─── TAB 4: Job Costing Reports ─────────────────────────────────────── */}
-      {activeTab === 'costing' && (
-        <div className="space-y-6">
-          <div className="bg-white border border-gray-200 rounded-2xl shadow-sm p-6 space-y-4">
-            <h3 className="text-lg font-bold text-gray-900">Finished Goods Job Costing Breakdown (IAS 2 Compliant)</h3>
-            <div className="overflow-x-auto">
-              <table className="w-full text-left text-sm">
-                <thead className="bg-gray-50 text-gray-500 text-xs uppercase">
-                  <tr>
-                    <th className="py-3 px-4">WO Number</th>
-                    <th className="py-3 px-4">Finished Good</th>
-                    <th className="py-3 px-4 text-right">Direct Materials</th>
-                    <th className="py-3 px-4 text-right">Direct Labor</th>
-                    <th className="py-3 px-4 text-right">Overhead</th>
-                    <th className="py-3 px-4 text-right">Total Production Cost</th>
-                    <th className="py-3 px-4 text-right">Qty Produced</th>
-                    <th className="py-3 px-4 text-right font-bold text-emerald-700">Calculated Unit Cost</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-gray-50">
-                  {workOrders.filter(w => String(w.status) === 'Completed' || String(w.status) === '3').map(w => (
-                    <tr key={w.id} className="hover:bg-gray-50/50">
-                      <td className="py-3 px-4 font-mono font-bold text-gray-900">{w.workOrderNumber}</td>
-                      <td className="py-3 px-4 font-medium text-gray-900">{w.finishedProductName}</td>
-                      <td className="py-3 px-4 text-right">{money(w.totalMaterialCost)}</td>
-                      <td className="py-3 px-4 text-right">{money(w.directLaborCost)}</td>
-                      <td className="py-3 px-4 text-right">{money(w.overheadCost)}</td>
-                      <td className="py-3 px-4 text-right font-semibold">{money(w.totalCost)}</td>
-                      <td className="py-3 px-4 text-right font-semibold">{w.quantityProduced}</td>
-                      <td className="py-3 px-4 text-right font-bold text-emerald-700 text-base">{money(w.unitCost)}</td>
-                    </tr>
+      {/* ─── TAB 3: BOM STUDIO ──────────────────────────────────────────────── */}
+      {activeTab === 'boms' && (
+        <div className="space-y-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {boms.map(b => (
+              <div key={b.id} className="p-5 bg-[var(--color-surface)] rounded-2xl border border-[var(--color-border)] shadow-xs space-y-3">
+                <div className="flex items-start justify-between">
+                  <div>
+                    <span className="text-[10px] font-mono font-bold text-purple-600">{b.bomNumber}</span>
+                    <h3 className="font-bold text-sm text-[var(--color-text-strong)]">{b.finishedProductName}</h3>
+                    <p className="text-[11px] text-[var(--color-text-muted)]">Output: {b.quantityProduced} Units</p>
+                  </div>
+                  <button
+                    onClick={() => {
+                      setWoForm(f => ({ ...f, bomId: b.id }));
+                      setShowWoModal(true);
+                    }}
+                    className="px-2.5 py-1.5 bg-teal-600 hover:bg-teal-700 text-white rounded-xl text-[11px] font-bold flex items-center gap-1 cursor-pointer"
+                  >
+                    <Plus className="w-3 h-3" /> Create Order
+                  </button>
+                </div>
+
+                <div className="space-y-1.5 border-t border-[var(--color-border)] pt-2 text-xs">
+                  <p className="font-bold text-[10px] uppercase tracking-wider text-[var(--color-text-muted)]">Raw Materials Required:</p>
+                  {b.lines?.map((line, idx) => (
+                    <div key={idx} className="flex items-center justify-between text-[11px] py-1 border-b border-[var(--color-border)]/40">
+                      <span className="text-[var(--color-text-strong)]">{line.rawMaterialProductName}</span>
+                      <span className="font-mono font-semibold text-teal-600">{line.quantityRequired} {line.unitOfMeasure}</span>
+                    </div>
                   ))}
-                  {workOrders.filter(w => String(w.status) === 'Completed' || String(w.status) === '3').length === 0 && (
-                    <tr><td colSpan={8} className="py-8 text-center text-gray-400">No completed manufacturing runs to report.</td></tr>
-                  )}
-                </tbody>
-              </table>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* ─── TAB 4: QC & INSPECTION HUB ──────────────────────────────────────── */}
+      {activeTab === 'qc' && (
+        <div className="space-y-4">
+          <div className="p-4 bg-emerald-50 dark:bg-emerald-950/30 rounded-2xl border border-emerald-200 dark:border-emerald-900/60 flex items-center justify-between">
+            <div>
+              <h3 className="font-bold text-sm text-emerald-900 dark:text-emerald-200 flex items-center gap-2">
+                <ShieldCheck className="w-4 h-4 text-emerald-600" /> Quality Control (QC) & Inspection Checkpoints
+              </h3>
+              <p className="text-xs text-emerald-700 dark:text-emerald-400 mt-0.5">
+                Audit logs of tested finished goods, scrap rates, and inspector authorizations before inventory capitalization.
+              </p>
+            </div>
+          </div>
+
+          <div className="bg-[var(--color-surface)] border border-[var(--color-border)] rounded-2xl overflow-hidden shadow-2xs">
+            <table className="w-full text-left text-xs border-collapse">
+              <thead>
+                <tr className="bg-[var(--color-surface-muted)] border-b border-[var(--color-border)] text-[var(--color-text-muted)] font-semibold uppercase text-[10px]">
+                  <th className="py-3 px-4">WO Number & Product</th>
+                  <th className="py-3 px-3">Inspector</th>
+                  <th className="py-3 px-3 text-right">Accepted Qty</th>
+                  <th className="py-3 px-3 text-right">Scrap / Defect Qty</th>
+                  <th className="py-3 px-3">Defect Reason</th>
+                  <th className="py-3 px-3 text-center">QC Status</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-[var(--color-border)]">
+                {workOrders.filter(w => w.qcStatus && w.qcStatus !== 'Pending').map(wo => (
+                  <tr key={wo.id} className="hover:bg-[var(--color-surface-muted)]/40">
+                    <td className="py-3 px-4">
+                      <p className="font-bold text-[var(--color-text-strong)]">{wo.finishedProductName}</p>
+                      <p className="text-[10px] text-teal-600 font-mono">{wo.workOrderNumber}</p>
+                    </td>
+                    <td className="py-3 px-3 text-[var(--color-text-strong)]">{wo.inspectorName || 'Lead QC'}</td>
+                    <td className="py-3 px-3 text-right font-mono font-bold text-emerald-600">{wo.acceptedQuantity || wo.quantityToProduce}</td>
+                    <td className="py-3 px-3 text-right font-mono font-bold text-rose-600">{wo.scrapQuantity || 0}</td>
+                    <td className="py-3 px-3 text-[var(--color-text-muted)]">{wo.scrapReason || 'None (100% Passed)'}</td>
+                    <td className="py-3 px-3 text-center">
+                      <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-800">
+                        {String(wo.qcStatus)}
+                      </span>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+
+      {/* ─── TAB 5: IAS 2 JOB COSTING BREAKDOWN ───────────────────────────────── */}
+      {activeTab === 'costing' && (
+        <div className="space-y-4">
+          <div className="p-4 bg-purple-50 dark:bg-purple-950/30 rounded-2xl border border-purple-200 dark:border-purple-900/60">
+            <h3 className="font-bold text-sm text-purple-900 dark:text-purple-200 flex items-center gap-2">
+              <Layers className="w-4 h-4 text-purple-600" /> Absorption Costing & General Ledger Allocation (IAS 2)
+            </h3>
+            <p className="text-xs text-purple-700 dark:text-purple-300 mt-0.5">
+              Breakdown of Raw Materials, Direct Labor (Code 61200), and Factory Machine Overhead (Code 61100) absorbed into Inventory.
+            </p>
+          </div>
+
+          <div className="bg-[var(--color-surface)] border border-[var(--color-border)] rounded-2xl p-5 space-y-4 shadow-2xs">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 text-center">
+              <div className="p-4 bg-teal-50/50 dark:bg-teal-950/30 rounded-xl border border-teal-200/60">
+                <p className="text-xs text-[var(--color-text-muted)] font-semibold">Total Raw Materials Issued</p>
+                <p className="text-lg font-bold text-teal-700 font-mono">{money(workOrders.reduce((s, w) => s + (Number(w.totalMaterialCost) || 0), 0))}</p>
+              </div>
+              <div className="p-4 bg-blue-50/50 dark:bg-blue-950/30 rounded-xl border border-blue-200/60">
+                <p className="text-xs text-[var(--color-text-muted)] font-semibold">Direct Labor Absorbed (61200)</p>
+                <p className="text-lg font-bold text-blue-700 font-mono">{money(workOrders.reduce((s, w) => s + (Number(w.directLaborCost) || 0), 0))}</p>
+              </div>
+              <div className="p-4 bg-purple-50/50 dark:bg-purple-950/30 rounded-xl border border-purple-200/60">
+                <p className="text-xs text-[var(--color-text-muted)] font-semibold">Manufacturing Overhead Absorbed (61100)</p>
+                <p className="text-lg font-bold text-purple-700 font-mono">{money(workOrders.reduce((s, w) => s + (Number(w.overheadCost) || 0), 0))}</p>
+              </div>
             </div>
           </div>
         </div>
       )}
 
-      {/* ─── MODAL 1: Create BOM ─────────────────────────────────────────────── */}
+      {/* ─── MODAL: CREATE BOM RECIPE ────────────────────────────────────────── */}
       {showBomModal && (
-        <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 overflow-y-auto">
-          <div className="bg-white rounded-2xl max-w-2xl w-full p-6 space-y-4 shadow-xl">
-            <div className="flex justify-between items-center border-b pb-3">
-              <h2 className="text-lg font-bold text-gray-900">Create Bill of Materials (BOM)</h2>
-              <button onClick={() => setShowBomModal(false)} className="text-gray-400 hover:text-gray-600 text-xl font-bold">×</button>
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-xs flex items-center justify-center z-50 p-4 animate-in fade-in">
+          <div className="bg-[var(--color-surface)] border border-[var(--color-border)] rounded-2xl max-w-2xl w-full p-6 shadow-2xl space-y-4 max-h-[90vh] overflow-y-auto">
+            <div className="flex items-center justify-between border-b border-[var(--color-border)] pb-3">
+              <h3 className="text-base font-bold text-[var(--color-text-strong)] flex items-center gap-2">
+                <Layers className="w-5 h-5 text-purple-600" /> Create Bill of Materials (BOM) Recipe
+              </h3>
+              <button onClick={() => setShowBomModal(false)} className="text-lg cursor-pointer">✕</button>
             </div>
-            <div className="space-y-4 text-sm">
-              <div>
-                <label className="block font-medium text-gray-700 mb-1">* Finished Product</label>
-                <select className="w-full border rounded-xl p-2.5" value={bomForm.finishedProductId} onChange={e => setBomForm({ ...bomForm, finishedProductId: e.target.value })}>
-                  <option value="">-- Select Finished Item --</option>
-                  {finishedProducts.map(p => <option key={p.id} value={p.id}>{p.name} ({p.code})</option>)}
-                </select>
-              </div>
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="block font-medium text-gray-700 mb-1">Batch Output Quantity</label>
-                  <Input type="number" value={bomForm.quantityProduced} onChange={e => setBomForm({ ...bomForm, quantityProduced: e.target.value })} />
+
+            <form onSubmit={handleSaveBom} className="space-y-4 text-xs">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div className="space-y-1">
+                  <label className="font-bold text-[var(--color-text-strong)]">Finished Product to Produce</label>
+                  <select
+                    required
+                    value={bomForm.finishedProductId}
+                    onChange={e => setBomForm(f => ({ ...f, finishedProductId: e.target.value }))}
+                    className="w-full px-3 py-2 bg-[var(--color-surface-muted)] border border-[var(--color-border)] rounded-xl outline-none"
+                  >
+                    <option value="">Select Finished Product...</option>
+                    {products.map(p => (
+                      <option key={p.id} value={p.id}>{p.name} ({p.code})</option>
+                    ))}
+                  </select>
                 </div>
-                <div>
-                  <label className="block font-medium text-gray-700 mb-1">Notes / Assembly Specs</label>
-                  <Input value={bomForm.notes} onChange={e => setBomForm({ ...bomForm, notes: e.target.value })} placeholder="Recipe notes..." />
+
+                <div className="space-y-1">
+                  <label className="font-bold text-[var(--color-text-strong)]">Batch Quantity Produced</label>
+                  <input
+                    type="number"
+                    required
+                    value={bomForm.quantityProduced}
+                    onChange={e => setBomForm(f => ({ ...f, quantityProduced: e.target.value }))}
+                    className="w-full px-3 py-2 bg-[var(--color-surface-muted)] border border-[var(--color-border)] rounded-xl outline-none font-mono"
+                  />
                 </div>
               </div>
 
-              <div className="border-t pt-3 space-y-2">
-                <div className="flex justify-between items-center">
-                  <p className="font-bold text-gray-800 text-xs uppercase tracking-wider">* Raw Material Ingredients</p>
-                  <Button size="sm" variant="outline" onClick={addBomLine}>+ Add Material</Button>
+              {/* Raw Material Lines */}
+              <div className="space-y-2 border-t border-[var(--color-border)] pt-3">
+                <div className="flex items-center justify-between">
+                  <h4 className="font-bold text-[var(--color-text-strong)]">Raw Materials & Ingredients</h4>
+                  <button
+                    type="button"
+                    onClick={() => setBomLines([...bomLines, { rawMaterialProductId: '', quantityRequired: '1', wastePercentage: '0' }])}
+                    className="px-2.5 py-1 bg-purple-50 hover:bg-purple-100 text-purple-700 rounded-lg text-xs font-semibold flex items-center gap-1 cursor-pointer"
+                  >
+                    <Plus className="w-3 h-3" /> Add Material
+                  </button>
                 </div>
-                {bomLines.map((l, i) => (
-                  <div key={i} className="flex gap-2 items-center">
-                    <select className="flex-1 border rounded-xl p-2 text-xs" value={l.rawMaterialProductId} onChange={e => { const updated = [...bomLines]; updated[i].rawMaterialProductId = e.target.value; setBomLines(updated); }}>
-                      <option value="">-- Select Raw Material --</option>
-                      {rawMaterials.map(p => <option key={p.id} value={p.id}>{p.name} ({p.code})</option>)}
-                    </select>
-                    <Input className="w-24 text-xs" type="number" placeholder="Qty" value={l.quantityRequired} onChange={e => { const updated = [...bomLines]; updated[i].quantityRequired = e.target.value; setBomLines(updated); }} />
-                    <Input className="w-24 text-xs" type="number" placeholder="Scrap %" value={l.wastePercentage} onChange={e => { const updated = [...bomLines]; updated[i].wastePercentage = e.target.value; setBomLines(updated); }} />
-                    {bomLines.length > 1 && <button onClick={() => removeBomLine(i)} className="text-red-500 hover:text-red-700 font-bold">×</button>}
+
+                {bomLines.map((line, idx) => (
+                  <div key={idx} className="grid grid-cols-12 gap-2 items-center">
+                    <div className="col-span-6">
+                      <select
+                        required
+                        value={line.rawMaterialProductId}
+                        onChange={e => {
+                          const updated = [...bomLines];
+                          updated[idx].rawMaterialProductId = e.target.value;
+                          setBomLines(updated);
+                        }}
+                        className="w-full px-3 py-2 bg-[var(--color-surface-muted)] border border-[var(--color-border)] rounded-xl outline-none"
+                      >
+                        <option value="">Select Raw Material...</option>
+                        {products.map(p => (
+                          <option key={p.id} value={p.id}>{p.name}</option>
+                        ))}
+                      </select>
+                    </div>
+
+                    <div className="col-span-3">
+                      <input
+                        type="number"
+                        step="0.01"
+                        placeholder="Qty"
+                        required
+                        value={line.quantityRequired}
+                        onChange={e => {
+                          const updated = [...bomLines];
+                          updated[idx].quantityRequired = e.target.value;
+                          setBomLines(updated);
+                        }}
+                        className="w-full px-3 py-2 bg-[var(--color-surface-muted)] border border-[var(--color-border)] rounded-xl outline-none font-mono"
+                      />
+                    </div>
+
+                    <div className="col-span-2">
+                      <input
+                        type="number"
+                        placeholder="Waste %"
+                        value={line.wastePercentage}
+                        onChange={e => {
+                          const updated = [...bomLines];
+                          updated[idx].wastePercentage = e.target.value;
+                          setBomLines(updated);
+                        }}
+                        className="w-full px-3 py-2 bg-[var(--color-surface-muted)] border border-[var(--color-border)] rounded-xl outline-none font-mono"
+                      />
+                    </div>
+
+                    <div className="col-span-1 text-center">
+                      <button
+                        type="button"
+                        onClick={() => setBomLines(bomLines.filter((_, i) => i !== idx))}
+                        className="text-rose-600 hover:text-rose-800 font-bold cursor-pointer"
+                      >
+                        ✕
+                      </button>
+                    </div>
                   </div>
                 ))}
               </div>
-            </div>
-            <div className="flex justify-end gap-2 border-t pt-4">
-              <Button variant="outline" onClick={() => setShowBomModal(false)}>Cancel</Button>
-              <Button className="bg-emerald-600 hover:bg-emerald-700 text-white" onClick={saveBom}>Save BOM Recipe</Button>
-            </div>
+
+              <div className="flex items-center justify-end gap-2 pt-3 border-t border-[var(--color-border)]">
+                <button
+                  type="button"
+                  onClick={() => setShowBomModal(false)}
+                  className="px-4 py-2 border border-[var(--color-border)] rounded-xl font-semibold cursor-pointer"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="px-5 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-xl font-bold shadow-xs cursor-pointer"
+                >
+                  Save BOM Recipe
+                </button>
+              </div>
+            </form>
           </div>
         </div>
       )}
 
-      {/* ─── MODAL 2: Create Work Order ──────────────────────────────────────── */}
+      {/* ─── MODAL: CREATE WORK ORDER ────────────────────────────────────────── */}
       {showWoModal && (
-        <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="bg-white rounded-2xl max-w-lg w-full p-6 space-y-4 shadow-xl">
-            <div className="flex justify-between items-center border-b pb-3">
-              <h2 className="text-lg font-bold text-gray-900">Release New Work Order</h2>
-              <button onClick={() => setShowWoModal(false)} className="text-gray-400 hover:text-gray-600 text-xl font-bold">×</button>
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-xs flex items-center justify-center z-50 p-4 animate-in fade-in">
+          <div className="bg-[var(--color-surface)] border border-[var(--color-border)] rounded-2xl max-w-2xl w-full p-6 shadow-2xl space-y-4 max-h-[90vh] overflow-y-auto">
+            <div className="flex items-center justify-between border-b border-[var(--color-border)] pb-3">
+              <h3 className="text-base font-bold text-[var(--color-text-strong)] flex items-center gap-2">
+                <Factory className="w-5 h-5 text-teal-600" /> Release New Work Order
+              </h3>
+              <button onClick={() => setShowWoModal(false)} className="text-lg cursor-pointer">✕</button>
             </div>
-            <div className="space-y-4 text-sm">
-              <div>
-                <label className="block font-medium text-gray-700 mb-1">* Select BOM Recipe</label>
-                <select className="w-full border rounded-xl p-2.5" value={woForm.bomId} onChange={e => setWoForm({ ...woForm, bomId: e.target.value })}>
-                  <option value="">-- Select Recipe --</option>
-                  {boms.map(b => <option key={b.id} value={b.id}>{b.finishedProductName} ({b.bomNumber})</option>)}
-                </select>
-              </div>
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="block font-medium text-gray-700 mb-1">* Raw Material Warehouse</label>
-                  <select className="w-full border rounded-xl p-2" value={woForm.rawMaterialWarehouseId} onChange={e => setWoForm({ ...woForm, rawMaterialWarehouseId: e.target.value })}>
-                    <option value="">-- Select Source --</option>
-                    {warehouses.map(w => <option key={w.id} value={w.id}>{w.name}</option>)}
+
+            <form onSubmit={handleSaveWorkOrder} className="space-y-4 text-xs">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div className="space-y-1">
+                  <label className="font-bold text-[var(--color-text-strong)]">BOM Recipe</label>
+                  <select
+                    required
+                    value={woForm.bomId}
+                    onChange={e => setWoForm(f => ({ ...f, bomId: e.target.value }))}
+                    className="w-full px-3 py-2 bg-[var(--color-surface-muted)] border border-[var(--color-border)] rounded-xl outline-none font-semibold"
+                  >
+                    <option value="">Select BOM Recipe...</option>
+                    {boms.map(b => (
+                      <option key={b.id} value={b.id}>{b.finishedProductName} ({b.bomNumber})</option>
+                    ))}
                   </select>
                 </div>
-                <div>
-                  <label className="block font-medium text-gray-700 mb-1">* Finished Goods Warehouse</label>
-                  <select className="w-full border rounded-xl p-2" value={woForm.finishedGoodsWarehouseId} onChange={e => setWoForm({ ...woForm, finishedGoodsWarehouseId: e.target.value })}>
-                    <option value="">-- Select Target --</option>
-                    {warehouses.map(w => <option key={w.id} value={w.id}>{w.name}</option>)}
+
+                <div className="space-y-1">
+                  <label className="font-bold text-[var(--color-text-strong)]">Quantity to Produce</label>
+                  <input
+                    type="number"
+                    required
+                    value={woForm.quantityToProduce}
+                    onChange={e => setWoForm(f => ({ ...f, quantityToProduce: e.target.value }))}
+                    className="w-full px-3 py-2 bg-[var(--color-surface-muted)] border border-[var(--color-border)] rounded-xl outline-none font-mono font-bold"
+                  />
+                </div>
+              </div>
+
+              {/* Work Center & Plant Machine Selection */}
+              <div className="p-3 bg-teal-50/50 dark:bg-teal-950/20 rounded-xl border border-teal-200/60 space-y-3">
+                <h4 className="font-bold text-xs text-teal-800 dark:text-teal-300 uppercase tracking-wider flex items-center gap-1.5">
+                  <Cpu className="w-3.5 h-3.5 text-teal-600" /> Shop Floor Machine & Work Center Assignment
+                </h4>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div className="space-y-1">
+                    <label className="font-bold text-[var(--color-text-strong)]">Work Center</label>
+                    <select
+                      value={woForm.workCenterName}
+                      onChange={e => setWoForm(f => ({ ...f, workCenterName: e.target.value }))}
+                      className="w-full px-3 py-2 bg-[var(--color-surface)] border border-[var(--color-border)] rounded-xl outline-none"
+                    >
+                      {FACTORY_WORK_CENTERS.map(c => (
+                        <option key={c} value={c}>{c}</option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <div className="space-y-1">
+                    <label className="font-bold text-[var(--color-text-strong)]">Assign Plant Machine (from Fixed Assets)</label>
+                    <select
+                      value={woForm.machineAssetId}
+                      onChange={e => setWoForm(f => ({ ...f, machineAssetId: e.target.value }))}
+                      className="w-full px-3 py-2 bg-[var(--color-surface)] border border-[var(--color-border)] rounded-xl outline-none"
+                    >
+                      <option value="">Select Machine...</option>
+                      {machines.map(m => (
+                        <option key={m.id} value={m.id}>{m.assetTag} — {m.name} ({m.machineHealth || 'Operating'})</option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+              </div>
+
+              {/* Warehouses */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div className="space-y-1">
+                  <label className="font-bold text-[var(--color-text-strong)]">Raw Materials Source Warehouse</label>
+                  <select
+                    required
+                    value={woForm.rawMaterialWarehouseId}
+                    onChange={e => setWoForm(f => ({ ...f, rawMaterialWarehouseId: e.target.value }))}
+                    className="w-full px-3 py-2 bg-[var(--color-surface-muted)] border border-[var(--color-border)] rounded-xl outline-none"
+                  >
+                    <option value="">Select Warehouse...</option>
+                    {warehouses.map(w => (
+                      <option key={w.id} value={w.id}>{w.name}</option>
+                    ))}
+                  </select>
+                </div>
+
+                <div className="space-y-1">
+                  <label className="font-bold text-[var(--color-text-strong)]">Finished Goods Target Warehouse</label>
+                  <select
+                    required
+                    value={woForm.finishedGoodsWarehouseId}
+                    onChange={e => setWoForm(f => ({ ...f, finishedGoodsWarehouseId: e.target.value }))}
+                    className="w-full px-3 py-2 bg-[var(--color-surface-muted)] border border-[var(--color-border)] rounded-xl outline-none"
+                  >
+                    <option value="">Select Warehouse...</option>
+                    {warehouses.map(w => (
+                      <option key={w.id} value={w.id}>{w.name}</option>
+                    ))}
                   </select>
                 </div>
               </div>
-              <div>
-                <label className="block font-medium text-gray-700 mb-1">* Target Production Quantity</label>
-                <Input type="number" value={woForm.quantityToProduce} onChange={e => setWoForm({ ...woForm, quantityToProduce: e.target.value })} />
+
+              <div className="flex items-center justify-end gap-2 pt-3 border-t border-[var(--color-border)]">
+                <button
+                  type="button"
+                  onClick={() => setShowWoModal(false)}
+                  className="px-4 py-2 border border-[var(--color-border)] rounded-xl font-semibold cursor-pointer"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="px-5 py-2 bg-teal-600 hover:bg-teal-700 text-white rounded-xl font-bold shadow-xs cursor-pointer"
+                >
+                  Release Work Order
+                </button>
               </div>
-            </div>
-            <div className="flex justify-end gap-2 border-t pt-4">
-              <Button variant="outline" onClick={() => setShowWoModal(false)}>Cancel</Button>
-              <Button className="bg-emerald-600 hover:bg-emerald-700 text-white" onClick={saveWo}>Release Work Order</Button>
-            </div>
+            </form>
           </div>
         </div>
       )}
 
-      {/* ─── MODAL 3: Complete Work Order ────────────────────────────────────── */}
-      {completeModal && (
-        <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="bg-white rounded-2xl max-w-lg w-full p-6 space-y-4 shadow-xl">
-            <div className="flex justify-between items-center border-b pb-3">
-              <h2 className="text-lg font-bold text-gray-900">Complete Work Order #{completeModal.workOrderNumber}</h2>
-              <button onClick={() => setCompleteModal(null)} className="text-gray-400 hover:text-gray-600 text-xl font-bold">×</button>
-            </div>
-            <div className="space-y-4 text-sm">
-              <p className="text-xs text-gray-500">Entering production completion details will automatically post Finished Goods to Warehouse and record IAS 2 Unit Cost.</p>
+      {/* ─── MODAL: LOG MACHINE HOURS ────────────────────────────────────────── */}
+      {machineHoursModalWo && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-xs flex items-center justify-center z-50 p-4 animate-in fade-in">
+          <div className="bg-[var(--color-surface)] border border-[var(--color-border)] rounded-2xl max-w-md w-full p-6 shadow-2xl space-y-4">
+            <div className="flex items-center justify-between border-b border-[var(--color-border)] pb-3">
               <div>
-                <label className="block font-medium text-gray-700 mb-1">* Actual Quantity Produced</label>
-                <Input type="number" value={completeForm.actualProducedQty} onChange={e => setCompleteForm({ ...completeForm, actualProducedQty: e.target.value })} />
+                <p className="text-[10px] font-mono font-bold text-blue-600">{machineHoursModalWo.workOrderNumber}</p>
+                <h3 className="text-base font-bold text-[var(--color-text-strong)]">Log Machine Run Hours</h3>
               </div>
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="block font-medium text-gray-700 mb-1">Direct Labor Cost ($)</label>
-                  <Input type="number" value={completeForm.directLabor} onChange={e => setCompleteForm({ ...completeForm, directLabor: e.target.value })} placeholder="0.00" />
+              <button onClick={() => setMachineHoursModalWo(null)} className="text-lg cursor-pointer">✕</button>
+            </div>
+
+            <form onSubmit={handleSaveMachineHours} className="space-y-3 text-xs">
+              <div className="p-3 bg-blue-50 dark:bg-blue-950/30 rounded-xl space-y-1 text-blue-800 dark:text-blue-300 font-mono">
+                <p>Machine: <strong>{machineHoursModalWo.machineAssetName || 'Shop Floor Machine'}</strong></p>
+                <p>Current Run Hours: <strong>{machineHoursModalWo.machineRunHours || 0} hrs</strong></p>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1">
+                  <label className="font-bold text-[var(--color-text-strong)]">Additional Run Hours</label>
+                  <input
+                    type="number"
+                    step="0.5"
+                    required
+                    value={machineHoursForm.additionalHours}
+                    onChange={e => setMachineHoursForm(f => ({ ...f, additionalHours: e.target.value }))}
+                    className="w-full px-3 py-2 bg-[var(--color-surface-muted)] border border-[var(--color-border)] rounded-xl outline-none font-mono font-bold"
+                  />
                 </div>
-                <div>
-                  <label className="block font-medium text-gray-700 mb-1">Factory Overhead ($)</label>
-                  <Input type="number" value={completeForm.overhead} onChange={e => setCompleteForm({ ...completeForm, overhead: e.target.value })} placeholder="0.00" />
+
+                <div className="space-y-1">
+                  <label className="font-bold text-[var(--color-text-strong)]">MOH Rate ($/hr)</label>
+                  <input
+                    type="number"
+                    step="0.5"
+                    value={machineHoursForm.hourlyRate}
+                    onChange={e => setMachineHoursForm(f => ({ ...f, hourlyRate: e.target.value }))}
+                    className="w-full px-3 py-2 bg-[var(--color-surface-muted)] border border-[var(--color-border)] rounded-xl outline-none font-mono font-bold"
+                  />
                 </div>
               </div>
+
+              <div className="flex items-center justify-end gap-2 pt-3 border-t border-[var(--color-border)]">
+                <button
+                  type="button"
+                  onClick={() => setMachineHoursModalWo(null)}
+                  className="px-3 py-2 border border-[var(--color-border)] rounded-xl font-semibold cursor-pointer"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-bold shadow-xs cursor-pointer"
+                >
+                  Save & Update Meter
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* ─── MODAL: QUALITY CONTROL INSPECTION ────────────────────────────────── */}
+      {qcModalWo && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-xs flex items-center justify-center z-50 p-4 animate-in fade-in">
+          <div className="bg-[var(--color-surface)] border border-[var(--color-border)] rounded-2xl max-w-md w-full p-6 shadow-2xl space-y-4">
+            <div className="flex items-center justify-between border-b border-[var(--color-border)] pb-3">
+              <div>
+                <p className="text-[10px] font-mono font-bold text-amber-600">{qcModalWo.workOrderNumber}</p>
+                <h3 className="text-base font-bold text-[var(--color-text-strong)]">Quality Control Checkpoint</h3>
+              </div>
+              <button onClick={() => setQcModalWo(null)} className="text-lg cursor-pointer">✕</button>
             </div>
-            <div className="flex justify-end gap-2 border-t pt-4">
-              <Button variant="outline" onClick={() => setCompleteModal(null)}>Cancel</Button>
-              <Button className="bg-emerald-600 hover:bg-emerald-700 text-white" onClick={submitComplete}>Complete Run & Receive Stock</Button>
+
+            <form onSubmit={handleSaveQc} className="space-y-3 text-xs">
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1">
+                  <label className="font-bold text-[var(--color-text-strong)]">Tested / Inspected Qty</label>
+                  <input
+                    type="number"
+                    required
+                    value={qcForm.quantityInspected}
+                    onChange={e => setQcForm(f => ({ ...f, quantityInspected: e.target.value }))}
+                    className="w-full px-3 py-2 bg-[var(--color-surface-muted)] border border-[var(--color-border)] rounded-xl outline-none font-mono"
+                  />
+                </div>
+
+                <div className="space-y-1">
+                  <label className="font-bold text-[var(--color-text-strong)]">Passed / Accepted Qty</label>
+                  <input
+                    type="number"
+                    required
+                    value={qcForm.quantityPassed}
+                    onChange={e => setQcForm(f => ({ ...f, quantityPassed: e.target.value }))}
+                    className="w-full px-3 py-2 bg-[var(--color-surface-muted)] border border-[var(--color-border)] rounded-xl outline-none font-mono font-bold text-emerald-600"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1">
+                  <label className="font-bold text-[var(--color-text-strong)]">Scrapped / Rejected Qty</label>
+                  <input
+                    type="number"
+                    value={qcForm.quantityRejected}
+                    onChange={e => setQcForm(f => ({ ...f, quantityRejected: e.target.value }))}
+                    className="w-full px-3 py-2 bg-[var(--color-surface-muted)] border border-[var(--color-border)] rounded-xl outline-none font-mono font-bold text-rose-600"
+                  />
+                </div>
+
+                <div className="space-y-1">
+                  <label className="font-bold text-[var(--color-text-strong)]">Inspector Name</label>
+                  <input
+                    value={qcForm.inspectorName}
+                    onChange={e => setQcForm(f => ({ ...f, inspectorName: e.target.value }))}
+                    className="w-full px-3 py-2 bg-[var(--color-surface-muted)] border border-[var(--color-border)] rounded-xl outline-none"
+                  />
+                </div>
+              </div>
+
+              <div className="space-y-1">
+                <label className="font-bold text-[var(--color-text-strong)]">Defect Reason (if any)</label>
+                <input
+                  value={qcForm.defectReason}
+                  onChange={e => setQcForm(f => ({ ...f, defectReason: e.target.value }))}
+                  placeholder="e.g. Dimensional tolerance off by 0.2mm"
+                  className="w-full px-3 py-2 bg-[var(--color-surface-muted)] border border-[var(--color-border)] rounded-xl outline-none"
+                />
+              </div>
+
+              <div className="flex items-center justify-end gap-2 pt-3 border-t border-[var(--color-border)]">
+                <button
+                  type="button"
+                  onClick={() => setQcModalWo(null)}
+                  className="px-3 py-2 border border-[var(--color-border)] rounded-xl font-semibold cursor-pointer"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="px-4 py-2 bg-amber-600 hover:bg-amber-700 text-white rounded-xl font-bold shadow-xs cursor-pointer"
+                >
+                  Save QC Audit
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* ─── MODAL: COMPLETE WORK ORDER ──────────────────────────────────────── */}
+      {completeModalWo && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-xs flex items-center justify-center z-50 p-4 animate-in fade-in">
+          <div className="bg-[var(--color-surface)] border border-[var(--color-border)] rounded-2xl max-w-md w-full p-6 shadow-2xl space-y-4">
+            <div className="flex items-center justify-between border-b border-[var(--color-border)] pb-3">
+              <div>
+                <p className="text-[10px] font-mono font-bold text-emerald-600">{completeModalWo.workOrderNumber}</p>
+                <h3 className="text-base font-bold text-[var(--color-text-strong)]">Capitalize Finished Goods</h3>
+              </div>
+              <button onClick={() => setCompleteModalWo(null)} className="text-lg cursor-pointer">✕</button>
             </div>
+
+            <form onSubmit={handleCompleteWorkOrder} className="space-y-3 text-xs">
+              <div className="p-3 bg-emerald-50 dark:bg-emerald-950/30 rounded-xl space-y-1 text-emerald-800 dark:text-emerald-300 font-mono">
+                <p>Finished Good: <strong>{completeModalWo.finishedProductName}</strong></p>
+                <p>Materials Cost: <strong>{money(completeModalWo.totalMaterialCost)}</strong></p>
+                <p>Accepted Qty: <strong>{completeModalWo.acceptedQuantity || completeModalWo.quantityToProduce} Units</strong></p>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1">
+                  <label className="font-bold text-[var(--color-text-strong)]">Direct Labor Cost ($)</label>
+                  <input
+                    type="number"
+                    step="0.01"
+                    value={completeForm.directLabor}
+                    onChange={e => setCompleteForm(f => ({ ...f, directLabor: e.target.value }))}
+                    className="w-full px-3 py-2 bg-[var(--color-surface-muted)] border border-[var(--color-border)] rounded-xl outline-none font-mono"
+                  />
+                </div>
+
+                <div className="space-y-1">
+                  <label className="font-bold text-[var(--color-text-strong)]">Machine Overhead ($)</label>
+                  <input
+                    type="number"
+                    step="0.01"
+                    value={completeForm.overhead}
+                    onChange={e => setCompleteForm(f => ({ ...f, overhead: e.target.value }))}
+                    className="w-full px-3 py-2 bg-[var(--color-surface-muted)] border border-[var(--color-border)] rounded-xl outline-none font-mono"
+                  />
+                </div>
+              </div>
+
+              <div className="flex items-center justify-end gap-2 pt-3 border-t border-[var(--color-border)]">
+                <button
+                  type="button"
+                  onClick={() => setCompleteModalWo(null)}
+                  className="px-3 py-2 border border-[var(--color-border)] rounded-xl font-semibold cursor-pointer"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-bold shadow-xs cursor-pointer"
+                >
+                  Complete & Receive into Inventory
+                </button>
+              </div>
+            </form>
           </div>
         </div>
       )}
     </div>
   );
 };
+
+export default ManufacturingWorkspace;

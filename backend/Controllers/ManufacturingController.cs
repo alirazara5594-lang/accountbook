@@ -48,7 +48,7 @@ namespace Zenabook.Api.Controllers
             {
                 orders = orders.Where(o => string.IsNullOrEmpty(o.CompanyId) || o.CompanyId == companyId).ToList();
             }
-            return Ok(orders);
+            return Ok(orders.OrderByDescending(o => o.CreatedAt));
         }
 
         [HttpPost("work-orders")]
@@ -71,6 +71,28 @@ namespace Zenabook.Api.Controllers
                 return BadRequest(new { error });
             }
             return Ok(new { message = "Work Order started. Raw Materials issued to WIP." });
+        }
+
+        public record LogMachineHoursRequest(decimal AdditionalHours, decimal? HourlyRate);
+
+        [HttpPost("work-orders/{id}/machine-hours")]
+        public IActionResult LogMachineHours(string id, [FromBody] LogMachineHoursRequest req)
+        {
+            if (!_store.LogMachineHours(id, req.AdditionalHours, req.HourlyRate, out var error))
+            {
+                return BadRequest(new { error });
+            }
+            return Ok(new { message = "Machine run hours and overhead absorption logged." });
+        }
+
+        [HttpPost("work-orders/{id}/qc")]
+        public IActionResult PerformQcInspection(string id, [FromBody] QcInspectionRecord qc)
+        {
+            if (!_store.PerformQcInspection(id, qc, out var error))
+            {
+                return BadRequest(new { error });
+            }
+            return Ok(new { message = "Quality Control inspection completed.", record = qc });
         }
 
         public record CompleteWorkOrderRequest(decimal ActualProducedQty, decimal DirectLabor, decimal Overhead);
