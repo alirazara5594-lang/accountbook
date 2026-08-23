@@ -164,11 +164,10 @@ export default function App() {
     }
   }, [currentUser]);
 
-  // Track if onboarding is needed (for non-admin demo accounts)
+  // Track onboarding setup: Muhammad Ali (admin@acme.com) stays direct, others go through setup
   const needsOnboarding = (email: string) => {
-    if (email === 'admin@acme.com') return false; // Admin gets instant access
-    // Check if THIS user has completed onboarding
-    const key = `onboarding_complete_${email}`;
+    if (email.toLowerCase() === 'admin@acme.com') return false; // Muhammad Ali stays instant
+    const key = `onboarding_complete_${email.toLowerCase()}`;
     return !localStorage.getItem(key);
   };
 
