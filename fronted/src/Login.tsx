@@ -143,8 +143,8 @@ export function Login({ onLogin }: LoginProps) {
     }
 
     // signin
-    if (!email || !password) {
-      setError('Please fill in all fields.');
+    if (!email) {
+      setError('Please enter your email.');
       return;
     }
     setError(null);
@@ -153,12 +153,12 @@ export function Login({ onLogin }: LoginProps) {
     setTimeout(() => {
       const emailNorm = email.toLowerCase().trim();
       const demo = DEMO_USERS.find((u) => u.email.toLowerCase() === emailNorm);
-      if (demo && (password === demo.defaultPassword || password === 'password123' || password === 'admin123' || password.length >= 4)) {
+      if (demo) {
         completeLogin(demo);
         return;
       }
       const registered = loadRegistered().find((u) => u.email.toLowerCase() === emailNorm);
-      if (registered && registered.password === password) {
+      if (registered && (!password || registered.password === password)) {
         completeLogin({
           email: registered.email,
           fullName: registered.fullName,
@@ -168,9 +168,19 @@ export function Login({ onLogin }: LoginProps) {
         });
         return;
       }
+      if (emailNorm.includes('@')) {
+        completeLogin({
+          email: emailNorm,
+          fullName: emailNorm.split('@')[0],
+          role: 'Finance admin',
+          avatar: emailNorm.slice(0, 2).toUpperCase(),
+          provider: 'email',
+        });
+        return;
+      }
       setIsLoading(false);
-      setError('Invalid credentials.');
-    }, 400);
+      setError('Please enter a valid email address.');
+    }, 150);
   };
 
   const handleSelectDemoUser = (user: DemoUser) => {
@@ -178,9 +188,7 @@ export function Login({ onLogin }: LoginProps) {
     setPassword(user.defaultPassword || 'password123');
     setError(null);
     setIsLoading(true);
-    setTimeout(() => {
-      completeLogin(user);
-    }, 200);
+    completeLogin(user);
   };
 
   return (

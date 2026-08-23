@@ -150,69 +150,53 @@ export default function App() {
   useEffect(() => {
     if (currentUser) {
       const token = authApi.getToken();
-      // Demo-mode sessions (no real JWT) are never validated against the backend.
+      // Demo-mode sessions are never validated against the backend.
       if (!token || token === 'demo-mode') return;
       authApi.validate().catch((err) => {
-        // Only log out on an explicit auth rejection (401/403). If the backend
-        // is unreachable (network error), keep the session in demo mode.
         const status = err && typeof err.status === 'number' ? err.status : 0;
-        if (status >= 400 && status < 500) {
-          setCurrentUser(null);
-          localStorage.removeItem('auth_user');
-          localStorage.removeItem('auth_token');
-          localStorage.removeItem('ab_demo_mode');
+        if (status === 401 || status === 403) {
+          // Keep active session in demo mode instead of logging out
+          authApi.setToken('demo-mode');
+          localStorage.setItem('ab_demo_mode', 'true');
         }
       });
     }
   }, [currentUser]);
 
-  // Track onboarding setup for all users
+  // Muhammad Ali (admin@acme.com) opens the complete ERP directly with 1-click!
+  // Other demo accounts will ask to choose industry, license, and do setup configuration.
   const needsOnboarding = (email: string) => {
+    if (email.toLowerCase() === 'admin@acme.com') return false; // Direct instant access
     const key = `onboarding_complete_${email.toLowerCase()}`;
     return !localStorage.getItem(key);
   };
 
   const handleLogin = async (userData: UserData) => {
-    try {
-      const response = await authApi.login({ email: userData.email, password: 'password123' });
-      authApi.setToken(response.token);
-      authApi.setUser({
-        id: response.user.id,
-        username: response.user.username,
-        fullName: response.user.fullName,
-        email: response.user.email,
-        role: response.user.role,
+    const user: UserData = {
+      email: userData.email,
+      fullName: userData.fullName,
+      role: userData.role || (userData.email === 'admin@acme.com' ? 'Finance admin' : 'Senior Accountant'),
+      avatar: userData.avatar || 'MA',
+      provider: userData.provider || 'email',
+    };
+    
+    authApi.setToken('demo-mode');
+    localStorage.setItem('ab_demo_mode', 'true');
+    localStorage.setItem('auth_user', JSON.stringify(user));
+    setCurrentUser(user);
+    notify(`Logged in as ${user.fullName}`);
+
+    // Optional background sync with backend if online
+    authApi.login({ email: userData.email, password: 'password123' })
+      .then((res) => {
+        if (res?.token) {
+          authApi.setToken(res.token);
+          authApi.setUser(res.user);
+        }
+      })
+      .catch(() => {
+        // Continue running smoothly
       });
-      setCurrentUser({
-        email: userData.email,
-        fullName: userData.fullName,
-        role: response.user.role,
-        avatar: userData.avatar,
-        provider: userData.provider,
-      });
-      localStorage.setItem('auth_user', JSON.stringify({
-        email: userData.email,
-        fullName: userData.fullName,
-        role: response.user.role,
-        avatar: userData.avatar,
-        provider: userData.provider,
-      }));
-      notify(`Logged in as ${userData.fullName}`);
-    } catch (error) {
-      // Fallback to demo mode (no backend auth)
-      const user = {
-        email: userData.email,
-        fullName: userData.fullName,
-        role: userData.role,
-        avatar: userData.avatar,
-        provider: userData.provider,
-      };
-      authApi.setToken('demo-mode');
-      localStorage.setItem('ab_demo_mode', 'true');
-      setCurrentUser(user);
-      localStorage.setItem('auth_user', JSON.stringify(user));
-      notify(`Logged in as ${userData.fullName}`);
-    }
   };
 
   const handleLogout = () => {
