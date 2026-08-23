@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
-import { Play, CheckCircle2, AlertCircle, RefreshCw, Calendar, Building2, TrendingDown, Wallet, Info } from 'lucide-react'
-import { useAssetsInventoryStore, useCoaStore } from './stores'
+import { Play, CheckCircle2, AlertCircle, RefreshCw, Calendar, Building2, TrendingDown, Wallet } from 'lucide-react'
+import { useAssetsInventoryStore } from './stores'
 import type { DepreciationRunResult } from './api/modules/assetsInventory.api'
 
 import { money } from './lib/currency';
@@ -10,8 +10,6 @@ export default function DepreciationRun({ activeEntityId }: { activeEntityId: st
   const loading = useAssetsInventoryStore((s) => s.loading)
   const fetchFixedAssets = useAssetsInventoryStore((s) => s.fetchFixedAssets)
   const runBatchDepreciation = useAssetsInventoryStore((s) => s.runBatchDepreciation)
-  const accounts = useCoaStore((s) => s.accounts)
-  const fetchAccounts = useCoaStore((s) => s.fetchAccounts)
 
   const [runDate, setRunDate] = useState(new Date().toISOString().slice(0, 10))
   const [results, setResults] = useState<DepreciationRunResult[]>([])
@@ -21,7 +19,6 @@ export default function DepreciationRun({ activeEntityId }: { activeEntityId: st
 
   useEffect(() => {
     fetchFixedAssets(activeEntityId)
-    fetchAccounts()
   }, [activeEntityId])
 
   const activeAssets = assets.filter((a: any) => a.status === 0 || a.status === 'Active' || a.status === 'Active')
@@ -38,9 +35,6 @@ export default function DepreciationRun({ activeEntityId }: { activeEntityId: st
   }
 
   const totalMonthlyDepr = activeAssets.reduce((s: number, a: any) => s + monthlyDepr(a), 0)
-
-  const deprExpAcc = accounts.find((a: any) => a.code === '61300' || a.name?.toLowerCase().includes('depreciation expense'))
-  const accumDeprAcc = accounts.find((a: any) => a.code === '15200' || a.name?.toLowerCase().includes('accumulated depreciation'))
 
   const handleRun = async () => {
     setRunning(true)
