@@ -85,21 +85,22 @@ export const useSalesStore = create<SalesState>((set, get) => ({
 
   fetchNextNumber: async (type: 'invoice' | 'estimate') => {
     try {
-      // Check localStorage for last number
       const prefix = type === 'invoice' ? 'INV' : 'EST';
-      const last = localStorage.getItem(`last_${type}_number`);
-      if (last) {
-        const lastNum = parseInt(last.replace(/[^\d]/g, '') || '0');
-        const nextNum = lastNum + 1;
-        localStorage.setItem(`last_${type}_number`, nextNum.toString());
-        return prefix + '-' + nextNum.toString().padStart(5, '0');
-      } else {
-        const startNum = type === 'invoice' ? 1001 : 1001;
-        localStorage.setItem(`last_${type}_number`, startNum.toString());
-        return prefix + '-' + startNum.toString().padStart(5, '0');
+      const items: any[] = type === 'invoice' ? (get().invoices || []) : (get().estimates || []);
+      
+      let maxNum = 0;
+      for (const item of items) {
+        const str = (type === 'invoice' ? (item.invoiceNumber || item.reference) : (item.estimateNumber || item.reference)) || '';
+        const match = str.match(/\d+/);
+        if (match) {
+          const num = parseInt(match[0], 10);
+          if (!isNaN(num) && num > maxNum) maxNum = num;
+        }
       }
+      const nextNum = maxNum > 0 ? maxNum + 1 : 1;
+      return `${prefix}-${nextNum.toString().padStart(5, '0')}`;
     } catch {
-      return type === 'invoice' ? 'INV-1001' : 'EST-1001';
+      return type === 'invoice' ? 'INV-00001' : 'EST-00001';
     }
   },
 

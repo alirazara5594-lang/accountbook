@@ -3,7 +3,7 @@ import {
   FileText, Plus, Check, X, ArrowRight,
   ArrowLeft, Coins, CheckCircle2, Hash, Users, ArrowUpRight, Eye
 } from 'lucide-react'
-import { useSalesStore, useCustomersStore, useProductsStore } from './stores'
+import { useSalesStore, useCustomersStore, useProductsStore, useCompanyStore } from './stores'
 import { useFormDraft } from './hooks/useFormDraft'
 import { DataToolbar } from '@/components/ui/data-toolbar'
 import { money } from './lib/currency'
@@ -41,6 +41,7 @@ export const EstimatesAndQuotes: React.FC<{ activeEntityId: string; entities?: a
   activeEntityId,
   entities = []
 }) => {
+  const allEntities = useCompanyStore((s) => s.entities)
   const estimates = useSalesStore((s) => s.estimates)
   const fetchEstimates = useSalesStore((s) => s.fetchEstimates)
   const createEstimateStore = useSalesStore((s) => s.createEstimate)
@@ -239,7 +240,7 @@ export const EstimatesAndQuotes: React.FC<{ activeEntityId: string; entities?: a
   const acceptedValue = estimates.filter((e: any) => e.status === 2).reduce((s: number, e: any) => s + (e.totalAmount || 0), 0)
   const pendingCount = estimates.filter((e: any) => e.status === 0 || e.status === 1).length
 
-  const assignedCompany = entities.find(e => e.id === activeEntityId)
+  const assignedCompany = (entities && entities.length > 0 ? entities : allEntities).find((e: any) => e.id === activeEntityId) || allEntities.find((e: any) => e.id === activeEntityId) || allEntities[0]
 
   return (
     <div className="space-y-6">

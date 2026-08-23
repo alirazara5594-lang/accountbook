@@ -44,19 +44,20 @@ export const useSalesOrdersStore = create<SalesOrdersState>((set, get) => ({
 
   fetchNextNumber: async () => {
     try {
-      // Check localStorage for last order number
-      const last = localStorage.getItem('last_sales_order_number');
-      if (last) {
-        const lastNum = parseInt(last.replace(/[^\d]/g, '') || '0');
-        const nextNum = lastNum + 1;
-        localStorage.setItem('last_sales_order_number', nextNum.toString().padStart(5, '0'));
-        return 'SO-' + nextNum.toString().padStart(5, '0');
-      } else {
-        localStorage.setItem('last_sales_order_number', '10001');
-        return 'SO-10001';
+      const orders = get().orders || [];
+      let maxNum = 0;
+      for (const item of orders) {
+        const str = item.orderNumber || item.reference || '';
+        const match = str.match(/\d+/);
+        if (match) {
+          const num = parseInt(match[0], 10);
+          if (!isNaN(num) && num > maxNum) maxNum = num;
+        }
       }
+      const nextNum = maxNum > 0 ? maxNum + 1 : 1;
+      return `SO-${nextNum.toString().padStart(5, '0')}`;
     } catch {
-      return 'SO-10001';
+      return 'SO-00001';
     }
   },
 

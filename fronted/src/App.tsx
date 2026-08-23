@@ -559,7 +559,7 @@ export default function App() {
   {activeView === 'products' && <ProductsAndServices notify={notify} activeEntityId={activeEntityId} entities={entities as any} />}
   {activeView === 'vendors' && <VendorManagement entities={entities as any} activeEntityId={activeEntityId} notify={notify} />}
   {activeView === 'sales-workspace' && <SalesWorkspace activeEntityId={activeEntityId} entities={entities as any} />}
-  {activeView === 'estimates-quotes' && <EstimatesAndQuotes activeEntityId={activeEntityId} />}
+  {activeView === 'estimates-quotes' && <EstimatesAndQuotes activeEntityId={activeEntityId} entities={entities as any} />}
   {activeView === 'sales-orders' && <SalesOrdersWorkspace activeEntityId={activeEntityId} />}
   {activeView === 'credit-notes' && <CreditNotesWorkspace />}
   {activeView === 'deferred-revenue' && <CustomerDeferredRevenueView activeEntityId={activeEntityId} accounts={accounts} />}
