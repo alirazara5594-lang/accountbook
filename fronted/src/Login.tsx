@@ -1,5 +1,8 @@
 import React, { useState } from 'react';
-import { Mail, Lock, AlertCircle, LogIn, UserPlus, User as UserIcon, ArrowLeft } from 'lucide-react';
+import {
+  Mail, Lock, AlertCircle, LogIn, UserPlus, User as UserIcon, ArrowLeft,
+  ShieldCheck, Globe, Layers, Sparkles, CheckCircle2
+} from 'lucide-react';
 import './Login.css';
 
 export interface UserData {
@@ -76,17 +79,6 @@ function saveRegistered(users: RegisteredUser[]) {
 
 function initials(name: string): string {
   return name.trim().split(/\s+/).slice(0, 2).map((p) => p[0]?.toUpperCase() ?? '').join('') || 'U';
-}
-
-function GoogleIcon() {
-  return (
-    <svg width="18" height="18" viewBox="0 0 48 48" aria-hidden="true">
-      <path fill="#FFC107" d="M43.611 20.083H42V20H24v8h11.303c-1.649 4.657-6.08 8-11.303 8-6.627 0-12-5.373-12-12s5.373-12 12-12c3.059 0 5.842 1.154 7.961 3.039l5.657-5.657C34.046 6.053 29.268 4 24 4 12.955 4 4 12.955 4 24s8.955 20 20 20 20-8.955 20-20c0-1.341-.138-2.65-.389-3.917z"/>
-      <path fill="#FF3D00" d="M6.306 14.691l6.571 4.819C14.655 15.108 18.961 12 24 12c3.059 0 5.842 1.154 7.961 3.039l5.657-5.657C34.046 6.053 29.268 4 24 4 16.318 4 9.656 8.337 6.306 14.691z"/>
-      <path fill="#4CAF50" d="M24 44c5.166 0 9.86-1.977 13.409-5.192l-6.19-5.238A11.91 11.91 0 0 1 24 36c-5.202 0-9.619-3.317-11.283-7.946l-6.522 5.025C9.505 39.556 16.227 44 24 44z"/>
-      <path fill="#1976D2" d="M43.611 20.083H42V20H24v8h11.303a12.04 12.04 0 0 1-4.087 5.571l.003-.002 6.19 5.238C36.971 39.205 44 34 44 24c0-1.341-.138-2.65-.389-3.917z"/>
-    </svg>
-  );
 }
 
 export function Login({ onLogin }: LoginProps) {
@@ -168,37 +160,15 @@ export function Login({ onLogin }: LoginProps) {
         return;
       }
       setIsLoading(false);
-      setError('Invalid email or password. Demo accounts use password123.');
-    }, 800);
+      setError('Invalid credentials. (Demo accounts use password: password123)');
+    }, 600);
   };
 
-  const handleQuickSelect = (user: UserData) => {
-    setMode('signin');
-    setEmail(user.email);
-    setPassword('password123');
-    setError(null);
-    setSuccess(null);
-  };
-
-  // Instant login for admin account (first demo user)
   const handleInstantLogin = (user: UserData) => {
-    completeLogin(user);
-  };
-
-  const handleGoogle = () => {
-    setError(null);
-    setSuccess(null);
     setIsLoading(true);
-    // Mock Google Identity Services account chooser
     setTimeout(() => {
-      completeLogin({
-        email: 'you@gmail.com',
-        fullName: 'Google User',
-        role: 'Accountant',
-        avatar: initials('Google User'),
-        provider: 'google',
-      });
-    }, 900);
+      completeLogin(user);
+    }, 300);
   };
 
   return (
@@ -207,189 +177,232 @@ export function Login({ onLogin }: LoginProps) {
       <div className="login-bg-glow login-bg-glow-2" />
 
       <div className="login-card">
-        <div className="login-header">
-          <div className="login-logo">
-            <b>AM</b><span>S</span>
+        {/* Left Side: Brand & Value Showcase */}
+        <div className="login-brand-panel">
+          <div>
+            <div className="brand-badge">
+              <Sparkles className="w-3.5 h-3.5" />
+              <span>Enterprise ERP</span>
+            </div>
+            <div className="brand-logo-text">
+              <b>AM</b><span>S</span>
+            </div>
+            <p className="brand-desc">
+              Accounting Management System & Multi-Sector Enterprise Resource Platform.
+            </p>
+
+            <div className="feature-list">
+              <div className="feature-item">
+                <div className="feature-icon-wrapper">
+                  <ShieldCheck size={14} />
+                </div>
+                <span>IAS / IFRS & GAAP Double-Entry Ledger</span>
+              </div>
+              <div className="feature-item">
+                <div className="feature-icon-wrapper">
+                  <Globe size={14} />
+                </div>
+                <span>7 Global Tax Jurisdictions & E-Invoicing</span>
+              </div>
+              <div className="feature-item">
+                <div className="feature-icon-wrapper">
+                  <Layers size={14} />
+                </div>
+                <span>Services, Retail, Manufacturing & Projects</span>
+              </div>
+            </div>
           </div>
-          <p style={{ fontSize: '11px', color: '#64748b', margin: '-4px 0 10px', fontWeight: 500, letterSpacing: '0.3px' }}>
-Accounting Management System
-          </p>
-          <p className="login-subtitle">
-            {mode === 'signin'
-              ? 'Sign in to AMS — your multi-entity ERP'
-              : 'Create your AMS account to get started'}
-          </p>
+
+          <div className="brand-footer">
+            <span className="live-indicator" />
+            <span>Operational · 90-Day Trial Active</span>
+          </div>
         </div>
 
-        {error && (
-          <div className="login-error">
-            <AlertCircle size={18} />
-            <span>{error}</span>
+        {/* Right Side: Sleek Form & Quick Persona Selector */}
+        <div className="login-form-panel">
+          <div className="login-panel-head">
+            <h2 className="login-panel-title">
+              {mode === 'signin' ? 'Sign In to AMS' : 'Create Organization Account'}
+            </h2>
+            <p className="login-panel-sub">
+              {mode === 'signin'
+                ? 'Enter your credentials or click any demo persona below.'
+                : 'Fill in your details to set up your ERP account.'}
+            </p>
           </div>
-        )}
-        {success && (
-          <div className="login-success">
-            <AlertCircle size={18} />
-            <span>{success}</span>
-          </div>
-        )}
 
-        {mode === 'signin' && (
-          <button type="button" className="google-btn" onClick={handleGoogle} disabled={isLoading}>
-            <GoogleIcon />
-            <span>Continue with Google</span>
-          </button>
-        )}
+          {error && (
+            <div className="login-error">
+              <AlertCircle size={15} />
+              <span>{error}</span>
+            </div>
+          )}
+          {success && (
+            <div className="login-success">
+              <CheckCircle2 size={15} />
+              <span>{success}</span>
+            </div>
+          )}
 
-        <form onSubmit={handleSubmit} className="login-form">
-          {mode === 'signup' && (
+          <form onSubmit={handleSubmit} className="login-form">
+            {mode === 'signup' && (
+              <div className="form-group">
+                <label htmlFor="fullName">Full Name</label>
+                <div className="input-wrapper">
+                  <input
+                    id="fullName"
+                    type="text"
+                    className="login-input"
+                    placeholder="Jane Cooper"
+                    value={fullName}
+                    onChange={(e) => setFullName(e.target.value)}
+                    disabled={isLoading}
+                  />
+                  <UserIcon className="input-icon" />
+                </div>
+              </div>
+            )}
+
             <div className="form-group">
-              <label htmlFor="fullName">FULL NAME</label>
+              <label htmlFor="email">Email Address</label>
               <div className="input-wrapper">
                 <input
-                  id="fullName"
-                  type="text"
+                  id="email"
+                  type="email"
                   className="login-input"
-                  placeholder="Jane Cooper"
-                  value={fullName}
-                  onChange={(e) => setFullName(e.target.value)}
+                  placeholder="name@company.com"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
                   disabled={isLoading}
                 />
-                <UserIcon className="input-icon" />
+                <Mail className="input-icon" />
               </div>
             </div>
-          )}
 
-          <div className="form-group">
-            <label htmlFor="email">EMAIL ADDRESS</label>
-            <div className="input-wrapper">
-              <input
-                id="email"
-                type="email"
-                className="login-input"
-                placeholder="name@company.com"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                disabled={isLoading}
-              />
-              <Mail className="input-icon" />
-            </div>
-          </div>
-
-          {mode === 'signup' && (
-            <div className="form-group">
-              <label htmlFor="role">ROLE</label>
-              <div className="input-wrapper">
-                <select
-                  id="role"
-                  className="login-input login-select"
-                  value={role}
-                  onChange={(e) => setRole(e.target.value)}
-                  disabled={isLoading}
-                >
-                  <option>Accountant</option>
-                  <option>Senior Accountant</option>
-                  <option>Finance admin</option>
-                  <option>Manager</option>
-                  <option>Viewer</option>
-                </select>
+            {mode === 'signup' && (
+              <div className="form-group">
+                <label htmlFor="role">Role</label>
+                <div className="input-wrapper">
+                  <select
+                    id="role"
+                    className="login-input"
+                    value={role}
+                    onChange={(e) => setRole(e.target.value)}
+                    disabled={isLoading}
+                  >
+                    <option>Accountant</option>
+                    <option>Senior Accountant</option>
+                    <option>Finance admin</option>
+                    <option>Manager</option>
+                    <option>Viewer</option>
+                  </select>
+                </div>
               </div>
-            </div>
-          )}
+            )}
 
-          <div className="form-group">
-            <label htmlFor="password">PASSWORD</label>
-            <div className="input-wrapper">
-              <input
-                id="password"
-                type="password"
-                className="login-input"
-                placeholder="••••••••"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                disabled={isLoading}
-              />
-              <Lock className="input-icon" />
-            </div>
-          </div>
-
-          {mode === 'signup' && (
             <div className="form-group">
-              <label htmlFor="confirm">CONFIRM PASSWORD</label>
+              <label htmlFor="password">Password</label>
               <div className="input-wrapper">
                 <input
-                  id="confirm"
+                  id="password"
                   type="password"
                   className="login-input"
                   placeholder="••••••••"
-                  value={confirm}
-                  onChange={(e) => setConfirm(e.target.value)}
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
                   disabled={isLoading}
                 />
                 <Lock className="input-icon" />
               </div>
             </div>
-          )}
 
-          <button type="submit" className="login-btn" disabled={isLoading}>
-            {isLoading ? (
-              <div className="spinner" />
-            ) : mode === 'signin' ? (
-              <>
-                <span>Sign In</span>
-                <LogIn size={18} />
-              </>
-            ) : (
-              <>
-                <span>Create Account</span>
-                <UserPlus size={18} />
-              </>
+            {mode === 'signup' && (
+              <div className="form-group">
+                <label htmlFor="confirm">Confirm Password</label>
+                <div className="input-wrapper">
+                  <input
+                    id="confirm"
+                    type="password"
+                    className="login-input"
+                    placeholder="••••••••"
+                    value={confirm}
+                    onChange={(e) => setConfirm(e.target.value)}
+                    disabled={isLoading}
+                  />
+                  <Lock className="input-icon" />
+                </div>
+              </div>
             )}
-          </button>
-        </form>
 
-        <div className="auth-switch">
-          {mode === 'signin' ? (
-            <span>
-              New to AMS?{' '}
-              <button type="button" className="auth-switch-link" onClick={() => { setMode('signup'); setError(null); setSuccess(null); }}>
-                Create an account
-              </button>
-            </span>
-          ) : (
-            <button type="button" className="auth-switch-link" onClick={() => { setMode('signin'); setError(null); setSuccess(null); }}>
-              <ArrowLeft size={14} style={{ verticalAlign: 'middle' }} /> Back to sign in
+            <button type="submit" className="login-btn" disabled={isLoading}>
+              {isLoading ? (
+                <div className="spinner" />
+              ) : mode === 'signin' ? (
+                <>
+                  <span>Sign In</span>
+                  <LogIn size={15} />
+                </>
+              ) : (
+                <>
+                  <span>Create Account</span>
+                  <UserPlus size={15} />
+                </>
+              )}
             </button>
-          )}
-        </div>
+          </form>
 
-        {mode === 'signin' && (
-          <div className="demo-accounts">
-            <div className="demo-title">Demo User Accounts</div>
-            <div className="demo-grid">
-              {DEMO_USERS.map((user) => {
-                const isAdmin = user.email === 'admin@acme.com'
-                return (
+          <div className="auth-switch">
+            {mode === 'signin' ? (
+              <span>
+                New to AMS?{' '}
+                <button
+                  type="button"
+                  className="auth-switch-link"
+                  onClick={() => { setMode('signup'); setError(null); setSuccess(null); }}
+                >
+                  Create account
+                </button>
+              </span>
+            ) : (
+              <button
+                type="button"
+                className="auth-switch-link"
+                onClick={() => { setMode('signin'); setError(null); setSuccess(null); }}
+              >
+                <ArrowLeft size={12} style={{ verticalAlign: 'middle', marginRight: 3 }} /> Back to Sign In
+              </button>
+            )}
+          </div>
+
+          {/* 1-Click Instant Demo Personas Grid */}
+          {mode === 'signin' && (
+            <div className="demo-section">
+              <div className="demo-header-title">
+                <span>1-Click Demo Accounts</span>
+                <span style={{ color: '#2dd4bf' }}>Instant Login</span>
+              </div>
+              <div className="demo-chips-grid">
+                {DEMO_USERS.map((user) => (
                   <button
                     key={user.email}
                     type="button"
-                    className={`demo-btn ${isAdmin ? 'instant' : ''}`}
-                    onClick={() => isAdmin ? handleInstantLogin(user) : handleQuickSelect(user)}
+                    className="demo-chip"
+                    onClick={() => handleInstantLogin(user)}
                     disabled={isLoading}
+                    title={`Instant login as ${user.fullName} (${user.role})`}
                   >
-                    <div className="demo-info">
-                      <span className="demo-name">{user.fullName}</span>
-                      <span className="demo-role">{user.role}</span>
+                    <div className="demo-chip-avatar">{user.avatar}</div>
+                    <div className="demo-chip-content">
+                      <span className="demo-chip-name">{user.fullName}</span>
+                      <span className="demo-chip-role">{user.role}</span>
                     </div>
-                    <span className="demo-cred">
-                      {isAdmin ? 'Click to login' : user.email.split('@')[0]}
-                    </span>
                   </button>
-                )
-              })}
+                ))}
+              </div>
             </div>
-          </div>
-        )}
+          )}
+        </div>
       </div>
     </div>
   );
