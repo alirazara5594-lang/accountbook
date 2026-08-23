@@ -38,6 +38,8 @@ import PayablesAgingWorkspace from './PayablesAgingWorkspace';
 import { DebitNotes } from './DebitNotes';
 import { ExpenseClaimsView } from './ExpenseClaimsView';
 import { PurchaseReportsView } from './PurchaseReportsView';
+import VendorPrepaymentsView from './VendorPrepaymentsView';
+import CustomerDeferredRevenueView from './CustomerDeferredRevenueView';
 import EmployeeDirectory from './EmployeeDirectory';
 import AttendanceTracker from './AttendanceTracker';
 import AttendancePoliciesView from './AttendancePoliciesView';
@@ -311,6 +313,7 @@ export default function App() {
     'Sales & Customers.Estimates & Quotes': 'estimates-quotes',
     'Sales & Customers.Sales Orders': 'sales-orders',
     'Sales & Customers.Credit Notes': 'credit-notes',
+    'Sales & Customers.Deferred Revenue & Advances': 'deferred-revenue',
     'Procurement.Summary': 'procurement-summary',
     'Procurement.Vendors': 'vendors',
     'Procurement.Bills': 'bills',
@@ -319,6 +322,7 @@ export default function App() {
     'Procurement.Vendor Payments': 'vendor-payments',
     'Procurement.Vendor Statements': 'vendor-statements',
     'Procurement.Payables Aging': 'payables-aging',
+    'Procurement.Prepayments & Amortization': 'vendor-prepayments',
     'Procurement.Expense Claims': 'expense-claims',
     'Procurement.Purchase Reports': 'purchase-reports',
     'Banking & Payments.Summary': 'banking-summary',
@@ -342,6 +346,7 @@ export default function App() {
     'Administration.Tax Accounting': 'tax-accounting',
     'Accounting.Budgets': 'budgets',
     'Accounting.Financial Reports': 'financial-reports',
+    'Accounting.Prepayment Schedules': 'vendor-prepayments',
     'Accounting.Period Closing': 'period-closing',
     'Accounting.Audit Trail': 'audit-trail',
     'Accounting.Lease Accounting': 'lease-accounting',
@@ -573,9 +578,11 @@ export default function App() {
   {activeView === 'sales-workspace' && <SalesWorkspace activeEntityId={activeEntityId} entities={entities as any} />}
   {activeView === 'estimates-quotes' && <EstimatesAndQuotes activeEntityId={activeEntityId} />}
   {activeView === 'sales-orders' && <SalesOrdersWorkspace activeEntityId={activeEntityId} />}
-        {activeView === 'credit-notes' && <CreditNotesWorkspace />}
+  {activeView === 'credit-notes' && <CreditNotesWorkspace />}
+  {activeView === 'deferred-revenue' && <CustomerDeferredRevenueView activeEntityId={activeEntityId} accounts={accounts} />}
   {activeView === 'procurement-workspace' && <ProcurementWorkspace activeEntityId={activeEntityId} entities={entities as any} />}
   {activeView === 'vendor-payments' && <VendorPaymentsView activeEntityId={activeEntityId} entities={entities as any} />}
+  {activeView === 'vendor-prepayments' && <VendorPrepaymentsView activeEntityId={activeEntityId} accounts={accounts} />}
   {activeView === 'expense-claims' && <ExpenseClaimsView activeEntityId={activeEntityId} entities={entities as any} />}
   {activeView === 'purchase-reports' && <PurchaseReportsView activeEntityId={activeEntityId} entities={entities as any} />}
   {activeView === 'payroll-employees' && <EmployeeDirectory />}

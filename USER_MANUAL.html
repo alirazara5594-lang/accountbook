@@ -1,0 +1,771 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>AccountBook Enterprise ERP — Complete User Manual & Operating Guide</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600;700&display=swap');
+
+  @page {
+    size: A4;
+    margin: 20mm 15mm 20mm 15mm;
+    @bottom-right {
+      content: counter(page);
+    }
+  }
+
+  * { box-sizing: border-box; }
+  body {
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    color: #1e293b;
+    background: #ffffff;
+    line-height: 1.6;
+    font-size: 13px;
+    margin: 0;
+    padding: 20px;
+  }
+
+  /* Cover Page */
+  .cover-page {
+    page-break-after: always;
+    min-height: 90vh;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    padding: 60px 40px;
+    background: linear-gradient(135deg, #0f172a 0%, #1e1b4b 50%, #042f2e 100%);
+    color: white;
+    border-radius: 24px;
+    margin-bottom: 40px;
+  }
+  .cover-badge {
+    display: inline-block;
+    padding: 6px 14px;
+    background: rgba(20, 184, 166, 0.2);
+    border: 1px solid rgba(20, 184, 166, 0.4);
+    border-radius: 9999px;
+    font-size: 11px;
+    font-weight: 800;
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    color: #5eead4;
+  }
+  .cover-title {
+    font-size: 38px;
+    font-weight: 900;
+    line-height: 1.15;
+    margin: 20px 0 10px 0;
+    color: #ffffff;
+    letter-spacing: -0.5px;
+  }
+  .cover-subtitle {
+    font-size: 16px;
+    color: #cbd5e1;
+    max-width: 600px;
+    line-height: 1.5;
+    margin-bottom: 30px;
+  }
+  .cover-meta {
+    border-top: 1px solid rgba(255, 255, 255, 0.15);
+    padding-top: 20px;
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 20px;
+    font-size: 12px;
+  }
+  .cover-meta-item strong { display: block; color: #94a3b8; font-size: 10px; text-transform: uppercase; letter-spacing: 1px; }
+  .cover-meta-item span { color: #f8fafc; font-weight: 600; font-size: 13px; }
+
+  /* Headings */
+  h1 {
+    font-size: 22px;
+    font-weight: 800;
+    color: #0f172a;
+    border-bottom: 2px solid #0d9488;
+    padding-bottom: 6px;
+    margin-top: 36px;
+    margin-bottom: 16px;
+    page-break-after: avoid;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  h2 {
+    font-size: 17px;
+    font-weight: 700;
+    color: #1e293b;
+    margin-top: 24px;
+    margin-bottom: 12px;
+    page-break-after: avoid;
+  }
+  h3 {
+    font-size: 14px;
+    font-weight: 700;
+    color: #0f766e;
+    margin-top: 18px;
+    margin-bottom: 8px;
+    page-break-after: avoid;
+  }
+  h4 {
+    font-size: 13px;
+    font-weight: 700;
+    color: #334155;
+    margin-top: 12px;
+    margin-bottom: 6px;
+  }
+
+  p { margin: 0 0 10px 0; text-align: justify; }
+  ul, ol { margin: 0 0 12px 0; padding-left: 20px; }
+  li { margin-bottom: 4px; }
+
+  /* Tables */
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 12px 0 18px 0;
+    font-size: 11.5px;
+    page-break-inside: avoid;
+  }
+  th {
+    background: #0f766e;
+    color: #ffffff;
+    font-weight: 700;
+    text-transform: uppercase;
+    font-size: 10px;
+    letter-spacing: 0.5px;
+    padding: 8px 10px;
+    text-align: left;
+    border: 1px solid #0d9488;
+  }
+  td {
+    padding: 7px 10px;
+    border: 1px solid #e2e8f0;
+    vertical-align: top;
+  }
+  tr:nth-child(even) td {
+    background: #f8fafc;
+  }
+
+  /* Callout Boxes */
+  .callout {
+    padding: 12px 16px;
+    border-radius: 10px;
+    margin: 12px 0 16px 0;
+    font-size: 12px;
+    page-break-inside: avoid;
+  }
+  .callout-info { background: #f0fdfa; border-left: 4px solid #0d9488; color: #134e4a; }
+  .callout-warning { background: #fffbeb; border-left: 4px solid #f59e0b; color: #78350f; }
+  .callout-success { background: #f0fdf4; border-left: 4px solid #22c55e; color: #14532d; }
+  .callout-audit { background: #f8fafc; border: 1px solid #cbd5e1; border-left: 4px solid #64748b; color: #334155; }
+
+  /* Accounting Entry Box */
+  .journal-box {
+    background: #f8fafc;
+    border: 1px solid #e2e8f0;
+    border-radius: 8px;
+    padding: 10px 14px;
+    margin: 10px 0 14px 0;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    line-height: 1.6;
+  }
+  .journal-dr { color: #0369a1; font-weight: 600; }
+  .journal-cr { color: #b45309; font-weight: 600; padding-left: 20px; }
+
+  /* Flow Steps */
+  .step-list {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 10px;
+    margin: 14px 0;
+  }
+  .step-card {
+    background: #f8fafc;
+    border: 1px solid #e2e8f0;
+    border-radius: 8px;
+    padding: 10px 12px;
+  }
+  .step-number {
+    display: inline-block;
+    width: 20px;
+    height: 20px;
+    background: #0d9488;
+    color: white;
+    font-weight: 700;
+    text-align: center;
+    line-height: 20px;
+    border-radius: 50%;
+    font-size: 11px;
+    margin-bottom: 6px;
+  }
+  .step-title { font-weight: 700; font-size: 12px; color: #0f172a; margin-bottom: 4px; }
+  .step-desc { font-size: 11px; color: #64748b; line-height: 1.4; }
+
+  /* Page Break Helpers */
+  .page-break { page-break-before: always; }
+  .no-break { page-break-inside: avoid; }
+
+  /* Footer */
+  .manual-footer {
+    margin-top: 40px;
+    padding-top: 14px;
+    border-top: 1px solid #e2e8f0;
+    text-align: center;
+    font-size: 11px;
+    color: #94a3b8;
+  }
+</style>
+</head>
+<body>
+
+<!-- COVER PAGE -->
+<div class="cover-page">
+  <div>
+    <span class="cover-badge">Official Enterprise Documentation</span>
+    <h1 class="cover-title">AccountBook ERP<br>User Manual & Operating Guide</h1>
+    <p class="cover-subtitle">
+      A comprehensive, standard-compliant handbook covering multi-sector operations, double-entry bookkeeping (IAS/IFRS & US GAAP), global taxation engines, automated amortization schedules, and standard operating procedures (SOPs).
+    </p>
+  </div>
+
+  <div class="cover-meta">
+    <div class="cover-meta-item">
+      <strong>System Version</strong>
+      <span>Version 2.0 LTS (Enterprise)</span>
+    </div>
+    <div class="cover-meta-item">
+      <strong>Compliance Scope</strong>
+      <span>IAS / IFRS / US GAAP / ZATCA / FBR</span>
+    </div>
+    <div class="cover-meta-item">
+      <strong>Target Jurisdictions</strong>
+      <span>PK, US, UK, UAE, KSA, CA, EU</span>
+    </div>
+  </div>
+</div>
+
+<!-- SECTION 1 -->
+<h1>1. System Introduction & Accounting Foundations</h1>
+<p>
+  AccountBook is an enterprise-grade ERP designed to unify financial accounting, supply chain, manufacturing, workforce management, and field operations across all business sectors worldwide.
+</p>
+
+<div class="callout callout-info">
+  <strong>Core Accounting Standards Enforced:</strong>
+  All transactional records, journals, inventories, fixed assets, and revenue recognitions strictly follow <strong>International Accounting Standards (IAS)</strong>, <strong>International Financial Reporting Standards (IFRS)</strong>, and <strong>US GAAP</strong>.
+</div>
+
+<h3>1.1 Double-Entry Bookkeeping Principles</h3>
+<p>
+  The system enforces strict real-time double-entry balancing. Every financial posting requires equal debits and credits:
+</p>
+<div class="journal-box">
+  \(\sum \text{Debits} \equiv \sum \text{Credits}\) &nbsp;|&nbsp; Assets = Liabilities + Equity
+</div>
+<p>
+  Out-of-balance entries cannot be posted under any circumstances. If an operational module (e.g. Sales, Purchasing, Payroll) generates a transaction, balanced GL line items are automatically posted in the background.
+</p>
+
+<h3>1.2 Accrual Basis Accounting</h3>
+<p>
+  Revenues and expenses are recognized when earned or incurred (not when cash is received or paid), fulfilling the <em>Matching Principle</em> (IAS 1).
+</p>
+
+<h3>1.3 Immutable Audit Trail</h3>
+<p>
+  Posted general journal entries, sales invoices, vendor bills, and tax returns are <strong>immutable</strong>. They cannot be hard-deleted or altered. Corrections must be made via balanced reversing journals or credit/debit notes with complete user and timestamp tracking.
+</p>
+
+<h3>1.4 Multi-Currency & Real-Time FX Revaluation (IAS 21)</h3>
+<p>
+  Transactions support foreign currencies (USD, GBP, EUR, AED, SAR, PKR, CAD). Each transaction maintains both the transaction currency value and the functional base currency value. The system computes realized and unrealized foreign exchange (FX) gains and losses upon receipt, payment, and period-end revaluation.
+</p>
+
+<!-- SECTION 2 -->
+<div class="page-break"></div>
+<h1>2. 3-Step Setup Wizard & Onboarding</h1>
+<p>
+  When a company or persona first accesses AccountBook, the 3-step setup wizard initializes the workspace:
+</p>
+
+<div class="step-list">
+  <div class="step-card">
+    <span class="step-number">1</span>
+    <div class="step-title">License Mode</div>
+    <div class="step-desc">Choose 90-Day Free Commercial Trial, Founding Customer Partner, or Commercial License Token.</div>
+  </div>
+  <div class="step-card">
+    <span class="step-number">2</span>
+    <div class="step-title">Country & Currency</div>
+    <div class="step-desc">Select operating country. Pre-configures base currency, tax authorities (FBR, HMRC, FTA, ZATCA, IRS), and VAT rates.</div>
+  </div>
+  <div class="step-card">
+    <span class="step-number">3</span>
+    <div class="step-title">World Business Sector</div>
+    <div class="step-desc">Pick from global industry list. Automatically tunes active modules, BOMs, timesheets, and inventory settings.</div>
+  </div>
+</div>
+
+<h3>Supported Global Tax Jurisdictions:</h3>
+<table>
+  <thead>
+    <tr>
+      <th>Country</th>
+      <th>Currency</th>
+      <th>Tax Authority</th>
+      <th>Default Rates & Rules</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><strong>Pakistan</strong></td>
+      <td>PKR (₨)</td>
+      <td>FBR / PRA / SRB</td>
+      <td>16%–18% Sales Tax, Provincial Services Tax, Withholding Tax Slabs</td>
+    </tr>
+    <tr>
+      <td><strong>United States</strong></td>
+      <td>USD ($)</td>
+      <td>IRS / State BOE</td>
+      <td>State/Local Sales Tax (e.g. CA 8.25%), IRS 1099 Vendor Reporting</td>
+    </tr>
+    <tr>
+      <td><strong>United Kingdom</strong></td>
+      <td>GBP (£)</td>
+      <td>HMRC</td>
+      <td>20% Standard VAT, Making Tax Digital (MTD) Box 1–9 Return Format</td>
+    </tr>
+    <tr>
+      <td><strong>United Arab Emirates</strong></td>
+      <td>AED (د.إ)</td>
+      <td>FTA</td>
+      <td>5% Standard VAT, UAE Corporate Tax (9%), FTA VAT 201 Form</td>
+    </tr>
+    <tr>
+      <td><strong>Saudi Arabia</strong></td>
+      <td>SAR (﷼)</td>
+      <td>ZATCA</td>
+      <td>15% Standard VAT, ZATCA Phase 2 E-Invoicing Cryptographic QR</td>
+    </tr>
+    <tr>
+      <td><strong>Canada</strong></td>
+      <td>CAD ($)</td>
+      <td>CRA</td>
+      <td>GST (5%) + PST/HST Dual Tax Breakdown</td>
+    </tr>
+    <tr>
+      <td><strong>Germany / EU</strong></td>
+      <td>EUR (€)</td>
+      <td>EU Tax Authorities</td>
+      <td>19% Standard VAT, Reverse Charge Mechanism (RCM) for Cross-Border EU</td>
+    </tr>
+  </tbody>
+</table>
+
+<!-- SECTION 3 -->
+<h1>3. User Personas & Role-Based Access Control (RBAC)</h1>
+<p>
+  The system includes 5 standard personas for complete segregation of duties (SoD):
+</p>
+
+<table>
+  <thead>
+    <tr>
+      <th>Persona</th>
+      <th>Login Email</th>
+      <th>Assigned Role</th>
+      <th>Primary Scope & Permissions</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>👑 <strong>Muhammad Ali</strong></td>
+      <td><code>admin@acme.com</code></td>
+      <td><strong>Super Administrator</strong></td>
+      <td>Full access to all 11 modules, system settings, user roles, license generation, and database reset tools.</td>
+    </tr>
+    <tr>
+      <td>💼 <strong>Sarah Jenkins</strong></td>
+      <td><code>accountant@acme.com</code></td>
+      <td><strong>Senior Accountant</strong></td>
+      <td>General Ledger, Journal Entries, Fixed Assets, Prepayments, Bank Reconciliations, Financial Statements, Period Closing.</td>
+    </tr>
+    <tr>
+      <td>📦 <strong>David Chen</strong></td>
+      <td><code>inventory@acme.com</code></td>
+      <td><strong>Warehouse Manager</strong></td>
+      <td>Goods Receipt Notes (GRN), Stock Transfer Notes (STN), Multi-Warehouse Balances, Physical Stock Count Adjustments.</td>
+    </tr>
+    <tr>
+      <td>🏭 <strong>Alex Rivera</strong></td>
+      <td><code>manufacturing@acme.com</code></td>
+      <td><strong>Production Engineer</strong></td>
+      <td>Bill of Materials (BOM), Work Orders, Labor & Manufacturing Overhead (MOH) Allocations, Finished Goods Receipt.</td>
+    </tr>
+    <tr>
+      <td>📑 <strong>Amina Al-Mansoor</strong></td>
+      <td><code>auditor@acme.com</code></td>
+      <td><strong>External Auditor</strong></td>
+      <td>Read-only compliance audit trail, general ledger trace, historical journals inspection, tax return verification.</td>
+    </tr>
+  </tbody>
+</table>
+
+<!-- SECTION 4 -->
+<div class="page-break"></div>
+<h1>4. Commercial Licensing & In-App Customer Feedback</h1>
+
+<h3>4.1 License Lifecycle & Token Activation</h3>
+<ul>
+  <li><strong>90-Day Free Commercial Trial:</strong> Grants unrestricted enterprise access. A countdown badge displays remaining days.</li>
+  <li><strong>Commercial Activation:</strong> Super Admins can enter signed license keys generated for 3-Month, 6-Month, 1-Year, or Lifetime validity.</li>
+  <li><strong>Trial Expiry Protection:</strong> Upon trial expiration, the system gracefully enters read-only mode, preserving all accounting data without loss.</li>
+</ul>
+
+<h3>4.2 In-App Customer Feedback Sub-System</h3>
+<p>
+  Users can submit suggestions, bug reports, and usability ratings directly from the UI by clicking the <code>💡 Feedback</code> button in the floating trigger bar (bottom-right). All submissions are aggregated into the Super Admin Feedback Inbox under <code>Administration → Feedback Inbox</code>.
+</p>
+
+<!-- SECTION 5 -->
+<h1>5. Core Accounting & General Ledger</h1>
+
+<h3>5.1 Standard 5-Digit Chart of Accounts (COA) Tree</h3>
+<table>
+  <thead>
+    <tr>
+      <th>Code Range</th>
+      <th>Classification</th>
+      <th>Normal Balance</th>
+      <th>Key Accounts</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><code>10000–19999</code></td>
+      <td><strong>Assets</strong></td>
+      <td>Debit</td>
+      <td>11100 Cash, 11200 Banks, 12000 Accounts Receivable, 13000 Inventory, 14000 Prepaid Expenses, 14050 Advances to Suppliers, 15100 Fixed Assets</td>
+    </tr>
+    <tr>
+      <td><code>20000–29999</code></td>
+      <td><strong>Liabilities</strong></td>
+      <td>Credit</td>
+      <td>21100 Accounts Payable, 21200 GRNI Accrual, 21300 Salaries Payable, 22000 Output VAT Payable, 22100 WHT Payable, 23000 Deferred Revenue, 23100 Customer Advances</td>
+    </tr>
+    <tr>
+      <td><code>30000–39999</code></td>
+      <td><strong>Equity</strong></td>
+      <td>Credit</td>
+      <td>31000 Share Capital, 32000 Retained Earnings</td>
+    </tr>
+    <tr>
+      <td><code>40000–49999</code></td>
+      <td><strong>Revenue</strong></td>
+      <td>Credit</td>
+      <td>40000 Product Sales Revenue, 41000 Service & Consulting Revenue, 49000 Sales Discounts Allowed</td>
+    </tr>
+    <tr>
+      <td><code>50000–59999</code></td>
+      <td><strong>Cost of Goods Sold</strong></td>
+      <td>Debit</td>
+      <td>51000 Raw Materials Consumed, 52000 Direct Labor, 53000 Manufacturing Overhead (MOH)</td>
+    </tr>
+    <tr>
+      <td><code>60000–69999</code></td>
+      <td><strong>Operating Expenses</strong></td>
+      <td>Debit</td>
+      <td>61000 Office Rent, 62000 Insurance Expense, 63000 Utilities, 64000 Depreciation Expense, 65000 Salaries & Wages</td>
+    </tr>
+  </tbody>
+</table>
+
+<h3>5.2 Fixed Assets & Depreciation Runs (IAS 16)</h3>
+<p>
+  Fixed Assets are recorded at historical cost and depreciated straight-line over useful life. Executing the monthly depreciation run posts:
+</p>
+<div class="journal-box">
+  <span class="journal-dr">Debit: Depreciation Expense (64000)</span><br>
+  <span class="journal-cr">Credit: Accumulated Depreciation (15200) [Contra-Asset]</span>
+</div>
+
+<!-- SECTION 6 -->
+<div class="page-break"></div>
+<h1>6. Sales & Accounts Receivable (AR)</h1>
+<p>
+  The sales engine supports Quotations, Sales Orders, Invoices, Receipts, and Credit Notes.
+</p>
+
+<h3>Standard Sales Cycle GL Postings:</h3>
+<ol>
+  <li>
+    <strong>Sales Invoice Approved & Posted:</strong>
+    <div class="journal-box">
+      <span class="journal-dr">Debit: Accounts Receivable (12000) &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;[$1,200]</span><br>
+      <span class="journal-cr">Credit: Sales Revenue (40000) &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;[$1,000]</span><br>
+      <span class="journal-cr">Credit: Output Sales Tax / VAT Payable (22000) [$200]</span>
+    </div>
+  </li>
+  <li>
+    <strong>Customer Payment / Receipt Recorded:</strong>
+    <div class="journal-box">
+      <span class="journal-dr">Debit: Bank Current Account (11200) [$1,200]</span><br>
+      <span class="journal-cr">Credit: Accounts Receivable (12000) [$1,200]</span>
+    </div>
+  </li>
+</ol>
+
+<!-- SECTION 7 -->
+<h1>7. Customer Advances & Deferred Revenue (IFRS 15)</h1>
+<p>
+  Located at <strong><code>Sales & Customers → Deferred Revenue & Advances</code></strong>.
+</p>
+<p>
+  When customers pay annual upfront retainers, software subscriptions, or service deposits before services are rendered, revenue cannot be recognized immediately. It is held as a Current Liability under <code>23000 Deferred Revenue</code> and amortized monthly into earned revenue.
+</p>
+
+<h3>Operating Procedure:</h3>
+<ol>
+  <li>Click <strong>＋ New Deferred Revenue Contract</strong>.</li>
+  <li>Enter Customer, Contract Title, Total Advance Amount, Start Date, and End Date (e.g. 12 Months).</li>
+  <li>The system generates a monthly recognition schedule.</li>
+  <li>Click <strong>Recognize Revenue (Batch Run)</strong> each month $\rightarrow$ Automatically posts:</li>
+</ol>
+<div class="journal-box">
+  <span class="journal-dr">Debit: Deferred Revenue (23000) [Liability Decreased]</span><br>
+  <span class="journal-cr">Credit: Service / Sales Revenue (41000) [P&L Earned Revenue]</span>
+</div>
+
+<!-- SECTION 8 -->
+<div class="page-break"></div>
+<h1>8. Procurement & 3-Way Matching Accounts Payable (AP)</h1>
+
+<p>
+  To ensure internal control and audit compliance, procurement follows <strong>3-Way Matching</strong>:
+</p>
+<ul>
+  <li><strong>1. Purchase Order (PO):</strong> Specifies authorized quantities and agreed unit pricing.</li>
+  <li><strong>2. Goods Receipt Note (GRN):</strong> Confirms physical warehouse receipt, recording temporary accrued liability:
+    <div class="journal-box">
+      <span class="journal-dr">Debit: Inventory Asset (13000)</span><br>
+      <span class="journal-cr">Credit: GRNI Accrual Clearing (21200)</span>
+    </div>
+  </li>
+  <li><strong>3. Vendor Bill:</strong> Matches against PO and GRN quantities. Upon approval:
+    <div class="journal-box">
+      <span class="journal-dr">Debit: GRNI Accrual Clearing (21200)</span><br>
+      <span class="journal-dr">Debit: Input Tax / Recoverable VAT (14100)</span><br>
+      <span class="journal-cr">Credit: Accounts Payable (21100)</span>
+    </div>
+  </li>
+</ul>
+
+<!-- SECTION 9 -->
+<h1>9. Vendor Prepayments & Amortization (IAS 1 / GAAP)</h1>
+<p>
+  Located at <strong><code>Procurement → Prepayments & Amortization</code></strong> and <strong><code>Accounting → Prepayment Schedules</code></strong>.
+</p>
+<p>
+  When paying annual office rent, insurance policies, or software subscriptions in advance, payment is held as a Current Asset under <code>14000 Prepaid Expenses</code> and expensed monthly.
+</p>
+
+<h3>Operating Procedure:</h3>
+<ol>
+  <li>Click <strong>＋ New Prepayment Schedule</strong>.</li>
+  <li>Enter Title (e.g., <em>Annual Office Rent HQ</em>), Vendor Name, Amount, Start Date, and End Date.</li>
+  <li>Select <strong>Prepaid Expenses (`14000`)</strong> and <strong>Expense Account (`61000 Rent Expense`)</strong>.</li>
+  <li>Click <strong>Run Monthly Amortization</strong> each month $\rightarrow$ Automatically posts:</li>
+</ol>
+<div class="journal-box">
+  <span class="journal-dr">Debit: Office Rent / Insurance Expense (61000 / 62000) [P&L]</span><br>
+  <span class="journal-cr">Credit: Prepaid Expenses (14000) [Asset Decreased]</span>
+</div>
+
+<!-- SECTION 10 -->
+<div class="page-break"></div>
+<h1>10. Banking, Treasury & Bank Reconciliation</h1>
+
+<h3>The 5 Standard Voucher Types:</h3>
+<table>
+  <thead>
+    <tr>
+      <th>Code</th>
+      <th>Voucher Name</th>
+      <th>Primary Use Case</th>
+      <th>Typical GL Posting</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><strong>BPV</strong></td>
+      <td>Bank Payment Voucher</td>
+      <td>Vendor bill payouts, tax remittances, operational bank expenses.</td>
+      <td>Dr: Accounts Payable (21100) / Cr: Bank (11200)</td>
+    </tr>
+    <tr>
+      <td><strong>BRV</strong></td>
+      <td>Bank Receipt Voucher</td>
+      <td>Customer settlements, capital injections, direct bank receipts.</td>
+      <td>Dr: Bank (11200) / Cr: Accounts Receivable (12000)</td>
+    </tr>
+    <tr>
+      <td><strong>CPV</strong></td>
+      <td>Cash Payment Voucher</td>
+      <td>Petty cash expenses, office supplies, site disbursements.</td>
+      <td>Dr: Office Supplies Expense (66000) / Cr: Petty Cash (11100)</td>
+    </tr>
+    <tr>
+      <td><strong>CRV</strong></td>
+      <td>Cash Receipt Voucher</td>
+      <td>Cash retail collections, cash advances returned.</td>
+      <td>Dr: Petty Cash (11100) / Cr: Sales Revenue (40000)</td>
+    </tr>
+    <tr>
+      <td><strong>JV</strong></td>
+      <td>Journal Voucher</td>
+      <td>Non-cash accruals, depreciation, amortizations, payroll postings.</td>
+      <td>Dr: Expense (6xxxx) / Cr: Accrual/Asset (1xxxx/2xxxx)</td>
+    </tr>
+  </tbody>
+</table>
+
+<h3>Bank Reconciliation Engine:</h3>
+<ol>
+  <li>Navigate to <strong><code>Banking & Payments → Bank Reconciliation</code></strong>.</li>
+  <li>Import bank statement CSV/OFX files under <strong><code>Bank Import</code></strong>.</li>
+  <li>Click <strong>Auto-Match</strong> $\rightarrow$ Engine pairs statement lines with GL ledger transactions by Date, Voucher Reference, and Amount.</li>
+  <li>Review unmatched items to identify uncleared deposits or unpresented checks.</li>
+</ol>
+
+<!-- SECTION 11 -->
+<h1>11. Manufacturing, Bill of Materials (BOM) & Job Costing</h1>
+
+<div class="step-list">
+  <div class="step-card">
+    <span class="step-number">1</span>
+    <div class="step-title">Bill of Materials (BOM)</div>
+    <div class="step-desc">Specify raw materials, scrap %, and standard labor hours per finished unit.</div>
+  </div>
+  <div class="step-card">
+    <span class="step-number">2</span>
+    <div class="step-title">Work Order Release</div>
+    <div class="step-desc">Issue raw materials from warehouse into Work-in-Progress (WIP Asset 13200).</div>
+  </div>
+  <div class="step-card">
+    <span class="step-number">3</span>
+    <div class="step-title">Finished Goods Receipt</div>
+    <div class="step-desc">Receive completed batch into stock, transferring total WIP into Finished Goods (13000).</div>
+  </div>
+</div>
+
+<div class="journal-box">
+  <strong>1. Raw Material Issued to Production:</strong><br>
+  <span class="journal-dr">Debit: Work In Progress (WIP) Asset (13200)</span><br>
+  <span class="journal-cr">Credit: Raw Materials Inventory (13100)</span><br><br>
+  <strong>2. Production Completed & Received into Stock:</strong><br>
+  <span class="journal-dr">Debit: Finished Goods Inventory (13000)</span><br>
+  <span class="journal-cr">Credit: Work In Progress (WIP) Asset (13200)</span>
+</div>
+
+<!-- SECTION 12 -->
+<div class="page-break"></div>
+<h1>12. Payroll, Statutory Tax Slabs & HR Administration</h1>
+
+<ol>
+  <li><strong>Employee Setup:</strong> Define basic pay, housing allowance, conveyance, and medical allowances.</li>
+  <li><strong>Statutory Deductions:</strong> Automatically calculates country-specific income tax withholding, employee pension/PF, and social security (EOBI).</li>
+  <li><strong>Processing Monthly Payrun:</strong>
+    <ul>
+      <li>Navigate to <strong><code>Payroll & HR → Payroll</code></strong>.</li>
+      <li>Click <strong>Generate Payrun</strong> $\rightarrow$ Review calculated gross pay, tax deductions, and net salary.</li>
+      <li>Click <strong>Approve & Post Payrun</strong>:</li>
+    </ul>
+    <div class="journal-box">
+      <span class="journal-dr">Debit: Salaries & Wages Expense (65000) &nbsp;&nbsp;&nbsp;[$10,000]</span><br>
+      <span class="journal-cr">Credit: Income Tax Withholding Payable (21400) [$1,200]</span><br>
+      <span class="journal-cr">Credit: EOBI / Social Security Payable (21500) &nbsp;[$300]</span><br>
+      <span class="journal-cr">Credit: Net Salaries Payable (21300) &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;[$8,500]</span>
+    </div>
+  </li>
+  <li><strong>Disbursement & Payslips:</strong> Disburse bank payment voucher (BPV) and generate individual PDF Salary Slips.</li>
+</ol>
+
+<!-- SECTION 13 -->
+<h1>13. Standard Operating Procedures (SOPs) & Checklists</h1>
+
+<h3>13.1 Daily Operations SOP Checklist</h3>
+<ul>
+  <li>[ ] Enter and post all daily Sales Invoices; email PDF copies to customers.</li>
+  <li>[ ] Record incoming customer payments and apply to invoices.</li>
+  <li>[ ] Receive warehouse goods (GRNs) and match against supplier purchase orders.</li>
+  <li>[ ] Review and approve pending purchase requests and expense claims.</li>
+</ul>
+
+<h3>13.2 Month-End Closing SOP Checklist (Step-by-Step)</h3>
+<table>
+  <thead>
+    <tr>
+      <th>Order</th>
+      <th>Task Description</th>
+      <th>Module / Menu Location</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><strong>Step 1</strong></td>
+      <td>Execute Fixed Asset Depreciation Run</td>
+      <td><code>Assets & Inventory → Depreciation Run</code></td>
+    </tr>
+    <tr>
+      <td><strong>Step 2</strong></td>
+      <td>Run Vendor Prepayment Amortization Batch</td>
+      <td><code>Procurement → Prepayments & Amortization</code></td>
+    </tr>
+    <tr>
+      <td><strong>Step 3</strong></td>
+      <td>Run Customer Deferred Revenue Recognition Batch</td>
+      <td><code>Sales & Customers → Deferred Revenue</code></td>
+    </tr>
+    <tr>
+      <td><strong>Step 4</strong></td>
+      <td>Process, Post, and Disburse Monthly Employee Payrun</td>
+      <td><code>Payroll & HR → Payroll</code></td>
+    </tr>
+    <tr>
+      <td><strong>Step 5</strong></td>
+      <td>Import Bank Statements and Complete Reconciliations</td>
+      <td><code>Banking & Payments → Bank Reconciliation</code></td>
+    </tr>
+    <tr>
+      <td><strong>Step 6</strong></td>
+      <td>Review VAT / Sales Tax Return & Verify Input/Output Balances</td>
+      <td><code>Government Compliance → Tax Returns</code></td>
+    </tr>
+    <tr>
+      <td><strong>Step 7</strong></td>
+      <td>Verify Trial Balance Balances (\(\sum \text{Dr} = \sum \text{Cr}\))</td>
+      <td><code>Accounting → Financial Reports → Trial Balance</code></td>
+    </tr>
+    <tr>
+      <td><strong>Step 8</strong></td>
+      <td>Set Monthly Period Lock Date to prevent backdated edits</td>
+      <td><code>Accounting → Period Closing</code></td>
+    </tr>
+  </tbody>
+</table>
+
+<h3>13.3 Year-End Closing SOP Checklist</h3>
+<ul>
+  <li>[ ] Conduct comprehensive physical stock cycle count and post adjustments.</li>
+  <li>[ ] Compute IFRS 9 Expected Credit Loss (ECL) allowance on aged receivables.</li>
+  <li>[ ] Execute IAS 21 Multi-Currency Year-End FX Revaluation.</li>
+  <li>[ ] Roll forward Net Income to <strong>Retained Earnings (`32000`)</strong> and lock fiscal year.</li>
+</ul>
+
+<div class="manual-footer">
+  AccountBook Enterprise ERP — Version 2.0 LTS — Developed in Strict Adherence to IAS/IFRS & US GAAP Compliance.
+</div>
+
+</body>
+</html>

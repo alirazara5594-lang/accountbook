@@ -86,6 +86,7 @@ private readonly List<Voucher> _vouchers = [];
     private readonly List<NumberSeries> _numberSeries = [];
     private readonly List<Currency> _currencies = [];
     private readonly List<AccountMapping> _mappings = [];
+    private readonly List<PrepaymentSchedule> _prepaymentSchedules = [];
     private readonly List<AuditItem> _auditLog = [];
     private readonly Dictionary<Guid, List<AuditItem>> _history = [];
     private readonly object _lock = new();
@@ -167,7 +168,8 @@ List<ExpenseClaim>? ExpenseClaims = null,
         List<NumberSeries>? NumberSeries = null,
         List<Currency>? Currencies = null,
         List<AuditItem>? AuditLog = null,
-        List<LeaseAgreement>? Leases = null);
+        List<LeaseAgreement>? Leases = null,
+        List<PrepaymentSchedule>? Prepayments = null);
 
     public AccountingStore(IDbContextFactory<AccountingDbContext>? dbFactory = null, IConfiguration? config = null)
     {
@@ -4136,6 +4138,7 @@ _bankImports.Clear(); _bankImports.AddRange(state.BankImports ?? []);
             _auditLog.Clear(); _auditLog.AddRange(state.AuditLog ?? []);
             _leases.Clear(); _leases.AddRange(state.Leases ?? []);
         _mappings.Clear(); _mappings.AddRange(state.Mappings ?? []);
+        _prepaymentSchedules.Clear(); _prepaymentSchedules.AddRange(state.Prepayments ?? []);
         if (state.History != null)
         {
             foreach (var (id, history) in state.History) _history[id] = history;
@@ -4224,7 +4227,7 @@ _bankImports.Clear(); _bankImports.AddRange(state.BankImports ?? []);
     {
         if (_dbFactory is null) return;
         using var db = _dbFactory.CreateDbContext();
-        var json = JsonSerializer.Serialize(new StoredState(_accounts, _entries, _history, _templates, _recurringEntries, _journalEvents, _intercompanyAllocations, _companies, _customers, _products, _vendors, _purchaseOrders, _grns, _fixedAssets, _taxAuthorities, _taxCodes, _taxRates, _warehouses, _stockLevels, _stockTransactions, _salesInvoices, _estimates, _boms, _workOrders, _mappings, _salesOrders, _creditNotes, _customerPayments, _vendorPayments, _fundTransfers, _reconciliations, _budgets, _periodCloses, _vouchers, _expenseClaims, _bankImports, _payComponents, _employees, _departments, _positions, _payGrades, _leaveBalances, _leaveRequests, _attendanceRecords, _payruns, _payrunEmployees, _payrunLines, _salarySlips, _holidays, _loanAdvances, _taxSlabs, _employeeCompensations, _projects, _projectPhases, _projectTasks, _timesheets, _projectExpenses, _taxObligations, _taxReturns, _withholdingCertificates, _eInvoices, _surveys, _fieldVisits, _inspections, _fieldWorkOrders, _fieldExpenses, _adminUsers, _userRoles, _branches, _approvalWorkflows, _numberSeries, _currencies, _auditLog, _leases));
+        var json = JsonSerializer.Serialize(new StoredState(_accounts, _entries, _history, _templates, _recurringEntries, _journalEvents, _intercompanyAllocations, _companies, _customers, _products, _vendors, _purchaseOrders, _grns, _fixedAssets, _taxAuthorities, _taxCodes, _taxRates, _warehouses, _stockLevels, _stockTransactions, _salesInvoices, _estimates, _boms, _workOrders, _mappings, _salesOrders, _creditNotes, _customerPayments, _vendorPayments, _fundTransfers, _reconciliations, _budgets, _periodCloses, _vouchers, _expenseClaims, _bankImports, _payComponents, _employees, _departments, _positions, _payGrades, _leaveBalances, _leaveRequests, _attendanceRecords, _payruns, _payrunEmployees, _payrunLines, _salarySlips, _holidays, _loanAdvances, _taxSlabs, _employeeCompensations, _projects, _projectPhases, _projectTasks, _timesheets, _projectExpenses, _taxObligations, _taxReturns, _withholdingCertificates, _eInvoices, _surveys, _fieldVisits, _inspections, _fieldWorkOrders, _fieldExpenses, _adminUsers, _userRoles, _branches, _approvalWorkflows, _numberSeries, _currencies, _auditLog, _leases, _prepaymentSchedules));
         var snapshot = db.AccountingStateSnapshots.Find(1);
         if (snapshot is null) db.AccountingStateSnapshots.Add(new AccountingStateSnapshot { Id = 1, Json = json, UpdatedAt = DateTime.UtcNow });
         else { snapshot.Json = json; snapshot.UpdatedAt = DateTime.UtcNow; }
@@ -4458,6 +4461,7 @@ _bankImports.Clear(); _bankImports.AddRange(state.BankImports ?? []);
             _auditLog.Clear();
             _mappings.Clear();
             _leases.Clear();
+            _prepaymentSchedules.Clear();
 
             var parentName = !string.IsNullOrWhiteSpace(companyName) ? companyName.Trim() : "Apex Enterprise";
             var parentCountry = !string.IsNullOrWhiteSpace(country) ? country : "Pakistan";
@@ -7474,5 +7478,347 @@ _bankImports.Clear(); _bankImports.AddRange(state.BankImports ?? []);
 
     #endregion
 
+    #region Prepayments, Deferred Revenue & Advance Schedules (IFRS 15 / IAS 1 / GAAP)
+
+    public IReadOnlyList<PrepaymentSchedule> GetPrepaymentSchedules(PrepaymentType? type = null, Guid? companyId = null)
+    {
+        lock (_lock)
+        {
+            var query = _prepaymentSchedules.AsEnumerable();
+            if (type.HasValue) query = query.Where(s => s.Type == type.Value);
+            if (companyId.HasValue && companyId.Value != Guid.Empty) query = query.Where(s => s.CompanyId == null || s.CompanyId == companyId.Value);
+            return query.OrderByDescending(s => s.CreatedAt).ToList();
+        }
+    }
+
+    public PrepaymentSchedule? FindPrepaymentSchedule(Guid id)
+    {
+        lock (_lock)
+        {
+            return _prepaymentSchedules.FirstOrDefault(s => s.Id == id);
+        }
+    }
+
+    public bool CreatePrepaymentSchedule(PrepaymentScheduleRequest req, string actor, out PrepaymentSchedule? schedule, out string? error)
+    {
+        schedule = null;
+        error = null;
+
+        if (string.IsNullOrWhiteSpace(req.Title)) { error = "Title/Description is required."; return false; }
+        if (req.TotalAmount <= 0) { error = "Total amount must be greater than zero."; return false; }
+        if (req.StartDate >= req.EndDate) { error = "End Date must be after Start Date."; return false; }
+        if (req.FrequencyMonths <= 0) { error = "Frequency months must be at least 1."; return false; }
+
+        lock (_lock)
+        {
+            var bsAccount = _accounts.FirstOrDefault(a => a.Id == req.BalanceSheetAccountId);
+            if (bsAccount == null) { error = "Invalid Balance Sheet Account selected."; return false; }
+
+            var plAccount = _accounts.FirstOrDefault(a => a.Id == req.ProfitLossAccountId);
+            if (plAccount == null) { error = "Invalid P&L / Clearing Account selected."; return false; }
+
+            var prefix = req.Type switch
+            {
+                PrepaymentType.VendorPrepaidExpense => "PREPAY-",
+                PrepaymentType.CustomerDeferredRevenue => "DEFREV-",
+                PrepaymentType.VendorAdvance => "VADV-",
+                PrepaymentType.CustomerAdvance => "CADV-",
+                _ => "SCHED-"
+            };
+
+            var seq = _prepaymentSchedules.Count(s => s.Type == req.Type) + 1;
+            var schedNumber = $"{prefix}{seq:D4}";
+
+            schedule = new PrepaymentSchedule
+            {
+                Id = Guid.NewGuid(),
+                ScheduleNumber = schedNumber,
+                Title = req.Title.Trim(),
+                Type = req.Type,
+                Status = PrepaymentStatus.Active,
+                CompanyId = req.CompanyId ?? _companies.FirstOrDefault()?.Id,
+                CounterpartyId = req.CounterpartyId,
+                CounterpartyName = req.CounterpartyName?.Trim() ?? "",
+                ReferenceNumber = req.ReferenceNumber?.Trim() ?? "",
+                TotalAmount = req.TotalAmount,
+                RecognizedAmount = 0m,
+                CurrencyCode = !string.IsNullOrWhiteSpace(req.CurrencyCode) ? req.CurrencyCode : "USD",
+                StartDate = req.StartDate,
+                EndDate = req.EndDate,
+                FrequencyMonths = req.FrequencyMonths,
+                BalanceSheetAccountId = req.BalanceSheetAccountId,
+                ProfitLossAccountId = req.ProfitLossAccountId,
+                Notes = req.Notes?.Trim() ?? "",
+                CreatedAt = DateTime.UtcNow,
+                Lines = []
+            };
+
+            // Compute number of periods between start and end date
+            var months = ((req.EndDate.Year - req.StartDate.Year) * 12) + (req.EndDate.Month - req.StartDate.Month);
+            if (months <= 0) months = 1;
+            var periodCount = Math.Max(1, (int)Math.Ceiling((double)months / req.FrequencyMonths));
+
+            var periodicAmount = Math.Round(req.TotalAmount / periodCount, 2);
+            decimal allocated = 0m;
+
+            for (int i = 0; i < periodCount; i++)
+            {
+                var periodDueDate = req.StartDate.AddMonths((i + 1) * req.FrequencyMonths);
+                if (periodDueDate > req.EndDate) periodDueDate = req.EndDate;
+
+                decimal amt;
+                if (i == periodCount - 1)
+                {
+                    amt = req.TotalAmount - allocated; // Catch rounding variance in last line
+                }
+                else
+                {
+                    amt = periodicAmount;
+                    allocated += amt;
+                }
+
+                schedule.Lines.Add(new PrepaymentScheduleLine
+                {
+                    PeriodIndex = i + 1,
+                    DueDate = periodDueDate,
+                    Amount = amt,
+                    Posted = false
+                });
+            }
+
+            _prepaymentSchedules.Add(schedule);
+            _auditLog.Add(new AuditItem(DateTime.UtcNow, "CreatePrepaymentSchedule", $"Created {req.Type} schedule {schedNumber} for {schedule.TotalAmount:N2} {schedule.CurrencyCode}"));
+            Persist();
+            return true;
+        }
+    }
+
+    public bool PostAmortizationLine(Guid scheduleId, int periodIndex, string actor, out JournalEntry? entry, out string? error)
+    {
+        entry = null;
+        error = null;
+
+        lock (_lock)
+        {
+            var schedule = _prepaymentSchedules.FirstOrDefault(s => s.Id == scheduleId);
+            if (schedule == null) { error = "Prepayment / Deferred Revenue schedule not found."; return false; }
+
+            var line = schedule.Lines.FirstOrDefault(l => l.PeriodIndex == periodIndex);
+            if (line == null) { error = $"Schedule period #{periodIndex} not found."; return false; }
+            if (line.Posted) { error = $"Schedule period #{periodIndex} is already posted."; return false; }
+
+            var bsAccount = _accounts.FirstOrDefault(a => a.Id == schedule.BalanceSheetAccountId);
+            if (bsAccount == null) { error = "Balance Sheet account not found."; return false; }
+
+            var plAccount = _accounts.FirstOrDefault(a => a.Id == schedule.ProfitLossAccountId);
+            if (plAccount == null) { error = "P&L / Clearing account not found."; return false; }
+
+            var company = _companies.FirstOrDefault(c => c.Id == schedule.CompanyId) ?? _companies.FirstOrDefault();
+            var postingDate = line.DueDate;
+
+            var entryId = Guid.NewGuid();
+            var prefix = schedule.Type switch
+            {
+                PrepaymentType.VendorPrepaidExpense => "JV-AMORT-",
+                PrepaymentType.CustomerDeferredRevenue => "JV-DEFREV-",
+                PrepaymentType.VendorAdvance => "JV-VADV-",
+                PrepaymentType.CustomerAdvance => "JV-CADV-",
+                _ => "JV-PREPAY-"
+            };
+            var voucherNo = $"{prefix}{DateTime.UtcNow:yyyyMMdd}-{_entries.Count + 1:D4}";
+
+            // Determine Debits and Credits based on Schedule Type
+            Guid debitAccId, creditAccId;
+            string desc;
+
+            if (schedule.Type == PrepaymentType.VendorPrepaidExpense)
+            {
+                // Dr. Expense (e.g. Insurance / Rent 6xxxx)
+                // Cr. Prepaid Asset (14000)
+                debitAccId = plAccount.Id;
+                creditAccId = bsAccount.Id;
+                desc = $"Amortization: {schedule.Title} (Period {line.PeriodIndex}/{schedule.Lines.Count}) - {schedule.CounterpartyName}";
+            }
+            else if (schedule.Type == PrepaymentType.CustomerDeferredRevenue)
+            {
+                // Dr. Deferred Revenue Liability (23000)
+                // Cr. Sales / Service Revenue (4xxxx)
+                debitAccId = bsAccount.Id;
+                creditAccId = plAccount.Id;
+                desc = $"Revenue Recognition: {schedule.Title} (Period {line.PeriodIndex}/{schedule.Lines.Count}) - {schedule.CounterpartyName}";
+            }
+            else if (schedule.Type == PrepaymentType.VendorAdvance)
+            {
+                // Dr. Accounts Payable (21100)
+                // Cr. Advances to Suppliers (14050)
+                debitAccId = plAccount.Id;
+                creditAccId = bsAccount.Id;
+                desc = $"Vendor Advance Offset: {schedule.Title} - {schedule.CounterpartyName}";
+            }
+            else
+            {
+                // CustomerAdvance: Dr. Customer Advances (23100) / Cr. Accounts Receivable (12000)
+                debitAccId = bsAccount.Id;
+                creditAccId = plAccount.Id;
+                desc = $"Customer Advance Offset: {schedule.Title} - {schedule.CounterpartyName}";
+            }
+
+            var debitLine = new JournalLine(debitAccId, line.Amount, 0m, desc, null, schedule.CurrencyCode, 1m, company?.Id);
+            var creditLine = new JournalLine(creditAccId, 0m, line.Amount, desc, null, schedule.CurrencyCode, 1m, company?.Id);
+
+            entry = new JournalEntry
+            {
+                Id = entryId,
+                Date = postingDate,
+                Reference = voucherNo,
+                Description = desc,
+                Lines = [debitLine, creditLine],
+                Status = JournalStatus.Posted,
+                TransactionType = TransactionType.Prepayment,
+                CurrencyCode = schedule.CurrencyCode,
+                ExchangeRate = 1m,
+                CompanyId = company?.Id,
+                CreatedAt = DateTime.UtcNow,
+                ApprovedBy = actor,
+                SubmittedBy = actor,
+                Version = 1
+            };
+
+            _entries.Add(entry);
+            AddEvent(entry, "Posted", actor, $"Posted amortization line #{line.PeriodIndex} for schedule {schedule.ScheduleNumber}");
+
+            line.Posted = true;
+            line.PostedDate = postingDate;
+            line.JournalEntryId = entry.Id;
+            line.JournalVoucherNumber = entry.Reference;
+
+            schedule.RecognizedAmount += line.Amount;
+            if (schedule.Lines.All(l => l.Posted))
+            {
+                schedule.Status = PrepaymentStatus.Completed;
+            }
+
+            _auditLog.Add(new AuditItem(DateTime.UtcNow, "PostAmortizationLine", $"Posted period #{line.PeriodIndex} ({line.Amount:N2} {schedule.CurrencyCode}) on schedule {schedule.ScheduleNumber} -> {entry.Reference}"));
+            RecalculateHierarchy();
+            Persist();
+            return true;
+        }
+    }
+
+    public bool PostBatchAmortization(DateOnly cutoffDate, PrepaymentType? type, string actor, out int postedCount, out string? error)
+    {
+        postedCount = 0;
+        error = null;
+
+        lock (_lock)
+        {
+            var schedules = _prepaymentSchedules.Where(s => s.Status == PrepaymentStatus.Active);
+            if (type.HasValue) schedules = schedules.Where(s => s.Type == type.Value);
+
+            foreach (var schedule in schedules.ToList())
+            {
+                var dueLines = schedule.Lines.Where(l => !l.Posted && l.DueDate <= cutoffDate).OrderBy(l => l.PeriodIndex);
+                foreach (var line in dueLines)
+                {
+                    if (PostAmortizationLine(schedule.Id, line.PeriodIndex, actor, out _, out var err))
+                    {
+                        postedCount++;
+                    }
+                }
+            }
+
+            return true;
+        }
+    }
+
+    public bool DeletePrepaymentSchedule(Guid scheduleId, out string? error)
+    {
+        error = null;
+        lock (_lock)
+        {
+            var schedule = _prepaymentSchedules.FirstOrDefault(s => s.Id == scheduleId);
+            if (schedule == null) { error = "Schedule not found."; return false; }
+            if (schedule.Lines.Any(l => l.Posted))
+            {
+                error = "Cannot delete schedule with posted journal entries. Cancel the schedule instead.";
+                return false;
+            }
+
+            _prepaymentSchedules.Remove(schedule);
+            Persist();
+            return true;
+        }
+    }
+
+    #endregion
+
     #endregion
 }
+
+public enum PrepaymentType
+{
+    VendorPrepaidExpense,     // Prepaid Rent, Insurance, Software Subscriptions (Asset 14000 -> Expense 6xxxx)
+    CustomerDeferredRevenue,  // Upfront customer subscription, retainer, advance (Liability 23000 -> Revenue 4xxxx)
+    VendorAdvance,            // Advance paid to supplier (Asset 14050 -> AP 21100)
+    CustomerAdvance           // Deposit received from customer (Liability 23100 -> AR 12000)
+}
+
+public enum PrepaymentStatus
+{
+    Active,
+    Completed,
+    Cancelled
+}
+
+public class PrepaymentScheduleLine
+{
+    public int PeriodIndex { get; set; }
+    public DateOnly DueDate { get; set; }
+    public decimal Amount { get; set; }
+    public bool Posted { get; set; }
+    public DateOnly? PostedDate { get; set; }
+    public Guid? JournalEntryId { get; set; }
+    public string? JournalVoucherNumber { get; set; }
+}
+
+public class PrepaymentSchedule
+{
+    public Guid Id { get; set; } = Guid.NewGuid();
+    public string ScheduleNumber { get; set; } = "";
+    public string Title { get; set; } = "";
+    public PrepaymentType Type { get; set; }
+    public PrepaymentStatus Status { get; set; } = PrepaymentStatus.Active;
+    public Guid? CompanyId { get; set; }
+    public Guid? CounterpartyId { get; set; } // VendorId or CustomerId
+    public string CounterpartyName { get; set; } = "";
+    public string ReferenceNumber { get; set; } = "";
+    public decimal TotalAmount { get; set; }
+    public decimal RecognizedAmount { get; set; }
+    public decimal RemainingAmount => TotalAmount - RecognizedAmount;
+    public string CurrencyCode { get; set; } = "USD";
+    public DateOnly StartDate { get; set; }
+    public DateOnly EndDate { get; set; }
+    public int FrequencyMonths { get; set; } = 1; // 1 = Monthly, 3 = Quarterly, 12 = Annual
+    public Guid BalanceSheetAccountId { get; set; } // e.g. 14000 Prepaid Expenses or 23000 Deferred Revenue
+    public Guid ProfitLossAccountId { get; set; }   // e.g. 62000 Insurance Expense or 40000 Sales Revenue
+    public string Notes { get; set; } = "";
+    public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
+    public List<PrepaymentScheduleLine> Lines { get; set; } = [];
+}
+
+public record PrepaymentScheduleRequest(
+    string Title,
+    PrepaymentType Type,
+    Guid? CompanyId,
+    Guid? CounterpartyId,
+    string CounterpartyName,
+    string ReferenceNumber,
+    decimal TotalAmount,
+    string CurrencyCode,
+    DateOnly StartDate,
+    DateOnly EndDate,
+    int FrequencyMonths,
+    Guid BalanceSheetAccountId,
+    Guid ProfitLossAccountId,
+    string? Notes
+);
