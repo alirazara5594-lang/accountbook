@@ -3,7 +3,8 @@ import type { FormEvent } from 'react'
 import {
   Wrench, Pencil, Trash2, Package, Tag, Archive,
   Receipt, Check, X, Hash, Layers,
-  ShieldCheck, ArrowRight, ArrowLeft, Coins, Eye
+  ShieldCheck, ArrowRight, ArrowLeft, Coins, Eye,
+  List, LayoutGrid
 } from 'lucide-react'
 
 import { Button } from '@/components/ui/button'
@@ -108,6 +109,7 @@ export default function ProductsAndServices({
 
   const [search, setSearch] = useState('')
   const [typeFilter, setTypeFilter] = useState<string>('all')
+  const [viewMode, setViewMode] = useState<'table' | 'grid'>('table')
   const [modalOpen, setModalOpen] = useState(false)
   const [modalTab, setModalTab] = useState<'info' | 'pricing' | 'accounting' | 'tax' | 'preview'>('info')
   const [editingProduct, setEditingProduct] = useState<Product | null>(null)
@@ -283,6 +285,35 @@ export default function ProductsAndServices({
               <option value="Bundle">🎁 Bundles / Kits</option>
             </select>
           </DataToolbar>
+          <div className="flex items-center border border-[var(--color-border)] rounded-xl overflow-hidden bg-[var(--color-surface)] p-0.5">
+            <button
+              type="button"
+              onClick={() => setViewMode('table')}
+              className={`p-1.5 rounded-lg text-xs font-medium transition-colors flex items-center gap-1 ${
+                viewMode === 'table'
+                  ? 'bg-[var(--color-primary)] text-white shadow-2xs'
+                  : 'text-[var(--color-text-muted)] hover:text-[var(--color-text-strong)]'
+              }`}
+              title="Table Rows View"
+            >
+              <List className="w-3.5 h-3.5" />
+              <span className="hidden sm:inline">Rows</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setViewMode('grid')}
+              className={`p-1.5 rounded-lg text-xs font-medium transition-colors flex items-center gap-1 ${
+                viewMode === 'grid'
+                  ? 'bg-[var(--color-primary)] text-white shadow-2xs'
+                  : 'text-[var(--color-text-muted)] hover:text-[var(--color-text-strong)]'
+              }`}
+              title="Grid Cards View"
+            >
+              <LayoutGrid className="w-3.5 h-3.5" />
+              <span className="hidden sm:inline">Grid</span>
+            </button>
+          </div>
+
           <button onClick={openCreateModal} className="primary h-9 px-4 rounded-xl text-xs font-semibold whitespace-nowrap flex items-center justify-center gap-1.5 shadow-sm">
             <span>＋</span> Add Item
           </button>
@@ -317,89 +348,212 @@ export default function ProductsAndServices({
         </article>
       </section>
 
-      {/* Products & Services Grid */}
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-        {loading ? (
-          <div className="col-span-full py-12 text-center text-xs text-[var(--color-text-muted)]">Loading catalog...</div>
-        ) : filteredProducts.length === 0 ? (
-          <div className="col-span-full py-12 text-center text-xs text-[var(--color-text-muted)] border border-[var(--color-border)] rounded-xl bg-[var(--color-surface)]">
-            No products or services found matching your criteria.
-          </div>
-        ) : (
-          filteredProducts.map(p => (
-            <Card key={p.id} className="relative flex flex-col justify-between border-[var(--color-border)] bg-[var(--color-surface)] hover:shadow-md transition-shadow">
-              <CardHeader className="pb-2">
-                <div className="flex items-start justify-between gap-2">
-                  <div>
-                    <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-[var(--color-surface-muted)] text-[var(--color-text-muted)] uppercase tracking-wider font-mono">
-                      {p.code} • {p.type}
-                    </span>
-                    <CardTitle className="mt-1 text-sm font-bold text-[var(--color-text-strong)]">{p.name}</CardTitle>
-                  </div>
-                  <span className={`text-[10px] px-2.5 py-0.5 rounded-full font-semibold ${
-                    p.status === 'Active' ? 'bg-emerald-500/10 text-emerald-500 border border-emerald-500/20' : 'bg-rose-500/10 text-rose-500 border border-rose-500/20'
-                  }`}>
-                    {p.status}
-                  </span>
-                </div>
-                {p.category && (
-                  <div className="flex items-center gap-1 mt-1 text-[11px] text-[var(--color-text-muted)]">
-                    <Tag className="w-3 h-3" /> {p.category}
-                  </div>
+      {/* Products & Services View */}
+      {viewMode === 'table' ? (
+        <div className="bg-[var(--color-surface)] border border-[var(--color-border)] rounded-2xl shadow-sm overflow-hidden">
+          <div className="overflow-x-auto">
+            <table className="w-full text-left text-xs border-collapse">
+              <thead className="bg-[var(--color-surface-muted)]/80 text-[var(--color-text-muted)] border-b border-[var(--color-border)] text-[11px] uppercase tracking-wider font-semibold">
+                <tr>
+                  <th className="py-3.5 px-4">Code & Type</th>
+                  <th className="py-3.5 px-4 min-w-[200px]">Item Name & Category</th>
+                  <th className="py-3.5 px-4 text-center">Unit</th>
+                  <th className="py-3.5 px-4 text-right">Sales Price</th>
+                  <th className="py-3.5 px-4 text-right">Cost Price</th>
+                  <th className="py-3.5 px-4 text-right">Margin</th>
+                  <th className="py-3.5 px-4">GAAP GL Mappings</th>
+                  <th className="py-3.5 px-4 text-center">Tax Code</th>
+                  <th className="py-3.5 px-4 text-center">Status</th>
+                  <th className="py-3.5 px-4 text-right">Actions</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-[var(--color-border)]">
+                {loading ? (
+                  <tr>
+                    <td colSpan={10} className="py-12 text-center text-[var(--color-text-muted)]">
+                      Loading catalog items...
+                    </td>
+                  </tr>
+                ) : filteredProducts.length === 0 ? (
+                  <tr>
+                    <td colSpan={10} className="py-12 text-center text-[var(--color-text-muted)]">
+                      No products or services found matching your criteria.
+                    </td>
+                  </tr>
+                ) : (
+                  filteredProducts.map((p) => {
+                    const margin = p.unitPrice > 0 ? (((p.unitPrice - p.costPrice) / p.unitPrice) * 100).toFixed(0) : '0';
+                    return (
+                      <tr key={p.id} className="hover:bg-[var(--color-surface-muted)]/50 transition-colors">
+                        <td className="py-3.5 px-4 whitespace-nowrap">
+                          <div className="font-mono font-bold text-[var(--color-text-strong)]">{p.code}</div>
+                          <span className={`inline-block mt-0.5 text-[10px] font-semibold px-2 py-0.5 rounded-md ${
+                            p.type === 'Physical'
+                              ? 'bg-blue-500/10 text-blue-600 dark:text-blue-400 border border-blue-500/20'
+                              : p.type === 'Service'
+                              ? 'bg-purple-500/10 text-purple-600 dark:text-purple-400 border border-purple-500/20'
+                              : p.type === 'Bundle'
+                              ? 'bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20'
+                              : 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20'
+                          }`}>
+                            {p.type}
+                          </span>
+                        </td>
+                        <td className="py-3.5 px-4">
+                          <div className="font-semibold text-sm text-[var(--color-text-strong)]">{p.name}</div>
+                          {p.description && (
+                            <div className="text-[11px] text-[var(--color-text-muted)] line-clamp-1 mt-0.5">{p.description}</div>
+                          )}
+                          {p.category && (
+                            <div className="flex items-center gap-1 mt-1 text-[10px] text-[var(--color-text-muted)] font-medium">
+                              <Tag className="w-2.5 h-2.5" /> {p.category}
+                            </div>
+                          )}
+                        </td>
+                        <td className="py-3.5 px-4 text-center whitespace-nowrap font-medium text-[var(--color-text-muted)]">
+                          {p.unit || 'Each'}
+                        </td>
+                        <td className="py-3.5 px-4 text-right whitespace-nowrap font-mono font-bold text-emerald-600 dark:text-emerald-400">
+                          {money(p.unitPrice)}
+                        </td>
+                        <td className="py-3.5 px-4 text-right whitespace-nowrap font-mono text-[var(--color-text-muted)]">
+                          {money(p.costPrice)}
+                        </td>
+                        <td className="py-3.5 px-4 text-right whitespace-nowrap">
+                          <span className={`font-mono text-xs font-semibold ${Number(margin) >= 30 ? 'text-emerald-600' : Number(margin) > 0 ? 'text-blue-600' : 'text-rose-600'}`}>
+                            {margin}%
+                          </span>
+                        </td>
+                        <td className="py-3.5 px-4 text-[11px] text-[var(--color-text-muted)] whitespace-nowrap">
+                          <div>
+                            <span className="font-medium text-[var(--color-text-strong)]">Rev:</span> {getAccountName(p.incomeAccountId)}
+                          </div>
+                          {p.type !== 'Service' && p.expenseAccountId && (
+                            <div className="mt-0.5">
+                              <span className="font-medium text-[var(--color-text-strong)]">COGS:</span> {getAccountName(p.expenseAccountId)}
+                            </div>
+                          )}
+                          {p.type === 'Physical' && p.assetAccountId && (
+                            <div className="mt-0.5">
+                              <span className="font-medium text-[var(--color-text-strong)]">Inv:</span> {getAccountName(p.assetAccountId)}
+                            </div>
+                          )}
+                        </td>
+                        <td className="py-3.5 px-4 text-center whitespace-nowrap font-mono text-[11px]">
+                          <span className="px-2 py-0.5 bg-[var(--color-surface-muted)] text-[var(--color-text-muted)] rounded border border-[var(--color-border)]">
+                            {taxCodes.find((t: any) => t.id === p.taxCodeId)?.code || 'Standard'}
+                          </span>
+                        </td>
+                        <td className="py-3.5 px-4 text-center whitespace-nowrap">
+                          <span className={`text-[10px] px-2.5 py-0.5 rounded-full font-semibold ${
+                            p.status === 'Active' ? 'bg-emerald-500/10 text-emerald-500 border border-emerald-500/20' : 'bg-rose-500/10 text-rose-500 border border-rose-500/20'
+                          }`}>
+                            {p.status}
+                          </span>
+                        </td>
+                        <td className="py-3.5 px-4 text-right whitespace-nowrap">
+                          <div className="flex items-center justify-end gap-1.5">
+                            <Button variant="outline" size="sm" onClick={() => openEditModal(p)} className="h-7.5 px-2.5 text-xs">
+                              <Pencil className="w-3 h-3 mr-1" /> Edit
+                            </Button>
+                            <Button variant="ghost" size="sm" onClick={() => handleDelete(p)} className="h-7.5 w-7.5 p-0 text-rose-600 hover:text-rose-700">
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </Button>
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })
                 )}
-              </CardHeader>
-
-              <CardContent className="space-y-3 text-xs pb-4">
-                <div className="grid grid-cols-2 gap-2 p-2.5 bg-[var(--color-surface-muted)]/60 rounded-xl border border-[var(--color-border)]">
-                  <div>
-                    <small className="text-[var(--color-text-muted)] block text-[10px] uppercase font-bold">Sales Price</small>
-                    <span className="font-semibold font-mono text-emerald-600 dark:text-emerald-400">{money(p.unitPrice)}</span>
-                  </div>
-                  <div>
-                    <small className="text-[var(--color-text-muted)] block text-[10px] uppercase font-bold">Cost Price</small>
-                    <span className="font-semibold font-mono text-rose-600 dark:text-rose-400">{money(p.costPrice)}</span>
-                  </div>
-                </div>
-
-                <div className="space-y-1.5 text-[11px]">
-                  <small className="text-[10px] font-bold text-[var(--color-text-muted)] uppercase tracking-wider block mb-1">GAAP GL Mappings</small>
-                  <div className="flex justify-between text-[var(--color-text-muted)]">
-                    <span>Revenue:</span>
-                    <span className="font-medium text-[var(--color-text-strong)]">{getAccountName(p.incomeAccountId)}</span>
-                  </div>
-                  {p.type !== 'Service' && (
-                    <div className="flex justify-between text-[var(--color-text-muted)]">
-                      <span>COGS:</span>
-                      <span className="font-medium text-[var(--color-text-strong)]">{getAccountName(p.expenseAccountId)}</span>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      ) : (
+        /* Products & Services Grid */
+        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+          {loading ? (
+            <div className="col-span-full py-12 text-center text-xs text-[var(--color-text-muted)]">Loading catalog...</div>
+          ) : filteredProducts.length === 0 ? (
+            <div className="col-span-full py-12 text-center text-xs text-[var(--color-text-muted)] border border-[var(--color-border)] rounded-xl bg-[var(--color-surface)]">
+              No products or services found matching your criteria.
+            </div>
+          ) : (
+            filteredProducts.map(p => (
+              <Card key={p.id} className="relative flex flex-col justify-between border-[var(--color-border)] bg-[var(--color-surface)] hover:shadow-md transition-shadow">
+                <CardHeader className="pb-2">
+                  <div className="flex items-start justify-between gap-2">
+                    <div>
+                      <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-[var(--color-surface-muted)] text-[var(--color-text-muted)] uppercase tracking-wider font-mono">
+                        {p.code} • {p.type}
+                      </span>
+                      <CardTitle className="mt-1 text-sm font-bold text-[var(--color-text-strong)]">{p.name}</CardTitle>
                     </div>
-                  )}
-                  {p.type === 'Physical' && (
-                    <div className="flex justify-between text-[var(--color-text-muted)]">
-                      <span>Inventory:</span>
-                      <span className="font-medium text-[var(--color-text-strong)]">{getAccountName(p.assetAccountId)}</span>
-                    </div>
-                  )}
-                  <div className="flex justify-between text-[var(--color-text-muted)]">
-                    <span>Default Tax Code:</span>
-                    <span className="font-medium text-[var(--color-text-strong)]">
-                      {taxCodes.find((t: any) => t.id === p.taxCodeId)?.code || 'Standard VAT'}
+                    <span className={`text-[10px] px-2.5 py-0.5 rounded-full font-semibold ${
+                      p.status === 'Active' ? 'bg-emerald-500/10 text-emerald-500 border border-emerald-500/20' : 'bg-rose-500/10 text-rose-500 border border-rose-500/20'
+                    }`}>
+                      {p.status}
                     </span>
                   </div>
-                </div>
+                  {p.category && (
+                    <div className="flex items-center gap-1 mt-1 text-[11px] text-[var(--color-text-muted)]">
+                      <Tag className="w-3 h-3" /> {p.category}
+                    </div>
+                  )}
+                </CardHeader>
 
-                <div className="pt-2 flex gap-1 justify-end">
-                  <Button variant="outline" size="sm" onClick={() => openEditModal(p)} className="h-7.5 px-2.5 text-xs">
-                    <Pencil className="w-3 h-3 mr-1" /> Edit
-                  </Button>
-                  <Button variant="ghost" size="sm" onClick={() => handleDelete(p)} className="h-7.5 w-7.5 p-0 text-rose-600 hover:text-rose-700">
-                    <Trash2 className="w-3.5 h-3.5" />
-                  </Button>
-                </div>
-              </CardContent>
-            </Card>
-          ))
-        )}
-      </div>
+                <CardContent className="space-y-3 text-xs pb-4">
+                  <div className="grid grid-cols-2 gap-2 p-2.5 bg-[var(--color-surface-muted)]/60 rounded-xl border border-[var(--color-border)]">
+                    <div>
+                      <small className="text-[var(--color-text-muted)] block text-[10px] uppercase font-bold">Sales Price</small>
+                      <span className="font-semibold font-mono text-emerald-600 dark:text-emerald-400">{money(p.unitPrice)}</span>
+                    </div>
+                    <div>
+                      <small className="text-[var(--color-text-muted)] block text-[10px] uppercase font-bold">Cost Price</small>
+                      <span className="font-semibold font-mono text-rose-600 dark:text-rose-400">{money(p.costPrice)}</span>
+                    </div>
+                  </div>
+
+                  <div className="space-y-1.5 text-[11px]">
+                    <small className="text-[10px] font-bold text-[var(--color-text-muted)] uppercase tracking-wider block mb-1">GAAP GL Mappings</small>
+                    <div className="flex justify-between text-[var(--color-text-muted)]">
+                      <span>Revenue:</span>
+                      <span className="font-medium text-[var(--color-text-strong)]">{getAccountName(p.incomeAccountId)}</span>
+                    </div>
+                    {p.type !== 'Service' && (
+                      <div className="flex justify-between text-[var(--color-text-muted)]">
+                        <span>COGS:</span>
+                        <span className="font-medium text-[var(--color-text-strong)]">{getAccountName(p.expenseAccountId)}</span>
+                      </div>
+                    )}
+                    {p.type === 'Physical' && (
+                      <div className="flex justify-between text-[var(--color-text-muted)]">
+                        <span>Inventory:</span>
+                        <span className="font-medium text-[var(--color-text-strong)]">{getAccountName(p.assetAccountId)}</span>
+                      </div>
+                    )}
+                    <div className="flex justify-between text-[var(--color-text-muted)]">
+                      <span>Default Tax Code:</span>
+                      <span className="font-medium text-[var(--color-text-strong)]">
+                        {taxCodes.find((t: any) => t.id === p.taxCodeId)?.code || 'Standard VAT'}
+                      </span>
+                    </div>
+                  </div>
+
+                  <div className="pt-2 flex gap-1 justify-end">
+                    <Button variant="outline" size="sm" onClick={() => openEditModal(p)} className="h-7.5 px-2.5 text-xs">
+                      <Pencil className="w-3 h-3 mr-1" /> Edit
+                    </Button>
+                    <Button variant="ghost" size="sm" onClick={() => handleDelete(p)} className="h-7.5 w-7.5 p-0 text-rose-600 hover:text-rose-700">
+                      <Trash2 className="w-3.5 h-3.5" />
+                    </Button>
+                  </div>
+                </CardContent>
+              </Card>
+            ))
+          )}
+        </div>
+      )}
 
       {/* Professional Product / Service Modal */}
       {modalOpen && (
