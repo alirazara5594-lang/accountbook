@@ -2,12 +2,13 @@ import React, { useState, useEffect, useRef } from 'react';
 import {
   Sparkles, X, Send, Bot, User,
   Lightbulb, Compass, ShieldAlert,
-  ArrowRight
+  ArrowRight, MessageSquarePlus
 } from 'lucide-react';
 
 interface AiAssistantDrawerProps {
   activePage: string;
   onNavigate: (page: string) => void;
+  onOpenFeedback?: () => void;
 }
 
 interface Message {
@@ -135,7 +136,7 @@ const KNOWLEDGE_BASE: { keywords: string[]; answer: string; targetPage?: string;
   }
 ];
 
-export const AiAssistantDrawer: React.FC<AiAssistantDrawerProps> = ({ activePage, onNavigate }) => {
+export const AiAssistantDrawer: React.FC<AiAssistantDrawerProps> = ({ activePage, onNavigate, onOpenFeedback }) => {
   const [isOpen, setIsOpen] = useState(false);
   const [messages, setMessages] = useState<Message[]>(() => {
     return [
@@ -269,20 +270,34 @@ export const AiAssistantDrawer: React.FC<AiAssistantDrawerProps> = ({ activePage
 
   return (
     <>
-      {/* Floating Trigger Button (Bottom-Right) - Visible only when drawer is closed */}
+      {/* Floating Trigger Buttons (Bottom-Right) - Visible only when drawer is closed */}
       {!isOpen && (
-        <button
-          onClick={() => setIsOpen(true)}
-          className="fixed bottom-6 right-6 z-40 flex items-center gap-2.5 px-4 py-3 bg-gradient-to-r from-teal-600 to-indigo-600 hover:from-teal-500 hover:to-indigo-500 text-white rounded-full shadow-2xl transition-all duration-200 transform hover:scale-105 active:scale-95 group border border-white/20 cursor-pointer"
-          title="Open AMS Assistant"
-          style={{ boxShadow: '0 10px 25px -5px rgba(13, 148, 136, 0.4), 0 8px 10px -6px rgba(13, 148, 136, 0.4)' }}
-        >
-          <div className="relative">
-            <Sparkles className="w-5 h-5 animate-pulse text-amber-300" />
-            <span className="absolute -top-1 -right-1 w-2 h-2 bg-emerald-400 rounded-full animate-ping" />
-          </div>
-          <span className="font-bold text-sm tracking-wide">AMS Assistant</span>
-        </button>
+        <div className="fixed bottom-6 right-6 z-40 flex items-center gap-3">
+          {onOpenFeedback && (
+            <button
+              onClick={onOpenFeedback}
+              className="flex items-center gap-2 px-4 py-3 bg-white dark:bg-slate-800 hover:bg-slate-50 dark:hover:bg-slate-700 text-slate-800 dark:text-slate-100 rounded-full shadow-2xl border border-slate-200 dark:border-slate-700 transition-all duration-200 transform hover:scale-105 active:scale-95 cursor-pointer font-bold text-xs"
+              title="Submit Feedback & Feature Request"
+              style={{ boxShadow: '0 10px 25px -5px rgba(0,0,0,0.15), 0 8px 10px -6px rgba(0,0,0,0.1)' }}
+            >
+              <MessageSquarePlus className="w-4 h-4 text-teal-600 dark:text-teal-400" />
+              <span>Feedback</span>
+            </button>
+          )}
+
+          <button
+            onClick={() => setIsOpen(true)}
+            className="flex items-center gap-2.5 px-4 py-3 bg-gradient-to-r from-teal-600 to-indigo-600 hover:from-teal-500 hover:to-indigo-500 text-white rounded-full shadow-2xl transition-all duration-200 transform hover:scale-105 active:scale-95 group border border-white/20 cursor-pointer"
+            title="Open AMS Assistant"
+            style={{ boxShadow: '0 10px 25px -5px rgba(13, 148, 136, 0.4), 0 8px 10px -6px rgba(13, 148, 136, 0.4)' }}
+          >
+            <div className="relative">
+              <Sparkles className="w-5 h-5 animate-pulse text-amber-300" />
+              <span className="absolute -top-1 -right-1 w-2 h-2 bg-emerald-400 rounded-full animate-ping" />
+            </div>
+            <span className="font-bold text-sm tracking-wide">AMS Assistant</span>
+          </button>
+        </div>
       )}
 
       {/* Slide-over Drawer / Panel (No Screen Blur) */}

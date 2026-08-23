@@ -170,6 +170,8 @@ export default function OnboardingWizard({ currentUser }: {
   const handleFinish = async () => {
     setSaving(true)
     const selectedCountry = COUNTRIES.find(c => c.code === country)
+    const finalCompanyName = companyName.trim() || 'Apex Enterprise'
+
     if (selectedCountry) {
       setActiveCurrency(selectedCountry.currency)
       localStorage.setItem('onboarding_country', selectedCountry.code)
@@ -178,9 +180,26 @@ export default function OnboardingWizard({ currentUser }: {
 
     const finalModules = Array.from(new Set([...selectedModules, 'overview', 'administration']))
     localStorage.setItem('erp_enabled_modules', JSON.stringify(finalModules))
-    localStorage.setItem('onboarding_company_name', companyName.trim() || 'Apex Enterprise')
+    localStorage.setItem('onboarding_company_name', finalCompanyName)
     localStorage.setItem('onboarding_license_mode', licenseMode)
     localStorage.setItem('onboarding_sector_id', selectedSectorId)
+
+    // Clear old local company caches so new name displays instantly
+    localStorage.removeItem('ab_companies');
+    localStorage.removeItem('ams_selected_entity');
+
+    // Clean backend database and initialize company
+    try {
+      await fetch('http://localhost:5124/api/v1/system/reset', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          companyName: finalCompanyName,
+          country: selectedCountry?.name || 'Pakistan',
+          currency: selectedCountry?.currency || 'PKR'
+        })
+      });
+    } catch {}
 
     if (licenseMode === 'licensed' && licenseKeyInput.trim()) {
       try {

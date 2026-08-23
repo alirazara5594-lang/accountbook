@@ -8,9 +8,11 @@ namespace Zenabook.Api.Controllers;
 public class SystemController(AccountingStore store) : ControllerBase
 {
     [HttpPost("reset")]
-    public IActionResult ResetDatabase()
+    public IActionResult ResetDatabase([FromBody] ResetDatabaseRequest? request)
     {
-        store.ResetDatabase();
+        store.ResetDatabase(request?.CompanyName, request?.Country, request?.Currency);
         return Ok(new { message = "System database has been reset to clean default settings." });
     }
 }
+
+public record ResetDatabaseRequest(string? CompanyName, string? Country, string? Currency);

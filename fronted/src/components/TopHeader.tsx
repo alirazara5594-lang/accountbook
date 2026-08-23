@@ -1,14 +1,13 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import type { ReactNode } from 'react';
 import {
-  Search, Bell, Plus, ChevronDown, LogOut, Coins, X, FileText, Receipt,
+  Search, Bell, Plus, ChevronDown, LogOut, X, FileText, Receipt,
   Building2, Users, Wallet, CalendarDays, Boxes, ClipboardList, Landmark,
-  Globe, BarChart3, Check, Sun, Moon, Key, MessageSquarePlus
+  Globe, BarChart3, Check, Sun, Moon, Key
 } from 'lucide-react';
 import { NAVIGATION } from '../navigation';
 import type { UserData } from '../Login';
 import { useSalesStore, useProcurementStore } from '../stores';
-import { getActiveCurrency } from '../lib/currency';
 
 interface Props {
   currentUser: UserData;
@@ -31,7 +30,7 @@ type SearchHit = { label: string; sub: string; icon: ReactNode; action: () => vo
 const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 
 export default function TopHeader(props: Props) {
-  const { currentUser, entities, activeEntityId, onSelectEntity, page, setPage, accounts, notify, onLogout, theme, onThemeChange, onOpenLicense, onOpenFeedback } = props;
+  const { currentUser, entities, activeEntityId, onSelectEntity, page, setPage, accounts, notify, onLogout, theme, onThemeChange, onOpenLicense } = props;
 
   const isDark = theme ? theme.endsWith('-dark') : false;
 
@@ -94,7 +93,6 @@ export default function TopHeader(props: Props) {
     return () => document.removeEventListener('keydown', onKey);
   }, []);
 
-  const currency = getActiveCurrency();
   const activeEntity = entities.find(x => x.id === activeEntityId);
 
   const pageHits = useMemo(() => {
@@ -314,37 +312,6 @@ export default function TopHeader(props: Props) {
             <Key size={12} />
             <span>90-Day Trial</span>
           </button>
-
-          {/* Feedback & Suggestion Button */}
-          <button
-            type="button"
-            onClick={onOpenFeedback}
-            title="Submit Pilot Customer Feedback & Feature Requests"
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: 5,
-              fontSize: 11.5,
-              fontWeight: 700,
-              color: 'var(--color-primary)',
-              background: 'var(--color-surface-muted)',
-              border: '1px solid var(--color-border)',
-              borderRadius: 8,
-              padding: '0 9px',
-              height: 32,
-              cursor: 'pointer',
-              flexShrink: 0
-            }}
-          >
-            <MessageSquarePlus size={13} />
-            <span>Feedback</span>
-          </button>
-
-          {/* Currency badge */}
-          <div title="Active currency" style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: 12, fontWeight: 700, color: 'var(--color-primary)', background: 'var(--color-secondary)', border: '1px solid var(--color-secondary-hover)', borderRadius: 8, padding: '4px 8px', height: 32, flexShrink: 0, boxSizing: 'border-box' }}>
-            <Coins size={13} />
-            {currency}
-          </div>
 
           {/* Fiscal period */}
           <div title="Fiscal period" style={{ display: 'flex', alignItems: 'center', gap: 4, flexShrink: 0 }}>

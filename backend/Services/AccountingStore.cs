@@ -256,10 +256,6 @@ List<ExpenseClaim>? ExpenseClaims = null,
         var defaultWarehouse = new Warehouse { Name = "Main Warehouse", Location = "Headquarters", CompanyId = parentEntity.Id };
         _warehouses.Add(defaultWarehouse);
 
-        SeedPayrollData();
-        SeedProjectsData();
-        SeedComplianceData();
-        SeedFieldOperationsData();
         SeedAdministrationData();
         Persist();
     }
@@ -4404,7 +4400,7 @@ _bankImports.Clear(); _bankImports.AddRange(state.BankImports ?? []);
         }
     }
 
-    public void ResetDatabase()
+    public void ResetDatabase(string? companyName = null, string? country = null, string? currency = null)
     {
         lock (_lock)
         {
@@ -4463,13 +4459,13 @@ _bankImports.Clear(); _bankImports.AddRange(state.BankImports ?? []);
             _mappings.Clear();
             _leases.Clear();
 
-            // Re-seed Companies
-            var parentEntity = new Company { Name = "Acme Holdings", Code = "ACME", Type = EntityType.Parent };
-            _companies.AddRange([
-                parentEntity, 
-                new Company { Name = "Acme Services", Code = "ASV", ParentId = parentEntity.Id }, 
-                new Company { Name = "Acme Trading", Code = "ATD", ParentId = parentEntity.Id }
-            ]);
+            var parentName = !string.IsNullOrWhiteSpace(companyName) ? companyName.Trim() : "Apex Enterprise";
+            var parentCountry = !string.IsNullOrWhiteSpace(country) ? country : "Pakistan";
+            var parentCurrency = !string.IsNullOrWhiteSpace(currency) ? currency : "PKR";
+
+            // Clean Company
+            var parentEntity = new Company { Name = parentName, Code = "MAIN", Type = EntityType.Parent, Country = parentCountry, CurrencyCode = parentCurrency };
+            _companies.AddRange([parentEntity]);
 
             // Re-seed structural chart of accounts
             SeedAccounts();
@@ -4517,10 +4513,6 @@ _bankImports.Clear(); _bankImports.AddRange(state.BankImports ?? []);
             var defaultWarehouse = new Warehouse { Name = "Main Warehouse", Location = "Headquarters", CompanyId = parentEntity.Id };
             _warehouses.Add(defaultWarehouse);
 
-            SeedPayrollData();
-            SeedProjectsData();
-            SeedComplianceData();
-            SeedFieldOperationsData();
             SeedAdministrationData();
             Persist();
         }

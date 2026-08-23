@@ -664,7 +664,7 @@ export default function App() {
       </div>
       {modal && <AccountModal form={form} setForm={setForm} accounts={accounts} editing={editing} close={() => setModal(false)} save={saveAccount} />}
       {toast && <div className="toast">✓ {toast}</div>}
-      <AiAssistantDrawer activePage={page} onNavigate={setPage} />
+      <AiAssistantDrawer activePage={page} onNavigate={setPage} onOpenFeedback={() => setFeedbackModalOpen(true)} />
       <LicenseModal isOpen={licenseModalOpen} onClose={() => setLicenseModalOpen(false)} notify={notify} />
       <FeedbackModal isOpen={feedbackModalOpen} onClose={() => setFeedbackModalOpen(false)} activePage={page} notify={notify} />
     </div>
