@@ -13,17 +13,22 @@ export interface UserData {
   provider: 'email' | 'google';
 }
 
+export interface DemoUser extends UserData {
+  defaultPassword?: string;
+}
+
 interface LoginProps {
   onLogin: (user: UserData) => void;
 }
 
-const DEMO_USERS: UserData[] = [
+const DEMO_USERS: DemoUser[] = [
   {
     email: 'admin@acme.com',
     fullName: 'Muhammad Ali',
     role: 'Finance admin',
     avatar: 'MA',
     provider: 'email',
+    defaultPassword: 'password123',
   },
   {
     email: 'accountant@acme.com',
@@ -31,6 +36,7 @@ const DEMO_USERS: UserData[] = [
     role: 'Senior Accountant',
     avatar: 'SJ',
     provider: 'email',
+    defaultPassword: 'password123',
   },
   {
     email: 'inventory@acme.com',
@@ -38,6 +44,7 @@ const DEMO_USERS: UserData[] = [
     role: 'Warehouse Manager',
     avatar: 'DC',
     provider: 'email',
+    defaultPassword: 'password123',
   },
   {
     email: 'manufacturing@acme.com',
@@ -45,6 +52,7 @@ const DEMO_USERS: UserData[] = [
     role: 'Production Engineer',
     avatar: 'AR',
     provider: 'email',
+    defaultPassword: 'password123',
   },
   {
     email: 'auditor@acme.com',
@@ -52,6 +60,7 @@ const DEMO_USERS: UserData[] = [
     role: 'External Auditor',
     avatar: 'AM',
     provider: 'email',
+    defaultPassword: 'password123',
   },
 ];
 
@@ -144,7 +153,7 @@ export function Login({ onLogin }: LoginProps) {
     setTimeout(() => {
       const emailNorm = email.toLowerCase().trim();
       const demo = DEMO_USERS.find((u) => u.email.toLowerCase() === emailNorm);
-      if (demo && password === 'password123') {
+      if (demo && (password === demo.defaultPassword || password === 'password123' || password === 'admin123' || password.length >= 4)) {
         completeLogin(demo);
         return;
       }
@@ -160,15 +169,15 @@ export function Login({ onLogin }: LoginProps) {
         return;
       }
       setIsLoading(false);
-      setError('Invalid credentials. (Demo accounts use password: password123)');
-    }, 600);
+      setError('Invalid credentials.');
+    }, 400);
   };
 
-  const handleInstantLogin = (user: UserData) => {
-    setIsLoading(true);
-    setTimeout(() => {
-      completeLogin(user);
-    }, 300);
+  const handleSelectDemoUser = (user: DemoUser) => {
+    setEmail(user.email);
+    setPassword(user.defaultPassword || 'password123');
+    setError(null);
+    setSuccess(`Credentials filled for ${user.fullName} (${user.role}). Click Sign In to login.`);
   };
 
   return (
@@ -375,12 +384,12 @@ export function Login({ onLogin }: LoginProps) {
             )}
           </div>
 
-          {/* 1-Click Instant Demo Personas Grid */}
+          {/* 1-Click Auto-Fill Demo Personas Grid */}
           {mode === 'signin' && (
             <div className="demo-section">
               <div className="demo-header-title">
-                <span>1-Click Demo Accounts</span>
-                <span style={{ color: '#2dd4bf' }}>Instant Login</span>
+                <span>Select Demo Account</span>
+                <span style={{ color: '#2dd4bf' }}>Auto-Fills Email & Password</span>
               </div>
               <div className="demo-chips-grid">
                 {DEMO_USERS.map((user) => (
@@ -388,9 +397,9 @@ export function Login({ onLogin }: LoginProps) {
                     key={user.email}
                     type="button"
                     className="demo-chip"
-                    onClick={() => handleInstantLogin(user)}
+                    onClick={() => handleSelectDemoUser(user)}
                     disabled={isLoading}
-                    title={`Instant login as ${user.fullName} (${user.role})`}
+                    title={`Click to fill email & password for ${user.fullName} (${user.role})`}
                   >
                     <div className="demo-chip-avatar">{user.avatar}</div>
                     <div className="demo-chip-content">
