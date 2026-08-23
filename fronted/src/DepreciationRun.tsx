@@ -70,19 +70,7 @@ export default function DepreciationRun({ activeEntityId }: { activeEntityId: st
         </div>
       </div>
 
-      {/* Account Mapping Info */}
-      <div className="bg-blue-50 border border-blue-200 rounded-xl px-4 py-3 flex items-start gap-3">
-        <Info className="w-4 h-4 text-blue-600 mt-0.5 shrink-0" />
-        <div className="text-xs text-blue-800">
-          <p className="font-semibold mb-1">Account Mapping</p>
-          <p>
-            Depreciation Expense: <span className="font-mono font-bold">{deprExpAcc ? `${deprExpAcc.code} — ${deprExpAcc.name}` : 'Not mapped'}</span>
-          </p>
-          <p>
-            Accumulated Depreciation: <span className="font-mono font-bold">{accumDeprAcc ? `${accumDeprAcc.code} — ${accumDeprAcc.name}` : 'Not mapped'}</span>
-          </p>
-        </div>
-      </div>
+
 
       {/* Summary Cards */}
       <div className="grid grid-cols-4 gap-3">
