@@ -424,6 +424,17 @@ export default function App() {
   const activeGroup = NAVIGATION.find((g: { name: string }) => g.name === group)
   const activeGroupItems = activeGroup?.items || []
 
+  const enabledModules = useMemo(() => {
+    if (activeEntity?.modules && activeEntity.modules.length > 0) {
+      return activeEntity.modules;
+    }
+    try {
+      const saved = localStorage.getItem('erp_enabled_modules');
+      if (saved) return JSON.parse(saved);
+    } catch {}
+    return [];
+  }, [activeEntity]);
+
   if (!currentUser) {
     return <Login onLogin={handleLogin} />;
   }
@@ -438,7 +449,7 @@ export default function App() {
       <UniqueSidebar
         activePage={page}
         onNavigate={setPage}
-        modules={activeEntity?.modules || []}
+        modules={enabledModules}
         currentUser={currentUser}
         onLogout={handleLogout}
       />
