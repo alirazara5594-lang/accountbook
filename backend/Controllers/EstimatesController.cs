@@ -42,9 +42,30 @@ public class EstimatesController : ControllerBase
     }
 
     [HttpPatch("{id}/status")]
-    public IActionResult UpdateStatus(Guid id, [FromBody] EstimateStatusRequest request)
+    public IActionResult UpdateStatus(Guid id, [FromBody] System.Text.Json.JsonElement body)
     {
-        if (!_store.UpdateEstimateStatus(id, request.Status, out var error))
+        EstimateStatus status = EstimateStatus.Draft;
+        if (body.TryGetProperty("status", out var prop))
+        {
+            if (prop.ValueKind == System.Text.Json.JsonValueKind.Number && prop.TryGetInt32(out var intVal))
+            {
+                status = (EstimateStatus)intVal;
+            }
+            else if (prop.ValueKind == System.Text.Json.JsonValueKind.String)
+            {
+                var str = prop.GetString();
+                if (int.TryParse(str, out var parsedInt))
+                    status = (EstimateStatus)parsedInt;
+                else if (Enum.TryParse<EstimateStatus>(str, true, out var parsedEnum))
+                    status = parsedEnum;
+                else if (string.Equals(str, "Finalized", StringComparison.OrdinalIgnoreCase))
+                    status = EstimateStatus.Accepted;
+                else if (string.Equals(str, "Cancelled", StringComparison.OrdinalIgnoreCase))
+                    status = EstimateStatus.Rejected;
+            }
+        }
+
+        if (!_store.UpdateEstimateStatus(id, status, out var error))
             return BadRequest(new { error });
         return Ok();
     }

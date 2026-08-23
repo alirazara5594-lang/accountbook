@@ -1,7 +1,10 @@
 import { useState, useEffect, useMemo } from 'react'
+import jsPDF from 'jspdf'
+import autoTable from 'jspdf-autotable'
 import {
   FileText, Plus, Check, X, ArrowRight,
-  ArrowLeft, Coins, CheckCircle2, Hash, Users, ArrowUpRight, Eye, Pencil, Ban
+  ArrowLeft, Coins, CheckCircle2, Hash, Users, ArrowUpRight, Eye, Pencil, Ban,
+  Download, ChevronDown
 } from 'lucide-react'
 import { useSalesStore, useCustomersStore, useProductsStore, useCompanyStore } from './stores'
 import { useFormDraft } from './hooks/useFormDraft'
@@ -61,6 +64,15 @@ export const EstimatesAndQuotes: React.FC<{ activeEntityId: string; entities?: a
   const [toast, setToast] = useState('')
   const [query, setQuery] = useState('')
   const [statusFilter, setStatusFilter] = useState<string>('all')
+  const [selectedId, setSelectedId] = useState<string | null>(null)
+  const [activeDropdownId, setActiveDropdownId] = useState<string | null>(null)
+
+  // Close dropdown on click outside
+  useEffect(() => {
+    const handleClickOutside = () => setActiveDropdownId(null)
+    window.addEventListener('click', handleClickOutside)
+    return () => window.removeEventListener('click', handleClickOutside)
+  }, [])
 
   const [form, setForm] = useState({
     customerId: '',
@@ -270,9 +282,156 @@ export const EstimatesAndQuotes: React.FC<{ activeEntityId: string; entities?: a
     })
   }, [estimates, query, statusFilter])
 
+  const getFormattedEstimateNumber = (rawNum: string, index: number) => {
+    if (!rawNum || rawNum.startsWith('EST-202') || rawNum.length > 10 || rawNum.includes('/')) {
+      return `EST-${(index + 1).toString().padStart(5, '0')}`
+    }
+    return rawNum
+  }
+
+  const downloadQuotePdf = (est: any, index?: number) => {
+    try {
+      const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' })
+      const quoteNum = getFormattedEstimateNumber(est.estimateNumber || est.reference, index ?? 0)
+      const compName = assignedCompany?.name || 'Muhammad Ali Enterprises'
+
+      // Title & Company
+      doc.setFont('helvetica', 'bold')
+      doc.setFontSize(18)
+      doc.setTextColor(30, 41, 59)
+      doc.text('COMMERCIAL QUOTATION', 14, 20)
+
+      doc.setFontSize(11)
+      doc.setTextColor(79, 70, 229)
+      doc.text(compName, 14, 27)
+
+      // Meta Info Grid
+      doc.setFontSize(9)
+      doc.setFont('helvetica', 'normal')
+      doc.setTextColor(100, 116, 139)
+
+      doc.text('Quote Number:', 130, 20)
+      doc.setFont('helvetica', 'bold')
+      doc.setTextColor(30, 41, 59)
+      doc.text(quoteNum, 162, 20)
+
+      doc.setFont('helvetica', 'normal')
+      doc.setTextColor(100, 116, 139)
+      doc.text('Quote Date:', 130, 25)
+      doc.setTextColor(30, 41, 59)
+      doc.text(est.estimateDate || '—', 162, 25)
+
+      doc.setTextColor(100, 116, 139)
+      doc.text('Expiry Date:', 130, 30)
+      doc.setTextColor(30, 41, 59)
+      doc.text(est.expiryDate || '—', 162, 30)
+
+      doc.setTextColor(100, 116, 139)
+      doc.text('Status:', 130, 35)
+      doc.setTextColor(30, 41, 59)
+      doc.text(statusStyles[est.status]?.label || 'Draft', 162, 35)
+
+      // Customer Box
+      doc.setFillColor(248, 250, 252)
+      doc.rect(14, 40, 182, 16, 'F')
+      doc.setFont('helvetica', 'bold')
+      doc.setFontSize(8)
+      doc.setTextColor(71, 85, 105)
+      doc.text('QUOTATION PREPARED FOR:', 18, 46)
+      doc.setFontSize(10)
+      doc.setTextColor(15, 23, 42)
+      doc.text(est.customerName || 'Valued Customer', 18, 52)
+
+      // Table Lines
+      const tableRows = (est.lines && est.lines.length > 0 ? est.lines : []).map((l: any, i: number) => {
+        const qty = parseFloat(l.quantity || '1') || 1
+        const price = parseFloat(l.unitPrice || '0') || 0
+        const gross = qty * price
+        const discVal = parseFloat(l.discountValue || '0') || 0
+        const disc = l.discountType === 0 ? (gross * discVal / 100) : discVal
+        const taxVal = parseFloat(l.taxPercent || '0') || 0
+        const afterDisc = gross - disc
+        const tax = (afterDisc * taxVal / 100)
+        const total = afterDisc + tax
+
+        return [
+          i + 1,
+          l.description || 'Commercial Product / Service Item',
+          qty,
+          money(price),
+          l.discountType === 0 ? `${discVal}%` : money(discVal),
+          `${taxVal}%`,
+          money(total)
+        ]
+      })
+
+      autoTable(doc, {
+        startY: 60,
+        head: [['#', 'Item / Description', 'Qty', 'Unit Price', 'Discount', 'Tax %', 'Total Amount']],
+        body: tableRows.length > 0 ? tableRows : [[1, 'Products & Services Quotation', 1, money(est.totalAmount), '—', '0%', money(est.totalAmount)]],
+        headStyles: { fillColor: [67, 56, 202], textColor: [255, 255, 255], fontStyle: 'bold', fontSize: 8 },
+        bodyStyles: { fontSize: 8, textColor: [30, 41, 59] },
+        alternateRowStyles: { fillColor: [248, 250, 252] },
+        margin: { left: 14, right: 14 }
+      })
+
+      const finalY = (doc as any).lastAutoTable?.finalY || 120
+
+      // Totals Card
+      doc.setFontSize(9)
+      doc.setFont('helvetica', 'normal')
+      doc.setTextColor(100, 116, 139)
+      doc.text('Subtotal:', 130, finalY + 10)
+      doc.setTextColor(30, 41, 59)
+      doc.text(money(est.subtotal || est.totalAmount), 196, finalY + 10, { align: 'right' })
+
+      if (est.discountTotal > 0) {
+        doc.setTextColor(225, 29, 72)
+        doc.text('Total Discount:', 130, finalY + 16)
+        doc.text(`-${money(est.discountTotal)}`, 196, finalY + 16, { align: 'right' })
+      }
+
+      if (est.taxTotal > 0) {
+        doc.setTextColor(217, 119, 6)
+        doc.text('Tax / VAT:', 130, finalY + 22)
+        doc.text(`+${money(est.taxTotal)}`, 196, finalY + 22, { align: 'right' })
+      }
+
+      doc.setDrawColor(226, 232, 240)
+      doc.line(130, finalY + 25, 196, finalY + 25)
+
+      doc.setFont('helvetica', 'bold')
+      doc.setFontSize(11)
+      doc.setTextColor(67, 56, 202)
+      doc.text('Total Amount (PKR):', 130, finalY + 32)
+      doc.text(money(est.totalAmount), 196, finalY + 32, { align: 'right' })
+
+      // Terms & Notes
+      if (est.terms || est.notes) {
+        doc.setFontSize(8)
+        doc.setFont('helvetica', 'bold')
+        doc.setTextColor(71, 85, 105)
+        doc.text('Terms & Conditions:', 14, finalY + 12)
+        doc.setFont('helvetica', 'normal')
+        doc.setTextColor(100, 116, 139)
+        const splitTerms = doc.splitTextToSize(est.terms || est.notes || 'Standard commercial terms apply.', 105)
+        doc.text(splitTerms, 14, finalY + 17)
+      }
+
+      doc.save(`Quotation_${quoteNum}.pdf`)
+      notify(`✓ Downloaded ${quoteNum}.pdf successfully!`)
+    } catch (err: any) {
+      notify('Failed to generate PDF: ' + err.message)
+    }
+  }
+
+  const selectedEstimate = useMemo(() => {
+    return estimates.find((e: any) => e.id === selectedId) || null
+  }, [estimates, selectedId])
+
   const exportHeaders = ['Quote #', 'Customer', 'Date', 'Expiry Date', 'Discount', 'Tax', 'Total', 'Status']
-  const exportRows = filteredEstimates.map((est: any) => [
-    est.estimateNumber,
+  const exportRows = filteredEstimates.map((est: any, idx: number) => [
+    getFormattedEstimateNumber(est.estimateNumber || est.reference, idx),
     est.customerName,
     est.estimateDate,
     est.expiryDate || '—',
@@ -307,6 +466,17 @@ export const EstimatesAndQuotes: React.FC<{ activeEntityId: string; entities?: a
           </p>
         </div>
         <div className="flex items-center gap-2 shrink-0 flex-wrap">
+          {/* Download PDF button when row is selected */}
+          {selectedEstimate && (
+            <button
+              onClick={() => downloadQuotePdf(selectedEstimate, filteredEstimates.findIndex((e: any) => e.id === selectedEstimate.id))}
+              className="h-9 px-3 rounded-xl border border-indigo-500/30 bg-indigo-500/10 hover:bg-indigo-500/20 text-indigo-600 dark:text-indigo-400 text-xs font-semibold flex items-center gap-1.5 shadow-2xs transition-colors"
+            >
+              <Download className="w-3.5 h-3.5" />
+              <span>Download PDF ({getFormattedEstimateNumber((selectedEstimate as any).estimateNumber || (selectedEstimate as any).reference || '', 0)})</span>
+            </button>
+          )}
+
           <DataToolbar
             query={query}
             setQuery={setQuery}
@@ -406,11 +576,22 @@ export const EstimatesAndQuotes: React.FC<{ activeEntityId: string; entities?: a
                 </tr>
               </thead>
               <tbody>
-                {filteredEstimates.map((est: any) => {
+                {filteredEstimates.map((est: any, index: number) => {
                   const badge = statusStyles[est.status] || statusStyles[0]
+                  const isSelected = selectedId === est.id
                   return (
-                    <tr key={est.id} className="border-b border-[var(--color-border)] hover:bg-[var(--color-surface-muted)] transition-colors">
-                      <td className="px-3 py-2 font-mono font-semibold text-[var(--color-text-strong)]">{est.estimateNumber}</td>
+                    <tr
+                      key={est.id}
+                      onClick={() => setSelectedId(isSelected ? null : est.id)}
+                      className={`border-b border-[var(--color-border)] cursor-pointer transition-colors ${
+                        isSelected
+                          ? 'bg-indigo-500/10 dark:bg-indigo-500/15 ring-1 ring-indigo-500/30'
+                          : 'hover:bg-[var(--color-surface-muted)]'
+                      }`}
+                    >
+                      <td className="px-3 py-2 font-mono font-semibold text-[var(--color-text-strong)]">
+                        {getFormattedEstimateNumber(est.estimateNumber || est.reference, index)}
+                      </td>
                       <td className="px-3 py-2 font-semibold text-[var(--color-text-strong)]">{est.customerName || '—'}</td>
                       <td className="px-3 py-2 text-[var(--color-text-muted)]">{est.estimateDate}</td>
                       <td className="px-3 py-2 text-[var(--color-text-muted)]">{est.expiryDate || '—'}</td>
@@ -424,7 +605,7 @@ export const EstimatesAndQuotes: React.FC<{ activeEntityId: string; entities?: a
                       <td className="px-3 py-2 text-center">
                         {est.status === 0 ? (
                           <button
-                            onClick={() => finalizeEstimate(est)}
+                            onClick={(e) => { e.stopPropagation(); finalizeEstimate(est); }}
                             title="Click to Finalize Quotation"
                             className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-slate-500/10 text-slate-700 dark:text-slate-300 border border-slate-500/30 hover:bg-emerald-500/15 hover:border-emerald-500/40 hover:text-emerald-700 dark:hover:text-emerald-300 cursor-pointer transition-all shadow-2xs group"
                           >
@@ -438,30 +619,18 @@ export const EstimatesAndQuotes: React.FC<{ activeEntityId: string; entities?: a
                         )}
                       </td>
                       <td className="px-3 py-2 text-right">
-                        <div className="flex items-center justify-end gap-1.5">
-                          {/* 1. EDIT BUTTON */}
+                        <div className="flex items-center justify-end gap-1.5" onClick={e => e.stopPropagation()}>
+                          {/* QUICK PDF DOWNLOAD BUTTON */}
                           <button
-                            onClick={() => openEditModal(est)}
-                            title="Edit Quotation"
-                            className="h-7 px-2.5 rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] hover:bg-[var(--color-surface-muted)] text-[var(--color-text-strong)] text-[11px] font-semibold flex items-center gap-1 shadow-2xs transition-colors"
+                            onClick={() => downloadQuotePdf(est, index)}
+                            title="Download Quotation PDF"
+                            className="h-7 px-2 rounded-lg border border-sky-500/20 bg-sky-500/5 hover:bg-sky-500/15 text-sky-600 text-[11px] font-semibold flex items-center gap-1 shadow-2xs transition-colors"
                           >
-                            <Pencil className="w-3 h-3 text-indigo-500" />
-                            <span>Edit</span>
+                            <Download className="w-3 h-3 text-sky-600" />
+                            <span>PDF</span>
                           </button>
 
-                          {/* 2. CANCEL BUTTON */}
-                          {est.status !== 3 && est.status !== 5 && (
-                            <button
-                              onClick={() => cancelEstimate(est)}
-                              title="Cancel Quotation"
-                              className="h-7 px-2.5 rounded-lg border border-rose-500/20 bg-rose-500/5 hover:bg-rose-500/15 text-rose-600 text-[11px] font-semibold flex items-center gap-1 shadow-2xs transition-colors"
-                            >
-                              <Ban className="w-3 h-3 text-rose-500" />
-                              <span>Cancel</span>
-                            </button>
-                          )}
-
-                          {/* 3. CONVERT INTO INVOICE BUTTON (Displayed when Finalized / Accepted) */}
+                          {/* CONVERT INTO INVOICE BUTTON (When Finalized) */}
                           {est.status === 2 && (
                             <button
                               onClick={() => setConvertModal(est)}
@@ -473,23 +642,74 @@ export const EstimatesAndQuotes: React.FC<{ activeEntityId: string; entities?: a
                             </button>
                           )}
 
-                          {/* IF DRAFT: Option to Finalize directly from actions */}
-                          {est.status === 0 && (
+                          {/* ACTIONS DROPDOWN MENU */}
+                          <div className="relative inline-block text-left">
                             <button
-                              onClick={() => finalizeEstimate(est)}
-                              title="Finalize Quotation to enable Invoicing"
-                              className="h-7 px-2.5 rounded-lg bg-indigo-50 hover:bg-indigo-100 dark:bg-indigo-950/40 dark:hover:bg-indigo-900/50 text-indigo-600 dark:text-indigo-400 border border-indigo-200 dark:border-indigo-800 text-[11px] font-semibold flex items-center gap-1 shadow-2xs transition-colors"
+                              onClick={() => setActiveDropdownId(activeDropdownId === est.id ? null : est.id)}
+                              className="h-7 px-2.5 rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] hover:bg-[var(--color-surface-muted)] text-[var(--color-text-strong)] text-[11px] font-semibold flex items-center gap-1 shadow-2xs transition-colors"
+                              title="More actions"
                             >
-                              <CheckCircle2 className="w-3 h-3 text-indigo-600 dark:text-indigo-400" />
-                              <span>Finalize</span>
+                              <span>Actions</span>
+                              <ChevronDown className="w-3 h-3 text-[var(--color-text-muted)]" />
                             </button>
-                          )}
 
-                          {est.status === 5 && (
-                            <span className="text-[11px] font-semibold text-purple-600 px-2 py-0.5 rounded-full bg-purple-500/10 border border-purple-500/20">
-                              Invoiced
-                            </span>
-                          )}
+                            {activeDropdownId === est.id && (
+                              <div className="absolute right-0 top-full mt-1 w-44 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] shadow-2xl z-40 py-1.5 animate-in fade-in zoom-in-95 duration-100">
+                                {/* Edit */}
+                                <button
+                                  onClick={() => { setActiveDropdownId(null); openEditModal(est); }}
+                                  className="w-full px-3 py-1.5 text-left text-xs font-medium text-[var(--color-text-strong)] hover:bg-[var(--color-surface-muted)] flex items-center gap-2"
+                                >
+                                  <Pencil className="w-3.5 h-3.5 text-indigo-500" />
+                                  <span>Edit Quote</span>
+                                </button>
+
+                                {/* Finalize */}
+                                {est.status === 0 && (
+                                  <button
+                                    onClick={() => { setActiveDropdownId(null); finalizeEstimate(est); }}
+                                    className="w-full px-3 py-1.5 text-left text-xs font-medium text-emerald-600 hover:bg-emerald-500/10 flex items-center gap-2"
+                                  >
+                                    <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
+                                    <span>Finalize Quote</span>
+                                  </button>
+                                )}
+
+                                {/* Convert to Invoice */}
+                                {est.status === 2 && (
+                                  <button
+                                    onClick={() => { setActiveDropdownId(null); setConvertModal(est); }}
+                                    className="w-full px-3 py-1.5 text-left text-xs font-medium text-purple-600 hover:bg-purple-500/10 flex items-center gap-2"
+                                  >
+                                    <ArrowUpRight className="w-3.5 h-3.5 text-purple-600" />
+                                    <span>Convert to Invoice</span>
+                                  </button>
+                                )}
+
+                                {/* Download PDF */}
+                                <button
+                                  onClick={() => { setActiveDropdownId(null); downloadQuotePdf(est, index); }}
+                                  className="w-full px-3 py-1.5 text-left text-xs font-medium text-sky-600 hover:bg-sky-500/10 flex items-center gap-2"
+                                >
+                                  <Download className="w-3.5 h-3.5 text-sky-600" />
+                                  <span>Download PDF</span>
+                                </button>
+
+                                {/* Cancel */}
+                                {est.status !== 3 && est.status !== 5 && (
+                                  <div className="border-t border-[var(--color-border)] mt-1 pt-1">
+                                    <button
+                                      onClick={() => { setActiveDropdownId(null); cancelEstimate(est); }}
+                                      className="w-full px-3 py-1.5 text-left text-xs font-medium text-rose-600 hover:bg-rose-500/10 flex items-center gap-2"
+                                    >
+                                      <Ban className="w-3.5 h-3.5 text-rose-500" />
+                                      <span>Cancel Quote</span>
+                                    </button>
+                                  </div>
+                                )}
+                              </div>
+                            )}
+                          </div>
                         </div>
                       </td>
                     </tr>
