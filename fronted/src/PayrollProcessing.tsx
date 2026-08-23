@@ -1,930 +1,885 @@
 import { useEffect, useState, useMemo } from 'react';
-import { usePayrollStore, useCompanyStore } from './stores';
-import type { Payrun, PayrunEmployee, Employee, PayrollCountry, PayFrequency } from './api/modules/payroll.api';
+import { usePayrollStore } from './stores';
+import type { Employee } from './api/modules/payroll.api';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@/components/ui/select';
+import { PageHeader } from '@/components/ui/page-header';
 import {
-  Banknote, Plus, ArrowLeft, RefreshCw,
-  FileSpreadsheet,
-  CheckCircle2, Building2,
-  CalendarRange, FileText,
-  Printer, X, Award, CheckSquare
+  Play, CheckCircle2, FileText, Download, ArrowLeft,
+  Calendar, Printer
 } from 'lucide-react';
-import { downloadCSV, downloadExcel } from './lib/exportUtils';
 
-const today = () => new Date().toISOString().split('T')[0];
+const FREQUENCY_OPTIONS = [
+  { value: 'Monthly', label: 'Monthly' },
+  { value: 'SemiMonthly', label: 'Semi-Monthly' },
+  { value: 'BiWeekly', label: 'Bi-Weekly' },
+  { value: 'Weekly', label: 'Weekly' },
+];
 
-const money = (val: number, cur: string = '$') => `${cur} ${val.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+export interface EmployeePayrollCalculation {
+  employee: Employee;
+  grossPackage: number;
+  basic: number;
+  hra: number;
+  transport: number;
+  medical: number;
+  otherAllowances: number;
+  totalAllowances: number;
+  grossEarnings: number;
+  incomeTax: number;
+  eobiDeduction: number;
+  pfDeduction: number;
+  socialSecurity: number;
+  otherDeductions: number;
+  totalDeductions: number;
+  netPay: number;
+  eobiEmployer: number;
+  pfEmployer: number;
+  otherEmployerContrib: number;
+  totalEmployerCost: number;
+  totalCostToCompany: number;
+}
 
-export const COUNTRY_CONFIGS: Record<PayrollCountry, { name: string; currency: string; taxLabel: string; socialLabel: string }> = {
-  US: { name: 'United States', currency: 'USD', taxLabel: 'Federal/State Tax', socialLabel: 'FICA / Social Security' },
-  UK: { name: 'United Kingdom', currency: 'GBP', taxLabel: 'PAYE Income Tax', socialLabel: 'National Insurance (NIC)' },
-  CA: { name: 'Canada', currency: 'CAD', taxLabel: 'Federal/Provincial Tax', socialLabel: 'CPP / EI' },
-  PK: { name: 'Pakistan', currency: 'PKR', taxLabel: 'Income Tax (FBR)', socialLabel: 'EOBI & Social Security' },
-  AE: { name: 'United Arab Emirates', currency: 'AED', taxLabel: 'Zero Income Tax (WPS)', socialLabel: 'GPSSA (Nationals)' },
-  SA: { name: 'Saudi Arabia', currency: 'SAR', taxLabel: 'ZATCA Compliance', socialLabel: 'GOSI Contribution' },
-  EU: { name: 'European Union', currency: 'EUR', taxLabel: 'Statutory Income Tax', socialLabel: 'Social Welfare & Health' },
-};
+export function calculateEmployeePayrollDetails(emp: Employee, frequency: string = 'Monthly'): EmployeePayrollCalculation {
+  // Gross Package First (Top-Down Anchor)
+  const grossPackage = Number(emp.grossSalary) || (emp.basicSalary ? Number(emp.basicSalary) / 0.6 : 100000);
+  
+  const basicPct = emp.basicPercent !== undefined ? Number(emp.basicPercent) : 60;
+  const hraPct = emp.hraPercent !== undefined ? Number(emp.hraPercent) : 25;
+  const medPct = emp.medicalPercent !== undefined ? Number(emp.medicalPercent) : 10;
+  const transPct = emp.transportPercent !== undefined ? Number(emp.transportPercent) : 5;
+  const otherPct = emp.otherAllowancePercent !== undefined ? Number(emp.otherAllowancePercent) : 0;
 
-export function calculateEmployeePayrollDetails(emp: Employee, frequency: PayFrequency) {
-  const country = emp.country || 'US';
-  const basic = emp.basicSalary || 0;
-  const periodsInYear = frequency === 'Monthly' ? 12 : frequency === 'BiWeekly' ? 26 : frequency === 'Weekly' ? 52 : 24;
+  const basic = (grossPackage * basicPct) / 100;
+  const hra = (grossPackage * hraPct) / 100;
+  const medical = (grossPackage * medPct) / 100;
+  const transport = (grossPackage * transPct) / 100;
+  const otherAllowances = (grossPackage * otherPct) / 100;
 
-  let hra = 0;
-  let transport = 0;
-  let medical = 0;
-  let otherAllowances = 0;
+  const totalAllowances = hra + medical + transport + otherAllowances;
+  const grossEarnings = basic + totalAllowances;
 
-  if (country === 'PK') {
-    hra = basic * 0.45;
-    medical = basic * 0.10;
-    transport = basic * 0.05;
-  } else if (country === 'AE' || country === 'SA') {
-    hra = basic * 0.25;
-    transport = basic * 0.15;
-    otherAllowances = basic * 0.10;
-  } else if (country === 'UK' || country === 'EU') {
-    transport = basic * 0.05;
-    otherAllowances = basic * 0.05;
-  } else {
-    hra = basic * 0.10;
-    transport = basic * 0.05;
-    otherAllowances = basic * 0.05;
-  }
+  let periodsInYear = 12;
+  if (frequency === 'SemiMonthly') periodsInYear = 24;
+  else if (frequency === 'BiWeekly') periodsInYear = 26;
+  else if (frequency === 'Weekly') periodsInYear = 52;
 
-  const grossEarnings = basic + hra + transport + medical + otherAllowances;
   const annualizedGross = grossEarnings * periodsInYear;
-
-  // Statutory Deductions
   let incomeTax = 0;
+  let eobiDeduction = 0;
+  let pfDeduction = 0;
   let socialSecurity = 0;
-  let pensionOrOther = 0;
-  let employerContrib = 0;
+  let otherDeductions = 0;
+  let eobiEmployer = 0;
+  let pfEmployer = 0;
+  let otherEmployerContrib = 0;
 
-  switch (country) {
-    case 'US': {
-      const taxRate = annualizedGross > 100000 ? 0.22 : annualizedGross > 45000 ? 0.12 : 0.10;
-      incomeTax = (annualizedGross * taxRate) / periodsInYear;
-      socialSecurity = (grossEarnings * 0.062);
-      pensionOrOther = (grossEarnings * 0.0145);
-      employerContrib = socialSecurity + pensionOrOther;
-      break;
-    }
-    case 'UK': {
-      const taxable = Math.max(0, annualizedGross - 12570);
-      incomeTax = (taxable * 0.20) / periodsInYear;
-      socialSecurity = (grossEarnings * 0.08);
-      pensionOrOther = (grossEarnings * 0.05);
-      employerContrib = (grossEarnings * 0.138) + (grossEarnings * 0.03);
-      break;
-    }
-    case 'CA': {
-      const taxable = Math.max(0, annualizedGross - 15000);
-      incomeTax = (taxable * 0.20) / periodsInYear;
-      socialSecurity = (grossEarnings * 0.0595);
-      pensionOrOther = (grossEarnings * 0.0166);
-      employerContrib = (socialSecurity * 1.0) + (pensionOrOther * 1.4);
-      break;
-    }
+  switch (emp.country) {
     case 'PK': {
-      if (annualizedGross > 3600000) {
-        incomeTax = (435000 + (annualizedGross - 3600000) * 0.35) / periodsInYear;
-      } else if (annualizedGross > 2400000) {
-        incomeTax = (165000 + (annualizedGross - 2400000) * 0.25) / periodsInYear;
-      } else if (annualizedGross > 1200000) {
-        incomeTax = (30000 + (annualizedGross - 1200000) * 0.15) / periodsInYear;
-      } else if (annualizedGross > 600000) {
-        incomeTax = ((annualizedGross - 600000) * 0.05) / periodsInYear;
-      } else {
-        incomeTax = 0;
+      // Pakistan FBR Tax Slabs (Sec 149)
+      if (annualizedGross > 600000) {
+        if (annualizedGross <= 1200000) {
+          const taxable = annualizedGross - 600000;
+          incomeTax = (taxable * 0.05) / periodsInYear;
+        } else if (annualizedGross <= 2200000) {
+          const taxable = annualizedGross - 1200000;
+          incomeTax = (30000 + taxable * 0.15) / periodsInYear;
+        } else if (annualizedGross <= 3200000) {
+          const taxable = annualizedGross - 2200000;
+          incomeTax = (180000 + taxable * 0.25) / periodsInYear;
+        } else if (annualizedGross <= 4100000) {
+          const taxable = annualizedGross - 3200000;
+          incomeTax = (430000 + taxable * 0.30) / periodsInYear;
+        } else {
+          const taxable = annualizedGross - 4100000;
+          incomeTax = (700000 + taxable * 0.35) / periodsInYear;
+        }
       }
-      socialSecurity = Math.min(basic * 0.01, 1500);
-      pensionOrOther = Math.min(basic * 0.01, 1000);
-      employerContrib = Math.min(basic * 0.05, 7500);
+
+      // EOBI: 1% employee, 5% employer calculated on basic salary
+      if (emp.eobiEnabled !== false) {
+        const eobiEmpPct = emp.eobiEmployeePercent || 1.0;
+        const eobiEmprPct = emp.eobiEmployerPercent || 5.0;
+        eobiDeduction = (basic * eobiEmpPct) / 100;
+        eobiEmployer = (basic * eobiEmprPct) / 100;
+      }
+
+      // Provident Fund: based on basic salary
+      if (emp.pfEnabled) {
+        const pfEmpPct = emp.pfEmployeePercent || 8.33;
+        const pfEmprPct = emp.pfEmployerPercent || 8.33;
+        pfDeduction = (basic * pfEmpPct) / 100;
+        pfEmployer = (basic * pfEmprPct) / 100;
+      }
       break;
     }
+
+    case 'US': {
+      if (annualizedGross > 14600) {
+        const taxable = annualizedGross - 14600;
+        const annualFedTax = taxable <= 11600 ? taxable * 0.10
+          : taxable <= 47150 ? 1160 + (taxable - 11600) * 0.12
+          : taxable <= 100525 ? 5426 + (taxable - 47150) * 0.22
+          : taxable <= 191950 ? 17168.5 + (taxable - 100525) * 0.24 : 39110.5 + (taxable - 191950) * 0.32;
+        incomeTax = annualFedTax / periodsInYear;
+      }
+      if (emp.usFicaEnabled !== false) {
+        socialSecurity = (grossEarnings * 0.062) + (grossEarnings * 0.0145);
+        otherEmployerContrib = (grossEarnings * 0.0765);
+      }
+      if (emp.us401kEnabled) {
+        const usEmpPct = emp.us401kEmployeePercent || 5.0;
+        const usEmprPct = emp.us401kEmployerPercent || 4.0;
+        pfDeduction = (grossEarnings * usEmpPct) / 100;
+        pfEmployer = (grossEarnings * usEmprPct) / 100;
+      }
+      if (emp.usHealthPreTaxDeduction) {
+        otherDeductions += Number(emp.usHealthPreTaxDeduction);
+      }
+      break;
+    }
+
+    case 'CA': {
+      if (annualizedGross > 15705) {
+        const taxable = annualizedGross - 15705;
+        const federalTax = taxable <= 55867 ? taxable * 0.15 : 8380 + (taxable - 55867) * 0.205;
+        incomeTax = federalTax / periodsInYear;
+      }
+      if (emp.caCppEnabled !== false) {
+        const cpp = (grossEarnings * 0.0595);
+        socialSecurity += cpp;
+        otherEmployerContrib += cpp;
+      }
+      if (emp.caEiEnabled !== false) {
+        const ei = (grossEarnings * 0.0166);
+        socialSecurity += ei;
+        otherEmployerContrib += (ei * 1.4);
+      }
+      if (emp.caRrspEnabled) {
+        const rrspEmpPct = emp.caRrspEmployeePercent || 5.0;
+        const rrspEmprPct = emp.caRrspEmployerPercent || 4.0;
+        pfDeduction = (grossEarnings * rrspEmpPct) / 100;
+        pfEmployer = (grossEarnings * rrspEmprPct) / 100;
+      }
+      break;
+    }
+
+    case 'UK': {
+      if (annualizedGross > 12570) {
+        const taxable = annualizedGross - 12570;
+        const annualPAYE = taxable <= 37700 ? taxable * 0.20 : 7540 + (taxable - 37700) * 0.40;
+        incomeTax = annualPAYE / periodsInYear;
+      }
+      if (emp.ukNicEnabled !== false) {
+        socialSecurity = (grossEarnings * 0.08);
+        otherEmployerContrib = (grossEarnings * 0.138);
+      }
+      if (emp.ukPensionEnabled !== false) {
+        const ukEmpPct = emp.ukPensionEmployeePercent || 5.0;
+        const ukEmprPct = emp.ukPensionEmployerPercent || 3.0;
+        pfDeduction = (grossEarnings * ukEmpPct) / 100;
+        pfEmployer = (grossEarnings * ukEmprPct) / 100;
+      }
+      break;
+    }
+
     case 'AE': {
       incomeTax = 0;
-      socialSecurity = emp.nationality === 'Emirati' ? grossEarnings * 0.05 : 0;
-      pensionOrOther = 0;
-      employerContrib = emp.nationality === 'Emirati' ? grossEarnings * 0.125 : grossEarnings * 0.0833;
+      if (emp.uaeGpssaEnabled) {
+        const gpssaEmpPct = emp.uaeGpssaEmployeePercent || 5.0;
+        const gpssaEmprPct = emp.uaeGpssaEmployerPercent || 12.5;
+        socialSecurity = (grossEarnings * gpssaEmpPct) / 100;
+        otherEmployerContrib = (grossEarnings * gpssaEmprPct) / 100;
+      }
+      if (emp.uaeGratuityAccrualEnabled !== false) {
+        otherEmployerContrib += (basic / 30) * (21 / 12);
+      }
       break;
     }
+
     case 'SA': {
       incomeTax = 0;
-      socialSecurity = emp.nationality === 'Saudi' ? grossEarnings * 0.0975 : grossEarnings * 0.02;
-      pensionOrOther = 0;
-      employerContrib = emp.nationality === 'Saudi' ? grossEarnings * 0.1175 : grossEarnings * 0.02;
+      if (emp.saGosiEnabled) {
+        const gosiEmpPct = emp.saGosiEmployeePercent || 9.75;
+        const gosiEmprPct = emp.saGosiEmployerPercent || 11.75;
+        socialSecurity = (grossEarnings * gosiEmpPct) / 100;
+        otherEmployerContrib = (grossEarnings * gosiEmprPct) / 100;
+      } else {
+        otherEmployerContrib = (grossEarnings * 0.02);
+      }
+      if (emp.saEosbAccrualEnabled !== false) {
+        otherEmployerContrib += (basic / 30) * (15 / 12);
+      }
       break;
     }
-    case 'EU':
+
+    case 'DE':
+    case 'FR':
+    case 'NL':
+    case 'BE':
+    case 'ES':
+    case 'IT':
+    case 'PL':
     default: {
       const taxRate = annualizedGross > 80000 ? 0.30 : annualizedGross > 35000 ? 0.20 : 0.15;
       incomeTax = (annualizedGross * taxRate) / periodsInYear;
-      socialSecurity = (grossEarnings * 0.09);
-      pensionOrOther = (grossEarnings * 0.04);
-      employerContrib = (grossEarnings * 0.18);
+      if (emp.euSocialEnabled !== false) {
+        const euEmpPct = emp.euEmployeeSocialPercent || 9.0;
+        const euEmprPct = emp.euEmployerSocialPercent || 18.0;
+        socialSecurity = (grossEarnings * euEmpPct) / 100;
+        otherEmployerContrib = (grossEarnings * euEmprPct) / 100;
+      }
+      if (emp.euSupplementaryPensionEnabled) {
+        const euPenEmpPct = emp.euPensionEmployeePercent || 2.0;
+        const euPenEmprPct = emp.euPensionEmployerPercent || 2.0;
+        pfDeduction += (grossEarnings * euPenEmpPct) / 100;
+        pfEmployer += (grossEarnings * euPenEmprPct) / 100;
+      }
       break;
     }
   }
 
-  const totalDeductions = incomeTax + socialSecurity + pensionOrOther;
+  if (emp.additionalTaxWithholding) {
+    otherDeductions += Number(emp.additionalTaxWithholding);
+  }
+
+  const totalDeductions = incomeTax + eobiDeduction + pfDeduction + socialSecurity + otherDeductions;
   const netPay = grossEarnings - totalDeductions;
-  const totalCostToCompany = grossEarnings + employerContrib;
+  const totalEmployerCost = eobiEmployer + pfEmployer + otherEmployerContrib;
+  const totalCostToCompany = grossEarnings + totalEmployerCost;
 
   return {
-    basicSalary: basic,
-    additions: {
-      hra,
-      transport,
-      medical,
-      otherAllowances,
-      totalAdditions: hra + transport + medical + otherAllowances,
-    },
+    employee: emp,
+    grossPackage,
+    basic,
+    hra,
+    transport,
+    medical,
+    otherAllowances,
+    totalAllowances,
     grossEarnings,
-    deductions: {
-      incomeTax,
-      socialSecurity,
-      pensionOrOther,
-      totalDeductions,
-    },
+    incomeTax,
+    eobiDeduction,
+    pfDeduction,
+    socialSecurity,
+    otherDeductions,
+    totalDeductions,
     netPay,
-    employerContrib,
+    eobiEmployer,
+    pfEmployer,
+    otherEmployerContrib,
+    totalEmployerCost,
     totalCostToCompany,
-    currency: emp.currency || COUNTRY_CONFIGS[country]?.currency || 'USD',
-    country,
   };
 }
 
 export default function PayrollProcessing() {
-  const { payruns, employees, fetchPayruns, fetchEmployees, fetchPayrunEmployees, calculatePayrun, postPayrun } = usePayrollStore();
-  const { entities } = useCompanyStore();
+  const { employees, departments, positions, fetchPayruns, fetchEmployees, fetchDepartments, fetchPositions, postPayrun } = usePayrollStore();
 
-  const [statusFilter, setStatusFilter] = useState('All');
-  const [countryFilter, _setCountryFilter] = useState<PayrollCountry | 'All'>('All');
-  const [view, setView] = useState<'list' | 'create'>('list');
-  const [saving, setSaving] = useState(false);
-  const [_inspectPayrun, setInspectPayrun] = useState<{ payrun: Payrun | null; employees: PayrunEmployee[] } | null>(null);
-  const [_selectedEmployeePreview, _setSelectedEmployeePreview] = useState<Employee | null>(null);
-  const [directorApprovalModalOpen, setDirectorApprovalModalOpen] = useState(false);
+  const [step, setStep] = useState<'create' | 'preview' | 'slips'>('create');
+  const [loading, setLoading] = useState(false);
+
+  // Form State
+  const today = new Date();
+  const firstDay = new Date(today.getFullYear(), today.getMonth(), 1).toISOString().split('T')[0];
+  const lastDay = new Date(today.getFullYear(), today.getMonth() + 1, 0).toISOString().split('T')[0];
 
   const [form, setForm] = useState({
-    frequency: 'Monthly' as PayFrequency,
-    periodStart: new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString().split('T')[0],
-    periodEnd: new Date(new Date().getFullYear(), new Date().getMonth() + 1, 0).toISOString().split('T')[0],
-    payDate: today(),
-    taxYear: new Date().getFullYear(),
-    targetCountry: 'All' as PayrollCountry | 'All',
+    frequency: 'Monthly',
+    periodStart: firstDay,
+    periodEnd: lastDay,
+    payDate: lastDay,
+    selectedEmployees: [] as string[],
+    filterDepartment: '',
+    filterCountry: '',
   });
 
   useEffect(() => {
-    fetchEmployees();
     fetchPayruns();
+    fetchEmployees();
+    fetchDepartments();
+    fetchPositions();
   }, []);
 
-  const targetProcessingEmployees = useMemo(() => {
-    return employees.filter(e => {
-      const matchStatus = e.status === 'Active';
-      const matchCountry = form.targetCountry === 'All' || e.country === form.targetCountry;
-      return matchStatus && matchCountry;
+  const activeEmployees = useMemo(() => {
+    return employees.filter(e => e.status === 'Active');
+  }, [employees]);
+
+  const filteredEmployees = useMemo(() => {
+    return activeEmployees.filter(e => {
+      if (form.filterDepartment && e.departmentId !== form.filterDepartment) return false;
+      if (form.filterCountry && e.country !== form.filterCountry) return false;
+      return true;
     });
-  }, [employees, form.targetCountry]);
+  }, [activeEmployees, form.filterDepartment, form.filterCountry]);
 
-  // Aggregate stats across target employees for live calculation matrix
-  const calculationSummary = useMemo(() => {
-    let grossTotal = 0;
-    let basicTotal = 0;
-    let additionsTotal = 0;
-    let taxTotal = 0;
-    let socialTotal = 0;
-    let voluntaryTotal = 0;
-    let deductionsTotal = 0;
-    let netTotal = 0;
-    let employerTotal = 0;
-    let ctcTotal = 0;
+  // Selected employee calculations
+  const targetEmployees = useMemo(() => {
+    if (form.selectedEmployees.length === 0) return filteredEmployees;
+    return filteredEmployees.filter(e => form.selectedEmployees.includes(e.id));
+  }, [filteredEmployees, form.selectedEmployees]);
 
-    targetProcessingEmployees.forEach(emp => {
-      const calc = calculateEmployeePayrollDetails(emp, form.frequency);
-      basicTotal += calc.basicSalary;
-      additionsTotal += calc.additions.totalAdditions;
-      grossTotal += calc.grossEarnings;
-      taxTotal += calc.deductions.incomeTax;
-      socialTotal += calc.deductions.socialSecurity;
-      voluntaryTotal += calc.deductions.pensionOrOther;
-      deductionsTotal += calc.deductions.totalDeductions;
-      netTotal += calc.netPay;
-      employerTotal += calc.employerContrib;
-      ctcTotal += calc.totalCostToCompany;
+  const calculatedRoster = useMemo(() => {
+    return targetEmployees.map(emp => calculateEmployeePayrollDetails(emp, form.frequency));
+  }, [targetEmployees, form.frequency]);
+
+  const totals = useMemo(() => {
+    return calculatedRoster.reduce((acc, row) => ({
+      grossPackage: acc.grossPackage + row.grossPackage,
+      basic: acc.basic + row.basic,
+      hra: acc.hra + row.hra,
+      transport: acc.transport + row.transport,
+      medical: acc.medical + row.medical,
+      otherAllowances: acc.otherAllowances + row.otherAllowances,
+      totalAllowances: acc.totalAllowances + row.totalAllowances,
+      grossEarnings: acc.grossEarnings + row.grossEarnings,
+      incomeTax: acc.incomeTax + row.incomeTax,
+      eobiDeduction: acc.eobiDeduction + row.eobiDeduction,
+      pfDeduction: acc.pfDeduction + row.pfDeduction,
+      socialSecurity: acc.socialSecurity + row.socialSecurity,
+      otherDeductions: acc.otherDeductions + row.otherDeductions,
+      totalDeductions: acc.totalDeductions + row.totalDeductions,
+      netPay: acc.netPay + row.netPay,
+      eobiEmployer: acc.eobiEmployer + row.eobiEmployer,
+      pfEmployer: acc.pfEmployer + row.pfEmployer,
+      otherEmployerContrib: acc.otherEmployerContrib + row.otherEmployerContrib,
+      totalEmployerCost: acc.totalEmployerCost + row.totalEmployerCost,
+      totalCostToCompany: acc.totalCostToCompany + row.totalCostToCompany,
+    }), {
+      grossPackage: 0, basic: 0, hra: 0, transport: 0, medical: 0, otherAllowances: 0,
+      totalAllowances: 0, grossEarnings: 0, incomeTax: 0, eobiDeduction: 0, pfDeduction: 0,
+      socialSecurity: 0, otherDeductions: 0, totalDeductions: 0, netPay: 0,
+      eobiEmployer: 0, pfEmployer: 0, otherEmployerContrib: 0, totalEmployerCost: 0, totalCostToCompany: 0
     });
+  }, [calculatedRoster]);
 
-    return {
-      grossTotal, basicTotal, additionsTotal, taxTotal, socialTotal,
-      voluntaryTotal, deductionsTotal, netTotal, employerTotal, ctcTotal,
-    };
-  }, [targetProcessingEmployees, form.frequency]);
-
-  const handleCalculateDraft = async () => {
-    setSaving(true);
-    try {
-      await calculatePayrun({
-        frequency: form.frequency,
-        periodStart: form.periodStart,
-        periodEnd: form.periodEnd,
-        payDate: form.payDate,
-        taxYear: form.taxYear,
-        autoPost: false,
-      });
-      fetchPayruns();
-      setView('list');
-    } finally {
-      setSaving(false);
+  const handleSelectAll = (checked: boolean) => {
+    if (checked) {
+      setForm(f => ({ ...f, selectedEmployees: filteredEmployees.map(e => e.id) }));
+    } else {
+      setForm(f => ({ ...f, selectedEmployees: [] }));
     }
   };
 
-  const handlePostGL = async () => {
-    setSaving(true);
+  const handleEmployeeToggle = (id: string) => {
+    setForm(f => {
+      const exists = f.selectedEmployees.includes(id);
+      return {
+        ...f,
+        selectedEmployees: exists ? f.selectedEmployees.filter(x => x !== id) : [...f.selectedEmployees, id]
+      };
+    });
+  };
+
+  const handleRunCalculation = async () => {
+    setLoading(true);
+    try {
+      setStep('preview');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleAuthorizeAndPost = async () => {
+    if (!window.confirm('Authorize and post this payrun? This will finalize the payroll and post entries to the General Ledger.')) return;
+    setLoading(true);
     try {
       await postPayrun({
         frequency: form.frequency,
         periodStart: form.periodStart,
         periodEnd: form.periodEnd,
         payDate: form.payDate,
-        taxYear: form.taxYear,
-        autoPost: true,
+        employeeIds: targetEmployees.map(e => e.id),
       });
-      fetchPayruns();
-      setView('list');
+      alert('✓ Payroll run successfully authorized and posted to General Ledger.');
+      await fetchPayruns();
+      setStep('create');
+    } catch (err: any) {
+      alert(err.message || 'Error posting payroll run');
     } finally {
-      setSaving(false);
+      setLoading(false);
     }
   };
 
-  const handleInspect = async (payrun: Payrun) => {
-    const payrunEmps = await fetchPayrunEmployees(payrun.id);
-    setInspectPayrun({ payrun, employees: payrunEmps });
+  const handleExportCSV = () => {
+    const headers = [
+      'S.No', 'Employee Code', 'Employee Name', 'Department', 'Position', 'Currency',
+      'TOTAL GROSS SALARY', 'Basic Salary (60%)', 'HRA (25%)', 'Medical Allowance (10%)', 'Travel / Transport (5%)', 'Utility / Other',
+      'Income Tax (FBR/PAYE)', 'EOBI Employee (1%)', 'Provident Fund (PF)', 'Social Security / GOSI', 'Other Deductions', 'TOTAL DEDUCTIONS (-)',
+      'NET SALARY PAYABLE', 'EOBI Employer (5%)', 'PF Match Employer', 'TOTAL COMPANY COST (CTC)'
+    ];
+
+    const rows = calculatedRoster.map((r, idx) => [
+      idx + 1,
+      `"${r.employee.employeeNumber}"`,
+      `"${r.employee.firstName} ${r.employee.lastName}"`,
+      `"${departments.find(d => d.id === r.employee.departmentId)?.name || 'General'}"`,
+      `"${positions.find(p => p.id === r.employee.positionId)?.name || 'Staff'}"`,
+      `"${r.employee.currency || 'PKR'}"`,
+      r.grossPackage.toFixed(2),
+      r.basic.toFixed(2),
+      r.hra.toFixed(2),
+      r.medical.toFixed(2),
+      r.transport.toFixed(2),
+      r.otherAllowances.toFixed(2),
+      r.incomeTax.toFixed(2),
+      r.eobiDeduction.toFixed(2),
+      r.pfDeduction.toFixed(2),
+      r.socialSecurity.toFixed(2),
+      r.otherDeductions.toFixed(2),
+      r.totalDeductions.toFixed(2),
+      r.netPay.toFixed(2),
+      r.eobiEmployer.toFixed(2),
+      r.pfEmployer.toFixed(2),
+      r.totalCostToCompany.toFixed(2),
+    ]);
+
+    const csvContent = 'data:text/csv;charset=utf-8,' + [headers.join(','), ...rows.map(e => e.join(','))].join('\n');
+    const encodedUri = encodeURI(csvContent);
+    const link = document.createElement('a');
+    link.setAttribute('href', encodedUri);
+    link.setAttribute('download', `Master_Salary_Register_${form.periodStart}_to_${form.periodEnd}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
   };
 
-  const filteredPayruns = useMemo(() => {
-    return payruns.filter(p => {
-      const matchStatus = statusFilter === 'All' || p.status === statusFilter;
-      return matchStatus;
-    });
-  }, [payruns, statusFilter]);
-
-  const handleExportCalculationCSV = () => {
-    const headers = ['Employee Code', 'Employee Name', 'Country', 'Currency', 'Basic Pay', 'Additions (+)', 'Gross Earnings', 'Income Tax (-)', 'Social Security (-)', 'Total Deductions (-)', 'Net Pay Payable', 'Total CTC'];
-    const rows = targetProcessingEmployees.map(e => {
-      const c = calculateEmployeePayrollDetails(e, form.frequency);
-      return [
-        e.employeeNumber,
-        `${e.firstName} ${e.lastName}`,
-        e.country,
-        c.currency,
-        c.basicSalary.toFixed(2),
-        c.additions.totalAdditions.toFixed(2),
-        c.grossEarnings.toFixed(2),
-        c.deductions.incomeTax.toFixed(2),
-        c.deductions.socialSecurity.toFixed(2),
-        c.deductions.totalDeductions.toFixed(2),
-        c.netPay.toFixed(2),
-        c.totalCostToCompany.toFixed(2),
-      ];
-    });
-    downloadCSV(`Payroll_Calculation_Audit_${form.periodStart}_to_${form.periodEnd}`, headers, rows);
+  const handlePrint = () => {
+    window.print();
   };
-
-  const handleExportCalculationExcel = () => {
-    const headers = ['Employee Code', 'Employee Name', 'Country', 'Currency', 'Basic Pay', 'Additions (+)', 'Gross Earnings', 'Income Tax (-)', 'Social Security (-)', 'Total Deductions (-)', 'Net Pay Payable', 'Total CTC'];
-    const rows = targetProcessingEmployees.map(e => {
-      const c = calculateEmployeePayrollDetails(e, form.frequency);
-      return [
-        e.employeeNumber,
-        `${e.firstName} ${e.lastName}`,
-        e.country,
-        c.currency,
-        c.basicSalary.toFixed(2),
-        c.additions.totalAdditions.toFixed(2),
-        c.grossEarnings.toFixed(2),
-        c.deductions.incomeTax.toFixed(2),
-        c.deductions.socialSecurity.toFixed(2),
-        c.deductions.totalDeductions.toFixed(2),
-        c.netPay.toFixed(2),
-        c.totalCostToCompany.toFixed(2),
-      ];
-    });
-    downloadExcel(`Payroll_Calculation_Audit_${form.periodStart}_to_${form.periodEnd}`, 'Payroll_Register', headers, rows);
-  };
-
-  const activeEntityName = entities[0]?.legalName || 'Global Enterprise Corporation';
 
   return (
-    <div className="p-6 max-w-[1500px] mx-auto space-y-6">
-      {/* Header */}
-      <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 border-b border-[var(--color-border)] pb-4">
-        <div className="min-w-0 flex-1">
-          <h1 className="text-xl font-black tracking-tight text-[var(--color-text-strong)] flex items-center gap-2.5">
-            <div className="p-2 rounded-xl bg-teal-500/10 text-teal-600 border border-teal-500/20 shrink-0">
-              <Banknote className="w-5 h-5" />
+    <div className="p-6 max-w-[1400px] mx-auto space-y-6 animate-in fade-in">
+      {/* 1. SETUP / RUN CREATION STEP */}
+      {step === 'create' && (
+        <>
+          <PageHeader
+            title="Payroll Processing & Payrun Engine"
+            description="Process monthly payroll with Gross-First package breakdown (Basic 60%, HRA 25%, Medical 10%, Travel 5%), statutory deductions, and Director Approval."
+            actions={
+              <Button onClick={() => setStep('preview')} className="bg-teal-600 hover:bg-teal-700 text-white font-bold">
+                <Play className="mr-1.5 h-4 w-4" /> Calculate Payrun
+              </Button>
+            }
+          />
+
+          {/* Quick Payrun Setup Bar */}
+          <div className="p-5 rounded-2xl border border-border bg-card shadow-xs space-y-4">
+            <h3 className="text-sm font-bold text-foreground flex items-center gap-2 border-b pb-3">
+              <Calendar className="w-4 h-4 text-teal-600" /> Payrun Cycle & Cut-Off Period
+            </h3>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 text-xs">
+              <div>
+                <label className="font-bold text-foreground block mb-1">Pay Frequency</label>
+                <Select value={form.frequency} onValueChange={v => setForm(f => ({ ...f, frequency: v }))}>
+                  <SelectTrigger className="w-full font-semibold"><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    {FREQUENCY_OPTIONS.map(o => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div>
+                <label className="font-bold text-foreground block mb-1">Period Start Date</label>
+                <Input type="date" value={form.periodStart} onChange={e => setForm(f => ({ ...f, periodStart: e.target.value }))} />
+              </div>
+
+              <div>
+                <label className="font-bold text-foreground block mb-1">Period End Date (Cut-Off)</label>
+                <Input type="date" value={form.periodEnd} onChange={e => setForm(f => ({ ...f, periodEnd: e.target.value }))} />
+              </div>
+
+              <div>
+                <label className="font-bold text-foreground block mb-1">Disbursement / Pay Date</label>
+                <Input type="date" value={form.payDate} onChange={e => setForm(f => ({ ...f, payDate: e.target.value }))} />
+              </div>
             </div>
-            Global Payroll Processing & Statutory Dissection
-          </h1>
-          <p className="text-xs text-[var(--color-text-muted)] mt-1">
-            IAS 19 / IFRS & GAAP aligned multi-country compensation engine for UK, Europe, Canada, USA, UAE, Saudi Arabia, and Pakistan.
-          </p>
-        </div>
+          </div>
 
-        <div className="flex items-center gap-2 shrink-0 flex-nowrap">
-          {view === 'create' ? (
-            <>
-              <button
-                onClick={() => setDirectorApprovalModalOpen(true)}
-                className="inline-flex items-center gap-1.5 px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-bold shadow-sm transition-all"
-              >
-                <Award className="w-4 h-4" /> Director Approval Sheet
-              </button>
-
-              <button
-                onClick={() => setView('list')}
-                className="inline-flex items-center gap-1.5 px-3 py-2 border border-[var(--color-border)] hover:bg-[var(--color-surface-muted)] text-[var(--color-text-strong)] rounded-xl text-xs font-semibold shadow-xs transition-all"
-              >
-                <ArrowLeft className="w-4 h-4" /> Back to Register
-              </button>
-            </>
-          ) : (
-            <>
-              <button
-                onClick={() => { fetchPayruns(); fetchEmployees(); }}
-                title="Refresh Payroll"
-                className="p-2 rounded-xl border border-[var(--color-border)] hover:bg-[var(--color-surface-muted)] text-[var(--color-text-muted)] transition-colors"
-              >
-                <RefreshCw className="w-4 h-4 text-teal-600" />
-              </button>
-
-              <button
-                onClick={() => setView('create')}
-                className="inline-flex items-center gap-2 px-4 py-2 bg-teal-600 hover:bg-teal-700 text-white rounded-xl text-xs font-bold shadow-sm transition-all"
-              >
-                <Plus className="w-4 h-4" /> Run New Payroll
-              </button>
-            </>
-          )}
-        </div>
-      </div>
-
-      {/* VIEW: CREATE / RUN PAYROLL WIZARD */}
-      {view === 'create' ? (
-        <div className="space-y-6">
-          {/* Step 1: Configuration Toolbar */}
-          <div className="p-5 rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)] shadow-xs space-y-4">
-            <div className="flex items-center justify-between border-b border-[var(--color-border)] pb-3">
-              <h2 className="font-bold text-sm text-[var(--color-text-strong)] flex items-center gap-2">
-                <CalendarRange className="w-4 h-4 text-teal-600" /> 1. Payrun Period & Statutory Parameters
-              </h2>
+          {/* Employee Selection Table */}
+          <div className="rounded-2xl border border-border bg-card shadow-xs overflow-hidden space-y-3 p-4">
+            <div className="flex items-center justify-between flex-wrap gap-2">
               <div className="flex items-center gap-2">
-                <button
-                  type="button"
-                  onClick={() => setDirectorApprovalModalOpen(true)}
-                  className="px-3 py-1.5 rounded-xl bg-indigo-50 dark:bg-indigo-950/40 text-indigo-700 dark:text-indigo-300 border border-indigo-200 text-xs font-bold flex items-center gap-1.5 hover:bg-indigo-100"
-                >
-                  <Award className="w-3.5 h-3.5" /> Preview Board Approval Form
-                </button>
+                <h3 className="text-sm font-bold text-foreground">Select Employees for this Payrun</h3>
+                <span className="px-2 py-0.5 rounded-full text-[11px] font-bold bg-teal-50 text-teal-700 border border-teal-200">
+                  {targetEmployees.length} of {activeEmployees.length} Selected
+                </span>
+              </div>
+
+              <div className="flex items-center gap-2">
+                <Select value={form.filterDepartment} onValueChange={v => setForm(f => ({ ...f, filterDepartment: v }))}>
+                  <SelectTrigger className="w-[180px] text-xs"><SelectValue placeholder="All Departments" /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="">All Departments</SelectItem>
+                    {departments.map(d => <SelectItem key={d.id} value={d.id}>{d.name}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+
+                <Select value={form.filterCountry} onValueChange={v => setForm(f => ({ ...f, filterCountry: v }))}>
+                  <SelectTrigger className="w-[180px] text-xs"><SelectValue placeholder="All Jurisdictions" /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="">All Jurisdictions</SelectItem>
+                    <SelectItem value="PK">🇵🇰 Pakistan</SelectItem>
+                    <SelectItem value="US">🇺🇸 USA</SelectItem>
+                    <SelectItem value="UK">🇬🇧 UK</SelectItem>
+                    <SelectItem value="CA">🇨🇦 Canada</SelectItem>
+                    <SelectItem value="AE">🇦🇪 UAE</SelectItem>
+                    <SelectItem value="SA">🇸🇦 Saudi Arabia</SelectItem>
+                    <SelectItem value="DE">🇪🇺 Germany / EU</SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3 text-xs">
-              <div className="space-y-1">
-                <label className="font-semibold text-[var(--color-text-strong)]">Target Jurisdiction</label>
-                <select
-                  value={form.targetCountry}
-                  onChange={e => setForm({ ...form, targetCountry: e.target.value as any })}
-                  className="w-full px-3 py-2 bg-[var(--color-surface-muted)] border border-[var(--color-border)] rounded-xl outline-none text-[var(--color-text)] font-semibold"
-                >
-                  <option value="All">All Jurisdictions (Multi-Country)</option>
-                  <option value="US">🇺🇸 United States (USD / FICA)</option>
-                  <option value="UK">🇬🇧 United Kingdom (GBP / PAYE)</option>
-                  <option value="CA">🇨🇦 Canada (CAD / CPP)</option>
-                  <option value="PK">🇵🇰 Pakistan (PKR / FBR Tax)</option>
-                  <option value="AE">🇦🇪 UAE (AED / WPS)</option>
-                  <option value="SA">🇸🇦 Saudi Arabia (SAR / GOSI)</option>
-                  <option value="EU">🇪🇺 European Union (EUR)</option>
-                </select>
-              </div>
-
-              <div className="space-y-1">
-                <label className="font-semibold text-[var(--color-text-strong)]">Frequency</label>
-                <select
-                  value={form.frequency}
-                  onChange={e => setForm({ ...form, frequency: e.target.value as PayFrequency })}
-                  className="w-full px-3 py-2 bg-[var(--color-surface-muted)] border border-[var(--color-border)] rounded-xl outline-none text-[var(--color-text)]"
-                >
-                  <option value="Monthly">Monthly (12 Periods)</option>
-                  <option value="SemiMonthly">Semi-Monthly (24 Periods)</option>
-                  <option value="BiWeekly">Bi-Weekly (26 Periods)</option>
-                  <option value="Weekly">Weekly (52 Periods)</option>
-                </select>
-              </div>
-
-              <div className="space-y-1">
-                <div className="flex items-center justify-between">
-                  <label className="font-semibold text-[var(--color-text-strong)]">Period Start</label>
-                  <span className="text-[10px] text-teal-600 font-semibold">Cutoff Presets:</span>
-                </div>
-                <div className="flex items-center gap-1 mb-1">
-                  <button
-                    type="button"
-                    onClick={() => {
-                      const now = new Date();
-                      const y = now.getFullYear();
-                      const m = now.getMonth();
-                      const prevM = m === 0 ? 11 : m - 1;
-                      const prevY = m === 0 ? y - 1 : y;
-                      setForm({
-                        ...form,
-                        periodStart: `${prevY}-${String(prevM + 1).padStart(2, '0')}-26`,
-                        periodEnd: `${y}-${String(m + 1).padStart(2, '0')}-25`,
-                        payDate: `${y}-${String(m + 1).padStart(2, '0')}-28`
-                      });
-                    }}
-                    className="px-2 py-0.5 rounded bg-teal-500/10 text-teal-700 dark:text-teal-300 text-[10px] font-bold border border-teal-500/20 hover:bg-teal-500/20"
-                    title="26th of last month to 25th of current month (HQ Standard)"
-                  >
-                    26th–25th
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      const now = new Date();
-                      const y = now.getFullYear();
-                      const m = now.getMonth();
-                      const prevM = m === 0 ? 11 : m - 1;
-                      const prevY = m === 0 ? y - 1 : y;
-                      setForm({
-                        ...form,
-                        periodStart: `${prevY}-${String(prevM + 1).padStart(2, '0')}-21`,
-                        periodEnd: `${y}-${String(m + 1).padStart(2, '0')}-20`,
-                        payDate: `${y}-${String(m + 1).padStart(2, '0')}-28`
-                      });
-                    }}
-                    className="px-2 py-0.5 rounded bg-indigo-500/10 text-indigo-700 dark:text-indigo-300 text-[10px] font-bold border border-indigo-500/20 hover:bg-indigo-500/20"
-                    title="21st of last month to 20th of current month (Factory Standard)"
-                  >
-                    21st–20th
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      const now = new Date();
-                      const y = now.getFullYear();
-                      const m = now.getMonth();
-                      const lastDay = new Date(y, m + 1, 0).getDate();
-                      setForm({
-                        ...form,
-                        periodStart: `${y}-${String(m + 1).padStart(2, '0')}-01`,
-                        periodEnd: `${y}-${String(m + 1).padStart(2, '0')}-${String(lastDay).padStart(2, '0')}`,
-                        payDate: `${y}-${String(m + 1).padStart(2, '0')}-${String(lastDay).padStart(2, '0')}`
-                      });
-                    }}
-                    className="px-2 py-0.5 rounded bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 text-[10px] font-bold border border-slate-300 hover:bg-slate-200"
-                    title="1st of month to 30th/31st (Calendar Month)"
-                  >
-                    1st–30/31st
-                  </button>
-                </div>
-                <input
-                  type="date"
-                  value={form.periodStart}
-                  onChange={e => setForm({ ...form, periodStart: e.target.value })}
-                  className="w-full px-3 py-2 bg-[var(--color-surface-muted)] border border-[var(--color-border)] rounded-xl outline-none text-[var(--color-text)] font-mono"
-                />
-              </div>
-
-              <div className="space-y-1">
-                <label className="font-semibold text-[var(--color-text-strong)]">Period End</label>
-                <input
-                  type="date"
-                  value={form.periodEnd}
-                  onChange={e => setForm({ ...form, periodEnd: e.target.value })}
-                  className="w-full px-3 py-2 bg-[var(--color-surface-muted)] border border-[var(--color-border)] rounded-xl outline-none text-[var(--color-text)] font-mono mt-5"
-                />
-              </div>
-
-              <div className="space-y-1">
-                <label className="font-semibold text-[var(--color-text-strong)]">Disbursement Pay Date</label>
-                <input
-                  type="date"
-                  value={form.payDate}
-                  onChange={e => setForm({ ...form, payDate: e.target.value })}
-                  className="w-full px-3 py-2 bg-[var(--color-surface-muted)] border border-[var(--color-border)] rounded-xl outline-none text-[var(--color-text)] font-mono mt-5"
-                />
-              </div>
-            </div>
-          </div>
-
-          {/* Step 2: Live Forensic Calculation Summary KPI Banner */}
-          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
-            <div className="p-4 rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)] shadow-xs space-y-1">
-              <span className="text-[10.5px] font-semibold text-[var(--color-text-muted)] uppercase">Total Basic Salary</span>
-              <div className="text-lg font-black text-[var(--color-text-strong)] font-mono">{money(calculationSummary.basicTotal)}</div>
-              <div className="text-[10px] text-[var(--color-text-muted)]">Fixed Core Base</div>
-            </div>
-
-            <div className="p-4 rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)] shadow-xs space-y-1">
-              <span className="text-[10.5px] font-semibold text-[var(--color-text-muted)] uppercase">Total Additions (+)</span>
-              <div className="text-lg font-black text-emerald-600 font-mono">+{money(calculationSummary.additionsTotal)}</div>
-              <div className="text-[10px] text-[var(--color-text-muted)]">HRA, Transport, Medical</div>
-            </div>
-
-            <div className="p-4 rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)] shadow-xs space-y-1">
-              <span className="text-[10.5px] font-semibold text-[var(--color-text-muted)] uppercase">Gross Payroll</span>
-              <div className="text-lg font-black text-blue-600 font-mono">{money(calculationSummary.grossTotal)}</div>
-              <div className="text-[10px] text-[var(--color-text-muted)]">Base + Allowances</div>
-            </div>
-
-            <div className="p-4 rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)] shadow-xs space-y-1">
-              <span className="text-[10.5px] font-semibold text-[var(--color-text-muted)] uppercase">Statutory Deductions (-)</span>
-              <div className="text-lg font-black text-rose-600 font-mono">-{money(calculationSummary.deductionsTotal)}</div>
-              <div className="text-[10px] text-[var(--color-text-muted)]">Taxes, GOSI, EOBI, FICA, NIC</div>
-            </div>
-
-            <div className="p-4 rounded-2xl border border-teal-500/30 bg-teal-500/10 shadow-xs space-y-1">
-              <span className="text-[10.5px] font-bold text-teal-700 dark:text-teal-300 uppercase">NET PAY PAYABLE</span>
-              <div className="text-xl font-black text-teal-700 dark:text-teal-300 font-mono">{money(calculationSummary.netTotal)}</div>
-              <div className="text-[10px] text-teal-600/80">Direct Bank Transfer</div>
-            </div>
-
-            <div className="p-4 rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)] shadow-xs space-y-1">
-              <span className="text-[10.5px] font-semibold text-[var(--color-text-muted)] uppercase">Total Employer CTC</span>
-              <div className="text-lg font-black text-purple-600 font-mono">{money(calculationSummary.ctcTotal)}</div>
-              <div className="text-[10px] text-[var(--color-text-muted)]">Gross + Employer Cost</div>
-            </div>
-          </div>
-
-          {/* Action Toolbar */}
-          <div className="flex items-center justify-between p-4 rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)] shadow-xs">
-            <div className="flex items-center gap-2">
-              <button
-                type="button"
-                onClick={handleExportCalculationCSV}
-                className="inline-flex items-center gap-1.5 px-3 py-2 border border-[var(--color-border)] hover:bg-[var(--color-surface-muted)] text-[var(--color-text-strong)] rounded-xl text-xs font-semibold shadow-xs transition-all"
-              >
-                <FileText className="w-4 h-4 text-blue-600" /> Export CSV
-              </button>
-
-              <button
-                type="button"
-                onClick={handleExportCalculationExcel}
-                className="inline-flex items-center gap-1.5 px-3 py-2 border border-[var(--color-border)] hover:bg-[var(--color-surface-muted)] text-[var(--color-text-strong)] rounded-xl text-xs font-semibold shadow-xs transition-all"
-              >
-                <FileSpreadsheet className="w-4 h-4 text-emerald-600" /> Export Excel
-              </button>
-
-              <button
-                type="button"
-                onClick={() => setDirectorApprovalModalOpen(true)}
-                className="inline-flex items-center gap-1.5 px-3 py-2 border border-indigo-300 bg-indigo-50 dark:bg-indigo-950/40 text-indigo-700 dark:text-indigo-300 hover:bg-indigo-100 rounded-xl text-xs font-bold shadow-xs transition-all"
-              >
-                <Award className="w-4 h-4 text-indigo-600" /> Director Approval Sheet
-              </button>
-            </div>
-
-            <div className="flex items-center gap-3">
-              <button
-                type="button"
-                onClick={handleCalculateDraft}
-                disabled={saving || targetProcessingEmployees.length === 0}
-                className="px-4 py-2 border border-[var(--color-border)] hover:bg-[var(--color-surface-muted)] text-[var(--color-text-strong)] rounded-xl text-xs font-bold transition-all disabled:opacity-50"
-              >
-                {saving ? 'Processing...' : 'Save Draft Payrun'}
-              </button>
-
-              <button
-                type="button"
-                onClick={handlePostGL}
-                disabled={saving || targetProcessingEmployees.length === 0}
-                className="px-5 py-2 bg-teal-600 hover:bg-teal-700 text-white rounded-xl text-xs font-bold shadow-sm transition-all disabled:opacity-50 flex items-center gap-1.5"
-              >
-                <CheckCircle2 className="w-4 h-4" /> {saving ? 'Posting Journal...' : 'Authorize & Post Payrun to GL'}
-              </button>
-            </div>
-          </div>
-        </div>
-      ) : (
-        /* VIEW: PAYRUN REGISTER LIST */
-        <div className="space-y-4">
-          <div className="flex items-center justify-between p-4 rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)] shadow-xs">
-            <div className="flex items-center gap-3">
-              <span className="text-xs font-semibold text-[var(--color-text-muted)]">Filter Status:</span>
-              <select
-                value={statusFilter}
-                onChange={e => setStatusFilter(e.target.value)}
-                className="px-3 py-1.5 text-xs bg-[var(--color-surface-muted)] border border-[var(--color-border)] rounded-xl text-[var(--color-text)] outline-none"
-              >
-                <option value="All">All Payruns ({payruns.length})</option>
-                <option value="Draft">Drafts</option>
-                <option value="Calculated">Calculated</option>
-                <option value="Approved">Approved</option>
-                <option value="Paid">Posted & Paid</option>
-              </select>
-            </div>
-          </div>
-
-          <div className="rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)] shadow-xs overflow-hidden">
-            <div className="overflow-x-auto">
-              <table className="w-full text-left text-xs border-collapse">
+            <div className="overflow-x-auto border rounded-xl">
+              <table className="w-full text-left text-xs">
                 <thead>
-                  <tr className="bg-[var(--color-surface-muted)] border-b border-[var(--color-border)] text-[var(--color-text-muted)] font-semibold uppercase tracking-wider text-[10px]">
-                    <th className="p-3.5 pl-5">Payrun Number</th>
-                    <th className="p-3.5">Cutoff Period</th>
-                    <th className="p-3.5">Disbursement Date</th>
-                    <th className="p-3.5 text-center">Headcount</th>
-                    <th className="p-3.5 text-right">Gross Earnings</th>
-                    <th className="p-3.5 text-right">Deductions</th>
-                    <th className="p-3.5 text-right font-bold">Net Pay Payable</th>
-                    <th className="p-3.5 text-center">Status</th>
-                    <th className="p-3.5 pr-5 text-right">Actions</th>
+                  <tr className="bg-muted/50 border-b text-muted-foreground uppercase text-[10px]">
+                    <th className="p-3 w-10 text-center">
+                      <input
+                        type="checkbox"
+                        checked={form.selectedEmployees.length === filteredEmployees.length && filteredEmployees.length > 0}
+                        onChange={e => handleSelectAll(e.target.checked)}
+                        className="rounded border-border text-teal-600 focus:ring-teal-500"
+                      />
+                    </th>
+                    <th className="p-3">Code</th>
+                    <th className="p-3">Employee Name</th>
+                    <th className="p-3">Country</th>
+                    <th className="p-3">Department</th>
+                    <th className="p-3 text-right">Agreed Gross Package</th>
+                    <th className="p-3 text-right">Basic (60%)</th>
+                    <th className="p-3 text-right">Estimated Net</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-[var(--color-border)]">
-                  {filteredPayruns.map(p => (
-                    <tr key={p.id} className="hover:bg-[var(--color-surface-muted)]/50 transition-colors">
-                      <td className="p-3.5 pl-5 font-mono font-bold text-[var(--color-text-strong)]">{p.payrunNumber}</td>
-                      <td className="p-3.5 font-mono text-[11px]">{p.periodStart} to {p.periodEnd}</td>
-                      <td className="p-3.5 font-mono text-[11px] text-teal-600 font-semibold">{p.payDate}</td>
-                      <td className="p-3.5 text-center font-bold">{p.employeeCount}</td>
-                      <td className="p-3.5 text-right font-mono font-semibold">{money(p.totalGross, p.currency)}</td>
-                      <td className="p-3.5 text-right font-mono text-rose-600 font-semibold">-{money(p.totalDeductions, p.currency)}</td>
-                      <td className="p-3.5 text-right font-mono font-black text-teal-600">{money(p.totalNet, p.currency)}</td>
-                      <td className="p-3.5 text-center">
-                        <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold border ${
-                          p.status === 'Paid' ? 'bg-emerald-50 text-emerald-700 border-emerald-200' :
-                          p.status === 'Calculated' ? 'bg-blue-50 text-blue-700 border-blue-200' :
-                          'bg-amber-50 text-amber-700 border-amber-200'
-                        }`}>
-                          {p.status}
-                        </span>
-                      </td>
-                      <td className="p-3.5 pr-5 text-right">
-                        <div className="flex items-center justify-end gap-1.5">
-                          <button
-                            onClick={() => {
-                              handleInspect(p);
-                              setDirectorApprovalModalOpen(true);
-                            }}
-                            className="px-2.5 py-1 text-[11px] font-bold rounded-lg border border-indigo-300 text-indigo-700 hover:bg-indigo-50 flex items-center gap-1"
-                            title="View Director Approval Form"
-                          >
-                            <Award className="w-3.5 h-3.5" /> Approval Sheet
-                          </button>
-                          <button
-                            onClick={() => handleInspect(p)}
-                            className="px-2.5 py-1 text-[11px] font-bold rounded-lg border border-[var(--color-border)] hover:bg-[var(--color-surface-muted)] text-[var(--color-text)]"
-                          >
-                            Inspect
-                          </button>
-                        </div>
-                      </td>
-                    </tr>
-                  ))}
-                  {filteredPayruns.length === 0 && (
-                    <tr>
-                      <td colSpan={9} className="p-8 text-center text-xs text-[var(--color-text-muted)]">
-                        No payrun records found. Click <strong>"Run New Payroll"</strong> to start a compensation payrun.
-                      </td>
-                    </tr>
-                  )}
+                <tbody className="divide-y">
+                  {filteredEmployees.map(emp => {
+                    const isSelected = form.selectedEmployees.length === 0 || form.selectedEmployees.includes(emp.id);
+                    const calc = calculateEmployeePayrollDetails(emp, form.frequency);
+                    return (
+                      <tr key={emp.id} className="hover:bg-muted/30 transition-colors">
+                        <td className="p-3 text-center">
+                          <input
+                            type="checkbox"
+                            checked={isSelected}
+                            onChange={() => handleEmployeeToggle(emp.id)}
+                            className="rounded border-border text-teal-600 focus:ring-teal-500"
+                          />
+                        </td>
+                        <td className="p-3 font-mono font-bold">{emp.employeeNumber}</td>
+                        <td className="p-3 font-bold">{emp.firstName} {emp.lastName}</td>
+                        <td className="p-3 font-semibold">{emp.country}</td>
+                        <td className="p-3 text-muted-foreground">{departments.find(d => d.id === emp.departmentId)?.name || 'General'}</td>
+                        <td className="p-3 text-right font-mono font-black text-blue-700 dark:text-blue-400">
+                          {emp.currency || 'PKR'} {calc.grossPackage.toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                        </td>
+                        <td className="p-3 text-right font-mono font-bold text-foreground">
+                          {emp.currency || 'PKR'} {calc.basic.toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                        </td>
+                        <td className="p-3 text-right font-mono font-black text-emerald-700 dark:text-emerald-400">
+                          {emp.currency || 'PKR'} {calc.netPay.toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                        </td>
+                      </tr>
+                    );
+                  })}
                 </tbody>
               </table>
             </div>
+
+            <div className="flex justify-end pt-2">
+              <Button onClick={handleRunCalculation} disabled={targetEmployees.length === 0} className="bg-teal-600 hover:bg-teal-700 text-white font-bold px-6">
+                Calculate & Review Master Salary Register ({targetEmployees.length} Staff)
+              </Button>
+            </div>
           </div>
-        </div>
+        </>
       )}
 
-      {/* ========================================================================= */}
-      {/* MODAL: OFFICIAL EXECUTIVE PAYROLL SUMMARY & DIRECTOR APPROVAL CERTIFICATE */}
-      {/* ========================================================================= */}
-      {directorApprovalModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-xs overflow-y-auto">
-          <div className="w-full max-w-4xl bg-white text-slate-900 border border-slate-300 rounded-2xl shadow-2xl overflow-hidden animate-in fade-in my-6 flex flex-col">
-            {/* Top Modal Controls (Hidden in Print) */}
-            <div className="flex items-center justify-between p-4 bg-slate-900 text-white print:hidden shrink-0">
-              <div className="flex items-center gap-2">
-                <Award className="w-5 h-5 text-amber-400" />
-                <h3 className="font-bold text-sm">Executive Director Approval & Authorization Certificate</h3>
-              </div>
-              <div className="flex items-center gap-2">
-                <button
-                  onClick={() => window.print()}
-                  className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-amber-500 hover:bg-amber-600 text-slate-950 rounded-xl text-xs font-bold transition-all shadow-xs"
-                >
-                  <Printer className="w-4 h-4" /> Print / Save PDF
-                </button>
-                <button
-                  onClick={() => setDirectorApprovalModalOpen(false)}
-                  className="p-1.5 rounded-xl text-slate-400 hover:text-white hover:bg-slate-800"
-                >
-                  <X className="w-4 h-4" />
-                </button>
+      {/* 2. MASTER SALARY REGISTER & DIRECTOR APPROVAL STEP */}
+      {step === 'preview' && (
+        <div className="space-y-6">
+          {/* Action Header for Director Approval */}
+          <div className="flex items-center justify-between border-b pb-4 flex-wrap gap-3">
+            <div>
+              <h2 className="text-xl font-black text-foreground flex items-center gap-2">
+                <FileText className="w-5 h-5 text-teal-600" />
+                Master Salary Register & Director Approval Certificate
+              </h2>
+              <p className="text-xs text-muted-foreground mt-0.5">
+                Gross Salary Package first, followed by itemized salary breakup, statutory deductions, net payable, and total company cost.
+              </p>
+            </div>
+
+            <div className="flex items-center gap-2">
+              <Button variant="outline" size="sm" onClick={() => setStep('create')}>
+                <ArrowLeft className="w-3.5 h-3.5 mr-1" /> Back to Edit
+              </Button>
+              <Button variant="outline" size="sm" onClick={handlePrint}>
+                <Printer className="w-3.5 h-3.5 mr-1" /> Print Certificate
+              </Button>
+              <Button variant="outline" size="sm" onClick={handleExportCSV} className="text-emerald-700 border-emerald-300 hover:bg-emerald-50">
+                <Download className="w-3.5 h-3.5 mr-1" /> Download Excel/CSV
+              </Button>
+              <Button onClick={handleAuthorizeAndPost} disabled={loading} className="bg-emerald-600 hover:bg-emerald-700 text-white font-black shadow-sm">
+                <CheckCircle2 className="w-4 h-4 mr-1.5" /> Authorize & Post Payrun to GL
+              </Button>
+            </div>
+          </div>
+
+          {/* Executive Summary Cards */}
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 text-xs">
+            <div className="p-4 rounded-2xl border bg-card shadow-xs">
+              <span className="text-[11px] text-muted-foreground uppercase font-bold block">Total Employees</span>
+              <span className="text-2xl font-black text-foreground font-mono">{calculatedRoster.length} Staff</span>
+              <span className="text-[10px] text-teal-600 block mt-1">Active Cycle Roster</span>
+            </div>
+
+            <div className="p-4 rounded-2xl border bg-blue-50/50 dark:bg-blue-950/20 border-blue-200 dark:border-blue-800 shadow-xs">
+              <span className="text-[11px] text-blue-800 dark:text-blue-300 uppercase font-bold block">1. Total Gross Salary (Package)</span>
+              <span className="text-2xl font-black text-blue-950 dark:text-blue-200 font-mono">
+                PKR {totals.grossPackage.toLocaleString(undefined, { minimumFractionDigits: 2 })}
+              </span>
+              <span className="text-[10px] text-blue-700 block mt-1">Agreed Gross Total</span>
+            </div>
+
+            <div className="p-4 rounded-2xl border bg-rose-50/50 dark:bg-rose-950/20 border-rose-200 dark:border-rose-800 shadow-xs">
+              <span className="text-[11px] text-rose-800 dark:text-rose-300 uppercase font-bold block">2. Total Deductions (-)</span>
+              <span className="text-2xl font-black text-rose-950 dark:text-rose-200 font-mono">
+                PKR {totals.totalDeductions.toLocaleString(undefined, { minimumFractionDigits: 2 })}
+              </span>
+              <span className="text-[10px] text-rose-700 block mt-1">Tax, EOBI, PF, Social</span>
+            </div>
+
+            <div className="p-4 rounded-2xl border bg-emerald-50/50 dark:bg-emerald-950/20 border-emerald-200 dark:border-emerald-800 shadow-xs">
+              <span className="text-[11px] text-emerald-800 dark:text-emerald-300 uppercase font-bold block">3. Net Salary Payable</span>
+              <span className="text-2xl font-black text-emerald-950 dark:text-emerald-200 font-mono">
+                PKR {totals.netPay.toLocaleString(undefined, { minimumFractionDigits: 2 })}
+              </span>
+              <span className="text-[10px] text-emerald-700 block mt-1">Direct Bank Disbursement</span>
+            </div>
+          </div>
+
+          {/* MASTER SALARY REGISTER TABLE */}
+          <div className="rounded-2xl border border-border bg-card shadow-xs overflow-hidden space-y-2">
+            <div className="p-4 bg-muted/40 border-b flex items-center justify-between">
+              <div>
+                <h3 className="text-sm font-black text-foreground">
+                  Master Salary Register — {form.periodStart} to {form.periodEnd} ({form.frequency})
+                </h3>
+                <span className="text-[11px] text-muted-foreground">
+                  Showing Gross Package first, then Breakup columns (Basic, HRA, Medical, Travel, Utility), and individual deduction columns.
+                </span>
               </div>
             </div>
 
-            {/* PRINTABLE OFFICIAL CERTIFICATE DOCUMENT */}
-            <div className="p-8 space-y-6 text-slate-900 bg-white font-sans print:p-0">
-              {/* Document Header */}
-              <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4 border-b-2 border-slate-900 pb-4">
-                <div>
-                  <div className="flex items-center gap-2">
-                    <Building2 className="w-6 h-6 text-slate-900" />
-                    <h2 className="text-xl font-black tracking-tight uppercase text-slate-950">{activeEntityName}</h2>
-                  </div>
-                  <p className="text-xs text-slate-600 mt-1 font-mono">
-                    Tax / VAT Registration: <strong>NTN-7749102-K / VAT-9988221</strong>
-                  </p>
-                  <p className="text-xs text-slate-600">Corporate HQ & Global Operations</p>
-                </div>
+            <div className="overflow-x-auto">
+              <table className="w-full text-left text-xs border-collapse">
+                <thead>
+                  {/* Header Group Row */}
+                  <tr className="bg-muted/80 border-b text-[10px] font-black uppercase text-muted-foreground tracking-wider">
+                    <th colSpan={4} className="p-2.5 pl-4 border-r text-center bg-slate-100 dark:bg-slate-800">
+                      EMPLOYEE INFORMATION
+                    </th>
+                    <th className="p-2.5 border-r text-center bg-blue-100 dark:bg-blue-950 text-blue-900 dark:text-blue-200 font-black">
+                      PRIMARY SALARY
+                    </th>
+                    <th colSpan={5} className="p-2.5 border-r text-center bg-teal-100 dark:bg-teal-950 text-teal-900 dark:text-teal-200">
+                      GROSS SALARY BREAKUP (100%)
+                    </th>
+                    <th colSpan={6} className="p-2.5 border-r text-center bg-rose-100 dark:bg-rose-950 text-rose-900 dark:text-rose-200">
+                      DEDUCTIONS BREAKUP (-)
+                    </th>
+                    <th className="p-2.5 border-r text-center bg-emerald-100 dark:bg-emerald-950 text-emerald-900 dark:text-emerald-200">
+                      NET DISBURSEMENT
+                    </th>
+                    <th colSpan={3} className="p-2.5 pr-4 text-center bg-purple-100 dark:bg-purple-950 text-purple-900 dark:text-purple-200">
+                      EMPLOYER CONTRIBUTIONS (CTC)
+                    </th>
+                  </tr>
 
-                <div className="text-right space-y-1">
-                  <div className="inline-block px-3 py-1 bg-amber-100 border border-amber-400 text-amber-900 text-xs font-black uppercase tracking-wider rounded-md">
-                    Official Executive Document
-                  </div>
-                  <div className="text-xs text-slate-500 font-mono">Ref: PAY-AUTH-2026-02</div>
-                  <div className="text-xs text-slate-500">Date Generated: <strong>{today()}</strong></div>
-                </div>
+                  {/* Specific Column Names */}
+                  <tr className="bg-muted/50 border-b text-[10px] font-bold text-muted-foreground uppercase">
+                    <th className="p-2.5 pl-4">S.No</th>
+                    <th className="p-2.5">Emp ID</th>
+                    <th className="p-2.5">Employee Name</th>
+                    <th className="p-2.5 border-r">Department</th>
+                    
+                    {/* Primary Gross Column */}
+                    <th className="p-2.5 text-right border-r font-black text-blue-800 dark:text-blue-300 bg-blue-50/60 dark:bg-blue-950/30">
+                      TOTAL GROSS SALARY
+                    </th>
+
+                    {/* Gross Breakup Columns */}
+                    <th className="p-2.5 text-right">Basic (60%)</th>
+                    <th className="p-2.5 text-right">HRA (25%)</th>
+                    <th className="p-2.5 text-right">Medical (10%)</th>
+                    <th className="p-2.5 text-right">Travel (5%)</th>
+                    <th className="p-2.5 text-right border-r">Utility/Other</th>
+
+                    {/* Deduction Columns */}
+                    <th className="p-2.5 text-right text-rose-700">Tax (FBR)</th>
+                    <th className="p-2.5 text-right text-rose-700">EOBI (1%)</th>
+                    <th className="p-2.5 text-right text-rose-700">PF (Fund)</th>
+                    <th className="p-2.5 text-right text-rose-700">Social/GOSI</th>
+                    <th className="p-2.5 text-right text-rose-700">Other Ded.</th>
+                    <th className="p-2.5 text-right border-r font-black text-rose-800 bg-rose-50/50">TOTAL DED. (-)</th>
+
+                    {/* Net Column */}
+                    <th className="p-2.5 text-right border-r font-black text-emerald-800 bg-emerald-50/60 dark:bg-emerald-950/30">
+                      NET PAYABLE
+                    </th>
+
+                    {/* Employer Cost Columns */}
+                    <th className="p-2.5 text-right text-purple-700">EOBI (5%)</th>
+                    <th className="p-2.5 text-right text-purple-700">PF Match</th>
+                    <th className="p-2.5 pr-4 text-right font-black text-purple-900 dark:text-purple-300 bg-purple-50/50">TOTAL CTC</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-border">
+                  {calculatedRoster.map((r, idx) => (
+                    <tr key={r.employee.id} className="hover:bg-muted/30 transition-colors font-mono text-[11px]">
+                      <td className="p-2.5 pl-4 text-center text-muted-foreground font-sans">{idx + 1}</td>
+                      <td className="p-2.5 font-bold text-foreground">{r.employee.employeeNumber}</td>
+                      <td className="p-2.5 font-bold text-foreground font-sans whitespace-nowrap">
+                        {r.employee.firstName} {r.employee.lastName}
+                      </td>
+                      <td className="p-2.5 text-muted-foreground font-sans border-r whitespace-nowrap">
+                        {departments.find(d => d.id === r.employee.departmentId)?.name || 'General'}
+                      </td>
+
+                      {/* Primary Gross Column */}
+                      <td className="p-2.5 text-right font-black text-blue-700 dark:text-blue-400 bg-blue-50/30 dark:bg-blue-950/20 border-r">
+                        {r.grossPackage.toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                      </td>
+
+                      {/* Breakup Columns */}
+                      <td className="p-2.5 text-right font-bold text-foreground">
+                        {r.basic.toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                      </td>
+                      <td className="p-2.5 text-right text-muted-foreground">
+                        {r.hra.toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                      </td>
+                      <td className="p-2.5 text-right text-muted-foreground">
+                        {r.medical.toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                      </td>
+                      <td className="p-2.5 text-right text-muted-foreground">
+                        {r.transport.toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                      </td>
+                      <td className="p-2.5 text-right text-muted-foreground border-r">
+                        {r.otherAllowances.toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                      </td>
+
+                      {/* Deduction Columns */}
+                      <td className="p-2.5 text-right text-rose-600">
+                        {r.incomeTax > 0 ? r.incomeTax.toLocaleString(undefined, { minimumFractionDigits: 2 }) : '-'}
+                      </td>
+                      <td className="p-2.5 text-right text-rose-600">
+                        {r.eobiDeduction > 0 ? r.eobiDeduction.toLocaleString(undefined, { minimumFractionDigits: 2 }) : '-'}
+                      </td>
+                      <td className="p-2.5 text-right text-rose-600">
+                        {r.pfDeduction > 0 ? r.pfDeduction.toLocaleString(undefined, { minimumFractionDigits: 2 }) : '-'}
+                      </td>
+                      <td className="p-2.5 text-right text-rose-600">
+                        {r.socialSecurity > 0 ? r.socialSecurity.toLocaleString(undefined, { minimumFractionDigits: 2 }) : '-'}
+                      </td>
+                      <td className="p-2.5 text-right text-rose-600">
+                        {r.otherDeductions > 0 ? r.otherDeductions.toLocaleString(undefined, { minimumFractionDigits: 2 }) : '-'}
+                      </td>
+                      <td className="p-2.5 text-right font-bold text-rose-700 bg-rose-50/20 border-r">
+                        {r.totalDeductions.toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                      </td>
+
+                      {/* Net Payable */}
+                      <td className="p-2.5 text-right font-black text-emerald-700 dark:text-emerald-400 bg-emerald-50/30 dark:bg-emerald-950/20 border-r">
+                        {r.netPay.toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                      </td>
+
+                      {/* Employer Cost */}
+                      <td className="p-2.5 text-right text-purple-600">
+                        {r.eobiEmployer > 0 ? r.eobiEmployer.toLocaleString(undefined, { minimumFractionDigits: 2 }) : '-'}
+                      </td>
+                      <td className="p-2.5 text-right text-purple-600">
+                        {r.pfEmployer > 0 ? r.pfEmployer.toLocaleString(undefined, { minimumFractionDigits: 2 }) : '-'}
+                      </td>
+                      <td className="p-2.5 pr-4 text-right font-black text-purple-900 dark:text-purple-300 bg-purple-50/20">
+                        {r.totalCostToCompany.toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+
+                {/* Grand Totals Footer */}
+                <tfoot>
+                  <tr className="bg-slate-900 text-white font-mono text-[11px] font-black border-t-2 border-slate-700">
+                    <td colSpan={4} className="p-3 pl-4 text-right font-sans text-xs uppercase text-teal-300">
+                      GRAND TOTALS ({calculatedRoster.length} Employees):
+                    </td>
+                    <td className="p-3 text-right text-blue-300 border-r">
+                      {totals.grossPackage.toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                    </td>
+                    <td className="p-3 text-right">{totals.basic.toLocaleString(undefined, { minimumFractionDigits: 2 })}</td>
+                    <td className="p-3 text-right">{totals.hra.toLocaleString(undefined, { minimumFractionDigits: 2 })}</td>
+                    <td className="p-3 text-right">{totals.medical.toLocaleString(undefined, { minimumFractionDigits: 2 })}</td>
+                    <td className="p-3 text-right">{totals.transport.toLocaleString(undefined, { minimumFractionDigits: 2 })}</td>
+                    <td className="p-3 text-right border-r">{totals.otherAllowances.toLocaleString(undefined, { minimumFractionDigits: 2 })}</td>
+                    
+                    <td className="p-3 text-right text-rose-300">{totals.incomeTax.toLocaleString(undefined, { minimumFractionDigits: 2 })}</td>
+                    <td className="p-3 text-right text-rose-300">{totals.eobiDeduction.toLocaleString(undefined, { minimumFractionDigits: 2 })}</td>
+                    <td className="p-3 text-right text-rose-300">{totals.pfDeduction.toLocaleString(undefined, { minimumFractionDigits: 2 })}</td>
+                    <td className="p-3 text-right text-rose-300">{totals.socialSecurity.toLocaleString(undefined, { minimumFractionDigits: 2 })}</td>
+                    <td className="p-3 text-right text-rose-300">{totals.otherDeductions.toLocaleString(undefined, { minimumFractionDigits: 2 })}</td>
+                    <td className="p-3 text-right text-rose-400 border-r">{totals.totalDeductions.toLocaleString(undefined, { minimumFractionDigits: 2 })}</td>
+
+                    <td className="p-3 text-right text-emerald-400 border-r">
+                      {totals.netPay.toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                    </td>
+
+                    <td className="p-3 text-right text-purple-300">{totals.eobiEmployer.toLocaleString(undefined, { minimumFractionDigits: 2 })}</td>
+                    <td className="p-3 text-right text-purple-300">{totals.pfEmployer.toLocaleString(undefined, { minimumFractionDigits: 2 })}</td>
+                    <td className="p-3 pr-4 text-right text-purple-300">
+                      {totals.totalCostToCompany.toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                    </td>
+                  </tr>
+                </tfoot>
+              </table>
+            </div>
+          </div>
+
+          {/* Director Approval Sign-Off Box */}
+          <div className="p-6 rounded-2xl border-2 border-slate-300 dark:border-slate-700 bg-card space-y-6 shadow-xs">
+            <div className="flex items-center justify-between border-b pb-4">
+              <div>
+                <h3 className="text-base font-black text-foreground uppercase tracking-wide">
+                  Corporate Payroll Sign-Off & Verification Certificate
+                </h3>
+                <span className="text-xs text-muted-foreground">
+                  In compliance with IAS 19 Employee Benefits, FBR / IRS Statutory Regulations, and Company HR Policy.
+                </span>
+              </div>
+              <div className="px-3 py-1 bg-emerald-100 text-emerald-800 font-bold text-xs rounded-full border border-emerald-300">
+                Ready for Director Authorization
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-8 pt-4">
+              <div className="space-y-4">
+                <span className="text-xs font-bold text-muted-foreground uppercase block">Prepared By (HR & Payroll Officer)</span>
+                <div className="h-12 border-b-2 border-dashed border-border" />
+                <div className="text-xs font-bold text-foreground">Signature & Date</div>
               </div>
 
-              {/* Title */}
-              <div className="text-center space-y-1 py-1">
-                <h1 className="text-base font-black tracking-wide uppercase text-slate-900">
-                  EXECUTIVE PAYROLL SUMMARY & DISBURSEMENT AUTHORIZATION
-                </h1>
-                <p className="text-xs text-slate-600">
-                  Statutory Compensation Dissection for Board of Directors & Managing Director Sign-off
-                </p>
+              <div className="space-y-4">
+                <span className="text-xs font-bold text-muted-foreground uppercase block">Reviewed By (Chief Financial Officer)</span>
+                <div className="h-12 border-b-2 border-dashed border-border" />
+                <div className="text-xs font-bold text-foreground">Signature & Date</div>
               </div>
 
-              {/* Payrun Parameters Summary Box */}
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 p-4 bg-slate-50 border border-slate-300 rounded-xl text-xs">
-                <div>
-                  <span className="text-[10px] text-slate-500 uppercase font-bold block">Attendance Cutoff Period</span>
-                  <span className="font-mono font-bold text-slate-900">{form.periodStart} to {form.periodEnd}</span>
-                </div>
-                <div>
-                  <span className="text-[10px] text-slate-500 uppercase font-bold block">Disbursement Date</span>
-                  <span className="font-mono font-bold text-teal-700">{form.payDate}</span>
-                </div>
-                <div>
-                  <span className="text-[10px] text-slate-500 uppercase font-bold block">Total Headcount</span>
-                  <span className="font-bold text-slate-900">{targetProcessingEmployees.length} Active Employees</span>
-                </div>
-                <div>
-                  <span className="text-[10px] text-slate-500 uppercase font-bold block">Accounting Currency</span>
-                  <span className="font-mono font-bold text-slate-900">{targetProcessingEmployees[0]?.currency || 'USD'} (Multi-Country)</span>
-                </div>
-              </div>
-
-              {/* Financial Breakdown Table */}
-              <div className="border border-slate-300 rounded-xl overflow-hidden">
-                <table className="w-full text-xs text-left border-collapse">
-                  <thead>
-                    <tr className="bg-slate-900 text-white uppercase text-[10px] tracking-wider">
-                      <th className="p-3 pl-4">Compensation Category</th>
-                      <th className="p-3">Statutory Description</th>
-                      <th className="p-3 text-right pr-4">Total Amount (Base Currency)</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-slate-200">
-                    <tr>
-                      <td className="p-3 pl-4 font-bold text-slate-900">1. Basic / Core Base Salary</td>
-                      <td className="p-3 text-slate-600">Fixed contracted wage before allowances</td>
-                      <td className="p-3 text-right pr-4 font-mono font-bold text-slate-900">{money(calculationSummary.basicTotal)}</td>
-                    </tr>
-                    <tr>
-                      <td className="p-3 pl-4 font-bold text-slate-900">2. Fixed & Variable Allowances (+)</td>
-                      <td className="p-3 text-slate-600">House Rent (HRA), Transport, Medical, Shift Allowances</td>
-                      <td className="p-3 text-right pr-4 font-mono font-bold text-emerald-700">+{money(calculationSummary.additionsTotal)}</td>
-                    </tr>
-                    <tr className="bg-slate-50 font-bold">
-                      <td className="p-3 pl-4 text-blue-900">TOTAL GROSS PAYROLL EARNINGS</td>
-                      <td className="p-3 text-slate-600">Total earnings subject to statutory withholding</td>
-                      <td className="p-3 text-right pr-4 font-mono text-blue-900">{money(calculationSummary.grossTotal)}</td>
-                    </tr>
-                    <tr>
-                      <td className="p-3 pl-4 font-bold text-rose-800">3. Statutory Income Tax Withholding (-)</td>
-                      <td className="p-3 text-slate-600">PAYE, Federal/State Taxes, FBR Withholding</td>
-                      <td className="p-3 text-right pr-4 font-mono font-bold text-rose-700">-{money(calculationSummary.taxTotal)}</td>
-                    </tr>
-                    <tr>
-                      <td className="p-3 pl-4 font-bold text-rose-800">4. Social Security & Pension Deductions (-)</td>
-                      <td className="p-3 text-slate-600">FICA, GOSI, EOBI, NIC, CPP Employee Portion</td>
-                      <td className="p-3 text-right pr-4 font-mono font-bold text-rose-700">-{money(calculationSummary.socialTotal)}</td>
-                    </tr>
-                    <tr className="bg-slate-100 font-bold border-t border-slate-300">
-                      <td className="p-3 pl-4 text-slate-700">TOTAL STATUTORY DEDUCTIONS (-)</td>
-                      <td className="p-3 text-slate-600">To be remitted to government tax & social authorities</td>
-                      <td className="p-3 text-right pr-4 font-mono text-rose-800">-{money(calculationSummary.deductionsTotal)}</td>
-                    </tr>
-                    <tr className="bg-emerald-50 border-t-2 border-emerald-500">
-                      <td className="p-3.5 pl-4 font-black text-emerald-950 text-sm">TOTAL NET PAYABLE (BANK DISBURSEMENT)</td>
-                      <td className="p-3 text-emerald-800 text-xs font-semibold">Net funds required in company payroll clearing account</td>
-                      <td className="p-3.5 text-right pr-4 font-mono font-black text-emerald-950 text-base">{money(calculationSummary.netTotal)}</td>
-                    </tr>
-                    <tr className="bg-slate-50 border-t border-slate-300">
-                      <td className="p-3 pl-4 font-semibold text-slate-700">5. Employer Statutory Contribution (+)</td>
-                      <td className="p-3 text-slate-500">Employer GOSI, EOBI, FICA, NIC Employer taxes</td>
-                      <td className="p-3 text-right pr-4 font-mono text-purple-700 font-bold">+{money(calculationSummary.employerTotal)}</td>
-                    </tr>
-                    <tr className="bg-slate-100 font-black">
-                      <td className="p-3 pl-4 text-slate-900">TOTAL COMPANY COST (CTC)</td>
-                      <td className="p-3 text-slate-600">Complete corporate payroll expense (IAS 19 / GAAP)</td>
-                      <td className="p-3 text-right pr-4 font-mono text-purple-900">{money(calculationSummary.ctcTotal)}</td>
-                    </tr>
-                  </tbody>
-                </table>
-              </div>
-
-              {/* Department & Location Summary */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div className="p-3.5 border border-slate-300 rounded-xl space-y-2 bg-slate-50 text-xs">
-                  <span className="font-bold text-slate-900 flex items-center gap-1.5">
-                    <Building2 className="w-4 h-4 text-slate-700" /> Facility Allocation Breakdown
-                  </span>
-                  <div className="space-y-1">
-                    <div className="flex justify-between">
-                      <span className="text-slate-600">🏢 Head Office (Corporate Staff):</span>
-                      <span className="font-mono font-bold text-slate-900">60% of Gross</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-slate-600">🏭 Factory / Plant 1 (Manufacturing):</span>
-                      <span className="font-mono font-bold text-slate-900">40% of Gross</span>
-                    </div>
-                  </div>
-                </div>
-
-                <div className="p-3.5 border border-slate-300 rounded-xl space-y-2 bg-slate-50 text-xs">
-                  <span className="font-bold text-slate-900 flex items-center gap-1.5">
-                    <CheckSquare className="w-4 h-4 text-teal-700" /> General Ledger Double-Entry Audit
-                  </span>
-                  <div className="space-y-1 text-[11px] font-mono">
-                    <div className="flex justify-between">
-                      <span>Debit Payroll Expense:</span>
-                      <span className="font-bold text-slate-900">{money(calculationSummary.ctcTotal)}</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span>Credit Liabilities & Bank:</span>
-                      <span className="font-bold text-slate-900">{money(calculationSummary.ctcTotal)}</span>
-                    </div>
-                    <div className="flex justify-between text-teal-700 font-sans font-bold pt-1 border-t border-slate-200">
-                      <span>Variance:</span>
-                      <span>$0.00 (Balanced & Verified)</span>
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              {/* Multi-Tier Signature & Authorization Sign-off Grid */}
-              <div className="pt-4 border-t-2 border-slate-900 space-y-3">
-                <h4 className="text-xs font-black uppercase text-slate-900 tracking-wider">
-                  OFFICIAL BOARD & EXECUTIVE SIGN-OFF GRID
-                </h4>
-
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 pt-2">
-                  {/* Step 1: Prepared by */}
-                  <div className="p-4 border border-slate-300 rounded-xl bg-slate-50 space-y-4 text-xs">
-                    <div>
-                      <span className="text-[10px] text-slate-500 uppercase font-bold block">1. Prepared By</span>
-                      <strong className="text-slate-900 font-bold block">Head of Payroll & HR</strong>
-                    </div>
-                    <div className="border-b border-dashed border-slate-400 pt-6"></div>
-                    <div className="flex justify-between text-[10px] text-slate-500">
-                      <span>Signature</span>
-                      <span>Date: _________</span>
-                    </div>
-                  </div>
-
-                  {/* Step 2: Audited by */}
-                  <div className="p-4 border border-slate-300 rounded-xl bg-slate-50 space-y-4 text-xs">
-                    <div>
-                      <span className="text-[10px] text-slate-500 uppercase font-bold block">2. Verified & Audited By</span>
-                      <strong className="text-slate-900 font-bold block">Chief Financial Officer (CFO)</strong>
-                    </div>
-                    <div className="border-b border-dashed border-slate-400 pt-6"></div>
-                    <div className="flex justify-between text-[10px] text-slate-500">
-                      <span>Signature</span>
-                      <span>Date: _________</span>
-                    </div>
-                  </div>
-
-                  {/* Step 3: Approved by Director */}
-                  <div className="p-4 border-2 border-slate-900 rounded-xl bg-amber-50/50 space-y-4 text-xs">
-                    <div>
-                      <span className="text-[10px] text-amber-800 uppercase font-black block">3. Authorized for Disbursement</span>
-                      <strong className="text-slate-950 font-black block">Managing Director / CEO</strong>
-                    </div>
-                    <div className="border-b-2 border-slate-900 pt-6"></div>
-                    <div className="flex justify-between text-[10px] text-slate-700 font-bold">
-                      <span>Director Signature & Stamp</span>
-                      <span>Date: _________</span>
-                    </div>
-                  </div>
-                </div>
+              <div className="space-y-4">
+                <span className="text-xs font-bold text-muted-foreground uppercase block">Authorized By (Managing Director / Board)</span>
+                <div className="h-12 border-b-2 border-dashed border-border" />
+                <div className="text-xs font-bold text-foreground">Signature & Date</div>
               </div>
             </div>
           </div>

@@ -50,11 +50,64 @@ export interface Employee {
   positionId?: string;
   managerId?: string;
   payGradeId?: string;
+  grossSalary?: number;
   basicSalary: number;
+  basicPercent?: number;
   currency: string;
   taxFilingStatus: TaxFilingStatus;
   taxExemptions: number;
   additionalTaxWithholding?: number;
+  // Pakistan Specific
+  eobiEnabled?: boolean;
+  eobiNumber?: string;
+  eobiEmployeePercent?: number;
+  eobiEmployerPercent?: number;
+  pfEnabled?: boolean;
+  pfEmployeePercent?: number;
+  pfEmployerPercent?: number;
+  // USA Specific
+  usFicaEnabled?: boolean;
+  us401kEnabled?: boolean;
+  us401kEmployeePercent?: number;
+  us401kEmployerPercent?: number;
+  usHealthPreTaxDeduction?: number;
+  // Canada Specific
+  caCppEnabled?: boolean;
+  caEiEnabled?: boolean;
+  caRrspEnabled?: boolean;
+  caRrspEmployeePercent?: number;
+  caRrspEmployerPercent?: number;
+  // UK Specific
+  ukPayeTaxCode?: string;
+  ukNicEnabled?: boolean;
+  ukPensionEnabled?: boolean;
+  ukPensionEmployeePercent?: number;
+  ukPensionEmployerPercent?: number;
+  // UAE Specific
+  uaeWpsRoutingCode?: string;
+  uaeGpssaEnabled?: boolean;
+  uaeGpssaEmployeePercent?: number;
+  uaeGpssaEmployerPercent?: number;
+  uaeGratuityAccrualEnabled?: boolean;
+  // Saudi Arabia Specific
+  saZatcaId?: string;
+  saGosiEnabled?: boolean;
+  saGosiEmployeePercent?: number;
+  saGosiEmployerPercent?: number;
+  saEosbAccrualEnabled?: boolean;
+  // Europe (EU) Specific
+  euSocialEnabled?: boolean;
+  euSocialSecurityId?: string;
+  euEmployeeSocialPercent?: number;
+  euEmployerSocialPercent?: number;
+  euSupplementaryPensionEnabled?: boolean;
+  euPensionEmployeePercent?: number;
+  euPensionEmployerPercent?: number;
+  // Allowances
+  hraPercent?: number;
+  transportPercent?: number;
+  medicalPercent?: number;
+  otherAllowancePercent?: number;
   companyId?: string;
   createdAt: string;
   updatedAt: string;

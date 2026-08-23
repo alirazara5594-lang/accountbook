@@ -5,7 +5,7 @@ import {
   Download, Printer, ArrowLeft, Search,
   Banknote, FileCheck, RefreshCw, X
 } from 'lucide-react';
-import { calculateEmployeePayrollDetails, COUNTRY_CONFIGS } from './PayrollProcessing';
+import { calculateEmployeePayrollDetails } from './PayrollProcessing';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 
@@ -69,28 +69,33 @@ export default function SalarySlipsView() {
           bankAccountLast4: (emp.bankAccountNumber || '8842').slice(-4),
           bankIBAN: emp.bankIBAN || 'PK36SCBL0000001123456701',
           bankSWIFT: emp.bankSWIFT || 'SCBLPKKXXXX',
-          basicSalary: details.basicSalary,
+          grossPackage: details.grossPackage,
+          basicSalary: details.basic,
           grossEarnings: details.grossEarnings,
-          totalDeductions: details.deductions.totalDeductions,
+          totalDeductions: details.totalDeductions,
           netPay: details.netPay,
-          employerContributions: details.employerContrib,
-          currency: details.currency,
+          employerContributions: details.totalEmployerCost,
+          currency: emp.currency || 'PKR',
           payFrequency: emp.payFrequency || 'Monthly',
-          country: emp.country || 'US',
+          country: emp.country || 'PK',
           earnings: [
-            { code: 'BASIC', name: 'Basic Salary', amount: details.basicSalary, category: 'Basic', isStatutory: false },
-            ...(details.additions.hra > 0 ? [{ code: 'HRA', name: 'House Rent Allowance (HRA)', amount: details.additions.hra, category: 'Allowance', isStatutory: false }] : []),
-            ...(details.additions.transport > 0 ? [{ code: 'TRANS', name: 'Transport / Conveyance Allowance', amount: details.additions.transport, category: 'Allowance', isStatutory: false }] : []),
-            ...(details.additions.medical > 0 ? [{ code: 'MED', name: 'Medical Allowance', amount: details.additions.medical, category: 'Allowance', isStatutory: false }] : []),
-            ...(details.additions.otherAllowances > 0 ? [{ code: 'SPEC', name: 'Special / Utility Allowance', amount: details.additions.otherAllowances, category: 'Allowance', isStatutory: false }] : []),
+            { code: 'BASIC', name: 'Basic Salary', amount: details.basic, category: 'Basic', isStatutory: false },
+            ...(details.hra > 0 ? [{ code: 'HRA', name: 'House Rent Allowance (HRA)', amount: details.hra, category: 'Allowance', isStatutory: false }] : []),
+            ...(details.transport > 0 ? [{ code: 'TRANS', name: 'Transport / Conveyance Allowance', amount: details.transport, category: 'Allowance', isStatutory: false }] : []),
+            ...(details.medical > 0 ? [{ code: 'MED', name: 'Medical Allowance', amount: details.medical, category: 'Allowance', isStatutory: false }] : []),
+            ...(details.otherAllowances > 0 ? [{ code: 'SPEC', name: 'Special / Utility Allowance', amount: details.otherAllowances, category: 'Allowance', isStatutory: false }] : []),
           ],
           deductions: [
-            ...(details.deductions.incomeTax > 0 ? [{ code: 'TAX', name: COUNTRY_CONFIGS[details.country]?.statutoryLabels.tax || 'Income Tax Withholding', amount: details.deductions.incomeTax, category: 'Tax', isStatutory: true }] : []),
-            ...(details.deductions.socialSecurity > 0 ? [{ code: 'SOC', name: COUNTRY_CONFIGS[details.country]?.statutoryLabels.social || 'Social Security / Pension', amount: details.deductions.socialSecurity, category: 'Social', isStatutory: true }] : []),
-            ...(details.deductions.pensionOrOther > 0 ? [{ code: 'PEN', name: 'Voluntary Insurance / Other Statutory', amount: details.deductions.pensionOrOther, category: 'Pension', isStatutory: true }] : []),
+            ...(details.incomeTax > 0 ? [{ code: 'TAX', name: 'Income Tax Withholding', amount: details.incomeTax, category: 'Tax', isStatutory: true }] : []),
+            ...(details.eobiDeduction > 0 ? [{ code: 'EOBI', name: "Employees' Old-Age Benefits (EOBI 1%)", amount: details.eobiDeduction, category: 'Social', isStatutory: true }] : []),
+            ...(details.pfDeduction > 0 ? [{ code: 'PF', name: 'Provident Fund / Retirement Contribution', amount: details.pfDeduction, category: 'Pension', isStatutory: true }] : []),
+            ...(details.socialSecurity > 0 ? [{ code: 'SOC', name: 'Social Security / GOSI / FICA', amount: details.socialSecurity, category: 'Social', isStatutory: true }] : []),
+            ...(details.otherDeductions > 0 ? [{ code: 'OTHER', name: 'Other Deductions / Withholding', amount: details.otherDeductions, category: 'Other', isStatutory: false }] : []),
           ],
           employerContribs: [
-            { code: 'EMPR', name: COUNTRY_CONFIGS[details.country]?.statutoryLabels.employer || 'Employer Statutory Contribution / Gratuity', amount: details.employerContrib, category: 'EmployerCost', isStatutory: true }
+            ...(details.eobiEmployer > 0 ? [{ code: 'EOBI_EMPR', name: 'EOBI Employer Contribution (5%)', amount: details.eobiEmployer, category: 'EmployerCost', isStatutory: true }] : []),
+            ...(details.pfEmployer > 0 ? [{ code: 'PF_EMPR', name: 'Provident Fund Matching Contribution', amount: details.pfEmployer, category: 'EmployerCost', isStatutory: true }] : []),
+            ...(details.otherEmployerContrib > 0 ? [{ code: 'EMPR_STAT', name: 'Employer Statutory Contribution / Gratuity', amount: details.otherEmployerContrib, category: 'EmployerCost', isStatutory: true }] : []),
           ]
         });
       }

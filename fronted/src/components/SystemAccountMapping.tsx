@@ -1,9 +1,8 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { useCoaStore } from '../stores';
 import {
-  Save, ArrowLeft, RefreshCw, HelpCircle, FileText, CheckCircle2,
+  Save, RefreshCw, HelpCircle,
   TrendingUp, ShoppingCart, Package, Building2, Users, Globe,
-  ShieldCheck
 } from 'lucide-react';
 
 interface Account {
@@ -39,8 +38,10 @@ export const SystemAccountMapping: React.FC<SystemAccountMappingProps> = ({ acco
     whtPayableAccountId: '',
     inventoryAccountId: '',
     payrollExpenseAccountId: '',
+    employerContribExpenseAccountId: '',
     payrollPayableAccountId: '',
     payrollTaxPayableAccountId: '',
+    eobiPayableAccountId: '',
     pensionPayableAccountId: '',
     allowanceAccountId: '',
     prepaidAccountId: '',
@@ -89,10 +90,13 @@ export const SystemAccountMapping: React.FC<SystemAccountMappingProps> = ({ acco
         whtReceivableAccountId: getAccId('WHT Receivable', '12200'),
         whtPayableAccountId: getAccId('WHT Payable', '22100'),
         inventoryAccountId: getAccId('Inventory', '13000'),
+        // Payroll mappings aligned 1-to-1 with payroll run columns
         payrollExpenseAccountId: getAccId('Payroll Expense', '61200'),
+        employerContribExpenseAccountId: getAccId('Employer Payroll Contributions Expense', '61250') || getAccId('Payroll Expense', '61200'),
         payrollPayableAccountId: getAccId('Accrued Salaries', '21300'),
         payrollTaxPayableAccountId: getAccId('Payroll Taxes Accrued', '21400'),
-        pensionPayableAccountId: getAccId('Pension Fund Accrued', '21500'),
+        eobiPayableAccountId: getAccId('EOBI & Social Security Accrued', '21500') || getAccId('Pension Fund Accrued', '21500'),
+        pensionPayableAccountId: getAccId('Provident Fund Accrued', '21510') || getAccId('Pension Fund Accrued', '21500'),
         allowanceAccountId: getAccId('Allowance for Doubtful Accounts', '12100'),
         prepaidAccountId: getAccId('Prepaid Expenses', '14000'),
         deferredRevenueAccountId: getAccId('Deferred Revenue', '23000'),
@@ -142,10 +146,15 @@ export const SystemAccountMapping: React.FC<SystemAccountMappingProps> = ({ acco
         { key: 'WHT Receivable', id: mappings.whtReceivableAccountId },
         { key: 'WHT Payable', id: mappings.whtPayableAccountId },
         { key: 'Inventory', id: mappings.inventoryAccountId },
+        // Payroll
         { key: 'Payroll Expense', id: mappings.payrollExpenseAccountId },
+        { key: 'Employer Payroll Contributions Expense', id: mappings.employerContribExpenseAccountId },
         { key: 'Accrued Salaries', id: mappings.payrollPayableAccountId },
         { key: 'Payroll Taxes Accrued', id: mappings.payrollTaxPayableAccountId },
+        { key: 'EOBI & Social Security Accrued', id: mappings.eobiPayableAccountId },
+        { key: 'Provident Fund Accrued', id: mappings.pensionPayableAccountId },
         { key: 'Pension Fund Accrued', id: mappings.pensionPayableAccountId },
+        // Others
         { key: 'Allowance for Doubtful Accounts', id: mappings.allowanceAccountId },
         { key: 'Prepaid Expenses', id: mappings.prepaidAccountId },
         { key: 'Deferred Revenue', id: mappings.deferredRevenueAccountId },
@@ -201,9 +210,11 @@ export const SystemAccountMapping: React.FC<SystemAccountMappingProps> = ({ acco
         whtPayableAccountId: getSeed('22100'),
         inventoryAccountId: getSeed('13000'),
         payrollExpenseAccountId: getSeed('61200'),
+        employerContribExpenseAccountId: getSeed('61250') || getSeed('61200'),
         payrollPayableAccountId: getSeed('21300'),
         payrollTaxPayableAccountId: getSeed('21400'),
-        pensionPayableAccountId: getSeed('21500'),
+        eobiPayableAccountId: getSeed('21500'),
+        pensionPayableAccountId: getSeed('21510') || getSeed('21500'),
         allowanceAccountId: getSeed('12100'),
         prepaidAccountId: getSeed('14000'),
         deferredRevenueAccountId: getSeed('23000'),
@@ -260,121 +271,86 @@ export const SystemAccountMapping: React.FC<SystemAccountMappingProps> = ({ acco
   };
 
   return (
-    <div className="p-6 max-w-[1400px] mx-auto space-y-6">
-      {/* Header */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-[var(--color-border)] pb-4">
-        <div className="flex items-center gap-3">
-          <button
-            onClick={close}
-            className="p-2 rounded-xl border border-[var(--color-border)] hover:bg-[var(--color-surface-muted)] text-[var(--color-text-muted)] hover:text-[var(--color-text-strong)] transition-all"
-            title="Go back"
-          >
-            <ArrowLeft className="w-5 h-5" />
-          </button>
-          <div>
-            <h1 className="text-xl font-black tracking-tight text-[var(--color-text-strong)] flex items-center gap-2.5">
-              <div className="p-2 rounded-xl bg-cyan-500/10 text-cyan-600 border border-cyan-500/20">
-                <FileText className="w-5 h-5" />
-              </div>
-              System Chart of Accounts Mapping Engine
-            </h1>
-            <p className="text-xs text-[var(--color-text-muted)] mt-1">
-              Configure default general ledger accounts for automated transaction posting (AR, AP, COGS, Tax, Payroll).
-            </p>
-          </div>
+    <div className="p-6 max-w-[1300px] mx-auto space-y-6 animate-in fade-in">
+      {/* Top Header */}
+      <div className="flex items-center justify-between border-b border-[var(--color-border)] pb-4 flex-wrap gap-3">
+        <div>
+          <h2 className="text-xl font-bold text-[var(--color-text-strong)] flex items-center gap-2">
+            <Building2 className="w-5 h-5 text-teal-600" />
+            System Chart of Accounts Mapping Engine
+          </h2>
+          <p className="text-xs text-[var(--color-text-muted)] mt-1">
+            Map operational ERP workflows (Sales, Bills, Inventory, Payroll, Taxes) to your General Ledger Accounts.
+          </p>
         </div>
 
         <div className="flex items-center gap-2">
           <button
             onClick={handleReset}
-            className="px-3 py-2 border border-[var(--color-border)] hover:bg-[var(--color-surface-muted)] text-[var(--color-text-strong)] rounded-xl text-xs font-bold flex items-center gap-1.5 shadow-xs"
+            className="px-3 py-2 border border-[var(--color-border)] rounded-xl text-xs font-semibold hover:bg-[var(--color-surface-muted)] text-[var(--color-text)] flex items-center gap-1.5 transition-colors"
           >
             <RefreshCw className="w-3.5 h-3.5" /> Reset Defaults
           </button>
           <button
             onClick={handleSave}
             disabled={saving}
-            className="px-4 py-2 bg-teal-600 hover:bg-teal-700 text-white rounded-xl text-xs font-bold shadow-sm flex items-center gap-1.5 transition-all"
+            className="px-4 py-2 bg-teal-600 hover:bg-teal-700 text-white rounded-xl text-xs font-bold shadow-sm flex items-center gap-1.5 transition-all disabled:opacity-50"
           >
-            <Save className="w-4 h-4" /> {saving ? 'Saving...' : 'Save All Mappings'}
+            <Save className="w-3.5 h-3.5" /> {saving ? 'Saving Mappings...' : 'Save COA Mapping'}
           </button>
         </div>
       </div>
 
-      {/* 4-in-1 KPI Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        <div className="p-4 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] shadow-sm space-y-1">
-          <div className="flex items-center justify-between text-[var(--color-text-muted)]">
-            <span className="text-xs font-semibold uppercase tracking-wider">Mapping Coverage</span>
-            <CheckCircle2 className="w-4 h-4 text-emerald-600" />
-          </div>
-          <div className="text-2xl font-black text-emerald-600 font-mono">
-            {configuredCount} / {totalCount}
-          </div>
-          <div className="text-[11px] text-[var(--color-text-muted)]">Rules actively configured</div>
-        </div>
-
-        <div className="p-4 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] shadow-sm space-y-1">
-          <div className="flex items-center justify-between text-[var(--color-text-muted)]">
-            <span className="text-xs font-semibold uppercase tracking-wider">Available Ledgers</span>
-            <FileText className="w-4 h-4 text-blue-600" />
-          </div>
-          <div className="text-2xl font-black text-[var(--color-text-strong)] font-mono">{accounts.length}</div>
-          <div className="text-[11px] text-[var(--color-text-muted)]">Active Chart of Accounts ledgers</div>
-        </div>
-
-        <div className="p-4 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] shadow-sm space-y-1">
-          <div className="flex items-center justify-between text-[var(--color-text-muted)]">
-            <span className="text-xs font-semibold uppercase tracking-wider">Posting Engine</span>
-            <ShieldCheck className="w-4 h-4 text-teal-600" />
-          </div>
-          <div className="text-2xl font-black text-[var(--color-text-strong)] font-mono">Automated</div>
-          <div className="text-[11px] text-teal-600 font-medium">100% Balanced Double-Entry</div>
-        </div>
-
-        <div className="p-4 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] shadow-sm space-y-1">
-          <div className="flex items-center justify-between text-[var(--color-text-muted)]">
-            <span className="text-xs font-semibold uppercase tracking-wider">Framework Rules</span>
-            <Globe className="w-4 h-4 text-purple-600" />
-          </div>
-          <div className="text-2xl font-black text-[var(--color-text-strong)] font-mono">IAS / IFRS</div>
-          <div className="text-[11px] text-[var(--color-text-muted)]">IFRS 15, IFRS 16 & IAS 12 Rules</div>
-        </div>
-      </div>
-
-      {/* Category Navigation Bar (Responsive Wrapped - Zero Horizontal Scroll) */}
-      <div className="flex flex-wrap items-center gap-1.5 p-1.5 bg-[var(--color-surface-muted)] border border-[var(--color-border)] rounded-xl w-full">
-        {[
-          { id: 'all', label: 'All Posting Categories', icon: FileText },
-          { id: 'sales', label: 'Sales & Receivables', icon: TrendingUp },
-          { id: 'purchases', label: 'Procurement & Payables', icon: ShoppingCart },
-          { id: 'inventory', label: 'Inventory & COGS', icon: Package },
-          { id: 'assets', label: 'Fixed Assets & Leases', icon: Building2 },
-          { id: 'payroll', label: 'Payroll & Taxes', icon: Users },
-          { id: 'intercompany', label: 'Intercompany & Overhead', icon: Globe },
-        ].map(tab => {
-          const Icon = tab.icon;
-          const isActive = activeCategory === tab.id;
-          return (
+      {/* Progress & Category Filters */}
+      <div className="flex items-center justify-between flex-wrap gap-3 bg-[var(--color-surface-muted)] p-3 rounded-2xl border border-[var(--color-border)]">
+        <div className="flex items-center gap-1.5 overflow-x-auto text-xs font-semibold">
+          {[
+            { id: 'all', label: 'All Modules' },
+            { id: 'payroll', label: 'Payroll & Taxes' },
+            { id: 'sales', label: 'Sales & AR' },
+            { id: 'purchases', label: 'Purchases & AP' },
+            { id: 'inventory', label: 'Inventory & COGS' },
+            { id: 'assets', label: 'Assets & Leases' },
+            { id: 'intercompany', label: 'Intercompany' },
+          ].map(c => (
             <button
-              key={tab.id}
-              onClick={() => setActiveCategory(tab.id as any)}
-              className={`flex items-center justify-center sm:justify-start gap-2 px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
-                isActive
-                  ? 'bg-[var(--color-surface)] text-[var(--color-text-strong)] shadow-xs border border-[var(--color-border)]'
-                  : 'text-[var(--color-text-muted)] hover:text-[var(--color-text-strong)] hover:bg-[var(--color-surface)]/50'
+              key={c.id}
+              onClick={() => setActiveCategory(c.id as any)}
+              className={`px-3 py-1.5 rounded-xl transition-all ${
+                activeCategory === c.id
+                  ? 'bg-teal-600 text-white shadow-xs'
+                  : 'text-[var(--color-text-muted)] hover:text-[var(--color-text-strong)]'
               }`}
             >
-              <Icon className={`w-3.5 h-3.5 shrink-0 ${isActive ? 'text-teal-600' : ''}`} />
-              <span>{tab.label}</span>
+              {c.label}
             </button>
-          );
-        })}
+          ))}
+        </div>
+
+        <div className="text-xs font-semibold text-[var(--color-text-muted)]">
+          Configured: <strong className="text-teal-600">{configuredCount}</strong> / {totalCount} Accounts
+        </div>
       </div>
 
-      {/* ── Category Cards Grid ── */}
+      {/* Grid of Modular Mappings */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-        {/* 1. Sales & Receivables */}
+        {/* 1. Payroll & Taxes */}
+        {(activeCategory === 'all' || activeCategory === 'payroll') && (
+          <div className="p-5 rounded-2xl border border-teal-500/30 bg-[var(--color-surface)] shadow-sm space-y-4 text-xs">
+            <h3 className="font-bold text-sm text-[var(--color-text-strong)] flex items-center gap-2 border-b border-[var(--color-border)] pb-2.5">
+              <Users className="w-4 h-4 text-teal-600" /> Payroll & Statutory Dissection (IAS 19 / IAS 12)
+            </h3>
+            {renderField('Gross Salaries & Allowances Expense (Debit)', mappings.payrollExpenseAccountId, 'payrollExpenseAccountId', expenseAccounts, 'Matches Gross Pay (Basic + Additions) | Code 61200')}
+            {renderField('Employer Statutory Benefits Expense (Debit)', mappings.employerContribExpenseAccountId, 'employerContribExpenseAccountId', expenseAccounts, 'Matches Company Cost (EOBI 5% + PF Match / GOSI / FICA) | Code 61250')}
+            {renderField('Net Salaries Payable Clearing (Credit)', mappings.payrollPayableAccountId, 'payrollPayableAccountId', liabilityAccounts, 'Matches Net Salary (Direct Bank Transfer) | Code 21300')}
+            {renderField('Income Tax Withholding Payable (Credit)', mappings.payrollTaxPayableAccountId, 'payrollTaxPayableAccountId', liabilityAccounts, 'Matches Tax Withheld (FBR / PAYE / IRS) | Code 21400')}
+            {renderField('EOBI & Social Security Payable (Credit)', mappings.eobiPayableAccountId, 'eobiPayableAccountId', liabilityAccounts, 'Matches EOBI 1% + 5% & Social Security | Code 21500')}
+            {renderField('Provident Fund (PF) / Pension Payable (Credit)', mappings.pensionPayableAccountId, 'pensionPayableAccountId', liabilityAccounts, 'Matches PF Employee % + Employer Match | Code 21510')}
+            {renderField('Sales Tax / VAT Payable', mappings.taxAccountId, 'taxAccountId', liabilityAccounts, 'VAT / Sales Tax Liability | Code 22000')}
+          </div>
+        )}
+
+        {/* 2. Sales & Receivables */}
         {(activeCategory === 'all' || activeCategory === 'sales') && (
           <div className="p-5 rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)] shadow-sm space-y-4 text-xs">
             <h3 className="font-bold text-sm text-[var(--color-text-strong)] flex items-center gap-2 border-b border-[var(--color-border)] pb-2.5">
@@ -389,7 +365,7 @@ export const SystemAccountMapping: React.FC<SystemAccountMappingProps> = ({ acco
           </div>
         )}
 
-        {/* 2. Procurement & Payables */}
+        {/* 3. Procurement & Payables */}
         {(activeCategory === 'all' || activeCategory === 'purchases') && (
           <div className="p-5 rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)] shadow-sm space-y-4 text-xs">
             <h3 className="font-bold text-sm text-[var(--color-text-strong)] flex items-center gap-2 border-b border-[var(--color-border)] pb-2.5">
@@ -404,7 +380,7 @@ export const SystemAccountMapping: React.FC<SystemAccountMappingProps> = ({ acco
           </div>
         )}
 
-        {/* 3. Inventory & Manufacturing */}
+        {/* 4. Inventory & Manufacturing */}
         {(activeCategory === 'all' || activeCategory === 'inventory') && (
           <div className="p-5 rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)] shadow-sm space-y-4 text-xs">
             <h3 className="font-bold text-sm text-[var(--color-text-strong)] flex items-center gap-2 border-b border-[var(--color-border)] pb-2.5">
@@ -420,7 +396,7 @@ export const SystemAccountMapping: React.FC<SystemAccountMappingProps> = ({ acco
           </div>
         )}
 
-        {/* 4. Fixed Assets & Leases */}
+        {/* 5. Fixed Assets & Leases */}
         {(activeCategory === 'all' || activeCategory === 'assets') && (
           <div className="p-5 rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)] shadow-sm space-y-4 text-xs">
             <h3 className="font-bold text-sm text-[var(--color-text-strong)] flex items-center gap-2 border-b border-[var(--color-border)] pb-2.5">
@@ -433,22 +409,6 @@ export const SystemAccountMapping: React.FC<SystemAccountMappingProps> = ({ acco
             {renderField('Right of Use (ROU) Asset', mappings.rouAssetAccountId, 'rouAssetAccountId', assetAccounts, 'Code 15110')}
             {renderField('Lease Liability (Present Value)', mappings.leaseLiabilityAccountId, 'leaseLiabilityAccountId', liabilityAccounts, 'Code 21600')}
             {renderField('Lease Interest Expense', mappings.interestExpenseAccountId, 'interestExpenseAccountId', expenseAccounts, 'Code 61400')}
-          </div>
-        )}
-
-        {/* 5. Payroll & Taxes */}
-        {(activeCategory === 'all' || activeCategory === 'payroll') && (
-          <div className="p-5 rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)] shadow-sm space-y-4 text-xs">
-            <h3 className="font-bold text-sm text-[var(--color-text-strong)] flex items-center gap-2 border-b border-[var(--color-border)] pb-2.5">
-              <Users className="w-4 h-4 text-teal-600" /> Payroll & Tax Compliance (IAS 12)
-            </h3>
-            {renderField('Sales Tax / VAT Payable', mappings.taxAccountId, 'taxAccountId', liabilityAccounts, 'Code 22000')}
-            {renderField('Withholding Tax (WHT) Receivable', mappings.whtReceivableAccountId, 'whtReceivableAccountId', assetAccounts, 'Code 12200')}
-            {renderField('Withholding Tax (WHT) Payable', mappings.whtPayableAccountId, 'whtPayableAccountId', liabilityAccounts, 'Code 22100')}
-            {renderField('Gross Salaries & Wages Expense', mappings.payrollExpenseAccountId, 'payrollExpenseAccountId', expenseAccounts, 'Code 61200')}
-            {renderField('Net Salaries Payable Accrual', mappings.payrollPayableAccountId, 'payrollPayableAccountId', liabilityAccounts, 'Code 21300')}
-            {renderField('Payroll Taxes Accrued', mappings.payrollTaxPayableAccountId, 'payrollTaxPayableAccountId', liabilityAccounts, 'Code 21400')}
-            {renderField('Pension & EOBI Fund Accrued', mappings.pensionPayableAccountId, 'pensionPayableAccountId', liabilityAccounts, 'Code 21500')}
           </div>
         )}
 
@@ -471,7 +431,7 @@ export const SystemAccountMapping: React.FC<SystemAccountMappingProps> = ({ acco
       <div className="p-4 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] flex items-center justify-between flex-wrap gap-3">
         <div className="text-xs text-[var(--color-text-muted)] flex items-center gap-2">
           <HelpCircle className="w-4 h-4 text-teal-600 shrink-0" />
-          <span>All transactions (Invoices, Bills, Payroll, Transfers) automatically follow these mapped accounts.</span>
+          <span>All transactions (Invoices, Bills, Payroll Runs, Transfers) automatically follow these mapped accounts.</span>
         </div>
         <div className="flex items-center gap-2">
           <button
@@ -483,12 +443,13 @@ export const SystemAccountMapping: React.FC<SystemAccountMappingProps> = ({ acco
           <button
             onClick={handleSave}
             disabled={saving}
-            className="px-5 py-2 bg-teal-600 hover:bg-teal-700 text-white rounded-xl text-xs font-bold shadow-sm flex items-center gap-1.5 transition-all"
+            className="px-5 py-2 bg-teal-600 hover:bg-teal-700 text-white rounded-xl text-xs font-bold shadow-sm flex items-center gap-1.5 transition-all disabled:opacity-50"
           >
-            <Save className="w-4 h-4" /> {saving ? 'Saving Changes...' : 'Save All Mappings'}
+            <Save className="w-3.5 h-3.5" /> {saving ? 'Saving Mappings...' : 'Save COA Mapping'}
           </button>
         </div>
       </div>
     </div>
   );
 };
+export default SystemAccountMapping;

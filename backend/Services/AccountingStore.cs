@@ -304,7 +304,10 @@ List<ExpenseClaim>? ExpenseClaims = null,
         Seed("21200", "GRNI Accrual", AccountType.Liability, currentLiabilities.Id, true, 0, false);
         Seed("21300", "Accrued Salaries Payable", AccountType.Liability, currentLiabilities.Id, true, 0, false);
         Seed("21400", "Payroll Tax Payable", AccountType.Liability, currentLiabilities.Id, true, 0, false);
-        Seed("21500", "Pension Fund Payable", AccountType.Liability, currentLiabilities.Id, true, 0, false);
+        Seed("21500", "EOBI & Social Security Payable", AccountType.Liability, currentLiabilities.Id, true, 0, false);
+        Seed("21510", "Provident Fund & Pension Payable", AccountType.Liability, currentLiabilities.Id, true, 0, false);
+        Seed("21520", "End of Service Benefits (EOSB) Accrual", AccountType.Liability, currentLiabilities.Id, true, 0, false);
+        Seed("21530", "Employee Loan Deductions Clearing", AccountType.Liability, currentLiabilities.Id, true, 0, false);
         Seed("22000", "Tax Payable", AccountType.Liability, currentLiabilities.Id, true, 0, false);
         Seed("22100", "Withholding Tax Payable", AccountType.Liability, currentLiabilities.Id, true, 0, false);
         Seed("21600", "Lease Liability", AccountType.Liability, currentLiabilities.Id, true, 0, false);
@@ -336,6 +339,11 @@ List<ExpenseClaim>? ExpenseClaims = null,
         var operatingExpenses = Seed("61000", "Operating Expenses", AccountType.Expense, expenses.Id);
         Seed("61100", "Office Expenses", AccountType.Expense, operatingExpenses.Id, true, 0, false);
         Seed("61200", "Salaries & Wages Expense", AccountType.Expense, operatingExpenses.Id, true, 0, false);
+        Seed("61210", "Housing & Living Allowances (HRA)", AccountType.Expense, operatingExpenses.Id, true, 0, false);
+        Seed("61220", "Transport & Conveyance Allowance", AccountType.Expense, operatingExpenses.Id, true, 0, false);
+        Seed("61230", "Medical & Utility Allowances", AccountType.Expense, operatingExpenses.Id, true, 0, false);
+        Seed("61250", "Employer Statutory Payroll Contributions", AccountType.Expense, operatingExpenses.Id, true, 0, false);
+        Seed("61260", "End of Service & Gratuity Expense", AccountType.Expense, operatingExpenses.Id, true, 0, false);
         Seed("61300", "Depreciation Expense", AccountType.Expense, operatingExpenses.Id, true, 0, false);
         Seed("61400", "Bad Debt Expense", AccountType.Expense, operatingExpenses.Id, true, 0, false);
         Seed("61500", "Intercompany Allocations", AccountType.Expense, operatingExpenses.Id, true, 0, false);
@@ -3937,6 +3945,8 @@ _bankImports.Clear(); _bankImports.AddRange(state.BankImports ?? []);
                 "GRNI Accrual" => "21200",
                 "Accrued Salaries" => "21300",
                 "Payroll Taxes Accrued" => "21400",
+                "EOBI & Social Security Accrued" => "21500",
+                "Provident Fund Accrued" => "21510",
                 "Pension Fund Accrued" => "21500",
                 "Taxes" => "22000",
                 "WHT Payable" => "22100",
@@ -3949,6 +3959,7 @@ _bankImports.Clear(); _bankImports.AddRange(state.BankImports ?? []);
                 "Purchase Returns" => "51200",
                 "Purchases" => "61100",
                 "Payroll Expense" => "61200",
+                "Employer Payroll Contributions Expense" => "61250",
                 "Depreciation Expense" => "61300",
                 "Finance Costs" => "61400",
                 "Raw Materials Inventory" => "13000",
@@ -5498,14 +5509,48 @@ _bankImports.Clear(); _bankImports.AddRange(state.BankImports ?? []);
             if (autoPost && totalGrossAll > 0)
             {
                 var salaryExpAccountId = GetMappedAccount("Payroll Expense") != Guid.Empty ? GetMappedAccount("Payroll Expense") : _accounts.FirstOrDefault(a => a.Code == "61200")?.Id ?? Guid.Empty;
-                var accruedSalAccountId = _accounts.FirstOrDefault(a => a.Code == "21300")?.Id ?? Guid.Empty;
-                var taxPayableAccountId = _accounts.FirstOrDefault(a => a.Code == "21400")?.Id ?? Guid.Empty;
-                var cashAccountId = GetDefaultDepositAccount();
+                var employerExpAccountId = GetMappedAccount("Employer Payroll Contributions Expense") != Guid.Empty ? GetMappedAccount("Employer Payroll Contributions Expense") : _accounts.FirstOrDefault(a => a.Code == "61250")?.Id ?? salaryExpAccountId;
+                var accruedSalAccountId = GetMappedAccount("Accrued Salaries") != Guid.Empty ? GetMappedAccount("Accrued Salaries") : _accounts.FirstOrDefault(a => a.Code == "21300")?.Id ?? Guid.Empty;
+                var taxPayableAccountId = GetMappedAccount("Payroll Taxes Accrued") != Guid.Empty ? GetMappedAccount("Payroll Taxes Accrued") : _accounts.FirstOrDefault(a => a.Code == "21400")?.Id ?? Guid.Empty;
+                var eobiPayableAccountId = GetMappedAccount("EOBI & Social Security Accrued") != Guid.Empty ? GetMappedAccount("EOBI & Social Security Accrued") : _accounts.FirstOrDefault(a => a.Code == "21500")?.Id ?? taxPayableAccountId;
+                var pfPayableAccountId = GetMappedAccount("Provident Fund Accrued") != Guid.Empty ? GetMappedAccount("Provident Fund Accrued") : _accounts.FirstOrDefault(a => a.Code == "21510")?.Id ?? eobiPayableAccountId;
 
-                var grossDr = totalGrossAll + totalEmployerAll;
                 var netPayCredit = totalGrossAll - totalDeductionsAll;
-                var taxCredit = totalDeductionsAll;
-                var employerCredit = totalEmployerAll;
+                var taxCredit = slips.SelectMany(s => s.Deductions).Where(d => d.Category.Contains("Tax", StringComparison.OrdinalIgnoreCase) || d.Name.Contains("Tax", StringComparison.OrdinalIgnoreCase)).Sum(d => d.Amount);
+                var eobiCredit = slips.SelectMany(s => s.Deductions).Where(d => d.Category.Contains("Social", StringComparison.OrdinalIgnoreCase) || d.Name.Contains("EOBI", StringComparison.OrdinalIgnoreCase) || d.Name.Contains("Social", StringComparison.OrdinalIgnoreCase)).Sum(d => d.Amount) + totalEmployerAll;
+                var otherCredit = totalDeductionsAll - (taxCredit + (eobiCredit - totalEmployerAll));
+                if (otherCredit < 0) otherCredit = 0;
+                if (taxCredit == 0 && eobiCredit == totalEmployerAll && totalDeductionsAll > 0)
+                {
+                    taxCredit = totalDeductionsAll;
+                }
+
+                var lines = new List<JournalLine>
+                {
+                    new JournalLine(salaryExpAccountId, totalGrossAll, 0, $"Gross Salaries & Allowances: {payrun.PayrunNumber}", null, "USD", 1, payrun.CompanyId),
+                };
+
+                if (totalEmployerAll > 0)
+                {
+                    lines.Add(new JournalLine(employerExpAccountId, totalEmployerAll, 0, $"Employer Statutory Contributions: {payrun.PayrunNumber}", null, "USD", 1, payrun.CompanyId));
+                }
+
+                lines.Add(new JournalLine(accruedSalAccountId, 0, netPayCredit, $"Net salaries payable: {payrun.PayrunNumber}", null, "USD", 1, payrun.CompanyId));
+
+                if (taxCredit > 0)
+                {
+                    lines.Add(new JournalLine(taxPayableAccountId, 0, taxCredit, $"Income tax withholding payable: {payrun.PayrunNumber}", null, "USD", 1, payrun.CompanyId));
+                }
+
+                if (eobiCredit > 0)
+                {
+                    lines.Add(new JournalLine(eobiPayableAccountId, 0, eobiCredit, $"EOBI & Social Security payable: {payrun.PayrunNumber}", null, "USD", 1, payrun.CompanyId));
+                }
+
+                if (otherCredit > 0)
+                {
+                    lines.Add(new JournalLine(pfPayableAccountId, 0, otherCredit, $"Provident fund & voluntary deductions: {payrun.PayrunNumber}", null, "USD", 1, payrun.CompanyId));
+                }
 
                 var je = new JournalEntry
                 {
@@ -5515,13 +5560,7 @@ _bankImports.Clear(); _bankImports.AddRange(state.BankImports ?? []);
                     TransactionType = TransactionType.Payroll,
                     CompanyId = payrun.CompanyId,
                     Status = JournalStatus.Posted,
-                    Lines = new List<JournalLine>
-                    {
-                        new JournalLine(salaryExpAccountId, grossDr, 0, $"Payroll expense: {payrun.PayrunNumber}", null, "USD", 1, payrun.CompanyId),
-                        new JournalLine(cashAccountId, 0, netPayCredit, $"Net pay disbursed: {payrun.PayrunNumber}", null, "USD", 1, payrun.CompanyId),
-                        new JournalLine(taxPayableAccountId, 0, taxCredit, $"Statutory withholdings payable: {payrun.PayrunNumber}", null, "USD", 1, payrun.CompanyId),
-                        new JournalLine(accruedSalAccountId, 0, employerCredit, $"Employer contributions payable: {payrun.PayrunNumber}", null, "USD", 1, payrun.CompanyId),
-                    }
+                    Lines = lines
                 };
 
                 _entries.Add(je);
