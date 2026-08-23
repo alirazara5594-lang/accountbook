@@ -30,10 +30,24 @@ const DEMO_USERS: UserData[] = [
     provider: 'email',
   },
   {
+    email: 'inventory@acme.com',
+    fullName: 'David Chen',
+    role: 'Warehouse Manager',
+    avatar: 'DC',
+    provider: 'email',
+  },
+  {
+    email: 'manufacturing@acme.com',
+    fullName: 'Alex Rivera',
+    role: 'Production Engineer',
+    avatar: 'AR',
+    provider: 'email',
+  },
+  {
     email: 'auditor@acme.com',
-    fullName: 'John Doe',
+    fullName: 'Amina Al-Mansoor',
     role: 'External Auditor',
-    avatar: 'JD',
+    avatar: 'AM',
     provider: 'email',
   },
 ];

@@ -1,7 +1,8 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Settings, ShieldCheck, Globe, Database, Save, RotateCcw, AlertTriangle,
-  Building2, CheckCircle2, Lock, FileText, Layers, Hash, Coins
+  Building2, CheckCircle2, Lock, FileText, Layers, Hash, Coins, Sparkles, Zap, ShieldAlert,
+  Key, MessageSquarePlus, Copy, Star
 } from 'lucide-react';
 import { useCoaStore } from './stores';
 
@@ -11,7 +12,58 @@ interface SystemSettingsProps {
 }
 
 export const SystemSettingsView: React.FC<SystemSettingsProps> = ({ setPage, notify }) => {
-  const [activeTab, setActiveTab] = useState<'general' | 'accounting' | 'sectors' | 'security' | 'database'>('general');
+  const [activeTab, setActiveTab] = useState<'general' | 'accounting' | 'sectors' | 'ai' | 'license' | 'security' | 'database'>('general');
+
+  // License Generator State
+  const [genOrgName, setGenOrgName] = useState('');
+  const [genTier, setGenTier] = useState('Founding Partner / Beta Enterprise');
+  const [genDuration, setGenDuration] = useState(12);
+  const [generatedKey, setGeneratedKey] = useState<string | null>(null);
+  const [genLoading, setGenLoading] = useState(false);
+  const [feedbacks, setFeedbacks] = useState<any[]>([]);
+
+  const loadFeedbacks = async () => {
+    try {
+      const res = await fetch('http://localhost:5124/api/v1/license/feedback');
+      if (res.ok) {
+        const data = await res.json();
+        setFeedbacks(data || []);
+      }
+    } catch {}
+  };
+
+  useEffect(() => {
+    if (activeTab === 'license') {
+      loadFeedbacks();
+    }
+  }, [activeTab]);
+
+  const handleGenerateKey = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!genOrgName.trim()) return;
+    setGenLoading(true);
+    try {
+      const res = await fetch('http://localhost:5124/api/v1/license/generate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          organizationName: genOrgName.trim(),
+          tier: genTier,
+          durationMonths: genDuration,
+          maxUsers: 100
+        })
+      });
+      const data = await res.json();
+      if (res.ok) {
+        setGeneratedKey(data.licenseKey);
+        notify('✓ Generated signed Founding Customer License Key!');
+      }
+    } catch {
+      notify('Failed to generate license key.');
+    } finally {
+      setGenLoading(false);
+    }
+  };
 
   // State configurations with persistence in localStorage
   const [generalConfig, setGeneralConfig] = useState(() => {
@@ -43,6 +95,22 @@ export const SystemSettingsView: React.FC<SystemSettingsProps> = ({ setPage, not
       allowNegativeStock: false,
       autoPostDepreciation: true,
       fxGainLossPosting: 'Automatic (IAS 21 Realized/Unrealized)',
+    };
+  });
+
+  const [aiConfig, setAiConfig] = useState(() => {
+    try {
+      const saved = localStorage.getItem('erp_system_ai');
+      if (saved) return JSON.parse(saved);
+    } catch {}
+    return {
+      enableHelpAssistant: true,
+      enableActionExecution: false,
+      subscriptionPlan: 'Free Help & Guidance Plan',
+      planTier: 'free',
+      requireActionConfirmation: true,
+      contextAwareHelp: true,
+      knowledgeBaseStandard: 'IAS / IFRS & GAAP Global Standards',
     };
   });
 
@@ -78,6 +146,12 @@ export const SystemSettingsView: React.FC<SystemSettingsProps> = ({ setPage, not
     e.preventDefault();
     localStorage.setItem('erp_system_accounting', JSON.stringify(accountingConfig));
     notify('✓ Accounting & financial governance standards updated');
+  };
+
+  const handleSaveAi = (e: React.FormEvent) => {
+    e.preventDefault();
+    localStorage.setItem('erp_system_ai', JSON.stringify(aiConfig));
+    notify('✓ AI Assistant & Copilot subscription preferences updated');
   };
 
   const handleSaveSecurity = (e: React.FormEvent) => {
@@ -152,20 +226,20 @@ export const SystemSettingsView: React.FC<SystemSettingsProps> = ({ setPage, not
 
         <div className="p-4 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] shadow-sm space-y-1">
           <div className="flex items-center justify-between text-[var(--color-text-muted)]">
+            <span className="text-xs font-semibold uppercase tracking-wider">AI Assistant Tier</span>
+            <Sparkles className="w-4 h-4 text-amber-500" />
+          </div>
+          <div className="text-lg font-black text-amber-500 font-mono">{aiConfig.planTier === 'pro' ? 'Enterprise Pro' : 'Free Advisor'}</div>
+          <div className="text-[11px] text-[var(--color-text-muted)]">{aiConfig.enableActionExecution ? 'Command Execution Active' : 'Guidance & Help Only'}</div>
+        </div>
+
+        <div className="p-4 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] shadow-sm space-y-1">
+          <div className="flex items-center justify-between text-[var(--color-text-muted)]">
             <span className="text-xs font-semibold uppercase tracking-wider">Multi-Sector Suite</span>
             <Layers className="w-4 h-4 text-purple-600" />
           </div>
           <div className="text-lg font-black text-purple-600 font-mono">{selectedSectors.length} / 14 Active</div>
           <div className="text-[11px] text-[var(--color-text-muted)]">14 Commercial Industry Profiles</div>
-        </div>
-
-        <div className="p-4 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] shadow-sm space-y-1">
-          <div className="flex items-center justify-between text-[var(--color-text-muted)]">
-            <span className="text-xs font-semibold uppercase tracking-wider">Audit Security</span>
-            <Lock className="w-4 h-4 text-emerald-600" />
-          </div>
-          <div className="text-lg font-black text-emerald-600 font-mono">WORM Immutable</div>
-          <div className="text-[11px] text-[var(--color-text-muted)]">Non-repudiation event ledger</div>
         </div>
       </div>
 
@@ -175,6 +249,8 @@ export const SystemSettingsView: React.FC<SystemSettingsProps> = ({ setPage, not
           { id: 'general', label: 'General & Localization', icon: Globe },
           { id: 'accounting', label: 'Accounting & IAS/IFRS Rules', icon: ShieldCheck },
           { id: 'sectors', label: 'Multi-Sector Adaptability', icon: Layers },
+          { id: 'ai', label: 'AI Copilot & Subscriptions', icon: Sparkles },
+          { id: 'license', label: 'Commercial Licensing & Keys', icon: Key },
           { id: 'security', label: 'Security & Access Policies', icon: Lock },
           { id: 'database', label: 'Database & Maintenance', icon: Database },
         ].map(tab => {
@@ -539,6 +615,313 @@ export const SystemSettingsView: React.FC<SystemSettingsProps> = ({ setPage, not
                 </div>
               );
             })}
+          </div>
+        </div>
+      )}
+
+      {/* ─── TAB: AI COPILOT & SUBSCRIPTIONS ─── */}
+      {activeTab === 'ai' && (
+        <form onSubmit={handleSaveAi} className="space-y-6 text-xs">
+          {/* Card 1: Free Help Assistant */}
+          <div className="p-5 rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)] shadow-sm space-y-4">
+            <div className="border-b border-[var(--color-border)] pb-3 flex items-center justify-between">
+              <div>
+                <h3 className="font-bold text-sm text-[var(--color-text-strong)] flex items-center gap-2">
+                  <Sparkles className="w-4 h-4 text-teal-600" />
+                  AI Help & Advisory Assistant (Standard Tier - Included)
+                </h3>
+                <p className="text-[11px] text-[var(--color-text-muted)] mt-0.5">
+                  Safe, read-only AI tutor that provides step-by-step ERP guidance, accounting standard explanations, and navigation.
+                </p>
+              </div>
+              <span className="px-2.5 py-1 rounded-full text-[10px] font-bold bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800">
+                Included in All Accounts
+              </span>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <label className="p-4 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface-muted)] flex items-start justify-between gap-3 cursor-pointer hover:border-teal-500/40 transition-colors">
+                <div className="space-y-1">
+                  <div className="font-bold text-xs text-[var(--color-text-strong)]">Enable Floating AI Assistant Button</div>
+                  <p className="text-[11px] text-[var(--color-text-muted)]">Displays the floating ✨ AI button in the bottom right corner across all screens.</p>
+                </div>
+                <input
+                  type="checkbox"
+                  checked={aiConfig.enableHelpAssistant}
+                  onChange={e => setAiConfig({ ...aiConfig, enableHelpAssistant: e.target.checked })}
+                  className="accent-teal-600 mt-1 shrink-0 cursor-pointer"
+                />
+              </label>
+
+              <label className="p-4 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface-muted)] flex items-start justify-between gap-3 cursor-pointer hover:border-teal-500/40 transition-colors">
+                <div className="space-y-1">
+                  <div className="font-bold text-xs text-[var(--color-text-strong)]">Screen-Context Aware Suggestions</div>
+                  <p className="text-[11px] text-[var(--color-text-muted)]">Automatically tailors quick suggested prompts to the active page (e.g. Sales, BOM, Tax).</p>
+                </div>
+                <input
+                  type="checkbox"
+                  checked={aiConfig.contextAwareHelp}
+                  onChange={e => setAiConfig({ ...aiConfig, contextAwareHelp: e.target.checked })}
+                  className="accent-teal-600 mt-1 shrink-0 cursor-pointer"
+                />
+              </label>
+            </div>
+          </div>
+
+          {/* Card 2: Enterprise Copilot Action Pack */}
+          <div className="p-5 rounded-2xl border border-amber-500/30 bg-gradient-to-br from-amber-500/5 via-[var(--color-surface)] to-indigo-500/5 shadow-sm space-y-4">
+            <div className="border-b border-[var(--color-border)] pb-3 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+              <div>
+                <h3 className="font-bold text-sm text-[var(--color-text-strong)] flex items-center gap-2">
+                  <Zap className="w-4 h-4 text-amber-500" />
+                  AI Automated Action & Command Execution (Enterprise Subscription)
+                </h3>
+                <p className="text-[11px] text-[var(--color-text-muted)] mt-0.5">
+                  Allows users to draft invoices, prefill work orders, and trigger automated multi-step workflows using plain English.
+                </p>
+              </div>
+              <div className="flex items-center gap-2">
+                <span className={`px-2.5 py-1 rounded-full text-[10px] font-bold border ${
+                  aiConfig.planTier === 'pro'
+                    ? 'bg-amber-50 text-amber-800 dark:bg-amber-950/40 dark:text-amber-300 border-amber-300'
+                    : 'bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300 border-slate-300'
+                }`}>
+                  {aiConfig.planTier === 'pro' ? '★ Enterprise Pro Active' : 'Free Help Plan'}
+                </span>
+                <button
+                  type="button"
+                  onClick={() => {
+                    const newTier = aiConfig.planTier === 'pro' ? 'free' : 'pro';
+                    setAiConfig({
+                      ...aiConfig,
+                      planTier: newTier,
+                      enableActionExecution: newTier === 'pro',
+                      subscriptionPlan: newTier === 'pro' ? 'Enterprise Pro Plan ($49/mo)' : 'Free Help & Guidance Plan'
+                    });
+                    notify(newTier === 'pro' ? '✓ Switched to Enterprise Pro Subscription' : '✓ Reverted to Free Plan');
+                  }}
+                  className="px-3 py-1 bg-amber-500 hover:bg-amber-600 text-slate-900 font-bold text-[11px] rounded-lg transition-colors cursor-pointer shadow-xs"
+                >
+                  {aiConfig.planTier === 'pro' ? 'Downgrade to Free' : 'Upgrade to Enterprise ($49/mo)'}
+                </button>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <label className={`p-4 rounded-xl border flex items-start justify-between gap-3 transition-colors ${
+                aiConfig.planTier === 'pro'
+                  ? 'border-[var(--color-border)] bg-[var(--color-surface-muted)] cursor-pointer hover:border-amber-500/40'
+                  : 'border-[var(--color-border)] bg-[var(--color-surface-muted)]/50 opacity-60 cursor-not-allowed'
+              }`}>
+                <div className="space-y-1">
+                  <div className="font-bold text-xs text-[var(--color-text-strong)] flex items-center gap-1.5">
+                    Allow AI Automated Action Execution
+                    {aiConfig.planTier !== 'pro' && <Lock className="w-3 h-3 text-amber-600" />}
+                  </div>
+                  <p className="text-[11px] text-[var(--color-text-muted)]">
+                    When enabled, typing commands like <i>"Draft an invoice for customer ABC"</i> will automatically prepare records.
+                  </p>
+                </div>
+                <input
+                  type="checkbox"
+                  disabled={aiConfig.planTier !== 'pro'}
+                  checked={aiConfig.enableActionExecution}
+                  onChange={e => setAiConfig({ ...aiConfig, enableActionExecution: e.target.checked })}
+                  className="accent-amber-600 mt-1 shrink-0 cursor-pointer"
+                />
+              </label>
+
+              <div className="p-4 rounded-xl border border-emerald-500/30 bg-emerald-50/20 dark:bg-emerald-950/20 flex items-start gap-3">
+                <ShieldAlert className="w-5 h-5 text-emerald-600 shrink-0 mt-0.5" />
+                <div className="space-y-1">
+                  <div className="font-bold text-xs text-emerald-800 dark:text-emerald-300">Mandatory Human-in-the-Loop Confirmation</div>
+                  <p className="text-[11px] text-[var(--color-text-muted)]">
+                    Even in Enterprise Action mode, all AI-generated transactions require human review and confirmation before posting to preserve double-entry audit integrity.
+                  </p>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div className="flex justify-end gap-3 pt-2">
+            <button
+              type="submit"
+              className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-teal-600 hover:bg-teal-500 text-white font-bold text-xs shadow-md transition-all cursor-pointer"
+            >
+              <Save className="w-4 h-4" /> Save AI Preferences
+            </button>
+          </div>
+        </form>
+      )}
+
+      {/* ─── TAB: COMMERCIAL LICENSING & KEY GENERATOR ─── */}
+      {activeTab === 'license' && (
+        <div className="space-y-6 text-xs">
+          {/* Card 1: Key Generator */}
+          <form onSubmit={handleGenerateKey} className="p-5 rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)] shadow-sm space-y-4">
+            <div className="border-b border-[var(--color-border)] pb-3 flex items-center justify-between">
+              <div>
+                <h3 className="font-bold text-sm text-[var(--color-text-strong)] flex items-center gap-2">
+                  <Key className="w-4 h-4 text-teal-600" />
+                  Pilot Customer License Key Generator (Founding Partner / Beta)
+                </h3>
+                <p className="text-[11px] text-[var(--color-text-muted)] mt-0.5">
+                  Generate HMAC-SHA256 cryptographically signed license keys to issue free 3-month, 6-month, 1-year, or Lifetime access for your pilot companies.
+                </p>
+              </div>
+              <span className="px-2.5 py-1 rounded-full text-[10px] font-bold bg-indigo-50 text-indigo-700 dark:bg-indigo-950/40 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800">
+                Admin Key Generator
+              </span>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div className="space-y-1">
+                <label className="font-bold text-slate-900 dark:text-white">Client Company / Organization Name</label>
+                <input
+                  type="text"
+                  required
+                  placeholder="e.g. Apex Manufacturing Ltd"
+                  value={genOrgName}
+                  onChange={e => setGenOrgName(e.target.value)}
+                  className="w-full text-xs px-3.5 py-2.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-[var(--color-surface-muted)] text-[var(--color-text-strong)]"
+                />
+              </div>
+
+              <div className="space-y-1">
+                <label className="font-bold text-slate-900 dark:text-white">License Tier / Package</label>
+                <select
+                  value={genTier}
+                  onChange={e => setGenTier(e.target.value)}
+                  className="w-full text-xs px-3.5 py-2.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-[var(--color-surface-muted)] text-[var(--color-text-strong)]"
+                >
+                  <option value="Founding Partner / Beta Enterprise">Founding Partner / Beta Enterprise</option>
+                  <option value="Commercial Enterprise Suite">Commercial Enterprise Suite</option>
+                  <option value="Multi-Company Holding Edition">Multi-Company Holding Edition</option>
+                </select>
+              </div>
+
+              <div className="space-y-1">
+                <label className="font-bold text-slate-900 dark:text-white">Granted License Duration</label>
+                <select
+                  value={genDuration}
+                  onChange={e => setGenDuration(Number(e.target.value))}
+                  className="w-full text-xs px-3.5 py-2.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-[var(--color-surface-muted)] text-[var(--color-text-strong)]"
+                >
+                  <option value={3}>3 Months (Extended Evaluation)</option>
+                  <option value={6}>6 Months (Pilot Partner License)</option>
+                  <option value={12}>1 Year (Founding Customer Plan)</option>
+                  <option value={0}>Lifetime Unlimited (Permanent)</option>
+                </select>
+              </div>
+            </div>
+
+            <div className="flex items-center justify-between pt-2">
+              <span className="text-[11px] text-slate-500">
+                Keys generated here are tamper-proof and signed with your enterprise private key.
+              </span>
+              <button
+                type="submit"
+                disabled={genLoading || !genOrgName.trim()}
+                className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-gradient-to-r from-teal-600 to-indigo-600 hover:from-teal-500 hover:to-indigo-500 text-white font-bold text-xs shadow-md transition-all disabled:opacity-50 cursor-pointer"
+              >
+                <Key className="w-4 h-4" />
+                {genLoading ? 'Signing Key...' : 'Generate Signed License Key'}
+              </button>
+            </div>
+
+            {generatedKey && (
+              <div className="p-4 rounded-xl bg-slate-900 text-white space-y-2 border border-teal-500/40 animate-in fade-in">
+                <div className="flex items-center justify-between text-xs">
+                  <span className="font-bold text-teal-400 flex items-center gap-1.5">
+                    <Sparkles className="w-4 h-4" /> Generated License Key for: {genOrgName}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      navigator.clipboard.writeText(generatedKey);
+                      notify('✓ Copied license key to clipboard!');
+                    }}
+                    className="flex items-center gap-1 px-2.5 py-1 bg-teal-600 hover:bg-teal-500 text-white font-bold rounded-lg text-[11px] transition-colors cursor-pointer"
+                  >
+                    <Copy className="w-3.5 h-3.5" /> Copy Key
+                  </button>
+                </div>
+                <div className="p-2.5 bg-slate-950 rounded-lg font-mono text-[11px] text-teal-200 break-all select-all border border-slate-800">
+                  {generatedKey}
+                </div>
+                <p className="text-[10px] text-slate-400">
+                  Give this key to the customer. They can click <b>[Activate Full License]</b> in the top navbar and paste this key to unlock their system.
+                </p>
+              </div>
+            )}
+          </form>
+
+          {/* Card 2: Pilot Customer Feedback Inbox */}
+          <div className="p-5 rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)] shadow-sm space-y-4">
+            <div className="border-b border-[var(--color-border)] pb-3 flex items-center justify-between">
+              <div>
+                <h3 className="font-bold text-sm text-[var(--color-text-strong)] flex items-center gap-2">
+                  <MessageSquarePlus className="w-4 h-4 text-indigo-600" />
+                  Pilot Customer Feedback & Feature Requests Inbox
+                </h3>
+                <p className="text-[11px] text-[var(--color-text-muted)] mt-0.5">
+                  Real-time suggestions, bug reports, and feedback submitted by users during their 90-day trial.
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={loadFeedbacks}
+                className="px-3 py-1 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 text-slate-700 dark:text-slate-300 font-bold text-[11px] rounded-lg transition-colors cursor-pointer"
+              >
+                Refresh Inbox
+              </button>
+            </div>
+
+            {feedbacks.length === 0 ? (
+              <div className="p-8 text-center text-slate-400 space-y-1">
+                <MessageSquarePlus className="w-8 h-8 mx-auto opacity-30" />
+                <p className="font-semibold text-xs">No feedback submitted yet</p>
+                <p className="text-[11px]">When pilot users click the <b>💡 Feedback</b> button, their messages will appear here.</p>
+              </div>
+            ) : (
+              <div className="space-y-3 max-h-[360px] overflow-y-auto pr-1">
+                {feedbacks.map((f: any) => (
+                  <div key={f.id} className="p-3.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-[var(--color-surface-muted)] space-y-2">
+                    <div className="flex items-center justify-between gap-2 flex-wrap">
+                      <div className="flex items-center gap-2">
+                        <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${
+                          f.category === 'Bug Report'
+                            ? 'bg-rose-100 text-rose-800 dark:bg-rose-950/40 dark:text-rose-300'
+                            : f.category === 'Feature Request'
+                            ? 'bg-amber-100 text-amber-800 dark:bg-amber-950/40 dark:text-amber-300'
+                            : 'bg-teal-100 text-teal-800 dark:bg-teal-950/40 dark:text-teal-300'
+                        }`}>
+                          {f.category}
+                        </span>
+                        <span className="font-bold text-slate-900 dark:text-white text-xs">{f.customerName || 'Anonymous'}</span>
+                        {f.customerEmail && <span className="text-slate-400 text-[11px]">({f.customerEmail})</span>}
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <div className="flex items-center text-amber-400">
+                          {Array.from({ length: f.rating || 5 }).map((_, i) => (
+                            <Star key={i} className="w-3.5 h-3.5 fill-amber-400" />
+                          ))}
+                        </div>
+                        <span className="text-[10px] text-slate-400">{new Date(f.submittedAt).toLocaleString()}</span>
+                      </div>
+                    </div>
+                    <p className="text-xs text-slate-700 dark:text-slate-300 leading-relaxed whitespace-pre-line bg-[var(--color-surface)] p-2.5 rounded-lg border border-[var(--color-border)]">
+                      {f.feedbackText}
+                    </p>
+                    {f.currentScreen && (
+                      <p className="text-[10px] text-slate-400">
+                        Submitted from screen: <span className="font-semibold text-slate-600 dark:text-slate-300">{f.currentScreen}</span>
+                      </p>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
         </div>
       )}

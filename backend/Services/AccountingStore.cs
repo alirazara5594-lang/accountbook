@@ -1605,7 +1605,9 @@ public IReadOnlyList<EmployeeCompensation> EmployeeCompensations => _employeeCom
                 if (overheadAccId != Guid.Empty && wo.OverheadCost > 0)
                     fgLines.Add(new JournalLine(overheadAccId, 0, wo.OverheadCost, $"MOH absorption: {wo.WorkOrderNumber}", null, null, 1, woCompId != Guid.Empty ? woCompId : null));
 
-                if (fgLines.Count > 0)
+                decimal dr = fgLines.Sum(l => l.Debit);
+                decimal cr = fgLines.Sum(l => l.Credit);
+                if (fgLines.Count > 1 && Math.Abs(dr - cr) <= 0.001m)
                 {
                     _entries.Add(new JournalEntry
                     {
@@ -1903,8 +1905,12 @@ public IReadOnlyList<EmployeeCompensation> EmployeeCompensations => _employeeCom
                     LineDestination.FixedAsset => GetMappedAccount("Fixed Assets"),
                     _ => GetMappedAccount("Purchases")
                 };
-                if (debitAccId != Guid.Empty && subTotal > 0)
-                    journalLines.Add(new JournalLine(debitAccId, subTotal, 0, $"Purchase: {line.Description}", null, null, 1, bill.CompanyId));
+                if (debitAccId == Guid.Empty)
+                {
+                    error = $"Expense/Asset account for destination '{line.Destination}' is not mapped under System Account Mapping.";
+                    return false;
+                }
+                journalLines.Add(new JournalLine(debitAccId, subTotal, 0, $"Purchase: {line.Description}", null, null, 1, bill.CompanyId));
 
                 if (line.TaxAmount > 0)
                 {
@@ -1915,14 +1921,26 @@ public IReadOnlyList<EmployeeCompensation> EmployeeCompensations => _employeeCom
                         _ => GetMappedAccount("Purchase Input VAT / Recoverable Tax")
                     };
                     if (taxAccId == Guid.Empty) taxAccId = GetMappedAccount("Taxes");
-                    if (taxAccId != Guid.Empty)
-                        journalLines.Add(new JournalLine(taxAccId, line.TaxAmount, 0, $"Purchase Input Tax: {line.Description}", null, null, 1, bill.CompanyId));
+                    if (taxAccId == Guid.Empty)
+                    {
+                        error = "Input VAT / Recoverable Tax account is not mapped under System Account Mapping.";
+                        return false;
+                    }
+                    journalLines.Add(new JournalLine(taxAccId, line.TaxAmount, 0, $"Purchase Input Tax: {line.Description}", null, null, 1, bill.CompanyId));
                 }
             }
 
             var billTotal = bill.Lines.Sum(l => l.TotalAmount);
             if (journalLines.Count == 0) { error = "Bill has no valid lines to post."; return false; }
             journalLines.Add(new JournalLine(apAccountId, 0, billTotal, $"AP: {bill.BillNumber}", null, null, 1, bill.CompanyId));
+
+            decimal debitSum = journalLines.Sum(l => l.Debit);
+            decimal creditSum = journalLines.Sum(l => l.Credit);
+            if (Math.Abs(debitSum - creditSum) > 0.001m)
+            {
+                error = $"Double-entry validation failed: Debits ({debitSum}) do not equal Credits ({creditSum}).";
+                return false;
+            }
 
             var journal = new JournalEntry
             {
@@ -2590,6 +2608,14 @@ public IReadOnlyList<EmployeeCompensation> EmployeeCompensations => _employeeCom
             }
 
             _stockTransactions.Add(request);
+
+            var product = _products.FirstOrDefault(p => p.Id == request.ProductId);
+            if (product != null)
+            {
+                product.QuantityOnHand = _stockLevels.Where(s => s.ProductId == product.Id).Sum(s => s.QuantityOnHand);
+                product.UpdatedAt = DateTime.UtcNow;
+            }
+
             Persist();
             return true;
         }
@@ -3397,8 +3423,13 @@ public IReadOnlyList<EmployeeCompensation> EmployeeCompensations => _employeeCom
                 return false;
             }
 
-            if (resolvedTax.HasValue)
+            if (invoice.TaxTotal > 0)
             {
+                if (!resolvedTax.HasValue)
+                {
+                    error = "Tax Payable account is not mapped or invalid. Configure it under System Account Mapping.";
+                    return false;
+                }
                 var taxAcc = Find(resolvedTax.Value);
                 if (taxAcc == null) { error = "Tax Payable account is invalid."; return false; }
                 if (!taxAcc.IsPosting || taxAcc.Status == AccountStatus.Inactive)
@@ -3419,6 +3450,14 @@ public IReadOnlyList<EmployeeCompensation> EmployeeCompensations => _employeeCom
 
             if (invoice.TaxTotal > 0 && resolvedTax.HasValue)
                 journalLines.Add(new JournalLine(resolvedTax.Value, 0, invoice.TaxTotal, $"Tax: {invoice.InvoiceNumber}", null, null, 1, invoice.CompanyId));
+
+            decimal debitSum = journalLines.Sum(l => l.Debit);
+            decimal creditSum = journalLines.Sum(l => l.Credit);
+            if (Math.Abs(debitSum - creditSum) > 0.001m)
+            {
+                error = $"Double-entry validation failed: Debits ({debitSum}) do not equal Credits ({creditSum}).";
+                return false;
+            }
 
             var journal = new JournalEntry
             {
@@ -4479,6 +4518,10 @@ _bankImports.Clear(); _bankImports.AddRange(state.BankImports ?? []);
             _warehouses.Add(defaultWarehouse);
 
             SeedPayrollData();
+            SeedProjectsData();
+            SeedComplianceData();
+            SeedFieldOperationsData();
+            SeedAdministrationData();
             Persist();
         }
     }
@@ -4754,11 +4797,13 @@ _bankImports.Clear(); _bankImports.AddRange(state.BankImports ?? []);
     {
         var companyId = _companies.FirstOrDefault()?.Id;
 
-        // ── Users ────────────────────────────────────────────────────────────
+        // ── Users (5 Demo Accounts) ──────────────────────────────────────────
         _adminUsers.AddRange([
             new AdminUser { UserName = "admin", FullName = "Muhammad Ali", Email = "admin@acme.com", Role = "Finance admin", Status = UserStatus.Active, LastLogin = DateTime.UtcNow, CompanyId = companyId },
             new AdminUser { UserName = "accountant", FullName = "Sarah Jenkins", Email = "accountant@acme.com", Role = "Senior Accountant", Status = UserStatus.Active, LastLogin = DateTime.UtcNow, CompanyId = companyId },
-            new AdminUser { UserName = "auditor", FullName = "John Doe", Email = "auditor@acme.com", Role = "External Auditor", Status = UserStatus.Active, CompanyId = companyId },
+            new AdminUser { UserName = "inventory", FullName = "David Chen", Email = "inventory@acme.com", Role = "Warehouse Manager", Status = UserStatus.Active, LastLogin = DateTime.UtcNow, CompanyId = companyId },
+            new AdminUser { UserName = "manufacturing", FullName = "Alex Rivera", Email = "manufacturing@acme.com", Role = "Production Engineer", Status = UserStatus.Active, LastLogin = DateTime.UtcNow, CompanyId = companyId },
+            new AdminUser { UserName = "auditor", FullName = "Amina Al-Mansoor", Email = "auditor@acme.com", Role = "External Auditor", Status = UserStatus.Active, LastLogin = DateTime.UtcNow, CompanyId = companyId },
         ]);
 
         // ── Roles ────────────────────────────────────────────────────────────
@@ -4766,7 +4811,9 @@ _bankImports.Clear(); _bankImports.AddRange(state.BankImports ?? []);
         _userRoles.AddRange([
             new UserRole { Name = "Finance admin", Description = "Full access across all modules", Permissions = allPerms, CompanyId = companyId },
             new UserRole { Name = "Senior Accountant", Description = "Accounting, banking, and reporting", Permissions = new List<string> { "Dashboard", "Sales", "Procurement", "Banking", "Accounting", "Inventory", "Analytics" }, CompanyId = companyId },
-            new UserRole { Name = "External Auditor", Description = "Read-only financial review", Permissions = new List<string> { "Dashboard", "Accounting", "Analytics", "Administration" }, CompanyId = companyId },
+            new UserRole { Name = "Warehouse Manager", Description = "Procurement, multi-warehouse, and logistics", Permissions = new List<string> { "Dashboard", "Procurement", "Inventory", "Analytics" }, CompanyId = companyId },
+            new UserRole { Name = "Production Engineer", Description = "BOM, work orders, and job costing", Permissions = new List<string> { "Dashboard", "Inventory", "Manufacturing", "Projects", "Analytics" }, CompanyId = companyId },
+            new UserRole { Name = "External Auditor", Description = "Read-only financial review and compliance", Permissions = new List<string> { "Dashboard", "Accounting", "Compliance", "Analytics", "Administration" }, CompanyId = companyId },
         ]);
 
         // ── Branches ─────────────────────────────────────────────────────────
@@ -5469,7 +5516,7 @@ _bankImports.Clear(); _bankImports.AddRange(state.BankImports ?? []);
                 Currency = request.Currency, FilingStatus = request.FilingStatus, PeriodBasis = request.PeriodBasis,
                 StandardDeduction = request.StandardDeduction, PersonalAllowance = request.PersonalAllowance,
                 IsActive = request.IsActive, CompanyId = request.CompanyId,
-                Brackets = request.Brackets.Select(b => new SalaryTaxBracket
+                Brackets = (request.Brackets ?? []).Select(b => new SalaryTaxBracket
                 {
                     FromAmount = b.FromAmount, ToAmount = b.ToAmount, RatePercent = b.RatePercent,
                     FixedTax = b.FixedTax, Description = b.Description
@@ -5491,7 +5538,7 @@ _bankImports.Clear(); _bankImports.AddRange(state.BankImports ?? []);
             slab.StandardDeduction = request.StandardDeduction; slab.PersonalAllowance = request.PersonalAllowance;
             slab.IsActive = request.IsActive; slab.CompanyId = request.CompanyId; slab.UpdatedAt = DateTime.UtcNow;
             slab.Brackets.Clear();
-            slab.Brackets.AddRange(request.Brackets.Select(b => new SalaryTaxBracket
+            slab.Brackets.AddRange((request.Brackets ?? []).Select(b => new SalaryTaxBracket
             {
                 FromAmount = b.FromAmount, ToAmount = b.ToAmount, RatePercent = b.RatePercent,
                 FixedTax = b.FixedTax, Description = b.Description

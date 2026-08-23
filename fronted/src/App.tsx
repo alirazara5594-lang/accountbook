@@ -4,6 +4,9 @@ import './App.css'
 import { Login } from './Login'
 import type { UserData } from './Login'
 import OnboardingWizard from './components/OnboardingWizard'
+import { AiAssistantDrawer } from './components/AiAssistantDrawer'
+import { LicenseModal } from './components/LicenseModal'
+import { FeedbackModal } from './components/FeedbackModal'
 import { ShieldAlert } from 'lucide-react'
 import { authApi } from './api/modules/auth.api'
 import Intercompany from './Intercompany'
@@ -125,6 +128,9 @@ export default function App() {
   const activeEntityId = useCompanyStore((s) => s.activeEntityId)
   const fetchCompanies = useCompanyStore((s) => s.fetchCompanies)
   const setActiveEntityId = useCompanyStore((s) => s.setActiveEntityId)
+
+  const [licenseModalOpen, setLicenseModalOpen] = useState(false);
+  const [feedbackModalOpen, setFeedbackModalOpen] = useState(false);
 
   const [currentUser, setCurrentUser] = useState<UserData | null>(() => {
     try {
@@ -449,6 +455,8 @@ export default function App() {
           onLogout={handleLogout}
           theme={theme}
           onThemeChange={setTheme}
+          onOpenLicense={() => setLicenseModalOpen(true)}
+          onOpenFeedback={() => setFeedbackModalOpen(true)}
         />
         <div className="module-workspace">
           <header className="module-head">
@@ -646,6 +654,9 @@ export default function App() {
       </div>
       {modal && <AccountModal form={form} setForm={setForm} accounts={accounts} editing={editing} close={() => setModal(false)} save={saveAccount} />}
       {toast && <div className="toast">✓ {toast}</div>}
+      <AiAssistantDrawer activePage={page} onNavigate={setPage} />
+      <LicenseModal isOpen={licenseModalOpen} onClose={() => setLicenseModalOpen(false)} notify={notify} />
+      <FeedbackModal isOpen={feedbackModalOpen} onClose={() => setFeedbackModalOpen(false)} activePage={page} notify={notify} />
     </div>
   );
 }

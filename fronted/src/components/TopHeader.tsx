@@ -3,7 +3,7 @@ import type { ReactNode } from 'react';
 import {
   Search, Bell, Plus, ChevronDown, LogOut, Coins, X, FileText, Receipt,
   Building2, Users, Wallet, CalendarDays, Boxes, ClipboardList, Landmark,
-  Globe, BarChart3, Check, Sun, Moon,
+  Globe, BarChart3, Check, Sun, Moon, Key, MessageSquarePlus
 } from 'lucide-react';
 import { NAVIGATION } from '../navigation';
 import type { UserData } from '../Login';
@@ -22,6 +22,8 @@ interface Props {
   onLogout: () => void;
   theme?: string;
   onThemeChange?: (id: string) => void;
+  onOpenLicense?: () => void;
+  onOpenFeedback?: () => void;
 }
 
 type SearchHit = { label: string; sub: string; icon: ReactNode; action: () => void };
@@ -29,7 +31,7 @@ type SearchHit = { label: string; sub: string; icon: ReactNode; action: () => vo
 const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 
 export default function TopHeader(props: Props) {
-  const { currentUser, entities, activeEntityId, onSelectEntity, page, setPage, accounts, notify, onLogout, theme, onThemeChange } = props;
+  const { currentUser, entities, activeEntityId, onSelectEntity, page, setPage, accounts, notify, onLogout, theme, onThemeChange, onOpenLicense, onOpenFeedback } = props;
 
   const isDark = theme ? theme.endsWith('-dark') : false;
 
@@ -288,6 +290,56 @@ export default function TopHeader(props: Props) {
         {/* Action icons row — strictly in 1 line */}
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
           
+          {/* Trial / License Status Pill */}
+          <button
+            type="button"
+            onClick={onOpenLicense}
+            title="View 90-Day Trial Status & License Details"
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: 5,
+              fontSize: 11,
+              fontWeight: 700,
+              color: '#b45309',
+              background: '#fef3c7',
+              border: '1px solid #fde68a',
+              borderRadius: 8,
+              padding: '4px 9px',
+              height: 32,
+              flexShrink: 0,
+              cursor: 'pointer'
+            }}
+          >
+            <Key size={12} />
+            <span>90-Day Trial</span>
+          </button>
+
+          {/* Feedback & Suggestion Button */}
+          <button
+            type="button"
+            onClick={onOpenFeedback}
+            title="Submit Pilot Customer Feedback & Feature Requests"
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: 5,
+              fontSize: 11.5,
+              fontWeight: 700,
+              color: 'var(--color-primary)',
+              background: 'var(--color-surface-muted)',
+              border: '1px solid var(--color-border)',
+              borderRadius: 8,
+              padding: '0 9px',
+              height: 32,
+              cursor: 'pointer',
+              flexShrink: 0
+            }}
+          >
+            <MessageSquarePlus size={13} />
+            <span>Feedback</span>
+          </button>
+
           {/* Currency badge */}
           <div title="Active currency" style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: 12, fontWeight: 700, color: 'var(--color-primary)', background: 'var(--color-secondary)', border: '1px solid var(--color-secondary-hover)', borderRadius: 8, padding: '4px 8px', height: 32, flexShrink: 0, boxSizing: 'border-box' }}>
             <Coins size={13} />

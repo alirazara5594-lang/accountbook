@@ -31,7 +31,7 @@ public class AuthController : ControllerBase
             return Unauthorized(new { error = "Invalid credentials" });
 
         // In production, verify password hash. For demo, accept any password for seeded demo accounts
-        var isDemo = user.Email == "admin@acme.com" || user.Email == "accountant@acme.com";
+        var isDemo = user.Email.EndsWith("@acme.com", StringComparison.OrdinalIgnoreCase) || user.Email == "admin@acme.com";
         if (!isDemo && !VerifyPassword(user, request.Password))
             return Unauthorized(new { error = "Invalid credentials" });
 

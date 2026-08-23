@@ -59,7 +59,11 @@ public class ReportsController(AccountingStore store) : ControllerBase
         var balances = AccountBalances(store, companyId, from, to);
         var rows = PostingAccounts(store)
             .Where(a => IsRevenue(a.Type) || IsExpense(a.Type))
-            .Select(a => new { a.Id, a.Code, a.Name, a.Type, Amount = balances.GetValueOrDefault(a.Id) })
+            .Select(a => {
+                var rawBal = balances.GetValueOrDefault(a.Id);
+                var amount = IsRevenue(a.Type) ? -rawBal : rawBal;
+                return new { a.Id, a.Code, a.Name, a.Type, Amount = amount };
+            })
             .Where(r => r.Amount != 0)
             .OrderBy(r => r.Code).ToList();
 
@@ -75,7 +79,11 @@ public class ReportsController(AccountingStore store) : ControllerBase
         var balances = AccountBalances(store, companyId, from, to);
         var rows = PostingAccounts(store)
             .Where(a => IsAsset(a.Type) || IsLiability(a.Type) || IsEquity(a.Type))
-            .Select(a => new { a.Id, a.Code, a.Name, a.Type, Amount = balances.GetValueOrDefault(a.Id) })
+            .Select(a => {
+                var rawBal = balances.GetValueOrDefault(a.Id);
+                var amount = IsAsset(a.Type) ? rawBal : -rawBal;
+                return new { a.Id, a.Code, a.Name, a.Type, Amount = amount };
+            })
             .Where(r => r.Amount != 0)
             .OrderBy(r => r.Code).ToList();
 
@@ -176,6 +184,11 @@ public class ReportsController(AccountingStore store) : ControllerBase
                     if (other.Debit > other.Credit) capexPurchases += (other.Debit - other.Credit);
                     else assetDisposalProceeds += (other.Credit - other.Debit);
                 }
+                else if (otherAcc.Code.StartsWith("16") || otherAcc.Name.Contains("Investment", StringComparison.OrdinalIgnoreCase))
+                {
+                    if (other.Debit > other.Credit) investmentOutflows += (other.Debit - other.Credit);
+                    else investmentInflows += (other.Credit - other.Debit);
+                }
                 else if (otherAcc.Code.StartsWith("31") || otherAcc.Type == AccountType.Equity)
                 {
                     if (other.Credit > other.Debit) equityInjections += (other.Credit - other.Debit);
@@ -207,7 +220,9 @@ public class ReportsController(AccountingStore store) : ControllerBase
         // Construct Investing Activities breakdown
         if (capexPurchases != 0) investingItems.Add(new { title = "Purchase of Property, Plant & Equipment (CapEx)", amount = -capexPurchases, type = "outflow", category = "Investing Outflow" });
         if (assetDisposalProceeds != 0) investingItems.Add(new { title = "Proceeds from Sale of Fixed Assets", amount = assetDisposalProceeds, type = "inflow", category = "Investing Inflow" });
-        var netInvesting = assetDisposalProceeds - capexPurchases;
+        if (investmentInflows != 0) investingItems.Add(new { title = "Proceeds from Sale of Investments", amount = investmentInflows, type = "inflow", category = "Investing Inflow" });
+        if (investmentOutflows != 0) investingItems.Add(new { title = "Purchase of Financial Investments", amount = -investmentOutflows, type = "outflow", category = "Investing Outflow" });
+        var netInvesting = assetDisposalProceeds + investmentInflows - capexPurchases - investmentOutflows;
 
         // Construct Financing Activities breakdown
         if (equityInjections != 0) financingItems.Add(new { title = "Capital Contributions & Equity Injections", amount = equityInjections, type = "inflow", category = "Financing Inflow" });
