@@ -83,9 +83,11 @@ export const FinancialReports: React.FC<FinancialReportsProps> = ({
   const activeCompany = entities.find(e => e.id === activeCompanyId) || { name: 'AccountBook Enterprise Corp' };
 
   const activeCurrency = getActiveCurrency();
-  const formatCur = (val: number) => {
-    const formatted = money(Math.abs(val), activeCurrency);
-    return val < 0 ? `(${formatted})` : formatted;
+  const formatCur = (val: number | null | undefined) => {
+    if (val === null || val === undefined) return '';
+    const num = Number(val);
+    const formatted = money(Math.abs(num), activeCurrency);
+    return num < 0 ? `(${formatted})` : formatted;
   };
 
   const toggleGroup = (groupId: string) => {
@@ -110,7 +112,6 @@ export const FinancialReports: React.FC<FinancialReportsProps> = ({
       return t === 'asset' || t === 'expense' || t.includes('contra');
     };
 
-    // Filter valid posted journal entries
     const postedEntries = entries.filter(e => {
       const statusStr = String(e.status || '').toLowerCase();
       const isPosted = statusStr === 'posted' || statusStr === '3' || !e.status;
@@ -123,7 +124,6 @@ export const FinancialReports: React.FC<FinancialReportsProps> = ({
       return true;
     });
 
-    // Accumulate transactions
     postedEntries.forEach(entry => {
       const entryDate = entry.date;
       const isPriorToPeriod = dateFrom && entryDate < dateFrom;
@@ -151,7 +151,6 @@ export const FinancialReports: React.FC<FinancialReportsProps> = ({
       });
     });
 
-    // Compute closing balance
     accounts.forEach(a => {
       const open = openingBalances[a.id] || 0;
       const dr = periodDebits[a.id] || 0;
@@ -173,13 +172,10 @@ export const FinancialReports: React.FC<FinancialReportsProps> = ({
   }, [accounts, entries, activeCompanyId, dateFrom, dateTo]);
 
   // ── 2. Helper: Leaf-Only Filter ───────────────────────────────────────────
-  // A posting/leaf account has isPosting === true OR has a 5-digit code and no child accounts pointing to it
   const isLeafAccount = (a: Account) => {
     if (a.isPosting === false) return false;
-    // Check if other accounts have this account as their ParentId
     const hasChildren = accounts.some(other => other.parentId === a.id);
     if (hasChildren) return false;
-    // Length check: structural header accounts are 10000, 11000, 20000 etc.
     return true;
   };
 
@@ -296,7 +292,7 @@ export const FinancialReports: React.FC<FinancialReportsProps> = ({
       currentLiabilitiesGroups: [
         { id: 'ap', title: 'Trade Accounts Payable (21100)', total: apTotal, accounts: apAccounts },
         ...(grniAccounts.length > 0 ? [{ id: 'grni', title: 'Goods Received Not Invoiced (GRNI Accrual) (21200)', total: grniTotal, accounts: grniAccounts }] : []),
-        { id: 'payroll_liab', title: 'Accrued Payroll & Statutory Liabilities (21300-21500)', total: payrollLiabTotal, accounts: payrollLiabAccounts },
+        { id: 'payroll_liab', title: 'Accrued Payroll & Statutory Obligations (21300-21500)', total: payrollLiabTotal, accounts: payrollLiabAccounts },
         { id: 'tax_liab', title: 'Sales Tax / VAT Output Payable (22000)', total: taxLiabTotal, accounts: taxLiabAccounts },
         ...(shortLeaseAccounts.length > 0 ? [{ id: 'short_lease', title: 'Current Lease Liabilities (IFRS 16)', total: shortLeaseTotal, accounts: shortLeaseAccounts }] : []),
         ...(otherCurrentLiab.length > 0 ? [{ id: 'other_cl', title: 'Other Current Liabilities', total: otherCurrentLiabTotal, accounts: otherCurrentLiab }] : [])
@@ -383,12 +379,11 @@ export const FinancialReports: React.FC<FinancialReportsProps> = ({
   const cashFlowStatement = useMemo(() => {
     const postingAccounts = accounts.filter(isLeafAccount);
     const cashAccounts = postingAccounts.filter(a => a.code.startsWith('111') || a.code.startsWith('112') || a.name.toLowerCase().includes('cash') || a.name.toLowerCase().includes('bank'));
-    
+
     const openingCash = cashAccounts.reduce((sum, a) => sum + (ledgerState.openingBalances[a.id] || 0), 0);
     const closingCash = cashAccounts.reduce((sum, a) => sum + (ledgerState.closingBalances[a.id] || 0), 0);
     const netCashChange = closingCash - openingCash;
 
-    // Indirect Method Components
     const netIncome = incomeStatement.netProfit;
     const deprAddback = incomeStatement.opexGroups.find(g => g.id === 'depr_exp')?.total || 0;
 
@@ -406,12 +401,10 @@ export const FinancialReports: React.FC<FinancialReportsProps> = ({
 
     const netOperatingCashFlow = netIncome + deprAddback - arChange - invChange + apChange + taxPayableChange;
 
-    // Investing Activities (CapEx PPE)
     const ppeAccounts = postingAccounts.filter(a => a.code.startsWith('15') && !a.name.toLowerCase().includes('accumulated'));
     const capexPurchases = ppeAccounts.reduce((sum, a) => sum + ((ledgerState.closingBalances[a.id] || 0) - (ledgerState.openingBalances[a.id] || 0)), 0);
     const netInvestingCashFlow = -capexPurchases;
 
-    // Financing Activities
     const netFinancingCashFlow = netCashChange - (netOperatingCashFlow + netInvestingCashFlow);
 
     return {
@@ -489,59 +482,61 @@ export const FinancialReports: React.FC<FinancialReportsProps> = ({
     return { currentRatio, quickRatio, debtToEquity, workingCapital, returnOnAssets, returnOnEquity };
   }, [balanceSheet, incomeStatement]);
 
-  // ── 8. Formatted Multi-Level Exports (PDF, Excel, CSV) ─────────────────────
+  // ── 8. Formatted 3-Column Structured Exports (PDF, Excel, CSV) ─────────────
   const handleExportPDF = () => {
     let title = 'STATEMENT OF FINANCIAL POSITION';
     let subtitle = `${activeCompany.name} — As of ${dateTo || new Date().toISOString().slice(0, 10)} (IAS 1 / GAAP)`;
-    let headers: string[] = ['Classification / Account', 'Code', 'Amount (PKR)'];
+    let headers: string[] = ['Account Classification', 'Code', 'Detail Line', 'Subtotal', 'Major Total'];
     let rows: ExportRow[] = [];
     let totals: { label: string; value: unknown }[] = [];
 
     if (activeTab === 'balancesheet') {
-      rows.push(['1. CURRENT ASSETS', '', '']);
+      rows.push(['1. ASSETS', '', '', '', '']);
+      rows.push(['A. Current Assets', '', '', '', '']);
       balanceSheet.currentAssetsGroups.forEach(g => {
-        rows.push([`  • ${g.title}`, '', g.total.toFixed(2)]);
+        rows.push([`  • ${g.title}`, '', '', g.total.toFixed(2), '']);
         if (viewMode === 'detailed') {
           g.accounts.forEach(a => {
-            rows.push([`      ${a.name}`, a.code, (ledgerState.closingBalances[a.id] || 0).toFixed(2)]);
+            rows.push([`      ${a.name}`, a.code, (ledgerState.closingBalances[a.id] || 0).toFixed(2), '', '']);
           });
         }
       });
-      rows.push(['TOTAL CURRENT ASSETS', '', balanceSheet.totalCurrentAssets.toFixed(2)]);
-      rows.push(['', '', '']);
+      rows.push(['TOTAL CURRENT ASSETS', '', '', '', balanceSheet.totalCurrentAssets.toFixed(2)]);
+      rows.push(['', '', '', '', '']);
 
-      rows.push(['2. NON-CURRENT ASSETS', '', '']);
+      rows.push(['B. Non-Current Assets', '', '', '', '']);
       balanceSheet.nonCurrentAssetsGroups.forEach(g => {
-        rows.push([`  • ${g.title}`, '', g.total.toFixed(2)]);
+        rows.push([`  • ${g.title}`, '', '', g.total.toFixed(2), '']);
         if (viewMode === 'detailed') {
           g.accounts.forEach(a => {
-            rows.push([`      ${a.name}`, a.code, (ledgerState.closingBalances[a.id] || 0).toFixed(2)]);
+            rows.push([`      ${a.name}`, a.code, (ledgerState.closingBalances[a.id] || 0).toFixed(2), '', '']);
           });
         }
       });
-      rows.push(['TOTAL NON-CURRENT ASSETS', '', balanceSheet.totalNonCurrentAssets.toFixed(2)]);
-      rows.push(['TOTAL ASSETS', '', balanceSheet.totalAssets.toFixed(2)]);
-      rows.push(['', '', '']);
+      rows.push(['TOTAL NON-CURRENT ASSETS', '', '', '', balanceSheet.totalNonCurrentAssets.toFixed(2)]);
+      rows.push(['TOTAL ASSETS', '', '', '', balanceSheet.totalAssets.toFixed(2)]);
+      rows.push(['', '', '', '', '']);
 
-      rows.push(['3. CURRENT LIABILITIES', '', '']);
+      rows.push(['2. LIABILITIES', '', '', '', '']);
+      rows.push(['A. Current Liabilities', '', '', '', '']);
       balanceSheet.currentLiabilitiesGroups.forEach(g => {
-        rows.push([`  • ${g.title}`, '', g.total.toFixed(2)]);
+        rows.push([`  • ${g.title}`, '', '', g.total.toFixed(2), '']);
         if (viewMode === 'detailed') {
           g.accounts.forEach(a => {
-            rows.push([`      ${a.name}`, a.code, (ledgerState.closingBalances[a.id] || 0).toFixed(2)]);
+            rows.push([`      ${a.name}`, a.code, (ledgerState.closingBalances[a.id] || 0).toFixed(2), '', '']);
           });
         }
       });
-      rows.push(['TOTAL CURRENT LIABILITIES', '', balanceSheet.totalCurrentLiabilities.toFixed(2)]);
-      rows.push(['', '', '']);
+      rows.push(['TOTAL CURRENT LIABILITIES', '', '', '', balanceSheet.totalCurrentLiabilities.toFixed(2)]);
+      rows.push(['', '', '', '', '']);
 
-      rows.push(['4. SHAREHOLDERS\' EQUITY', '', '']);
+      rows.push(['3. SHAREHOLDERS\' EQUITY', '', '', '', '']);
       balanceSheet.equityGroups.forEach(g => {
-        rows.push([`  • ${g.title}`, '', g.total.toFixed(2)]);
+        rows.push([`  • ${g.title}`, '', '', g.total.toFixed(2), '']);
       });
-      rows.push(['  • Retained Net Income for Period (P&L)', '', balanceSheet.netPeriodIncome.toFixed(2)]);
-      rows.push(['TOTAL SHAREHOLDERS\' EQUITY', '', balanceSheet.totalEquity.toFixed(2)]);
-      rows.push(['TOTAL LIABILITIES & EQUITY', '', balanceSheet.totalLiabilitiesAndEquity.toFixed(2)]);
+      rows.push(['  • Retained Net Income for Period (P&L)', '', '', balanceSheet.netPeriodIncome.toFixed(2), '']);
+      rows.push(['TOTAL SHAREHOLDERS\' EQUITY', '', '', '', balanceSheet.totalEquity.toFixed(2)]);
+      rows.push(['TOTAL LIABILITIES & EQUITY', '', '', '', balanceSheet.totalLiabilitiesAndEquity.toFixed(2)]);
 
       totals = [
         { label: 'TOTAL ASSETS', value: formatCur(balanceSheet.totalAssets) },
@@ -551,22 +546,25 @@ export const FinancialReports: React.FC<FinancialReportsProps> = ({
     } else if (activeTab === 'incomestatement') {
       title = 'STATEMENT OF COMPREHENSIVE INCOME (PROFIT & LOSS)';
       subtitle = `${activeCompany.name} — Period: ${dateFrom || 'Inception'} to ${dateTo || 'Today'} (IFRS 15)`;
-      rows.push(['1. OPERATING REVENUE', '', incomeStatement.grossRevenue.toFixed(2)]);
+      rows.push(['1. OPERATING REVENUE', '', '', '', '']);
       incomeStatement.revenueGroups.forEach(g => {
-        g.accounts.forEach(a => rows.push([`    ${a.name}`, a.code, (ledgerState.closingBalances[a.id] || 0).toFixed(2)]));
+        g.accounts.forEach(a => rows.push([`    ${a.name}`, a.code, (ledgerState.closingBalances[a.id] || 0).toFixed(2), '', '']));
       });
-      rows.push(['2. COST OF GOODS SOLD (COGS)', '', (-incomeStatement.cogsGroup.total).toFixed(2)]);
-      rows.push(['GROSS PROFIT', '', incomeStatement.grossProfit.toFixed(2)]);
-      rows.push(['', '', '']);
-      rows.push(['3. OPERATING EXPENSES (OPEX)', '', (-incomeStatement.totalOperatingExpenses).toFixed(2)]);
+      rows.push(['TOTAL OPERATING REVENUE', '', '', '', incomeStatement.grossRevenue.toFixed(2)]);
+      rows.push(['', '', '', '', '']);
+      rows.push(['2. COST OF GOODS SOLD (COGS)', '', '', (-incomeStatement.cogsGroup.total).toFixed(2), '']);
+      rows.push(['GROSS PROFIT', '', '', '', incomeStatement.grossProfit.toFixed(2)]);
+      rows.push(['', '', '', '', '']);
+      rows.push(['3. OPERATING EXPENSES (OPEX)', '', '', '', '']);
       incomeStatement.opexGroups.forEach(g => {
-        rows.push([`  • ${g.title}`, '', (-g.total).toFixed(2)]);
+        rows.push([`  • ${g.title}`, '', '', (-g.total).toFixed(2), '']);
         if (viewMode === 'detailed') {
-          g.accounts.forEach(a => rows.push([`      ${a.name}`, a.code, (-(ledgerState.closingBalances[a.id] || 0)).toFixed(2)]));
+          g.accounts.forEach(a => rows.push([`      ${a.name}`, a.code, (-(ledgerState.closingBalances[a.id] || 0)).toFixed(2), '', '']));
         }
       });
-      rows.push(['OPERATING PROFIT (EBIT)', '', incomeStatement.operatingIncomeEbit.toFixed(2)]);
-      rows.push(['NET PROFIT / (LOSS)', '', incomeStatement.netProfit.toFixed(2)]);
+      rows.push(['TOTAL OPERATING EXPENSES', '', '', '', (-incomeStatement.totalOperatingExpenses).toFixed(2)]);
+      rows.push(['OPERATING PROFIT (EBIT)', '', '', '', incomeStatement.operatingIncomeEbit.toFixed(2)]);
+      rows.push(['NET PROFIT / (LOSS)', '', '', '', incomeStatement.netProfit.toFixed(2)]);
 
       totals = [
         { label: 'GROSS PROFIT', value: formatCur(incomeStatement.grossProfit) },
@@ -576,16 +574,18 @@ export const FinancialReports: React.FC<FinancialReportsProps> = ({
     } else if (activeTab === 'cashflow') {
       title = 'STATEMENT OF CASH FLOWS';
       subtitle = `${activeCompany.name} — IAS 7 Method`;
-      rows.push(['1. CASH FLOWS FROM OPERATING ACTIVITIES', '', cashFlowStatement.netOperatingCashFlow.toFixed(2)]);
-      rows.push(['  • Net Profit / (Loss) for the Period', '', cashFlowStatement.netIncome.toFixed(2)]);
-      rows.push(['  • Non-Cash Depreciation Add-back', '', cashFlowStatement.deprAddback.toFixed(2)]);
-      rows.push(['  • Change in Accounts Receivable', '', (-cashFlowStatement.arChange).toFixed(2)]);
-      rows.push(['  • Change in Inventories', '', (-cashFlowStatement.invChange).toFixed(2)]);
-      rows.push(['  • Change in Accounts Payable & Taxes', '', (cashFlowStatement.apChange + cashFlowStatement.taxPayableChange).toFixed(2)]);
-      rows.push(['2. CASH FLOWS FROM INVESTING ACTIVITIES (CapEx)', '', cashFlowStatement.netInvestingCashFlow.toFixed(2)]);
-      rows.push(['3. CASH FLOWS FROM FINANCING ACTIVITIES', '', cashFlowStatement.netFinancingCashFlow.toFixed(2)]);
-      rows.push(['NET INCREASE / (DECREASE) IN CASH', '', cashFlowStatement.netCashChange.toFixed(2)]);
-      rows.push(['CLOSING CASH & BANK BALANCES', '', cashFlowStatement.closingCash.toFixed(2)]);
+      rows.push(['1. OPERATING ACTIVITIES', '', '', '', '']);
+      rows.push(['  • Net Profit / (Loss) for the Period', '', cashFlowStatement.netIncome.toFixed(2), '', '']);
+      rows.push(['  • Non-Cash Depreciation Add-back', '', cashFlowStatement.deprAddback.toFixed(2), '', '']);
+      rows.push(['  • Change in Accounts Receivable', '', (-cashFlowStatement.arChange).toFixed(2), '', '']);
+      rows.push(['  • Change in Inventories', '', (-cashFlowStatement.invChange).toFixed(2), '', '']);
+      rows.push(['  • Change in Accounts Payable & Taxes', '', (cashFlowStatement.apChange + cashFlowStatement.taxPayableChange).toFixed(2), '', '']);
+      rows.push(['NET CASH FROM OPERATING ACTIVITIES', '', '', '', cashFlowStatement.netOperatingCashFlow.toFixed(2)]);
+      rows.push(['', '', '', '', '']);
+      rows.push(['2. INVESTING ACTIVITIES (CapEx)', '', '', '', cashFlowStatement.netInvestingCashFlow.toFixed(2)]);
+      rows.push(['3. FINANCING ACTIVITIES', '', '', '', cashFlowStatement.netFinancingCashFlow.toFixed(2)]);
+      rows.push(['NET CASH CHANGE', '', '', '', cashFlowStatement.netCashChange.toFixed(2)]);
+      rows.push(['CLOSING CASH & BANK BALANCES', '', '', '', cashFlowStatement.closingCash.toFixed(2)]);
 
       totals = [
         { label: 'OPERATING CASH FLOW', value: formatCur(cashFlowStatement.netOperatingCashFlow) },
@@ -612,63 +612,69 @@ export const FinancialReports: React.FC<FinancialReportsProps> = ({
   };
 
   const handleExportExcel = () => {
-    const filename = `Financial_Report_${activeTab}_${new Date().toISOString().slice(0, 10)}`;
-    const headers: string[] = ['Category / Account Classification', 'Code', 'Type', 'Amount (PKR)'];
+    const filename = `Financial_Statement_${activeTab}_${new Date().toISOString().slice(0, 10)}`;
+    const headers: string[] = ['Account Classification / Description', 'Code', 'Detail Amount (Dr/Cr)', 'Group Subtotal', 'Section Total'];
     const rows: ExportRow[] = [];
 
     if (activeTab === 'balancesheet') {
-      rows.push(['1. CURRENT ASSETS', '', '', '']);
+      rows.push(['1. ASSETS', '', '', '', '']);
+      rows.push(['A. Current Assets', '', '', '', '']);
       balanceSheet.currentAssetsGroups.forEach(g => {
-        rows.push([`  [GROUP] ${g.title}`, '', 'Subtotal', g.total]);
+        rows.push([`  • ${g.title}`, '', '', g.total, '']);
         g.accounts.forEach(a => {
-          rows.push([`      ${a.name}`, a.code, a.type, ledgerState.closingBalances[a.id] || 0]);
+          rows.push([`      ${a.name}`, a.code, ledgerState.closingBalances[a.id] || 0, '', '']);
         });
       });
-      rows.push(['TOTAL CURRENT ASSETS', '', 'TOTAL', balanceSheet.totalCurrentAssets]);
-      rows.push(['', '', '', '']);
+      rows.push(['TOTAL CURRENT ASSETS', '', '', '', balanceSheet.totalCurrentAssets]);
+      rows.push(['', '', '', '', '']);
 
-      rows.push(['2. NON-CURRENT ASSETS', '', '', '']);
+      rows.push(['B. Non-Current Assets', '', '', '', '']);
       balanceSheet.nonCurrentAssetsGroups.forEach(g => {
-        rows.push([`  [GROUP] ${g.title}`, '', 'Subtotal', g.total]);
+        rows.push([`  • ${g.title}`, '', '', g.total, '']);
         g.accounts.forEach(a => {
-          rows.push([`      ${a.name}`, a.code, a.type, ledgerState.closingBalances[a.id] || 0]);
+          rows.push([`      ${a.name}`, a.code, ledgerState.closingBalances[a.id] || 0, '', '']);
         });
       });
-      rows.push(['TOTAL NON-CURRENT ASSETS', '', 'TOTAL', balanceSheet.totalNonCurrentAssets]);
-      rows.push(['TOTAL ASSETS', '', 'GRAND TOTAL', balanceSheet.totalAssets]);
-      rows.push(['', '', '', '']);
+      rows.push(['TOTAL NON-CURRENT ASSETS', '', '', '', balanceSheet.totalNonCurrentAssets]);
+      rows.push(['TOTAL ASSETS', '', '', '', balanceSheet.totalAssets]);
+      rows.push(['', '', '', '', '']);
 
-      rows.push(['3. CURRENT LIABILITIES', '', '', '']);
+      rows.push(['2. LIABILITIES', '', '', '', '']);
+      rows.push(['A. Current Liabilities', '', '', '', '']);
       balanceSheet.currentLiabilitiesGroups.forEach(g => {
-        rows.push([`  [GROUP] ${g.title}`, '', 'Subtotal', g.total]);
+        rows.push([`  • ${g.title}`, '', '', g.total, '']);
         g.accounts.forEach(a => {
-          rows.push([`      ${a.name}`, a.code, a.type, ledgerState.closingBalances[a.id] || 0]);
+          rows.push([`      ${a.name}`, a.code, ledgerState.closingBalances[a.id] || 0, '', '']);
         });
       });
-      rows.push(['TOTAL CURRENT LIABILITIES', '', 'TOTAL', balanceSheet.totalCurrentLiabilities]);
-      rows.push(['', '', '', '']);
+      rows.push(['TOTAL CURRENT LIABILITIES', '', '', '', balanceSheet.totalCurrentLiabilities]);
+      rows.push(['', '', '', '', '']);
 
-      rows.push(['4. SHAREHOLDERS\' EQUITY', '', '', '']);
+      rows.push(['3. SHAREHOLDERS\' EQUITY', '', '', '', '']);
       balanceSheet.equityGroups.forEach(g => {
-        rows.push([`  [GROUP] ${g.title}`, '', 'Subtotal', g.total]);
+        rows.push([`  • ${g.title}`, '', '', g.total, '']);
       });
-      rows.push(['  [P&L] Retained Net Income for Period', '', 'Net Profit', balanceSheet.netPeriodIncome]);
-      rows.push(['TOTAL SHAREHOLDERS\' EQUITY', '', 'TOTAL', balanceSheet.totalEquity]);
-      rows.push(['TOTAL LIABILITIES & EQUITY', '', 'GRAND TOTAL', balanceSheet.totalLiabilitiesAndEquity]);
+      rows.push(['  • Retained Net Income for Period', '', '', balanceSheet.netPeriodIncome, '']);
+      rows.push(['TOTAL SHAREHOLDERS\' EQUITY', '', '', '', balanceSheet.totalEquity]);
+      rows.push(['TOTAL LIABILITIES & EQUITY', '', '', '', balanceSheet.totalLiabilitiesAndEquity]);
     } else if (activeTab === 'incomestatement') {
-      rows.push(['1. OPERATING REVENUE', '', '', incomeStatement.grossRevenue]);
+      rows.push(['1. OPERATING REVENUE', '', '', '', '']);
       incomeStatement.revenueGroups.forEach(g => {
-        g.accounts.forEach(a => rows.push([`    ${a.name}`, a.code, a.type, ledgerState.closingBalances[a.id] || 0]));
+        g.accounts.forEach(a => rows.push([`    ${a.name}`, a.code, ledgerState.closingBalances[a.id] || 0, '', '']));
       });
-      rows.push(['2. COST OF GOODS SOLD (COGS)', '', 'COGS', -incomeStatement.cogsGroup.total]);
-      rows.push(['GROSS PROFIT', '', 'Gross Margin', incomeStatement.grossProfit]);
-      rows.push(['3. OPERATING EXPENSES (OPEX)', '', 'OPEX', -incomeStatement.totalOperatingExpenses]);
+      rows.push(['TOTAL OPERATING REVENUE', '', '', '', incomeStatement.grossRevenue]);
+      rows.push(['', '', '', '', '']);
+      rows.push(['2. COST OF GOODS SOLD (COGS)', '', '', -incomeStatement.cogsGroup.total, '']);
+      rows.push(['GROSS PROFIT', '', '', '', incomeStatement.grossProfit]);
+      rows.push(['', '', '', '', '']);
+      rows.push(['3. OPERATING EXPENSES (OPEX)', '', '', '', '']);
       incomeStatement.opexGroups.forEach(g => {
-        rows.push([`  [GROUP] ${g.title}`, '', 'Subtotal', -g.total]);
-        g.accounts.forEach(a => rows.push([`      ${a.name}`, a.code, a.type, -(ledgerState.closingBalances[a.id] || 0)]));
+        rows.push([`  • ${g.title}`, '', '', -g.total, '']);
+        g.accounts.forEach(a => rows.push([`      ${a.name}`, a.code, -(ledgerState.closingBalances[a.id] || 0), '', '']));
       });
-      rows.push(['OPERATING INCOME (EBIT)', '', 'Operating Profit', incomeStatement.operatingIncomeEbit]);
-      rows.push(['NET PROFIT / (LOSS)', '', 'Net Income', incomeStatement.netProfit]);
+      rows.push(['TOTAL OPERATING EXPENSES', '', '', '', -incomeStatement.totalOperatingExpenses]);
+      rows.push(['OPERATING INCOME (EBIT)', '', '', '', incomeStatement.operatingIncomeEbit]);
+      rows.push(['NET PROFIT / (LOSS)', '', '', '', incomeStatement.netProfit]);
     } else {
       headers.length = 0;
       headers.push('Account Code', 'Account Name', 'Major Head', 'Opening Balance', 'Period Debit', 'Period Credit', 'Closing Debit', 'Closing Credit');
@@ -681,7 +687,7 @@ export const FinancialReports: React.FC<FinancialReportsProps> = ({
   };
 
   const handleExportCSV = () => {
-    let headers: string[] = ['Classification', 'Code', 'Name', 'Amount'];
+    let headers: string[] = ['Classification', 'Code', 'Detail Amount', 'Subtotal', 'Major Total'];
     let rows: ExportRow[] = [];
     let filename = `Financial_Statement_${activeTab}_${new Date().toISOString().slice(0, 10)}`;
 
@@ -690,18 +696,10 @@ export const FinancialReports: React.FC<FinancialReportsProps> = ({
       rows = trialBalanceRows.map(r => [r.code, r.name, r.type, r.opening, r.periodDebit, r.periodCredit, r.closingDebit, r.closingCredit]);
     } else {
       balanceSheet.currentAssetsGroups.forEach(g => {
-        g.accounts.forEach(a => rows.push(['Current Assets', a.code, a.name, ledgerState.closingBalances[a.id] || 0]));
+        rows.push([g.title, '', '', g.total, '']);
+        g.accounts.forEach(a => rows.push(['', a.code, ledgerState.closingBalances[a.id] || 0, '', '']));
       });
-      balanceSheet.nonCurrentAssetsGroups.forEach(g => {
-        g.accounts.forEach(a => rows.push(['Non-Current Assets', a.code, a.name, ledgerState.closingBalances[a.id] || 0]));
-      });
-      balanceSheet.currentLiabilitiesGroups.forEach(g => {
-        g.accounts.forEach(a => rows.push(['Current Liabilities', a.code, a.name, ledgerState.closingBalances[a.id] || 0]));
-      });
-      balanceSheet.equityGroups.forEach(g => {
-        g.accounts.forEach(a => rows.push(['Shareholders Equity', a.code, a.name, ledgerState.closingBalances[a.id] || 0]));
-      });
-      rows.push(['Equity', 'P&L_NET', 'Retained Net Income for Period', balanceSheet.netPeriodIncome]);
+      rows.push(['TOTAL CURRENT ASSETS', '', '', '', balanceSheet.totalCurrentAssets]);
     }
 
     downloadCSV(filename, headers, rows);
@@ -927,210 +925,293 @@ export const FinancialReports: React.FC<FinancialReportsProps> = ({
               </div>
             </div>
 
+            {/* 3-Column Structured Financial Statement Table */}
             <div className="p-6 space-y-6 text-xs font-mono">
+              {/* Header Columns Guide */}
+              <div className="grid grid-cols-12 gap-2 text-[11px] font-bold text-muted-foreground uppercase border-b-2 pb-2 font-sans">
+                <div className="col-span-6">Account Classification / Line Item</div>
+                <div className="col-span-2 text-right">Ledger Detail</div>
+                <div className="col-span-2 text-right">Subtotal</div>
+                <div className="col-span-2 text-right text-foreground font-black">Total (PKR)</div>
+              </div>
+
               {/* 1. ASSETS SECTION */}
               <div className="space-y-3">
-                <h4 className="text-sm font-black text-teal-800 dark:text-teal-300 uppercase tracking-wider border-b-2 border-teal-600 pb-1 flex justify-between font-sans">
-                  <span>1. ASSETS</span>
-                  <span>{formatCur(balanceSheet.totalAssets)}</span>
-                </h4>
+                <div className="grid grid-cols-12 gap-2 text-sm font-black text-teal-800 dark:text-teal-300 uppercase tracking-wider border-b border-teal-600 pb-1 font-sans">
+                  <div className="col-span-6">1. ASSETS</div>
+                  <div className="col-span-2"></div>
+                  <div className="col-span-2"></div>
+                  <div className="col-span-2 text-right font-mono"></div>
+                </div>
 
                 {/* Current Assets */}
-                <div className="space-y-2 pl-2">
-                  <div className="font-bold text-foreground font-sans text-xs flex justify-between py-1 border-b bg-muted/30 px-2 rounded-md">
-                    <span>A. Current Assets</span>
-                    <span className="font-mono">{formatCur(balanceSheet.totalCurrentAssets)}</span>
+                <div className="space-y-1 pl-2">
+                  <div className="grid grid-cols-12 gap-2 font-bold text-foreground font-sans text-xs py-1 border-b bg-muted/30 px-2 rounded-md">
+                    <div className="col-span-6">A. Current Assets</div>
+                    <div className="col-span-2"></div>
+                    <div className="col-span-2"></div>
+                    <div className="col-span-2 text-right font-mono"></div>
                   </div>
 
                   {balanceSheet.currentAssetsGroups.map(group => (
-                    <div key={group.id} className="space-y-1 pl-2">
+                    <div key={group.id} className="space-y-0.5 pl-2">
                       <div
                         onClick={() => toggleGroup(group.id)}
-                        className="flex justify-between py-1 font-bold text-foreground cursor-pointer hover:text-teal-600 transition-colors"
+                        className="grid grid-cols-12 gap-2 py-1 font-bold text-foreground cursor-pointer hover:text-teal-600 transition-colors"
                       >
-                        <span className="font-sans flex items-center gap-1.5">
+                        <div className="col-span-6 font-sans flex items-center gap-1.5">
                           {viewMode === 'detailed' && (
                             collapsedGroups[group.id] ? <ChevronRight className="w-3.5 h-3.5 text-muted-foreground" /> : <ChevronDown className="w-3.5 h-3.5 text-muted-foreground" />
                           )}
                           {group.title}
-                        </span>
-                        <span>{formatCur(group.total)}</span>
+                        </div>
+                        <div className="col-span-2"></div>
+                        <div className="col-span-2 text-right font-mono text-teal-700 dark:text-teal-400">{formatCur(group.total)}</div>
+                        <div className="col-span-2"></div>
                       </div>
 
                       {viewMode === 'detailed' && !collapsedGroups[group.id] && (
-                        <div className="pl-6 space-y-0.5 border-l-2 border-muted">
+                        <div className="space-y-0.5 border-l-2 border-muted pl-4">
                           {group.accounts.map(a => (
-                            <div key={a.id} className="flex justify-between py-0.5 text-muted-foreground hover:text-foreground text-[11px]">
-                              <span className="font-sans">• {a.code} — {a.name}</span>
-                              <span>{formatCur(ledgerState.closingBalances[a.id] || 0)}</span>
+                            <div key={a.id} className="grid grid-cols-12 gap-2 py-0.5 text-muted-foreground hover:text-foreground text-[11px]">
+                              <div className="col-span-6 font-sans">• {a.code} — {a.name}</div>
+                              <div className="col-span-2 text-right font-mono">{formatCur(ledgerState.closingBalances[a.id] || 0)}</div>
+                              <div className="col-span-2"></div>
+                              <div className="col-span-2"></div>
                             </div>
                           ))}
                         </div>
                       )}
                     </div>
                   ))}
+
+                  {/* CURRENT ASSETS SUBTOTAL BAR */}
+                  <div className="grid grid-cols-12 gap-2 py-1.5 font-bold text-foreground border-t border-b bg-muted/20 px-2 rounded-md mt-1">
+                    <div className="col-span-6 font-sans">TOTAL CURRENT ASSETS</div>
+                    <div className="col-span-2"></div>
+                    <div className="col-span-2"></div>
+                    <div className="col-span-2 text-right font-mono text-teal-700 dark:text-teal-400">{formatCur(balanceSheet.totalCurrentAssets)}</div>
+                  </div>
                 </div>
 
                 {/* Non-Current Assets */}
-                <div className="space-y-2 pl-2 pt-3">
-                  <div className="font-bold text-foreground font-sans text-xs flex justify-between py-1 border-b bg-muted/30 px-2 rounded-md">
-                    <span>B. Non-Current Assets (Property, Plant, Equipment & Leases)</span>
-                    <span className="font-mono">{formatCur(balanceSheet.totalNonCurrentAssets)}</span>
+                <div className="space-y-1 pl-2 pt-3">
+                  <div className="grid grid-cols-12 gap-2 font-bold text-foreground font-sans text-xs py-1 border-b bg-muted/30 px-2 rounded-md">
+                    <div className="col-span-6">B. Non-Current Assets (Fixed & Leases)</div>
+                    <div className="col-span-2"></div>
+                    <div className="col-span-2"></div>
+                    <div className="col-span-2 text-right font-mono"></div>
                   </div>
 
                   {balanceSheet.nonCurrentAssetsGroups.map(group => (
-                    <div key={group.id} className="space-y-1 pl-2">
+                    <div key={group.id} className="space-y-0.5 pl-2">
                       <div
                         onClick={() => toggleGroup(group.id)}
-                        className="flex justify-between py-1 font-bold text-foreground cursor-pointer hover:text-teal-600 transition-colors"
+                        className="grid grid-cols-12 gap-2 py-1 font-bold text-foreground cursor-pointer hover:text-teal-600 transition-colors"
                       >
-                        <span className="font-sans flex items-center gap-1.5">
+                        <div className="col-span-6 font-sans flex items-center gap-1.5">
                           {viewMode === 'detailed' && (
                             collapsedGroups[group.id] ? <ChevronRight className="w-3.5 h-3.5 text-muted-foreground" /> : <ChevronDown className="w-3.5 h-3.5 text-muted-foreground" />
                           )}
                           {group.title}
-                        </span>
-                        <span>{formatCur(group.total)}</span>
+                        </div>
+                        <div className="col-span-2"></div>
+                        <div className="col-span-2 text-right font-mono text-teal-700 dark:text-teal-400">{formatCur(group.total)}</div>
+                        <div className="col-span-2"></div>
                       </div>
 
                       {viewMode === 'detailed' && !collapsedGroups[group.id] && (
-                        <div className="pl-6 space-y-0.5 border-l-2 border-muted">
+                        <div className="space-y-0.5 border-l-2 border-muted pl-4">
                           {group.accounts.map(a => (
-                            <div key={a.id} className="flex justify-between py-0.5 text-muted-foreground hover:text-foreground text-[11px]">
-                              <span className="font-sans">• {a.code} — {a.name}</span>
-                              <span>{formatCur(ledgerState.closingBalances[a.id] || 0)}</span>
+                            <div key={a.id} className="grid grid-cols-12 gap-2 py-0.5 text-muted-foreground hover:text-foreground text-[11px]">
+                              <div className="col-span-6 font-sans">• {a.code} — {a.name}</div>
+                              <div className="col-span-2 text-right font-mono">{formatCur(ledgerState.closingBalances[a.id] || 0)}</div>
+                              <div className="col-span-2"></div>
+                              <div className="col-span-2"></div>
                             </div>
                           ))}
                         </div>
                       )}
                     </div>
                   ))}
+
+                  {/* NON-CURRENT ASSETS SUBTOTAL BAR */}
+                  <div className="grid grid-cols-12 gap-2 py-1.5 font-bold text-foreground border-t border-b bg-muted/20 px-2 rounded-md mt-1">
+                    <div className="col-span-6 font-sans">TOTAL NON-CURRENT ASSETS</div>
+                    <div className="col-span-2"></div>
+                    <div className="col-span-2"></div>
+                    <div className="col-span-2 text-right font-mono text-teal-700 dark:text-teal-400">{formatCur(balanceSheet.totalNonCurrentAssets)}</div>
+                  </div>
                 </div>
 
                 {/* TOTAL ASSETS BAR */}
-                <div className="flex justify-between p-3.5 rounded-xl bg-teal-500/10 text-teal-950 dark:text-teal-200 font-black text-sm border border-teal-500/30">
-                  <span className="font-sans uppercase">TOTAL ASSETS:</span>
-                  <span>{formatCur(balanceSheet.totalAssets)}</span>
+                <div className="grid grid-cols-12 gap-2 p-3.5 rounded-xl bg-teal-500/10 text-teal-950 dark:text-teal-200 font-black text-sm border border-teal-500/30 mt-2">
+                  <div className="col-span-6 font-sans uppercase">TOTAL ASSETS (A + B):</div>
+                  <div className="col-span-2"></div>
+                  <div className="col-span-2"></div>
+                  <div className="col-span-2 text-right font-mono">{formatCur(balanceSheet.totalAssets)}</div>
                 </div>
               </div>
 
               {/* 2. LIABILITIES SECTION */}
               <div className="space-y-3 pt-4">
-                <h4 className="text-sm font-black text-rose-800 dark:text-rose-300 uppercase tracking-wider border-b-2 border-rose-600 pb-1 flex justify-between font-sans">
-                  <span>2. LIABILITIES</span>
-                  <span>{formatCur(balanceSheet.totalLiabilities)}</span>
-                </h4>
+                <div className="grid grid-cols-12 gap-2 text-sm font-black text-rose-800 dark:text-rose-300 uppercase tracking-wider border-b border-rose-600 pb-1 font-sans">
+                  <div className="col-span-6">2. LIABILITIES</div>
+                  <div className="col-span-2"></div>
+                  <div className="col-span-2"></div>
+                  <div className="col-span-2 text-right font-mono"></div>
+                </div>
 
                 {/* Current Liabilities */}
-                <div className="space-y-2 pl-2">
-                  <div className="font-bold text-foreground font-sans text-xs flex justify-between py-1 border-b bg-muted/30 px-2 rounded-md">
-                    <span>A. Current Liabilities (Trade Payables, Accruals & Taxes)</span>
-                    <span className="font-mono">{formatCur(balanceSheet.totalCurrentLiabilities)}</span>
+                <div className="space-y-1 pl-2">
+                  <div className="grid grid-cols-12 gap-2 font-bold text-foreground font-sans text-xs py-1 border-b bg-muted/30 px-2 rounded-md">
+                    <div className="col-span-6">A. Current Liabilities (Trade Payables, Accruals & Taxes)</div>
+                    <div className="col-span-2"></div>
+                    <div className="col-span-2"></div>
+                    <div className="col-span-2 text-right font-mono"></div>
                   </div>
 
                   {balanceSheet.currentLiabilitiesGroups.map(group => (
-                    <div key={group.id} className="space-y-1 pl-2">
+                    <div key={group.id} className="space-y-0.5 pl-2">
                       <div
                         onClick={() => toggleGroup(group.id)}
-                        className="flex justify-between py-1 font-bold text-foreground cursor-pointer hover:text-rose-600 transition-colors"
+                        className="grid grid-cols-12 gap-2 py-1 font-bold text-foreground cursor-pointer hover:text-rose-600 transition-colors"
                       >
-                        <span className="font-sans flex items-center gap-1.5">
+                        <div className="col-span-6 font-sans flex items-center gap-1.5">
                           {viewMode === 'detailed' && (
                             collapsedGroups[group.id] ? <ChevronRight className="w-3.5 h-3.5 text-muted-foreground" /> : <ChevronDown className="w-3.5 h-3.5 text-muted-foreground" />
                           )}
                           {group.title}
-                        </span>
-                        <span>{formatCur(group.total)}</span>
+                        </div>
+                        <div className="col-span-2"></div>
+                        <div className="col-span-2 text-right font-mono text-rose-700 dark:text-rose-400">{formatCur(group.total)}</div>
+                        <div className="col-span-2"></div>
                       </div>
 
                       {viewMode === 'detailed' && !collapsedGroups[group.id] && (
-                        <div className="pl-6 space-y-0.5 border-l-2 border-muted">
+                        <div className="space-y-0.5 border-l-2 border-muted pl-4">
                           {group.accounts.map(a => (
-                            <div key={a.id} className="flex justify-between py-0.5 text-muted-foreground hover:text-foreground text-[11px]">
-                              <span className="font-sans">• {a.code} — {a.name}</span>
-                              <span>{formatCur(ledgerState.closingBalances[a.id] || 0)}</span>
+                            <div key={a.id} className="grid grid-cols-12 gap-2 py-0.5 text-muted-foreground hover:text-foreground text-[11px]">
+                              <div className="col-span-6 font-sans">• {a.code} — {a.name}</div>
+                              <div className="col-span-2 text-right font-mono">{formatCur(ledgerState.closingBalances[a.id] || 0)}</div>
+                              <div className="col-span-2"></div>
+                              <div className="col-span-2"></div>
                             </div>
                           ))}
                         </div>
                       )}
                     </div>
                   ))}
+
+                  {/* CURRENT LIABILITIES SUBTOTAL BAR */}
+                  <div className="grid grid-cols-12 gap-2 py-1.5 font-bold text-foreground border-t border-b bg-muted/20 px-2 rounded-md mt-1">
+                    <div className="col-span-6 font-sans">TOTAL CURRENT LIABILITIES</div>
+                    <div className="col-span-2"></div>
+                    <div className="col-span-2"></div>
+                    <div className="col-span-2 text-right font-mono text-rose-700 dark:text-rose-400">{formatCur(balanceSheet.totalCurrentLiabilities)}</div>
+                  </div>
                 </div>
 
                 {/* Non-Current Liabilities */}
                 {balanceSheet.nonCurrentLiabilitiesGroups.length > 0 && (
-                  <div className="space-y-2 pl-2 pt-3">
-                    <div className="font-bold text-foreground font-sans text-xs flex justify-between py-1 border-b bg-muted/30 px-2 rounded-md">
-                      <span>B. Non-Current Liabilities (Long-term Leases & Debt)</span>
-                      <span className="font-mono">{formatCur(balanceSheet.totalNonCurrentLiabilities)}</span>
+                  <div className="space-y-1 pl-2 pt-3">
+                    <div className="grid grid-cols-12 gap-2 font-bold text-foreground font-sans text-xs py-1 border-b bg-muted/30 px-2 rounded-md">
+                      <div className="col-span-6">B. Non-Current Liabilities (Long-term Leases & Debt)</div>
+                      <div className="col-span-2"></div>
+                      <div className="col-span-2"></div>
+                      <div className="col-span-2 text-right font-mono"></div>
                     </div>
 
                     {balanceSheet.nonCurrentLiabilitiesGroups.map(group => (
-                      <div key={group.id} className="space-y-1 pl-2">
+                      <div key={group.id} className="space-y-0.5 pl-2">
                         <div
                           onClick={() => toggleGroup(group.id)}
-                          className="flex justify-between py-1 font-bold text-foreground cursor-pointer hover:text-rose-600 transition-colors"
+                          className="grid grid-cols-12 gap-2 py-1 font-bold text-foreground cursor-pointer hover:text-rose-600 transition-colors"
                         >
-                          <span className="font-sans flex items-center gap-1.5">
+                          <div className="col-span-6 font-sans flex items-center gap-1.5">
                             {viewMode === 'detailed' && (
                               collapsedGroups[group.id] ? <ChevronRight className="w-3.5 h-3.5 text-muted-foreground" /> : <ChevronDown className="w-3.5 h-3.5 text-muted-foreground" />
                             )}
                             {group.title}
-                          </span>
-                          <span>{formatCur(group.total)}</span>
+                          </div>
+                          <div className="col-span-2"></div>
+                          <div className="col-span-2 text-right font-mono text-rose-700 dark:text-rose-400">{formatCur(group.total)}</div>
+                          <div className="col-span-2"></div>
                         </div>
 
                         {viewMode === 'detailed' && !collapsedGroups[group.id] && (
-                          <div className="pl-6 space-y-0.5 border-l-2 border-muted">
+                          <div className="space-y-0.5 border-l-2 border-muted pl-4">
                             {group.accounts.map(a => (
-                              <div key={a.id} className="flex justify-between py-0.5 text-muted-foreground hover:text-foreground text-[11px]">
-                                <span className="font-sans">• {a.code} — {a.name}</span>
-                                <span>{formatCur(ledgerState.closingBalances[a.id] || 0)}</span>
+                              <div key={a.id} className="grid grid-cols-12 gap-2 py-0.5 text-muted-foreground hover:text-foreground text-[11px]">
+                                <div className="col-span-6 font-sans">• {a.code} — {a.name}</div>
+                                <div className="col-span-2 text-right font-mono">{formatCur(ledgerState.closingBalances[a.id] || 0)}</div>
+                                <div className="col-span-2"></div>
+                                <div className="col-span-2"></div>
                               </div>
                             ))}
                           </div>
                         )}
                       </div>
                     ))}
+
+                    {/* NON-CURRENT LIABILITIES SUBTOTAL BAR */}
+                    <div className="grid grid-cols-12 gap-2 py-1.5 font-bold text-foreground border-t border-b bg-muted/20 px-2 rounded-md mt-1">
+                      <div className="col-span-6 font-sans">TOTAL NON-CURRENT LIABILITIES</div>
+                      <div className="col-span-2"></div>
+                      <div className="col-span-2"></div>
+                      <div className="col-span-2 text-right font-mono text-rose-700 dark:text-rose-400">{formatCur(balanceSheet.totalNonCurrentLiabilities)}</div>
+                    </div>
                   </div>
                 )}
 
-                <div className="flex justify-between p-2.5 rounded-xl bg-rose-500/10 text-rose-950 dark:text-rose-200 font-bold border border-rose-500/30">
-                  <span className="font-sans">TOTAL LIABILITIES:</span>
-                  <span>{formatCur(balanceSheet.totalLiabilities)}</span>
+                <div className="grid grid-cols-12 gap-2 p-2.5 rounded-xl bg-rose-500/10 text-rose-950 dark:text-rose-200 font-bold border border-rose-500/30 mt-2">
+                  <div className="col-span-6 font-sans uppercase">TOTAL LIABILITIES (A + B):</div>
+                  <div className="col-span-2"></div>
+                  <div className="col-span-2"></div>
+                  <div className="col-span-2 text-right font-mono">{formatCur(balanceSheet.totalLiabilities)}</div>
                 </div>
               </div>
 
               {/* 3. EQUITY SECTION */}
               <div className="space-y-3 pt-4">
-                <h4 className="text-sm font-black text-blue-800 dark:text-blue-300 uppercase tracking-wider border-b-2 border-blue-600 pb-1 flex justify-between font-sans">
-                  <span>3. SHAREHOLDERS' EQUITY</span>
-                  <span>{formatCur(balanceSheet.totalEquity)}</span>
-                </h4>
+                <div className="grid grid-cols-12 gap-2 text-sm font-black text-blue-800 dark:text-blue-300 uppercase tracking-wider border-b border-blue-600 pb-1 font-sans">
+                  <div className="col-span-6">3. SHAREHOLDERS' EQUITY</div>
+                  <div className="col-span-2"></div>
+                  <div className="col-span-2"></div>
+                  <div className="col-span-2 text-right font-mono"></div>
+                </div>
 
-                <div className="space-y-1.5 pl-2">
+                <div className="space-y-1 pl-2">
                   {balanceSheet.equityGroups.map(group => (
-                    <div key={group.id} className="flex justify-between py-1 text-foreground font-semibold">
-                      <span className="font-sans">• {group.title}</span>
-                      <span>{formatCur(group.total)}</span>
+                    <div key={group.id} className="grid grid-cols-12 gap-2 py-1 text-foreground font-semibold">
+                      <div className="col-span-6 font-sans">• {group.title}</div>
+                      <div className="col-span-2"></div>
+                      <div className="col-span-2 text-right font-mono">{formatCur(group.total)}</div>
+                      <div className="col-span-2"></div>
                     </div>
                   ))}
-                  <div className="flex justify-between py-1 font-bold text-emerald-600">
-                    <span className="font-sans">• Retained Net Income for the Period (P&L):</span>
-                    <span>{formatCur(balanceSheet.netPeriodIncome)}</span>
+                  <div className="grid grid-cols-12 gap-2 py-1 font-bold text-emerald-600">
+                    <div className="col-span-6 font-sans">• Retained Net Income for the Period (P&L):</div>
+                    <div className="col-span-2"></div>
+                    <div className="col-span-2 text-right font-mono">{formatCur(balanceSheet.netPeriodIncome)}</div>
+                    <div className="col-span-2"></div>
                   </div>
                 </div>
 
-                <div className="flex justify-between p-2.5 rounded-xl bg-blue-500/10 text-blue-950 dark:text-blue-200 font-bold border border-blue-500/30">
-                  <span className="font-sans">TOTAL SHAREHOLDERS' EQUITY:</span>
-                  <span>{formatCur(balanceSheet.totalEquity)}</span>
+                <div className="grid grid-cols-12 gap-2 p-2.5 rounded-xl bg-blue-500/10 text-blue-950 dark:text-blue-200 font-bold border border-blue-500/30 mt-2">
+                  <div className="col-span-6 font-sans uppercase">TOTAL SHAREHOLDERS' EQUITY:</div>
+                  <div className="col-span-2"></div>
+                  <div className="col-span-2"></div>
+                  <div className="col-span-2 text-right font-mono">{formatCur(balanceSheet.totalEquity)}</div>
                 </div>
               </div>
 
               {/* EQUATION TOTAL CHECK */}
-              <div className="flex justify-between p-4 rounded-xl bg-slate-900 text-white font-black text-base border-t-2 border-slate-700">
-                <span className="font-sans uppercase">TOTAL LIABILITIES & EQUITY:</span>
-                <span className="text-emerald-400">{formatCur(balanceSheet.totalLiabilitiesAndEquity)}</span>
+              <div className="grid grid-cols-12 gap-2 p-4 rounded-xl bg-slate-900 text-white font-black text-base border-t-2 border-slate-700 mt-3">
+                <div className="col-span-6 font-sans uppercase">TOTAL LIABILITIES & EQUITY:</div>
+                <div className="col-span-2"></div>
+                <div className="col-span-2"></div>
+                <div className="col-span-2 text-right text-emerald-400 font-mono">{formatCur(balanceSheet.totalLiabilitiesAndEquity)}</div>
               </div>
             </div>
           </div>
@@ -1160,115 +1241,146 @@ export const FinancialReports: React.FC<FinancialReportsProps> = ({
             </div>
 
             <div className="p-6 space-y-5 text-xs font-mono">
+              <div className="grid grid-cols-12 gap-2 text-[11px] font-bold text-muted-foreground uppercase border-b-2 pb-2 font-sans">
+                <div className="col-span-6">Account Classification / Line Item</div>
+                <div className="col-span-2 text-right">Ledger Detail</div>
+                <div className="col-span-2 text-right">Subtotal</div>
+                <div className="col-span-2 text-right text-foreground font-black">Total (PKR)</div>
+              </div>
+
               {/* 1. Operating Revenue */}
               <div className="space-y-2">
-                <h4 className="text-sm font-black text-teal-800 dark:text-teal-300 uppercase border-b pb-1 flex justify-between font-sans">
-                  <span>1. OPERATING REVENUE</span>
-                  <span>{formatCur(incomeStatement.grossRevenue)}</span>
-                </h4>
+                <div className="grid grid-cols-12 gap-2 text-sm font-black text-teal-800 dark:text-teal-300 uppercase border-b pb-1 font-sans">
+                  <div className="col-span-6">1. OPERATING REVENUE</div>
+                  <div className="col-span-2"></div>
+                  <div className="col-span-2"></div>
+                  <div className="col-span-2 text-right font-mono"></div>
+                </div>
                 {incomeStatement.revenueGroups.map(group => (
-                  <div key={group.id} className="space-y-1 pl-2">
-                    <div className="flex justify-between py-1 font-bold text-foreground">
-                      <span className="font-sans">{group.title}</span>
-                      <span>{formatCur(group.total)}</span>
+                  <div key={group.id} className="space-y-0.5 pl-2">
+                    <div className="grid grid-cols-12 gap-2 py-1 font-bold text-foreground">
+                      <div className="col-span-6 font-sans">{group.title}</div>
+                      <div className="col-span-2"></div>
+                      <div className="col-span-2 text-right font-mono text-teal-700">{formatCur(group.total)}</div>
+                      <div className="col-span-2"></div>
                     </div>
                     {viewMode === 'detailed' && (
-                      <div className="pl-4 space-y-0.5">
+                      <div className="pl-4 space-y-0.5 border-l-2 border-muted">
                         {group.accounts.map(a => (
-                          <div key={a.id} className="flex justify-between py-0.5 text-muted-foreground hover:text-foreground text-[11px]">
-                            <span className="font-sans">• {a.code} — {a.name}</span>
-                            <span>{formatCur(ledgerState.closingBalances[a.id] || 0)}</span>
+                          <div key={a.id} className="grid grid-cols-12 gap-2 py-0.5 text-muted-foreground hover:text-foreground text-[11px]">
+                            <div className="col-span-6 font-sans">• {a.code} — {a.name}</div>
+                            <div className="col-span-2 text-right font-mono">{formatCur(ledgerState.closingBalances[a.id] || 0)}</div>
+                            <div className="col-span-2"></div>
+                            <div className="col-span-2"></div>
                           </div>
                         ))}
                       </div>
                     )}
                   </div>
                 ))}
+                {/* TOTAL OPERATING REVENUE BAR */}
+                <div className="grid grid-cols-12 gap-2 py-1.5 font-bold text-foreground border-t border-b bg-muted/20 px-2 rounded-md">
+                  <div className="col-span-6 font-sans">TOTAL OPERATING REVENUE</div>
+                  <div className="col-span-2"></div>
+                  <div className="col-span-2"></div>
+                  <div className="col-span-2 text-right font-mono text-teal-700 dark:text-teal-400">{formatCur(incomeStatement.grossRevenue)}</div>
+                </div>
               </div>
 
               {/* 2. Cost of Goods Sold */}
               <div className="space-y-2 pt-2">
-                <h4 className="text-sm font-black text-rose-800 dark:text-rose-300 uppercase border-b pb-1 flex justify-between font-sans">
-                  <span>2. COST OF SALES / DIRECT COSTS (COGS)</span>
-                  <span>-{formatCur(incomeStatement.cogsGroup.total)}</span>
-                </h4>
+                <div className="grid grid-cols-12 gap-2 text-sm font-black text-rose-800 dark:text-rose-300 uppercase border-b pb-1 font-sans">
+                  <div className="col-span-6">2. COST OF SALES / DIRECT COSTS (COGS)</div>
+                  <div className="col-span-2"></div>
+                  <div className="col-span-2"></div>
+                  <div className="col-span-2 text-right font-mono"></div>
+                </div>
                 {viewMode === 'detailed' && (
-                  <div className="pl-4 space-y-0.5">
+                  <div className="pl-4 space-y-0.5 border-l-2 border-muted">
                     {incomeStatement.cogsGroup.accounts.map(a => (
-                      <div key={a.id} className="flex justify-between py-0.5 text-muted-foreground hover:text-foreground text-[11px]">
-                        <span className="font-sans">• {a.code} — {a.name}</span>
-                        <span>{formatCur(ledgerState.closingBalances[a.id] || 0)}</span>
+                      <div key={a.id} className="grid grid-cols-12 gap-2 py-0.5 text-muted-foreground hover:text-foreground text-[11px]">
+                        <div className="col-span-6 font-sans">• {a.code} — {a.name}</div>
+                        <div className="col-span-2 text-right font-mono">{formatCur(ledgerState.closingBalances[a.id] || 0)}</div>
+                        <div className="col-span-2"></div>
+                        <div className="col-span-2"></div>
                       </div>
                     ))}
                   </div>
                 )}
+                {/* TOTAL COGS BAR */}
+                <div className="grid grid-cols-12 gap-2 py-1.5 font-bold text-foreground border-t border-b bg-muted/20 px-2 rounded-md">
+                  <div className="col-span-6 font-sans">TOTAL COST OF GOODS SOLD</div>
+                  <div className="col-span-2"></div>
+                  <div className="col-span-2"></div>
+                  <div className="col-span-2 text-right font-mono text-rose-700">-{formatCur(incomeStatement.cogsGroup.total)}</div>
+                </div>
               </div>
 
               {/* Gross Profit Subtotal */}
-              <div className="flex justify-between p-3 rounded-xl bg-emerald-500/10 text-emerald-900 dark:text-emerald-300 font-black text-sm border border-emerald-500/30">
-                <span className="font-sans">GROSS PROFIT (Margin: {incomeStatement.grossMarginPct.toFixed(1)}%):</span>
-                <span>{formatCur(incomeStatement.grossProfit)}</span>
+              <div className="grid grid-cols-12 gap-2 p-3 rounded-xl bg-emerald-500/10 text-emerald-900 dark:text-emerald-300 font-black text-sm border border-emerald-500/30">
+                <div className="col-span-6 font-sans">GROSS PROFIT (Margin: {incomeStatement.grossMarginPct.toFixed(1)}%):</div>
+                <div className="col-span-2"></div>
+                <div className="col-span-2"></div>
+                <div className="col-span-2 text-right font-mono">{formatCur(incomeStatement.grossProfit)}</div>
               </div>
 
               {/* 3. Operating Expenses */}
               <div className="space-y-2 pt-2">
-                <h4 className="text-sm font-black text-rose-800 dark:text-rose-300 uppercase border-b pb-1 flex justify-between font-sans">
-                  <span>3. OPERATING EXPENSES (OPEX)</span>
-                  <span>-{formatCur(incomeStatement.totalOperatingExpenses)}</span>
-                </h4>
+                <div className="grid grid-cols-12 gap-2 text-sm font-black text-rose-800 dark:text-rose-300 uppercase border-b pb-1 font-sans">
+                  <div className="col-span-6">3. OPERATING EXPENSES (OPEX)</div>
+                  <div className="col-span-2"></div>
+                  <div className="col-span-2"></div>
+                  <div className="col-span-2 text-right font-mono"></div>
+                </div>
 
                 {incomeStatement.opexGroups.map(group => (
-                  <div key={group.id} className="space-y-1 pl-2">
-                    <div className="flex justify-between py-1 font-bold text-foreground">
-                      <span className="font-sans">{group.title}</span>
-                      <span>-{formatCur(group.total)}</span>
+                  <div key={group.id} className="space-y-0.5 pl-2">
+                    <div className="grid grid-cols-12 gap-2 py-1 font-bold text-foreground">
+                      <div className="col-span-6 font-sans">{group.title}</div>
+                      <div className="col-span-2"></div>
+                      <div className="col-span-2 text-right font-mono text-rose-700">-{formatCur(group.total)}</div>
+                      <div className="col-span-2"></div>
                     </div>
                     {viewMode === 'detailed' && (
-                      <div className="pl-4 space-y-0.5">
+                      <div className="pl-4 space-y-0.5 border-l-2 border-muted">
                         {group.accounts.map(a => (
-                          <div key={a.id} className="flex justify-between py-0.5 text-muted-foreground hover:text-foreground text-[11px]">
-                            <span className="font-sans">• {a.code} — {a.name}</span>
-                            <span>{formatCur(ledgerState.closingBalances[a.id] || 0)}</span>
+                          <div key={a.id} className="grid grid-cols-12 gap-2 py-0.5 text-muted-foreground hover:text-foreground text-[11px]">
+                            <div className="col-span-6 font-sans">• {a.code} — {a.name}</div>
+                            <div className="col-span-2 text-right font-mono">{formatCur(ledgerState.closingBalances[a.id] || 0)}</div>
+                            <div className="col-span-2"></div>
+                            <div className="col-span-2"></div>
                           </div>
                         ))}
                       </div>
                     )}
                   </div>
                 ))}
+
+                {/* TOTAL OPEX BAR */}
+                <div className="grid grid-cols-12 gap-2 py-1.5 font-bold text-foreground border-t border-b bg-muted/20 px-2 rounded-md">
+                  <div className="col-span-6 font-sans">TOTAL OPERATING EXPENSES</div>
+                  <div className="col-span-2"></div>
+                  <div className="col-span-2"></div>
+                  <div className="col-span-2 text-right font-mono text-rose-700">-{formatCur(incomeStatement.totalOperatingExpenses)}</div>
+                </div>
               </div>
 
               {/* Operating Income / EBIT */}
-              <div className="flex justify-between p-3 rounded-xl bg-blue-500/10 text-blue-900 dark:text-blue-300 font-bold border border-blue-500/30">
-                <span className="font-sans">OPERATING PROFIT / (EBIT):</span>
-                <span>{formatCur(incomeStatement.operatingIncomeEbit)}</span>
+              <div className="grid grid-cols-12 gap-2 p-3 rounded-xl bg-blue-500/10 text-blue-900 dark:text-blue-300 font-bold border border-blue-500/30">
+                <div className="col-span-6 font-sans">OPERATING PROFIT / (EBIT):</div>
+                <div className="col-span-2"></div>
+                <div className="col-span-2"></div>
+                <div className="col-span-2 text-right font-mono">{formatCur(incomeStatement.operatingIncomeEbit)}</div>
               </div>
 
-              {/* Finance & Tax Provision */}
-              {incomeStatement.financeGroup.accounts.length > 0 && (
-                <div className="space-y-1 pl-2 pt-1">
-                  <div className="flex justify-between font-bold text-foreground">
-                    <span className="font-sans">{incomeStatement.financeGroup.title}</span>
-                    <span>-{formatCur(incomeStatement.financeGroup.total)}</span>
-                  </div>
-                  {viewMode === 'detailed' && (
-                    <div className="pl-4 space-y-0.5">
-                      {incomeStatement.financeGroup.accounts.map(a => (
-                        <div key={a.id} className="flex justify-between py-0.5 text-muted-foreground hover:text-foreground text-[11px]">
-                          <span className="font-sans">• {a.code} — {a.name}</span>
-                          <span>{formatCur(ledgerState.closingBalances[a.id] || 0)}</span>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </div>
-              )}
-
               {/* NET PROFIT TOTAL */}
-              <div className="flex justify-between p-4 rounded-xl bg-slate-900 text-white font-black text-base border-t-2 border-slate-700">
-                <span className="font-sans uppercase">NET PROFIT / (LOSS) FOR PERIOD:</span>
-                <span className={incomeStatement.netProfit >= 0 ? 'text-emerald-400' : 'text-rose-400'}>
+              <div className="grid grid-cols-12 gap-2 p-4 rounded-xl bg-slate-900 text-white font-black text-base border-t-2 border-slate-700">
+                <div className="col-span-6 font-sans uppercase">NET PROFIT / (LOSS) FOR PERIOD:</div>
+                <div className="col-span-2"></div>
+                <div className="col-span-2"></div>
+                <div className={`col-span-2 text-right font-mono ${incomeStatement.netProfit >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
                   {formatCur(incomeStatement.netProfit)}
-                </span>
+                </div>
               </div>
             </div>
           </div>
@@ -1308,87 +1420,118 @@ export const FinancialReports: React.FC<FinancialReportsProps> = ({
             </div>
 
             <div className="p-6 space-y-5 text-xs font-mono">
+              <div className="grid grid-cols-12 gap-2 text-[11px] font-bold text-muted-foreground uppercase border-b-2 pb-2 font-sans">
+                <div className="col-span-6">Cash Flow Activity</div>
+                <div className="col-span-2 text-right">Detail</div>
+                <div className="col-span-2 text-right">Subtotal</div>
+                <div className="col-span-2 text-right text-foreground font-black">Net Cash (PKR)</div>
+              </div>
+
               {/* 1. Operating Activities */}
               <div className="space-y-2">
-                <h4 className="text-sm font-black text-teal-800 dark:text-teal-300 uppercase border-b pb-1 flex justify-between font-sans">
-                  <span>1. CASH FLOWS FROM OPERATING ACTIVITIES</span>
-                  <span>{formatCur(cashFlowStatement.netOperatingCashFlow)}</span>
-                </h4>
+                <div className="grid grid-cols-12 gap-2 text-sm font-black text-teal-800 dark:text-teal-300 uppercase border-b pb-1 font-sans">
+                  <div className="col-span-6">1. CASH FLOWS FROM OPERATING ACTIVITIES</div>
+                  <div className="col-span-2"></div>
+                  <div className="col-span-2"></div>
+                  <div className="col-span-2 text-right font-mono"></div>
+                </div>
 
-                <div className="pl-3 space-y-1.5">
-                  <div className="flex justify-between py-1 font-bold text-foreground">
-                    <span className="font-sans">Net Profit / (Loss) for the period:</span>
-                    <span>{formatCur(cashFlowStatement.netIncome)}</span>
+                <div className="pl-3 space-y-1">
+                  <div className="grid grid-cols-12 gap-2 py-1 font-bold text-foreground">
+                    <div className="col-span-6 font-sans">Net Profit / (Loss) for the period:</div>
+                    <div className="col-span-2 text-right font-mono">{formatCur(cashFlowStatement.netIncome)}</div>
+                    <div className="col-span-2"></div>
+                    <div className="col-span-2"></div>
                   </div>
-                  <div className="flex justify-between py-0.5 text-muted-foreground pl-2">
-                    <span className="font-sans">+ Add: Non-Cash Depreciation & Amortization:</span>
-                    <span>{formatCur(cashFlowStatement.deprAddback)}</span>
+                  <div className="grid grid-cols-12 gap-2 py-0.5 text-muted-foreground">
+                    <div className="col-span-6 font-sans">+ Add: Non-Cash Depreciation & Amortization:</div>
+                    <div className="col-span-2 text-right font-mono">{formatCur(cashFlowStatement.deprAddback)}</div>
+                    <div className="col-span-2"></div>
+                    <div className="col-span-2"></div>
                   </div>
-                  <div className="flex justify-between py-0.5 text-muted-foreground pl-2">
-                    <span className="font-sans">(Increase) / Decrease in Accounts Receivable:</span>
-                    <span>{formatCur(-cashFlowStatement.arChange)}</span>
+                  <div className="grid grid-cols-12 gap-2 py-0.5 text-muted-foreground">
+                    <div className="col-span-6 font-sans">(Increase) / Decrease in Accounts Receivable:</div>
+                    <div className="col-span-2 text-right font-mono">{formatCur(-cashFlowStatement.arChange)}</div>
+                    <div className="col-span-2"></div>
+                    <div className="col-span-2"></div>
                   </div>
-                  <div className="flex justify-between py-0.5 text-muted-foreground pl-2">
-                    <span className="font-sans">(Increase) / Decrease in Inventories:</span>
-                    <span>{formatCur(-cashFlowStatement.invChange)}</span>
+                  <div className="grid grid-cols-12 gap-2 py-0.5 text-muted-foreground">
+                    <div className="col-span-6 font-sans">(Increase) / Decrease in Inventories:</div>
+                    <div className="col-span-2 text-right font-mono">{formatCur(-cashFlowStatement.invChange)}</div>
+                    <div className="col-span-2"></div>
+                    <div className="col-span-2"></div>
                   </div>
-                  <div className="flex justify-between py-0.5 text-muted-foreground pl-2">
-                    <span className="font-sans">Increase / (Decrease) in Accounts Payable:</span>
-                    <span>{formatCur(cashFlowStatement.apChange)}</span>
-                  </div>
-                  <div className="flex justify-between py-0.5 text-muted-foreground pl-2">
-                    <span className="font-sans">Increase / (Decrease) in Statutory Tax & Payroll Obligations:</span>
-                    <span>{formatCur(cashFlowStatement.taxPayableChange)}</span>
+                  <div className="grid grid-cols-12 gap-2 py-0.5 text-muted-foreground">
+                    <div className="col-span-6 font-sans">Increase / (Decrease) in Accounts Payable:</div>
+                    <div className="col-span-2 text-right font-mono">{formatCur(cashFlowStatement.apChange)}</div>
+                    <div className="col-span-2"></div>
+                    <div className="col-span-2"></div>
                   </div>
                 </div>
 
-                <div className="flex justify-between p-2.5 rounded-xl bg-teal-500/10 text-teal-950 dark:text-teal-200 font-bold border border-teal-500/30">
-                  <span className="font-sans">NET CASH GENERATED FROM OPERATING ACTIVITIES:</span>
-                  <span>{formatCur(cashFlowStatement.netOperatingCashFlow)}</span>
+                <div className="grid grid-cols-12 gap-2 p-2.5 rounded-xl bg-teal-500/10 text-teal-950 dark:text-teal-200 font-bold border border-teal-500/30">
+                  <div className="col-span-6 font-sans">NET CASH GENERATED FROM OPERATING ACTIVITIES:</div>
+                  <div className="col-span-2"></div>
+                  <div className="col-span-2"></div>
+                  <div className="col-span-2 text-right font-mono">{formatCur(cashFlowStatement.netOperatingCashFlow)}</div>
                 </div>
               </div>
 
               {/* 2. Investing Activities */}
               <div className="space-y-2 pt-2">
-                <h4 className="text-sm font-black text-purple-800 dark:text-purple-300 uppercase border-b pb-1 flex justify-between font-sans">
-                  <span>2. CASH FLOWS FROM INVESTING ACTIVITIES</span>
-                  <span>{formatCur(cashFlowStatement.netInvestingCashFlow)}</span>
-                </h4>
+                <div className="grid grid-cols-12 gap-2 text-sm font-black text-purple-800 dark:text-purple-300 uppercase border-b pb-1 font-sans">
+                  <div className="col-span-6">2. CASH FLOWS FROM INVESTING ACTIVITIES</div>
+                  <div className="col-span-2"></div>
+                  <div className="col-span-2"></div>
+                  <div className="col-span-2 text-right font-mono">{formatCur(cashFlowStatement.netInvestingCashFlow)}</div>
+                </div>
                 <div className="pl-3 space-y-1">
-                  <div className="flex justify-between py-1 text-muted-foreground">
-                    <span className="font-sans">Capital Expenditures (CapEx - Property, Plant & Equipment):</span>
-                    <span>{formatCur(cashFlowStatement.netInvestingCashFlow)}</span>
+                  <div className="grid grid-cols-12 gap-2 py-1 text-muted-foreground">
+                    <div className="col-span-6 font-sans">Capital Expenditures (CapEx - Fixed Assets):</div>
+                    <div className="col-span-2 text-right font-mono">{formatCur(cashFlowStatement.netInvestingCashFlow)}</div>
+                    <div className="col-span-2"></div>
+                    <div className="col-span-2"></div>
                   </div>
                 </div>
               </div>
 
               {/* 3. Financing Activities */}
               <div className="space-y-2 pt-2">
-                <h4 className="text-sm font-black text-blue-800 dark:text-blue-300 uppercase border-b pb-1 flex justify-between font-sans">
-                  <span>3. CASH FLOWS FROM FINANCING ACTIVITIES</span>
-                  <span>{formatCur(cashFlowStatement.netFinancingCashFlow)}</span>
-                </h4>
+                <div className="grid grid-cols-12 gap-2 text-sm font-black text-blue-800 dark:text-blue-300 uppercase border-b pb-1 font-sans">
+                  <div className="col-span-6">3. CASH FLOWS FROM FINANCING ACTIVITIES</div>
+                  <div className="col-span-2"></div>
+                  <div className="col-span-2"></div>
+                  <div className="col-span-2 text-right font-mono">{formatCur(cashFlowStatement.netFinancingCashFlow)}</div>
+                </div>
                 <div className="pl-3 space-y-1">
-                  <div className="flex justify-between py-1 text-muted-foreground">
-                    <span className="font-sans">Equity Contributions, Dividends & Long-Term Debt:</span>
-                    <span>{formatCur(cashFlowStatement.netFinancingCashFlow)}</span>
+                  <div className="grid grid-cols-12 gap-2 py-1 text-muted-foreground">
+                    <div className="col-span-6 font-sans">Equity Contributions, Dividends & Long-Term Debt:</div>
+                    <div className="col-span-2 text-right font-mono">{formatCur(cashFlowStatement.netFinancingCashFlow)}</div>
+                    <div className="col-span-2"></div>
+                    <div className="col-span-2"></div>
                   </div>
                 </div>
               </div>
 
               {/* Reconciliation Check */}
               <div className="p-4 rounded-xl bg-slate-900 text-white space-y-2 border-t-2 border-slate-700">
-                <div className="flex justify-between font-bold text-teal-300">
-                  <span className="font-sans">NET INCREASE / (DECREASE) IN CASH & CASH EQUIVALENTS:</span>
-                  <span>{formatCur(cashFlowStatement.netCashChange)}</span>
+                <div className="grid grid-cols-12 gap-2 font-bold text-teal-300">
+                  <div className="col-span-6 font-sans">NET INCREASE / (DECREASE) IN CASH & CASH EQUIVALENTS:</div>
+                  <div className="col-span-2"></div>
+                  <div className="col-span-2"></div>
+                  <div className="col-span-2 text-right font-mono">{formatCur(cashFlowStatement.netCashChange)}</div>
                 </div>
-                <div className="flex justify-between text-muted-foreground text-xs pt-1 border-t border-slate-800">
-                  <span className="font-sans">Cash & Bank Balances at Beginning of Period:</span>
-                  <span>{formatCur(cashFlowStatement.openingCash)}</span>
+                <div className="grid grid-cols-12 gap-2 text-muted-foreground text-xs pt-1 border-t border-slate-800">
+                  <div className="col-span-6 font-sans">Cash & Bank Balances at Beginning of Period:</div>
+                  <div className="col-span-2"></div>
+                  <div className="col-span-2"></div>
+                  <div className="col-span-2 text-right font-mono">{formatCur(cashFlowStatement.openingCash)}</div>
                 </div>
-                <div className="flex justify-between text-sm font-black text-emerald-400">
-                  <span className="font-sans uppercase">CASH & BANK BALANCES AT END OF PERIOD:</span>
-                  <span>{formatCur(cashFlowStatement.closingCash)}</span>
+                <div className="grid grid-cols-12 gap-2 text-sm font-black text-emerald-400">
+                  <div className="col-span-6 font-sans uppercase">CASH & BANK BALANCES AT END OF PERIOD:</div>
+                  <div className="col-span-2"></div>
+                  <div className="col-span-2"></div>
+                  <div className="col-span-2 text-right font-mono">{formatCur(cashFlowStatement.closingCash)}</div>
                 </div>
               </div>
             </div>
