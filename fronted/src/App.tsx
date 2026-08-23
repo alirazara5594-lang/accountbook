@@ -166,9 +166,8 @@ export default function App() {
     }
   }, [currentUser]);
 
-  // Track onboarding setup: Muhammad Ali (admin@acme.com) stays direct, others go through setup
+  // Track onboarding setup for all users
   const needsOnboarding = (email: string) => {
-    if (email.toLowerCase() === 'admin@acme.com') return false; // Muhammad Ali stays instant
     const key = `onboarding_complete_${email.toLowerCase()}`;
     return !localStorage.getItem(key);
   };

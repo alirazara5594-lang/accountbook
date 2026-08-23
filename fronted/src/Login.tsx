@@ -177,7 +177,10 @@ export function Login({ onLogin }: LoginProps) {
     setEmail(user.email);
     setPassword(user.defaultPassword || 'password123');
     setError(null);
-    setSuccess(`Credentials filled for ${user.fullName} (${user.role}). Click Sign In to login.`);
+    setIsLoading(true);
+    setTimeout(() => {
+      completeLogin(user);
+    }, 200);
   };
 
   return (
