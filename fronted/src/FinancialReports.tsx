@@ -4,15 +4,16 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import {
   TrendingUp, DollarSign, Calendar,
-  Download, Printer, RefreshCw, CheckCircle2,
+  RefreshCw, CheckCircle2,
   AlertTriangle, ArrowUpRight, ArrowDownRight, Layers,
   PieChart, Activity, ShieldCheck, Landmark, ChevronDown, ChevronRight,
-  FileSpreadsheet, FileText
+  ChevronRightSquare, ChevronDownSquare
 } from 'lucide-react';
 import { useJournalsStore, useCoaStore, useCompanyStore, usePayrollStore, useSalesStore, useProcurementStore } from './stores';
 import { type Account } from './api/modules/coa.api';
 import { money, getActiveCurrency } from '@/lib/currency';
 import { downloadCSV, downloadExcel, downloadPDF, type ExportRow } from '@/lib/exportUtils';
+import ExportDropdown from '@/components/ExportDropdown';
 
 interface JournalLine {
   accountId: string;
@@ -62,6 +63,7 @@ export const FinancialReports: React.FC<FinancialReportsProps> = ({
   const [activeTab, setActiveTab] = useState<TabType>('balancesheet');
   const [viewMode, setViewMode] = useState<'detailed' | 'condensed'>('detailed');
   const [collapsedGroups, setCollapsedGroups] = useState<Record<string, boolean>>({});
+  const [collapsedAccounts, setCollapsedAccounts] = useState<Record<string, boolean>>({});
   const [dateFrom, setDateFrom] = useState('');
   const [dateTo, setDateTo] = useState('');
   const [tbSearch, setTbSearch] = useState('');
@@ -92,6 +94,31 @@ export const FinancialReports: React.FC<FinancialReportsProps> = ({
 
   const toggleGroup = (groupId: string) => {
     setCollapsedGroups(prev => ({ ...prev, [groupId]: !prev[groupId] }));
+  };
+
+  const toggleAccountNode = (accId: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    setCollapsedAccounts(prev => ({ ...prev, [accId]: !prev[accId] }));
+  };
+
+  const expandAll = () => {
+    setCollapsedGroups({});
+    setCollapsedAccounts({});
+  };
+
+  const collapseAll = () => {
+    const allGroupIds = [
+      'cash_bank', 'ar', 'inv', 'prepaid', 'other_ca',
+      'ppe', 'rou', 'other_nca',
+      'ap', 'grni', 'payroll_liab', 'tax_liab', 'short_lease', 'other_cl',
+      'long_lease', 'long_debt', 'other_ncl',
+      'share_capital', 'retained_earnings', 'other_eq',
+      'op_rev', 'other_rev', 'cogs', 'payroll_exp', 'admin_exp', 'depr_exp', 'fin_tax',
+      'tb_asset', 'tb_liability', 'tb_equity', 'tb_revenue', 'tb_expense'
+    ];
+    const collapsedMap: Record<string, boolean> = {};
+    allGroupIds.forEach(id => { collapsedMap[id] = true; });
+    setCollapsedGroups(collapsedMap);
   };
 
   // ── 1. Central Double-Entry Ledger Calculation Engine (IAS 1 / GAAP) ───────────
@@ -469,6 +496,17 @@ export const FinancialReports: React.FC<FinancialReportsProps> = ({
     }), { periodDebit: 0, periodCredit: 0, closingDebit: 0, closingCredit: 0 });
   }, [trialBalanceRows]);
 
+  const trialBalanceGrouped = useMemo(() => {
+    const categories = [
+      { id: 'tb_asset', title: '1. ASSETS (10000s)', rows: trialBalanceRows.filter(r => r.type.toLowerCase().includes('asset')) },
+      { id: 'tb_liability', title: '2. LIABILITIES (20000s)', rows: trialBalanceRows.filter(r => r.type.toLowerCase().includes('liability')) },
+      { id: 'tb_equity', title: '3. EQUITY (30000s)', rows: trialBalanceRows.filter(r => r.type.toLowerCase().includes('equity')) },
+      { id: 'tb_revenue', title: '4. REVENUE (40000s)', rows: trialBalanceRows.filter(r => r.type.toLowerCase().includes('revenue')) },
+      { id: 'tb_expense', title: '5. EXPENSES (50000s - 60000s)', rows: trialBalanceRows.filter(r => r.type.toLowerCase().includes('expense')) },
+    ];
+    return categories.filter(c => c.rows.length > 0);
+  }, [trialBalanceRows]);
+
   // ── 7. Ratios ─────────────────────────────────────────────────────────────
   const ratios = useMemo(() => {
     const currentRatio = balanceSheet.totalCurrentLiabilities > 0 ? (balanceSheet.totalCurrentAssets / balanceSheet.totalCurrentLiabilities) : 0;
@@ -482,7 +520,79 @@ export const FinancialReports: React.FC<FinancialReportsProps> = ({
     return { currentRatio, quickRatio, debtToEquity, workingCapital, returnOnAssets, returnOnEquity };
   }, [balanceSheet, incomeStatement]);
 
-  // ── 8. Formatted 3-Column Structured Exports (PDF, Excel, CSV) ─────────────
+  // ── 8. Hierarchical Account Tree Renderer ─────────────────────────────────
+  const renderAccountTree = (groupAccounts: Account[]) => {
+    if (!groupAccounts || groupAccounts.length === 0) {
+      return (
+        <div className="text-[11px] text-muted-foreground italic py-1 pl-6">
+          No active ledgers mapped to this classification.
+        </div>
+      );
+    }
+
+    const groupAccountIds = new Set(groupAccounts.map(a => a.id));
+    const rootAccounts = groupAccounts.filter(a => !a.parentId || !groupAccountIds.has(a.parentId));
+
+    const renderNode = (acc: Account, depth: number = 0): React.ReactNode => {
+      const children = groupAccounts.filter(a => a.parentId === acc.id);
+      const hasChildren = children.length > 0;
+      const isCollapsed = !!collapsedAccounts[acc.id];
+      const bal = ledgerState.closingBalances[acc.id] || 0;
+      const isNegative = String(acc.type).toLowerCase().includes('contra');
+      const displayBal = isNegative ? (bal > 0 ? -bal : bal) : bal;
+
+      return (
+        <div key={acc.id} className="space-y-0.5">
+          <div className="grid grid-cols-12 gap-2 py-0.5 text-muted-foreground hover:text-foreground hover:bg-muted/40 rounded px-1 text-[11px] items-center transition-colors">
+            <div
+              className="col-span-6 font-sans flex items-center gap-1.5 truncate"
+              style={{ paddingLeft: `${depth * 14}px` }}
+            >
+              {depth > 0 && <span className="text-muted-foreground/50 font-mono select-none">├─</span>}
+              {hasChildren ? (
+                <button
+                  type="button"
+                  onClick={(e) => toggleAccountNode(acc.id, e)}
+                  className="p-0.5 hover:bg-muted rounded text-teal-600 cursor-pointer shrink-0"
+                  title="Expand/Collapse Sub-accounts"
+                >
+                  {isCollapsed ? <ChevronRight className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
+                </button>
+              ) : (
+                <span className="w-3 text-muted-foreground/60 text-center shrink-0">•</span>
+              )}
+              <span className="font-mono font-semibold text-foreground/80">{acc.code}</span>
+              <span className="text-muted-foreground truncate">— {acc.name}</span>
+              {acc.subtype && (
+                <span className="text-[9px] px-1 py-0.2 bg-muted/60 text-muted-foreground rounded ml-1 hidden sm:inline">
+                  {acc.subtype}
+                </span>
+              )}
+            </div>
+            <div className="col-span-2 text-right font-mono font-medium text-foreground">
+              {formatCur(displayBal)}
+            </div>
+            <div className="col-span-2"></div>
+            <div className="col-span-2"></div>
+          </div>
+
+          {hasChildren && !isCollapsed && (
+            <div className="space-y-0.5 border-l border-muted/80 ml-2">
+              {children.map(child => renderNode(child, depth + 1))}
+            </div>
+          )}
+        </div>
+      );
+    };
+
+    return (
+      <div className="space-y-0.5">
+        {rootAccounts.map(a => renderNode(a, 0))}
+      </div>
+    );
+  };
+
+  // ── 9. Formatted 3-Column Structured Exports (PDF, Excel, CSV) ─────────────
   const handleExportPDF = () => {
     let title = 'STATEMENT OF FINANCIAL POSITION';
     let subtitle = `${activeCompany.name} — As of ${dateTo || new Date().toISOString().slice(0, 10)} (IAS 1 / GAAP)`;
@@ -533,6 +643,11 @@ export const FinancialReports: React.FC<FinancialReportsProps> = ({
       rows.push(['3. SHAREHOLDERS\' EQUITY', '', '', '', '']);
       balanceSheet.equityGroups.forEach(g => {
         rows.push([`  • ${g.title}`, '', '', g.total.toFixed(2), '']);
+        if (viewMode === 'detailed') {
+          g.accounts.forEach(a => {
+            rows.push([`      ${a.name}`, a.code, (ledgerState.closingBalances[a.id] || 0).toFixed(2), '', '']);
+          });
+        }
       });
       rows.push(['  • Retained Net Income for Period (P&L)', '', '', balanceSheet.netPeriodIncome.toFixed(2), '']);
       rows.push(['TOTAL SHAREHOLDERS\' EQUITY', '', '', '', balanceSheet.totalEquity.toFixed(2)]);
@@ -548,11 +663,17 @@ export const FinancialReports: React.FC<FinancialReportsProps> = ({
       subtitle = `${activeCompany.name} — Period: ${dateFrom || 'Inception'} to ${dateTo || 'Today'} (IFRS 15)`;
       rows.push(['1. OPERATING REVENUE', '', '', '', '']);
       incomeStatement.revenueGroups.forEach(g => {
-        g.accounts.forEach(a => rows.push([`    ${a.name}`, a.code, (ledgerState.closingBalances[a.id] || 0).toFixed(2), '', '']));
+        rows.push([`  • ${g.title}`, '', '', g.total.toFixed(2), '']);
+        if (viewMode === 'detailed') {
+          g.accounts.forEach(a => rows.push([`      ${a.name}`, a.code, (ledgerState.closingBalances[a.id] || 0).toFixed(2), '', '']));
+        }
       });
       rows.push(['TOTAL OPERATING REVENUE', '', '', '', incomeStatement.grossRevenue.toFixed(2)]);
       rows.push(['', '', '', '', '']);
       rows.push(['2. COST OF GOODS SOLD (COGS)', '', '', (-incomeStatement.cogsGroup.total).toFixed(2), '']);
+      if (viewMode === 'detailed') {
+        incomeStatement.cogsGroup.accounts.forEach(a => rows.push([`      ${a.name}`, a.code, (-(ledgerState.closingBalances[a.id] || 0)).toFixed(2), '', '']));
+      }
       rows.push(['GROSS PROFIT', '', '', '', incomeStatement.grossProfit.toFixed(2)]);
       rows.push(['', '', '', '', '']);
       rows.push(['3. OPERATING EXPENSES (OPEX)', '', '', '', '']);
@@ -564,10 +685,15 @@ export const FinancialReports: React.FC<FinancialReportsProps> = ({
       });
       rows.push(['TOTAL OPERATING EXPENSES', '', '', '', (-incomeStatement.totalOperatingExpenses).toFixed(2)]);
       rows.push(['OPERATING PROFIT (EBIT)', '', '', '', incomeStatement.operatingIncomeEbit.toFixed(2)]);
+      rows.push(['4. FINANCE COSTS & TAX PROVISION', '', '', (-incomeStatement.financeGroup.total).toFixed(2), '']);
+      if (viewMode === 'detailed') {
+        incomeStatement.financeGroup.accounts.forEach(a => rows.push([`      ${a.name}`, a.code, (-(ledgerState.closingBalances[a.id] || 0)).toFixed(2), '', '']));
+      }
       rows.push(['NET PROFIT / (LOSS)', '', '', '', incomeStatement.netProfit.toFixed(2)]);
 
       totals = [
         { label: 'GROSS PROFIT', value: formatCur(incomeStatement.grossProfit) },
+        { label: 'OPERATING PROFIT (EBIT)', value: formatCur(incomeStatement.operatingIncomeEbit) },
         { label: 'NET PROFIT', value: formatCur(incomeStatement.netProfit) },
         { label: 'NET MARGIN %', value: `${incomeStatement.netMarginPct.toFixed(1)}%` }
       ];
@@ -653,6 +779,9 @@ export const FinancialReports: React.FC<FinancialReportsProps> = ({
       rows.push(['3. SHAREHOLDERS\' EQUITY', '', '', '', '']);
       balanceSheet.equityGroups.forEach(g => {
         rows.push([`  • ${g.title}`, '', '', g.total, '']);
+        g.accounts.forEach(a => {
+          rows.push([`      ${a.name}`, a.code, ledgerState.closingBalances[a.id] || 0, '', '']);
+        });
       });
       rows.push(['  • Retained Net Income for Period', '', '', balanceSheet.netPeriodIncome, '']);
       rows.push(['TOTAL SHAREHOLDERS\' EQUITY', '', '', '', balanceSheet.totalEquity]);
@@ -660,11 +789,13 @@ export const FinancialReports: React.FC<FinancialReportsProps> = ({
     } else if (activeTab === 'incomestatement') {
       rows.push(['1. OPERATING REVENUE', '', '', '', '']);
       incomeStatement.revenueGroups.forEach(g => {
+        rows.push([`  • ${g.title}`, '', '', g.total, '']);
         g.accounts.forEach(a => rows.push([`    ${a.name}`, a.code, ledgerState.closingBalances[a.id] || 0, '', '']));
       });
       rows.push(['TOTAL OPERATING REVENUE', '', '', '', incomeStatement.grossRevenue]);
       rows.push(['', '', '', '', '']);
       rows.push(['2. COST OF GOODS SOLD (COGS)', '', '', -incomeStatement.cogsGroup.total, '']);
+      incomeStatement.cogsGroup.accounts.forEach(a => rows.push([`    ${a.name}`, a.code, -(ledgerState.closingBalances[a.id] || 0), '', '']));
       rows.push(['GROSS PROFIT', '', '', '', incomeStatement.grossProfit]);
       rows.push(['', '', '', '', '']);
       rows.push(['3. OPERATING EXPENSES (OPEX)', '', '', '', '']);
@@ -674,6 +805,8 @@ export const FinancialReports: React.FC<FinancialReportsProps> = ({
       });
       rows.push(['TOTAL OPERATING EXPENSES', '', '', '', -incomeStatement.totalOperatingExpenses]);
       rows.push(['OPERATING INCOME (EBIT)', '', '', '', incomeStatement.operatingIncomeEbit]);
+      rows.push(['4. FINANCE COSTS & TAX PROVISION', '', '', -incomeStatement.financeGroup.total, '']);
+      incomeStatement.financeGroup.accounts.forEach(a => rows.push([`    ${a.name}`, a.code, -(ledgerState.closingBalances[a.id] || 0), '', '']));
       rows.push(['NET PROFIT / (LOSS)', '', '', '', incomeStatement.netProfit]);
     } else {
       headers.length = 0;
@@ -694,12 +827,52 @@ export const FinancialReports: React.FC<FinancialReportsProps> = ({
     if (activeTab === 'trialbalance') {
       headers = ['Account Code', 'Account Name', 'Major Head', 'Opening', 'Period Debit', 'Period Credit', 'Closing Debit', 'Closing Credit'];
       rows = trialBalanceRows.map(r => [r.code, r.name, r.type, r.opening, r.periodDebit, r.periodCredit, r.closingDebit, r.closingCredit]);
+    } else if (activeTab === 'incomestatement') {
+      incomeStatement.revenueGroups.forEach(g => {
+        rows.push([g.title, '', '', g.total, '']);
+        g.accounts.forEach(a => rows.push(['', a.code, ledgerState.closingBalances[a.id] || 0, '', '']));
+      });
+      rows.push(['TOTAL OPERATING REVENUE', '', '', '', incomeStatement.grossRevenue]);
+      rows.push(['COGS', '', '', -incomeStatement.cogsGroup.total, '']);
+      rows.push(['GROSS PROFIT', '', '', '', incomeStatement.grossProfit]);
+      incomeStatement.opexGroups.forEach(g => {
+        rows.push([g.title, '', '', -g.total, '']);
+        g.accounts.forEach(a => rows.push(['', a.code, -(ledgerState.closingBalances[a.id] || 0), '', '']));
+      });
+      rows.push(['TOTAL OPEX', '', '', '', -incomeStatement.totalOperatingExpenses]);
+      rows.push(['FINANCE COSTS', '', '', -incomeStatement.financeGroup.total, '']);
+      rows.push(['NET PROFIT', '', '', '', incomeStatement.netProfit]);
     } else {
       balanceSheet.currentAssetsGroups.forEach(g => {
         rows.push([g.title, '', '', g.total, '']);
         g.accounts.forEach(a => rows.push(['', a.code, ledgerState.closingBalances[a.id] || 0, '', '']));
       });
       rows.push(['TOTAL CURRENT ASSETS', '', '', '', balanceSheet.totalCurrentAssets]);
+      balanceSheet.nonCurrentAssetsGroups.forEach(g => {
+        rows.push([g.title, '', '', g.total, '']);
+        g.accounts.forEach(a => rows.push(['', a.code, ledgerState.closingBalances[a.id] || 0, '', '']));
+      });
+      rows.push(['TOTAL NON-CURRENT ASSETS', '', '', '', balanceSheet.totalNonCurrentAssets]);
+      rows.push(['TOTAL ASSETS', '', '', '', balanceSheet.totalAssets]);
+
+      balanceSheet.currentLiabilitiesGroups.forEach(g => {
+        rows.push([g.title, '', '', g.total, '']);
+        g.accounts.forEach(a => rows.push(['', a.code, ledgerState.closingBalances[a.id] || 0, '', '']));
+      });
+      rows.push(['TOTAL CURRENT LIABILITIES', '', '', '', balanceSheet.totalCurrentLiabilities]);
+      balanceSheet.nonCurrentLiabilitiesGroups.forEach(g => {
+        rows.push([g.title, '', '', g.total, '']);
+        g.accounts.forEach(a => rows.push(['', a.code, ledgerState.closingBalances[a.id] || 0, '', '']));
+      });
+      rows.push(['TOTAL NON-CURRENT LIABILITIES', '', '', '', balanceSheet.totalNonCurrentLiabilities]);
+      rows.push(['TOTAL LIABILITIES', '', '', '', balanceSheet.totalLiabilities]);
+
+      balanceSheet.equityGroups.forEach(g => {
+        rows.push([g.title, '', '', g.total, '']);
+        g.accounts.forEach(a => rows.push(['', a.code, ledgerState.closingBalances[a.id] || 0, '', '']));
+      });
+      rows.push(['TOTAL EQUITY', '', '', '', balanceSheet.totalEquity]);
+      rows.push(['TOTAL LIABILITIES & EQUITY', '', '', '', balanceSheet.totalLiabilitiesAndEquity]);
     }
 
     downloadCSV(filename, headers, rows);
@@ -720,39 +893,13 @@ export const FinancialReports: React.FC<FinancialReportsProps> = ({
 
         {/* Action Buttons in single line */}
         <div className="flex items-center gap-2 shrink-0 flex-wrap">
-          <Button
-            size="sm"
-            onClick={handleExportPDF}
-            className="bg-rose-600 hover:bg-rose-700 text-white font-bold text-xs h-9 px-3.5 gap-1.5 shadow-xs cursor-pointer"
-          >
-            <FileText className="w-4 h-4" /> Download PDF
-          </Button>
-
-          <Button
-            size="sm"
-            onClick={handleExportExcel}
-            className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs h-9 px-3.5 gap-1.5 shadow-xs cursor-pointer"
-          >
-            <FileSpreadsheet className="w-4 h-4" /> Download Excel
-          </Button>
-
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={handleExportCSV}
-            className="text-blue-700 border-blue-300 hover:bg-blue-50 font-bold text-xs h-9 px-3 gap-1.5 cursor-pointer"
-          >
-            <Download className="w-4 h-4" /> CSV
-          </Button>
-
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => window.print()}
-            className="font-bold text-xs h-9 px-3 gap-1.5 cursor-pointer"
-          >
-            <Printer className="w-4 h-4" /> Print
-          </Button>
+          <ExportDropdown
+            label="Export Statement"
+            onPDF={handleExportPDF}
+            onExcel={handleExportExcel}
+            onCSV={handleExportCSV}
+            onPrint={() => window.print()}
+          />
 
           <Button
             variant="outline"
@@ -826,7 +973,7 @@ export const FinancialReports: React.FC<FinancialReportsProps> = ({
           <div className="flex items-center bg-muted p-0.5 rounded-xl text-xs font-bold border">
             <button
               onClick={() => setViewMode('detailed')}
-              className={`px-2.5 py-1 rounded-lg transition-all ${
+              className={`px-2.5 py-1 rounded-lg transition-all cursor-pointer ${
                 viewMode === 'detailed' ? 'bg-background text-teal-600 shadow-2xs' : 'text-muted-foreground'
               }`}
             >
@@ -834,13 +981,33 @@ export const FinancialReports: React.FC<FinancialReportsProps> = ({
             </button>
             <button
               onClick={() => setViewMode('condensed')}
-              className={`px-2.5 py-1 rounded-lg transition-all ${
+              className={`px-2.5 py-1 rounded-lg transition-all cursor-pointer ${
                 viewMode === 'condensed' ? 'bg-background text-teal-600 shadow-2xs' : 'text-muted-foreground'
               }`}
             >
               📑 Condensed Summary
             </button>
           </div>
+
+          {/* Expand / Collapse All Controls */}
+          {viewMode === 'detailed' && (
+            <div className="flex items-center gap-1">
+              <button
+                onClick={expandAll}
+                className="px-2.5 py-1 rounded-lg text-xs font-semibold bg-muted/70 hover:bg-muted text-foreground border transition-all cursor-pointer flex items-center gap-1"
+                title="Expand All Groups & Accounts"
+              >
+                <ChevronDownSquare className="w-3.5 h-3.5 text-teal-600" /> Expand All
+              </button>
+              <button
+                onClick={collapseAll}
+                className="px-2.5 py-1 rounded-lg text-xs font-semibold bg-muted/70 hover:bg-muted text-muted-foreground hover:text-foreground border transition-all cursor-pointer flex items-center gap-1"
+                title="Collapse All Groups"
+              >
+                <ChevronRightSquare className="w-3.5 h-3.5 text-muted-foreground" /> Collapse All
+              </button>
+            </div>
+          )}
         </div>
       </div>
 
@@ -889,7 +1056,7 @@ export const FinancialReports: React.FC<FinancialReportsProps> = ({
             <button
               key={t.id}
               onClick={() => setActiveTab(t.id as any)}
-              className={`flex items-center gap-2 px-4 py-3 text-xs font-bold border-b-2 transition-all shrink-0 ${
+              className={`flex items-center gap-2 px-4 py-3 text-xs font-bold border-b-2 transition-all shrink-0 cursor-pointer ${
                 isActive
                   ? 'border-teal-600 text-teal-600 bg-teal-50/50 dark:bg-teal-950/20'
                   : 'border-transparent text-muted-foreground hover:text-foreground'
@@ -921,7 +1088,7 @@ export const FinancialReports: React.FC<FinancialReportsProps> = ({
               </div>
               <div className="text-right text-xs font-mono">
                 <span className="font-bold text-foreground block">Reporting Date: {dateTo || 'Today'}</span>
-                <span className="text-muted-foreground text-[11px]">Format: {viewMode === 'detailed' ? 'Detailed Multi-Level Tree' : 'Condensed Summary'}</span>
+                <span className="text-muted-foreground text-[11px]">Format: {viewMode === 'detailed' ? '🌳 Detailed Multi-Level Tree' : '📑 Condensed Summary'}</span>
               </div>
             </div>
 
@@ -932,7 +1099,7 @@ export const FinancialReports: React.FC<FinancialReportsProps> = ({
                 <div className="col-span-6">Account Classification / Line Item</div>
                 <div className="col-span-2 text-right">Ledger Detail</div>
                 <div className="col-span-2 text-right">Subtotal</div>
-                <div className="col-span-2 text-right text-foreground font-black">Total (PKR)</div>
+                <div className="col-span-2 text-right text-foreground font-black">Total ({activeCurrency})</div>
               </div>
 
               {/* 1. ASSETS SECTION */}
@@ -961,7 +1128,7 @@ export const FinancialReports: React.FC<FinancialReportsProps> = ({
                       >
                         <div className="col-span-6 font-sans flex items-center gap-1.5">
                           {viewMode === 'detailed' && (
-                            collapsedGroups[group.id] ? <ChevronRight className="w-3.5 h-3.5 text-muted-foreground" /> : <ChevronDown className="w-3.5 h-3.5 text-muted-foreground" />
+                            collapsedGroups[group.id] ? <ChevronRight className="w-3.5 h-3.5 text-muted-foreground" /> : <ChevronDown className="w-3.5 h-3.5 text-teal-600" />
                           )}
                           {group.title}
                         </div>
@@ -971,15 +1138,8 @@ export const FinancialReports: React.FC<FinancialReportsProps> = ({
                       </div>
 
                       {viewMode === 'detailed' && !collapsedGroups[group.id] && (
-                        <div className="space-y-0.5 border-l-2 border-muted pl-4">
-                          {group.accounts.map(a => (
-                            <div key={a.id} className="grid grid-cols-12 gap-2 py-0.5 text-muted-foreground hover:text-foreground text-[11px]">
-                              <div className="col-span-6 font-sans">• {a.code} — {a.name}</div>
-                              <div className="col-span-2 text-right font-mono">{formatCur(ledgerState.closingBalances[a.id] || 0)}</div>
-                              <div className="col-span-2"></div>
-                              <div className="col-span-2"></div>
-                            </div>
-                          ))}
+                        <div className="space-y-0.5 border-l-2 border-teal-500/20 pl-4 py-1">
+                          {renderAccountTree(group.accounts)}
                         </div>
                       )}
                     </div>
@@ -1011,7 +1171,7 @@ export const FinancialReports: React.FC<FinancialReportsProps> = ({
                       >
                         <div className="col-span-6 font-sans flex items-center gap-1.5">
                           {viewMode === 'detailed' && (
-                            collapsedGroups[group.id] ? <ChevronRight className="w-3.5 h-3.5 text-muted-foreground" /> : <ChevronDown className="w-3.5 h-3.5 text-muted-foreground" />
+                            collapsedGroups[group.id] ? <ChevronRight className="w-3.5 h-3.5 text-muted-foreground" /> : <ChevronDown className="w-3.5 h-3.5 text-teal-600" />
                           )}
                           {group.title}
                         </div>
@@ -1021,15 +1181,8 @@ export const FinancialReports: React.FC<FinancialReportsProps> = ({
                       </div>
 
                       {viewMode === 'detailed' && !collapsedGroups[group.id] && (
-                        <div className="space-y-0.5 border-l-2 border-muted pl-4">
-                          {group.accounts.map(a => (
-                            <div key={a.id} className="grid grid-cols-12 gap-2 py-0.5 text-muted-foreground hover:text-foreground text-[11px]">
-                              <div className="col-span-6 font-sans">• {a.code} — {a.name}</div>
-                              <div className="col-span-2 text-right font-mono">{formatCur(ledgerState.closingBalances[a.id] || 0)}</div>
-                              <div className="col-span-2"></div>
-                              <div className="col-span-2"></div>
-                            </div>
-                          ))}
+                        <div className="space-y-0.5 border-l-2 border-teal-500/20 pl-4 py-1">
+                          {renderAccountTree(group.accounts)}
                         </div>
                       )}
                     </div>
@@ -1079,7 +1232,7 @@ export const FinancialReports: React.FC<FinancialReportsProps> = ({
                       >
                         <div className="col-span-6 font-sans flex items-center gap-1.5">
                           {viewMode === 'detailed' && (
-                            collapsedGroups[group.id] ? <ChevronRight className="w-3.5 h-3.5 text-muted-foreground" /> : <ChevronDown className="w-3.5 h-3.5 text-muted-foreground" />
+                            collapsedGroups[group.id] ? <ChevronRight className="w-3.5 h-3.5 text-muted-foreground" /> : <ChevronDown className="w-3.5 h-3.5 text-rose-600" />
                           )}
                           {group.title}
                         </div>
@@ -1089,15 +1242,8 @@ export const FinancialReports: React.FC<FinancialReportsProps> = ({
                       </div>
 
                       {viewMode === 'detailed' && !collapsedGroups[group.id] && (
-                        <div className="space-y-0.5 border-l-2 border-muted pl-4">
-                          {group.accounts.map(a => (
-                            <div key={a.id} className="grid grid-cols-12 gap-2 py-0.5 text-muted-foreground hover:text-foreground text-[11px]">
-                              <div className="col-span-6 font-sans">• {a.code} — {a.name}</div>
-                              <div className="col-span-2 text-right font-mono">{formatCur(ledgerState.closingBalances[a.id] || 0)}</div>
-                              <div className="col-span-2"></div>
-                              <div className="col-span-2"></div>
-                            </div>
-                          ))}
+                        <div className="space-y-0.5 border-l-2 border-rose-500/20 pl-4 py-1">
+                          {renderAccountTree(group.accounts)}
                         </div>
                       )}
                     </div>
@@ -1130,7 +1276,7 @@ export const FinancialReports: React.FC<FinancialReportsProps> = ({
                         >
                           <div className="col-span-6 font-sans flex items-center gap-1.5">
                             {viewMode === 'detailed' && (
-                              collapsedGroups[group.id] ? <ChevronRight className="w-3.5 h-3.5 text-muted-foreground" /> : <ChevronDown className="w-3.5 h-3.5 text-muted-foreground" />
+                              collapsedGroups[group.id] ? <ChevronRight className="w-3.5 h-3.5 text-muted-foreground" /> : <ChevronDown className="w-3.5 h-3.5 text-rose-600" />
                             )}
                             {group.title}
                           </div>
@@ -1140,15 +1286,8 @@ export const FinancialReports: React.FC<FinancialReportsProps> = ({
                         </div>
 
                         {viewMode === 'detailed' && !collapsedGroups[group.id] && (
-                          <div className="space-y-0.5 border-l-2 border-muted pl-4">
-                            {group.accounts.map(a => (
-                              <div key={a.id} className="grid grid-cols-12 gap-2 py-0.5 text-muted-foreground hover:text-foreground text-[11px]">
-                                <div className="col-span-6 font-sans">• {a.code} — {a.name}</div>
-                                <div className="col-span-2 text-right font-mono">{formatCur(ledgerState.closingBalances[a.id] || 0)}</div>
-                                <div className="col-span-2"></div>
-                                <div className="col-span-2"></div>
-                              </div>
-                            ))}
+                          <div className="space-y-0.5 border-l-2 border-rose-500/20 pl-4 py-1">
+                            {renderAccountTree(group.accounts)}
                           </div>
                         )}
                       </div>
@@ -1183,15 +1322,35 @@ export const FinancialReports: React.FC<FinancialReportsProps> = ({
 
                 <div className="space-y-1 pl-2">
                   {balanceSheet.equityGroups.map(group => (
-                    <div key={group.id} className="grid grid-cols-12 gap-2 py-1 text-foreground font-semibold">
-                      <div className="col-span-6 font-sans">• {group.title}</div>
-                      <div className="col-span-2"></div>
-                      <div className="col-span-2 text-right font-mono">{formatCur(group.total)}</div>
-                      <div className="col-span-2"></div>
+                    <div key={group.id} className="space-y-0.5">
+                      <div
+                        onClick={() => toggleGroup(group.id)}
+                        className="grid grid-cols-12 gap-2 py-1 text-foreground font-semibold cursor-pointer hover:text-blue-600 transition-colors"
+                      >
+                        <div className="col-span-6 font-sans flex items-center gap-1.5">
+                          {viewMode === 'detailed' && (
+                            collapsedGroups[group.id] ? <ChevronRight className="w-3.5 h-3.5 text-muted-foreground" /> : <ChevronDown className="w-3.5 h-3.5 text-blue-600" />
+                          )}
+                          • {group.title}
+                        </div>
+                        <div className="col-span-2"></div>
+                        <div className="col-span-2 text-right font-mono">{formatCur(group.total)}</div>
+                        <div className="col-span-2"></div>
+                      </div>
+
+                      {viewMode === 'detailed' && !collapsedGroups[group.id] && (
+                        <div className="space-y-0.5 border-l-2 border-blue-500/20 pl-4 py-1">
+                          {renderAccountTree(group.accounts)}
+                        </div>
+                      )}
                     </div>
                   ))}
+
                   <div className="grid grid-cols-12 gap-2 py-1 font-bold text-emerald-600">
-                    <div className="col-span-6 font-sans">• Retained Net Income for the Period (P&L):</div>
+                    <div className="col-span-6 font-sans flex items-center gap-1.5">
+                      {viewMode === 'detailed' && <span className="w-3.5 inline-block" />}
+                      • Retained Net Income for the Period (P&L):
+                    </div>
                     <div className="col-span-2"></div>
                     <div className="col-span-2 text-right font-mono">{formatCur(balanceSheet.netPeriodIncome)}</div>
                     <div className="col-span-2"></div>
@@ -1231,12 +1390,12 @@ export const FinancialReports: React.FC<FinancialReportsProps> = ({
                   Statement of Comprehensive Income (Profit & Loss)
                 </h3>
                 <span className="text-xs text-muted-foreground">
-                  Multi-Step Gross Margin, Operating Profit (EBIT), and Net Period Earnings (IFRS 15).
+                  Multi-Step Gross Margin, Operating Profit (EBIT), Finance Costs, and Net Period Earnings (IFRS 15).
                 </span>
               </div>
               <div className="text-right text-xs font-mono">
                 <span className="font-bold text-foreground block">Period: {dateFrom || 'Inception'} to {dateTo || 'Today'}</span>
-                <span className="text-muted-foreground text-[11px]">Format: {viewMode === 'detailed' ? 'Detailed Tree' : 'Condensed'}</span>
+                <span className="text-muted-foreground text-[11px]">Format: {viewMode === 'detailed' ? '🌳 Detailed Tree' : '📑 Condensed Summary'}</span>
               </div>
             </div>
 
@@ -1245,7 +1404,7 @@ export const FinancialReports: React.FC<FinancialReportsProps> = ({
                 <div className="col-span-6">Account Classification / Line Item</div>
                 <div className="col-span-2 text-right">Ledger Detail</div>
                 <div className="col-span-2 text-right">Subtotal</div>
-                <div className="col-span-2 text-right text-foreground font-black">Total (PKR)</div>
+                <div className="col-span-2 text-right text-foreground font-black">Total ({activeCurrency})</div>
               </div>
 
               {/* 1. Operating Revenue */}
@@ -1256,28 +1415,32 @@ export const FinancialReports: React.FC<FinancialReportsProps> = ({
                   <div className="col-span-2"></div>
                   <div className="col-span-2 text-right font-mono"></div>
                 </div>
+
                 {incomeStatement.revenueGroups.map(group => (
                   <div key={group.id} className="space-y-0.5 pl-2">
-                    <div className="grid grid-cols-12 gap-2 py-1 font-bold text-foreground">
-                      <div className="col-span-6 font-sans">{group.title}</div>
+                    <div
+                      onClick={() => toggleGroup(group.id)}
+                      className="grid grid-cols-12 gap-2 py-1 font-bold text-foreground cursor-pointer hover:text-teal-600 transition-colors"
+                    >
+                      <div className="col-span-6 font-sans flex items-center gap-1.5">
+                        {viewMode === 'detailed' && (
+                          collapsedGroups[group.id] ? <ChevronRight className="w-3.5 h-3.5 text-muted-foreground" /> : <ChevronDown className="w-3.5 h-3.5 text-teal-600" />
+                        )}
+                        {group.title}
+                      </div>
                       <div className="col-span-2"></div>
                       <div className="col-span-2 text-right font-mono text-teal-700">{formatCur(group.total)}</div>
                       <div className="col-span-2"></div>
                     </div>
-                    {viewMode === 'detailed' && (
-                      <div className="pl-4 space-y-0.5 border-l-2 border-muted">
-                        {group.accounts.map(a => (
-                          <div key={a.id} className="grid grid-cols-12 gap-2 py-0.5 text-muted-foreground hover:text-foreground text-[11px]">
-                            <div className="col-span-6 font-sans">• {a.code} — {a.name}</div>
-                            <div className="col-span-2 text-right font-mono">{formatCur(ledgerState.closingBalances[a.id] || 0)}</div>
-                            <div className="col-span-2"></div>
-                            <div className="col-span-2"></div>
-                          </div>
-                        ))}
+
+                    {viewMode === 'detailed' && !collapsedGroups[group.id] && (
+                      <div className="space-y-0.5 border-l-2 border-teal-500/20 pl-4 py-1">
+                        {renderAccountTree(group.accounts)}
                       </div>
                     )}
                   </div>
                 ))}
+
                 {/* TOTAL OPERATING REVENUE BAR */}
                 <div className="grid grid-cols-12 gap-2 py-1.5 font-bold text-foreground border-t border-b bg-muted/20 px-2 rounded-md">
                   <div className="col-span-6 font-sans">TOTAL OPERATING REVENUE</div>
@@ -1295,18 +1458,30 @@ export const FinancialReports: React.FC<FinancialReportsProps> = ({
                   <div className="col-span-2"></div>
                   <div className="col-span-2 text-right font-mono"></div>
                 </div>
-                {viewMode === 'detailed' && (
-                  <div className="pl-4 space-y-0.5 border-l-2 border-muted">
-                    {incomeStatement.cogsGroup.accounts.map(a => (
-                      <div key={a.id} className="grid grid-cols-12 gap-2 py-0.5 text-muted-foreground hover:text-foreground text-[11px]">
-                        <div className="col-span-6 font-sans">• {a.code} — {a.name}</div>
-                        <div className="col-span-2 text-right font-mono">{formatCur(ledgerState.closingBalances[a.id] || 0)}</div>
-                        <div className="col-span-2"></div>
-                        <div className="col-span-2"></div>
-                      </div>
-                    ))}
+
+                <div className="space-y-0.5 pl-2">
+                  <div
+                    onClick={() => toggleGroup('cogs')}
+                    className="grid grid-cols-12 gap-2 py-1 font-bold text-foreground cursor-pointer hover:text-rose-600 transition-colors"
+                  >
+                    <div className="col-span-6 font-sans flex items-center gap-1.5">
+                      {viewMode === 'detailed' && (
+                        collapsedGroups['cogs'] ? <ChevronRight className="w-3.5 h-3.5 text-muted-foreground" /> : <ChevronDown className="w-3.5 h-3.5 text-rose-600" />
+                      )}
+                      {incomeStatement.cogsGroup.title}
+                    </div>
+                    <div className="col-span-2"></div>
+                    <div className="col-span-2 text-right font-mono text-rose-700">-{formatCur(incomeStatement.cogsGroup.total)}</div>
+                    <div className="col-span-2"></div>
                   </div>
-                )}
+
+                  {viewMode === 'detailed' && !collapsedGroups['cogs'] && (
+                    <div className="space-y-0.5 border-l-2 border-rose-500/20 pl-4 py-1">
+                      {renderAccountTree(incomeStatement.cogsGroup.accounts)}
+                    </div>
+                  )}
+                </div>
+
                 {/* TOTAL COGS BAR */}
                 <div className="grid grid-cols-12 gap-2 py-1.5 font-bold text-foreground border-t border-b bg-muted/20 px-2 rounded-md">
                   <div className="col-span-6 font-sans">TOTAL COST OF GOODS SOLD</div>
@@ -1335,22 +1510,24 @@ export const FinancialReports: React.FC<FinancialReportsProps> = ({
 
                 {incomeStatement.opexGroups.map(group => (
                   <div key={group.id} className="space-y-0.5 pl-2">
-                    <div className="grid grid-cols-12 gap-2 py-1 font-bold text-foreground">
-                      <div className="col-span-6 font-sans">{group.title}</div>
+                    <div
+                      onClick={() => toggleGroup(group.id)}
+                      className="grid grid-cols-12 gap-2 py-1 font-bold text-foreground cursor-pointer hover:text-rose-600 transition-colors"
+                    >
+                      <div className="col-span-6 font-sans flex items-center gap-1.5">
+                        {viewMode === 'detailed' && (
+                          collapsedGroups[group.id] ? <ChevronRight className="w-3.5 h-3.5 text-muted-foreground" /> : <ChevronDown className="w-3.5 h-3.5 text-rose-600" />
+                        )}
+                        {group.title}
+                      </div>
                       <div className="col-span-2"></div>
                       <div className="col-span-2 text-right font-mono text-rose-700">-{formatCur(group.total)}</div>
                       <div className="col-span-2"></div>
                     </div>
-                    {viewMode === 'detailed' && (
-                      <div className="pl-4 space-y-0.5 border-l-2 border-muted">
-                        {group.accounts.map(a => (
-                          <div key={a.id} className="grid grid-cols-12 gap-2 py-0.5 text-muted-foreground hover:text-foreground text-[11px]">
-                            <div className="col-span-6 font-sans">• {a.code} — {a.name}</div>
-                            <div className="col-span-2 text-right font-mono">{formatCur(ledgerState.closingBalances[a.id] || 0)}</div>
-                            <div className="col-span-2"></div>
-                            <div className="col-span-2"></div>
-                          </div>
-                        ))}
+
+                    {viewMode === 'detailed' && !collapsedGroups[group.id] && (
+                      <div className="space-y-0.5 border-l-2 border-rose-500/20 pl-4 py-1">
+                        {renderAccountTree(group.accounts)}
                       </div>
                     )}
                   </div>
@@ -1371,6 +1548,39 @@ export const FinancialReports: React.FC<FinancialReportsProps> = ({
                 <div className="col-span-2"></div>
                 <div className="col-span-2"></div>
                 <div className="col-span-2 text-right font-mono">{formatCur(incomeStatement.operatingIncomeEbit)}</div>
+              </div>
+
+              {/* 4. Finance Costs & Tax Provision */}
+              <div className="space-y-2 pt-2">
+                <div className="grid grid-cols-12 gap-2 text-sm font-black text-purple-800 dark:text-purple-300 uppercase border-b pb-1 font-sans">
+                  <div className="col-span-6">4. FINANCE COSTS & TAX PROVISION (61500)</div>
+                  <div className="col-span-2"></div>
+                  <div className="col-span-2"></div>
+                  <div className="col-span-2 text-right font-mono"></div>
+                </div>
+
+                <div className="space-y-0.5 pl-2">
+                  <div
+                    onClick={() => toggleGroup('fin_tax')}
+                    className="grid grid-cols-12 gap-2 py-1 font-bold text-foreground cursor-pointer hover:text-purple-600 transition-colors"
+                  >
+                    <div className="col-span-6 font-sans flex items-center gap-1.5">
+                      {viewMode === 'detailed' && (
+                        collapsedGroups['fin_tax'] ? <ChevronRight className="w-3.5 h-3.5 text-muted-foreground" /> : <ChevronDown className="w-3.5 h-3.5 text-purple-600" />
+                      )}
+                      {incomeStatement.financeGroup.title}
+                    </div>
+                    <div className="col-span-2"></div>
+                    <div className="col-span-2 text-right font-mono text-purple-700">-{formatCur(incomeStatement.financeGroup.total)}</div>
+                    <div className="col-span-2"></div>
+                  </div>
+
+                  {viewMode === 'detailed' && !collapsedGroups['fin_tax'] && (
+                    <div className="space-y-0.5 border-l-2 border-purple-500/20 pl-4 py-1">
+                      {renderAccountTree(incomeStatement.financeGroup.accounts)}
+                    </div>
+                  )}
+                </div>
               </div>
 
               {/* NET PROFIT TOTAL */}
@@ -1406,13 +1616,13 @@ export const FinancialReports: React.FC<FinancialReportsProps> = ({
               <div className="flex items-center gap-1 bg-muted p-1 rounded-xl text-xs font-bold border">
                 <button
                   onClick={() => setCashFlowMethod('indirect')}
-                  className={`px-3 py-1 rounded-lg ${cashFlowMethod === 'indirect' ? 'bg-teal-600 text-white shadow-2xs' : 'text-muted-foreground'}`}
+                  className={`px-3 py-1 rounded-lg cursor-pointer ${cashFlowMethod === 'indirect' ? 'bg-teal-600 text-white shadow-2xs' : 'text-muted-foreground'}`}
                 >
                   Indirect Method
                 </button>
                 <button
                   onClick={() => setCashFlowMethod('direct')}
-                  className={`px-3 py-1 rounded-lg ${cashFlowMethod === 'direct' ? 'bg-teal-600 text-white shadow-2xs' : 'text-muted-foreground'}`}
+                  className={`px-3 py-1 rounded-lg cursor-pointer ${cashFlowMethod === 'direct' ? 'bg-teal-600 text-white shadow-2xs' : 'text-muted-foreground'}`}
                 >
                   Direct Method
                 </button>
@@ -1424,7 +1634,7 @@ export const FinancialReports: React.FC<FinancialReportsProps> = ({
                 <div className="col-span-6">Cash Flow Activity</div>
                 <div className="col-span-2 text-right">Detail</div>
                 <div className="col-span-2 text-right">Subtotal</div>
-                <div className="col-span-2 text-right text-foreground font-black">Net Cash (PKR)</div>
+                <div className="col-span-2 text-right text-foreground font-black">Net Cash ({activeCurrency})</div>
               </div>
 
               {/* 1. Operating Activities */}
@@ -1533,6 +1743,20 @@ export const FinancialReports: React.FC<FinancialReportsProps> = ({
                   <div className="col-span-2"></div>
                   <div className="col-span-2 text-right font-mono">{formatCur(cashFlowStatement.closingCash)}</div>
                 </div>
+
+                {viewMode === 'detailed' && (
+                  <div className="pt-2 border-t border-slate-800 text-[11px] space-y-1">
+                    <span className="text-slate-400 font-bold uppercase tracking-wider block">Detailed Cash & Cash Equivalents Breakdown:</span>
+                    {cashFlowStatement.cashAccounts.map(a => (
+                      <div key={a.id} className="grid grid-cols-12 gap-2 text-slate-300">
+                        <div className="col-span-6">• {a.code} — {a.name}</div>
+                        <div className="col-span-2 text-right font-mono text-emerald-400">{formatCur(ledgerState.closingBalances[a.id] || 0)}</div>
+                        <div className="col-span-2"></div>
+                        <div className="col-span-2"></div>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
             </div>
           </div>
@@ -1589,27 +1813,67 @@ export const FinancialReports: React.FC<FinancialReportsProps> = ({
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-border font-mono text-[11px]">
-                  {trialBalanceRows.map(r => (
-                    <tr key={r.id} className="hover:bg-muted/30 transition-colors">
-                      <td className="p-2.5 pl-4 font-bold text-foreground">{r.code}</td>
-                      <td className="p-2.5 font-sans font-semibold text-foreground border-r">{r.name}</td>
-                      <td className="p-2.5 font-sans text-muted-foreground border-r">{r.type}</td>
+                  {viewMode === 'detailed' ? (
+                    trialBalanceGrouped.map(cat => (
+                      <React.Fragment key={cat.id}>
+                        {/* Category Header Row in Detailed Mode */}
+                        <tr
+                          onClick={() => toggleGroup(cat.id)}
+                          className="bg-muted/40 font-bold font-sans text-xs cursor-pointer hover:bg-muted/60 transition-colors"
+                        >
+                          <td colSpan={7} className="p-2 pl-4 text-teal-700 dark:text-teal-400">
+                            <div className="flex items-center gap-1.5">
+                              {collapsedGroups[cat.id] ? <ChevronRight className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
+                              <span>{cat.title} ({cat.rows.length} accounts)</span>
+                            </div>
+                          </td>
+                        </tr>
+                        {!collapsedGroups[cat.id] && cat.rows.map(r => (
+                          <tr key={r.id} className="hover:bg-muted/30 transition-colors">
+                            <td className="p-2.5 pl-4 font-bold text-foreground">{r.code}</td>
+                            <td className="p-2.5 font-sans font-semibold text-foreground border-r">{r.name}</td>
+                            <td className="p-2.5 font-sans text-muted-foreground border-r">{r.type}</td>
 
-                      <td className="p-2 text-right text-muted-foreground border-r">
-                        {r.periodDebit > 0 ? r.periodDebit.toLocaleString(undefined, { minimumFractionDigits: 2 }) : '-'}
-                      </td>
-                      <td className="p-2 text-right text-muted-foreground border-r">
-                        {r.periodCredit > 0 ? r.periodCredit.toLocaleString(undefined, { minimumFractionDigits: 2 }) : '-'}
-                      </td>
+                            <td className="p-2 text-right text-muted-foreground border-r">
+                              {r.periodDebit > 0 ? r.periodDebit.toLocaleString(undefined, { minimumFractionDigits: 2 }) : '-'}
+                            </td>
+                            <td className="p-2 text-right text-muted-foreground border-r">
+                              {r.periodCredit > 0 ? r.periodCredit.toLocaleString(undefined, { minimumFractionDigits: 2 }) : '-'}
+                            </td>
 
-                      <td className="p-2 text-right font-bold text-teal-800 dark:text-teal-300 border-r bg-teal-50/20">
-                        {r.closingDebit > 0 ? r.closingDebit.toLocaleString(undefined, { minimumFractionDigits: 2 }) : '-'}
-                      </td>
-                      <td className="p-2 pr-4 text-right font-bold text-teal-800 dark:text-teal-300 bg-teal-50/20">
-                        {r.closingCredit > 0 ? r.closingCredit.toLocaleString(undefined, { minimumFractionDigits: 2 }) : '-'}
-                      </td>
-                    </tr>
-                  ))}
+                            <td className="p-2 text-right font-bold text-teal-800 dark:text-teal-300 border-r bg-teal-50/20">
+                              {r.closingDebit > 0 ? r.closingDebit.toLocaleString(undefined, { minimumFractionDigits: 2 }) : '-'}
+                            </td>
+                            <td className="p-2 pr-4 text-right font-bold text-teal-800 dark:text-teal-300 bg-teal-50/20">
+                              {r.closingCredit > 0 ? r.closingCredit.toLocaleString(undefined, { minimumFractionDigits: 2 }) : '-'}
+                            </td>
+                          </tr>
+                        ))}
+                      </React.Fragment>
+                    ))
+                  ) : (
+                    trialBalanceRows.map(r => (
+                      <tr key={r.id} className="hover:bg-muted/30 transition-colors">
+                        <td className="p-2.5 pl-4 font-bold text-foreground">{r.code}</td>
+                        <td className="p-2.5 font-sans font-semibold text-foreground border-r">{r.name}</td>
+                        <td className="p-2.5 font-sans text-muted-foreground border-r">{r.type}</td>
+
+                        <td className="p-2 text-right text-muted-foreground border-r">
+                          {r.periodDebit > 0 ? r.periodDebit.toLocaleString(undefined, { minimumFractionDigits: 2 }) : '-'}
+                        </td>
+                        <td className="p-2 text-right text-muted-foreground border-r">
+                          {r.periodCredit > 0 ? r.periodCredit.toLocaleString(undefined, { minimumFractionDigits: 2 }) : '-'}
+                        </td>
+
+                        <td className="p-2 text-right font-bold text-teal-800 dark:text-teal-300 border-r bg-teal-50/20">
+                          {r.closingDebit > 0 ? r.closingDebit.toLocaleString(undefined, { minimumFractionDigits: 2 }) : '-'}
+                        </td>
+                        <td className="p-2 pr-4 text-right font-bold text-teal-800 dark:text-teal-300 bg-teal-50/20">
+                          {r.closingCredit > 0 ? r.closingCredit.toLocaleString(undefined, { minimumFractionDigits: 2 }) : '-'}
+                        </td>
+                      </tr>
+                    ))
+                  )}
                 </tbody>
                 <tfoot>
                   <tr className="bg-slate-900 text-white font-mono text-[11px] font-black border-t-2 border-slate-700">

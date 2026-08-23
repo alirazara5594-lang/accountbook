@@ -1,7 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import {
-  BarChart3, Search, Download, Printer,
-  FileSpreadsheet, RefreshCw, ShoppingCart,
+  BarChart3, Search, RefreshCw, ShoppingCart,
   CreditCard, Clock, Users,
   Layers, FileText, CheckCircle2
 } from 'lucide-react';
@@ -9,6 +8,7 @@ import type { Entity } from './EntitySettings';
 import { reportsApi } from './api/modules/reports.api';
 import { money } from './lib/currency';
 import { downloadExcel } from './lib/exportUtils';
+import ExportDropdown from './components/ExportDropdown';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 
@@ -305,26 +305,12 @@ export const PurchaseReportsView: React.FC<{ activeEntityId: string; entities: E
           </div>
 
           {/* Action Buttons */}
-          <button
-            onClick={generatePurchaseReportPDF}
-            className="primary h-8.5 px-3 rounded-lg text-xs font-semibold flex items-center gap-1.5 shadow-xs"
-            title="Download PDF Report"
-          >
-            <Download className="w-3.5 h-3.5" /> Download PDF
-          </button>
-          <button
-            onClick={activeTab === 'spend' ? exportVendorSpendExcel : exportBillsExcel}
-            className="secondary h-8.5 px-3 rounded-lg text-xs font-semibold flex items-center gap-1.5 shadow-xs"
-            title="Export Excel"
-          >
-            <FileSpreadsheet className="w-3.5 h-3.5 text-emerald-600" /> Excel
-          </button>
-          <button
-            onClick={() => window.print()}
-            className="secondary h-8.5 px-2.5 rounded-lg text-xs font-semibold flex items-center gap-1"
-          >
-            <Printer className="w-3.5 h-3.5" />
-          </button>
+          <ExportDropdown
+            label="Export Report"
+            onPDF={generatePurchaseReportPDF}
+            onExcel={activeTab === 'spend' ? exportVendorSpendExcel : exportBillsExcel}
+            onPrint={() => window.print()}
+          />
           <button
             onClick={loadReport}
             className="secondary h-8.5 w-8.5 rounded-lg flex items-center justify-center text-xs text-[var(--color-text)]"

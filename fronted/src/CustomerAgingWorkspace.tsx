@@ -3,10 +3,11 @@ import { useSalesStore, useCustomersStore, useCompanyStore } from './stores';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell } from 'recharts';
 import {
   Users, DollarSign, AlertTriangle, Clock, FileSpreadsheet,
-  ArrowLeft, Search, Download, Printer, RefreshCw,
+  ArrowLeft, Search, Download, RefreshCw,
   ChevronRight, CheckCircle2, ShieldAlert
 } from 'lucide-react';
 import { downloadExcel } from './lib/exportUtils';
+import ExportDropdown from './components/ExportDropdown';
 import { money, moneyCompact } from './lib/currency';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
@@ -441,27 +442,12 @@ export function CustomerAgingWorkspace({ activeEntityId }: Props) {
 
           {/* Export Actions */}
           <div className="flex items-center gap-1.5 shrink-0 flex-wrap">
-            <button
-              onClick={() => downloadCustomerPDF(selectedCustomer)}
-              className="primary h-8.5 px-3 rounded-lg text-xs font-semibold flex items-center gap-1.5 shadow-xs"
-              title="Download Aging PDF for this customer"
-            >
-              <Download className="w-3.5 h-3.5" /> Download PDF
-            </button>
-            <button
-              onClick={() => downloadCustomerExcel(selectedCustomer)}
-              className="h-8.5 px-3 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-semibold flex items-center gap-1.5 shadow-xs transition-colors"
-              title="Download Aging Excel"
-            >
-              <FileSpreadsheet className="w-3.5 h-3.5" /> Excel
-            </button>
-            <button
-              onClick={() => window.print()}
-              className="secondary h-8.5 px-2.5 rounded-lg text-xs font-semibold flex items-center gap-1"
-              title="Print"
-            >
-              <Printer className="w-3.5 h-3.5" />
-            </button>
+            <ExportDropdown
+              label="Export Aging"
+              onPDF={() => downloadCustomerPDF(selectedCustomer)}
+              onExcel={() => downloadCustomerExcel(selectedCustomer)}
+              onPrint={() => window.print()}
+            />
           </div>
         </div>
 

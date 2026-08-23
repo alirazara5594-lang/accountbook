@@ -4,13 +4,14 @@ import { useCustomerPaymentsStore } from './stores/useCustomerPaymentsStore';
 import { useCreditNotesStore } from './stores/useCreditNotesStore';
 import {
   Users, DollarSign, Download, ArrowLeft,
-  Receipt, Search, Printer, FileSpreadsheet,
+  Receipt, Search, FileSpreadsheet,
   Building2, Mail, Phone, MapPin, CheckCircle2,
   Clock, ArrowUpRight, ArrowDownLeft, ChevronRight,
   RefreshCw, FileCheck
 } from 'lucide-react';
 import { money } from './lib/currency';
 import { downloadExcel, downloadCSV } from './lib/exportUtils';
+import ExportDropdown from './components/ExportDropdown';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 
@@ -729,35 +730,15 @@ export function CustomerStatementsWorkspace({ activeEntityId }: Props) {
             </div>
           </div>
 
-          {/* Statement Export & Action Buttons */}
+          {/* Statement Export Dropdown */}
           <div className="flex items-center gap-1.5 shrink-0 flex-wrap">
-            <button
-              onClick={() => generateCustomerStatementPDF(cust.id)}
-              className="primary h-8.5 px-3 rounded-lg text-xs font-semibold flex items-center gap-1.5 shadow-xs"
-              title="Download official PDF customer statement"
-            >
-              <Download className="w-3.5 h-3.5" /> Download PDF
-            </button>
-            <button
-              onClick={() => exportCustomerExcel(cust.id)}
-              className="h-8.5 px-3 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-semibold flex items-center gap-1.5 shadow-xs transition-colors"
-              title="Export statement to Excel workbook"
-            >
-              <FileSpreadsheet className="w-3.5 h-3.5" /> Excel
-            </button>
-            <button
-              onClick={() => exportCustomerCSV(cust.id)}
-              className="secondary h-8.5 px-3 rounded-lg text-xs font-semibold flex items-center gap-1.5 shadow-xs"
-            >
-              CSV
-            </button>
-            <button
-              onClick={() => window.print()}
-              className="secondary h-8.5 px-2.5 rounded-lg text-xs font-semibold flex items-center gap-1"
-              title="Print Statement"
-            >
-              <Printer className="w-3.5 h-3.5" />
-            </button>
+            <ExportDropdown
+              label="Export Statement"
+              onPDF={() => generateCustomerStatementPDF(cust.id)}
+              onExcel={() => exportCustomerExcel(cust.id)}
+              onCSV={() => exportCustomerCSV(cust.id)}
+              onPrint={() => window.print()}
+            />
           </div>
         </div>
 

@@ -6,7 +6,8 @@ import {
   CheckCircle2, ChevronRight, RefreshCw, Layers
 } from 'lucide-react';
 import { money } from './lib/currency';
-import { downloadExcel } from './lib/exportUtils';
+import { downloadExcel, downloadCSV } from './lib/exportUtils';
+import ExportDropdown from './components/ExportDropdown';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 
@@ -452,6 +453,38 @@ export function PayablesAgingWorkspace({ activeEntityId }: PayablesAgingProps) {
     downloadExcel(`All_Vendors_Payables_Aging_${asOfDate}`, 'AP Aging', headers, rows);
   };
 
+  const exportAllAgingCSV = () => {
+    const headers = [
+      'Vendor Code',
+      'Vendor Name',
+      'Current (Not Due)',
+      '1 - 30 Days',
+      '31 - 60 Days',
+      '61 - 90 Days',
+      '90+ Days (Critical)',
+      'Total Outstanding',
+      'Open Bills',
+      'Oldest Overdue (Days)',
+      'Risk Status',
+    ];
+
+    const rows = filteredData.map((a) => [
+      a.vendorNumber,
+      a.vendorName,
+      a.current,
+      a.days30,
+      a.days60,
+      a.days90,
+      a.days90Plus,
+      a.totalDue,
+      a.openBillsCount,
+      a.oldestOverdueDays,
+      a.riskCategory.toUpperCase(),
+    ]);
+
+    downloadCSV(`All_Vendors_Payables_Aging_${asOfDate}.csv`, headers, rows);
+  };
+
   // ════════════════════════════════════════════════════════════════════════════
   // ─── VIEW 2: SINGLE VENDOR DETAILED AGING VIEW ─────────────────────────────
   // ════════════════════════════════════════════════════════════════════════════
@@ -698,14 +731,13 @@ export function PayablesAgingWorkspace({ activeEntityId }: PayablesAgingProps) {
             />
           </div>
 
-          {/* Export All Button */}
-          <button
-            onClick={exportAllAgingExcel}
-            className="secondary h-8.5 px-3 rounded-lg text-xs font-semibold flex items-center gap-1.5 shadow-xs"
-            title="Export aging report for all suppliers to Excel"
-          >
-            <FileSpreadsheet className="w-3.5 h-3.5 text-emerald-600" /> Export Aging
-          </button>
+          {/* Export All Dropdown */}
+          <ExportDropdown
+            label="Export Aging"
+            onExcel={exportAllAgingExcel}
+            onCSV={exportAllAgingCSV}
+            onPrint={() => window.print()}
+          />
 
           {/* Refresh */}
           <button
