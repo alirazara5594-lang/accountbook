@@ -2,7 +2,7 @@ import { useState } from 'react'
 import {
   ChevronRight, Globe, Layers, Key, CheckCircle2, ArrowLeft,
   Briefcase, ShoppingCart, Factory, ShoppingBag,
-  Landmark, BookOpen, Boxes, Users, MapPin, Scale, Sparkles
+  Landmark, BookOpen, Boxes, Users, MapPin, Scale, Sparkles, Building2
 } from 'lucide-react'
 import type { UserData } from '../Login'
 import { setActiveCurrency } from '../lib/currency'
@@ -16,6 +16,80 @@ const COUNTRIES = [
   { code: 'CA', name: 'Canada', currency: 'CAD', flag: '🇨🇦', tax: 'CRA GST/HST 13%' },
   { code: 'DE', name: 'Germany', currency: 'EUR', flag: '🇩🇪', tax: 'EU Standard VAT 19%' },
   { code: 'EU', name: 'European Union', currency: 'EUR', flag: '🇪🇺', tax: 'EU Cross-Border VAT 21%' },
+]
+
+export const WORLD_BUSINESS_SECTORS = [
+  {
+    group: '💼 Services, Consulting & Professional',
+    sectors: [
+      { id: 'Services_Professional', name: 'Professional Services & Business Consulting', modules: ['overview', 'sales', 'banking', 'accounting', 'payroll', 'compliance', 'analytics', 'administration'] },
+      { id: 'Services_IT', name: 'IT Services, Software Development & Digital Agency', modules: ['overview', 'sales', 'projects', 'banking', 'accounting', 'payroll', 'compliance', 'analytics', 'administration'] },
+      { id: 'Services_Legal', name: 'Legal, Law Firms & Corporate Compliance', modules: ['overview', 'sales', 'banking', 'accounting', 'compliance', 'analytics', 'administration'] },
+      { id: 'Services_RealEstate', name: 'Real Estate Brokerage & Property Management', modules: ['overview', 'sales', 'banking', 'accounting', 'compliance', 'analytics', 'administration'] },
+    ]
+  },
+  {
+    group: '🛒 Commerce, Trade & Logistics',
+    sectors: [
+      { id: 'Retail_Supermarket', name: 'Retail, Supermarkets & FMCG Store Chains', modules: ['overview', 'sales', 'procurement', 'assets', 'banking', 'accounting', 'compliance', 'analytics', 'administration'] },
+      { id: 'Retail_Ecommerce', name: 'E-Commerce & Online Direct-to-Consumer (D2C)', modules: ['overview', 'sales', 'procurement', 'assets', 'banking', 'accounting', 'analytics', 'compliance', 'administration'] },
+      { id: 'Trade_Wholesale', name: 'Wholesale, Import/Export & Distribution', modules: ['overview', 'sales', 'procurement', 'assets', 'banking', 'accounting', 'compliance', 'analytics', 'administration'] },
+      { id: 'Logistics_Transport', name: 'Transportation, Freight Forwarding & Warehousing', modules: ['overview', 'field', 'sales', 'procurement', 'assets', 'payroll', 'banking', 'accounting', 'compliance', 'analytics', 'administration'] },
+    ]
+  },
+  {
+    group: '🏭 Manufacturing, Industrial & Heavy Sector',
+    sectors: [
+      { id: 'Mfg_General', name: 'General Industrial Manufacturing & Assembly', modules: ['overview', 'manufacturing', 'procurement', 'assets', 'sales', 'banking', 'accounting', 'payroll', 'compliance', 'analytics', 'administration'] },
+      { id: 'Mfg_Textile', name: 'Textile, Garments & Apparel Manufacturing', modules: ['overview', 'manufacturing', 'procurement', 'assets', 'sales', 'banking', 'accounting', 'payroll', 'compliance', 'analytics', 'administration'] },
+      { id: 'Mfg_Food', name: 'Food & Beverage Processing / Packaging', modules: ['overview', 'manufacturing', 'procurement', 'assets', 'sales', 'banking', 'accounting', 'compliance', 'analytics', 'administration'] },
+      { id: 'Mfg_Automotive', name: 'Automotive Parts, Machinery & Hardware', modules: ['overview', 'manufacturing', 'procurement', 'assets', 'sales', 'banking', 'accounting', 'compliance', 'analytics', 'administration'] },
+      { id: 'Mfg_Chemical', name: 'Chemicals, Plastics & Industrial Raw Materials', modules: ['overview', 'manufacturing', 'procurement', 'assets', 'sales', 'banking', 'accounting', 'compliance', 'analytics', 'administration'] },
+    ]
+  },
+  {
+    group: '🏗️ Construction, Contracting & Infrastructure',
+    sectors: [
+      { id: 'Const_Civil', name: 'Construction, Civil Engineering & General Contracting', modules: ['overview', 'projects', 'field', 'procurement', 'sales', 'payroll', 'accounting', 'compliance', 'analytics', 'administration'] },
+      { id: 'Const_MEP', name: 'MEP, HVAC & Specialized Subcontracting', modules: ['overview', 'projects', 'field', 'procurement', 'sales', 'accounting', 'compliance', 'analytics', 'administration'] },
+      { id: 'Energy_OilGas', name: 'Energy, Solar, Oil & Gas, Mining & Utilities', modules: ['overview', 'projects', 'procurement', 'assets', 'accounting', 'banking', 'compliance', 'analytics', 'administration'] },
+    ]
+  },
+  {
+    group: '🏥 Healthcare, Pharma & Science',
+    sectors: [
+      { id: 'Health_Hospital', name: 'Hospitals, Medical Clinics & Diagnostic Centers', modules: ['overview', 'sales', 'procurement', 'assets', 'payroll', 'banking', 'accounting', 'compliance', 'analytics', 'administration'] },
+      { id: 'Health_Pharma', name: 'Pharmaceutical Manufacturing & Pharmacy Chains', modules: ['overview', 'manufacturing', 'procurement', 'assets', 'sales', 'banking', 'accounting', 'compliance', 'analytics', 'administration'] },
+    ]
+  },
+  {
+    group: '🏨 Hospitality, Food & Tourism',
+    sectors: [
+      { id: 'Hosp_Restaurant', name: 'Restaurants, Cafes, Bakeries & Food Chains', modules: ['overview', 'sales', 'procurement', 'assets', 'payroll', 'banking', 'accounting', 'compliance', 'analytics', 'administration'] },
+      { id: 'Hosp_Hotel', name: 'Hotels, Resorts & Travel / Tourism Management', modules: ['overview', 'sales', 'procurement', 'assets', 'payroll', 'banking', 'accounting', 'compliance', 'analytics', 'administration'] },
+    ]
+  },
+  {
+    group: '🌾 Agriculture, Dairy & Livestock',
+    sectors: [
+      { id: 'Agri_Farming', name: 'Agriculture, Crop Farming & Agro-Commodities', modules: ['overview', 'procurement', 'assets', 'manufacturing', 'sales', 'banking', 'accounting', 'payroll', 'compliance', 'analytics', 'administration'] },
+      { id: 'Agri_Dairy', name: 'Dairy, Livestock & Poultry Farming', modules: ['overview', 'procurement', 'assets', 'manufacturing', 'sales', 'banking', 'accounting', 'payroll', 'compliance', 'analytics', 'administration'] },
+    ]
+  },
+  {
+    group: '🎓 Education, FinTech & Non-Profit',
+    sectors: [
+      { id: 'Edu_Institution', name: 'Schools, Colleges, Universities & Academies', modules: ['overview', 'sales', 'banking', 'accounting', 'payroll', 'compliance', 'analytics', 'administration'] },
+      { id: 'Fin_FinTech', name: 'Financial Services, Microfinance & FinTech Lending', modules: ['overview', 'banking', 'accounting', 'compliance', 'analytics', 'administration'] },
+      { id: 'NonProfit_NGO', name: 'Non-Profit Organizations, NGOs & Charities', modules: ['overview', 'projects', 'procurement', 'banking', 'accounting', 'payroll', 'compliance', 'analytics', 'administration'] },
+    ]
+  },
+  {
+    group: '🏛️ Conglomerate / All Enterprise Modules',
+    sectors: [
+      { id: 'All_FullSuite', name: 'Holding Company / Full Enterprise Suite (All 11 Modules)', modules: ['overview', 'sales', 'procurement', 'banking', 'accounting', 'assets', 'manufacturing', 'payroll', 'projects', 'field', 'compliance', 'analytics', 'administration'] },
+    ]
+  }
 ]
 
 const ERP_MODULES = [
@@ -60,12 +134,24 @@ export default function OnboardingWizard({ currentUser }: {
   const [licenseMode, setLicenseMode] = useState('trial')
   const [licenseKeyInput, setLicenseKeyInput] = useState('')
   const [country, setCountry] = useState('PK')
+  const [selectedSectorId, setSelectedSectorId] = useState('All_FullSuite')
   const [selectedModules, setSelectedModules] = useState<string[]>([
     'overview', 'sales', 'procurement', 'banking', 'accounting',
-    'assets', 'manufacturing', 'payroll', 'projects', 'compliance', 'analytics', 'administration'
+    'assets', 'manufacturing', 'payroll', 'projects', 'field', 'compliance', 'analytics', 'administration'
   ])
   const [companyName, setCompanyName] = useState('Apex Enterprise')
   const [saving, setSaving] = useState(false)
+
+  const handleSectorChange = (sectorId: string) => {
+    setSelectedSectorId(sectorId)
+    for (const grp of WORLD_BUSINESS_SECTORS) {
+      const match = grp.sectors.find(s => s.id === sectorId)
+      if (match) {
+        setSelectedModules(Array.from(new Set([...match.modules, 'overview', 'administration'])))
+        break
+      }
+    }
+  }
 
   const toggleModule = (id: string) => {
     setSelectedModules(prev =>
@@ -74,18 +160,11 @@ export default function OnboardingWizard({ currentUser }: {
   }
 
   const selectAll = () => {
+    setSelectedSectorId('All_FullSuite')
     setSelectedModules([
       'overview', 'sales', 'procurement', 'banking', 'accounting',
       'assets', 'manufacturing', 'payroll', 'projects', 'field', 'compliance', 'analytics', 'administration'
     ])
-  }
-
-  const selectServicesOnly = () => {
-    setSelectedModules(['overview', 'sales', 'banking', 'accounting', 'payroll', 'compliance', 'analytics', 'administration'])
-  }
-
-  const selectRetailOnly = () => {
-    setSelectedModules(['overview', 'sales', 'procurement', 'assets', 'banking', 'accounting', 'compliance', 'analytics', 'administration'])
   }
 
   const handleFinish = async () => {
@@ -97,11 +176,11 @@ export default function OnboardingWizard({ currentUser }: {
       localStorage.setItem('onboarding_country_name', selectedCountry.name)
     }
 
-    // Always ensure overview and administration are present
     const finalModules = Array.from(new Set([...selectedModules, 'overview', 'administration']))
     localStorage.setItem('erp_enabled_modules', JSON.stringify(finalModules))
     localStorage.setItem('onboarding_company_name', companyName.trim() || 'Apex Enterprise')
     localStorage.setItem('onboarding_license_mode', licenseMode)
+    localStorage.setItem('onboarding_sector_id', selectedSectorId)
 
     if (licenseMode === 'licensed' && licenseKeyInput.trim()) {
       try {
@@ -125,6 +204,16 @@ export default function OnboardingWizard({ currentUser }: {
     window.location.reload();
   }
 
+  // Find active sector name
+  let activeSectorName = 'Custom Sector Setup';
+  for (const grp of WORLD_BUSINESS_SECTORS) {
+    const match = grp.sectors.find(s => s.id === selectedSectorId);
+    if (match) {
+      activeSectorName = match.name;
+      break;
+    }
+  }
+
   return (
     <div className="fixed inset-0 bg-slate-950/80 backdrop-blur-md z-[10000] flex items-center justify-center p-4">
       <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl max-w-2xl w-full shadow-2xl overflow-hidden flex flex-col animate-in fade-in zoom-in-95">
@@ -136,8 +225,8 @@ export default function OnboardingWizard({ currentUser }: {
                 AMS
               </div>
               <div>
-                <h2 className="font-bold text-base text-white">Company Setup & Module Configuration</h2>
-                <p className="text-xs text-slate-300">Welcome, {currentUser.fullName}. Customize the ERP for this business.</p>
+                <h2 className="font-bold text-base text-white">Company Setup & Sector Tuning</h2>
+                <p className="text-xs text-slate-300">Welcome, {currentUser.fullName}. Customize the ERP for your business type.</p>
               </div>
             </div>
             <div className="flex items-center gap-1.5">
@@ -268,73 +357,91 @@ export default function OnboardingWizard({ currentUser }: {
             </div>
           )}
 
-          {/* STEP 3: Granular Module Selection */}
+          {/* STEP 3: Comprehensive Global Business Sector Dropdown & Granular Modules */}
           {step === 3 && (
-            <div className="space-y-3 animate-in fade-in">
-              <div className="flex items-center justify-between">
-                <div>
-                  <h3 className="font-bold text-sm text-slate-900 dark:text-white flex items-center gap-2">
-                    <Layers className="w-4 h-4 text-teal-600" /> 3. Choose Modules for This Company
-                  </h3>
-                  <p className="text-[11px] text-slate-500 mt-0.5">Toggle only the modules this business needs to keep their sidebar clean.</p>
-                </div>
-                <div className="flex items-center gap-1">
+            <div className="space-y-3.5 animate-in fade-in">
+              <div>
+                <h3 className="font-bold text-sm text-slate-900 dark:text-white flex items-center gap-2">
+                  <Building2 className="w-4 h-4 text-teal-600" /> 3. Select World Business Sector & Modules
+                </h3>
+                <p className="text-[11px] text-slate-500 mt-0.5">
+                  Choose your exact industry from all world business sectors to automatically configure optimal workflows.
+                </p>
+              </div>
+
+              {/* Master Sector Dropdown */}
+              <div className="p-3.5 rounded-2xl bg-teal-50/40 dark:bg-teal-950/30 border border-teal-300 dark:border-teal-800 space-y-2">
+                <label className="font-bold text-[11px] text-slate-900 dark:text-white flex items-center justify-between">
+                  <span>🏢 Business Sector / Industry Type (Global Profiles)</span>
+                  <span className="text-[10px] text-teal-700 dark:text-teal-300 font-semibold">{selectedModules.length - 2} active modules</span>
+                </label>
+                <select
+                  value={selectedSectorId}
+                  onChange={e => handleSectorChange(e.target.value)}
+                  className="w-full text-xs px-3.5 py-2.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 font-semibold text-slate-900 dark:text-white focus:ring-2 focus:ring-teal-500 focus:outline-none"
+                >
+                  {WORLD_BUSINESS_SECTORS.map((grp) => (
+                    <optgroup key={grp.group} label={grp.group}>
+                      {grp.sectors.map(sec => (
+                        <option key={sec.id} value={sec.id}>
+                          {sec.name}
+                        </option>
+                      ))}
+                    </optgroup>
+                  ))}
+                </select>
+                <div className="flex items-center justify-between text-[10px] text-slate-500 pt-0.5">
+                  <span>Target: <b>{activeSectorName}</b></span>
                   <button
                     type="button"
                     onClick={selectAll}
-                    className="px-2 py-1 rounded-md text-[10px] font-bold bg-teal-50 dark:bg-teal-950/40 text-teal-700 dark:text-teal-300 border border-teal-200 dark:border-teal-800 hover:bg-teal-100"
+                    className="text-teal-600 dark:text-teal-400 font-bold hover:underline cursor-pointer"
                   >
-                    Select All
-                  </button>
-                  <button
-                    type="button"
-                    onClick={selectServicesOnly}
-                    className="px-2 py-1 rounded-md text-[10px] font-bold bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-200"
-                  >
-                    Services Only
-                  </button>
-                  <button
-                    type="button"
-                    onClick={selectRetailOnly}
-                    className="px-2 py-1 rounded-md text-[10px] font-bold bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-200"
-                  >
-                    Retail Only
+                    Activate All 11 Modules
                   </button>
                 </div>
               </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                {ERP_MODULES.map(mod => {
-                  const Icon = mod.icon
-                  const active = selectedModules.includes(mod.id)
-                  return (
-                    <div
-                      key={mod.id}
-                      onClick={() => toggleModule(mod.id)}
-                      className={`p-2.5 rounded-xl border cursor-pointer transition-all flex items-start justify-between gap-2 ${
-                        active
-                          ? 'border-teal-500 bg-teal-50/50 dark:bg-teal-950/30 shadow-xs'
-                          : 'border-slate-200 dark:border-slate-800 hover:border-slate-300 opacity-50'
-                      }`}
-                    >
-                      <div className="flex items-start gap-2.5">
-                        <div className={`p-1.5 rounded-lg shrink-0 ${active ? 'bg-teal-500/10 text-teal-600' : 'bg-slate-100 text-slate-400'}`}>
-                          <Icon className="w-4 h-4" />
+              {/* Granular Module Toggles */}
+              <div className="space-y-1.5">
+                <label className="font-bold text-[11px] text-slate-900 dark:text-white flex items-center justify-between">
+                  <span>Included Module Features:</span>
+                  <span className="text-[10px] text-slate-400 font-normal">Click any module to toggle on/off</span>
+                </label>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                  {ERP_MODULES.map(mod => {
+                    const Icon = mod.icon
+                    const active = selectedModules.includes(mod.id)
+                    return (
+                      <div
+                        key={mod.id}
+                        onClick={() => toggleModule(mod.id)}
+                        className={`p-2.5 rounded-xl border cursor-pointer transition-all flex items-start justify-between gap-2 ${
+                          active
+                            ? 'border-teal-500 bg-teal-50/50 dark:bg-teal-950/30 shadow-xs'
+                            : 'border-slate-200 dark:border-slate-800 hover:border-slate-300 opacity-40'
+                        }`}
+                      >
+                        <div className="flex items-start gap-2.5">
+                          <div className={`p-1.5 rounded-lg shrink-0 ${active ? 'bg-teal-500/10 text-teal-600' : 'bg-slate-100 text-slate-400'}`}>
+                            <Icon className="w-4 h-4" />
+                          </div>
+                          <div className="space-y-0.5">
+                            <span className="font-bold text-xs text-slate-900 dark:text-white block">{mod.label}</span>
+                            <p className="text-[10px] text-slate-500 leading-tight">{mod.desc}</p>
+                          </div>
                         </div>
-                        <div className="space-y-0.5">
-                          <span className="font-bold text-xs text-slate-900 dark:text-white block">{mod.label}</span>
-                          <p className="text-[10px] text-slate-500 leading-tight">{mod.desc}</p>
-                        </div>
+                        <input
+                          type="checkbox"
+                          checked={active}
+                          readOnly
+                          className="accent-teal-600 mt-1 shrink-0"
+                        />
                       </div>
-                      <input
-                        type="checkbox"
-                        checked={active}
-                        readOnly
-                        className="accent-teal-600 mt-1 shrink-0"
-                      />
-                    </div>
-                  )
-                })}
+                    )
+                  })}
+                </div>
               </div>
             </div>
           )}
@@ -379,7 +486,7 @@ export default function OnboardingWizard({ currentUser }: {
               className="flex items-center gap-2 px-6 py-2.5 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-bold text-xs shadow-lg transition-all cursor-pointer"
             >
               <CheckCircle2 className="w-4 h-4" />
-              <span>{saving ? 'Launching ERP...' : `Activate Selected Modules (${selectedModules.length})`}</span>
+              <span>{saving ? 'Launching ERP...' : `Complete Setup (${selectedModules.length - 2} Modules Active)`}</span>
             </button>
           )}
         </div>
