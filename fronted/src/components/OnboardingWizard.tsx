@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import {
-  ChevronRight, Globe, Layers, Key, CheckCircle2, ArrowLeft, LogOut,
+  ChevronRight, Globe, Layers, Key, CheckCircle2, ArrowLeft,
   Briefcase, ShoppingCart, Factory, ShoppingBag,
   Landmark, BookOpen, Boxes, Users, MapPin, Scale, Sparkles
 } from 'lucide-react'
