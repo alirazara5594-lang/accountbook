@@ -12,6 +12,7 @@ interface CoaState {
   fetchAccounts: () => Promise<Account[]>;
   saveAccount: (accountData: any, id?: string) => Promise<Account>;
   toggleAccountStatus: (account: Account) => Promise<void>;
+  toggleAccountSecurity: (account: Account) => Promise<void>;
   getNextCode: (type: string, parentId?: string) => Promise<string>;
   clearAllAccounts: () => Promise<void>;
   fetchMappings: () => Promise<AccountMapping[]>;
@@ -57,6 +58,21 @@ export const useCoaStore = create<CoaState>((set, get) => ({
       await get().fetchAccounts();
     } catch (err: any) {
       set({ error: err.message || 'Failed to toggle status', loading: false });
+      throw err;
+    }
+  },
+
+  toggleAccountSecurity: async (account: Account) => {
+    set({ loading: true, error: null });
+    try {
+      const updated = {
+        ...account,
+        isSystem: !account.isSystem,
+      };
+      await coaApi.saveAccount(updated, account.id);
+      await get().fetchAccounts();
+    } catch (err: any) {
+      set({ error: err.message || 'Failed to toggle account security', loading: false });
       throw err;
     }
   },

@@ -287,15 +287,20 @@ List<ExpenseClaim>? ExpenseClaims = null,
 
         Seed("12000", "Accounts Receivable", AccountType.Asset, currentAssets.Id, true, 0, false);
         Seed("12100", "Allowance for Doubtful Accounts", AccountType.ContraAsset, currentAssets.Id, true, 0, false);
-        Seed("12200", "Withholding Tax Receivable", AccountType.Asset, currentAssets.Id, true, 0, false);
+        Seed("12200", "Withholding Tax Receivable (Advance Tax)", AccountType.Asset, currentAssets.Id, true, 0, false);
         Seed("12300", "Intercompany Receivable", AccountType.Asset, currentAssets.Id, true, 0, false);
         Seed("13000", "Inventory Asset", AccountType.Asset, currentAssets.Id, true, 0, false);
         Seed("14000", "Prepaid Expenses", AccountType.Asset, currentAssets.Id, true, 0, false);
+        Seed("14100", "Input VAT / Recoverable Tax (Operating Expenses)", AccountType.Asset, currentAssets.Id, true, 0, false);
+        Seed("14120", "Import VAT & Customs Duty Tax Clearing", AccountType.Asset, currentAssets.Id, true, 0, false);
+        Seed("14130", "Capital Goods Input VAT (Fixed Assets)", AccountType.Asset, currentAssets.Id, true, 0, false);
+        Seed("14150", "Reverse Charge Mechanism (RCM) Input Tax", AccountType.Asset, currentAssets.Id, true, 0, false);
         
         var nonCurrentAssets = Seed("15000", "Non-Current Assets", AccountType.Asset, assets.Id);
         Seed("15100", "Fixed Assets", AccountType.Asset, nonCurrentAssets.Id, true, 0, false);
         Seed("15110", "Right of Use Asset", AccountType.Asset, nonCurrentAssets.Id, true, 0, false);
         Seed("15200", "Accumulated Depreciation", AccountType.ContraAsset, nonCurrentAssets.Id, true, 0, false);
+        Seed("15300", "Deferred Tax Asset (IAS 12)", AccountType.Asset, nonCurrentAssets.Id, true, 0, false);
 
         // 2. Liabilities (Structural Headers: System = True; Leaf Posting: System = False)
         var liabilities = Seed("20000", "Liabilities", AccountType.Liability, null);
@@ -308,12 +313,19 @@ List<ExpenseClaim>? ExpenseClaims = null,
         Seed("21510", "Provident Fund & Pension Payable", AccountType.Liability, currentLiabilities.Id, true, 0, false);
         Seed("21520", "End of Service Benefits (EOSB) Accrual", AccountType.Liability, currentLiabilities.Id, true, 0, false);
         Seed("21530", "Employee Loan Deductions Clearing", AccountType.Liability, currentLiabilities.Id, true, 0, false);
-        Seed("22000", "Tax Payable", AccountType.Liability, currentLiabilities.Id, true, 0, false);
-        Seed("22100", "Withholding Tax Payable", AccountType.Liability, currentLiabilities.Id, true, 0, false);
+        Seed("22000", "Sales Tax / Output VAT Payable", AccountType.Liability, currentLiabilities.Id, true, 0, false);
+        Seed("22030", "Import VAT Payable", AccountType.Liability, currentLiabilities.Id, true, 0, false);
+        Seed("22040", "Fixed Asset Disposal Output Tax Payable", AccountType.Liability, currentLiabilities.Id, true, 0, false);
+        Seed("22050", "Reverse Charge Mechanism (RCM) Output Tax Payable", AccountType.Liability, currentLiabilities.Id, true, 0, false);
+        Seed("22100", "Withholding Tax (WHT) Payable on Vendors", AccountType.Liability, currentLiabilities.Id, true, 0, false);
+        Seed("22200", "Corporate Income Tax Payable (IAS 12)", AccountType.Liability, currentLiabilities.Id, true, 0, false);
         Seed("21600", "Lease Liability", AccountType.Liability, currentLiabilities.Id, true, 0, false);
         Seed("21700", "Intercompany Clearing", AccountType.Liability, currentLiabilities.Id, true, 0, false);
         Seed("21800", "Overhead Allocation Payable", AccountType.Liability, currentLiabilities.Id, true, 0, false);
         Seed("23000", "Deferred Revenue", AccountType.Liability, currentLiabilities.Id, true, 0, false);
+
+        var nonCurrentLiabilities = Seed("25000", "Non-Current Liabilities", AccountType.Liability, liabilities.Id);
+        Seed("25200", "Deferred Tax Liability (IAS 12)", AccountType.Liability, nonCurrentLiabilities.Id, true, 0, false);
 
         // 3. Equity (Structural Headers: System = True; Leaf Posting: System = False)
         var equity = Seed("30000", "Equity", AccountType.Equity, null);
@@ -348,6 +360,8 @@ List<ExpenseClaim>? ExpenseClaims = null,
         Seed("61400", "Bad Debt Expense", AccountType.Expense, operatingExpenses.Id, true, 0, false);
         Seed("61500", "Intercompany Allocations", AccountType.Expense, operatingExpenses.Id, true, 0, false);
         Seed("61600", "Overhead Allocation", AccountType.Expense, operatingExpenses.Id, true, 0, false);
+        Seed("61700", "Non-Recoverable Purchase Tax & Duty Expense", AccountType.Expense, operatingExpenses.Id, true, 0, false);
+        Seed("61800", "Corporate Income Tax Provision Expense (IAS 12)", AccountType.Expense, operatingExpenses.Id, true, 0, false);
     }
 
     public IReadOnlyList<Account> Accounts
@@ -1811,9 +1825,15 @@ public IReadOnlyList<EmployeeCompensation> EmployeeCompensations => _employeeCom
 
                 if (line.TaxAmount > 0)
                 {
-                    var taxAccId = GetMappedAccount("Taxes");
+                    var taxAccId = line.Destination switch
+                    {
+                        LineDestination.FixedAsset => GetMappedAccount("Capital Goods Input VAT (Fixed Assets)"),
+                        LineDestination.Inventory or LineDestination.ManufacturingMaterial => GetMappedAccount("Import VAT & Customs Duty Tax Clearing"),
+                        _ => GetMappedAccount("Purchase Input VAT / Recoverable Tax")
+                    };
+                    if (taxAccId == Guid.Empty) taxAccId = GetMappedAccount("Taxes");
                     if (taxAccId != Guid.Empty)
-                        journalLines.Add(new JournalLine(taxAccId, line.TaxAmount, 0, $"Purchase Tax: {line.Description}", null, null, 1, bill.CompanyId));
+                        journalLines.Add(new JournalLine(taxAccId, line.TaxAmount, 0, $"Purchase Input Tax: {line.Description}", null, null, 1, bill.CompanyId));
                 }
             }
 
@@ -3828,11 +3848,15 @@ _bankImports.Clear(); _bankImports.AddRange(state.BankImports ?? []);
 
     private void EnsureRequiredPayrollAccounts()
     {
+        var currentAssets = _accounts.FirstOrDefault(a => a.Code == "11000") ?? _accounts.FirstOrDefault(a => a.Code == "10000");
+        var nonCurrentAssets = _accounts.FirstOrDefault(a => a.Code == "15000") ?? _accounts.FirstOrDefault(a => a.Code == "10000");
         var currentLiabilities = _accounts.FirstOrDefault(a => a.Code == "21000") ?? _accounts.FirstOrDefault(a => a.Code == "20000");
+        var nonCurrentLiabilities = _accounts.FirstOrDefault(a => a.Code == "25000") ?? _accounts.FirstOrDefault(a => a.Code == "20000");
         var operatingExpenses = _accounts.FirstOrDefault(a => a.Code == "61000") ?? _accounts.FirstOrDefault(a => a.Code == "60000");
 
         var requiredAccounts = new List<(string Code, string Name, AccountType Type, Guid? ParentId, bool IsSystem, bool IsPosting)>
         {
+            // Statutory Payroll
             ("21300", "Accrued Salaries Payable", AccountType.Liability, currentLiabilities?.Id, true, true),
             ("21400", "Payroll Tax Payable", AccountType.Liability, currentLiabilities?.Id, true, true),
             ("21500", "EOBI & Social Security Payable", AccountType.Liability, currentLiabilities?.Id, true, true),
@@ -3845,6 +3869,25 @@ _bankImports.Clear(); _bankImports.AddRange(state.BankImports ?? []);
             ("61230", "Medical & Utility Allowances", AccountType.Expense, operatingExpenses?.Id, true, true),
             ("61250", "Employer Statutory Payroll Contributions", AccountType.Expense, operatingExpenses?.Id, true, true),
             ("61260", "End of Service & Gratuity Expense", AccountType.Expense, operatingExpenses?.Id, true, true),
+
+            // Granular Global Tax Engine (Sales, Expenses, Inventory, Fixed Assets, IAS 12)
+            ("12200", "Withholding Tax Receivable (Advance Tax)", AccountType.Asset, currentAssets?.Id, true, true),
+            ("14100", "Input VAT / Recoverable Tax (Operating Expenses)", AccountType.Asset, currentAssets?.Id, true, true),
+            ("14120", "Import VAT & Customs Duty Tax Clearing", AccountType.Asset, currentAssets?.Id, true, true),
+            ("14130", "Capital Goods Input VAT (Fixed Assets)", AccountType.Asset, currentAssets?.Id, true, true),
+            ("14150", "Reverse Charge Mechanism (RCM) Input Tax", AccountType.Asset, currentAssets?.Id, true, true),
+            ("15300", "Deferred Tax Asset (IAS 12)", AccountType.Asset, nonCurrentAssets?.Id, true, true),
+
+            ("22000", "Sales Tax / Output VAT Payable", AccountType.Liability, currentLiabilities?.Id, true, true),
+            ("22030", "Import VAT Payable", AccountType.Liability, currentLiabilities?.Id, true, true),
+            ("22040", "Fixed Asset Disposal Output Tax Payable", AccountType.Liability, currentLiabilities?.Id, true, true),
+            ("22050", "Reverse Charge Mechanism (RCM) Output Tax Payable", AccountType.Liability, currentLiabilities?.Id, true, true),
+            ("22100", "Withholding Tax (WHT) Payable on Vendors", AccountType.Liability, currentLiabilities?.Id, true, true),
+            ("22200", "Corporate Income Tax Payable (IAS 12)", AccountType.Liability, currentLiabilities?.Id, true, true),
+            ("25200", "Deferred Tax Liability (IAS 12)", AccountType.Liability, nonCurrentLiabilities?.Id, true, true),
+
+            ("61700", "Non-Recoverable Purchase Tax & Duty Expense", AccountType.Expense, operatingExpenses?.Id, true, true),
+            ("61800", "Corporate Income Tax Provision Expense (IAS 12)", AccountType.Expense, operatingExpenses?.Id, true, true),
         };
 
         foreach (var req in requiredAccounts)
@@ -3865,7 +3908,7 @@ _bankImports.Clear(); _bankImports.AddRange(state.BankImports ?? []);
                     UpdatedAt = DateTime.UtcNow
                 };
                 _accounts.Add(newAcc);
-                _history[newAcc.Id] = [new(DateTime.UtcNow, "Created", "Statutory payroll account migration")];
+                _history[newAcc.Id] = [new(DateTime.UtcNow, "Created", "System account compliance migration")];
             }
             else
             {
@@ -3998,12 +4041,25 @@ _bankImports.Clear(); _bankImports.AddRange(state.BankImports ?? []);
                 "Vendor Payables" => "21100",
                 "GRNI Accrual" => "21200",
                 "Accrued Salaries" => "21300",
-                "Payroll Taxes Accrued" => "21400",
-                "EOBI & Social Security Accrued" => "21500",
-                "Provident Fund Accrued" => "21510",
+                "Payroll Taxes Accrued" or "Payroll Income Tax Withholding Payable" => "21400",
+                "EOBI & Social Security Accrued" or "EOBI & Social Security Payable" => "21500",
+                "Provident Fund Accrued" or "Provident Fund & Pension Payable" => "21510",
                 "Pension Fund Accrued" => "21500",
-                "Taxes" => "22000",
-                "WHT Payable" => "22100",
+                "Taxes" or "Sales Tax / Output VAT Payable" or "Output Tax" => "22000",
+                "Purchase Input VAT / Recoverable Tax" or "Input Tax" or "Input VAT on Operating Expenses" => "14100",
+                "Import VAT & Customs Duty Tax Clearing" or "Import Tax on Inventory" => "14120",
+                "Capital Goods Input VAT (Fixed Assets)" or "Capital Goods Tax" => "14130",
+                "Reverse Charge Mechanism (RCM) Input Tax" => "14150",
+                "Deferred Tax Asset" => "15300",
+                "Import VAT Payable" => "22030",
+                "Fixed Asset Disposal Output Tax Payable" => "22040",
+                "Reverse Charge Mechanism (RCM) Output Tax Payable" => "22050",
+                "WHT Payable" or "Withholding Tax (WHT) Payable on Vendors" => "22100",
+                "WHT Receivable" or "Withholding Tax Receivable (Advance Tax)" => "12200",
+                "Corporate Income Tax Payable" => "22200",
+                "Deferred Tax Liability" => "25200",
+                "Non-Recoverable Purchase Tax & Duty Expense" or "Non-Recoverable Tax Expense" => "61700",
+                "Corporate Income Tax Provision Expense" or "Corporate Income Tax Expense" => "61800",
                 "Deferred Revenue" => "23000",
                 "Sales" => "41100",
                 "Sales Discount" => "41200",

@@ -5,11 +5,13 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { 
   Search, Edit3, Plus, 
-  ChevronDown, ChevronRight, Lock, Folder, FolderOpen, 
-  FileText, Shield, PieChart, ArrowRight, Eye, Calendar, User, CheckCircle
+  ChevronDown, ChevronRight, Lock, Unlock, Folder, FolderOpen, 
+  FileText, Shield, ShieldCheck, PieChart, ArrowRight, Eye, Calendar, User, CheckCircle,
+  RefreshCw, Upload
 } from 'lucide-react';
-import { DataToolbar } from '@/components/ui/data-toolbar';
 import { money, getActiveCurrency } from '@/lib/currency';
+import { downloadCSV, downloadExcel, downloadPDF } from '@/lib/exportUtils';
+import ExportDropdown from '@/components/ExportDropdown';
 
 import { type Account } from './api/modules/coa.api';
 type AccountType = string;
@@ -45,6 +47,7 @@ export const ChartOfAccounts: React.FC<ChartOfAccountsProps> = ({
   const vendorBills = useProcurementStore(s => s.bills);
   const fetchBills = useProcurementStore(s => s.fetchBills);
   const fetchAccounts = useCoaStore(s => s.fetchAccounts);
+  const toggleAccountSecurity = useCoaStore(s => s.toggleAccountSecurity);
 
   // Drill-down audit explorer states
   const [selectedMainHead, setSelectedMainHead] = useState<string | null>(null);
@@ -56,6 +59,7 @@ export const ChartOfAccounts: React.FC<ChartOfAccountsProps> = ({
   // Primary list view states
   const [query, setQuery] = useState('');
   const [selectedType, setSelectedType] = useState<string>('All');
+  const [selectedSecurity, setSelectedSecurity] = useState<string>('All');
   const [showDeactivated, setShowDeactivated] = useState<boolean>(true);
   const [collapsedIds, setCollapsedIds] = useState<Record<string, boolean>>({});
 
@@ -144,7 +148,7 @@ export const ChartOfAccounts: React.FC<ChartOfAccountsProps> = ({
     return accounts.filter(a => !a.isPosting).sort((a, b) => a.code.localeCompare(b.code));
   }, [accounts]);
 
-  const isFiltering = !!query.trim() || selectedType !== 'All' || selectedSubtype !== 'All' || selectedStatus !== 'All' || selectedGroup !== 'All';
+  const isFiltering = !!query.trim() || selectedType !== 'All' || selectedSubtype !== 'All' || selectedStatus !== 'All' || selectedGroup !== 'All' || selectedSecurity !== 'All';
 
   // Flat account view for searching
   const filteredAccounts = useMemo(() => {
@@ -156,24 +160,31 @@ export const ChartOfAccounts: React.FC<ChartOfAccountsProps> = ({
         if (!showDeactivated && a.status === 'Inactive') return false;
       }
       
-      // 2. Type Filter
+      // 2. Security / Protection Filter
+      if (selectedSecurity === 'Secured') {
+        if (!a.isSystem) return false;
+      } else if (selectedSecurity === 'Custom') {
+        if (a.isSystem) return false;
+      }
+
+      // 3. Type Filter
       if (selectedType !== 'All') {
         const baseType = a.type.replace('Contra', '');
         if (baseType !== selectedType) return false;
       }
       
-      // 3. Subtype Filter
+      // 4. Subtype Filter
       if (selectedSubtype !== 'All') {
         const sub = a.subtype || 'General';
         if (sub !== selectedSubtype) return false;
       }
 
-      // 4. Group Filter (Parent Account ID)
+      // 5. Group Filter (Parent Account ID)
       if (selectedGroup !== 'All') {
         if (a.parentId !== selectedGroup) return false;
       }
 
-      // 5. Search query
+      // 6. Search query
       if (query.trim()) {
         const lower = query.toLowerCase();
         return (
@@ -185,7 +196,7 @@ export const ChartOfAccounts: React.FC<ChartOfAccountsProps> = ({
       }
       return true;
     }).sort((a, b) => a.code.localeCompare(b.code));
-  }, [accounts, query, selectedType, selectedSubtype, selectedStatus, selectedGroup, showDeactivated]);
+  }, [accounts, query, selectedType, selectedSubtype, selectedStatus, selectedGroup, selectedSecurity, showDeactivated]);
 
   // Pre-order traversal tree builder
   const treeCategories = useMemo(() => {
@@ -253,7 +264,7 @@ export const ChartOfAccounts: React.FC<ChartOfAccountsProps> = ({
     const list: { account: Account; depth: number; hasChildren: boolean }[] = [];
     
     // If user is searching or using advanced filters, show flat results
-    if (query.trim() || selectedType !== 'All' || selectedSubtype !== 'All' || selectedStatus !== 'All' || selectedGroup !== 'All') {
+    if (query.trim() || selectedType !== 'All' || selectedSubtype !== 'All' || selectedStatus !== 'All' || selectedGroup !== 'All' || selectedSecurity !== 'All') {
       filteredAccounts.forEach(acc => {
         list.push({
           account: acc,
@@ -269,7 +280,7 @@ export const ChartOfAccounts: React.FC<ChartOfAccountsProps> = ({
       list.push(...cat.items);
     });
     return list;
-  }, [treeCategories, filteredAccounts, query, selectedType, selectedSubtype, selectedStatus, selectedGroup]);
+  }, [treeCategories, filteredAccounts, query, selectedType, selectedSubtype, selectedStatus, selectedGroup, selectedSecurity]);
 
   // Paginated window
   const paginatedItems = useMemo(() => {
@@ -283,15 +294,73 @@ export const ChartOfAccounts: React.FC<ChartOfAccountsProps> = ({
   // Reset pagination on filter change
   useEffect(() => {
     setCurrentPage(1);
-  }, [query, selectedType, selectedSubtype, selectedStatus, selectedGroup, showDeactivated]);
+  }, [query, selectedType, selectedSubtype, selectedStatus, selectedGroup, selectedSecurity, showDeactivated]);
 
-  // CSV operations
+  // Direct toggle security handler
+  const handleToggleSecurity = async (acc: Account) => {
+    try {
+      await toggleAccountSecurity(acc);
+    } catch (err: any) {
+      alert(err.message || 'Failed to toggle account security.');
+    }
+  };
+
+  // Export actions via ExportDropdown
   const listToExport = isFiltering ? filteredAccounts : accounts;
-  const exportHeaders = ['ACCOUNT CODE', 'ACCOUNT NAME', 'MAJOR TYPE', 'SUBTYPE', 'LEVEL', 'POSTING ACCOUNT', 'NORMAL BALANCE', 'CURRENCY', 'CURRENT BALANCE', 'STATUS'];
-  const exportRows = listToExport.map(a => {
-    const bal = getAccountBalancesRecursive(a.id).current;
-    return [a.code, a.name, a.type, a.subtype, a.level, a.isPosting ? 'Yes' : 'No', a.normalBalance, a.currency, bal, a.status];
-  });
+
+  const handleExportPDF = () => {
+    const title = 'CHART OF ACCOUNTS REGISTER';
+    const subtitle = `Complete ledger structure, classification, and normal balances (${listToExport.length} accounts)`;
+    const headers = ['Code', 'Account Name', 'Major Type', 'Subtype', 'Currency', 'Security', 'Status'];
+    const rows = listToExport.map(a => [
+      a.code,
+      a.name,
+      a.type,
+      a.subtype || 'General',
+      a.currency || 'USD',
+      a.isSystem ? '🔒 Secured' : 'Custom',
+      a.status
+    ]);
+    const totals = [
+      { label: 'TOTAL ACCOUNTS', value: listToExport.length },
+      { label: 'SECURED SYSTEM CONTROL LEDGERS', value: listToExport.filter(a => a.isSystem).length }
+    ];
+    downloadPDF(title, subtitle, headers, rows, totals);
+  };
+
+  const handleExportExcel = () => {
+    const filename = `Chart_of_Accounts_${new Date().toISOString().slice(0, 10)}`;
+    const headers = ['Account Code', 'Account Name', 'Major Type', 'Subtype', 'Posting Leaf', 'Normal Balance', 'Currency', 'Security Status', 'Status'];
+    const rows = listToExport.map(a => [
+      a.code,
+      a.name,
+      a.type,
+      a.subtype || 'General',
+      a.isPosting ? 'Yes' : 'No',
+      a.normalBalance,
+      a.currency || 'USD',
+      a.isSystem ? 'Secured / System' : 'Custom',
+      a.status
+    ]);
+    downloadExcel(filename, 'ChartOfAccounts', headers, rows);
+  };
+
+  const handleExportCSV = () => {
+    const filename = `Chart_of_Accounts_${new Date().toISOString().slice(0, 10)}.csv`;
+    const headers = ['Code', 'Name', 'Type', 'Subtype', 'Posting', 'NormalBalance', 'Currency', 'Security', 'Status'];
+    const rows = listToExport.map(a => [
+      a.code,
+      a.name,
+      a.type,
+      a.subtype || 'General',
+      a.isPosting ? 'Yes' : 'No',
+      a.normalBalance,
+      a.currency || 'USD',
+      a.isSystem ? 'Secured' : 'Custom',
+      a.status
+    ]);
+    downloadCSV(filename, headers, rows);
+  };
 
   const handleImportCSV = (file: File) => {
     if (!file) return;
@@ -483,13 +552,20 @@ export const ChartOfAccounts: React.FC<ChartOfAccountsProps> = ({
         {/* 2. Account Name */}
         <TableCell className="py-2.5">
           <div className="flex items-center gap-2">
-            <span className={`text-xs text-blue-700 tracking-tight hover:underline cursor-pointer transition-colors ${!acc.isPosting ? 'font-bold text-blue-700' : 'font-medium'}`}>
+            <span
+              onClick={() => edit(acc)}
+              className={`text-xs text-blue-700 tracking-tight hover:underline cursor-pointer transition-colors ${!acc.isPosting ? 'font-bold text-blue-700' : 'font-medium'}`}
+            >
               {acc.name}
             </span>
-            {acc.isSystem && (
-              <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-amber-50 border border-amber-200/50 text-[9px] font-bold text-amber-700">
+            {acc.isSystem ? (
+              <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full bg-amber-50 dark:bg-amber-950/50 border border-amber-300 dark:border-amber-800 text-[9px] font-bold text-amber-700 dark:text-amber-300">
                 <Lock className="w-2.5 h-2.5" />
-                System
+                Secured
+              </span>
+            ) : (
+              <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-[9px] font-medium text-slate-500">
+                Custom
               </span>
             )}
           </div>
@@ -524,7 +600,7 @@ export const ChartOfAccounts: React.FC<ChartOfAccountsProps> = ({
           </span>
         </TableCell>
 
-        {/* 8. Action (View GL, Edit, Toggle status) */}
+        {/* 8. Action (View GL, Edit, Toggle Security, Toggle Status) */}
         <TableCell className="py-2.5 text-right pr-4">
           <div className="flex items-center justify-end gap-1 opacity-80 group-hover:opacity-100 transition-opacity">
             {acc.isPosting && (
@@ -539,15 +615,26 @@ export const ChartOfAccounts: React.FC<ChartOfAccountsProps> = ({
             <button 
               onClick={() => edit(acc)} 
               className="p-1.5 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-lg transition-colors cursor-pointer"
-              title="Edit Account"
+              title="Edit Account Properties"
             >
               <Edit3 size={14} />
+            </button>
+            <button
+              onClick={() => handleToggleSecurity(acc)}
+              className={`p-1.5 rounded-lg transition-colors cursor-pointer ${
+                acc.isSystem
+                  ? 'text-amber-600 hover:text-amber-700 hover:bg-amber-50 dark:hover:bg-amber-950/40'
+                  : 'text-slate-400 hover:text-amber-600 hover:bg-slate-100'
+              }`}
+              title={acc.isSystem ? "🔒 Secured Account (Click to Unlock/Unsecure)" : "🛡️ Custom Account (Click to Secure as Core Ledger)"}
+            >
+              {acc.isSystem ? <Lock size={14} /> : <Unlock size={14} />}
             </button>
             <button 
               onClick={() => status(acc)} 
               disabled={acc.isSystem}
               className={`p-1.5 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-lg transition-colors cursor-pointer ${acc.isSystem ? 'opacity-40 cursor-not-allowed' : ''}`}
-              title={acc.isSystem ? "Protected System Account" : "Toggle Status"}
+              title={acc.isSystem ? "Protected System Account: Cannot deactivate" : "Toggle Status (Active / Inactive)"}
             >
               <Shield size={14} />
             </button>
@@ -673,6 +760,7 @@ export const ChartOfAccounts: React.FC<ChartOfAccountsProps> = ({
 
     return [];
   }, [selectedMainHead, selectedSubHead, accounts, accountBalances]);
+
   return (
     <div className="space-y-6 max-w-7xl mx-auto font-sans pb-12 animate-fade-in">
       {/* 1. Header with Page Title & Subtitle + Buttons */}
@@ -681,32 +769,48 @@ export const ChartOfAccounts: React.FC<ChartOfAccountsProps> = ({
           <h1 className="text-base font-bold text-[var(--color-text-strong)] tracking-tight flex items-center gap-2">
             <span className="text-lg">📚</span> Chart of Accounts
           </h1>
-          <p className="text-[var(--color-text-muted)] text-xs mt-0.5">Manage hierarchical account heads, normal balances, currency mappings, and live GL drill-downs.</p>
+          <p className="text-[var(--color-text-muted)] text-xs mt-0.5">IAS / GAAP compliant multi-level ledgers with secured accounts protection and real-time drill-down.</p>
         </div>
         <div className="flex flex-wrap items-center gap-2 shrink-0">
-          <DataToolbar
-            exportFileName={`Zenabook_ChartOfAccounts_${new Date().toISOString().slice(0, 10)}`}
-            exportSheetName="Chart of Accounts"
-            exportTitle="Chart of Accounts Summary"
-            exportSubtitle="All accounts with balances and posting status."
-            exportHeaders={exportHeaders}
-            exportRows={exportRows}
-            onUpload={handleImportCSV}
-            uploadAccept=".csv"
-            uploadLabel="Import"
-            onRefresh={reloadAccounts}
+          <ExportDropdown
+            label="Export COA"
+            onPDF={handleExportPDF}
+            onExcel={handleExportExcel}
+            onCSV={handleExportCSV}
+            onPrint={() => window.print()}
           />
+          <label className="secondary h-9 px-3 rounded-xl text-xs font-semibold flex items-center gap-1.5 cursor-pointer shadow-xs" title="Import Chart of Accounts CSV">
+            <Upload className="w-3.5 h-3.5" /> Import
+            <input
+              type="file"
+              accept=".csv"
+              className="hidden"
+              onChange={(e) => {
+                const file = e.target.files?.[0];
+                if (file) handleImportCSV(file);
+              }}
+            />
+          </label>
+          {reloadAccounts && (
+            <button
+              onClick={reloadAccounts}
+              className="secondary h-9 px-3 rounded-xl text-xs font-semibold flex items-center gap-1.5"
+              title="Refresh Accounts"
+            >
+              <RefreshCw className="w-3.5 h-3.5" />
+            </button>
+          )}
           <button
             onClick={() => { setParentIdForNew(''); openCreate(); }}
-            className="primary h-9 px-4 rounded-xl text-xs font-semibold"
+            className="primary h-9 px-4 rounded-xl text-xs font-semibold flex items-center gap-1.5 shadow-sm"
           >
-            ＋ New Account
+            <Plus className="w-4 h-4" /> New Account
           </button>
         </div>
       </div>
 
       {/* 2. KPI Summary Cards */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
         {/* Card 1: Total Accounts */}
         <div className="bg-white border border-slate-200 rounded-xl p-3 shadow-xs flex items-center gap-2.5">
           <div className="p-2 bg-blue-50 text-blue-600 rounded-lg">
@@ -715,7 +819,7 @@ export const ChartOfAccounts: React.FC<ChartOfAccountsProps> = ({
           <div className="min-w-0">
             <span className="text-[9px] font-bold text-slate-400 uppercase tracking-wider block">Total Accounts</span>
             <span className="text-base font-bold text-slate-800 mt-0.5 block">{accounts.length}</span>
-            <span className="text-[9px] text-slate-500 font-medium block">All accounts</span>
+            <span className="text-[9px] text-slate-500 font-medium block">All ledger heads</span>
           </div>
         </div>
 
@@ -728,12 +832,26 @@ export const ChartOfAccounts: React.FC<ChartOfAccountsProps> = ({
             <span className="text-[9px] font-bold text-slate-400 uppercase tracking-wider block">Active Accounts</span>
             <span className="text-base font-bold text-slate-800 mt-0.5 block">{accounts.filter(a => a.status === 'Active').length}</span>
             <span className="text-[9px] text-emerald-600 font-bold block">
-              {accounts.length ? ((accounts.filter(a => a.status === 'Active').length / accounts.length) * 100).toFixed(2) : 0}% of total
+              {accounts.length ? ((accounts.filter(a => a.status === 'Active').length / accounts.length) * 100).toFixed(1) : 0}% of total
             </span>
           </div>
         </div>
 
-        {/* Card 3: Header Accounts */}
+        {/* Card 3: Secured Accounts */}
+        <div className="bg-white border border-slate-200 rounded-xl p-3 shadow-xs flex items-center gap-2.5">
+          <div className="p-2 bg-amber-50 text-amber-600 rounded-lg">
+            <ShieldCheck className="w-4 h-4" />
+          </div>
+          <div className="min-w-0">
+            <span className="text-[9px] font-bold text-slate-400 uppercase tracking-wider block">Secured Ledgers</span>
+            <span className="text-base font-bold text-slate-800 mt-0.5 block">{accounts.filter(a => a.isSystem).length}</span>
+            <span className="text-[9px] text-amber-600 font-bold block">
+              Protected Control
+            </span>
+          </div>
+        </div>
+
+        {/* Card 4: Header Accounts */}
         <div className="bg-white border border-slate-200 rounded-xl p-3 shadow-xs flex items-center gap-2.5">
           <div className="p-2 bg-indigo-50 text-indigo-600 rounded-lg">
             <FolderOpen className="w-4 h-4" />
@@ -741,23 +859,23 @@ export const ChartOfAccounts: React.FC<ChartOfAccountsProps> = ({
           <div className="min-w-0">
             <span className="text-[9px] font-bold text-slate-400 uppercase tracking-wider block">Header Accounts</span>
             <span className="text-base font-bold text-slate-800 mt-0.5 block">{accounts.filter(a => !a.isPosting).length}</span>
-            <span className="text-[9px] text-slate-500 font-medium block">Top level accounts</span>
+            <span className="text-[9px] text-slate-500 font-medium block">Top level groups</span>
           </div>
         </div>
 
-        {/* Card 4: Detail Accounts */}
+        {/* Card 5: Detail Accounts */}
         <div className="bg-white border border-slate-200 rounded-xl p-3 shadow-xs flex items-center gap-2.5">
-          <div className="p-2 bg-amber-50 text-amber-600 rounded-lg">
+          <div className="p-2 bg-teal-50 text-teal-600 rounded-lg">
             <Folder className="w-4 h-4" />
           </div>
           <div className="min-w-0">
             <span className="text-[9px] font-bold text-slate-400 uppercase tracking-wider block">Detail Accounts</span>
             <span className="text-base font-bold text-slate-800 mt-0.5 block">{accounts.filter(a => a.isPosting).length}</span>
-            <span className="text-[9px] text-slate-500 font-medium block">Sub accounts</span>
+            <span className="text-[9px] text-slate-500 font-medium block">Posting sub-accounts</span>
           </div>
         </div>
 
-        {/* Card 5: Inactive Accounts */}
+        {/* Card 6: Inactive Accounts */}
         <div className="bg-white border border-slate-200 rounded-xl p-3 shadow-xs flex items-center gap-2.5">
           <div className="p-2 bg-rose-50 text-rose-600 rounded-lg">
             <Lock className="w-4 h-4" />
@@ -766,7 +884,7 @@ export const ChartOfAccounts: React.FC<ChartOfAccountsProps> = ({
             <span className="text-[9px] font-bold text-slate-400 uppercase tracking-wider block">Inactive Accounts</span>
             <span className="text-base font-bold text-slate-800 mt-0.5 block">{accounts.filter(a => a.status === 'Inactive').length}</span>
             <span className="text-[9px] text-rose-600 font-bold block">
-              {accounts.length ? ((accounts.filter(a => a.status === 'Inactive').length / accounts.length) * 100).toFixed(2) : 0}% of total
+              {accounts.length ? ((accounts.filter(a => a.status === 'Inactive').length / accounts.length) * 100).toFixed(1) : 0}% of total
             </span>
           </div>
         </div>
@@ -778,7 +896,7 @@ export const ChartOfAccounts: React.FC<ChartOfAccountsProps> = ({
         <div className="relative flex-1 min-w-[200px]">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400 pointer-events-none" />
           <Input
-            placeholder="Search accounts..."
+            placeholder="Search code, name, subtype..."
             value={query}
             onChange={e => setQuery(e.target.value)}
             className="pl-9 h-10 bg-white border border-slate-200 rounded-xl text-xs placeholder:text-slate-400 focus-visible:ring-1 focus-visible:ring-slate-400"
@@ -810,6 +928,19 @@ export const ChartOfAccounts: React.FC<ChartOfAccountsProps> = ({
             {allSubtypes.map(s => (
               <option key={s} value={s}>{s}</option>
             ))}
+          </select>
+        </div>
+
+        {/* Security Level Filter */}
+        <div className="flex flex-col gap-1 min-w-[150px]">
+          <select
+            value={selectedSecurity}
+            onChange={e => setSelectedSecurity(e.target.value)}
+            className="h-10 text-xs px-3 bg-white border border-slate-200 rounded-xl focus:outline-none focus:ring-1 focus:ring-[#143e2b]"
+          >
+            <option value="All">Security: All</option>
+            <option value="Secured">🔒 Secured / System</option>
+            <option value="Custom">✏️ Custom Accounts</option>
           </select>
         </div>
 
@@ -856,6 +987,7 @@ export const ChartOfAccounts: React.FC<ChartOfAccountsProps> = ({
             setQuery('');
             setSelectedType('All');
             setSelectedSubtype('All');
+            setSelectedSecurity('All');
             setSelectedStatus('All');
             setSelectedGroup('All');
           }}

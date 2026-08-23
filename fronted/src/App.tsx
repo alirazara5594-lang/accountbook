@@ -849,6 +849,218 @@ function AccountModal({ form, setForm, accounts, editing, close, save }: { form:
   const activeSubtypes = subtypesMap[form.type] || [];
   const isCodeValid = /^\d{5}$/.test(form.code);
 
-  return <div className="overlay"><form className="modal" onSubmit={save} ><div className="modal-head"><div><p className="eyebrow">CHART OF ACCOUNTS</p><h2>{editing ? 'Edit Account properties' : 'Create 5-Digit Account'}</h2></div><button type="button" className="close" onClick={close}>×</button></div><div className="form-grid">{editing?.isSystem && <div style={{ background: '#fffbeb', color: '#b45309', border: '1px solid #fef3c7', padding: '10px 14px', borderRadius: 8, fontSize: 12, marginBottom: 8, gridColumn: 'span 2', display: 'flex', alignItems: 'center', gap: 8 }}><span>🔒</span><strong>Protected System Account:</strong> Critical settings (Code, Type, Sub-type, Parent) are locked for operational integrity.</div>}<label>* 1. 5-Digit Account Code<input required disabled={editing?.isSystem} value={form.code} onChange={e => field('code', e.target.value.replace(/\D/g, '').slice(0, 5))} placeholder="e.g. 11101" className={!isCodeValid && form.code ? 'border-red-500 font-mono font-bold' : 'font-mono font-bold'} /></label><label>* 2. Account Name<input required value={form.name} onChange={e => handleNameChange(e.target.value)} placeholder="e.g. HBL Current Account" /></label><label>3. Major Type<select disabled={editing?.isSystem} value={form.type} onChange={e => handleTypeChange(e.target.value)}>{accountTypes.map(x => <option key={x}>{x}</option>)}</select></label><label>4. Sub-Type<select disabled={editing?.isSystem} value={subtype} onChange={e => handleSubtypeChange(e.target.value)}>{activeSubtypes.map(x => <option key={x} value={x}>{x}</option>)}</select></label><label>5. Parent Account (Financial Reporting Line)<select disabled={editing?.isSystem} value={form.parentId} onChange={e => { field('parentId', e.target.value); if (!editing) fetchNextCode(form.type, e.target.value); }}><option value="">No Parent (Top-Level Group Line)</option>{filteredParents.map(a => <option value={a.id} key={a.id}>{a.code} — {a.name}</option>)}</select></label><label>Opening Balance ($)<input type="number" step="0.01" value={form.openingBalance} onChange={e => field('openingBalance', e.target.value)} /></label><label>Account Level (Derived)<input disabled value={calculatedLevel} style={{ background: '#f8fafc', color: '#1e293b', fontWeight: 'bold' }} /></label><label>Normal Balance (Derived)<input disabled value={calculatedNormalBalance} style={{ background: '#f8fafc', color: '#1e293b', fontWeight: 'bold' }} /></label><label>Posting Account Status (Derived)<input disabled value={editing ? (editing.isPosting ? 'Posting Account (Leaf)' : 'Non-Posting (Header)') : 'Posting Account (Leaf)'} style={{ background: '#f8fafc', color: '#16a34a', fontWeight: 'bold' }} /></label><label>Currency<select value={form.currency} onChange={e => field('currency', e.target.value)}><option value="USD">USD</option><option value="GBP">GBP</option><option value="EUR">EUR</option><option value="AED">AED</option><option value="SAR">SAR</option><option value="PKR">PKR</option><option value="CAD">CAD</option></select></label><label>Tax Category<select value={form.taxCategory || ''} onChange={e => field('taxCategory', e.target.value)}><option value="">None / Exempt</option><option value="Standard VAT">Standard VAT</option><option value="Zero Rated">Zero Rated</option><option value="Sales Tax">US Sales Tax</option><option value="GST">GST / HST (Canada)</option></select></label><label>Status<select value={form.status} onChange={e => field('status', e.target.value)}><option value="Active">Active</option><option value="Inactive">Inactive</option></select></label><label style={{ gridColumn: 'span 2' }}>Description / Remarks<textarea value={form.description || ''} onChange={e => field('description', e.target.value)} placeholder="Describe the purpose of this ledger register..." style={{ width: '100%', minHeight: 70, border: '1px solid #dce3eb', borderRadius: 7, padding: 8, fontSize: 13, resize: 'none' }} /></label></div><div className="flex flex-col gap-2 mt-4"><label className="check"><input type="checkbox" checked={form.allowManualJournal} onChange={e => field('allowManualJournal', e.target.checked)} /> Allow Manual General Journal Adjustments</label><label className="check"><input type="checkbox" checked={form.reconciliationEnabled} onChange={e => field('reconciliationEnabled', e.target.checked)} /> Enable Bank & Ledger Account Reconciliation</label></div><div className="modal-footer"><button type="button" className="secondary" onClick={(e) => { e.preventDefault(); alert("Draft saved locally"); }}>Save Draft</button>
-<button type="button" className="secondary" onClick={close}>Cancel</button><button className="primary" disabled={!isCodeValid || !form.name.trim()}>{editing ? 'Save Changes' : 'Create Account'}</button></div></form></div>;
+  const [unlockOverride, setUnlockOverride] = useState(false);
+  const isLocked = editing?.isSystem && !unlockOverride;
+
+  return (
+    <div className="overlay">
+      <form className="modal max-w-2xl" onSubmit={save}>
+        <div className="modal-head">
+          <div>
+            <p className="eyebrow">CHART OF ACCOUNTS</p>
+            <h2>{editing ? 'Edit Account Properties' : 'Create 5-Digit Account'}</h2>
+          </div>
+          <button type="button" className="close" onClick={close}>×</button>
+        </div>
+
+        <div className="form-grid">
+          {/* Security Banner & Unlock Switch */}
+          {editing?.isSystem ? (
+            <div className="col-span-2 p-3 bg-amber-500/10 border border-amber-500/30 rounded-xl flex items-center justify-between gap-3 text-xs">
+              <div className="flex items-center gap-2">
+                <span className="text-base">🔒</span>
+                <div>
+                  <strong className="text-amber-900 dark:text-amber-300 block">Secured System Account</strong>
+                  <span className="text-muted-foreground text-[11px]">Core ledger mapped for ERP integrity.</span>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setUnlockOverride(!unlockOverride)}
+                className={`px-2.5 py-1 rounded-lg font-bold text-xs border transition-all cursor-pointer ${
+                  unlockOverride
+                    ? 'bg-amber-600 text-white border-amber-600 shadow-2xs'
+                    : 'bg-background hover:bg-muted text-foreground border-border'
+                }`}
+              >
+                {unlockOverride ? '🔓 Structure Unlocked' : '🔑 Unlock Structure'}
+              </button>
+            </div>
+          ) : (
+            <div className="col-span-2 p-3 bg-teal-500/10 border border-teal-500/30 rounded-xl flex items-center justify-between gap-3 text-xs">
+              <div className="flex items-center gap-2">
+                <span className="text-base">🛡️</span>
+                <div>
+                  <strong className="text-teal-900 dark:text-teal-300 block">Custom Ledger Account</strong>
+                  <span className="text-muted-foreground text-[11px]">Fully customizable chart of accounts entity.</span>
+                </div>
+              </div>
+              <label className="flex items-center gap-1.5 font-bold cursor-pointer text-teal-800 dark:text-teal-300 text-xs">
+                <input
+                  type="checkbox"
+                  checked={form.isSystem}
+                  onChange={e => field('isSystem', e.target.checked)}
+                  className="rounded text-teal-600"
+                />
+                Secure as Protected Ledger
+              </label>
+            </div>
+          )}
+
+          <label>
+            * 1. 5-Digit Account Code
+            <input
+              required
+              disabled={isLocked}
+              value={form.code}
+              onChange={e => field('code', e.target.value.replace(/\D/g, '').slice(0, 5))}
+              placeholder="e.g. 11101"
+              className={!isCodeValid && form.code ? 'border-red-500 font-mono font-bold' : 'font-mono font-bold'}
+            />
+          </label>
+
+          <label>
+            * 2. Account Name
+            <input
+              required
+              value={form.name}
+              onChange={e => handleNameChange(e.target.value)}
+              placeholder="e.g. HBL Operational Current Account"
+            />
+          </label>
+
+          <label>
+            3. Major Type
+            <select disabled={isLocked} value={form.type} onChange={e => handleTypeChange(e.target.value)}>
+              {accountTypes.map(x => <option key={x} value={x}>{x}</option>)}
+            </select>
+          </label>
+
+          <label>
+            4. Sub-Type
+            <select disabled={isLocked} value={subtype} onChange={e => handleSubtypeChange(e.target.value)}>
+              {activeSubtypes.map(x => <option key={x} value={x}>{x}</option>)}
+            </select>
+          </label>
+
+          <label className="col-span-2">
+            5. Parent Account (Financial Reporting Line)
+            <select
+              disabled={isLocked}
+              value={form.parentId}
+              onChange={e => { field('parentId', e.target.value); if (!editing) fetchNextCode(form.type, e.target.value); }}
+            >
+              <option value="">No Parent (Top-Level Group Line)</option>
+              {filteredParents.map(a => (
+                <option value={a.id} key={a.id}>{a.code} — {a.name} ({a.subtype || a.type})</option>
+              ))}
+            </select>
+          </label>
+
+          <label>
+            Opening Balance
+            <input
+              type="number"
+              step="0.01"
+              value={form.openingBalance}
+              onChange={e => field('openingBalance', e.target.value)}
+              placeholder="0.00"
+            />
+          </label>
+
+          <label>
+            Currency
+            <select value={form.currency} onChange={e => field('currency', e.target.value)}>
+              <option value="PKR">PKR (Pakistani Rupee)</option>
+              <option value="USD">USD (US Dollar)</option>
+              <option value="EUR">EUR (Euro)</option>
+              <option value="GBP">GBP (British Pound)</option>
+              <option value="AED">AED (UAE Dirham)</option>
+              <option value="SAR">SAR (Saudi Riyal)</option>
+              <option value="CAD">CAD (Canadian Dollar)</option>
+            </select>
+          </label>
+
+          <label>
+            Tax Category
+            <select value={form.taxCategory || ''} onChange={e => field('taxCategory', e.target.value)}>
+              <option value="">None / Exempt</option>
+              <option value="Standard VAT">Standard VAT (15% / 18%)</option>
+              <option value="Zero Rated">Zero Rated</option>
+              <option value="Sales Tax">US Sales Tax</option>
+              <option value="GST">GST / HST (Canada / PK)</option>
+            </select>
+          </label>
+
+          <label>
+            Account Status
+            <select value={form.status} onChange={e => field('status', e.target.value)}>
+              <option value="Active">Active</option>
+              <option value="Inactive">Inactive</option>
+            </select>
+          </label>
+
+          <label className="col-span-2">
+            Description / Remarks
+            <textarea
+              value={form.description || ''}
+              onChange={e => field('description', e.target.value)}
+              placeholder="Describe the business purpose and posting rules for this account..."
+              style={{ width: '100%', minHeight: 65, border: '1px solid var(--color-border)', borderRadius: 8, padding: 8, fontSize: 12, resize: 'none' }}
+            />
+          </label>
+        </div>
+
+        {/* Derived Attributes & Options */}
+        <div className="mt-4 pt-3 border-t border-border space-y-3 text-xs">
+          <div className="grid grid-cols-2 gap-2 p-2.5 bg-muted/40 rounded-xl border border-border">
+            <div>
+              <span className="text-[10px] text-muted-foreground font-bold uppercase block">Hierarchy Level</span>
+              <span className="font-semibold text-foreground text-xs">{calculatedLevel}</span>
+            </div>
+            <div>
+              <span className="text-[10px] text-muted-foreground font-bold uppercase block">Normal Balance</span>
+              <span className={`font-bold text-xs ${calculatedNormalBalance === 'Debit' ? 'text-blue-600' : 'text-emerald-600'}`}>{calculatedNormalBalance}</span>
+            </div>
+          </div>
+
+          <div className="flex flex-col gap-2">
+            <label className="check flex items-center gap-2 cursor-pointer font-medium">
+              <input
+                type="checkbox"
+                checked={form.allowManualJournal}
+                onChange={e => field('allowManualJournal', e.target.checked)}
+              />
+              Allow Manual General Journal Postings & Adjustments
+            </label>
+            <label className="check flex items-center gap-2 cursor-pointer font-medium">
+              <input
+                type="checkbox"
+                checked={form.reconciliationEnabled}
+                onChange={e => field('reconciliationEnabled', e.target.checked)}
+              />
+              Enable Periodic Bank & Ledger Reconciliation
+            </label>
+            {editing && (
+              <label className="check flex items-center gap-2 cursor-pointer font-bold text-amber-700 dark:text-amber-300">
+                <input
+                  type="checkbox"
+                  checked={form.isSystem}
+                  onChange={e => field('isSystem', e.target.checked)}
+                />
+                🔒 Protect Account Security (Lock as Core ERP Control Ledger)
+              </label>
+            )}
+          </div>
+        </div>
+
+        <div className="modal-footer">
+          <button type="button" className="secondary" onClick={close}>Cancel</button>
+          <button className="primary" disabled={!isCodeValid || !form.name.trim()}>
+            {editing ? 'Save Changes' : 'Create Account'}
+          </button>
+        </div>
+      </form>
+    </div>
+  );
 }
