@@ -70,7 +70,7 @@ const AssetRegister: React.FC<{ activeEntityId: string; accounts: any[] }> = ({ 
   return (
     <div className="space-y-4">
       {toast && <div className="px-4 py-2 bg-green-50 border border-green-200 text-green-800 rounded-xl text-sm">{toast}</div>}
-<div className="flex flex-wrap justify-between items-center">
+      <div className="flex flex-wrap justify-between items-center">
         <h2 className="text-xl font-bold text-gray-900">Fixed Asset Register</h2>
         <div className="flex flex-wrap items-center gap-2">
           <DataToolbar
@@ -88,7 +88,7 @@ const AssetRegister: React.FC<{ activeEntityId: string; accounts: any[] }> = ({ 
           />
         </div>
         <div className="text-right"><p className="text-xs text-gray-500 uppercase tracking-wide">Total Net Book Value</p><p className="text-2xl font-bold text-emerald-600">{money(totalNBV)}</p></div>
-</div>
+      </div>
       <div className="bg-white border border-gray-200 rounded-2xl shadow-sm overflow-hidden">
         <table className="w-full text-left text-sm">
           <thead className="bg-gray-50 text-gray-500 border-b border-gray-100 text-xs uppercase tracking-wider">
@@ -137,6 +137,36 @@ const AssetRegister: React.FC<{ activeEntityId: string; accounts: any[] }> = ({ 
               <button type="button" className="close" onClick={() => setDeprModal(null)}>×</button>
             </div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '15px', padding: '10px 0' }}>
+              <p className="text-sm text-gray-500">Asset: <strong>{deprModal.name}</strong> — Cost: {money(deprModal.purchasePrice)}, Useful Life: {deprModal.usefulLifeYears}yr</p>
+              <p className="text-sm font-semibold text-blue-600 bg-blue-50/50 p-3 rounded-xl border border-blue-100">Monthly depreciation amount: {money(((deprModal.purchasePrice - (deprModal.salvageValue||0)) / deprModal.usefulLifeYears) / 12)}</p>
+              
+              <div className="form-grid" style={{ gridTemplateColumns: '1fr' }}>
+                <AccSelect value={deprForm.expenseAccId} onChange={(v: string) => setDeprForm(f => ({...f, expenseAccId: v}))} accounts={accounts} label="* Depreciation Expense Account" filter={(a: any) => a.type === 'Expense'} />
+                <AccSelect value={deprForm.accumAccId} onChange={(v: string) => setDeprForm(f => ({...f, accumAccId: v}))} accounts={accounts} label="* Accumulated Depreciation Account" filter={(a: any) => a.type === 'ContraAsset' || a.name?.toLowerCase().includes('depreciation')} />
+                <label>
+                  Useful Life (years)
+                  <input type="number" value={deprForm.usefulLifeYears} onChange={(e) => setDeprForm((f) => ({ ...f, usefulLifeYears: parseInt(e.target.value) || 3 }))} min="1" style={{ width: '100%' }} />
+                </label>
+                <label>
+                  Salvage Value
+                  <input type="number" value={deprForm.salvageValue} onChange={(e) => setDeprForm((f) => ({ ...f, salvageValue: Number(e.target.value) || 0 }))} step={".01"} style={{ width: '100%' }} />
+                </label>
+              </div>
+            </div>
+            <div className="modal-footer">
+              <button type="button" className="secondary" onClick={() => setDeprModal(null)}>Cancel</button>
+              <button type="button" className="secondary" onClick={(e) => { e.preventDefault(); alert("Draft saved locally"); }}>Save Draft</button>
+              <button onClick={runDepreciation} disabled={!deprForm.expenseAccId || !deprForm.accumAccId || (userRole !== 'admin' && userRole !== 'accountant' && userRole !== 'asset-manager')} className="primary">Run Depreciation</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Disposal Modal */}
+      {disposeModal && (
+        <div className="overlay">
+          <div className="modal" style={{ maxWidth: '600px', width: '95%', maxHeight: '90vh', overflowY: 'auto' }}>
+            <div className="modal-head">
               <div>
                 <p className="eyebrow">ASSETS & INVENTORY</p>
                 <h2>Dispose Fixed Asset</h2>
@@ -164,7 +194,7 @@ const AssetRegister: React.FC<{ activeEntityId: string; accounts: any[] }> = ({ 
             <div className="modal-footer">
               <button type="button" className="secondary" onClick={() => setDisposeModal(null)}>Cancel</button>
               <button type="button" className="secondary" onClick={(e) => { e.preventDefault(); alert("Draft saved locally"); }}>Save Draft</button>
-<button onClick={disposeAsset} disabled={!dispForm.assetAccId || !dispForm.accumAccId || !dispForm.gainLossAccId || (userRole !== 'admin' && userRole !== 'accountant' && userRole !== 'asset-manager')} className="primary">Post Disposal Journal</button>
+              <button onClick={disposeAsset} disabled={!dispForm.assetAccId || !dispForm.accumAccId || !dispForm.gainLossAccId || (userRole !== 'admin' && userRole !== 'accountant' && userRole !== 'asset-manager')} className="primary">Post Disposal</button>
             </div>
           </div>
         </div>
