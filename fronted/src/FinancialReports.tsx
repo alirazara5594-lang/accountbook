@@ -1,20 +1,24 @@
-import React, { useState, useMemo } from 'react';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Badge } from '@/components/ui/badge';
+import React, { useState, useMemo, useEffect } from 'react';
+import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
-import { CheckCircle, AlertTriangle, Calendar } from 'lucide-react';
-import { DataToolbar } from '@/components/ui/data-toolbar';
-import { money } from '@/lib/currency';
-
+import { Input } from '@/components/ui/input';
+import {
+  TrendingUp, DollarSign, Calendar,
+  Download, Printer, RefreshCw, CheckCircle2,
+  AlertTriangle, ArrowUpRight, ArrowDownRight, Layers,
+  PieChart, Activity, ShieldCheck, Landmark, ChevronDown, ChevronRight,
+  FileSpreadsheet, FileText
+} from 'lucide-react';
+import { useJournalsStore, useCoaStore, useCompanyStore, usePayrollStore, useSalesStore, useProcurementStore } from './stores';
 import { type Account } from './api/modules/coa.api';
-type AccountType = string;
+import { money, getActiveCurrency } from '@/lib/currency';
+import { downloadCSV, downloadExcel, downloadPDF, type ExportRow } from '@/lib/exportUtils';
 
 interface JournalLine {
   accountId: string;
   debit: number;
   credit: number;
+  memo?: string;
 }
 
 interface Journal {
@@ -22,7 +26,7 @@ interface Journal {
   date: string;
   reference: string;
   description: string;
-  status?: string; // 'Draft', 'Posted', etc.
+  status?: string | number;
   companyId?: string;
   lines: JournalLine[];
 }
@@ -33,679 +37,1632 @@ interface FinancialReportsProps {
   activeEntityId: string;
 }
 
-const formatCurrency = (val: number) => {
-  return money(val);
-};
+type TabType = 'overview' | 'balancesheet' | 'incomestatement' | 'cashflow' | 'trialbalance' | 'equity' | 'ratios';
+
+const DATE_PRESETS = [
+  { label: 'All Time', from: '', to: '' },
+  { label: 'This Month', from: new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString().slice(0, 10), to: new Date(new Date().getFullYear(), new Date().getMonth() + 1, 0).toISOString().slice(0, 10) },
+  { label: 'This Quarter', from: new Date(new Date().getFullYear(), Math.floor(new Date().getMonth() / 3) * 3, 1).toISOString().slice(0, 10), to: new Date(new Date().getFullYear(), Math.floor(new Date().getMonth() / 3) * 3 + 3, 0).toISOString().slice(0, 10) },
+  { label: 'Year to Date (YTD)', from: `${new Date().getFullYear()}-01-01`, to: new Date().toISOString().slice(0, 10) },
+  { label: 'Last Year', from: `${new Date().getFullYear() - 1}-01-01`, to: `${new Date().getFullYear() - 1}-12-31` },
+];
 
 export const FinancialReports: React.FC<FinancialReportsProps> = ({
-  accounts,
-  entries,
-  activeEntityId
+  accounts: propAccounts,
+  entries: propEntries,
+  activeEntityId: propActiveEntityId
 }) => {
+  const { accounts: storeAccounts, fetchAccounts } = useCoaStore();
+  const { entries: storeEntries, fetchJournalEntries } = useJournalsStore();
+  const { entities, activeEntityId: storeActiveEntityId } = useCompanyStore();
+  const { fetchInvoices } = useSalesStore();
+  const { fetchBills } = useProcurementStore();
+  const { fetchPayruns } = usePayrollStore();
+
+  const [activeTab, setActiveTab] = useState<TabType>('balancesheet');
+  const [viewMode, setViewMode] = useState<'detailed' | 'condensed'>('detailed');
+  const [collapsedGroups, setCollapsedGroups] = useState<Record<string, boolean>>({});
   const [dateFrom, setDateFrom] = useState('');
   const [dateTo, setDateTo] = useState('');
+  const [tbSearch, setTbSearch] = useState('');
+  const [selectedEntityFilter, setSelectedEntityFilter] = useState<string>('all');
+  const [showZeroBalances, setShowZeroBalances] = useState(false);
+  const [cashFlowMethod, setCashFlowMethod] = useState<'indirect' | 'direct'>('indirect');
 
-  // 1. Calculate the active balance for each account using double-entry journal postings
-  const accountBalances = useMemo(() => {
-    const balances: Record<string, number> = {};
+  useEffect(() => {
+    fetchAccounts();
+    fetchJournalEntries();
+    fetchInvoices();
+    fetchBills();
+    fetchPayruns();
+  }, [fetchAccounts, fetchJournalEntries, fetchInvoices, fetchBills, fetchPayruns]);
 
-    // Helper to identify debit/credit normal balance
-    const getNormalSide = (type: AccountType) => {
-      switch (type) {
-        case 'Asset':
-        case 'Expense':
-        case 'ContraLiability':
-        case 'ContraEquity':
-        case 'ContraRevenue':
-          return 'debit';
-        default:
-          return 'credit';
-      }
-    };
+  const accounts = storeAccounts.length > 0 ? storeAccounts : propAccounts;
+  const entries = storeEntries.length > 0 ? storeEntries : propEntries;
+  const activeCompanyId = selectedEntityFilter !== 'all' ? selectedEntityFilter : (storeActiveEntityId || propActiveEntityId);
+  const activeCompany = entities.find(e => e.id === activeCompanyId) || { name: 'AccountBook Enterprise Corp' };
 
-    // Initialize with opening balances
+  const activeCurrency = getActiveCurrency();
+  const formatCur = (val: number) => {
+    const formatted = money(Math.abs(val), activeCurrency);
+    return val < 0 ? `(${formatted})` : formatted;
+  };
+
+  const toggleGroup = (groupId: string) => {
+    setCollapsedGroups(prev => ({ ...prev, [groupId]: !prev[groupId] }));
+  };
+
+  // ── 1. Central Double-Entry Ledger Calculation Engine (IAS 1 / GAAP) ───────────
+  const ledgerState = useMemo(() => {
+    const openingBalances: Record<string, number> = {};
+    const periodDebits: Record<string, number> = {};
+    const periodCredits: Record<string, number> = {};
+    const closingBalances: Record<string, number> = {};
+
     accounts.forEach(a => {
-      balances[a.id] = a.openingBalance;
+      openingBalances[a.id] = Number(a.openingBalance) || 0;
+      periodDebits[a.id] = 0;
+      periodCredits[a.id] = 0;
     });
 
-    // Process all posted entries
-    entries.forEach(entry => {
-      // Only posted entries flow into financial statements (IAS 1 accrual basis)
-      if (entry.status && entry.status !== 'Posted') return;
+    const isNormalDebit = (type: string) => {
+      const t = String(type).toLowerCase();
+      return t === 'asset' || t === 'expense' || t.includes('contra');
+    };
 
-      // Filter by active entity if applicable
-      if (activeEntityId && entry.companyId && entry.companyId !== activeEntityId) {
-        return;
+    // Filter valid posted journal entries
+    const postedEntries = entries.filter(e => {
+      const statusStr = String(e.status || '').toLowerCase();
+      const isPosted = statusStr === 'posted' || statusStr === '3' || !e.status;
+      if (!isPosted) return false;
+
+      const compId = (e as any).companyId;
+      if (activeCompanyId && activeCompanyId !== 'all' && compId && compId !== activeCompanyId) {
+        return false;
       }
+      return true;
+    });
 
-      // Filter by date range if applicable
-      if (dateFrom && entry.date < dateFrom) return;
-      if (dateTo && entry.date > dateTo) return;
+    // Accumulate transactions
+    postedEntries.forEach(entry => {
+      const entryDate = entry.date;
+      const isPriorToPeriod = dateFrom && entryDate < dateFrom;
+      const isAfterPeriod = dateTo && entryDate > dateTo;
 
-      // Sum lines
+      if (isAfterPeriod) return;
+
       entry.lines.forEach(line => {
         const acc = accounts.find(a => a.id === line.accountId);
         if (!acc) return;
 
-        const side = getNormalSide(acc.type);
-        if (side === 'debit') {
-          balances[acc.id] = (balances[acc.id] || 0) + (line.debit || 0) - (line.credit || 0);
+        const dr = Number(line.debit) || 0;
+        const cr = Number(line.credit) || 0;
+
+        if (isPriorToPeriod) {
+          if (isNormalDebit(acc.type)) {
+            openingBalances[acc.id] = (openingBalances[acc.id] || 0) + (dr - cr);
+          } else {
+            openingBalances[acc.id] = (openingBalances[acc.id] || 0) + (cr - dr);
+          }
         } else {
-          balances[acc.id] = (balances[acc.id] || 0) + (line.credit || 0) - (line.debit || 0);
+          periodDebits[acc.id] = (periodDebits[acc.id] || 0) + dr;
+          periodCredits[acc.id] = (periodCredits[acc.id] || 0) + cr;
         }
       });
     });
 
-    return balances;
-  }, [accounts, entries, activeEntityId, dateFrom, dateTo]);
+    // Compute closing balance
+    accounts.forEach(a => {
+      const open = openingBalances[a.id] || 0;
+      const dr = periodDebits[a.id] || 0;
+      const cr = periodCredits[a.id] || 0;
 
-  // Balance Sheet Calculations (IAS 1 compliant)
-  const balanceSheetData = useMemo(() => {
-    const assetAccounts = accounts.filter(a => a.type === 'Asset' || a.type === 'ContraAsset');
-    const liabilityAccounts = accounts.filter(a => a.type === 'Liability' || a.type === 'ContraLiability');
-    const equityAccounts = accounts.filter(a => a.type === 'Equity' || a.type === 'ContraEquity');
-
-    const totalAssets = assetAccounts.reduce((sum, a) => {
-      const bal = accountBalances[a.id] || 0;
-      // Contra assets reduce asset totals
-      return sum + (a.type === 'ContraAsset' ? -bal : bal);
-    }, 0);
-
-    const totalLiabilities = liabilityAccounts.reduce((sum, a) => {
-      const bal = accountBalances[a.id] || 0;
-      return sum + (a.type === 'ContraLiability' ? -bal : bal);
-    }, 0);
-
-    const totalEquity = equityAccounts.reduce((sum, a) => {
-      const bal = accountBalances[a.id] || 0;
-      return sum + (a.type === 'ContraEquity' ? -bal : bal);
-    }, 0);
+      if (isNormalDebit(a.type)) {
+        closingBalances[a.id] = open + (dr - cr);
+      } else {
+        closingBalances[a.id] = open + (cr - dr);
+      }
+    });
 
     return {
-      assetAccounts,
-      liabilityAccounts,
-      equityAccounts,
+      openingBalances,
+      periodDebits,
+      periodCredits,
+      closingBalances
+    };
+  }, [accounts, entries, activeCompanyId, dateFrom, dateTo]);
+
+  // ── 2. Helper: Leaf-Only Filter ───────────────────────────────────────────
+  // A posting/leaf account has isPosting === true OR has a 5-digit code and no child accounts pointing to it
+  const isLeafAccount = (a: Account) => {
+    if (a.isPosting === false) return false;
+    // Check if other accounts have this account as their ParentId
+    const hasChildren = accounts.some(other => other.parentId === a.id);
+    if (hasChildren) return false;
+    // Length check: structural header accounts are 10000, 11000, 20000 etc.
+    return true;
+  };
+
+  // ── 3. Grouping Builder for Balance Sheet (IAS 1 Classified Structure) ─────
+  const balanceSheet = useMemo(() => {
+    const postingAccounts = accounts.filter(isLeafAccount);
+
+    // Current Assets Groups
+    const cashBankAccounts = postingAccounts.filter(a => a.code.startsWith('111') || a.code.startsWith('112') || a.name.toLowerCase().includes('cash') || a.name.toLowerCase().includes('bank'));
+    const arAccounts = postingAccounts.filter(a => a.code.startsWith('12') || a.name.toLowerCase().includes('receivable'));
+    const invAccounts = postingAccounts.filter(a => a.code.startsWith('13') || a.name.toLowerCase().includes('inventory') || a.name.toLowerCase().includes('stock'));
+    const prepaidAccounts = postingAccounts.filter(a => a.code.startsWith('14') || a.name.toLowerCase().includes('prepaid') || a.name.toLowerCase().includes('advance'));
+    const otherCurrentAssets = postingAccounts.filter(a => String(a.type).toLowerCase() === 'asset' && !cashBankAccounts.includes(a) && !arAccounts.includes(a) && !invAccounts.includes(a) && !prepaidAccounts.includes(a) && !a.code.startsWith('15'));
+
+    // Non-Current Assets Groups
+    const ppeAccounts = postingAccounts.filter(a => (a.code.startsWith('15') || a.name.toLowerCase().includes('equipment') || a.name.toLowerCase().includes('machinery') || a.name.toLowerCase().includes('furniture') || a.name.toLowerCase().includes('building') || a.name.toLowerCase().includes('vehicle')) && !a.name.toLowerCase().includes('lease'));
+    const rouLeaseAccounts = postingAccounts.filter(a => a.code.startsWith('15') && (a.name.toLowerCase().includes('lease') || a.name.toLowerCase().includes('right of use') || a.name.toLowerCase().includes('rou')));
+    const otherNonCurrentAssets = postingAccounts.filter(a => String(a.type).toLowerCase() === 'asset' && a.code.startsWith('1') && !cashBankAccounts.includes(a) && !arAccounts.includes(a) && !invAccounts.includes(a) && !prepaidAccounts.includes(a) && !otherCurrentAssets.includes(a) && !ppeAccounts.includes(a) && !rouLeaseAccounts.includes(a));
+
+    const sumList = (list: Account[]) => list.reduce((sum, a) => {
+      const bal = ledgerState.closingBalances[a.id] || 0;
+      return sum + (String(a.type).toLowerCase() === 'contraasset' || a.name.toLowerCase().includes('allowance') || a.name.toLowerCase().includes('accumulated') ? (bal > 0 ? -bal : bal) : bal);
+    }, 0);
+
+    const cashBankTotal = sumList(cashBankAccounts);
+    const arTotal = sumList(arAccounts);
+    const invTotal = sumList(invAccounts);
+    const prepaidTotal = sumList(prepaidAccounts);
+    const otherCurrentTotal = sumList(otherCurrentAssets);
+
+    const totalCurrentAssets = cashBankTotal + arTotal + invTotal + prepaidTotal + otherCurrentTotal;
+
+    const ppeTotal = sumList(ppeAccounts);
+    const rouLeaseTotal = sumList(rouLeaseAccounts);
+    const otherNonCurrentTotal = sumList(otherNonCurrentAssets);
+
+    const totalNonCurrentAssets = ppeTotal + rouLeaseTotal + otherNonCurrentTotal;
+    const totalAssets = totalCurrentAssets + totalNonCurrentAssets;
+
+    // Current Liabilities Groups
+    const apAccounts = postingAccounts.filter(a => a.code.startsWith('211') || a.code === '21000' || a.name.toLowerCase().includes('payable') && a.name.toLowerCase().includes('vendor') || a.name.toLowerCase().includes('accounts payable'));
+    const grniAccounts = postingAccounts.filter(a => a.code.startsWith('212') || a.name.toLowerCase().includes('grni') || a.name.toLowerCase().includes('goods received'));
+    const payrollLiabAccounts = postingAccounts.filter(a => a.code.startsWith('213') || a.code.startsWith('214') || a.code.startsWith('215') || a.name.toLowerCase().includes('salaries') || a.name.toLowerCase().includes('payroll') || a.name.toLowerCase().includes('eobi') || a.name.toLowerCase().includes('provident') || a.name.toLowerCase().includes('gratuity') || a.name.toLowerCase().includes('pension'));
+    const taxLiabAccounts = postingAccounts.filter(a => (a.code.startsWith('22') || a.name.toLowerCase().includes('vat') || a.name.toLowerCase().includes('sales tax') || a.name.toLowerCase().includes('tax payable')) && !payrollLiabAccounts.includes(a));
+    const shortLeaseAccounts = postingAccounts.filter(a => a.code.startsWith('216') || a.name.toLowerCase().includes('short-term lease') || a.name.toLowerCase().includes('current lease'));
+    const otherCurrentLiab = postingAccounts.filter(a => String(a.type).toLowerCase() === 'liability' && a.code.startsWith('21') && !apAccounts.includes(a) && !grniAccounts.includes(a) && !payrollLiabAccounts.includes(a) && !taxLiabAccounts.includes(a) && !shortLeaseAccounts.includes(a));
+
+    // Non-Current Liabilities Groups
+    const longLeaseAccounts = postingAccounts.filter(a => a.code.startsWith('251') || a.name.toLowerCase().includes('long-term lease') || a.name.toLowerCase().includes('lease liability (non-current)'));
+    const longDebtAccounts = postingAccounts.filter(a => a.code.startsWith('252') || a.code.startsWith('25') || a.name.toLowerCase().includes('bank loan') || a.name.toLowerCase().includes('notes payable') || a.name.toLowerCase().includes('long-term debt'));
+    const otherNonCurrentLiab = postingAccounts.filter(a => String(a.type).toLowerCase() === 'liability' && !a.code.startsWith('21') && !a.code.startsWith('22') && !longLeaseAccounts.includes(a) && !longDebtAccounts.includes(a));
+
+    const sumLiabList = (list: Account[]) => list.reduce((sum, a) => {
+      const bal = ledgerState.closingBalances[a.id] || 0;
+      return sum + (String(a.type).toLowerCase() === 'contraliability' ? -bal : bal);
+    }, 0);
+
+    const apTotal = sumLiabList(apAccounts);
+    const grniTotal = sumLiabList(grniAccounts);
+    const payrollLiabTotal = sumLiabList(payrollLiabAccounts);
+    const taxLiabTotal = sumLiabList(taxLiabAccounts);
+    const shortLeaseTotal = sumLiabList(shortLeaseAccounts);
+    const otherCurrentLiabTotal = sumLiabList(otherCurrentLiab);
+
+    const totalCurrentLiabilities = apTotal + grniTotal + payrollLiabTotal + taxLiabTotal + shortLeaseTotal + otherCurrentLiabTotal;
+
+    const longLeaseTotal = sumLiabList(longLeaseAccounts);
+    const longDebtTotal = sumLiabList(longDebtAccounts);
+    const otherNonCurrentLiabTotal = sumLiabList(otherNonCurrentLiab);
+
+    const totalNonCurrentLiabilities = longLeaseTotal + longDebtTotal + otherNonCurrentLiabTotal;
+    const totalLiabilities = totalCurrentLiabilities + totalNonCurrentLiabilities;
+
+    // Equity Groups
+    const shareCapitalAccounts = postingAccounts.filter(a => a.code.startsWith('31') || a.name.toLowerCase().includes('share capital') || a.name.toLowerCase().includes('owner investment') || a.name.toLowerCase().includes('capital'));
+    const retainedEarningsAccounts = postingAccounts.filter(a => a.code.startsWith('32') || a.name.toLowerCase().includes('retained earnings') || a.name.toLowerCase().includes('reserves'));
+    const otherEquityAccounts = postingAccounts.filter(a => String(a.type).toLowerCase() === 'equity' && !shareCapitalAccounts.includes(a) && !retainedEarningsAccounts.includes(a));
+
+    const shareCapitalTotal = sumLiabList(shareCapitalAccounts);
+    const retainedEarningsTotal = sumLiabList(retainedEarningsAccounts);
+    const otherEquityTotal = sumLiabList(otherEquityAccounts);
+    const totalBaseEquity = shareCapitalTotal + retainedEarningsTotal + otherEquityTotal;
+
+    // P&L Net Income Integration
+    const revenueAccounts = postingAccounts.filter(a => String(a.type).toLowerCase() === 'revenue' || String(a.type).toLowerCase() === 'contrarevenue');
+    const expenseAccounts = postingAccounts.filter(a => String(a.type).toLowerCase() === 'expense' || String(a.type).toLowerCase() === 'contraexpense');
+
+    const totalRevenue = revenueAccounts.reduce((sum, a) => sum + (ledgerState.closingBalances[a.id] || 0), 0);
+    const totalExpenses = expenseAccounts.reduce((sum, a) => sum + (ledgerState.closingBalances[a.id] || 0), 0);
+    const netPeriodIncome = totalRevenue - totalExpenses;
+
+    const totalEquity = totalBaseEquity + netPeriodIncome;
+    const totalLiabilitiesAndEquity = totalLiabilities + totalEquity;
+    const variance = totalAssets - totalLiabilitiesAndEquity;
+    const isBalanced = Math.abs(variance) < 0.01;
+
+    return {
+      currentAssetsGroups: [
+        { id: 'cash_bank', title: 'Cash & Cash Equivalents (11100 / 11200)', total: cashBankTotal, accounts: cashBankAccounts },
+        { id: 'ar', title: 'Trade & Other Receivables (12000)', total: arTotal, accounts: arAccounts },
+        { id: 'inv', title: 'Inventories & Merchandise (13000)', total: invTotal, accounts: invAccounts },
+        { id: 'prepaid', title: 'Prepayments & Short-term Advances (14000)', total: prepaidTotal, accounts: prepaidAccounts },
+        ...(otherCurrentAssets.length > 0 ? [{ id: 'other_ca', title: 'Other Current Assets', total: otherCurrentTotal, accounts: otherCurrentAssets }] : [])
+      ],
+      nonCurrentAssetsGroups: [
+        { id: 'ppe', title: 'Property, Plant & Equipment (Net of Acc. Depr) (15000)', total: ppeTotal, accounts: ppeAccounts },
+        ...(rouLeaseAccounts.length > 0 ? [{ id: 'rou', title: 'Right-of-Use (ROU) Leased Assets (IFRS 16)', total: rouLeaseTotal, accounts: rouLeaseAccounts }] : []),
+        ...(otherNonCurrentAssets.length > 0 ? [{ id: 'other_nca', title: 'Other Non-Current Assets', total: otherNonCurrentTotal, accounts: otherNonCurrentAssets }] : [])
+      ],
+      totalCurrentAssets,
+      totalNonCurrentAssets,
       totalAssets,
+
+      currentLiabilitiesGroups: [
+        { id: 'ap', title: 'Trade Accounts Payable (21100)', total: apTotal, accounts: apAccounts },
+        ...(grniAccounts.length > 0 ? [{ id: 'grni', title: 'Goods Received Not Invoiced (GRNI Accrual) (21200)', total: grniTotal, accounts: grniAccounts }] : []),
+        { id: 'payroll_liab', title: 'Accrued Payroll & Statutory Liabilities (21300-21500)', total: payrollLiabTotal, accounts: payrollLiabAccounts },
+        { id: 'tax_liab', title: 'Sales Tax / VAT Output Payable (22000)', total: taxLiabTotal, accounts: taxLiabAccounts },
+        ...(shortLeaseAccounts.length > 0 ? [{ id: 'short_lease', title: 'Current Lease Liabilities (IFRS 16)', total: shortLeaseTotal, accounts: shortLeaseAccounts }] : []),
+        ...(otherCurrentLiab.length > 0 ? [{ id: 'other_cl', title: 'Other Current Liabilities', total: otherCurrentLiabTotal, accounts: otherCurrentLiab }] : [])
+      ],
+      nonCurrentLiabilitiesGroups: [
+        ...(longLeaseAccounts.length > 0 ? [{ id: 'long_lease', title: 'Long-Term Lease Liabilities (IFRS 16) (25100)', total: longLeaseTotal, accounts: longLeaseAccounts }] : []),
+        ...(longDebtAccounts.length > 0 ? [{ id: 'long_debt', title: 'Long-Term Bank Financing & Notes (25200)', total: longDebtTotal, accounts: longDebtAccounts }] : []),
+        ...(otherNonCurrentLiab.length > 0 ? [{ id: 'other_ncl', title: 'Other Long-Term Liabilities & Provisions', total: otherNonCurrentLiabTotal, accounts: otherNonCurrentLiab }] : [])
+      ],
+      totalCurrentLiabilities,
+      totalNonCurrentLiabilities,
       totalLiabilities,
-      totalEquity
+
+      equityGroups: [
+        { id: 'share_capital', title: 'Share Capital / Paid-In Capital (31000)', total: shareCapitalTotal, accounts: shareCapitalAccounts },
+        { id: 'retained_earnings', title: 'Retained Earnings (Prior Reserves) (32000)', total: retainedEarningsTotal, accounts: retainedEarningsAccounts },
+        ...(otherEquityAccounts.length > 0 ? [{ id: 'other_eq', title: 'Other Capital Reserves', total: otherEquityTotal, accounts: otherEquityAccounts }] : []),
+      ],
+      totalBaseEquity,
+      netPeriodIncome,
+      totalEquity,
+      totalLiabilitiesAndEquity,
+      variance,
+      isBalanced
     };
-  }, [accounts, accountBalances]);
+  }, [accounts, ledgerState]);
 
-  // Income Statement Calculations (IAS 1 / IFRS 15 compliant)
-  const incomeStatementData = useMemo(() => {
-    const revenueAccounts = accounts.filter(a => a.type === 'Revenue' || a.type === 'ContraRevenue');
-    const expenseAccounts = accounts.filter(a => a.type === 'Expense' || a.type === 'ContraExpense');
+  // ── 4. Grouping Builder for Income Statement / P&L (IFRS 15) ───────────────
+  const incomeStatement = useMemo(() => {
+    const postingAccounts = accounts.filter(isLeafAccount);
 
-    const totalRevenue = revenueAccounts.reduce((sum, a) => {
-      const bal = accountBalances[a.id] || 0;
-      return sum + (a.type === 'ContraRevenue' ? -bal : bal);
-    }, 0);
+    const operatingRevAccounts = postingAccounts.filter(a => String(a.type).toLowerCase() === 'revenue' && (a.code.startsWith('41') || a.name.toLowerCase().includes('sales') || a.name.toLowerCase().includes('service') || a.name.toLowerCase().includes('fee')));
+    const otherRevAccounts = postingAccounts.filter(a => String(a.type).toLowerCase() === 'revenue' && !operatingRevAccounts.includes(a));
 
-    // Identify COGS accounts for Gross Profit calculation
-    const cogsAccounts = expenseAccounts.filter(a => a.name.toLowerCase().includes('cost of goods sold') || a.name.toLowerCase().includes('cogs'));
-    const otherExpenses = expenseAccounts.filter(a => !cogsAccounts.includes(a));
+    const cogsAccounts = postingAccounts.filter(a => a.code.startsWith('5') || a.name.toLowerCase().includes('cost of') || a.name.toLowerCase().includes('cogs') || a.name.toLowerCase().includes('direct material') || a.name.toLowerCase().includes('direct labor'));
+    const payrollExpAccounts = postingAccounts.filter(a => a.code.startsWith('612') || a.name.toLowerCase().includes('salaries') || a.name.toLowerCase().includes('wages') || a.name.toLowerCase().includes('payroll') || a.name.toLowerCase().includes('eobi expense') || a.name.toLowerCase().includes('provident fund'));
+    const adminExpAccounts = postingAccounts.filter(a => a.code.startsWith('611') || (a.code.startsWith('61') && !cogsAccounts.includes(a) && !payrollExpAccounts.includes(a) && !a.code.startsWith('613') && !a.code.startsWith('614') && !a.code.startsWith('615') && !a.code.startsWith('617')));
+    const deprExpAccounts = postingAccounts.filter(a => a.code.startsWith('613') || a.name.toLowerCase().includes('depreciation') || a.name.toLowerCase().includes('amortization'));
+    const financeExpAccounts = postingAccounts.filter(a => a.code.startsWith('614') || a.code.startsWith('615') || a.code.startsWith('617') || a.name.toLowerCase().includes('interest') || a.name.toLowerCase().includes('bank charges') || a.name.toLowerCase().includes('tax expense'));
 
-    const totalCogs = cogsAccounts.reduce((sum, a) => {
-      const bal = accountBalances[a.id] || 0;
-      return sum + (a.type === 'ContraExpense' ? -bal : bal);
-    }, 0);
+    const sumExp = (list: Account[]) => list.reduce((sum, a) => sum + (ledgerState.closingBalances[a.id] || 0), 0);
 
-    const totalOtherExpenses = otherExpenses.reduce((sum, a) => {
-      const bal = accountBalances[a.id] || 0;
-      return sum + (a.type === 'ContraExpense' ? -bal : bal);
-    }, 0);
+    const operatingRevTotal = sumExp(operatingRevAccounts);
+    const otherRevTotal = sumExp(otherRevAccounts);
+    const grossRevenue = operatingRevTotal + otherRevTotal;
 
-    const grossProfit = totalRevenue - totalCogs;
-    const netIncome = grossProfit - totalOtherExpenses;
+    const cogsTotal = sumExp(cogsAccounts);
+    const grossProfit = grossRevenue - cogsTotal;
+    const grossMarginPct = grossRevenue > 0 ? (grossProfit / grossRevenue) * 100 : 0;
+
+    const payrollTotal = sumExp(payrollExpAccounts);
+    const adminTotal = sumExp(adminExpAccounts);
+    const deprTotal = sumExp(deprExpAccounts);
+    const totalOperatingExpenses = payrollTotal + adminTotal + deprTotal;
+
+    const operatingIncomeEbit = grossProfit - totalOperatingExpenses;
+    const financeTotal = sumExp(financeExpAccounts);
+    const netProfit = operatingIncomeEbit - financeTotal;
+    const netMarginPct = grossRevenue > 0 ? (netProfit / grossRevenue) * 100 : 0;
 
     return {
-      revenueAccounts,
-      cogsAccounts,
-      otherExpenses,
-      totalRevenue,
-      totalCogs,
-      totalOtherExpenses,
+      revenueGroups: [
+        { id: 'op_rev', title: 'Operating Revenue & Sales (41000)', total: operatingRevTotal, accounts: operatingRevAccounts },
+        ...(otherRevAccounts.length > 0 ? [{ id: 'other_rev', title: 'Other Income & Ancillary Gains (49000)', total: otherRevTotal, accounts: otherRevAccounts }] : [])
+      ],
+      grossRevenue,
+      cogsGroup: { id: 'cogs', title: 'Cost of Goods Sold & Direct Costs (51000)', total: cogsTotal, accounts: cogsAccounts },
       grossProfit,
-      netIncome
+      grossMarginPct,
+      opexGroups: [
+        { id: 'payroll_exp', title: 'Salaries, Wages & Personnel Expense (IAS 19) (61200)', total: payrollTotal, accounts: payrollExpAccounts },
+        { id: 'admin_exp', title: 'General & Administrative Operating Expenses (61100)', total: adminTotal, accounts: adminExpAccounts },
+        ...(deprExpAccounts.length > 0 ? [{ id: 'depr_exp', title: 'Depreciation & Amortization Expense (61300)', total: deprTotal, accounts: deprExpAccounts }] : [])
+      ],
+      totalOperatingExpenses,
+      operatingIncomeEbit,
+      financeGroup: { id: 'fin_tax', title: 'Finance Costs, Bank Charges & Tax Provision (61500)', total: financeTotal, accounts: financeExpAccounts },
+      netProfit,
+      netMarginPct
     };
-  }, [accounts, accountBalances]);
+  }, [accounts, ledgerState]);
 
-  // 3. Statement of Cash Flows (IAS 7 compliant - Indirect Method)
-  const cashFlowData = useMemo(() => {
-    const netIncome = incomeStatementData.netIncome;
+  // ── 5. Statement of Cash Flows (IAS 7) ────────────────────────────────────
+  const cashFlowStatement = useMemo(() => {
+    const postingAccounts = accounts.filter(isLeafAccount);
+    const cashAccounts = postingAccounts.filter(a => a.code.startsWith('111') || a.code.startsWith('112') || a.name.toLowerCase().includes('cash') || a.name.toLowerCase().includes('bank'));
+    
+    const openingCash = cashAccounts.reduce((sum, a) => sum + (ledgerState.openingBalances[a.id] || 0), 0);
+    const closingCash = cashAccounts.reduce((sum, a) => sum + (ledgerState.closingBalances[a.id] || 0), 0);
+    const netCashChange = closingCash - openingCash;
 
-    // Adjustments for non-cash items: Depreciation
-    const deprExpAccounts = accounts.filter(a => a.type === 'Expense' && a.name.toLowerCase().includes('depreciation'));
-    const totalDepreciation = deprExpAccounts.reduce((sum, a) => {
-      const currentBal = accountBalances[a.id] || 0;
-      return sum + currentBal;
-    }, 0);
+    // Indirect Method Components
+    const netIncome = incomeStatement.netProfit;
+    const deprAddback = incomeStatement.opexGroups.find(g => g.id === 'depr_exp')?.total || 0;
 
-    // Adjustments for changes in working capital
-    const arAccount = accounts.find(a => a.code === '12000');
-    const arOpening = arAccount ? arAccount.openingBalance : 0;
-    const arEnding = arAccount ? (accountBalances[arAccount.id] || 0) : 0;
-    const arChange = arEnding - arOpening;
+    const arAccounts = postingAccounts.filter(a => a.code.startsWith('12'));
+    const arChange = arAccounts.reduce((sum, a) => sum + ((ledgerState.closingBalances[a.id] || 0) - (ledgerState.openingBalances[a.id] || 0)), 0);
 
-    const invAccount = accounts.find(a => a.code === '13000');
-    const invOpening = invAccount ? invAccount.openingBalance : 0;
-    const invEnding = invAccount ? (accountBalances[invAccount.id] || 0) : 0;
-    const invChange = invEnding - invOpening;
+    const invAccounts = postingAccounts.filter(a => a.code.startsWith('13'));
+    const invChange = invAccounts.reduce((sum, a) => sum + ((ledgerState.closingBalances[a.id] || 0) - (ledgerState.openingBalances[a.id] || 0)), 0);
 
-    const apAccount = accounts.find(a => a.code === '21000');
-    const apOpening = apAccount ? apAccount.openingBalance : 0;
-    const apEnding = apAccount ? (accountBalances[apAccount.id] || 0) : 0;
-    const apChange = apEnding - apOpening;
+    const apAccounts = postingAccounts.filter(a => a.code.startsWith('211') || a.code.startsWith('212'));
+    const apChange = apAccounts.reduce((sum, a) => sum + ((ledgerState.closingBalances[a.id] || 0) - (ledgerState.openingBalances[a.id] || 0)), 0);
 
-    const grniAccount = accounts.find(a => a.code === '22000');
-    const grniOpening = grniAccount ? grniAccount.openingBalance : 0;
-    const grniEnding = grniAccount ? (accountBalances[grniAccount.id] || 0) : 0;
-    const grniChange = grniEnding - grniOpening;
+    const taxPayableAccounts = postingAccounts.filter(a => a.code.startsWith('213') || a.code.startsWith('214') || a.code.startsWith('215') || a.code.startsWith('22'));
+    const taxPayableChange = taxPayableAccounts.reduce((sum, a) => sum + ((ledgerState.closingBalances[a.id] || 0) - (ledgerState.openingBalances[a.id] || 0)), 0);
 
-    const operatingCashFlow = netIncome + totalDepreciation - arChange - invChange + apChange + grniChange;
+    const netOperatingCashFlow = netIncome + deprAddback - arChange - invChange + apChange + taxPayableChange;
 
-    // Cash Flows from Investing Activities
-    const faAccount = accounts.find(a => a.code === '15000');
-    const faOpening = faAccount ? faAccount.openingBalance : 0;
-    const faEnding = faAccount ? (accountBalances[faAccount.id] || 0) : 0;
-    const faChange = faEnding - faOpening;
-    const investingCashFlow = -faChange;
+    // Investing Activities (CapEx PPE)
+    const ppeAccounts = postingAccounts.filter(a => a.code.startsWith('15') && !a.name.toLowerCase().includes('accumulated'));
+    const capexPurchases = ppeAccounts.reduce((sum, a) => sum + ((ledgerState.closingBalances[a.id] || 0) - (ledgerState.openingBalances[a.id] || 0)), 0);
+    const netInvestingCashFlow = -capexPurchases;
 
-    // Cash Flows from Financing Activities
-    const equityAccount = accounts.find(a => a.code === '30000' || a.code === '31000');
-    const eqOpening = equityAccount ? equityAccount.openingBalance : 0;
-    const eqEnding = equityAccount ? (accountBalances[equityAccount.id] || 0) : 0;
-    const eqChange = eqEnding - eqOpening;
-    const financingCashFlow = eqChange;
-
-    const netCashIncrease = operatingCashFlow + investingCashFlow + financingCashFlow;
-
-    // Cash & equivalents beginning vs ending
-    const cashAccounts = accounts.filter(a => a.code.startsWith('11') || a.reconciliationEnabled);
-    const beginningCash = cashAccounts.reduce((sum, a) => sum + a.openingBalance, 0);
-    const endingCash = cashAccounts.reduce((sum, a) => sum + (accountBalances[a.id] || 0), 0);
+    // Financing Activities
+    const netFinancingCashFlow = netCashChange - (netOperatingCashFlow + netInvestingCashFlow);
 
     return {
+      openingCash,
+      closingCash,
+      netCashChange,
       netIncome,
-      totalDepreciation,
+      deprAddback,
       arChange,
       invChange,
       apChange,
-      grniChange,
-      operatingCashFlow,
-      investingCashFlow,
-      financingCashFlow,
-      netCashIncrease,
-      beginningCash,
-      endingCash
+      taxPayableChange,
+      netOperatingCashFlow,
+      capexPurchases,
+      netInvestingCashFlow,
+      netFinancingCashFlow,
+      cashAccounts
     };
-  }, [accounts, accountBalances, incomeStatementData]);
+  }, [accounts, ledgerState, incomeStatement]);
 
-  // Balance Check
-  const balanceSheetBalanced = Math.abs(balanceSheetData.totalAssets - (balanceSheetData.totalLiabilities + balanceSheetData.totalEquity + incomeStatementData.netIncome)) < 0.01;
+  // ── 6. 6-Column Auditor Trial Balance ──────────────────────────────────────
+  const trialBalanceRows = useMemo(() => {
+    const postingAccounts = accounts.filter(isLeafAccount);
+    return postingAccounts
+      .filter(a => {
+        if (!showZeroBalances && (ledgerState.closingBalances[a.id] || 0) === 0 && (ledgerState.periodDebits[a.id] || 0) === 0 && (ledgerState.periodCredits[a.id] || 0) === 0) {
+          return false;
+        }
+        if (tbSearch && !`${a.code} ${a.name} ${a.type}`.toLowerCase().includes(tbSearch.toLowerCase())) {
+          return false;
+        }
+        return true;
+      })
+      .sort((a, b) => a.code.localeCompare(b.code))
+      .map(a => {
+        const bal = ledgerState.closingBalances[a.id] || 0;
+        const isDebitNormal = String(a.type).toLowerCase() === 'asset' || String(a.type).toLowerCase() === 'expense' || String(a.type).toLowerCase().includes('contra');
+        const finalDebit = isDebitNormal ? (bal > 0 ? bal : 0) : (bal < 0 ? -bal : 0);
+        const finalCredit = !isDebitNormal ? (bal > 0 ? bal : 0) : (bal < 0 ? -bal : 0);
 
-  const exportHeaders = ['Account', 'Amount'];
-  const exportRows: (string | number)[][] = [];
-  exportRows.push(['ASSETS']);
-  balanceSheetData.assetAccounts.forEach(a => exportRows.push([`${a.code} — ${a.name}`, (a.type === 'ContraAsset' ? -1 : 1) * (accountBalances[a.id] || 0)]));
-  exportRows.push(['', balanceSheetData.totalAssets]);
-  exportRows.push(['LIABILITIES']);
-  balanceSheetData.liabilityAccounts.forEach(a => exportRows.push([`${a.code} — ${a.name}`, (a.type === 'ContraLiability' ? -1 : 1) * (accountBalances[a.id] || 0)]));
-  exportRows.push(['', balanceSheetData.totalLiabilities]);
-  exportRows.push(['EQUITY']);
-  balanceSheetData.equityAccounts.forEach(a => exportRows.push([`${a.code} — ${a.name}`, (a.type === 'ContraEquity' ? -1 : 1) * (accountBalances[a.id] || 0)]));
-  exportRows.push(['', balanceSheetData.totalEquity]);
-  exportRows.push(['NET INCOME', incomeStatementData.netIncome]);
+        return {
+          id: a.id,
+          code: a.code,
+          name: a.name,
+          type: a.type,
+          opening: ledgerState.openingBalances[a.id] || 0,
+          periodDebit: ledgerState.periodDebits[a.id] || 0,
+          periodCredit: ledgerState.periodCredits[a.id] || 0,
+          closingDebit: finalDebit,
+          closingCredit: finalCredit,
+          netBalance: bal
+        };
+      });
+  }, [accounts, ledgerState, showZeroBalances, tbSearch]);
+
+  const trialBalanceTotals = useMemo(() => {
+    return trialBalanceRows.reduce((acc, row) => ({
+      periodDebit: acc.periodDebit + row.periodDebit,
+      periodCredit: acc.periodCredit + row.periodCredit,
+      closingDebit: acc.closingDebit + row.closingDebit,
+      closingCredit: acc.closingCredit + row.closingCredit
+    }), { periodDebit: 0, periodCredit: 0, closingDebit: 0, closingCredit: 0 });
+  }, [trialBalanceRows]);
+
+  // ── 7. Ratios ─────────────────────────────────────────────────────────────
+  const ratios = useMemo(() => {
+    const currentRatio = balanceSheet.totalCurrentLiabilities > 0 ? (balanceSheet.totalCurrentAssets / balanceSheet.totalCurrentLiabilities) : 0;
+    const quickCashAR = balanceSheet.currentAssetsGroups.filter(g => g.id === 'cash_bank' || g.id === 'ar').reduce((s, g) => s + g.total, 0);
+    const quickRatio = balanceSheet.totalCurrentLiabilities > 0 ? (quickCashAR / balanceSheet.totalCurrentLiabilities) : 0;
+    const debtToEquity = balanceSheet.totalEquity > 0 ? (balanceSheet.totalLiabilities / balanceSheet.totalEquity) : 0;
+    const workingCapital = balanceSheet.totalCurrentAssets - balanceSheet.totalCurrentLiabilities;
+    const returnOnAssets = balanceSheet.totalAssets > 0 ? (incomeStatement.netProfit / balanceSheet.totalAssets) * 100 : 0;
+    const returnOnEquity = balanceSheet.totalEquity > 0 ? (incomeStatement.netProfit / balanceSheet.totalEquity) * 100 : 0;
+
+    return { currentRatio, quickRatio, debtToEquity, workingCapital, returnOnAssets, returnOnEquity };
+  }, [balanceSheet, incomeStatement]);
+
+  // ── 8. Formatted Multi-Level Exports (PDF, Excel, CSV) ─────────────────────
+  const handleExportPDF = () => {
+    let title = 'STATEMENT OF FINANCIAL POSITION';
+    let subtitle = `${activeCompany.name} — As of ${dateTo || new Date().toISOString().slice(0, 10)} (IAS 1 / GAAP)`;
+    let headers: string[] = ['Classification / Account', 'Code', 'Amount (PKR)'];
+    let rows: ExportRow[] = [];
+    let totals: { label: string; value: unknown }[] = [];
+
+    if (activeTab === 'balancesheet') {
+      rows.push(['1. CURRENT ASSETS', '', '']);
+      balanceSheet.currentAssetsGroups.forEach(g => {
+        rows.push([`  • ${g.title}`, '', g.total.toFixed(2)]);
+        if (viewMode === 'detailed') {
+          g.accounts.forEach(a => {
+            rows.push([`      ${a.name}`, a.code, (ledgerState.closingBalances[a.id] || 0).toFixed(2)]);
+          });
+        }
+      });
+      rows.push(['TOTAL CURRENT ASSETS', '', balanceSheet.totalCurrentAssets.toFixed(2)]);
+      rows.push(['', '', '']);
+
+      rows.push(['2. NON-CURRENT ASSETS', '', '']);
+      balanceSheet.nonCurrentAssetsGroups.forEach(g => {
+        rows.push([`  • ${g.title}`, '', g.total.toFixed(2)]);
+        if (viewMode === 'detailed') {
+          g.accounts.forEach(a => {
+            rows.push([`      ${a.name}`, a.code, (ledgerState.closingBalances[a.id] || 0).toFixed(2)]);
+          });
+        }
+      });
+      rows.push(['TOTAL NON-CURRENT ASSETS', '', balanceSheet.totalNonCurrentAssets.toFixed(2)]);
+      rows.push(['TOTAL ASSETS', '', balanceSheet.totalAssets.toFixed(2)]);
+      rows.push(['', '', '']);
+
+      rows.push(['3. CURRENT LIABILITIES', '', '']);
+      balanceSheet.currentLiabilitiesGroups.forEach(g => {
+        rows.push([`  • ${g.title}`, '', g.total.toFixed(2)]);
+        if (viewMode === 'detailed') {
+          g.accounts.forEach(a => {
+            rows.push([`      ${a.name}`, a.code, (ledgerState.closingBalances[a.id] || 0).toFixed(2)]);
+          });
+        }
+      });
+      rows.push(['TOTAL CURRENT LIABILITIES', '', balanceSheet.totalCurrentLiabilities.toFixed(2)]);
+      rows.push(['', '', '']);
+
+      rows.push(['4. SHAREHOLDERS\' EQUITY', '', '']);
+      balanceSheet.equityGroups.forEach(g => {
+        rows.push([`  • ${g.title}`, '', g.total.toFixed(2)]);
+      });
+      rows.push(['  • Retained Net Income for Period (P&L)', '', balanceSheet.netPeriodIncome.toFixed(2)]);
+      rows.push(['TOTAL SHAREHOLDERS\' EQUITY', '', balanceSheet.totalEquity.toFixed(2)]);
+      rows.push(['TOTAL LIABILITIES & EQUITY', '', balanceSheet.totalLiabilitiesAndEquity.toFixed(2)]);
+
+      totals = [
+        { label: 'TOTAL ASSETS', value: formatCur(balanceSheet.totalAssets) },
+        { label: 'TOTAL LIABILITIES & EQUITY', value: formatCur(balanceSheet.totalLiabilitiesAndEquity) },
+        { label: 'ACCOUNTING STATUS', value: balanceSheet.isBalanced ? 'BALANCED ($0.00 Variance)' : 'OUT OF BALANCE' }
+      ];
+    } else if (activeTab === 'incomestatement') {
+      title = 'STATEMENT OF COMPREHENSIVE INCOME (PROFIT & LOSS)';
+      subtitle = `${activeCompany.name} — Period: ${dateFrom || 'Inception'} to ${dateTo || 'Today'} (IFRS 15)`;
+      rows.push(['1. OPERATING REVENUE', '', incomeStatement.grossRevenue.toFixed(2)]);
+      incomeStatement.revenueGroups.forEach(g => {
+        g.accounts.forEach(a => rows.push([`    ${a.name}`, a.code, (ledgerState.closingBalances[a.id] || 0).toFixed(2)]));
+      });
+      rows.push(['2. COST OF GOODS SOLD (COGS)', '', (-incomeStatement.cogsGroup.total).toFixed(2)]);
+      rows.push(['GROSS PROFIT', '', incomeStatement.grossProfit.toFixed(2)]);
+      rows.push(['', '', '']);
+      rows.push(['3. OPERATING EXPENSES (OPEX)', '', (-incomeStatement.totalOperatingExpenses).toFixed(2)]);
+      incomeStatement.opexGroups.forEach(g => {
+        rows.push([`  • ${g.title}`, '', (-g.total).toFixed(2)]);
+        if (viewMode === 'detailed') {
+          g.accounts.forEach(a => rows.push([`      ${a.name}`, a.code, (-(ledgerState.closingBalances[a.id] || 0)).toFixed(2)]));
+        }
+      });
+      rows.push(['OPERATING PROFIT (EBIT)', '', incomeStatement.operatingIncomeEbit.toFixed(2)]);
+      rows.push(['NET PROFIT / (LOSS)', '', incomeStatement.netProfit.toFixed(2)]);
+
+      totals = [
+        { label: 'GROSS PROFIT', value: formatCur(incomeStatement.grossProfit) },
+        { label: 'NET PROFIT', value: formatCur(incomeStatement.netProfit) },
+        { label: 'NET MARGIN %', value: `${incomeStatement.netMarginPct.toFixed(1)}%` }
+      ];
+    } else if (activeTab === 'cashflow') {
+      title = 'STATEMENT OF CASH FLOWS';
+      subtitle = `${activeCompany.name} — IAS 7 Method`;
+      rows.push(['1. CASH FLOWS FROM OPERATING ACTIVITIES', '', cashFlowStatement.netOperatingCashFlow.toFixed(2)]);
+      rows.push(['  • Net Profit / (Loss) for the Period', '', cashFlowStatement.netIncome.toFixed(2)]);
+      rows.push(['  • Non-Cash Depreciation Add-back', '', cashFlowStatement.deprAddback.toFixed(2)]);
+      rows.push(['  • Change in Accounts Receivable', '', (-cashFlowStatement.arChange).toFixed(2)]);
+      rows.push(['  • Change in Inventories', '', (-cashFlowStatement.invChange).toFixed(2)]);
+      rows.push(['  • Change in Accounts Payable & Taxes', '', (cashFlowStatement.apChange + cashFlowStatement.taxPayableChange).toFixed(2)]);
+      rows.push(['2. CASH FLOWS FROM INVESTING ACTIVITIES (CapEx)', '', cashFlowStatement.netInvestingCashFlow.toFixed(2)]);
+      rows.push(['3. CASH FLOWS FROM FINANCING ACTIVITIES', '', cashFlowStatement.netFinancingCashFlow.toFixed(2)]);
+      rows.push(['NET INCREASE / (DECREASE) IN CASH', '', cashFlowStatement.netCashChange.toFixed(2)]);
+      rows.push(['CLOSING CASH & BANK BALANCES', '', cashFlowStatement.closingCash.toFixed(2)]);
+
+      totals = [
+        { label: 'OPERATING CASH FLOW', value: formatCur(cashFlowStatement.netOperatingCashFlow) },
+        { label: 'CLOSING CASH', value: formatCur(cashFlowStatement.closingCash) }
+      ];
+    } else {
+      title = '6-COLUMN AUDITOR TRIAL BALANCE';
+      subtitle = `${activeCompany.name} — Double-Entry Audit Trail`;
+      headers = ['Account Code', 'Account Name', 'Major Head', 'Period Debit', 'Period Credit', 'Closing Debit', 'Closing Credit'];
+      rows = trialBalanceRows.map(r => [
+        r.code, r.name, r.type,
+        r.periodDebit > 0 ? r.periodDebit.toFixed(2) : '-',
+        r.periodCredit > 0 ? r.periodCredit.toFixed(2) : '-',
+        r.closingDebit > 0 ? r.closingDebit.toFixed(2) : '-',
+        r.closingCredit > 0 ? r.closingCredit.toFixed(2) : '-'
+      ]);
+      totals = [
+        { label: 'TOTAL CLOSING DEBIT', value: formatCur(trialBalanceTotals.closingDebit) },
+        { label: 'TOTAL CLOSING CREDIT', value: formatCur(trialBalanceTotals.closingCredit) }
+      ];
+    }
+
+    downloadPDF(title, subtitle, headers, rows, totals);
+  };
+
+  const handleExportExcel = () => {
+    const filename = `Financial_Report_${activeTab}_${new Date().toISOString().slice(0, 10)}`;
+    const headers: string[] = ['Category / Account Classification', 'Code', 'Type', 'Amount (PKR)'];
+    const rows: ExportRow[] = [];
+
+    if (activeTab === 'balancesheet') {
+      rows.push(['1. CURRENT ASSETS', '', '', '']);
+      balanceSheet.currentAssetsGroups.forEach(g => {
+        rows.push([`  [GROUP] ${g.title}`, '', 'Subtotal', g.total]);
+        g.accounts.forEach(a => {
+          rows.push([`      ${a.name}`, a.code, a.type, ledgerState.closingBalances[a.id] || 0]);
+        });
+      });
+      rows.push(['TOTAL CURRENT ASSETS', '', 'TOTAL', balanceSheet.totalCurrentAssets]);
+      rows.push(['', '', '', '']);
+
+      rows.push(['2. NON-CURRENT ASSETS', '', '', '']);
+      balanceSheet.nonCurrentAssetsGroups.forEach(g => {
+        rows.push([`  [GROUP] ${g.title}`, '', 'Subtotal', g.total]);
+        g.accounts.forEach(a => {
+          rows.push([`      ${a.name}`, a.code, a.type, ledgerState.closingBalances[a.id] || 0]);
+        });
+      });
+      rows.push(['TOTAL NON-CURRENT ASSETS', '', 'TOTAL', balanceSheet.totalNonCurrentAssets]);
+      rows.push(['TOTAL ASSETS', '', 'GRAND TOTAL', balanceSheet.totalAssets]);
+      rows.push(['', '', '', '']);
+
+      rows.push(['3. CURRENT LIABILITIES', '', '', '']);
+      balanceSheet.currentLiabilitiesGroups.forEach(g => {
+        rows.push([`  [GROUP] ${g.title}`, '', 'Subtotal', g.total]);
+        g.accounts.forEach(a => {
+          rows.push([`      ${a.name}`, a.code, a.type, ledgerState.closingBalances[a.id] || 0]);
+        });
+      });
+      rows.push(['TOTAL CURRENT LIABILITIES', '', 'TOTAL', balanceSheet.totalCurrentLiabilities]);
+      rows.push(['', '', '', '']);
+
+      rows.push(['4. SHAREHOLDERS\' EQUITY', '', '', '']);
+      balanceSheet.equityGroups.forEach(g => {
+        rows.push([`  [GROUP] ${g.title}`, '', 'Subtotal', g.total]);
+      });
+      rows.push(['  [P&L] Retained Net Income for Period', '', 'Net Profit', balanceSheet.netPeriodIncome]);
+      rows.push(['TOTAL SHAREHOLDERS\' EQUITY', '', 'TOTAL', balanceSheet.totalEquity]);
+      rows.push(['TOTAL LIABILITIES & EQUITY', '', 'GRAND TOTAL', balanceSheet.totalLiabilitiesAndEquity]);
+    } else if (activeTab === 'incomestatement') {
+      rows.push(['1. OPERATING REVENUE', '', '', incomeStatement.grossRevenue]);
+      incomeStatement.revenueGroups.forEach(g => {
+        g.accounts.forEach(a => rows.push([`    ${a.name}`, a.code, a.type, ledgerState.closingBalances[a.id] || 0]));
+      });
+      rows.push(['2. COST OF GOODS SOLD (COGS)', '', 'COGS', -incomeStatement.cogsGroup.total]);
+      rows.push(['GROSS PROFIT', '', 'Gross Margin', incomeStatement.grossProfit]);
+      rows.push(['3. OPERATING EXPENSES (OPEX)', '', 'OPEX', -incomeStatement.totalOperatingExpenses]);
+      incomeStatement.opexGroups.forEach(g => {
+        rows.push([`  [GROUP] ${g.title}`, '', 'Subtotal', -g.total]);
+        g.accounts.forEach(a => rows.push([`      ${a.name}`, a.code, a.type, -(ledgerState.closingBalances[a.id] || 0)]));
+      });
+      rows.push(['OPERATING INCOME (EBIT)', '', 'Operating Profit', incomeStatement.operatingIncomeEbit]);
+      rows.push(['NET PROFIT / (LOSS)', '', 'Net Income', incomeStatement.netProfit]);
+    } else {
+      headers.length = 0;
+      headers.push('Account Code', 'Account Name', 'Major Head', 'Opening Balance', 'Period Debit', 'Period Credit', 'Closing Debit', 'Closing Credit');
+      trialBalanceRows.forEach(r => {
+        rows.push([r.code, r.name, r.type, r.opening, r.periodDebit, r.periodCredit, r.closingDebit, r.closingCredit]);
+      });
+    }
+
+    downloadExcel(filename, activeTab.toUpperCase(), headers, rows);
+  };
+
+  const handleExportCSV = () => {
+    let headers: string[] = ['Classification', 'Code', 'Name', 'Amount'];
+    let rows: ExportRow[] = [];
+    let filename = `Financial_Statement_${activeTab}_${new Date().toISOString().slice(0, 10)}`;
+
+    if (activeTab === 'trialbalance') {
+      headers = ['Account Code', 'Account Name', 'Major Head', 'Opening', 'Period Debit', 'Period Credit', 'Closing Debit', 'Closing Credit'];
+      rows = trialBalanceRows.map(r => [r.code, r.name, r.type, r.opening, r.periodDebit, r.periodCredit, r.closingDebit, r.closingCredit]);
+    } else {
+      balanceSheet.currentAssetsGroups.forEach(g => {
+        g.accounts.forEach(a => rows.push(['Current Assets', a.code, a.name, ledgerState.closingBalances[a.id] || 0]));
+      });
+      balanceSheet.nonCurrentAssetsGroups.forEach(g => {
+        g.accounts.forEach(a => rows.push(['Non-Current Assets', a.code, a.name, ledgerState.closingBalances[a.id] || 0]));
+      });
+      balanceSheet.currentLiabilitiesGroups.forEach(g => {
+        g.accounts.forEach(a => rows.push(['Current Liabilities', a.code, a.name, ledgerState.closingBalances[a.id] || 0]));
+      });
+      balanceSheet.equityGroups.forEach(g => {
+        g.accounts.forEach(a => rows.push(['Shareholders Equity', a.code, a.name, ledgerState.closingBalances[a.id] || 0]));
+      });
+      rows.push(['Equity', 'P&L_NET', 'Retained Net Income for Period', balanceSheet.netPeriodIncome]);
+    }
+
+    downloadCSV(filename, headers, rows);
+  };
 
   return (
-    <div className="space-y-6">
-      {/* Date Filters Header */}
-      <div className="bg-white border border-gray-200 rounded-2xl p-4 shadow-sm flex flex-wrap gap-4 items-center justify-between">
-        <div className="flex items-center gap-2">
-          <Calendar className="w-5 h-5 text-gray-400" />
-          <span className="text-sm font-semibold text-gray-900">Reporting Period</span>
+    <div className="p-6 max-w-[1400px] mx-auto space-y-6 animate-in fade-in">
+      {/* Top Header - Guaranteed Single Line */}
+      <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 border-b border-border pb-4">
+        <div className="min-w-0">
+          <h1 className="text-xl font-black tracking-tight text-foreground flex items-center gap-2">
+            <Landmark className="w-5 h-5 text-teal-600 shrink-0" /> Financial Reporting & Statements Suite
+          </h1>
+          <p className="text-xs text-muted-foreground mt-0.5">
+            IAS 1, IAS 7, and IFRS 15 financial statements, multi-level balance sheets, trial balance, and health ratios.
+          </p>
         </div>
-        <div className="flex items-center gap-3">
-          <div className="flex items-center gap-2">
-            <span className="text-xs text-gray-500">From</span>
+
+        {/* Action Buttons in single line */}
+        <div className="flex items-center gap-2 shrink-0 flex-wrap">
+          <Button
+            size="sm"
+            onClick={handleExportPDF}
+            className="bg-rose-600 hover:bg-rose-700 text-white font-bold text-xs h-9 px-3.5 gap-1.5 shadow-xs cursor-pointer"
+          >
+            <FileText className="w-4 h-4" /> Download PDF
+          </Button>
+
+          <Button
+            size="sm"
+            onClick={handleExportExcel}
+            className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs h-9 px-3.5 gap-1.5 shadow-xs cursor-pointer"
+          >
+            <FileSpreadsheet className="w-4 h-4" /> Download Excel
+          </Button>
+
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handleExportCSV}
+            className="text-blue-700 border-blue-300 hover:bg-blue-50 font-bold text-xs h-9 px-3 gap-1.5 cursor-pointer"
+          >
+            <Download className="w-4 h-4" /> CSV
+          </Button>
+
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => window.print()}
+            className="font-bold text-xs h-9 px-3 gap-1.5 cursor-pointer"
+          >
+            <Printer className="w-4 h-4" /> Print
+          </Button>
+
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => { fetchAccounts(); fetchJournalEntries(); }}
+            className="font-bold text-xs h-9 px-3 gap-1.5 cursor-pointer"
+          >
+            <RefreshCw className="w-4 h-4" /> Refresh
+          </Button>
+        </div>
+      </div>
+
+      {/* Global Filter & Preset Control Bar */}
+      <div className="p-4 rounded-2xl border border-border bg-card shadow-xs flex flex-wrap gap-4 items-center justify-between">
+        {/* Date Presets */}
+        <div className="flex items-center gap-1.5 overflow-x-auto text-xs font-bold">
+          <span className="text-muted-foreground mr-1 flex items-center gap-1">
+            <Calendar className="w-3.5 h-3.5" /> Period:
+          </span>
+          {DATE_PRESETS.map(p => (
+            <button
+              key={p.label}
+              onClick={() => { setDateFrom(p.from); setDateTo(p.to); }}
+              className={`px-3 py-1.5 rounded-xl transition-all ${
+                dateFrom === p.from && dateTo === p.to
+                  ? 'bg-teal-600 text-white shadow-xs'
+                  : 'bg-muted/60 text-muted-foreground hover:text-foreground'
+              }`}
+            >
+              {p.label}
+            </button>
+          ))}
+        </div>
+
+        {/* Custom Range & Entity Selector & Condensed View Switcher */}
+        <div className="flex items-center gap-3 text-xs flex-wrap">
+          <div className="flex items-center gap-1.5">
+            <span className="text-muted-foreground font-semibold">From:</span>
             <input
               type="date"
               value={dateFrom}
               onChange={e => setDateFrom(e.target.value)}
-              className="border border-gray-200 rounded-xl px-3 py-1.5 text-xs focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              className="border rounded-xl px-2.5 py-1.5 text-xs bg-background font-mono"
             />
           </div>
-          <div className="flex items-center gap-2">
-            <span className="text-xs text-gray-500">To</span>
+          <div className="flex items-center gap-1.5">
+            <span className="text-muted-foreground font-semibold">To:</span>
             <input
               type="date"
               value={dateTo}
               onChange={e => setDateTo(e.target.value)}
-              className="border border-gray-200 rounded-xl px-3 py-1.5 text-xs focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              className="border rounded-xl px-2.5 py-1.5 text-xs bg-background font-mono"
             />
           </div>
-          {(dateFrom || dateTo) && (
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => { setDateFrom(''); setDateTo(''); }}
-              className="text-xs text-red-600 hover:text-red-700"
+
+          <div className="flex items-center gap-1.5">
+            <span className="text-muted-foreground font-semibold">Entity:</span>
+            <select
+              value={selectedEntityFilter}
+              onChange={e => setSelectedEntityFilter(e.target.value)}
+              className="border rounded-xl px-3 py-1.5 text-xs bg-background font-bold text-foreground"
             >
-              Clear
-            </Button>
-          )}
-          <DataToolbar
-            exportFileName={`financial-reports-${new Date().toISOString().slice(0, 10)}`}
-            exportSheetName="Financial Reports"
-            exportTitle="Financial Reports"
-            exportSubtitle={`Balance sheet and income statement — ${dateFrom || 'start'} to ${dateTo || 'today'} (IAS 1 / IFRS 15).`}
-            exportHeaders={exportHeaders}
-            exportRows={exportRows}
-            onRefresh={() => { setDateFrom(''); setDateTo(''); }}
-          />
+              <option value="all">🏢 Consolidated Enterprise (All)</option>
+              {entities.map(ent => (
+                <option key={ent.id} value={ent.id}>{ent.name}</option>
+              ))}
+            </select>
+          </div>
+
+          {/* VIEW MODE TOGGLE (CONDENSED VS DETAILED TREE) */}
+          <div className="flex items-center bg-muted p-0.5 rounded-xl text-xs font-bold border">
+            <button
+              onClick={() => setViewMode('detailed')}
+              className={`px-2.5 py-1 rounded-lg transition-all ${
+                viewMode === 'detailed' ? 'bg-background text-teal-600 shadow-2xs' : 'text-muted-foreground'
+              }`}
+            >
+              🌳 Detailed Tree
+            </button>
+            <button
+              onClick={() => setViewMode('condensed')}
+              className={`px-2.5 py-1 rounded-lg transition-all ${
+                viewMode === 'condensed' ? 'bg-background text-teal-600 shadow-2xs' : 'text-muted-foreground'
+              }`}
+            >
+              📑 Condensed Summary
+            </button>
+          </div>
         </div>
       </div>
 
-      {/* Compliance / Balancing Alert */}
-      <div className="grid grid-cols-1">
-        {balanceSheetBalanced ? (
-          <div className="flex items-center gap-3 bg-emerald-50 border border-emerald-200 text-emerald-800 p-4 rounded-2xl shadow-sm">
-            <CheckCircle className="w-5 h-5 text-emerald-600 shrink-0" />
-            <div>
-              <p className="text-sm font-semibold">Ledger Balance Status: Balanced</p>
-              <p className="text-xs opacity-90">All double-entry asset debits equal liability, equity, and recognized period income credits perfectly (IAS 1 / GAAP Compliance Check passed).</p>
-            </div>
+      {/* Double-Entry Compliance Badge */}
+      <div className={`p-4 rounded-2xl border flex items-center justify-between flex-wrap gap-3 ${
+        balanceSheet.isBalanced
+          ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-900 dark:text-emerald-300'
+          : 'bg-rose-500/10 border-rose-500/30 text-rose-900 dark:text-rose-300'
+      }`}>
+        <div className="flex items-center gap-3">
+          {balanceSheet.isBalanced ? (
+            <CheckCircle2 className="w-5 h-5 text-emerald-600 shrink-0" />
+          ) : (
+            <AlertTriangle className="w-5 h-5 text-rose-600 shrink-0" />
+          )}
+          <div>
+            <span className="text-xs font-black uppercase tracking-wide block">
+              Accounting Equation Verification (IAS 1 / GAAP):
+            </span>
+            <span className="text-xs">
+              {balanceSheet.isBalanced
+                ? `✓ Total Assets (${formatCur(balanceSheet.totalAssets)}) = Total Liabilities (${formatCur(balanceSheet.totalLiabilities)}) + Shareholders' Equity (${formatCur(balanceSheet.totalEquity)}). Variance: $0.00`
+                : `⚠️ Out-of-Balance Variance: ${formatCur(balanceSheet.variance)}. Review unposted journals or suspense ledgers.`}
+            </span>
           </div>
-        ) : (
-          <div className="flex items-center gap-3 bg-amber-50 border border-amber-200 text-amber-800 p-4 rounded-2xl shadow-sm">
-            <AlertTriangle className="w-5 h-5 text-amber-600 shrink-0" />
-            <div>
-              <p className="text-sm font-semibold">Ledger Balance Warning: Out of Balance</p>
-              <p className="text-xs opacity-90">Total assets do not match the sum of liabilities, equity, and net earnings. Please review outstanding drafts or unposted journal entries.</p>
-            </div>
-          </div>
-        )}
+        </div>
+        <div className="text-xs font-mono font-black">
+          Net Income Flow: <strong className="text-teal-600 dark:text-teal-400">{formatCur(incomeStatement.netProfit)}</strong>
+        </div>
       </div>
 
-      {/* Main Tabs */}
-      <Tabs defaultValue="balance-sheet" className="w-full">
-        <TabsList className="bg-gray-100 p-0.5 rounded-xl border border-gray-200/50 mb-6">
-          <TabsTrigger value="balance-sheet" className="rounded-lg text-xs font-semibold px-5 py-2">
-            Balance Sheet
-          </TabsTrigger>
-          <TabsTrigger value="income-statement" className="rounded-lg text-xs font-semibold px-5 py-2">
-            Income Statement
-          </TabsTrigger>
-          <TabsTrigger value="cash-flow" className="rounded-lg text-xs font-semibold px-5 py-2">
-            Cash Flow
-          </TabsTrigger>
-          <TabsTrigger value="trial-balance" className="rounded-lg text-xs font-semibold px-5 py-2">
-            Trial Balance
-          </TabsTrigger>
-        </TabsList>
+      {/* Main Statement Navigation Tabs */}
+      <div className="flex border-b border-border overflow-x-auto gap-1">
+        {[
+          { id: 'balancesheet', label: '1. Balance Sheet (IAS 1)', icon: Landmark },
+          { id: 'incomestatement', label: '2. Profit & Loss (IFRS 15)', icon: TrendingUp },
+          { id: 'cashflow', label: '3. Statement of Cash Flows (IAS 7)', icon: DollarSign },
+          { id: 'trialbalance', label: '4. 6-Column Trial Balance', icon: Layers },
+          { id: 'overview', label: 'Executive Cockpit', icon: Activity },
+          { id: 'equity', label: '5. Changes in Equity', icon: ShieldCheck },
+          { id: 'ratios', label: '6. Solvency & Health Ratios', icon: PieChart },
+        ].map(t => {
+          const Icon = t.icon;
+          const isActive = activeTab === t.id;
+          return (
+            <button
+              key={t.id}
+              onClick={() => setActiveTab(t.id as any)}
+              className={`flex items-center gap-2 px-4 py-3 text-xs font-bold border-b-2 transition-all shrink-0 ${
+                isActive
+                  ? 'border-teal-600 text-teal-600 bg-teal-50/50 dark:bg-teal-950/20'
+                  : 'border-transparent text-muted-foreground hover:text-foreground'
+              }`}
+            >
+              <Icon className="w-4 h-4" />
+              <span>{t.label}</span>
+            </button>
+          );
+        })}
+      </div>
 
-        {/* 1. BALANCE SHEET */}
-        <TabsContent value="balance-sheet">
-          <Card className="shadow-sm border-gray-200">
-            <CardHeader className="bg-gray-50 border-b border-gray-100 p-6">
-              <div className="flex justify-between items-start">
-                <div>
-                  <CardTitle className="text-lg font-bold text-gray-900">Statement of Financial Position</CardTitle>
-                  <CardDescription className="text-xs text-gray-500">IAS 1 Standard Layout · Accrual Basis</CardDescription>
-                </div>
-                <Badge variant="outline" className="border-blue-200 bg-blue-50 text-blue-800">Balance Sheet</Badge>
+      {/* ── TAB 1: STATEMENT OF FINANCIAL POSITION / BALANCE SHEET (IAS 1) ───── */}
+      {activeTab === 'balancesheet' && (
+        <div className="space-y-6 animate-in fade-in">
+          <div className="rounded-2xl border border-border bg-card shadow-xs overflow-hidden">
+            {/* Corporate Header */}
+            <div className="p-5 bg-muted/40 border-b flex items-center justify-between flex-wrap gap-3">
+              <div>
+                <span className="text-[10px] font-black uppercase text-teal-700 tracking-wider block">
+                  {activeCompany.name}
+                </span>
+                <h3 className="text-base font-black text-foreground">
+                  Statement of Financial Position (Balance Sheet)
+                </h3>
+                <span className="text-xs text-muted-foreground">
+                  Classified Assets, Liabilities, and Equity adhering strictly to IAS 1 & Global GAAP standards.
+                </span>
               </div>
-            </CardHeader>
-            <CardContent className="p-0">
-              <Table>
-                <TableHeader className="bg-gray-100/40 text-xs font-medium text-gray-500">
-                  <TableRow>
-                    <TableHead className="pl-6">Account Name</TableHead>
-                    <TableHead className="w-44 text-right pr-6">Amount</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody className="divide-y divide-gray-100">
-                  {/* ASSETS SECTION */}
-                  <TableRow className="bg-blue-50/5 font-semibold text-gray-900">
-                    <TableCell colSpan={2} className="py-4 pl-6 text-sm tracking-wide uppercase">1. Assets</TableCell>
-                  </TableRow>
-                  {balanceSheetData.assetAccounts.map(a => (
-                    <TableRow key={a.id} className="hover:bg-gray-50/40">
-                      <TableCell className="pl-6 text-gray-700">{a.name} {a.type === 'ContraAsset' && <span className="text-[10px] text-gray-400 italic">(Contra Account)</span>}</TableCell>
-                      <TableCell className="text-right pr-6 font-mono text-xs text-gray-900 font-medium">
-                        {formatCurrency(a.type === 'ContraAsset' ? -(accountBalances[a.id] || 0) : (accountBalances[a.id] || 0))}
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                  <TableRow className="bg-blue-50/30 font-bold text-blue-900 border-t-2 border-blue-100">
-                    <TableCell className="pl-6 text-sm uppercase">Total Assets</TableCell>
-                    <TableCell className="text-right pr-6 font-mono text-sm">{formatCurrency(balanceSheetData.totalAssets)}</TableCell>
-                  </TableRow>
-
-                  {/* LIABILITIES SECTION */}
-                  <TableRow className="bg-orange-50/5 font-semibold text-gray-900">
-                    <TableCell colSpan={2} className="py-4 pl-6 text-sm tracking-wide uppercase">2. Liabilities</TableCell>
-                  </TableRow>
-                  {balanceSheetData.liabilityAccounts.map(a => (
-                    <TableRow key={a.id} className="hover:bg-gray-50/40">
-                      <TableCell className="pl-6 text-gray-700">{a.name} {a.type === 'ContraLiability' && <span className="text-[10px] text-gray-400 italic">(Contra Account)</span>}</TableCell>
-                      <TableCell className="text-right pr-6 font-mono text-xs text-gray-900 font-medium">
-                        {formatCurrency(a.type === 'ContraLiability' ? -(accountBalances[a.id] || 0) : (accountBalances[a.id] || 0))}
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                  <TableRow className="bg-orange-50/30 font-bold text-orange-900 border-t-2 border-orange-100">
-                    <TableCell className="pl-6 text-sm uppercase">Total Liabilities</TableCell>
-                    <TableCell className="text-right pr-6 font-mono text-sm">{formatCurrency(balanceSheetData.totalLiabilities)}</TableCell>
-                  </TableRow>
-
-                  {/* EQUITY SECTION */}
-                  <TableRow className="bg-emerald-50/5 font-semibold text-gray-900">
-                    <TableCell colSpan={2} className="py-4 pl-6 text-sm tracking-wide uppercase">3. Equity & Reserves</TableCell>
-                  </TableRow>
-                  {balanceSheetData.equityAccounts.map(a => (
-                    <TableRow key={a.id} className="hover:bg-gray-50/40">
-                      <TableCell className="pl-6 text-gray-700">{a.name}</TableCell>
-                      <TableCell className="text-right pr-6 font-mono text-xs text-gray-900 font-medium">
-                        {formatCurrency(accountBalances[a.id] || 0)}
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                  {/* Plus Net income of current period */}
-                  <TableRow className="hover:bg-gray-50/40">
-                    <TableCell className="pl-6 text-gray-700 font-medium italic">Current Period Net Income</TableCell>
-                    <TableCell className="text-right pr-6 font-mono text-xs text-emerald-700 font-bold">
-                      {formatCurrency(incomeStatementData.netIncome)}
-                    </TableCell>
-                  </TableRow>
-                  <TableRow className="bg-emerald-50/30 font-bold text-emerald-950 border-t-2 border-emerald-100">
-                    <TableCell className="pl-6 text-sm uppercase">Total Equity</TableCell>
-                    <TableCell className="text-right pr-6 font-mono text-sm">{formatCurrency(balanceSheetData.totalEquity + incomeStatementData.netIncome)}</TableCell>
-                  </TableRow>
-
-                  {/* DOUBLE BOTTOM LINE TOTALS */}
-                  <TableRow className="bg-gray-950 text-white font-bold border-t-4 border-double border-gray-950">
-                    <TableCell className="pl-6 text-sm uppercase tracking-wide">Total Liabilities & Equity</TableCell>
-                    <TableCell className="text-right pr-6 font-mono text-sm">
-                      {formatCurrency(balanceSheetData.totalLiabilities + balanceSheetData.totalEquity + incomeStatementData.netIncome)}
-                    </TableCell>
-                  </TableRow>
-                </TableBody>
-              </Table>
-            </CardContent>
-          </Card>
-        </TabsContent>
-
-        {/* 2. INCOME STATEMENT */}
-        <TabsContent value="income-statement">
-          <Card className="shadow-sm border-gray-200">
-            <CardHeader className="bg-gray-50 border-b border-gray-100 p-6">
-              <div className="flex justify-between items-start">
-                <div>
-                  <CardTitle className="text-lg font-bold text-gray-900">Statement of Profit or Loss</CardTitle>
-                  <CardDescription className="text-xs text-gray-500">IAS 1 compliant statement mapping sales revenue to net earnings</CardDescription>
-                </div>
-                <Badge variant="outline" className="border-emerald-200 bg-emerald-50 text-emerald-800">Income Statement</Badge>
+              <div className="text-right text-xs font-mono">
+                <span className="font-bold text-foreground block">Reporting Date: {dateTo || 'Today'}</span>
+                <span className="text-muted-foreground text-[11px]">Format: {viewMode === 'detailed' ? 'Detailed Multi-Level Tree' : 'Condensed Summary'}</span>
               </div>
-            </CardHeader>
-            <CardContent className="p-0">
-              <Table>
-                <TableHeader className="bg-gray-100/40 text-xs font-medium text-gray-500">
-                  <TableRow>
-                    <TableHead className="pl-6">Reporting Line Item</TableHead>
-                    <TableHead className="w-44 text-right pr-6">Amount</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody className="divide-y divide-gray-100">
-                  {/* REVENUE SECTION */}
-                  <TableRow className="bg-blue-50/5 font-semibold text-gray-900">
-                    <TableCell colSpan={2} className="py-4 pl-6 text-sm tracking-wide uppercase">1. Operating Revenue</TableCell>
-                  </TableRow>
-                  {incomeStatementData.revenueAccounts.map(a => (
-                    <TableRow key={a.id} className="hover:bg-gray-50/40">
-                      <TableCell className="pl-6 text-gray-700">{a.name} {a.type === 'ContraRevenue' && <span className="text-[10px] text-gray-400 italic">(Contra Account)</span>}</TableCell>
-                      <TableCell className="text-right pr-6 font-mono text-xs text-gray-900 font-medium">
-                        {formatCurrency(a.type === 'ContraRevenue' ? -(accountBalances[a.id] || 0) : (accountBalances[a.id] || 0))}
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                  <TableRow className="bg-gray-50/50 font-bold border-t border-gray-200">
-                    <TableCell className="pl-6 text-xs uppercase text-gray-500">Total Revenue</TableCell>
-                    <TableCell className="text-right pr-6 font-mono text-sm text-gray-900 font-bold">{formatCurrency(incomeStatementData.totalRevenue)}</TableCell>
-                  </TableRow>
+            </div>
 
-                  {/* COGS SECTION */}
-                  <TableRow className="bg-orange-50/5 font-semibold text-gray-900">
-                    <TableCell colSpan={2} className="py-4 pl-6 text-sm tracking-wide uppercase">2. Cost of Sales</TableCell>
-                  </TableRow>
-                  {incomeStatementData.cogsAccounts.map(a => (
-                    <TableRow key={a.id} className="hover:bg-gray-50/40">
-                      <TableCell className="pl-6 text-gray-700">{a.name}</TableCell>
-                      <TableCell className="text-right pr-6 font-mono text-xs text-red-600 font-medium">
-                        ({formatCurrency(accountBalances[a.id] || 0)})
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                  <TableRow className="bg-gray-50/50 font-bold border-t border-gray-200">
-                    <TableCell className="pl-6 text-xs uppercase text-gray-500">Total Cost of Goods Sold</TableCell>
-                    <TableCell className="text-right pr-6 font-mono text-sm text-red-600 font-bold">({formatCurrency(incomeStatementData.totalCogs)})</TableCell>
-                  </TableRow>
+            <div className="p-6 space-y-6 text-xs font-mono">
+              {/* 1. ASSETS SECTION */}
+              <div className="space-y-3">
+                <h4 className="text-sm font-black text-teal-800 dark:text-teal-300 uppercase tracking-wider border-b-2 border-teal-600 pb-1 flex justify-between font-sans">
+                  <span>1. ASSETS</span>
+                  <span>{formatCur(balanceSheet.totalAssets)}</span>
+                </h4>
 
-                  {/* GROSS PROFIT SUB-TOTAL */}
-                  <TableRow className="bg-blue-50/40 font-bold text-blue-900 border-t border-b-2 border-blue-100">
-                    <TableCell className="pl-6 text-sm uppercase">Gross Profit</TableCell>
-                    <TableCell className="text-right pr-6 font-mono text-sm">{formatCurrency(incomeStatementData.grossProfit)}</TableCell>
-                  </TableRow>
+                {/* Current Assets */}
+                <div className="space-y-2 pl-2">
+                  <div className="font-bold text-foreground font-sans text-xs flex justify-between py-1 border-b bg-muted/30 px-2 rounded-md">
+                    <span>A. Current Assets</span>
+                    <span className="font-mono">{formatCur(balanceSheet.totalCurrentAssets)}</span>
+                  </div>
 
-                  {/* OPERATING EXPENSES */}
-                  <TableRow className="bg-gray-50/5 font-semibold text-gray-900">
-                    <TableCell colSpan={2} className="py-4 pl-6 text-sm tracking-wide uppercase">3. Operating Expenses</TableCell>
-                  </TableRow>
-                  {incomeStatementData.otherExpenses.map(a => (
-                    <TableRow key={a.id} className="hover:bg-gray-50/40">
-                      <TableCell className="pl-6 text-gray-700">{a.name} {a.type === 'ContraExpense' && <span className="text-[10px] text-gray-400 italic">(Contra Account)</span>}</TableCell>
-                      <TableCell className="text-right pr-6 font-mono text-xs text-red-600 font-medium">
-                        ({formatCurrency(a.type === 'ContraExpense' ? -(accountBalances[a.id] || 0) : (accountBalances[a.id] || 0))})
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                  <TableRow className="bg-gray-50/50 font-bold border-t border-gray-200">
-                    <TableCell className="pl-6 text-xs uppercase text-gray-500">Total Operating Expenses</TableCell>
-                    <TableCell className="text-right pr-6 font-mono text-sm text-red-600 font-bold">({formatCurrency(incomeStatementData.totalOtherExpenses)})</TableCell>
-                  </TableRow>
+                  {balanceSheet.currentAssetsGroups.map(group => (
+                    <div key={group.id} className="space-y-1 pl-2">
+                      <div
+                        onClick={() => toggleGroup(group.id)}
+                        className="flex justify-between py-1 font-bold text-foreground cursor-pointer hover:text-teal-600 transition-colors"
+                      >
+                        <span className="font-sans flex items-center gap-1.5">
+                          {viewMode === 'detailed' && (
+                            collapsedGroups[group.id] ? <ChevronRight className="w-3.5 h-3.5 text-muted-foreground" /> : <ChevronDown className="w-3.5 h-3.5 text-muted-foreground" />
+                          )}
+                          {group.title}
+                        </span>
+                        <span>{formatCur(group.total)}</span>
+                      </div>
 
-                  {/* NET INCOME */}
-                  <TableRow className="bg-emerald-600 text-white font-bold border-t-2 border-emerald-700">
-                    <TableCell className="pl-6 text-sm uppercase tracking-wide">Net Income / Earnings</TableCell>
-                    <TableCell className="text-right pr-6 font-mono text-sm">
-                      {formatCurrency(incomeStatementData.netIncome)}
-                    </TableCell>
-                  </TableRow>
-                </TableBody>
-              </Table>
-            </CardContent>
-          </Card>
-        </TabsContent>
-
-        {/* 3. TRIAL BALANCE */}
-        <TabsContent value="trial-balance">
-          <Card className="shadow-sm border-gray-200">
-            <CardHeader className="bg-gray-50 border-b border-gray-100 p-6">
-              <div className="flex justify-between items-start">
-                <div>
-                  <CardTitle className="text-lg font-bold text-gray-900">Trial Balance Statement</CardTitle>
-                  <CardDescription className="text-xs text-gray-500">Ledger audit report validating zero-net balances across all assets, liabilities, and period accounts</CardDescription>
-                </div>
-                <Badge variant="outline" className="border-gray-200 bg-gray-50 text-gray-800">Trial Balance</Badge>
-              </div>
-            </CardHeader>
-            <CardContent className="p-0">
-              <Table>
-                <TableHeader className="bg-gray-100/40 text-xs font-medium text-gray-500">
-                  <TableRow>
-                    <TableHead className="pl-6">Account Description</TableHead>
-                    <TableHead className="w-44 text-right">Debit Balance</TableHead>
-                    <TableHead className="w-44 text-right pr-6">Credit Balance</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody className="divide-y divide-gray-100">
-                  {accounts.map(a => {
-                    const bal = accountBalances[a.id] || 0;
-                    if (bal === 0) return null; // Only show active ledger balances
-
-                    // Determine normal side
-                    const side = ['Asset', 'Expense', 'ContraLiability', 'ContraEquity', 'ContraRevenue'].includes(a.type) ? 'debit' : 'credit';
-
-                    return (
-                      <TableRow key={a.id} className="hover:bg-gray-50/40 text-xs">
-                        <TableCell className="pl-6 font-sans text-gray-700 font-medium">{a.name}</TableCell>
-                        <TableCell className="text-right font-mono text-gray-900">
-                          {side === 'debit' ? formatCurrency(bal) : '—'}
-                        </TableCell>
-                        <TableCell className="text-right pr-6 font-mono text-gray-900">
-                          {side === 'credit' ? formatCurrency(bal) : '—'}
-                        </TableCell>
-                      </TableRow>
-                    );
-                  })}
-                  
-                  {/* Totals */}
-                  <TableRow className="bg-gray-100 font-bold text-gray-900 border-t-2 border-gray-300">
-                    <TableCell className="pl-6 text-sm uppercase">Total Ledger Balances</TableCell>
-                    <TableCell className="text-right font-mono text-sm">
-                      {formatCurrency(
-                        accounts
-                          .filter(a => ['Asset', 'Expense', 'ContraLiability', 'ContraEquity', 'ContraRevenue'].includes(a.type))
-                          .reduce((s, a) => s + (accountBalances[a.id] || 0), 0)
+                      {viewMode === 'detailed' && !collapsedGroups[group.id] && (
+                        <div className="pl-6 space-y-0.5 border-l-2 border-muted">
+                          {group.accounts.map(a => (
+                            <div key={a.id} className="flex justify-between py-0.5 text-muted-foreground hover:text-foreground text-[11px]">
+                              <span className="font-sans">• {a.code} — {a.name}</span>
+                              <span>{formatCur(ledgerState.closingBalances[a.id] || 0)}</span>
+                            </div>
+                          ))}
+                        </div>
                       )}
-                    </TableCell>
-                    <TableCell className="text-right pr-6 font-mono text-sm">
-                      {formatCurrency(
-                        accounts
-                          .filter(a => !['Asset', 'Expense', 'ContraLiability', 'ContraEquity', 'ContraRevenue'].includes(a.type))
-                          .reduce((s, a) => s + (accountBalances[a.id] || 0), 0)
-                      )}
-                    </TableCell>
-                  </TableRow>
-                </TableBody>
-              </Table>
-            </CardContent>
-          </Card>
-        </TabsContent>
-
-        {/* 4. CASH FLOW STATEMENT */}
-        <TabsContent value="cash-flow">
-          <Card className="shadow-sm border-gray-200">
-            <CardHeader className="bg-gray-50 border-b border-gray-100 p-6">
-              <div className="flex justify-between items-start">
-                <div>
-                  <CardTitle className="text-lg font-bold text-gray-900">Statement of Cash Flows</CardTitle>
-                  <CardDescription className="text-xs text-gray-500">IAS 7 compliant statement of cash flows · Indirect Method</CardDescription>
+                    </div>
+                  ))}
                 </div>
-                <Badge variant="outline" className="border-teal-200 bg-teal-50 text-teal-800">Cash Flow</Badge>
+
+                {/* Non-Current Assets */}
+                <div className="space-y-2 pl-2 pt-3">
+                  <div className="font-bold text-foreground font-sans text-xs flex justify-between py-1 border-b bg-muted/30 px-2 rounded-md">
+                    <span>B. Non-Current Assets (Property, Plant, Equipment & Leases)</span>
+                    <span className="font-mono">{formatCur(balanceSheet.totalNonCurrentAssets)}</span>
+                  </div>
+
+                  {balanceSheet.nonCurrentAssetsGroups.map(group => (
+                    <div key={group.id} className="space-y-1 pl-2">
+                      <div
+                        onClick={() => toggleGroup(group.id)}
+                        className="flex justify-between py-1 font-bold text-foreground cursor-pointer hover:text-teal-600 transition-colors"
+                      >
+                        <span className="font-sans flex items-center gap-1.5">
+                          {viewMode === 'detailed' && (
+                            collapsedGroups[group.id] ? <ChevronRight className="w-3.5 h-3.5 text-muted-foreground" /> : <ChevronDown className="w-3.5 h-3.5 text-muted-foreground" />
+                          )}
+                          {group.title}
+                        </span>
+                        <span>{formatCur(group.total)}</span>
+                      </div>
+
+                      {viewMode === 'detailed' && !collapsedGroups[group.id] && (
+                        <div className="pl-6 space-y-0.5 border-l-2 border-muted">
+                          {group.accounts.map(a => (
+                            <div key={a.id} className="flex justify-between py-0.5 text-muted-foreground hover:text-foreground text-[11px]">
+                              <span className="font-sans">• {a.code} — {a.name}</span>
+                              <span>{formatCur(ledgerState.closingBalances[a.id] || 0)}</span>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+
+                {/* TOTAL ASSETS BAR */}
+                <div className="flex justify-between p-3.5 rounded-xl bg-teal-500/10 text-teal-950 dark:text-teal-200 font-black text-sm border border-teal-500/30">
+                  <span className="font-sans uppercase">TOTAL ASSETS:</span>
+                  <span>{formatCur(balanceSheet.totalAssets)}</span>
+                </div>
               </div>
-            </CardHeader>
-            <CardContent className="p-0">
-              <Table>
-                <TableHeader className="bg-gray-100/40 text-xs font-medium text-gray-500">
-                  <TableRow>
-                    <TableHead className="pl-6">Cash Flow Activity</TableHead>
-                    <TableHead className="w-44 text-right pr-6">Amount</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody className="divide-y divide-gray-100">
-                  {/* OPERATING ACTIVITIES */}
-                  <TableRow className="bg-gray-50/50 font-semibold text-gray-900">
-                    <TableCell colSpan={2} className="py-4 pl-6 text-sm tracking-wide uppercase">1. Cash Flows from Operating Activities</TableCell>
-                  </TableRow>
-                  <TableRow className="hover:bg-gray-50/40">
-                    <TableCell className="pl-8 text-gray-700">Net Period Earnings / Net Income</TableCell>
-                    <TableCell className="text-right pr-6 font-mono text-xs text-gray-900 font-medium">{formatCurrency(cashFlowData.netIncome)}</TableCell>
-                  </TableRow>
-                  <TableRow className="hover:bg-gray-50/40">
-                    <TableCell className="pl-8 text-gray-700">Adjustment for Depreciation Expense (Non-Cash Expense)</TableCell>
-                    <TableCell className="text-right pr-6 font-mono text-xs text-emerald-700 font-medium">+{formatCurrency(cashFlowData.totalDepreciation)}</TableCell>
-                  </TableRow>
-                  <TableRow className="hover:bg-gray-50/40">
-                    <TableCell className="pl-8 text-gray-700">Change in Accounts Receivable (Increase reduces cash)</TableCell>
-                    <TableCell className={`text-right pr-6 font-mono text-xs font-medium ${cashFlowData.arChange > 0 ? 'text-red-650' : 'text-emerald-700'}`}>
-                      {cashFlowData.arChange > 0 ? `-${formatCurrency(cashFlowData.arChange)}` : `+${formatCurrency(-cashFlowData.arChange)}`}
-                    </TableCell>
-                  </TableRow>
-                  <TableRow className="hover:bg-gray-50/40">
-                    <TableCell className="pl-8 text-gray-700">Change in Inventory Assets (Increase reduces cash)</TableCell>
-                    <TableCell className={`text-right pr-6 font-mono text-xs font-medium ${cashFlowData.invChange > 0 ? 'text-red-650' : 'text-emerald-700'}`}>
-                      {cashFlowData.invChange > 0 ? `-${formatCurrency(cashFlowData.invChange)}` : `+${formatCurrency(-cashFlowData.invChange)}`}
-                    </TableCell>
-                  </TableRow>
-                  <TableRow className="hover:bg-gray-50/40">
-                    <TableCell className="pl-8 text-gray-700">Change in Accounts Payable (Increase increases cash)</TableCell>
-                    <TableCell className={`text-right pr-6 font-mono text-xs font-medium ${cashFlowData.apChange > 0 ? 'text-emerald-700' : 'text-red-650'}`}>
-                      {cashFlowData.apChange > 0 ? `+${formatCurrency(cashFlowData.apChange)}` : `-${formatCurrency(-cashFlowData.apChange)}`}
-                    </TableCell>
-                  </TableRow>
-                  <TableRow className="hover:bg-gray-50/40">
-                    <TableCell className="pl-8 text-gray-700">Change in GRNI Accruals (Goods received not invoiced)</TableCell>
-                    <TableCell className={`text-right pr-6 font-mono text-xs font-medium ${cashFlowData.grniChange > 0 ? 'text-emerald-700' : 'text-red-650'}`}>
-                      {cashFlowData.grniChange > 0 ? `+${formatCurrency(cashFlowData.grniChange)}` : `-${formatCurrency(-cashFlowData.grniChange)}`}
-                    </TableCell>
-                  </TableRow>
-                  <TableRow className="bg-gray-50 font-bold border-t border-gray-200">
-                    <TableCell className="pl-6 text-xs uppercase text-gray-500">Net Cash provided by Operating Activities</TableCell>
-                    <TableCell className="text-right pr-6 font-mono text-sm text-gray-900 font-bold">{formatCurrency(cashFlowData.operatingCashFlow)}</TableCell>
-                  </TableRow>
 
-                  {/* INVESTING ACTIVITIES */}
-                  <TableRow className="bg-gray-50/50 font-semibold text-gray-900">
-                    <TableCell colSpan={2} className="py-4 pl-6 text-sm tracking-wide uppercase">2. Cash Flows from Investing Activities</TableCell>
-                  </TableRow>
-                  <TableRow className="hover:bg-gray-50/40">
-                    <TableCell className="pl-8 text-gray-700">Capital Expenditure on Fixed Assets / Property, Plant & Equipment</TableCell>
-                    <TableCell className={`text-right pr-6 font-mono text-xs font-medium ${cashFlowData.investingCashFlow < 0 ? 'text-red-600' : 'text-emerald-700'}`}>
-                      {cashFlowData.investingCashFlow < 0 ? `-${formatCurrency(-cashFlowData.investingCashFlow)}` : `+${formatCurrency(cashFlowData.investingCashFlow)}`}
-                    </TableCell>
-                  </TableRow>
-                  <TableRow className="bg-gray-50 font-bold border-t border-gray-200">
-                    <TableCell className="pl-6 text-xs uppercase text-gray-500">Net Cash used in Investing Activities</TableCell>
-                    <TableCell className="text-right pr-6 font-mono text-sm text-gray-900 font-bold">{formatCurrency(cashFlowData.investingCashFlow)}</TableCell>
-                  </TableRow>
+              {/* 2. LIABILITIES SECTION */}
+              <div className="space-y-3 pt-4">
+                <h4 className="text-sm font-black text-rose-800 dark:text-rose-300 uppercase tracking-wider border-b-2 border-rose-600 pb-1 flex justify-between font-sans">
+                  <span>2. LIABILITIES</span>
+                  <span>{formatCur(balanceSheet.totalLiabilities)}</span>
+                </h4>
 
-                  {/* FINANCING ACTIVITIES */}
-                  <TableRow className="bg-gray-50/50 font-semibold text-gray-900">
-                    <TableCell colSpan={2} className="py-4 pl-6 text-sm tracking-wide uppercase">3. Cash Flows from Financing Activities</TableCell>
-                  </TableRow>
-                  <TableRow className="hover:bg-gray-50/40">
-                    <TableCell className="pl-8 text-gray-700">Equity Capital Additions / Share Capital Issuances</TableCell>
-                    <TableCell className={`text-right pr-6 font-mono text-xs font-medium ${cashFlowData.financingCashFlow >= 0 ? 'text-emerald-700' : 'text-red-600'}`}>
-                      {cashFlowData.financingCashFlow >= 0 ? `+${formatCurrency(cashFlowData.financingCashFlow)}` : `-${formatCurrency(-cashFlowData.financingCashFlow)}`}
-                    </TableCell>
-                  </TableRow>
-                  <TableRow className="bg-gray-50 font-bold border-t border-gray-200">
-                    <TableCell className="pl-6 text-xs uppercase text-gray-500">Net Cash provided by Financing Activities</TableCell>
-                    <TableCell className="text-right pr-6 font-mono text-sm text-gray-900 font-bold">{formatCurrency(cashFlowData.financingCashFlow)}</TableCell>
-                  </TableRow>
+                {/* Current Liabilities */}
+                <div className="space-y-2 pl-2">
+                  <div className="font-bold text-foreground font-sans text-xs flex justify-between py-1 border-b bg-muted/30 px-2 rounded-md">
+                    <span>A. Current Liabilities (Trade Payables, Accruals & Taxes)</span>
+                    <span className="font-mono">{formatCur(balanceSheet.totalCurrentLiabilities)}</span>
+                  </div>
 
-                  {/* NET CHANGE IN CASH */}
-                  <TableRow className="bg-teal-50/50 font-bold text-teal-900 border-t border-b-2 border-teal-200">
-                    <TableCell className="pl-6 text-sm uppercase">Net Increase / (Decrease) in Cash & equivalents</TableCell>
-                    <TableCell className="text-right pr-6 font-mono text-sm">{formatCurrency(cashFlowData.netCashIncrease)}</TableCell>
-                  </TableRow>
+                  {balanceSheet.currentLiabilitiesGroups.map(group => (
+                    <div key={group.id} className="space-y-1 pl-2">
+                      <div
+                        onClick={() => toggleGroup(group.id)}
+                        className="flex justify-between py-1 font-bold text-foreground cursor-pointer hover:text-rose-600 transition-colors"
+                      >
+                        <span className="font-sans flex items-center gap-1.5">
+                          {viewMode === 'detailed' && (
+                            collapsedGroups[group.id] ? <ChevronRight className="w-3.5 h-3.5 text-muted-foreground" /> : <ChevronDown className="w-3.5 h-3.5 text-muted-foreground" />
+                          )}
+                          {group.title}
+                        </span>
+                        <span>{formatCur(group.total)}</span>
+                      </div>
 
-                  {/* BEGINNING AND ENDING CASH */}
-                  <TableRow className="hover:bg-gray-50/40">
-                    <TableCell className="pl-8 text-gray-500">Cash and Cash Equivalents at Beginning of Period</TableCell>
-                    <TableCell className="text-right pr-6 font-mono text-xs text-gray-500">{formatCurrency(cashFlowData.beginningCash)}</TableCell>
-                  </TableRow>
-                  <TableRow className="bg-teal-600 text-white font-bold border-t-2 border-teal-700">
-                    <TableCell className="pl-6 text-sm uppercase tracking-wide">Cash and Cash Equivalents at End of Period</TableCell>
-                    <TableCell className="text-right pr-6 font-mono text-sm">{formatCurrency(cashFlowData.endingCash)}</TableCell>
-                  </TableRow>
-                </TableBody>
-              </Table>
-            </CardContent>
-          </Card>
-        </TabsContent>
-      </Tabs>
+                      {viewMode === 'detailed' && !collapsedGroups[group.id] && (
+                        <div className="pl-6 space-y-0.5 border-l-2 border-muted">
+                          {group.accounts.map(a => (
+                            <div key={a.id} className="flex justify-between py-0.5 text-muted-foreground hover:text-foreground text-[11px]">
+                              <span className="font-sans">• {a.code} — {a.name}</span>
+                              <span>{formatCur(ledgerState.closingBalances[a.id] || 0)}</span>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+
+                {/* Non-Current Liabilities */}
+                {balanceSheet.nonCurrentLiabilitiesGroups.length > 0 && (
+                  <div className="space-y-2 pl-2 pt-3">
+                    <div className="font-bold text-foreground font-sans text-xs flex justify-between py-1 border-b bg-muted/30 px-2 rounded-md">
+                      <span>B. Non-Current Liabilities (Long-term Leases & Debt)</span>
+                      <span className="font-mono">{formatCur(balanceSheet.totalNonCurrentLiabilities)}</span>
+                    </div>
+
+                    {balanceSheet.nonCurrentLiabilitiesGroups.map(group => (
+                      <div key={group.id} className="space-y-1 pl-2">
+                        <div
+                          onClick={() => toggleGroup(group.id)}
+                          className="flex justify-between py-1 font-bold text-foreground cursor-pointer hover:text-rose-600 transition-colors"
+                        >
+                          <span className="font-sans flex items-center gap-1.5">
+                            {viewMode === 'detailed' && (
+                              collapsedGroups[group.id] ? <ChevronRight className="w-3.5 h-3.5 text-muted-foreground" /> : <ChevronDown className="w-3.5 h-3.5 text-muted-foreground" />
+                            )}
+                            {group.title}
+                          </span>
+                          <span>{formatCur(group.total)}</span>
+                        </div>
+
+                        {viewMode === 'detailed' && !collapsedGroups[group.id] && (
+                          <div className="pl-6 space-y-0.5 border-l-2 border-muted">
+                            {group.accounts.map(a => (
+                              <div key={a.id} className="flex justify-between py-0.5 text-muted-foreground hover:text-foreground text-[11px]">
+                                <span className="font-sans">• {a.code} — {a.name}</span>
+                                <span>{formatCur(ledgerState.closingBalances[a.id] || 0)}</span>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                <div className="flex justify-between p-2.5 rounded-xl bg-rose-500/10 text-rose-950 dark:text-rose-200 font-bold border border-rose-500/30">
+                  <span className="font-sans">TOTAL LIABILITIES:</span>
+                  <span>{formatCur(balanceSheet.totalLiabilities)}</span>
+                </div>
+              </div>
+
+              {/* 3. EQUITY SECTION */}
+              <div className="space-y-3 pt-4">
+                <h4 className="text-sm font-black text-blue-800 dark:text-blue-300 uppercase tracking-wider border-b-2 border-blue-600 pb-1 flex justify-between font-sans">
+                  <span>3. SHAREHOLDERS' EQUITY</span>
+                  <span>{formatCur(balanceSheet.totalEquity)}</span>
+                </h4>
+
+                <div className="space-y-1.5 pl-2">
+                  {balanceSheet.equityGroups.map(group => (
+                    <div key={group.id} className="flex justify-between py-1 text-foreground font-semibold">
+                      <span className="font-sans">• {group.title}</span>
+                      <span>{formatCur(group.total)}</span>
+                    </div>
+                  ))}
+                  <div className="flex justify-between py-1 font-bold text-emerald-600">
+                    <span className="font-sans">• Retained Net Income for the Period (P&L):</span>
+                    <span>{formatCur(balanceSheet.netPeriodIncome)}</span>
+                  </div>
+                </div>
+
+                <div className="flex justify-between p-2.5 rounded-xl bg-blue-500/10 text-blue-950 dark:text-blue-200 font-bold border border-blue-500/30">
+                  <span className="font-sans">TOTAL SHAREHOLDERS' EQUITY:</span>
+                  <span>{formatCur(balanceSheet.totalEquity)}</span>
+                </div>
+              </div>
+
+              {/* EQUATION TOTAL CHECK */}
+              <div className="flex justify-between p-4 rounded-xl bg-slate-900 text-white font-black text-base border-t-2 border-slate-700">
+                <span className="font-sans uppercase">TOTAL LIABILITIES & EQUITY:</span>
+                <span className="text-emerald-400">{formatCur(balanceSheet.totalLiabilitiesAndEquity)}</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── TAB 2: STATEMENT OF COMPREHENSIVE INCOME (IFRS 15) ───────────────── */}
+      {activeTab === 'incomestatement' && (
+        <div className="space-y-6 animate-in fade-in">
+          <div className="rounded-2xl border border-border bg-card shadow-xs overflow-hidden">
+            <div className="p-5 bg-muted/40 border-b flex items-center justify-between flex-wrap gap-3">
+              <div>
+                <span className="text-[10px] font-black uppercase text-teal-700 tracking-wider block">
+                  {activeCompany.name}
+                </span>
+                <h3 className="text-base font-black text-foreground">
+                  Statement of Comprehensive Income (Profit & Loss)
+                </h3>
+                <span className="text-xs text-muted-foreground">
+                  Multi-Step Gross Margin, Operating Profit (EBIT), and Net Period Earnings (IFRS 15).
+                </span>
+              </div>
+              <div className="text-right text-xs font-mono">
+                <span className="font-bold text-foreground block">Period: {dateFrom || 'Inception'} to {dateTo || 'Today'}</span>
+                <span className="text-muted-foreground text-[11px]">Format: {viewMode === 'detailed' ? 'Detailed Tree' : 'Condensed'}</span>
+              </div>
+            </div>
+
+            <div className="p-6 space-y-5 text-xs font-mono">
+              {/* 1. Operating Revenue */}
+              <div className="space-y-2">
+                <h4 className="text-sm font-black text-teal-800 dark:text-teal-300 uppercase border-b pb-1 flex justify-between font-sans">
+                  <span>1. OPERATING REVENUE</span>
+                  <span>{formatCur(incomeStatement.grossRevenue)}</span>
+                </h4>
+                {incomeStatement.revenueGroups.map(group => (
+                  <div key={group.id} className="space-y-1 pl-2">
+                    <div className="flex justify-between py-1 font-bold text-foreground">
+                      <span className="font-sans">{group.title}</span>
+                      <span>{formatCur(group.total)}</span>
+                    </div>
+                    {viewMode === 'detailed' && (
+                      <div className="pl-4 space-y-0.5">
+                        {group.accounts.map(a => (
+                          <div key={a.id} className="flex justify-between py-0.5 text-muted-foreground hover:text-foreground text-[11px]">
+                            <span className="font-sans">• {a.code} — {a.name}</span>
+                            <span>{formatCur(ledgerState.closingBalances[a.id] || 0)}</span>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+
+              {/* 2. Cost of Goods Sold */}
+              <div className="space-y-2 pt-2">
+                <h4 className="text-sm font-black text-rose-800 dark:text-rose-300 uppercase border-b pb-1 flex justify-between font-sans">
+                  <span>2. COST OF SALES / DIRECT COSTS (COGS)</span>
+                  <span>-{formatCur(incomeStatement.cogsGroup.total)}</span>
+                </h4>
+                {viewMode === 'detailed' && (
+                  <div className="pl-4 space-y-0.5">
+                    {incomeStatement.cogsGroup.accounts.map(a => (
+                      <div key={a.id} className="flex justify-between py-0.5 text-muted-foreground hover:text-foreground text-[11px]">
+                        <span className="font-sans">• {a.code} — {a.name}</span>
+                        <span>{formatCur(ledgerState.closingBalances[a.id] || 0)}</span>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              {/* Gross Profit Subtotal */}
+              <div className="flex justify-between p-3 rounded-xl bg-emerald-500/10 text-emerald-900 dark:text-emerald-300 font-black text-sm border border-emerald-500/30">
+                <span className="font-sans">GROSS PROFIT (Margin: {incomeStatement.grossMarginPct.toFixed(1)}%):</span>
+                <span>{formatCur(incomeStatement.grossProfit)}</span>
+              </div>
+
+              {/* 3. Operating Expenses */}
+              <div className="space-y-2 pt-2">
+                <h4 className="text-sm font-black text-rose-800 dark:text-rose-300 uppercase border-b pb-1 flex justify-between font-sans">
+                  <span>3. OPERATING EXPENSES (OPEX)</span>
+                  <span>-{formatCur(incomeStatement.totalOperatingExpenses)}</span>
+                </h4>
+
+                {incomeStatement.opexGroups.map(group => (
+                  <div key={group.id} className="space-y-1 pl-2">
+                    <div className="flex justify-between py-1 font-bold text-foreground">
+                      <span className="font-sans">{group.title}</span>
+                      <span>-{formatCur(group.total)}</span>
+                    </div>
+                    {viewMode === 'detailed' && (
+                      <div className="pl-4 space-y-0.5">
+                        {group.accounts.map(a => (
+                          <div key={a.id} className="flex justify-between py-0.5 text-muted-foreground hover:text-foreground text-[11px]">
+                            <span className="font-sans">• {a.code} — {a.name}</span>
+                            <span>{formatCur(ledgerState.closingBalances[a.id] || 0)}</span>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+
+              {/* Operating Income / EBIT */}
+              <div className="flex justify-between p-3 rounded-xl bg-blue-500/10 text-blue-900 dark:text-blue-300 font-bold border border-blue-500/30">
+                <span className="font-sans">OPERATING PROFIT / (EBIT):</span>
+                <span>{formatCur(incomeStatement.operatingIncomeEbit)}</span>
+              </div>
+
+              {/* Finance & Tax Provision */}
+              {incomeStatement.financeGroup.accounts.length > 0 && (
+                <div className="space-y-1 pl-2 pt-1">
+                  <div className="flex justify-between font-bold text-foreground">
+                    <span className="font-sans">{incomeStatement.financeGroup.title}</span>
+                    <span>-{formatCur(incomeStatement.financeGroup.total)}</span>
+                  </div>
+                  {viewMode === 'detailed' && (
+                    <div className="pl-4 space-y-0.5">
+                      {incomeStatement.financeGroup.accounts.map(a => (
+                        <div key={a.id} className="flex justify-between py-0.5 text-muted-foreground hover:text-foreground text-[11px]">
+                          <span className="font-sans">• {a.code} — {a.name}</span>
+                          <span>{formatCur(ledgerState.closingBalances[a.id] || 0)}</span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* NET PROFIT TOTAL */}
+              <div className="flex justify-between p-4 rounded-xl bg-slate-900 text-white font-black text-base border-t-2 border-slate-700">
+                <span className="font-sans uppercase">NET PROFIT / (LOSS) FOR PERIOD:</span>
+                <span className={incomeStatement.netProfit >= 0 ? 'text-emerald-400' : 'text-rose-400'}>
+                  {formatCur(incomeStatement.netProfit)}
+                </span>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── TAB 3: STATEMENT OF CASH FLOWS (IAS 7) ───────────────────────────── */}
+      {activeTab === 'cashflow' && (
+        <div className="space-y-6 animate-in fade-in">
+          <div className="rounded-2xl border border-border bg-card shadow-xs overflow-hidden">
+            <div className="p-5 bg-muted/40 border-b flex items-center justify-between flex-wrap gap-3">
+              <div>
+                <span className="text-[10px] font-black uppercase text-teal-700 tracking-wider block">
+                  {activeCompany.name}
+                </span>
+                <h3 className="text-base font-black text-foreground">
+                  Statement of Cash Flows (IAS 7)
+                </h3>
+                <span className="text-xs text-muted-foreground">
+                  Operating, Investing, and Financing Cash Movements and Liquidity Reconciliation.
+                </span>
+              </div>
+              <div className="flex items-center gap-1 bg-muted p-1 rounded-xl text-xs font-bold border">
+                <button
+                  onClick={() => setCashFlowMethod('indirect')}
+                  className={`px-3 py-1 rounded-lg ${cashFlowMethod === 'indirect' ? 'bg-teal-600 text-white shadow-2xs' : 'text-muted-foreground'}`}
+                >
+                  Indirect Method
+                </button>
+                <button
+                  onClick={() => setCashFlowMethod('direct')}
+                  className={`px-3 py-1 rounded-lg ${cashFlowMethod === 'direct' ? 'bg-teal-600 text-white shadow-2xs' : 'text-muted-foreground'}`}
+                >
+                  Direct Method
+                </button>
+              </div>
+            </div>
+
+            <div className="p-6 space-y-5 text-xs font-mono">
+              {/* 1. Operating Activities */}
+              <div className="space-y-2">
+                <h4 className="text-sm font-black text-teal-800 dark:text-teal-300 uppercase border-b pb-1 flex justify-between font-sans">
+                  <span>1. CASH FLOWS FROM OPERATING ACTIVITIES</span>
+                  <span>{formatCur(cashFlowStatement.netOperatingCashFlow)}</span>
+                </h4>
+
+                <div className="pl-3 space-y-1.5">
+                  <div className="flex justify-between py-1 font-bold text-foreground">
+                    <span className="font-sans">Net Profit / (Loss) for the period:</span>
+                    <span>{formatCur(cashFlowStatement.netIncome)}</span>
+                  </div>
+                  <div className="flex justify-between py-0.5 text-muted-foreground pl-2">
+                    <span className="font-sans">+ Add: Non-Cash Depreciation & Amortization:</span>
+                    <span>{formatCur(cashFlowStatement.deprAddback)}</span>
+                  </div>
+                  <div className="flex justify-between py-0.5 text-muted-foreground pl-2">
+                    <span className="font-sans">(Increase) / Decrease in Accounts Receivable:</span>
+                    <span>{formatCur(-cashFlowStatement.arChange)}</span>
+                  </div>
+                  <div className="flex justify-between py-0.5 text-muted-foreground pl-2">
+                    <span className="font-sans">(Increase) / Decrease in Inventories:</span>
+                    <span>{formatCur(-cashFlowStatement.invChange)}</span>
+                  </div>
+                  <div className="flex justify-between py-0.5 text-muted-foreground pl-2">
+                    <span className="font-sans">Increase / (Decrease) in Accounts Payable:</span>
+                    <span>{formatCur(cashFlowStatement.apChange)}</span>
+                  </div>
+                  <div className="flex justify-between py-0.5 text-muted-foreground pl-2">
+                    <span className="font-sans">Increase / (Decrease) in Statutory Tax & Payroll Obligations:</span>
+                    <span>{formatCur(cashFlowStatement.taxPayableChange)}</span>
+                  </div>
+                </div>
+
+                <div className="flex justify-between p-2.5 rounded-xl bg-teal-500/10 text-teal-950 dark:text-teal-200 font-bold border border-teal-500/30">
+                  <span className="font-sans">NET CASH GENERATED FROM OPERATING ACTIVITIES:</span>
+                  <span>{formatCur(cashFlowStatement.netOperatingCashFlow)}</span>
+                </div>
+              </div>
+
+              {/* 2. Investing Activities */}
+              <div className="space-y-2 pt-2">
+                <h4 className="text-sm font-black text-purple-800 dark:text-purple-300 uppercase border-b pb-1 flex justify-between font-sans">
+                  <span>2. CASH FLOWS FROM INVESTING ACTIVITIES</span>
+                  <span>{formatCur(cashFlowStatement.netInvestingCashFlow)}</span>
+                </h4>
+                <div className="pl-3 space-y-1">
+                  <div className="flex justify-between py-1 text-muted-foreground">
+                    <span className="font-sans">Capital Expenditures (CapEx - Property, Plant & Equipment):</span>
+                    <span>{formatCur(cashFlowStatement.netInvestingCashFlow)}</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* 3. Financing Activities */}
+              <div className="space-y-2 pt-2">
+                <h4 className="text-sm font-black text-blue-800 dark:text-blue-300 uppercase border-b pb-1 flex justify-between font-sans">
+                  <span>3. CASH FLOWS FROM FINANCING ACTIVITIES</span>
+                  <span>{formatCur(cashFlowStatement.netFinancingCashFlow)}</span>
+                </h4>
+                <div className="pl-3 space-y-1">
+                  <div className="flex justify-between py-1 text-muted-foreground">
+                    <span className="font-sans">Equity Contributions, Dividends & Long-Term Debt:</span>
+                    <span>{formatCur(cashFlowStatement.netFinancingCashFlow)}</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Reconciliation Check */}
+              <div className="p-4 rounded-xl bg-slate-900 text-white space-y-2 border-t-2 border-slate-700">
+                <div className="flex justify-between font-bold text-teal-300">
+                  <span className="font-sans">NET INCREASE / (DECREASE) IN CASH & CASH EQUIVALENTS:</span>
+                  <span>{formatCur(cashFlowStatement.netCashChange)}</span>
+                </div>
+                <div className="flex justify-between text-muted-foreground text-xs pt-1 border-t border-slate-800">
+                  <span className="font-sans">Cash & Bank Balances at Beginning of Period:</span>
+                  <span>{formatCur(cashFlowStatement.openingCash)}</span>
+                </div>
+                <div className="flex justify-between text-sm font-black text-emerald-400">
+                  <span className="font-sans uppercase">CASH & BANK BALANCES AT END OF PERIOD:</span>
+                  <span>{formatCur(cashFlowStatement.closingCash)}</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── TAB 4: 6-COLUMN TRIAL BALANCE ───────────────────────────────────── */}
+      {activeTab === 'trialbalance' && (
+        <div className="space-y-4 animate-in fade-in">
+          <div className="flex items-center justify-between flex-wrap gap-3">
+            <div className="flex items-center gap-2">
+              <Input
+                placeholder="Search account code, title, or type..."
+                value={tbSearch}
+                onChange={e => setTbSearch(e.target.value)}
+                className="max-w-xs text-xs h-9"
+              />
+              <label className="flex items-center gap-1.5 text-xs text-muted-foreground font-semibold cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={showZeroBalances}
+                  onChange={e => setShowZeroBalances(e.target.checked)}
+                  className="rounded border-border text-teal-600 focus:ring-teal-500"
+                />
+                Show Zero Balance Accounts
+              </label>
+            </div>
+
+            <div className="text-xs font-bold text-muted-foreground">
+              Total Posting Ledgers: <strong className="text-teal-600">{trialBalanceRows.length}</strong>
+            </div>
+          </div>
+
+          <div className="rounded-2xl border border-border bg-card shadow-xs overflow-hidden">
+            <div className="overflow-x-auto">
+              <table className="w-full text-left text-xs border-collapse">
+                <thead>
+                  <tr className="bg-muted/80 border-b text-[10px] font-black uppercase text-muted-foreground">
+                    <th rowSpan={2} className="p-2.5 pl-4 border-r">Code</th>
+                    <th rowSpan={2} className="p-2.5 border-r">Account Title</th>
+                    <th rowSpan={2} className="p-2.5 border-r">Head Type</th>
+                    <th colSpan={2} className="p-2 text-center border-r bg-slate-100 dark:bg-slate-800">
+                      PERIOD MOVEMENTS
+                    </th>
+                    <th colSpan={2} className="p-2 text-center pr-4 bg-teal-100 dark:bg-teal-950 text-teal-900 dark:text-teal-200">
+                      CLOSING TRIAL BALANCE
+                    </th>
+                  </tr>
+                  <tr className="bg-muted/50 border-b text-[10px] font-bold text-muted-foreground">
+                    <th className="p-2 text-right border-r">Debit (Dr)</th>
+                    <th className="p-2 text-right border-r">Credit (Cr)</th>
+                    <th className="p-2 text-right text-teal-700 font-black border-r">Debit (Dr)</th>
+                    <th className="p-2 pr-4 text-right text-teal-700 font-black">Credit (Cr)</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-border font-mono text-[11px]">
+                  {trialBalanceRows.map(r => (
+                    <tr key={r.id} className="hover:bg-muted/30 transition-colors">
+                      <td className="p-2.5 pl-4 font-bold text-foreground">{r.code}</td>
+                      <td className="p-2.5 font-sans font-semibold text-foreground border-r">{r.name}</td>
+                      <td className="p-2.5 font-sans text-muted-foreground border-r">{r.type}</td>
+
+                      <td className="p-2 text-right text-muted-foreground border-r">
+                        {r.periodDebit > 0 ? r.periodDebit.toLocaleString(undefined, { minimumFractionDigits: 2 }) : '-'}
+                      </td>
+                      <td className="p-2 text-right text-muted-foreground border-r">
+                        {r.periodCredit > 0 ? r.periodCredit.toLocaleString(undefined, { minimumFractionDigits: 2 }) : '-'}
+                      </td>
+
+                      <td className="p-2 text-right font-bold text-teal-800 dark:text-teal-300 border-r bg-teal-50/20">
+                        {r.closingDebit > 0 ? r.closingDebit.toLocaleString(undefined, { minimumFractionDigits: 2 }) : '-'}
+                      </td>
+                      <td className="p-2 pr-4 text-right font-bold text-teal-800 dark:text-teal-300 bg-teal-50/20">
+                        {r.closingCredit > 0 ? r.closingCredit.toLocaleString(undefined, { minimumFractionDigits: 2 }) : '-'}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+                <tfoot>
+                  <tr className="bg-slate-900 text-white font-mono text-[11px] font-black border-t-2 border-slate-700">
+                    <td colSpan={3} className="p-3 pl-4 text-right font-sans text-xs uppercase text-teal-300 border-r">
+                      TRIAL BALANCE TOTALS:
+                    </td>
+                    <td className="p-3 text-right border-r">
+                      {trialBalanceTotals.periodDebit.toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                    </td>
+                    <td className="p-3 text-right border-r">
+                      {trialBalanceTotals.periodCredit.toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                    </td>
+                    <td className="p-3 text-right text-emerald-400 border-r">
+                      {trialBalanceTotals.closingDebit.toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                    </td>
+                    <td className="p-3 pr-4 text-right text-emerald-400">
+                      {trialBalanceTotals.closingCredit.toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                    </td>
+                  </tr>
+                </tfoot>
+              </table>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── TAB 5: EXECUTIVE COCKPIT ─────────────────────────────────────────── */}
+      {activeTab === 'overview' && (
+        <div className="space-y-6 animate-in fade-in">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            <Card className="p-4 rounded-2xl border bg-card shadow-xs">
+              <div className="flex items-center justify-between text-xs text-muted-foreground font-bold">
+                <span>Total Gross Revenue</span>
+                <TrendingUp className="w-4 h-4 text-teal-600" />
+              </div>
+              <div className="text-2xl font-black font-mono text-foreground mt-2">
+                {formatCur(incomeStatement.grossRevenue)}
+              </div>
+              <span className="text-[11px] text-teal-600 font-bold mt-1 block">Operating Revenue</span>
+            </Card>
+
+            <Card className="p-4 rounded-2xl border bg-card shadow-xs">
+              <div className="flex items-center justify-between text-xs text-muted-foreground font-bold">
+                <span>Gross Profit Margin</span>
+                <ArrowUpRight className="w-4 h-4 text-emerald-600" />
+              </div>
+              <div className="text-2xl font-black font-mono text-emerald-600 mt-2">
+                {incomeStatement.grossMarginPct.toFixed(1)}%
+              </div>
+              <span className="text-[11px] text-muted-foreground font-bold mt-1 block">
+                Gross Profit: {formatCur(incomeStatement.grossProfit)}
+              </span>
+            </Card>
+
+            <Card className="p-4 rounded-2xl border bg-card shadow-xs">
+              <div className="flex items-center justify-between text-xs text-muted-foreground font-bold">
+                <span>Net Period Profit</span>
+                {incomeStatement.netProfit >= 0 ? <ArrowUpRight className="w-4 h-4 text-emerald-600" /> : <ArrowDownRight className="w-4 h-4 text-rose-600" />}
+              </div>
+              <div className={`text-2xl font-black font-mono mt-2 ${incomeStatement.netProfit >= 0 ? 'text-emerald-600' : 'text-rose-600'}`}>
+                {formatCur(incomeStatement.netProfit)}
+              </div>
+              <span className="text-[11px] text-muted-foreground font-bold mt-1 block">
+                Net Margin: {incomeStatement.netMarginPct.toFixed(1)}%
+              </span>
+            </Card>
+
+            <Card className="p-4 rounded-2xl border bg-card shadow-xs">
+              <div className="flex items-center justify-between text-xs text-muted-foreground font-bold">
+                <span>Operating Cash Flow</span>
+                <DollarSign className="w-4 h-4 text-blue-600" />
+              </div>
+              <div className="text-2xl font-black font-mono text-blue-600 mt-2">
+                {formatCur(cashFlowStatement.netOperatingCashFlow)}
+              </div>
+              <span className="text-[11px] text-muted-foreground font-bold mt-1 block">
+                Closing Cash: {formatCur(cashFlowStatement.closingCash)}
+              </span>
+            </Card>
+          </div>
+        </div>
+      )}
+
+      {/* ── TAB 6: STATEMENT OF CHANGES IN EQUITY ────────────────────────────── */}
+      {activeTab === 'equity' && (
+        <div className="space-y-6 animate-in fade-in">
+          <div className="rounded-2xl border border-border bg-card shadow-xs overflow-hidden">
+            <div className="p-5 bg-muted/40 border-b flex items-center justify-between">
+              <div>
+                <h3 className="text-base font-black text-foreground">Statement of Changes in Equity (IAS 1)</h3>
+                <span className="text-xs text-muted-foreground">Share Capital, Reserves, and Retained Earnings Movements.</span>
+              </div>
+            </div>
+            <div className="p-6 text-xs font-mono">
+              <table className="w-full text-left border-collapse">
+                <thead>
+                  <tr className="bg-muted/80 border-b text-[10px] font-black uppercase text-muted-foreground">
+                    <th className="p-3 pl-4">Equity Component</th>
+                    <th className="p-3 text-right">Opening Balance</th>
+                    <th className="p-3 text-right">Period Movement</th>
+                    <th className="p-3 pr-4 text-right font-black text-blue-800">Ending Balance</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-border">
+                  <tr className="hover:bg-muted/30">
+                    <td className="p-3 pl-4 font-bold text-foreground font-sans">Share Capital / Paid-In Capital (31000)</td>
+                    <td className="p-3 text-right">{formatCur(balanceSheet.totalBaseEquity)}</td>
+                    <td className="p-3 text-right">{formatCur(0)}</td>
+                    <td className="p-3 pr-4 text-right font-bold">{formatCur(balanceSheet.totalBaseEquity)}</td>
+                  </tr>
+                  <tr className="hover:bg-muted/30">
+                    <td className="p-3 pl-4 font-bold text-foreground font-sans">Retained Net Income for Period (P&L)</td>
+                    <td className="p-3 text-right">{formatCur(0)}</td>
+                    <td className="p-3 text-right text-emerald-600 font-bold">{formatCur(balanceSheet.netPeriodIncome)}</td>
+                    <td className="p-3 pr-4 text-right font-bold text-emerald-600">{formatCur(balanceSheet.netPeriodIncome)}</td>
+                  </tr>
+                </tbody>
+                <tfoot>
+                  <tr className="bg-slate-900 text-white font-mono text-[11px] font-black border-t-2 border-slate-700">
+                    <td className="p-3.5 pl-4 uppercase font-sans text-teal-300">TOTAL SHAREHOLDERS' EQUITY:</td>
+                    <td className="p-3.5 text-right">{formatCur(balanceSheet.totalBaseEquity)}</td>
+                    <td className="p-3.5 text-right text-teal-300">{formatCur(balanceSheet.netPeriodIncome)}</td>
+                    <td className="p-3.5 pr-4 text-right text-emerald-400">{formatCur(balanceSheet.totalEquity)}</td>
+                  </tr>
+                </tfoot>
+              </table>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── TAB 7: FINANCIAL HEALTH RATIOS ───────────────────────────────────── */}
+      {activeTab === 'ratios' && (
+        <div className="space-y-6 animate-in fade-in">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+            <Card className="p-5 rounded-2xl border bg-card shadow-xs space-y-2">
+              <div className="flex items-center justify-between text-xs font-bold text-muted-foreground">
+                <span>Current Ratio (Liquidity)</span>
+                <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${ratios.currentRatio >= 1.5 ? 'bg-emerald-100 text-emerald-800' : 'bg-amber-100 text-amber-800'}`}>
+                  {ratios.currentRatio >= 1.5 ? 'Healthy (≥ 1.5x)' : 'Monitor'}
+                </span>
+              </div>
+              <div className="text-3xl font-black font-mono text-foreground">{ratios.currentRatio.toFixed(2)}x</div>
+              <p className="text-[11px] text-muted-foreground">Current Assets / Current Liabilities. Short-term solvency.</p>
+            </Card>
+
+            <Card className="p-5 rounded-2xl border bg-card shadow-xs space-y-2">
+              <div className="flex items-center justify-between text-xs font-bold text-muted-foreground">
+                <span>Quick Ratio (Acid Test)</span>
+                <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${ratios.quickRatio >= 1.0 ? 'bg-emerald-100 text-emerald-800' : 'bg-amber-100 text-amber-800'}`}>
+                  {ratios.quickRatio >= 1.0 ? 'Strong (≥ 1.0x)' : 'Low'}
+                </span>
+              </div>
+              <div className="text-3xl font-black font-mono text-foreground">{ratios.quickRatio.toFixed(2)}x</div>
+              <p className="text-[11px] text-muted-foreground">(Cash + Receivables) / Current Liabilities.</p>
+            </Card>
+
+            <Card className="p-5 rounded-2xl border bg-card shadow-xs space-y-2">
+              <div className="flex items-center justify-between text-xs font-bold text-muted-foreground">
+                <span>Debt-to-Equity (Leverage)</span>
+                <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-blue-100 text-blue-800">Solvency</span>
+              </div>
+              <div className="text-3xl font-black font-mono text-foreground">{ratios.debtToEquity.toFixed(2)}x</div>
+              <p className="text-[11px] text-muted-foreground">Total Liabilities / Total Equity.</p>
+            </Card>
+
+            <Card className="p-5 rounded-2xl border bg-card shadow-xs space-y-2">
+              <div className="flex items-center justify-between text-xs font-bold text-muted-foreground">
+                <span>Net Working Capital</span>
+                <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-teal-100 text-teal-800">Buffer</span>
+              </div>
+              <div className="text-2xl font-black font-mono text-teal-700 dark:text-teal-400">{formatCur(ratios.workingCapital)}</div>
+              <p className="text-[11px] text-muted-foreground">Current Assets minus Current Liabilities.</p>
+            </Card>
+
+            <Card className="p-5 rounded-2xl border bg-card shadow-xs space-y-2">
+              <div className="flex items-center justify-between text-xs font-bold text-muted-foreground">
+                <span>Return on Assets (ROA)</span>
+                <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-purple-100 text-purple-800">Efficiency</span>
+              </div>
+              <div className="text-3xl font-black font-mono text-foreground">{ratios.returnOnAssets.toFixed(1)}%</div>
+              <p className="text-[11px] text-muted-foreground">Net Profit / Total Assets.</p>
+            </Card>
+
+            <Card className="p-5 rounded-2xl border bg-card shadow-xs space-y-2">
+              <div className="flex items-center justify-between text-xs font-bold text-muted-foreground">
+                <span>Return on Equity (ROE)</span>
+                <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-800">Shareholder Value</span>
+              </div>
+              <div className="text-3xl font-black font-mono text-emerald-600">{ratios.returnOnEquity.toFixed(1)}%</div>
+              <p className="text-[11px] text-muted-foreground">Net Profit / Shareholders' Equity.</p>
+            </Card>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
+export default FinancialReports;

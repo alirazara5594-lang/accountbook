@@ -356,6 +356,7 @@ List<ExpenseClaim>? ExpenseClaims = null,
         {
             lock (_lock)
             {
+                EnsureRequiredPayrollAccounts();
                 foreach (var a in _accounts)
                 {
                     a.IsSystem = _mappings.Any(m => m.AccountId == a.Id);
@@ -3819,10 +3820,63 @@ _bankImports.Clear(); _bankImports.AddRange(state.BankImports ?? []);
         {
             foreach (var (id, history) in state.History) _history[id] = history;
         }
+        EnsureRequiredPayrollAccounts();
         RecalculateHierarchy();
         Persist();
         return true;
     }
+
+    private void EnsureRequiredPayrollAccounts()
+    {
+        var currentLiabilities = _accounts.FirstOrDefault(a => a.Code == "21000") ?? _accounts.FirstOrDefault(a => a.Code == "20000");
+        var operatingExpenses = _accounts.FirstOrDefault(a => a.Code == "61000") ?? _accounts.FirstOrDefault(a => a.Code == "60000");
+
+        var requiredAccounts = new List<(string Code, string Name, AccountType Type, Guid? ParentId, bool IsSystem, bool IsPosting)>
+        {
+            ("21300", "Accrued Salaries Payable", AccountType.Liability, currentLiabilities?.Id, true, true),
+            ("21400", "Payroll Tax Payable", AccountType.Liability, currentLiabilities?.Id, true, true),
+            ("21500", "EOBI & Social Security Payable", AccountType.Liability, currentLiabilities?.Id, true, true),
+            ("21510", "Provident Fund & Pension Payable", AccountType.Liability, currentLiabilities?.Id, true, true),
+            ("21520", "End of Service Benefits (EOSB) Accrual", AccountType.Liability, currentLiabilities?.Id, true, true),
+            ("21530", "Employee Loan Deductions Clearing", AccountType.Liability, currentLiabilities?.Id, true, true),
+            ("61200", "Salaries & Wages Expense", AccountType.Expense, operatingExpenses?.Id, true, true),
+            ("61210", "Housing & Living Allowances (HRA)", AccountType.Expense, operatingExpenses?.Id, true, true),
+            ("61220", "Transport & Conveyance Allowance", AccountType.Expense, operatingExpenses?.Id, true, true),
+            ("61230", "Medical & Utility Allowances", AccountType.Expense, operatingExpenses?.Id, true, true),
+            ("61250", "Employer Statutory Payroll Contributions", AccountType.Expense, operatingExpenses?.Id, true, true),
+            ("61260", "End of Service & Gratuity Expense", AccountType.Expense, operatingExpenses?.Id, true, true),
+        };
+
+        foreach (var req in requiredAccounts)
+        {
+            var existing = _accounts.FirstOrDefault(a => a.Code == req.Code);
+            if (existing == null)
+            {
+                var newAcc = new Account
+                {
+                    Code = req.Code,
+                    Name = req.Name,
+                    Type = req.Type,
+                    ParentId = req.ParentId,
+                    IsSystem = req.IsSystem,
+                    IsPosting = req.IsPosting,
+                    Currency = "USD",
+                    Status = AccountStatus.Active,
+                    UpdatedAt = DateTime.UtcNow
+                };
+                _accounts.Add(newAcc);
+                _history[newAcc.Id] = [new(DateTime.UtcNow, "Created", "Statutory payroll account migration")];
+            }
+            else
+            {
+                if (req.Code == "21500" && existing.Name == "Pension Fund Payable")
+                {
+                    existing.Name = "EOBI & Social Security Payable";
+                }
+            }
+        }
+    }
+
     private void Persist()
     {
         if (_dbFactory is null) return;

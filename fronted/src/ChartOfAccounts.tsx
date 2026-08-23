@@ -44,6 +44,7 @@ export const ChartOfAccounts: React.FC<ChartOfAccountsProps> = ({
   const fetchInvoices = useSalesStore(s => s.fetchInvoices);
   const vendorBills = useProcurementStore(s => s.bills);
   const fetchBills = useProcurementStore(s => s.fetchBills);
+  const fetchAccounts = useCoaStore(s => s.fetchAccounts);
 
   // Drill-down audit explorer states
   const [selectedMainHead, setSelectedMainHead] = useState<string | null>(null);
@@ -60,10 +61,11 @@ export const ChartOfAccounts: React.FC<ChartOfAccountsProps> = ({
 
   // Fetch audit trail dependencies on load
   useEffect(() => {
+    fetchAccounts();
     fetchJournalEntries();
     fetchInvoices();
     fetchBills();
-  }, [fetchJournalEntries, fetchInvoices, fetchBills]);
+  }, [fetchAccounts, fetchJournalEntries, fetchInvoices, fetchBills]);
 
   // Centralized balance calculation engine mapping all transaction records to their specific account IDs
   const accountBalances = useMemo(() => {
