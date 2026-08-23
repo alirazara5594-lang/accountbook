@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo } from 'react'
 import {
   FileText, Plus, Check, X, ArrowRight,
-  ArrowLeft, Coins, CheckCircle2, Hash, Users, ArrowUpRight, Eye
+  ArrowLeft, Coins, CheckCircle2, Hash, Users, ArrowUpRight, Eye, Pencil, Ban
 } from 'lucide-react'
 import { useSalesStore, useCustomersStore, useProductsStore, useCompanyStore } from './stores'
 import { useFormDraft } from './hooks/useFormDraft'
@@ -11,8 +11,8 @@ import { money } from './lib/currency'
 const statusStyles: Record<number, { label: string; class: string }> = {
   0: { label: 'Draft', class: 'bg-slate-500/10 text-slate-600 border border-slate-500/20' },
   1: { label: 'Sent', class: 'bg-sky-500/10 text-sky-600 border border-sky-500/20' },
-  2: { label: 'Accepted', class: 'bg-emerald-500/10 text-emerald-600 border border-emerald-500/20' },
-  3: { label: 'Rejected', class: 'bg-rose-500/10 text-rose-600 border border-rose-500/20' },
+  2: { label: 'Finalized', class: 'bg-emerald-500/10 text-emerald-600 border border-emerald-500/20' },
+  3: { label: 'Cancelled', class: 'bg-rose-500/10 text-rose-600 border border-rose-500/20' },
   4: { label: 'Expired', class: 'bg-amber-500/10 text-amber-600 border border-amber-500/20' },
   5: { label: 'Invoiced', class: 'bg-purple-500/10 text-purple-600 border border-purple-500/20' },
 }
@@ -100,14 +100,19 @@ export const EstimatesAndQuotes: React.FC<{ activeEntityId: string; entities?: a
     setTimeout(() => setToast(''), 3500)
   }
 
+  const [editingEstimate, setEditingEstimate] = useState<any>(null)
+
   const openCreateModal = async () => {
+    setEditingEstimate(null)
     const salesStore = useSalesStore.getState()
     const nextRef = await salesStore.fetchNextNumber('estimate')
+    const today = new Date().toISOString().slice(0, 10)
+
     setForm({
       customerId: customers[0]?.id || '',
-      estimateDate: new Date().toISOString().slice(0, 10),
+      estimateDate: today,
       expiryDate: new Date(Date.now() + 30 * 86400000).toISOString().slice(0, 10),
-      reference: nextRef || 'EST-0001',
+      reference: nextRef || 'EST-00001',
       notes: 'Quotations valid for 30 days from date of issue.',
       terms: 'Standard trade terms apply.',
       currencyCode: 'PKR'
@@ -115,6 +120,56 @@ export const EstimatesAndQuotes: React.FC<{ activeEntityId: string; entities?: a
     setLines([defaultLine()])
     setModalTab('details')
     setShowForm(true)
+  }
+
+  const openEditModal = (est: any) => {
+    setEditingEstimate(est)
+    setForm({
+      customerId: est.customerId || '',
+      estimateDate: est.estimateDate || new Date().toISOString().slice(0, 10),
+      expiryDate: est.expiryDate || '',
+      reference: est.estimateNumber || est.reference || '',
+      notes: est.notes || '',
+      terms: est.terms || '',
+      currencyCode: est.currencyCode || 'PKR'
+    })
+    setLines(
+      est.lines && est.lines.length > 0
+        ? est.lines.map((l: any) => ({
+            productId: l.productId || '',
+            description: l.description || '',
+            quantity: String(l.quantity || 1),
+            unitPrice: String(l.unitPrice || 0),
+            discountType: (l.discountType ?? 0) as 0 | 1,
+            discountValue: String(l.discountValue || 0),
+            taxPercent: String(l.taxPercent || 0),
+          }))
+        : [defaultLine()]
+    )
+    setModalTab('details')
+    setShowForm(true)
+  }
+
+  const finalizeEstimate = async (est: any) => {
+    if (!window.confirm(`Do you want to finalize Quotation "${est.estimateNumber || est.reference}"? Once finalized, you can convert it into a Sales Invoice.`)) return
+    try {
+      await updateEstimateStatusStore(est.id, '2') // 2 = Finalized / Accepted
+      notify('✓ Quotation Finalized! You can now convert it to an Invoice.')
+      fetchData()
+    } catch (e: any) {
+      notify(e.message || 'Failed to finalize quotation')
+    }
+  }
+
+  const cancelEstimate = async (est: any) => {
+    if (!window.confirm(`Are you sure you want to cancel Quotation "${est.estimateNumber || est.reference}"?`)) return
+    try {
+      await updateEstimateStatusStore(est.id, '3') // 3 = Rejected / Cancelled
+      notify('✓ Quotation marked as Cancelled.')
+      fetchData()
+    } catch (e: any) {
+      notify(e.message || 'Failed to cancel quotation')
+    }
   }
 
   const updateLine = (i: number, field: string, value: any) => {
@@ -165,6 +220,7 @@ export const EstimatesAndQuotes: React.FC<{ activeEntityId: string; entities?: a
     }
     const body = {
       ...form,
+      estimateNumber: form.reference,
       companyId: activeEntityId || null,
       expiryDate: form.expiryDate || null,
       lines: lines.map(l => ({
@@ -181,21 +237,11 @@ export const EstimatesAndQuotes: React.FC<{ activeEntityId: string; entities?: a
     try {
       await createEstimateStore(body)
       clearDraft()
-      notify('✓ Quotation saved as Draft!')
+      notify(editingEstimate ? '✓ Quotation updated successfully!' : '✓ Quotation saved as Draft!')
       setShowForm(false)
       fetchData()
     } catch (e: any) {
       notify(e.message || 'Error saving estimate')
-    }
-  }
-
-  const updateStatus = async (id: string, status: number) => {
-    try {
-      await updateEstimateStatusStore(id, String(status))
-      notify(`Status updated to ${statusStyles[status]?.label}`)
-      fetchData()
-    } catch (e: any) {
-      notify(e.message || 'Status update failed')
     }
   }
 
@@ -281,8 +327,8 @@ export const EstimatesAndQuotes: React.FC<{ activeEntityId: string; entities?: a
               <option value="all">⚡ All Statuses</option>
               <option value="0">⚪ Draft</option>
               <option value="1">🔵 Sent</option>
-              <option value="2">🟢 Accepted</option>
-              <option value="3">🔴 Rejected</option>
+              <option value="2">🟢 Finalized</option>
+              <option value="3">🔴 Cancelled</option>
               <option value="4">🟡 Expired</option>
               <option value="5">🟣 Invoiced</option>
             </select>
@@ -376,35 +422,73 @@ export const EstimatesAndQuotes: React.FC<{ activeEntityId: string; entities?: a
                       </td>
                       <td className="px-3 py-2 text-right font-bold text-sky-600 font-mono">{money(est.totalAmount)}</td>
                       <td className="px-3 py-2 text-center">
-                        <span className={`inline-block px-2 py-0.5 rounded-full text-[10px] font-semibold ${badge.class}`}>
-                          {badge.label}
-                        </span>
+                        {est.status === 0 ? (
+                          <button
+                            onClick={() => finalizeEstimate(est)}
+                            title="Click to Finalize Quotation"
+                            className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-slate-500/10 text-slate-700 dark:text-slate-300 border border-slate-500/30 hover:bg-emerald-500/15 hover:border-emerald-500/40 hover:text-emerald-700 dark:hover:text-emerald-300 cursor-pointer transition-all shadow-2xs group"
+                          >
+                            <span>Draft</span>
+                            <span className="text-[9px] opacity-70 group-hover:opacity-100 font-normal">→ Finalize</span>
+                          </button>
+                        ) : (
+                          <span className={`inline-block px-2 py-0.5 rounded-full text-[10px] font-semibold ${badge.class}`}>
+                            {badge.label}
+                          </span>
+                        )}
                       </td>
                       <td className="px-3 py-2 text-right">
-                        <div className="flex items-center justify-end gap-1">
-                          {est.status === 0 && (
+                        <div className="flex items-center justify-end gap-1.5">
+                          {/* 1. EDIT BUTTON */}
+                          <button
+                            onClick={() => openEditModal(est)}
+                            title="Edit Quotation"
+                            className="h-7 px-2.5 rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] hover:bg-[var(--color-surface-muted)] text-[var(--color-text-strong)] text-[11px] font-semibold flex items-center gap-1 shadow-2xs transition-colors"
+                          >
+                            <Pencil className="w-3 h-3 text-indigo-500" />
+                            <span>Edit</span>
+                          </button>
+
+                          {/* 2. CANCEL BUTTON */}
+                          {est.status !== 3 && est.status !== 5 && (
                             <button
-                              onClick={() => updateStatus(est.id, 1)}
-                              className="h-6.5 px-2 rounded border border-[var(--color-border)] hover:bg-[var(--color-surface-muted)] text-[11px]"
+                              onClick={() => cancelEstimate(est)}
+                              title="Cancel Quotation"
+                              className="h-7 px-2.5 rounded-lg border border-rose-500/20 bg-rose-500/5 hover:bg-rose-500/15 text-rose-600 text-[11px] font-semibold flex items-center gap-1 shadow-2xs transition-colors"
                             >
-                              Send
+                              <Ban className="w-3 h-3 text-rose-500" />
+                              <span>Cancel</span>
                             </button>
                           )}
-                          {est.status === 1 && (
-                            <button
-                              onClick={() => updateStatus(est.id, 2)}
-                              className="h-6.5 px-2 rounded bg-emerald-500/10 text-emerald-600 hover:bg-emerald-500/20 text-[11px] font-semibold"
-                            >
-                              Accept
-                            </button>
-                          )}
+
+                          {/* 3. CONVERT INTO INVOICE BUTTON (Displayed when Finalized / Accepted) */}
                           {est.status === 2 && (
                             <button
                               onClick={() => setConvertModal(est)}
-                              className="h-6.5 px-2 rounded bg-purple-500/10 text-purple-600 hover:bg-purple-500/20 text-[11px] font-semibold flex items-center gap-1"
+                              title="Convert Finalized Quotation into Sales Invoice"
+                              className="h-7 px-2.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-[11px] font-semibold flex items-center gap-1 shadow-2xs transition-colors animate-in fade-in"
                             >
-                              <ArrowUpRight className="w-3 h-3" /> Invoice
+                              <ArrowUpRight className="w-3.5 h-3.5" />
+                              <span>To Invoice</span>
                             </button>
+                          )}
+
+                          {/* IF DRAFT: Option to Finalize directly from actions */}
+                          {est.status === 0 && (
+                            <button
+                              onClick={() => finalizeEstimate(est)}
+                              title="Finalize Quotation to enable Invoicing"
+                              className="h-7 px-2.5 rounded-lg bg-indigo-50 hover:bg-indigo-100 dark:bg-indigo-950/40 dark:hover:bg-indigo-900/50 text-indigo-600 dark:text-indigo-400 border border-indigo-200 dark:border-indigo-800 text-[11px] font-semibold flex items-center gap-1 shadow-2xs transition-colors"
+                            >
+                              <CheckCircle2 className="w-3 h-3 text-indigo-600 dark:text-indigo-400" />
+                              <span>Finalize</span>
+                            </button>
+                          )}
+
+                          {est.status === 5 && (
+                            <span className="text-[11px] font-semibold text-purple-600 px-2 py-0.5 rounded-full bg-purple-500/10 border border-purple-500/20">
+                              Invoiced
+                            </span>
                           )}
                         </div>
                       </td>
@@ -420,7 +504,7 @@ export const EstimatesAndQuotes: React.FC<{ activeEntityId: string; entities?: a
       {/* Professional Multi-Tab Quote Creation Modal */}
       {showForm && (
         <div className="overlay animate-in fade-in duration-200">
-          <div className="w-full max-w-4xl bg-[var(--color-surface)] border border-[var(--color-border)] rounded-2xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh]">
+          <div className="w-full max-w-5xl bg-[var(--color-surface)] border border-[var(--color-border)] rounded-2xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh]">
             {/* Modal Header */}
             <div className="px-6 py-4.5 border-b border-[var(--color-border)] bg-[var(--color-surface-muted)]/50 flex items-center justify-between">
               <div className="flex items-center gap-3.5">
@@ -588,28 +672,28 @@ export const EstimatesAndQuotes: React.FC<{ activeEntityId: string; entities?: a
                     <p className="text-xs font-semibold text-[var(--color-text-strong)]">Quotation Line Items</p>
                   </div>
 
-                  <div className="border border-[var(--color-border)] rounded-xl overflow-hidden shadow-2xs">
+                  <div className="border border-[var(--color-border)] rounded-xl shadow-2xs bg-[var(--color-surface)] overflow-hidden">
                     <table className="w-full text-xs">
                       <thead className="bg-[var(--color-surface-muted)] text-[var(--color-text-muted)] font-semibold border-b border-[var(--color-border)]">
                         <tr>
-                          <th className="p-2.5 text-left">Product / Service</th>
-                          <th className="p-2.5 text-left">Description</th>
-                          <th className="p-2.5 text-right w-16">Qty</th>
-                          <th className="p-2.5 text-right w-24">Price (Rs)</th>
-                          <th className="p-2.5 text-center w-28">Discount</th>
-                          <th className="p-2.5 text-right w-16">Tax %</th>
-                          <th className="p-2.5 text-right w-24">Total</th>
+                          <th className="p-2.5 text-left min-w-[180px]">Product / Service</th>
+                          <th className="p-2.5 text-left min-w-[160px]">Description</th>
+                          <th className="p-2.5 text-right w-20">Qty</th>
+                          <th className="p-2.5 text-right w-28">Price ({form.currencyCode || 'PKR'})</th>
+                          <th className="p-2.5 text-center min-w-[170px] w-48">Discount</th>
+                          <th className="p-2.5 text-right w-20">Tax %</th>
+                          <th className="p-2.5 text-right w-36">Total ({form.currencyCode || 'PKR'})</th>
                           <th className="p-2.5 w-8"></th>
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-[var(--color-border)]">
                         {lines.map((l, i) => (
-                          <tr key={i} className="hover:bg-[var(--color-surface-muted)]/50">
+                          <tr key={i} className="hover:bg-[var(--color-surface-muted)]/50 transition-colors">
                             <td className="p-2">
                               <select
                                 value={l.productId}
                                 onChange={e => updateLine(i, 'productId', e.target.value)}
-                                className="w-full h-8 px-2 rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] text-xs text-[var(--color-text-strong)] outline-none"
+                                className="w-full h-8.5 px-2 rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] text-xs text-[var(--color-text-strong)] outline-none"
                               >
                                 <option value="">Select Item...</option>
                                 {products.map((p: any) => (
@@ -624,15 +708,16 @@ export const EstimatesAndQuotes: React.FC<{ activeEntityId: string; entities?: a
                                 placeholder="Description"
                                 value={l.description}
                                 onChange={e => updateLine(i, 'description', e.target.value)}
-                                className="w-full h-8 px-2 rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] text-xs text-[var(--color-text-strong)] outline-none"
+                                className="w-full h-8.5 px-2.5 rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] text-xs text-[var(--color-text-strong)] outline-none"
                               />
                             </td>
                             <td className="p-2">
                               <input
                                 type="number"
+                                min="1"
                                 value={l.quantity}
                                 onChange={e => updateLine(i, 'quantity', e.target.value)}
-                                className="w-full h-8 px-2 rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] text-xs text-right font-mono text-[var(--color-text-strong)] outline-none"
+                                className="w-full h-8.5 px-2 rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] text-xs text-right font-mono text-[var(--color-text-strong)] outline-none"
                               />
                             </td>
                             <td className="p-2">
@@ -641,36 +726,42 @@ export const EstimatesAndQuotes: React.FC<{ activeEntityId: string; entities?: a
                                 step="0.01"
                                 value={l.unitPrice}
                                 onChange={e => updateLine(i, 'unitPrice', e.target.value)}
-                                className="w-full h-8 px-2 rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] text-xs text-right font-mono text-[var(--color-text-strong)] outline-none"
+                                className="w-full h-8.5 px-2 rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] text-xs text-right font-mono text-[var(--color-text-strong)] outline-none"
                               />
                             </td>
                             <td className="p-2">
-                              <div className="flex gap-1">
+                              <div className="flex items-center gap-1.5">
                                 <select
                                   value={l.discountType}
                                   onChange={e => updateLine(i, 'discountType', parseInt(e.target.value))}
-                                  className="h-8 border border-[var(--color-border)] rounded-lg px-1 text-xs bg-[var(--color-surface)] text-[var(--color-text-strong)]"
+                                  className="h-8.5 min-w-[62px] shrink-0 border border-[var(--color-border)] rounded-lg px-2 text-xs bg-[var(--color-surface)] text-[var(--color-text-strong)] font-semibold outline-none"
                                 >
                                   <option value={0}>%</option>
-                                  <option value={1}>Rs</option>
+                                  <option value={1}>{form.currencyCode || 'PKR'}</option>
                                 </select>
                                 <input
                                   type="number"
+                                  min="0"
+                                  step={l.discountType === 0 ? "1" : "0.01"}
+                                  placeholder="0"
                                   value={l.discountValue}
                                   onChange={e => updateLine(i, 'discountValue', e.target.value)}
-                                  className="w-full h-8 px-2 rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] text-xs text-right font-mono text-[var(--color-text-strong)] outline-none"
+                                  className="w-full min-w-[85px] h-8.5 px-3 rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] text-xs text-right font-mono font-medium text-[var(--color-text-strong)] outline-none"
                                 />
                               </div>
                             </td>
                             <td className="p-2">
                               <input
                                 type="number"
+                                min="0"
+                                max="100"
+                                placeholder="0"
                                 value={l.taxPercent}
                                 onChange={e => updateLine(i, 'taxPercent', e.target.value)}
-                                className="w-full h-8 px-2 rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] text-xs text-right font-mono text-[var(--color-text-strong)] outline-none"
+                                className="w-full h-8.5 px-2 rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] text-xs text-right font-mono text-[var(--color-text-strong)] outline-none"
                               />
                             </td>
-                            <td className="p-2 text-right font-mono font-semibold text-[var(--color-text-strong)]">
+                            <td className="p-2 text-right font-mono font-bold text-emerald-600 dark:text-emerald-400 whitespace-nowrap">
                               {money(lineCalculations[i]?.total || 0)}
                             </td>
                             <td className="p-2 text-center">

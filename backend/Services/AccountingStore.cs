@@ -2965,11 +2965,13 @@ public IReadOnlyList<EmployeeCompensation> EmployeeCompensations => _employeeCom
     public bool CreateEstimate(EstimateRequest request, out Estimate? estimate, out string? error)
     {
         error = null; estimate = null;
-        if (request.Lines == null || request.Lines.Count == 0) { error = "Estimate must have at least one line."; return false; }
         lock (_lock)
         {
             if (FindCustomer(request.CustomerId) == null) { error = "Customer not found."; return false; }
-            var number = request.EstimateNumber ?? $"EST-{DateTime.UtcNow:yyyyMMddHHmmss}";
+            var nextSeq = _estimates.Count + 1;
+            var number = !string.IsNullOrWhiteSpace(request.EstimateNumber)
+                ? request.EstimateNumber
+                : $"EST-{nextSeq:D5}";
             estimate = new Estimate
             {
                 EstimateNumber = number,
