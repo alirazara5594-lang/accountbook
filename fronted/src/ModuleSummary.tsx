@@ -159,7 +159,6 @@ export const ModuleSummary: React.FC<ModuleSummaryProps> = ({
           { label: 'General Ledger', desc: 'Posting-level register of all journal lines from posted entries.', page: 'Accounting.General Ledger' },
           { label: 'Accounts Receivable', desc: 'Aged customer trade receivables by due date (IFRS 9).', page: 'Accounting.Accounts Receivable' },
           { label: 'Accounts Payable', desc: 'Aged vendor trade payables by due date (IAS 37).', page: 'Accounting.Accounts Payable' },
-          { label: 'Tax Accounting', desc: 'Multi-jurisdiction VAT, GST, Sales Tax & WHT (UK, USA, PK, EU, UAE, KSA, CA).', page: 'Accounting.Tax Accounting' },
           { label: 'Budgets', desc: 'Annual budgets by account for variance analysis against actuals.', page: 'Accounting.Budgets' },
           { label: 'Financial Reporting', desc: 'Verify compliance reporting including Balance Sheets and Profit & Loss reports.', page: 'Accounting.Financial Reports' },
           { label: 'Period Closing', desc: 'Close accounting periods to lock books against prior-period postings.', page: 'Accounting.Period Closing' },
@@ -169,6 +168,11 @@ export const ModuleSummary: React.FC<ModuleSummaryProps> = ({
         return [
           { label: 'Inventory Workspace', desc: 'Manage physical warehousing locations, calculate values, and post adjustments.', page: 'Assets & Inventory.Assets & Inventory Workspace' },
           { label: 'Fixed Asset Register', desc: 'Record assets, trigger depreciation schedules, and manage disposal entries.', page: 'Accounting.Fixed Assets' },
+        ];
+      case 'Government Compliance':
+        return [
+          { label: 'Tax Management', desc: 'Configure tax authorities, tax codes, and rates for multi-jurisdiction compliance.', page: 'Government Compliance.Tax Management' },
+          { label: 'Tax Accounting', desc: 'Multi-jurisdiction VAT, GST, Sales Tax & WHT (UK, USA, PK, EU, UAE, KSA, CA).', page: 'Government Compliance.Tax Accounting' },
         ];
       default:
         return [];
@@ -184,7 +188,7 @@ export const ModuleSummary: React.FC<ModuleSummaryProps> = ({
       case 'Banking & Payments':
         return ['Bank Accounts', 'Cash Accounts', 'Transactions', 'Bank Reconciliation', 'Cash Flow'];
       case 'Accounting':
-        return ['Chart of Accounts', 'Journal Entries', 'Fixed Assets', 'General Ledger', 'Accounts Receivable', 'Accounts Payable', 'Tax Accounting', 'Budgets', 'Financial Reports', 'Period Closing', 'Audit Trail'];
+        return ['Chart of Accounts', 'Journal Entries', 'Fixed Assets', 'General Ledger', 'Accounts Receivable', 'Accounts Payable', 'Budgets', 'Financial Reports', 'Period Closing', 'Audit Trail'];
       case 'Assets & Inventory':
         return ['Depreciation Schedule', 'Valuation Reports'];
       default:

@@ -364,6 +364,7 @@ export default function App() {
     'Survey & Field Operations.Field Reports': 'field-reports',
     'Government Compliance.Summary': 'compliance-summary',
     'Government Compliance.Tax Management': 'compliance-tax',
+    'Government Compliance.Tax Accounting': 'tax-accounting',
     'Government Compliance.VAT / Sales Tax': 'compliance-vat',
     'Government Compliance.Withholding Tax': 'compliance-withholding',
     'Government Compliance.Tax Returns': 'compliance-returns',

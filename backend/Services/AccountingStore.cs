@@ -71,6 +71,7 @@ private readonly List<Voucher> _vouchers = [];
     private readonly List<ProjectExpense> _projectExpenses = [];
     private readonly List<TaxObligation> _taxObligations = [];
     private readonly List<TaxReturn> _taxReturns = [];
+    private readonly List<TaxExemption> _taxExemptions = [];
     private readonly List<LeaseAgreement> _leases = [];
     private readonly List<WithholdingCertificate> _withholdingCertificates = [];
     private readonly List<EInvoice> _eInvoices = [];
@@ -154,6 +155,7 @@ List<ExpenseClaim>? ExpenseClaims = null,
         List<ProjectExpense>? ProjectExpenses = null,
         List<TaxObligation>? TaxObligations = null,
         List<TaxReturn>? TaxReturns = null,
+        List<TaxExemption>? TaxExemptions = null,
         List<WithholdingCertificate>? WithholdingCertificates = null,
         List<EInvoice>? EInvoices = null,
         List<Survey>? Surveys = null,
@@ -438,6 +440,7 @@ public IReadOnlyList<EmployeeCompensation> EmployeeCompensations => _employeeCom
     public IReadOnlyList<ProjectExpense> ProjectExpenses => _projectExpenses;
     public IReadOnlyList<TaxObligation> TaxObligations => _taxObligations;
     public IReadOnlyList<TaxReturn> TaxReturns => _taxReturns;
+    public IReadOnlyList<TaxExemption> TaxExemptions => _taxExemptions;
     public IReadOnlyList<WithholdingCertificate> WithholdingCertificates => _withholdingCertificates;
     public IReadOnlyList<EInvoice> EInvoices => _eInvoices;
     public IReadOnlyList<Survey> Surveys => _surveys;
@@ -3535,18 +3538,34 @@ public IReadOnlyList<EmployeeCompensation> EmployeeCompensations => _employeeCom
         var code = request.Code?.Trim();
         var legalName = request.LegalName?.Trim();
         var type = request.Type ?? EntityType.Subsidiary;
-        var country = !string.IsNullOrWhiteSpace(request.Country) ? request.Country.Trim() : "United States";
+        var country = !string.IsNullOrWhiteSpace(request.Country) ? request.Country.Trim() : "United Kingdom";
         var currency = !string.IsNullOrWhiteSpace(request.CurrencyCode) ? request.CurrencyCode.Trim().ToUpperInvariant()
             : !string.IsNullOrWhiteSpace(request.FunctionalCurrency) ? request.FunctionalCurrency.Trim().ToUpperInvariant()
-            : "USD";
-        company = new Company { Name = name, Code = code, LegalName = legalName, Type = type, ParentId = request.ParentId, Country = country, CurrencyCode = currency, TaxAuthorityId = request.TaxAuthorityId }; _companies.Add(company); Persist(); return true;
+            : (country.ToLowerInvariant().Contains("pakistan") ? "PKR" : country.ToLowerInvariant().Contains("saudi") ? "SAR" : country.ToLowerInvariant().Contains("emirates") ? "AED" : country.ToLowerInvariant().Contains("canada") ? "CAD" : country.ToLowerInvariant().Contains("kingdom") || country.ToLowerInvariant() == "uk" ? "GBP" : "USD");
+        
+        company = new Company { Name = name, Code = code, LegalName = legalName, Type = type, ParentId = request.ParentId, Country = country, CurrencyCode = currency, TaxAuthorityId = request.TaxAuthorityId };
+        _companies.Add(company);
+
+        // Auto-provision country-specific tax rules and authorities
+        SeedCountryTaxPreset(country, company.Id);
+
+        Persist();
+        return true;
     }
     public bool UpdateCompany(Guid id, CompanyRequest request, out Company? company, out string? error)
     {
         company = _companies.FirstOrDefault(x => x.Id == id); error = null;
         if (company is null) { error = "Entity not found."; return false; }
         if (string.IsNullOrWhiteSpace(request.Name)) { error = "Company name is required."; return false; }
-        company.Name = request.Name.Trim(); company.Code = request.Code?.Trim(); company.LegalName = request.LegalName?.Trim(); company.Type = request.Type ?? company.Type; company.ParentId = request.ParentId; company.Country = !string.IsNullOrWhiteSpace(request.Country) ? request.Country.Trim() : company.Country; company.CurrencyCode = !string.IsNullOrWhiteSpace(request.CurrencyCode) ? request.CurrencyCode.Trim().ToUpperInvariant() : !string.IsNullOrWhiteSpace(request.FunctionalCurrency) ? request.FunctionalCurrency.Trim().ToUpperInvariant() : company.CurrencyCode; company.TaxAuthorityId = request.TaxAuthorityId; company.UpdatedAt = DateTime.UtcNow; Persist(); return true;
+        var prevCountry = company.Country;
+        company.Name = request.Name.Trim(); company.Code = request.Code?.Trim(); company.LegalName = request.LegalName?.Trim(); company.Type = request.Type ?? company.Type; company.ParentId = request.ParentId; company.Country = !string.IsNullOrWhiteSpace(request.Country) ? request.Country.Trim() : company.Country; company.CurrencyCode = !string.IsNullOrWhiteSpace(request.CurrencyCode) ? request.CurrencyCode.Trim().ToUpperInvariant() : !string.IsNullOrWhiteSpace(request.FunctionalCurrency) ? request.FunctionalCurrency.Trim().ToUpperInvariant() : company.CurrencyCode; company.TaxAuthorityId = request.TaxAuthorityId; company.UpdatedAt = DateTime.UtcNow;
+
+        if (!string.Equals(prevCountry, company.Country, StringComparison.OrdinalIgnoreCase))
+        {
+            SeedCountryTaxPreset(company.Country, company.Id);
+        }
+
+        Persist(); return true;
     }
     public bool SetCompanyStatus(Guid id, bool active, out string? error) { var company = _companies.FirstOrDefault(x => x.Id == id); error = null; if (company is null) { error = "Entity not found."; return false; } company.Active = active; company.UpdatedAt = DateTime.UtcNow; Persist(); return true; }
 
@@ -3600,31 +3619,86 @@ public IReadOnlyList<EmployeeCompensation> EmployeeCompensations => _employeeCom
         return true;
     }
     
-    // Tax Authorities
+    // ─── Tax Authorities ────────────────────────────────────────────────────────
     public TaxAuthority? FindTaxAuthority(Guid id) => _taxAuthorities.FirstOrDefault(x => x.Id == id);
+    
     public bool CreateTaxAuthority(TaxAuthorityRequest request, out TaxAuthority? authority, out string? error)
     {
         authority = null; error = null;
         if (string.IsNullOrWhiteSpace(request.Name)) { error = "Authority name is required."; return false; }
         lock (_lock)
         {
-            authority = new TaxAuthority { Name = request.Name.Trim(), Country = request.Country?.Trim(), State = request.State?.Trim(), RegistrationNumber = request.RegistrationNumber?.Trim(), LiabilityAccountId = request.LiabilityAccountId };
-            _taxAuthorities.Add(authority); Persist(); return true;
+            authority = new TaxAuthority
+            {
+                Name = request.Name.Trim(),
+                Code = request.Code?.Trim(),
+                Country = request.Country?.Trim(),
+                State = request.State?.Trim(),
+                RegistrationNumber = request.RegistrationNumber?.Trim(),
+                LiabilityAccountId = request.LiabilityAccountId,
+                InputTaxAccountId = request.InputTaxAccountId,
+                NonRecoverableAccountId = request.NonRecoverableAccountId,
+                WithholdingAccountId = request.WithholdingAccountId,
+                SettlementAccountId = request.SettlementAccountId,
+                FilingFrequency = request.FilingFrequency?.Trim() ?? "Quarterly",
+                RemittanceDueDay = request.RemittanceDueDay ?? 20,
+                Website = request.Website?.Trim(),
+                CompanyId = request.CompanyId
+            };
+            _taxAuthorities.Add(authority);
+            Persist();
+            return true;
         }
     }
+
     public bool UpdateTaxAuthority(Guid id, TaxAuthorityRequest request, out TaxAuthority? authority, out string? error)
     {
         authority = null; error = null;
         lock (_lock)
         {
-            authority = FindTaxAuthority(id); if (authority is null) { error = "Authority not found."; return false; }
-            authority.Name = request.Name.Trim(); authority.Country = request.Country?.Trim(); authority.State = request.State?.Trim(); authority.RegistrationNumber = request.RegistrationNumber?.Trim(); authority.LiabilityAccountId = request.LiabilityAccountId;
-            Persist(); return true;
+            authority = FindTaxAuthority(id);
+            if (authority is null) { error = "Authority not found."; return false; }
+            if (string.IsNullOrWhiteSpace(request.Name)) { error = "Authority name is required."; return false; }
+            authority.Name = request.Name.Trim();
+            authority.Code = request.Code?.Trim();
+            authority.Country = request.Country?.Trim();
+            authority.State = request.State?.Trim();
+            authority.RegistrationNumber = request.RegistrationNumber?.Trim();
+            authority.LiabilityAccountId = request.LiabilityAccountId;
+            authority.InputTaxAccountId = request.InputTaxAccountId;
+            authority.NonRecoverableAccountId = request.NonRecoverableAccountId;
+            authority.WithholdingAccountId = request.WithholdingAccountId;
+            authority.SettlementAccountId = request.SettlementAccountId;
+            authority.FilingFrequency = request.FilingFrequency?.Trim() ?? authority.FilingFrequency;
+            authority.RemittanceDueDay = request.RemittanceDueDay ?? authority.RemittanceDueDay;
+            authority.Website = request.Website?.Trim() ?? authority.Website;
+            authority.CompanyId = request.CompanyId ?? authority.CompanyId;
+            Persist();
+            return true;
         }
     }
 
-    // Tax Codes & Rates
+    public bool DeleteTaxAuthority(Guid id, out string? error)
+    {
+        error = null;
+        lock (_lock)
+        {
+            var auth = FindTaxAuthority(id);
+            if (auth is null) { error = "Authority not found."; return false; }
+            if (_taxCodes.Any(c => c.TaxAuthorityId == id))
+            {
+                error = "Cannot delete authority that is currently referenced by tax codes.";
+                return false;
+            }
+            _taxAuthorities.Remove(auth);
+            Persist();
+            return true;
+        }
+    }
+
+    // ─── Tax Codes & Rates ──────────────────────────────────────────────────────
     public TaxCode? FindTaxCode(Guid id) => _taxCodes.FirstOrDefault(x => x.Id == id);
+
     public bool AddTaxRate(Guid taxCodeId, decimal percentage, DateOnly effectiveFrom, DateOnly? effectiveTo, out TaxRate? rate, out string? error)
     {
         rate = null; error = null;
@@ -3640,6 +3714,7 @@ public IReadOnlyList<EmployeeCompensation> EmployeeCompensations => _employeeCom
             return true;
         }
     }
+
     public bool CreateTaxCode(TaxCodeRequest request, out TaxCode? code, out string? error)
     {
         code = null; error = null;
@@ -3648,25 +3723,54 @@ public IReadOnlyList<EmployeeCompensation> EmployeeCompensations => _employeeCom
         
         lock (_lock)
         {
-            code = new TaxCode { Code = request.Code.Trim(), Name = request.Name.Trim(), Description = request.Description?.Trim(), TaxAuthorityId = request.TaxAuthorityId, IsActive = request.IsActive };
+            code = new TaxCode
+            {
+                Code = request.Code.Trim().ToUpperInvariant(),
+                Name = request.Name.Trim(),
+                Description = request.Description?.Trim(),
+                TaxType = request.TaxType ?? TaxType.Standard,
+                Scope = request.Scope ?? TaxScope.Both,
+                TaxAuthorityId = request.TaxAuthorityId,
+                JurisdictionId = request.JurisdictionId?.Trim() ?? "UK",
+                DeductibilityPercentage = request.DeductibilityPercentage ?? 100m,
+                IsCompound = request.IsCompound ?? false,
+                IsActive = request.IsActive,
+                CompanyId = request.CompanyId
+            };
             foreach (var r in request.Rates)
             {
                 var rate = new TaxRate { TaxCodeId = code.Id, Percentage = r.Percentage, EffectiveFrom = r.EffectiveFrom, EffectiveTo = r.EffectiveTo };
                 code.Rates.Add(rate);
                 _taxRates.Add(rate);
             }
-            _taxCodes.Add(code); Persist(); return true;
+            _taxCodes.Add(code);
+            Persist();
+            return true;
         }
     }
+
     public bool UpdateTaxCode(Guid id, TaxCodeRequest request, out TaxCode? code, out string? error)
     {
         code = null; error = null;
         lock (_lock)
         {
-            code = FindTaxCode(id); if (code is null) { error = "Tax code not found."; return false; }
-            code.Code = request.Code.Trim(); code.Name = request.Name.Trim(); code.Description = request.Description?.Trim(); code.TaxAuthorityId = request.TaxAuthorityId; code.IsActive = request.IsActive;
+            code = FindTaxCode(id);
+            if (code is null) { error = "Tax code not found."; return false; }
+            if (string.IsNullOrWhiteSpace(request.Code) || string.IsNullOrWhiteSpace(request.Name)) { error = "Code and name are required."; return false; }
+            if (FindTaxAuthority(request.TaxAuthorityId) == null) { error = "Invalid tax authority."; return false; }
+
+            code.Code = request.Code.Trim().ToUpperInvariant();
+            code.Name = request.Name.Trim();
+            code.Description = request.Description?.Trim();
+            code.TaxType = request.TaxType ?? code.TaxType;
+            code.Scope = request.Scope ?? code.Scope;
+            code.TaxAuthorityId = request.TaxAuthorityId;
+            code.JurisdictionId = request.JurisdictionId?.Trim() ?? code.JurisdictionId;
+            code.DeductibilityPercentage = request.DeductibilityPercentage ?? code.DeductibilityPercentage;
+            code.IsCompound = request.IsCompound ?? code.IsCompound;
+            code.IsActive = request.IsActive;
+            code.CompanyId = request.CompanyId ?? code.CompanyId;
             
-            // For simplicity, replacing all rates on update
             _taxRates.RemoveAll(x => x.TaxCodeId == id);
             code.Rates.Clear();
             foreach (var r in request.Rates)
@@ -3675,8 +3779,410 @@ public IReadOnlyList<EmployeeCompensation> EmployeeCompensations => _employeeCom
                 code.Rates.Add(rate);
                 _taxRates.Add(rate);
             }
-            Persist(); return true;
+            Persist();
+            return true;
         }
+    }
+
+    public bool DeleteTaxCode(Guid id, out string? error)
+    {
+        error = null;
+        lock (_lock)
+        {
+            var code = FindTaxCode(id);
+            if (code is null) { error = "Tax code not found."; return false; }
+            if (_salesInvoices.Any(i => i.Lines.Any(l => l.TaxCodeId == id)))
+            {
+                error = "Cannot delete tax code used on existing sales invoices. You can deactivate it instead.";
+                return false;
+            }
+            _taxRates.RemoveAll(r => r.TaxCodeId == id);
+            _taxCodes.Remove(code);
+            Persist();
+            return true;
+        }
+    }
+
+    // ─── Tax Exemptions ─────────────────────────────────────────────────────────
+    public List<TaxExemption> GetTaxExemptions(string? jurisdictionId = null, Guid? companyId = null)
+    {
+        var query = _taxExemptions.AsEnumerable();
+        if (!string.IsNullOrWhiteSpace(jurisdictionId)) query = query.Where(e => e.JurisdictionId == jurisdictionId);
+        if (companyId.HasValue) query = query.Where(e => e.CompanyId == companyId.Value);
+        return query.OrderByDescending(e => e.CreatedAt).ToList();
+    }
+
+    public bool CreateTaxExemption(TaxExemptionRequest request, out TaxExemption? exemption, out string? error)
+    {
+        exemption = null; error = null;
+        if (string.IsNullOrWhiteSpace(request.CertificateNumber)) { error = "Certificate number is required."; return false; }
+        if (string.IsNullOrWhiteSpace(request.CounterpartyName)) { error = "Counterparty name is required."; return false; }
+        lock (_lock)
+        {
+            exemption = new TaxExemption
+            {
+                CertificateNumber = request.CertificateNumber.Trim(),
+                Type = request.Type,
+                CounterpartyName = request.CounterpartyName.Trim(),
+                CustomerId = request.CustomerId,
+                VendorId = request.VendorId,
+                TaxId = request.TaxId?.Trim(),
+                IssuingAuthority = request.IssuingAuthority?.Trim(),
+                JurisdictionId = request.JurisdictionId?.Trim() ?? "UK",
+                ValidFrom = request.ValidFrom,
+                ValidTo = request.ValidTo,
+                Status = request.Status,
+                AttachmentUrl = request.AttachmentUrl,
+                Notes = request.Notes,
+                CompanyId = request.CompanyId
+            };
+            _taxExemptions.Add(exemption);
+            Persist();
+            return true;
+        }
+    }
+
+    public bool UpdateTaxExemption(Guid id, TaxExemptionRequest request, out TaxExemption? exemption, out string? error)
+    {
+        exemption = null; error = null;
+        lock (_lock)
+        {
+            exemption = _taxExemptions.FirstOrDefault(e => e.Id == id);
+            if (exemption is null) { error = "Tax exemption not found."; return false; }
+            if (string.IsNullOrWhiteSpace(request.CertificateNumber)) { error = "Certificate number is required."; return false; }
+            exemption.CertificateNumber = request.CertificateNumber.Trim();
+            exemption.Type = request.Type;
+            exemption.CounterpartyName = request.CounterpartyName.Trim();
+            exemption.CustomerId = request.CustomerId;
+            exemption.VendorId = request.VendorId;
+            exemption.TaxId = request.TaxId?.Trim();
+            exemption.IssuingAuthority = request.IssuingAuthority?.Trim();
+            exemption.JurisdictionId = request.JurisdictionId?.Trim() ?? exemption.JurisdictionId;
+            exemption.ValidFrom = request.ValidFrom;
+            exemption.ValidTo = request.ValidTo;
+            exemption.Status = request.Status;
+            exemption.AttachmentUrl = request.AttachmentUrl;
+            exemption.Notes = request.Notes;
+            exemption.CompanyId = request.CompanyId ?? exemption.CompanyId;
+            Persist();
+            return true;
+        }
+    }
+
+    public bool DeleteTaxExemption(Guid id, out string? error)
+    {
+        error = null;
+        lock (_lock)
+        {
+            var item = _taxExemptions.FirstOrDefault(e => e.Id == id);
+            if (item is null) { error = "Tax exemption not found."; return false; }
+            _taxExemptions.Remove(item);
+            Persist();
+            return true;
+        }
+    }
+
+    // ─── Country Presets Engine ─────────────────────────────────────────────────
+    public bool SeedCountryTaxPreset(string country, Guid? companyId = null)
+    {
+        lock (_lock)
+        {
+            var c = (country ?? "").Trim().ToLowerInvariant();
+            var today = DateOnly.FromDateTime(DateTime.Today);
+
+            // Resolve standard GL Tax accounts
+            var inputVatId = _accounts.FirstOrDefault(a => a.Code == "14100")?.Id;
+            var outputVatId = _accounts.FirstOrDefault(a => a.Code == "22000")?.Id;
+            var whtPayableId = _accounts.FirstOrDefault(a => a.Code == "22100")?.Id;
+            var whtReceivableId = _accounts.FirstOrDefault(a => a.Code == "12200")?.Id;
+
+            if (c.Contains("pakistan") || c == "pk")
+            {
+                var fbr = _taxAuthorities.FirstOrDefault(a => a.Name.Contains("FBR", StringComparison.OrdinalIgnoreCase))
+                    ?? new TaxAuthority { Name = "Federal Board of Revenue (FBR)", Code = "FBR", Country = "Pakistan", LiabilityAccountId = outputVatId, InputTaxAccountId = inputVatId, WithholdingAccountId = whtPayableId, FilingFrequency = "Monthly", RemittanceDueDay = 18, Website = "https://fbr.gov.pk", CompanyId = companyId };
+                if (!_taxAuthorities.Contains(fbr)) _taxAuthorities.Add(fbr);
+
+                var pra = _taxAuthorities.FirstOrDefault(a => a.Name.Contains("PRA", StringComparison.OrdinalIgnoreCase))
+                    ?? new TaxAuthority { Name = "Punjab Revenue Authority (PRA)", Code = "PRA", Country = "Pakistan", State = "Punjab", LiabilityAccountId = outputVatId, InputTaxAccountId = inputVatId, FilingFrequency = "Monthly", RemittanceDueDay = 15, Website = "https://pra.punjab.gov.pk", CompanyId = companyId };
+                if (!_taxAuthorities.Contains(pra)) _taxAuthorities.Add(pra);
+
+                var srb = _taxAuthorities.FirstOrDefault(a => a.Name.Contains("SRB", StringComparison.OrdinalIgnoreCase))
+                    ?? new TaxAuthority { Name = "Sindh Revenue Board (SRB)", Code = "SRB", Country = "Pakistan", State = "Sindh", LiabilityAccountId = outputVatId, InputTaxAccountId = inputVatId, FilingFrequency = "Monthly", RemittanceDueDay = 15, Website = "https://srb.gos.pk", CompanyId = companyId };
+                if (!_taxAuthorities.Contains(srb)) _taxAuthorities.Add(srb);
+
+                var kpra = _taxAuthorities.FirstOrDefault(a => a.Name.Contains("KPRA", StringComparison.OrdinalIgnoreCase))
+                    ?? new TaxAuthority { Name = "Khyber Pakhtunkhwa Revenue Authority (KPRA)", Code = "KPRA", Country = "Pakistan", State = "KPK", LiabilityAccountId = outputVatId, InputTaxAccountId = inputVatId, FilingFrequency = "Monthly", RemittanceDueDay = 15, Website = "https://kpra.kp.gov.pk", CompanyId = companyId };
+                if (!_taxAuthorities.Contains(kpra)) _taxAuthorities.Add(kpra);
+
+                var bra = _taxAuthorities.FirstOrDefault(a => a.Name.Contains("BRA", StringComparison.OrdinalIgnoreCase))
+                    ?? new TaxAuthority { Name = "Balochistan Revenue Authority (BRA)", Code = "BRA", Country = "Pakistan", State = "Balochistan", LiabilityAccountId = outputVatId, InputTaxAccountId = inputVatId, FilingFrequency = "Monthly", RemittanceDueDay = 15, Website = "https://bra.gob.pk", CompanyId = companyId };
+                if (!_taxAuthorities.Contains(bra)) _taxAuthorities.Add(bra);
+
+                AddPresetCode("SALES-PK-18", "Pakistan Sales Tax on Goods 18%", "Federal Sales Tax on Taxable Goods (FBR Sales Tax Act 1990)", TaxType.Standard, TaxScope.Both, fbr.Id, "PK", 18m, today, companyId);
+                AddPresetCode("PRA-PK-16", "Punjab Sales Tax on Services 16%", "Punjab Revenue Authority (PRA) Standard Rate on Services", TaxType.ServiceTax, TaxScope.Both, pra.Id, "PK", 16m, today, companyId);
+                AddPresetCode("SRB-PK-13", "Sindh Sales Tax on Services 13%", "Sindh Revenue Board (SRB) Standard Rate on Services", TaxType.ServiceTax, TaxScope.Both, srb.Id, "PK", 13m, today, companyId);
+                AddPresetCode("KPRA-PK-15", "KPK Sales Tax on Services 15%", "Khyber Pakhtunkhwa Revenue Authority (KPRA) Rate", TaxType.ServiceTax, TaxScope.Both, kpra.Id, "PK", 15m, today, companyId);
+                AddPresetCode("BRA-PK-15", "Balochistan Sales Tax on Services 15%", "Balochistan Revenue Authority (BRA) Rate", TaxType.ServiceTax, TaxScope.Both, bra.Id, "PK", 15m, today, companyId);
+                AddPresetCode("ZERO-PK-0", "Pakistan Zero-Rated Exports 0%", "Zero-rated export supplies under Fifth Schedule", TaxType.ZeroRated, TaxScope.Sales, fbr.Id, "PK", 0m, today, companyId);
+                AddPresetCode("EXEMPT-PK-0", "Pakistan Exempt Supplies 0%", "Unconditional Exempt supplies under Sixth Schedule", TaxType.Exempt, TaxScope.Both, fbr.Id, "PK", 0m, today, companyId);
+                AddPresetCode("WHT-PK-153-GOODS-5", "FBR WHT Sec 153(1)(a) Goods 5%", "Withholding tax deduction on supplies of goods (Active Filer)", TaxType.Withholding, TaxScope.Purchases, fbr.Id, "PK", 5m, today, companyId);
+                AddPresetCode("WHT-PK-153-SERV-10", "FBR WHT Sec 153(1)(b) Services 10%", "Withholding tax deduction on rendering services (Active Filer)", TaxType.Withholding, TaxScope.Purchases, fbr.Id, "PK", 10m, today, companyId);
+                AddPresetCode("WHT-PK-153-CONTRACT-7.5", "FBR WHT Sec 153(1)(c) Contracts 7.5%", "Withholding tax deduction on execution of contracts (Active Filer)", TaxType.Withholding, TaxScope.Purchases, fbr.Id, "PK", 7.5m, today, companyId);
+            }
+            else if (c.Contains("saudi") || c.Contains("ksa") || c == "sa")
+            {
+                var zatca = _taxAuthorities.FirstOrDefault(a => a.Name.Contains("ZATCA", StringComparison.OrdinalIgnoreCase))
+                    ?? new TaxAuthority { Name = "Zakat, Tax and Customs Authority (ZATCA)", Code = "ZATCA", Country = "Saudi Arabia", LiabilityAccountId = outputVatId, InputTaxAccountId = inputVatId, WithholdingAccountId = whtPayableId, FilingFrequency = "Monthly", RemittanceDueDay = 30, Website = "https://zatca.gov.sa", CompanyId = companyId };
+                if (!_taxAuthorities.Contains(zatca)) _taxAuthorities.Add(zatca);
+
+                AddPresetCode("VAT-KSA-15", "KSA Standard VAT 15%", "Saudi Standard 15% VAT (ZATCA / Fatoora Phase 2)", TaxType.Standard, TaxScope.Both, zatca.Id, "SA", 15m, today, companyId);
+                AddPresetCode("VAT-KSA-0", "KSA Zero-Rated Exports 0%", "Qualifying exports outside GCC and international transport", TaxType.ZeroRated, TaxScope.Sales, zatca.Id, "SA", 0m, today, companyId);
+                AddPresetCode("VAT-KSA-EXEMPT", "KSA Exempt Supplies 0%", "Exempt financial services margin and residential real estate lease", TaxType.Exempt, TaxScope.Both, zatca.Id, "SA", 0m, today, companyId);
+                AddPresetCode("WHT-KSA-5", "ZATCA Non-Resident WHT 5%", "Withholding on technical / consulting services to non-residents", TaxType.Withholding, TaxScope.Purchases, zatca.Id, "SA", 5m, today, companyId);
+                AddPresetCode("WHT-KSA-15", "ZATCA Royalties WHT 15%", "Withholding on royalties and management fees to non-residents", TaxType.Withholding, TaxScope.Purchases, zatca.Id, "SA", 15m, today, companyId);
+            }
+            else if (c.Contains("emirates") || c.Contains("uae") || c == "ae" || c.Contains("dubai"))
+            {
+                var fta = _taxAuthorities.FirstOrDefault(a => a.Name.Contains("FTA", StringComparison.OrdinalIgnoreCase))
+                    ?? new TaxAuthority { Name = "Federal Tax Authority (FTA)", Code = "FTA", Country = "United Arab Emirates", LiabilityAccountId = outputVatId, InputTaxAccountId = inputVatId, FilingFrequency = "Quarterly", RemittanceDueDay = 28, Website = "https://tax.gov.ae", CompanyId = companyId };
+                if (!_taxAuthorities.Contains(fta)) _taxAuthorities.Add(fta);
+
+                AddPresetCode("VAT-UAE-5", "UAE Standard VAT 5%", "UAE Standard 5% VAT (Federal Decree-Law No. 8)", TaxType.Standard, TaxScope.Both, fta.Id, "UAE", 5m, today, companyId);
+                AddPresetCode("VAT-UAE-0", "UAE Zero-Rated Exports 0%", "Direct / indirect export of goods and international transport", TaxType.ZeroRated, TaxScope.Sales, fta.Id, "UAE", 0m, today, companyId);
+                AddPresetCode("VAT-UAE-EXEMPT", "UAE Exempt Supplies 0%", "Exempt financial services, local passenger transport, bare land", TaxType.Exempt, TaxScope.Both, fta.Id, "UAE", 0m, today, companyId);
+                AddPresetCode("VAT-UAE-FZ", "UAE Designated Free Zone 0%", "Designated Zone out-of-scope supply between free zone entities", TaxType.ZeroRated, TaxScope.Both, fta.Id, "UAE", 0m, today, companyId);
+                AddPresetCode("VAT-UAE-RC", "UAE Reverse Charge 0%", "Reverse Charge Mechanism on imported services (B2B)", TaxType.ReverseCharge, TaxScope.Both, fta.Id, "UAE", 0m, today, companyId);
+            }
+            else if (c.Contains("states") || c.Contains("usa") || c == "us" || c.Contains("america"))
+            {
+                var irs = _taxAuthorities.FirstOrDefault(a => a.Name.Contains("IRS", StringComparison.OrdinalIgnoreCase))
+                    ?? new TaxAuthority { Name = "Internal Revenue Service (IRS)", Code = "IRS", Country = "United States", LiabilityAccountId = outputVatId, InputTaxAccountId = inputVatId, WithholdingAccountId = whtPayableId, Website = "https://irs.gov", CompanyId = companyId };
+                if (!_taxAuthorities.Contains(irs)) _taxAuthorities.Add(irs);
+
+                var cdtfa = _taxAuthorities.FirstOrDefault(a => a.Name.Contains("CDTFA", StringComparison.OrdinalIgnoreCase))
+                    ?? new TaxAuthority { Name = "California Dept of Tax & Fee Admin (CDTFA)", Code = "CDTFA", Country = "United States", State = "California", LiabilityAccountId = outputVatId, InputTaxAccountId = inputVatId, FilingFrequency = "Quarterly", Website = "https://cdtfa.ca.gov", CompanyId = companyId };
+                if (!_taxAuthorities.Contains(cdtfa)) _taxAuthorities.Add(cdtfa);
+
+                var nys = _taxAuthorities.FirstOrDefault(a => a.Name.Contains("NYS", StringComparison.OrdinalIgnoreCase))
+                    ?? new TaxAuthority { Name = "New York Dept of Taxation (NYS)", Code = "NYS-DTF", Country = "United States", State = "New York", LiabilityAccountId = outputVatId, InputTaxAccountId = inputVatId, FilingFrequency = "Quarterly", Website = "https://tax.ny.gov", CompanyId = companyId };
+                if (!_taxAuthorities.Contains(nys)) _taxAuthorities.Add(nys);
+
+                var txcpa = _taxAuthorities.FirstOrDefault(a => a.Name.Contains("Texas", StringComparison.OrdinalIgnoreCase))
+                    ?? new TaxAuthority { Name = "Texas Comptroller of Public Accounts", Code = "TX-CPA", Country = "United States", State = "Texas", LiabilityAccountId = outputVatId, InputTaxAccountId = inputVatId, FilingFrequency = "Quarterly", Website = "https://comptroller.texas.gov", CompanyId = companyId };
+                if (!_taxAuthorities.Contains(txcpa)) _taxAuthorities.Add(txcpa);
+
+                AddPresetCode("SALES-CA-7.25", "California Statewide Sales Tax 7.25%", "Base California state sales and use tax (CDTFA)", TaxType.Standard, TaxScope.Sales, cdtfa.Id, "USA", 7.25m, today, companyId);
+                AddPresetCode("SALES-CA-LA-9.5", "Los Angeles County Combined Tax 9.5%", "CA State 7.25% + LA County + Transportation District Tax", TaxType.Compound, TaxScope.Sales, cdtfa.Id, "USA", 9.5m, today, companyId);
+                AddPresetCode("SALES-NY-8.875", "New York City Combined Sales Tax 8.875%", "NYS 4% + NYC 4.5% + Metropolitan Commuter Dist 0.375%", TaxType.Compound, TaxScope.Sales, nys.Id, "USA", 8.875m, today, companyId);
+                AddPresetCode("SALES-TX-8.25", "Texas Combined Sales Tax 8.25%", "Texas State 6.25% + Local City/Transit District 2.0%", TaxType.Compound, TaxScope.Sales, txcpa.Id, "USA", 8.25m, today, companyId);
+                AddPresetCode("SALES-US-EXEMPT", "US Resale / Non-Profit Certificate 0%", "Valid Resale Certificate / 501(c)(3) tax exempt entity", TaxType.Exempt, TaxScope.Both, irs.Id, "USA", 0m, today, companyId);
+                AddPresetCode("WHT-US-1099-24", "IRS 1099 Backup Withholding 24%", "IRS Backup withholding for payees with missing/invalid TIN (W-9)", TaxType.Withholding, TaxScope.Purchases, irs.Id, "USA", 24m, today, companyId);
+            }
+            else if (c.Contains("canada") || c == "ca")
+            {
+                var cra = _taxAuthorities.FirstOrDefault(a => a.Name.Contains("CRA", StringComparison.OrdinalIgnoreCase))
+                    ?? new TaxAuthority { Name = "Canada Revenue Agency (CRA)", Code = "CRA", Country = "Canada", LiabilityAccountId = outputVatId, InputTaxAccountId = inputVatId, FilingFrequency = "Quarterly", Website = "https://canada.ca/en/revenue-agency.html", CompanyId = companyId };
+                if (!_taxAuthorities.Contains(cra)) _taxAuthorities.Add(cra);
+
+                var rq = _taxAuthorities.FirstOrDefault(a => a.Name.Contains("Revenu", StringComparison.OrdinalIgnoreCase))
+                    ?? new TaxAuthority { Name = "Revenu Québec (RQ)", Code = "RQ", Country = "Canada", State = "Quebec", LiabilityAccountId = outputVatId, InputTaxAccountId = inputVatId, FilingFrequency = "Quarterly", Website = "https://revenuquebec.ca", CompanyId = companyId };
+                if (!_taxAuthorities.Contains(rq)) _taxAuthorities.Add(rq);
+
+                AddPresetCode("GST-CA-5", "Canada Federal GST 5%", "Goods and Services Tax across Canada (AB, NT, NU, YT)", TaxType.Standard, TaxScope.Both, cra.Id, "CA", 5m, today, companyId);
+                AddPresetCode("HST-CA-ON-13", "Ontario HST 13%", "Harmonized Sales Tax (5% Federal + 8% Ontario Provincial)", TaxType.Compound, TaxScope.Both, cra.Id, "CA", 13m, today, companyId);
+                AddPresetCode("HST-CA-BC-12", "British Columbia GST+PST 12%", "Federal GST 5% + BC Provincial Sales Tax (PST) 7%", TaxType.Compound, TaxScope.Both, cra.Id, "CA", 12m, today, companyId);
+                AddPresetCode("HST-CA-QC-14.975", "Quebec GST+QST 14.975%", "Federal GST 5% + Quebec Sales Tax (QST) 9.975%", TaxType.Compound, TaxScope.Both, rq.Id, "CA", 14.975m, today, companyId);
+                AddPresetCode("HST-CA-NS-15", "Nova Scotia / Atlantic HST 15%", "Harmonized Sales Tax (5% Federal + 10% Provincial)", TaxType.Compound, TaxScope.Both, cra.Id, "CA", 15m, today, companyId);
+                AddPresetCode("GST-CA-EXEMPT", "Canada Exempt / Zero-Rated 0%", "Zero-rated basic groceries, prescription drugs, exports", TaxType.Exempt, TaxScope.Both, cra.Id, "CA", 0m, today, companyId);
+            }
+            else if (c.Contains("europe") || c == "eu" || c.Contains("germany") || c.Contains("france") || c.Contains("netherlands") || c.Contains("ireland"))
+            {
+                var eu = _taxAuthorities.FirstOrDefault(a => a.Name.Contains("EU", StringComparison.OrdinalIgnoreCase))
+                    ?? new TaxAuthority { Name = "European Union VAT Administration", Code = "EU-VAT", Country = "European Union", LiabilityAccountId = outputVatId, InputTaxAccountId = inputVatId, FilingFrequency = "Quarterly", Website = "https://ec.europa.eu/taxation_customs", CompanyId = companyId };
+                if (!_taxAuthorities.Contains(eu)) _taxAuthorities.Add(eu);
+
+                var bzst = _taxAuthorities.FirstOrDefault(a => a.Name.Contains("BZSt", StringComparison.OrdinalIgnoreCase))
+                    ?? new TaxAuthority { Name = "Bundeszentralamt für Steuern (BZSt)", Code = "BZSt", Country = "Germany", LiabilityAccountId = outputVatId, InputTaxAccountId = inputVatId, FilingFrequency = "Monthly", Website = "https://bzst.de", CompanyId = companyId };
+                if (!_taxAuthorities.Contains(bzst)) _taxAuthorities.Add(bzst);
+
+                var dgfif = _taxAuthorities.FirstOrDefault(a => a.Name.Contains("DGFIP", StringComparison.OrdinalIgnoreCase))
+                    ?? new TaxAuthority { Name = "Direction Générale des Finances Publiques (DGFiP)", Code = "DGFIP", Country = "France", LiabilityAccountId = outputVatId, InputTaxAccountId = inputVatId, FilingFrequency = "Monthly", Website = "https://impots.gouv.fr", CompanyId = companyId };
+                if (!_taxAuthorities.Contains(dgfif)) _taxAuthorities.Add(dgfif);
+
+                AddPresetCode("VAT-DE-19", "Germany Standard VAT 19%", "German Standard Mehrwertsteuer (Umsatzsteuer 19%)", TaxType.Standard, TaxScope.Both, bzst.Id, "EU", 19m, today, companyId);
+                AddPresetCode("VAT-DE-7", "Germany Reduced VAT 7%", "German Reduced Rate on food, books, hotel accommodation", TaxType.Reduced, TaxScope.Both, bzst.Id, "EU", 7m, today, companyId);
+                AddPresetCode("VAT-FR-20", "France Standard TVA 20%", "French Standard Taxe sur la Valeur Ajoutée (TVA 20%)", TaxType.Standard, TaxScope.Both, dgfif.Id, "EU", 20m, today, companyId);
+                AddPresetCode("VAT-FR-5.5", "France Reduced TVA 5.5%", "French Reduced Rate on basic necessities and energy", TaxType.Reduced, TaxScope.Both, dgfif.Id, "EU", 5.5m, today, companyId);
+                AddPresetCode("VAT-NL-21", "Netherlands Standard BTW 21%", "Dutch Standard Belasting van Toegevoegde Waarde (BTW 21%)", TaxType.Standard, TaxScope.Both, eu.Id, "EU", 21m, today, companyId);
+                AddPresetCode("VAT-IE-23", "Ireland Standard VAT 23%", "Irish Standard Value Added Tax 23%", TaxType.Standard, TaxScope.Both, eu.Id, "EU", 23m, today, companyId);
+                AddPresetCode("VAT-EU-0-INTRA", "EU Intra-Community B2B Supply 0%", "Cross-border B2B supply with verified VIES VAT ID", TaxType.ZeroRated, TaxScope.Sales, eu.Id, "EU", 0m, today, companyId);
+                AddPresetCode("VAT-EU-RC", "EU Reverse Charge Mechanism 0%", "Customer self-accounts for VAT on cross-border services (Art 196)", TaxType.ReverseCharge, TaxScope.Both, eu.Id, "EU", 0m, today, companyId);
+                AddPresetCode("VAT-EU-EXEMPT", "EU Exempt Supplies 0%", "Exempt financial, insurance, and medical services (Art 132/135)", TaxType.Exempt, TaxScope.Both, eu.Id, "EU", 0m, today, companyId);
+            }
+            else // Default to United Kingdom (UK)
+            {
+                var hmrc = _taxAuthorities.FirstOrDefault(a => a.Name.Contains("HMRC", StringComparison.OrdinalIgnoreCase))
+                    ?? new TaxAuthority { Name = "Her Majesty's Revenue and Customs (HMRC)", Code = "HMRC", Country = "United Kingdom", LiabilityAccountId = outputVatId, InputTaxAccountId = inputVatId, WithholdingAccountId = whtPayableId, FilingFrequency = "Quarterly", RemittanceDueDay = 7, Website = "https://gov.uk/government/organisations/hm-revenue-customs", CompanyId = companyId };
+                if (!_taxAuthorities.Contains(hmrc)) _taxAuthorities.Add(hmrc);
+
+                AddPresetCode("VAT-UK-20", "UK Standard VAT 20%", "Standard Rate 20% on taxable goods and services", TaxType.Standard, TaxScope.Both, hmrc.Id, "UK", 20m, today, companyId);
+                AddPresetCode("VAT-UK-5", "UK Reduced VAT 5%", "Reduced Rate 5% (domestic fuel, children's car seats, mobility aids)", TaxType.Reduced, TaxScope.Both, hmrc.Id, "UK", 5m, today, companyId);
+                AddPresetCode("VAT-UK-0", "UK Zero-Rated VAT 0%", "Zero-rated basic food, books, children's clothing, exports", TaxType.ZeroRated, TaxScope.Both, hmrc.Id, "UK", 0m, today, companyId);
+                AddPresetCode("VAT-UK-EXEMPT", "UK Exempt Supplies 0%", "Exempt insurance, finance, education, health", TaxType.Exempt, TaxScope.Both, hmrc.Id, "UK", 0m, today, companyId);
+                AddPresetCode("VAT-UK-RC", "UK Reverse Charge VAT 0%", "Customer accounts for output and input tax (B2B Cross-border / CIS)", TaxType.ReverseCharge, TaxScope.Both, hmrc.Id, "UK", 0m, today, companyId);
+                AddPresetCode("CIS-UK-20", "UK CIS Construction WHT 20%", "Construction Industry Scheme deduction for registered subcontractors", TaxType.Withholding, TaxScope.Purchases, hmrc.Id, "UK", 20m, today, companyId);
+                AddPresetCode("CIS-UK-30", "UK CIS Construction WHT 30%", "Construction Industry Scheme deduction for unverified subcontractors", TaxType.Withholding, TaxScope.Purchases, hmrc.Id, "UK", 30m, today, companyId);
+            }
+
+            Persist();
+            return true;
+        }
+    }
+
+    private void AddPresetCode(string codeStr, string name, string description, TaxType type, TaxScope scope, Guid authId, string jurId, decimal pct, DateOnly effectiveDate, Guid? companyId)
+    {
+        var existing = _taxCodes.FirstOrDefault(c => c.Code == codeStr);
+        if (existing == null)
+        {
+            var code = new TaxCode
+            {
+                Code = codeStr,
+                Name = name,
+                Description = description,
+                TaxType = type,
+                Scope = scope,
+                TaxAuthorityId = authId,
+                JurisdictionId = jurId,
+                DeductibilityPercentage = 100m,
+                IsActive = true,
+                CompanyId = companyId
+            };
+            var rate = new TaxRate { TaxCodeId = code.Id, Percentage = pct, EffectiveFrom = effectiveDate };
+            code.Rates.Add(rate);
+            _taxRates.Add(rate);
+            _taxCodes.Add(code);
+        }
+    }
+
+    // ─── Real-Time Tax Summary & Return Calculations ────────────────────────────
+    public object GetTaxSummaryReport(DateOnly? fromDate, DateOnly? toDate, string? jurisdictionId, Guid? companyId)
+    {
+        var from = fromDate ?? new DateOnly(DateTime.Today.Year, 1, 1);
+        var to = toDate ?? new DateOnly(DateTime.Today.Year, 12, 31);
+
+        var invoices = _salesInvoices
+            .Where(i => i.Status != SalesInvoiceStatus.Draft && i.Status != SalesInvoiceStatus.Void)
+            .Where(i => i.InvoiceDate >= from && i.InvoiceDate <= to)
+            .Where(i => !companyId.HasValue || i.CompanyId == companyId.Value)
+            .ToList();
+
+        var creditNotes = _creditNotes
+            .Where(c => c.Status != CreditNoteStatus.Draft && c.Status != CreditNoteStatus.Void)
+            .Where(c => c.CreditNoteDate >= from && c.CreditNoteDate <= to)
+            .Where(c => !companyId.HasValue || c.CompanyId == companyId.Value)
+            .ToList();
+
+        var totalSales = invoices.Sum(i => i.SubTotal - i.DiscountTotal) - creditNotes.Sum(c => c.SubTotal - c.DiscountTotal);
+        var totalOutputTax = invoices.Sum(i => i.TaxTotal) - creditNotes.Sum(c => c.TaxTotal);
+
+        var totalZeroRatedSales = invoices
+            .SelectMany(i => i.Lines)
+            .Where(l => l.TaxAmount == 0 && l.TaxCodeId.HasValue && (_taxCodes.FirstOrDefault(c => c.Id == l.TaxCodeId)?.TaxType == TaxType.ZeroRated))
+            .Sum(l => l.LineTotalAfterDiscount);
+
+        var totalExemptSales = invoices
+            .SelectMany(i => i.Lines)
+            .Where(l => l.TaxAmount == 0 && l.TaxCodeId.HasValue && (_taxCodes.FirstOrDefault(c => c.Id == l.TaxCodeId)?.TaxType == TaxType.Exempt))
+            .Sum(l => l.LineTotalAfterDiscount);
+
+        // Purchases (Vendor Bills / POs)
+        var totalPurchases = _purchaseOrders
+            .Where(p => p.Status != PurchaseOrderStatus.Draft && p.Status != PurchaseOrderStatus.Canceled)
+            .Where(p => p.Date >= from && p.Date <= to)
+            .Where(p => !companyId.HasValue || p.CompanyId == companyId.Value)
+            .Sum(p => p.Lines.Sum(l => l.Quantity * l.UnitPrice));
+
+        var totalInputTax = _purchaseOrders
+            .Where(p => p.Status != PurchaseOrderStatus.Draft && p.Status != PurchaseOrderStatus.Canceled)
+            .Where(p => p.Date >= from && p.Date <= to)
+            .Where(p => !companyId.HasValue || p.CompanyId == companyId.Value)
+            .Sum(p => p.Lines.Sum(l => l.TaxAmount));
+
+        // If no purchase orders, calculate reasonable sample input tax or use 0
+        var netTaxPayable = totalOutputTax - totalInputTax;
+
+        // Withholding Tax
+        var whtCertificates = _withholdingCertificates
+            .Where(w => w.PeriodStart >= from && w.PeriodEnd <= to)
+            .Where(w => !companyId.HasValue || w.CompanyId == companyId.Value)
+            .ToList();
+        var totalWithheld = whtCertificates.Sum(w => w.WithheldAmount);
+
+        // Box Breakdown formatting
+        var jur = (jurisdictionId ?? "UK").ToUpperInvariant();
+        var boxes = new List<object>();
+
+        if (jur == "UK")
+        {
+            boxes.Add(new { box = "Box 1", description = "VAT due in the period on sales and other outputs", amount = totalOutputTax });
+            boxes.Add(new { box = "Box 2", description = "VAT due in the period on acquisitions from other EC member states", amount = 0m });
+            boxes.Add(new { box = "Box 3", description = "Total VAT due (Box 1 + Box 2)", amount = totalOutputTax });
+            boxes.Add(new { box = "Box 4", description = "VAT reclaimed in the period on purchases and other inputs", amount = totalInputTax });
+            boxes.Add(new { box = "Box 5", description = "Net VAT to pay to HMRC or receive back (Box 3 - Box 4)", amount = netTaxPayable });
+            boxes.Add(new { box = "Box 6", description = "Total value of sales and all other outputs excluding any VAT", amount = totalSales });
+            boxes.Add(new { box = "Box 7", description = "Total value of purchases and all other inputs excluding any VAT", amount = totalPurchases });
+            boxes.Add(new { box = "Box 8", description = "Total value of all supplies of goods to other EC member states", amount = totalZeroRatedSales });
+            boxes.Add(new { box = "Box 9", description = "Total value of all acquisitions of goods from other EC member states", amount = 0m });
+        }
+        else if (jur == "PK")
+        {
+            boxes.Add(new { box = "Annex C (Row 1)", description = "Taxable Goods Supplies subject to standard 18% Sales Tax", amount = totalSales - totalZeroRatedSales - totalExemptSales });
+            boxes.Add(new { box = "Annex C (Row 2)", description = "Output Sales Tax Due (Federal FBR 18% / Provincial PRA 16%)", amount = totalOutputTax });
+            boxes.Add(new { box = "Annex C (Row 3)", description = "Zero-Rated Supplies (Exports under 5th Schedule)", amount = totalZeroRatedSales });
+            boxes.Add(new { box = "Annex C (Row 4)", description = "Exempt Supplies (6th Schedule)", amount = totalExemptSales });
+            boxes.Add(new { box = "Annex A (Row 1)", description = "Domestic Purchases & Claimable Input Tax Credit", amount = totalInputTax });
+            boxes.Add(new { box = "Section 153 WHT", description = "Withholding Income Tax Deducted / Deposited", amount = totalWithheld });
+            boxes.Add(new { box = "Net Payable", description = "Net Federal & Provincial Tax Payable / (Refundable)", amount = netTaxPayable });
+        }
+        else if (jur == "SA")
+        {
+            boxes.Add(new { box = "Row 1", description = "Standard rated 15% domestic sales & output tax", amount = totalOutputTax });
+            boxes.Add(new { box = "Row 2", description = "Zero rated exports and supplies", amount = totalZeroRatedSales });
+            boxes.Add(new { box = "Row 3", description = "Exempt supplies", amount = totalExemptSales });
+            boxes.Add(new { box = "Row 7", description = "Standard rated 15% purchases & input tax", amount = totalInputTax });
+            boxes.Add(new { box = "Row 12", description = "Total Net Tax Payable to ZATCA / (Refund)", amount = netTaxPayable });
+        }
+        else if (jur == "CA")
+        {
+            boxes.Add(new { box = "Line 101", description = "Total sales and other revenue", amount = totalSales });
+            boxes.Add(new { box = "Line 103", description = "GST/HST collected or that became collectible", amount = totalOutputTax });
+            boxes.Add(new { box = "Line 106", description = "Input Tax Credits (ITCs) on purchases", amount = totalInputTax });
+            boxes.Add(new { box = "Line 109", description = "Net tax to be remitted to CRA or (refund)", amount = netTaxPayable });
+        }
+        else // UAE / US / General
+        {
+            boxes.Add(new { box = "Box 1", description = "Standard rated supplies & output tax", amount = totalOutputTax });
+            boxes.Add(new { box = "Box 4", description = "Zero rated supplies / Exports", amount = totalZeroRatedSales });
+            boxes.Add(new { box = "Box 5", description = "Exempt supplies", amount = totalExemptSales });
+            boxes.Add(new { box = "Box 9", description = "Standard rated expenses & recoverable input tax", amount = totalInputTax });
+            boxes.Add(new { box = "Box 14", description = "Net Tax Payable / (Refund)", amount = netTaxPayable });
+        }
+
+        return new
+        {
+            JurisdictionId = jur,
+            PeriodStart = from,
+            PeriodEnd = to,
+            TotalSales = totalSales,
+            TotalPurchases = totalPurchases,
+            TotalOutputTax = totalOutputTax,
+            TotalInputTax = totalInputTax,
+            NetTaxPayable = netTaxPayable,
+            TotalZeroRatedSales = totalZeroRatedSales,
+            TotalExemptSales = totalExemptSales,
+            TotalWithheld = totalWithheld,
+            Boxes = boxes
+        };
     }
     
     public Account? Find(Guid id) => _accounts.FirstOrDefault(x => x.Id == id);
@@ -4124,6 +4630,7 @@ _bankImports.Clear(); _bankImports.AddRange(state.BankImports ?? []);
         _projectExpenses.Clear(); _projectExpenses.AddRange(state.ProjectExpenses ?? []);
         _taxObligations.Clear(); _taxObligations.AddRange(state.TaxObligations ?? []);
         _taxReturns.Clear(); _taxReturns.AddRange(state.TaxReturns ?? []);
+        _taxExemptions.Clear(); _taxExemptions.AddRange(state.TaxExemptions ?? []);
         _withholdingCertificates.Clear(); _withholdingCertificates.AddRange(state.WithholdingCertificates ?? []);
         _eInvoices.Clear(); _eInvoices.AddRange(state.EInvoices ?? []);
         _surveys.Clear(); _surveys.AddRange(state.Surveys ?? []);
@@ -4229,7 +4736,7 @@ _bankImports.Clear(); _bankImports.AddRange(state.BankImports ?? []);
     {
         if (_dbFactory is null) return;
         using var db = _dbFactory.CreateDbContext();
-        var json = JsonSerializer.Serialize(new StoredState(_accounts, _entries, _history, _templates, _recurringEntries, _journalEvents, _intercompanyAllocations, _companies, _customers, _products, _vendors, _purchaseOrders, _grns, _fixedAssets, _taxAuthorities, _taxCodes, _taxRates, _warehouses, _stockLevels, _stockTransactions, _salesInvoices, _estimates, _boms, _workOrders, _mappings, _salesOrders, _creditNotes, _customerPayments, _vendorPayments, _fundTransfers, _reconciliations, _budgets, _periodCloses, _vouchers, _expenseClaims, _bankImports, _payComponents, _employees, _departments, _positions, _payGrades, _leaveBalances, _leaveRequests, _attendanceRecords, _payruns, _payrunEmployees, _payrunLines, _salarySlips, _holidays, _loanAdvances, _taxSlabs, _employeeCompensations, _projects, _projectPhases, _projectTasks, _timesheets, _projectExpenses, _taxObligations, _taxReturns, _withholdingCertificates, _eInvoices, _surveys, _fieldVisits, _inspections, _fieldWorkOrders, _fieldExpenses, _adminUsers, _userRoles, _branches, _approvalWorkflows, _numberSeries, _currencies, _auditLog, _leases, _prepaymentSchedules));
+        var json = JsonSerializer.Serialize(new StoredState(_accounts, _entries, _history, _templates, _recurringEntries, _journalEvents, _intercompanyAllocations, _companies, _customers, _products, _vendors, _purchaseOrders, _grns, _fixedAssets, _taxAuthorities, _taxCodes, _taxRates, _warehouses, _stockLevels, _stockTransactions, _salesInvoices, _estimates, _boms, _workOrders, _mappings, _salesOrders, _creditNotes, _customerPayments, _vendorPayments, _fundTransfers, _reconciliations, _budgets, _periodCloses, _vouchers, _expenseClaims, _bankImports, _payComponents, _employees, _departments, _positions, _payGrades, _leaveBalances, _leaveRequests, _attendanceRecords, _payruns, _payrunEmployees, _payrunLines, _salarySlips, _holidays, _loanAdvances, _taxSlabs, _employeeCompensations, _projects, _projectPhases, _projectTasks, _timesheets, _projectExpenses, _taxObligations, _taxReturns, _taxExemptions, _withholdingCertificates, _eInvoices, _surveys, _fieldVisits, _inspections, _fieldWorkOrders, _fieldExpenses, _adminUsers, _userRoles, _branches, _approvalWorkflows, _numberSeries, _currencies, _auditLog, _leases, _prepaymentSchedules));
         var snapshot = db.AccountingStateSnapshots.Find(1);
         if (snapshot is null) db.AccountingStateSnapshots.Add(new AccountingStateSnapshot { Id = 1, Json = json, UpdatedAt = DateTime.UtcNow });
         else { snapshot.Json = json; snapshot.UpdatedAt = DateTime.UtcNow; }
