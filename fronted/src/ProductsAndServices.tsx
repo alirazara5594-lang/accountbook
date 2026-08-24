@@ -249,6 +249,9 @@ export default function ProductsAndServices({
       return
     }
 
+    // Check if taxCodeId is a default option
+    const isDefaultOption = defaultTaxOptions.some(t => t.id === form.taxCodeId)
+
     const payload = {
       code: form.code || null,
       name: form.name.trim(),
@@ -258,7 +261,7 @@ export default function ProductsAndServices({
       unit: form.unit.trim() || 'Each',
       unitPrice: Number(form.unitPrice) || 0,
       costPrice: Number(form.costPrice) || 0,
-      taxCodeId: form.taxCodeId || null,
+      taxCodeId: isDefaultOption ? null : (form.taxCodeId || null),
       incomeAccountId: form.incomeAccountId || null,
       expenseAccountId: form.expenseAccountId || null,
       assetAccountId: form.assetAccountId || null
