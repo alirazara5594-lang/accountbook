@@ -158,6 +158,19 @@ export const TaxAccountingView: React.FC<TaxAccountingViewProps> = ({ activeEnti
       setExemptions(exs || []);
       setSummaryReport(summ);
       setError('');
+
+      // Auto-provision if store is empty on first load
+      if (!cs || cs.length === 0) {
+        const countryToSeed = currentEntity?.country || 'Pakistan';
+        taxApi.seedCountryPreset(countryToSeed, activeEntityId).then(async () => {
+          const [newAuths, newCs] = await Promise.all([
+            taxApi.getTaxAuthorities(activeEntityId).catch(() => []),
+            taxApi.getTaxCodes(undefined, activeEntityId).catch(() => []),
+          ]);
+          setAuthorities(newAuths || []);
+          setCodes(newCs || []);
+        }).catch(() => {});
+      }
     } catch (e: any) {
       setError(e?.message || 'Failed to load tax data.');
     } finally {
@@ -192,9 +205,19 @@ export const TaxAccountingView: React.FC<TaxAccountingViewProps> = ({ activeEnti
   const authorityIds = new Set(jurisdictionAuthorities.map(a => a.id));
   const jurisdictionCodes = useMemo(
     () =>
-      codes.filter(
-        c => c.jurisdictionId === selectedJurisdiction || (c.taxAuthorityId && authorityIds.has(c.taxAuthorityId))
-      ),
+      codes.filter(c => {
+        if (c.jurisdictionId && c.jurisdictionId.toUpperCase() === selectedJurisdiction.toUpperCase()) return true;
+        if (c.taxAuthorityId && authorityIds.has(c.taxAuthorityId)) return true;
+        const codeUpper = (c.code || '').toUpperCase();
+        if (selectedJurisdiction === 'UK' && codeUpper.includes('UK')) return true;
+        if (selectedJurisdiction === 'PK' && (codeUpper.includes('PK') || codeUpper.includes('PRA') || codeUpper.includes('SRB') || codeUpper.includes('KPRA') || codeUpper.includes('BRA') || codeUpper.includes('FBR'))) return true;
+        if (selectedJurisdiction === 'SA' && (codeUpper.includes('KSA') || codeUpper.includes('SA') || codeUpper.includes('ZATCA'))) return true;
+        if (selectedJurisdiction === 'UAE' && (codeUpper.includes('UAE') || codeUpper.includes('FTA'))) return true;
+        if (selectedJurisdiction === 'USA' && (codeUpper.includes('US') || codeUpper.includes('CA-') || codeUpper.includes('NY') || codeUpper.includes('TX'))) return true;
+        if (selectedJurisdiction === 'CA' && (codeUpper.includes('CA') || codeUpper.includes('GST') || codeUpper.includes('HST'))) return true;
+        if (selectedJurisdiction === 'EU' && (codeUpper.includes('EU') || codeUpper.includes('DE') || codeUpper.includes('FR') || codeUpper.includes('NL') || codeUpper.includes('IE'))) return true;
+        return false;
+      }),
     [codes, selectedJurisdiction, authorityIds]
   );
 

@@ -195,67 +195,14 @@ List<ExpenseClaim>? ExpenseClaims = null,
 
         SeedAccounts();
 
-        // Seed Tax Authorities
-        var hmrc = new TaxAuthority { Name = "HMRC", Country = "United Kingdom" };
-        var irs = new TaxAuthority { Name = "IRS", Country = "United States" };
-        var cdtfa = new TaxAuthority { Name = "CDTFA", Country = "United States", State = "California" };
-        var fta = new TaxAuthority { Name = "FTA", Country = "United Arab Emirates" };
-        var zatca = new TaxAuthority { Name = "ZATCA", Country = "Saudi Arabia" };
-        var fbr = new TaxAuthority { Name = "FBR", Country = "Pakistan" };
-        var pra = new TaxAuthority { Name = "PRA", Country = "Pakistan", State = "Punjab" };
-        var cra = new TaxAuthority { Name = "CRA", Country = "Canada" };
-        var eu = new TaxAuthority { Name = "EU VAT", Country = "European Union" };
-        
-        _taxAuthorities.AddRange([hmrc, irs, cdtfa, fta, zatca, fbr, pra, cra, eu]);
-
-        // Seed Tax Codes & Rates
-        var today = DateOnly.FromDateTime(DateTime.Today);
-        var ukVat = new TaxCode { Code = "VAT-UK-20", Name = "UK Standard VAT 20%", TaxAuthorityId = hmrc.Id };
-        var ukVatRate = new TaxRate { TaxCodeId = ukVat.Id, Percentage = 20m, EffectiveFrom = today };
-        ukVat.Rates.Add(ukVatRate);
-
-        var usSalesTax = new TaxCode { Code = "SALES-US-0", Name = "US Default Sales Tax 0%", TaxAuthorityId = irs.Id };
-        usSalesTax.Rates.Add(new TaxRate { TaxCodeId = usSalesTax.Id, Percentage = 0, EffectiveFrom = new DateOnly(2020, 1, 1) });
-
-        var usCaSalesTax = new TaxCode { Code = "SALES-CA-7.25", Name = "US California Sales Tax 7.25%", TaxAuthorityId = cdtfa.Id };
-        usCaSalesTax.Rates.Add(new TaxRate { TaxCodeId = usCaSalesTax.Id, Percentage = 7.25m, EffectiveFrom = new DateOnly(2020, 1, 1) });
-
-        var uaeVat = new TaxCode { Code = "VAT-UAE-5", Name = "UAE Standard VAT 5%", TaxAuthorityId = fta.Id };
-        var uaeVatRate = new TaxRate { TaxCodeId = uaeVat.Id, Percentage = 5m, EffectiveFrom = today };
-        uaeVat.Rates.Add(uaeVatRate);
-
-        var ksaVat = new TaxCode { Code = "VAT-KSA-15", Name = "KSA Standard VAT 15%", TaxAuthorityId = zatca.Id };
-        var ksaVatRate = new TaxRate { TaxCodeId = ksaVat.Id, Percentage = 15m, EffectiveFrom = today };
-        ksaVat.Rates.Add(ksaVatRate);
-
-        var pkSalesTax = new TaxCode { Code = "SALES-PK-18", Name = "Pakistan Sales Tax 18%", TaxAuthorityId = fbr.Id };
-        pkSalesTax.Rates.Add(new TaxRate { TaxCodeId = pkSalesTax.Id, Percentage = 18, EffectiveFrom = new DateOnly(2023, 1, 1) });
-
-        var pkPraTax = new TaxCode { Code = "PRA-PK-16", Name = "Punjab Sales Tax 16%", TaxAuthorityId = pra.Id };
-        pkPraTax.Rates.Add(new TaxRate { TaxCodeId = pkPraTax.Id, Percentage = 16, EffectiveFrom = new DateOnly(2023, 1, 1) });
-
-        var caGst = new TaxCode { Code = "GST-CA-5", Name = "Canada GST 5%", TaxAuthorityId = cra.Id };
-        var caGstRate = new TaxRate { TaxCodeId = caGst.Id, Percentage = 5m, EffectiveFrom = today };
-        caGst.Rates.Add(caGstRate);
-
-        var caHst = new TaxCode { Code = "HST-CA-13", Name = "Canada HST 13%", TaxAuthorityId = cra.Id };
-        var caHstRate = new TaxRate { TaxCodeId = caHst.Id, Percentage = 13m, EffectiveFrom = today };
-        caHst.Rates.Add(caHstRate);
-
-        var euVatStandard = new TaxCode { Code = "VAT-EU-21", Name = "EU Standard VAT 21%", TaxAuthorityId = eu.Id };
-        var euVatStandardRate = new TaxRate { TaxCodeId = euVatStandard.Id, Percentage = 21m, EffectiveFrom = today };
-        euVatStandard.Rates.Add(euVatStandardRate);
-
-        var euVatReduced = new TaxCode { Code = "VAT-EU-5", Name = "EU Reduced VAT 5%", TaxAuthorityId = eu.Id };
-        var euVatReducedRate = new TaxRate { TaxCodeId = euVatReduced.Id, Percentage = 5m, EffectiveFrom = today };
-        euVatReduced.Rates.Add(euVatReducedRate);
-
-        var ukVatReduced = new TaxCode { Code = "VAT-UK-5", Name = "UK Reduced VAT 5%", TaxAuthorityId = hmrc.Id };
-        var ukVatReducedRate = new TaxRate { TaxCodeId = ukVatReduced.Id, Percentage = 5m, EffectiveFrom = today };
-        ukVatReduced.Rates.Add(ukVatReducedRate);
-
-        _taxCodes.AddRange([ukVat, ukVatReduced, usSalesTax, usCaSalesTax, uaeVat, ksaVat, pkSalesTax, pkPraTax, caGst, caHst, euVatStandard, euVatReduced]);
-        _taxRates.AddRange(_taxCodes.SelectMany(c => c.Rates));
+        // Seed all global country presets
+        SeedCountryTaxPreset("Pakistan");
+        SeedCountryTaxPreset("United Kingdom");
+        SeedCountryTaxPreset("Saudi Arabia");
+        SeedCountryTaxPreset("United Arab Emirates");
+        SeedCountryTaxPreset("United States");
+        SeedCountryTaxPreset("Canada");
+        SeedCountryTaxPreset("European Union");
 
         var defaultWarehouse = new Warehouse { Name = "Main Warehouse", Location = "Headquarters", CompanyId = parentEntity.Id };
         _warehouses.Add(defaultWarehouse);
@@ -4598,6 +4545,18 @@ public IReadOnlyList<EmployeeCompensation> EmployeeCompensations => _employeeCom
         _taxAuthorities.Clear(); _taxAuthorities.AddRange(state.TaxAuthorities ?? []);
         _taxCodes.Clear(); _taxCodes.AddRange(state.TaxCodes ?? []);
         _taxRates.Clear(); _taxRates.AddRange(state.TaxRates ?? []);
+
+        // Auto-seed presets if missing in loaded database snapshot
+        if (_taxCodes.Count < 20 || !_taxCodes.Any(c => c.Code.StartsWith("PRA-PK") || c.Code.StartsWith("SALES-PK-18")))
+        {
+            SeedCountryTaxPreset("Pakistan");
+            SeedCountryTaxPreset("United Kingdom");
+            SeedCountryTaxPreset("Saudi Arabia");
+            SeedCountryTaxPreset("United Arab Emirates");
+            SeedCountryTaxPreset("United States");
+            SeedCountryTaxPreset("Canada");
+            SeedCountryTaxPreset("European Union");
+        }
         _warehouses.Clear(); _warehouses.AddRange(state.Warehouses ?? []);
         _stockLevels.Clear(); _stockLevels.AddRange(state.StockLevels ?? []);
         _stockTransactions.Clear(); _stockTransactions.AddRange(state.StockTransactions ?? []);
