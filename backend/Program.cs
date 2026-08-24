@@ -123,7 +123,28 @@ static string? NormalizePostgresConnectionString(string? connStr)
             var password = userInfo.Length > 1 ? Uri.UnescapeDataString(userInfo[1]) : "";
             var dbName = uri.AbsolutePath.TrimStart('/');
             var port = uri.Port > 0 ? uri.Port : 5432;
-            return $"Host={uri.Host};Port={port};Database={dbName};Username={username};Password={password};SSL Mode=Require;Trust Server Certificate=true;";
+
+            var isLocal = string.Equals(uri.Host, "localhost", StringComparison.OrdinalIgnoreCase) ||
+                          string.Equals(uri.Host, "127.0.0.1", StringComparison.OrdinalIgnoreCase) ||
+                          string.Equals(uri.Host, "::1", StringComparison.OrdinalIgnoreCase);
+
+            var sslMode = isLocal ? "Prefer" : "Require";
+
+            if (!string.IsNullOrEmpty(uri.Query))
+            {
+                var queryPairs = uri.Query.TrimStart('?').Split('&');
+                foreach (var pair in queryPairs)
+                {
+                    var kvp = pair.Split('=');
+                    if (kvp.Length == 2 && string.Equals(kvp[0], "sslmode", StringComparison.OrdinalIgnoreCase))
+                    {
+                        sslMode = kvp[1];
+                        break;
+                    }
+                }
+            }
+
+            return $"Host={uri.Host};Port={port};Database={dbName};Username={username};Password={password};SSL Mode={sslMode};Trust Server Certificate=true;";
         }
         catch
         {
