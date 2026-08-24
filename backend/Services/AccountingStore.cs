@@ -3485,12 +3485,31 @@ public IReadOnlyList<EmployeeCompensation> EmployeeCompensations => _employeeCom
         var code = request.Code?.Trim();
         var legalName = request.LegalName?.Trim();
         var type = request.Type ?? EntityType.Subsidiary;
-        var country = !string.IsNullOrWhiteSpace(request.Country) ? request.Country.Trim() : "United Kingdom";
+        var country = !string.IsNullOrWhiteSpace(request.Country) ? request.Country.Trim() : "Pakistan";
+        var state = request.State?.Trim();
         var currency = !string.IsNullOrWhiteSpace(request.CurrencyCode) ? request.CurrencyCode.Trim().ToUpperInvariant()
             : !string.IsNullOrWhiteSpace(request.FunctionalCurrency) ? request.FunctionalCurrency.Trim().ToUpperInvariant()
             : (country.ToLowerInvariant().Contains("pakistan") ? "PKR" : country.ToLowerInvariant().Contains("saudi") ? "SAR" : country.ToLowerInvariant().Contains("emirates") ? "AED" : country.ToLowerInvariant().Contains("canada") ? "CAD" : country.ToLowerInvariant().Contains("kingdom") || country.ToLowerInvariant() == "uk" ? "GBP" : "USD");
         
-        company = new Company { Name = name, Code = code, LegalName = legalName, Type = type, ParentId = request.ParentId, Country = country, CurrencyCode = currency, TaxAuthorityId = request.TaxAuthorityId };
+        company = new Company
+        {
+            Name = name,
+            Code = code,
+            LegalName = legalName,
+            Type = type,
+            ParentId = request.ParentId,
+            Country = country,
+            State = state,
+            CurrencyCode = currency,
+            TaxRegistrationNumber = request.TaxRegistrationNumber?.Trim(),
+            Address = request.Address?.Trim(),
+            City = request.City?.Trim(),
+            Phone = request.Phone?.Trim(),
+            Email = request.Email?.Trim(),
+            Website = request.Website?.Trim(),
+            FiscalYearStartMonth = request.FiscalYearStartMonth ?? (country.ToLowerInvariant().Contains("pakistan") ? 7 : country.ToLowerInvariant().Contains("kingdom") ? 4 : 1),
+            TaxAuthorityId = request.TaxAuthorityId
+        };
         _companies.Add(company);
 
         // Auto-provision country-specific tax rules and authorities
@@ -3505,7 +3524,23 @@ public IReadOnlyList<EmployeeCompensation> EmployeeCompensations => _employeeCom
         if (company is null) { error = "Entity not found."; return false; }
         if (string.IsNullOrWhiteSpace(request.Name)) { error = "Company name is required."; return false; }
         var prevCountry = company.Country;
-        company.Name = request.Name.Trim(); company.Code = request.Code?.Trim(); company.LegalName = request.LegalName?.Trim(); company.Type = request.Type ?? company.Type; company.ParentId = request.ParentId; company.Country = !string.IsNullOrWhiteSpace(request.Country) ? request.Country.Trim() : company.Country; company.CurrencyCode = !string.IsNullOrWhiteSpace(request.CurrencyCode) ? request.CurrencyCode.Trim().ToUpperInvariant() : !string.IsNullOrWhiteSpace(request.FunctionalCurrency) ? request.FunctionalCurrency.Trim().ToUpperInvariant() : company.CurrencyCode; company.TaxAuthorityId = request.TaxAuthorityId; company.UpdatedAt = DateTime.UtcNow;
+        company.Name = request.Name.Trim();
+        company.Code = request.Code?.Trim();
+        company.LegalName = request.LegalName?.Trim();
+        company.Type = request.Type ?? company.Type;
+        company.ParentId = request.ParentId;
+        company.Country = !string.IsNullOrWhiteSpace(request.Country) ? request.Country.Trim() : company.Country;
+        company.State = request.State?.Trim() ?? company.State;
+        company.CurrencyCode = !string.IsNullOrWhiteSpace(request.CurrencyCode) ? request.CurrencyCode.Trim().ToUpperInvariant() : !string.IsNullOrWhiteSpace(request.FunctionalCurrency) ? request.FunctionalCurrency.Trim().ToUpperInvariant() : company.CurrencyCode;
+        company.TaxRegistrationNumber = request.TaxRegistrationNumber?.Trim() ?? company.TaxRegistrationNumber;
+        company.Address = request.Address?.Trim() ?? company.Address;
+        company.City = request.City?.Trim() ?? company.City;
+        company.Phone = request.Phone?.Trim() ?? company.Phone;
+        company.Email = request.Email?.Trim() ?? company.Email;
+        company.Website = request.Website?.Trim() ?? company.Website;
+        company.FiscalYearStartMonth = request.FiscalYearStartMonth ?? company.FiscalYearStartMonth;
+        company.TaxAuthorityId = request.TaxAuthorityId;
+        company.UpdatedAt = DateTime.UtcNow;
 
         if (!string.Equals(prevCountry, company.Country, StringComparison.OrdinalIgnoreCase))
         {
