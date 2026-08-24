@@ -246,6 +246,13 @@ export default function ProductsAndServices({
     e.preventDefault()
     if (!form.name.trim()) {
       notify('Product name is required.')
+      setModalTab('info')
+      return
+    }
+
+    // Always require reviewing on the Preview tab before committing changes to the database
+    if (modalTab !== 'preview') {
+      setModalTab('preview')
       return
     }
 
