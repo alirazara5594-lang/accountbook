@@ -3920,11 +3920,15 @@ public IReadOnlyList<EmployeeCompensation> EmployeeCompensations => _employeeCom
 
                 AddPresetCode("SALES-PK-18", "Pakistan Sales Tax on Goods 18%", "Federal Sales Tax on Taxable Goods (FBR Sales Tax Act 1990)", TaxType.Standard, TaxScope.Both, fbr.Id, "PK", 18m, today, companyId);
                 AddPresetCode("PRA-PK-16", "Punjab Sales Tax on Services 16%", "Punjab Revenue Authority (PRA) Standard Rate on Services", TaxType.ServiceTax, TaxScope.Both, pra.Id, "PK", 16m, today, companyId);
+                AddPresetCode("PRA-PK-IT-5", "Punjab IT & Software Services 5%", "PRA Reduced Rate for IT consultancy, software development, and call centers", TaxType.Reduced, TaxScope.Both, pra.Id, "PK", 5m, today, companyId);
                 AddPresetCode("SRB-PK-13", "Sindh Sales Tax on Services 13%", "Sindh Revenue Board (SRB) Standard Rate on Services", TaxType.ServiceTax, TaxScope.Both, srb.Id, "PK", 13m, today, companyId);
-                AddPresetCode("KPRA-PK-15", "KPK Sales Tax on Services 15%", "Khyber Pakhtunkhwa Revenue Authority (KPRA) Rate", TaxType.ServiceTax, TaxScope.Both, kpra.Id, "PK", 15m, today, companyId);
+                AddPresetCode("SRB-PK-IT-3", "Sindh IT & Software Services 3%", "SRB Reduced Rate for software development, IT enabled services & call centers", TaxType.Reduced, TaxScope.Both, srb.Id, "PK", 3m, today, companyId);
+                AddPresetCode("KPRA-PK-15", "KPK Sales Tax on Services 15%", "Khyber Pakhtunkhwa Revenue Authority (KPRA) Standard Rate", TaxType.ServiceTax, TaxScope.Both, kpra.Id, "PK", 15m, today, companyId);
+                AddPresetCode("KPRA-PK-IT-2", "KPK IT & Software Services 2%", "KPRA Super-Reduced Rate for IT and software development", TaxType.Reduced, TaxScope.Both, kpra.Id, "PK", 2m, today, companyId);
                 AddPresetCode("BRA-PK-15", "Balochistan Sales Tax on Services 15%", "Balochistan Revenue Authority (BRA) Rate", TaxType.ServiceTax, TaxScope.Both, bra.Id, "PK", 15m, today, companyId);
-                AddPresetCode("ZERO-PK-0", "Pakistan Zero-Rated Exports 0%", "Zero-rated export supplies under Fifth Schedule", TaxType.ZeroRated, TaxScope.Sales, fbr.Id, "PK", 0m, today, companyId);
-                AddPresetCode("EXEMPT-PK-0", "Pakistan Exempt Supplies 0%", "Unconditional Exempt supplies under Sixth Schedule", TaxType.Exempt, TaxScope.Both, fbr.Id, "PK", 0m, today, companyId);
+                AddPresetCode("ZERO-PK-0", "Pakistan Zero-Rated Exports 0%", "Zero-rated export of physical goods under Fifth Schedule", TaxType.ZeroRated, TaxScope.Sales, fbr.Id, "PK", 0m, today, companyId);
+                AddPresetCode("ZERO-PK-IT-EXP-0", "Pakistan IT / Software Exports 0%", "Zero-rated IT export services and freelancing remittance (FBR Fifth Sched)", TaxType.ZeroRated, TaxScope.Sales, fbr.Id, "PK", 0m, today, companyId);
+                AddPresetCode("EXEMPT-PK-0", "Pakistan Exempt Supplies 0%", "Unconditional Exempt supplies under Sixth Schedule (foodstuffs, basic medicines)", TaxType.Exempt, TaxScope.Both, fbr.Id, "PK", 0m, today, companyId);
                 AddPresetCode("WHT-PK-153-GOODS-5", "FBR WHT Sec 153(1)(a) Goods 5%", "Withholding tax deduction on supplies of goods (Active Filer)", TaxType.Withholding, TaxScope.Purchases, fbr.Id, "PK", 5m, today, companyId);
                 AddPresetCode("WHT-PK-153-SERV-10", "FBR WHT Sec 153(1)(b) Services 10%", "Withholding tax deduction on rendering services (Active Filer)", TaxType.Withholding, TaxScope.Purchases, fbr.Id, "PK", 10m, today, companyId);
                 AddPresetCode("WHT-PK-153-CONTRACT-7.5", "FBR WHT Sec 153(1)(c) Contracts 7.5%", "Withholding tax deduction on execution of contracts (Active Filer)", TaxType.Withholding, TaxScope.Purchases, fbr.Id, "PK", 7.5m, today, companyId);
@@ -4012,9 +4016,12 @@ public IReadOnlyList<EmployeeCompensation> EmployeeCompensations => _employeeCom
                 AddPresetCode("VAT-DE-19", "Germany Standard VAT 19%", "German Standard Mehrwertsteuer (Umsatzsteuer 19%)", TaxType.Standard, TaxScope.Both, bzst.Id, "EU", 19m, today, companyId);
                 AddPresetCode("VAT-DE-7", "Germany Reduced VAT 7%", "German Reduced Rate on food, books, hotel accommodation", TaxType.Reduced, TaxScope.Both, bzst.Id, "EU", 7m, today, companyId);
                 AddPresetCode("VAT-FR-20", "France Standard TVA 20%", "French Standard Taxe sur la Valeur Ajoutée (TVA 20%)", TaxType.Standard, TaxScope.Both, dgfif.Id, "EU", 20m, today, companyId);
-                AddPresetCode("VAT-FR-5.5", "France Reduced TVA 5.5%", "French Reduced Rate on basic necessities and energy", TaxType.Reduced, TaxScope.Both, dgfif.Id, "EU", 5.5m, today, companyId);
+                AddPresetCode("VAT-FR-10", "France Intermediate TVA 10%", "French Intermediate Rate for restaurants, transport, and renovations", TaxType.Reduced, TaxScope.Both, dgfif.Id, "EU", 10m, today, companyId);
+                AddPresetCode("VAT-FR-5.5", "France Reduced TVA 5.5%", "French Reduced Rate on basic necessities, books, and energy", TaxType.Reduced, TaxScope.Both, dgfif.Id, "EU", 5.5m, today, companyId);
                 AddPresetCode("VAT-NL-21", "Netherlands Standard BTW 21%", "Dutch Standard Belasting van Toegevoegde Waarde (BTW 21%)", TaxType.Standard, TaxScope.Both, eu.Id, "EU", 21m, today, companyId);
+                AddPresetCode("VAT-NL-9", "Netherlands Reduced BTW 9%", "Dutch Reduced Rate for food, medicines, and books", TaxType.Reduced, TaxScope.Both, eu.Id, "EU", 9m, today, companyId);
                 AddPresetCode("VAT-IE-23", "Ireland Standard VAT 23%", "Irish Standard Value Added Tax 23%", TaxType.Standard, TaxScope.Both, eu.Id, "EU", 23m, today, companyId);
+                AddPresetCode("VAT-IE-13.5", "Ireland Reduced VAT 13.5%", "Irish Reduced Rate for hospitality, cleaning, and repair services", TaxType.Reduced, TaxScope.Both, eu.Id, "EU", 13.5m, today, companyId);
                 AddPresetCode("VAT-EU-0-INTRA", "EU Intra-Community B2B Supply 0%", "Cross-border B2B supply with verified VIES VAT ID", TaxType.ZeroRated, TaxScope.Sales, eu.Id, "EU", 0m, today, companyId);
                 AddPresetCode("VAT-EU-RC", "EU Reverse Charge Mechanism 0%", "Customer self-accounts for VAT on cross-border services (Art 196)", TaxType.ReverseCharge, TaxScope.Both, eu.Id, "EU", 0m, today, companyId);
                 AddPresetCode("VAT-EU-EXEMPT", "EU Exempt Supplies 0%", "Exempt financial, insurance, and medical services (Art 132/135)", TaxType.Exempt, TaxScope.Both, eu.Id, "EU", 0m, today, companyId);
