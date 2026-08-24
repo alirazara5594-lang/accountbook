@@ -18,7 +18,9 @@ public class EstimatesController : ControllerBase
             .Select(e => new {
                 e.Id, e.EstimateNumber, e.CustomerId,
                 CustomerName = _store.Customers.FirstOrDefault(c => c.Id == e.CustomerId)?.Name ?? "Unknown",
-                e.EstimateDate, e.ExpiryDate, e.Status,
+                e.EstimateDate, e.ExpiryDate,
+                Status = (int)e.Status,
+                StatusName = e.Status.ToString(),
                 e.SubTotal, e.TotalDiscount, e.TotalTax, e.TotalAmount,
                 e.Reference, e.ConvertedToInvoiceId
             });

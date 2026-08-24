@@ -5,10 +5,17 @@ export interface Estimate {
   estimateNumber: string;
   customerId: string;
   customerName?: string;
-  date: string;
-  expiryDate: string;
-  status: 'Draft' | 'Sent' | 'Accepted' | 'Declined' | 'Invoiced' | 'Expired';
+  date?: string;
+  estimateDate?: string;
+  expiryDate?: string;
+  status: any;
   totalAmount: number;
+  subtotal?: number;
+  discountTotal?: number;
+  taxTotal?: number;
+  reference?: string;
+  notes?: string;
+  terms?: string;
   lines?: any[];
 }
 

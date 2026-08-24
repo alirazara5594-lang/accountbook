@@ -20,6 +20,18 @@ const statusStyles: Record<number, { label: string; class: string }> = {
   5: { label: 'Invoiced', class: 'bg-purple-500/10 text-purple-600 border border-purple-500/20' },
 }
 
+export const getNumericStatus = (status: any): number => {
+  if (typeof status === 'number') return status
+  if (!status) return 0
+  const s = String(status).toLowerCase().trim()
+  if (s === '2' || s === 'accepted' || s === 'finalized' || s === 'approved') return 2
+  if (s === '3' || s === 'rejected' || s === 'cancelled' || s === 'canceled' || s === 'declined') return 3
+  if (s === '1' || s === 'sent') return 1
+  if (s === '4' || s === 'expired') return 4
+  if (s === '5' || s === 'invoiced') return 5
+  return 0
+}
+
 interface Line {
   productId: string
   description: string
@@ -64,7 +76,6 @@ export const EstimatesAndQuotes: React.FC<{ activeEntityId: string; entities?: a
   const [toast, setToast] = useState('')
   const [query, setQuery] = useState('')
   const [statusFilter, setStatusFilter] = useState<string>('all')
-  const [selectedId, setSelectedId] = useState<string | null>(null)
   const [activeDropdownId, setActiveDropdownId] = useState<string | null>(null)
 
   // Close dropdown on click outside
@@ -163,22 +174,20 @@ export const EstimatesAndQuotes: React.FC<{ activeEntityId: string; entities?: a
   }
 
   const finalizeEstimate = async (est: any) => {
-    if (!window.confirm(`Do you want to finalize Quotation "${est.estimateNumber || est.reference}"? Once finalized, you can convert it into a Sales Invoice.`)) return
     try {
       await updateEstimateStatusStore(est.id, '2') // 2 = Finalized / Accepted
-      notify('✓ Quotation Finalized! You can now convert it to an Invoice.')
-      fetchData()
+      notify(`✓ Quotation ${getFormattedEstimateNumber(est.estimateNumber || est.reference, 0)} Finalized! "To Invoice" is now active.`)
+      await fetchData()
     } catch (e: any) {
       notify(e.message || 'Failed to finalize quotation')
     }
   }
 
   const cancelEstimate = async (est: any) => {
-    if (!window.confirm(`Are you sure you want to cancel Quotation "${est.estimateNumber || est.reference}"?`)) return
     try {
       await updateEstimateStatusStore(est.id, '3') // 3 = Rejected / Cancelled
-      notify('✓ Quotation marked as Cancelled.')
-      fetchData()
+      notify(`✓ Quotation ${getFormattedEstimateNumber(est.estimateNumber || est.reference, 0)} marked as Cancelled.`)
+      await fetchData()
     } catch (e: any) {
       notify(e.message || 'Failed to cancel quotation')
     }
@@ -270,13 +279,14 @@ export const EstimatesAndQuotes: React.FC<{ activeEntityId: string; entities?: a
 
   const filteredEstimates = useMemo(() => {
     return estimates.filter((est: any) => {
+      const statusNum = getNumericStatus(est.status)
       const matchesQuery = !query.trim()
         ? true
         : `${est.estimateNumber || ''} ${est.customerName || ''} ${est.reference || ''}`
             .toLowerCase()
             .includes(query.toLowerCase())
 
-      const matchesStatus = statusFilter === 'all' || String(est.status) === statusFilter
+      const matchesStatus = statusFilter === 'all' || String(statusNum) === statusFilter
 
       return matchesQuery && matchesStatus
     })
@@ -294,6 +304,7 @@ export const EstimatesAndQuotes: React.FC<{ activeEntityId: string; entities?: a
       const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' })
       const quoteNum = getFormattedEstimateNumber(est.estimateNumber || est.reference, index ?? 0)
       const compName = assignedCompany?.name || 'Muhammad Ali Enterprises'
+      const statusNum = getNumericStatus(est.status)
 
       // Title & Company
       doc.setFont('helvetica', 'bold')
@@ -329,7 +340,7 @@ export const EstimatesAndQuotes: React.FC<{ activeEntityId: string; entities?: a
       doc.setTextColor(100, 116, 139)
       doc.text('Status:', 130, 35)
       doc.setTextColor(30, 41, 59)
-      doc.text(statusStyles[est.status]?.label || 'Draft', 162, 35)
+      doc.text(statusStyles[statusNum]?.label || 'Draft', 162, 35)
 
       // Customer Box
       doc.setFillColor(248, 250, 252)
@@ -425,10 +436,6 @@ export const EstimatesAndQuotes: React.FC<{ activeEntityId: string; entities?: a
     }
   }
 
-  const selectedEstimate = useMemo(() => {
-    return estimates.find((e: any) => e.id === selectedId) || null
-  }, [estimates, selectedId])
-
   const exportHeaders = ['Quote #', 'Customer', 'Date', 'Expiry Date', 'Discount', 'Tax', 'Total', 'Status']
   const exportRows = filteredEstimates.map((est: any, idx: number) => [
     getFormattedEstimateNumber(est.estimateNumber || est.reference, idx),
@@ -438,12 +445,12 @@ export const EstimatesAndQuotes: React.FC<{ activeEntityId: string; entities?: a
     est.discountTotal || 0,
     est.taxTotal || 0,
     est.totalAmount || 0,
-    statusStyles[est.status]?.label || 'Draft'
+    statusStyles[getNumericStatus(est.status)]?.label || 'Draft'
   ])
 
   const totalQuoteValue = estimates.reduce((s: number, e: any) => s + (e.totalAmount || 0), 0)
-  const acceptedValue = estimates.filter((e: any) => e.status === 2).reduce((s: number, e: any) => s + (e.totalAmount || 0), 0)
-  const pendingCount = estimates.filter((e: any) => e.status === 0 || e.status === 1).length
+  const acceptedValue = estimates.filter((e: any) => getNumericStatus(e.status) === 2).reduce((s: number, e: any) => s + (e.totalAmount || 0), 0)
+  const pendingCount = estimates.filter((e: any) => getNumericStatus(e.status) === 0 || getNumericStatus(e.status) === 1).length
 
   const assignedCompany = (entities && entities.length > 0 ? entities : allEntities).find((e: any) => e.id === activeEntityId) || allEntities.find((e: any) => e.id === activeEntityId) || allEntities[0]
 
@@ -466,17 +473,6 @@ export const EstimatesAndQuotes: React.FC<{ activeEntityId: string; entities?: a
           </p>
         </div>
         <div className="flex items-center gap-2 shrink-0 flex-wrap">
-          {/* Download PDF button when row is selected */}
-          {selectedEstimate && (
-            <button
-              onClick={() => downloadQuotePdf(selectedEstimate, filteredEstimates.findIndex((e: any) => e.id === selectedEstimate.id))}
-              className="h-9 px-3 rounded-xl border border-indigo-500/30 bg-indigo-500/10 hover:bg-indigo-500/20 text-indigo-600 dark:text-indigo-400 text-xs font-semibold flex items-center gap-1.5 shadow-2xs transition-colors"
-            >
-              <Download className="w-3.5 h-3.5" />
-              <span>Download PDF ({getFormattedEstimateNumber((selectedEstimate as any).estimateNumber || (selectedEstimate as any).reference || '', 0)})</span>
-            </button>
-          )}
-
           <DataToolbar
             query={query}
             setQuery={setQuery}
@@ -577,17 +573,12 @@ export const EstimatesAndQuotes: React.FC<{ activeEntityId: string; entities?: a
               </thead>
               <tbody>
                 {filteredEstimates.map((est: any, index: number) => {
-                  const badge = statusStyles[est.status] || statusStyles[0]
-                  const isSelected = selectedId === est.id
+                  const statusNum = getNumericStatus(est.status)
+                  const badge = statusStyles[statusNum] || statusStyles[0]
                   return (
                     <tr
                       key={est.id}
-                      onClick={() => setSelectedId(isSelected ? null : est.id)}
-                      className={`border-b border-[var(--color-border)] cursor-pointer transition-colors ${
-                        isSelected
-                          ? 'bg-indigo-500/10 dark:bg-indigo-500/15 ring-1 ring-indigo-500/30'
-                          : 'hover:bg-[var(--color-surface-muted)]'
-                      }`}
+                      className="border-b border-[var(--color-border)] hover:bg-[var(--color-surface-muted)] transition-colors"
                     >
                       <td className="px-3 py-2 font-mono font-semibold text-[var(--color-text-strong)]">
                         {getFormattedEstimateNumber(est.estimateNumber || est.reference, index)}
@@ -603,7 +594,7 @@ export const EstimatesAndQuotes: React.FC<{ activeEntityId: string; entities?: a
                       </td>
                       <td className="px-3 py-2 text-right font-bold text-sky-600 font-mono">{money(est.totalAmount)}</td>
                       <td className="px-3 py-2 text-center">
-                        {est.status === 0 ? (
+                        {statusNum === 0 ? (
                           <button
                             onClick={(e) => { e.stopPropagation(); finalizeEstimate(est); }}
                             title="Click to Finalize Quotation"
@@ -631,7 +622,7 @@ export const EstimatesAndQuotes: React.FC<{ activeEntityId: string; entities?: a
                           </button>
 
                           {/* CONVERT INTO INVOICE BUTTON (When Finalized) */}
-                          {est.status === 2 && (
+                          {statusNum === 2 && (
                             <button
                               onClick={() => setConvertModal(est)}
                               title="Convert Finalized Quotation into Sales Invoice"
@@ -654,59 +645,43 @@ export const EstimatesAndQuotes: React.FC<{ activeEntityId: string; entities?: a
                             </button>
 
                             {activeDropdownId === est.id && (
-                              <div className="absolute right-0 top-full mt-1 w-44 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] shadow-2xl z-40 py-1.5 animate-in fade-in zoom-in-95 duration-100">
-                                {/* Edit */}
+                              <div className="absolute right-0 top-full mt-1 w-40 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] shadow-2xl z-40 py-1.5 animate-in fade-in zoom-in-95 duration-100">
+                                {/* 1. Edit */}
                                 <button
                                   onClick={() => { setActiveDropdownId(null); openEditModal(est); }}
-                                  className="w-full px-3 py-1.5 text-left text-xs font-medium text-[var(--color-text-strong)] hover:bg-[var(--color-surface-muted)] flex items-center gap-2"
+                                  className="w-full px-3 py-2 text-left text-xs font-medium text-[var(--color-text-strong)] hover:bg-[var(--color-surface-muted)] flex items-center gap-2 transition-colors"
                                 >
                                   <Pencil className="w-3.5 h-3.5 text-indigo-500" />
-                                  <span>Edit Quote</span>
+                                  <span>Edit</span>
                                 </button>
 
-                                {/* Finalize */}
-                                {est.status === 0 && (
-                                  <button
-                                    onClick={() => { setActiveDropdownId(null); finalizeEstimate(est); }}
-                                    className="w-full px-3 py-1.5 text-left text-xs font-medium text-emerald-600 hover:bg-emerald-500/10 flex items-center gap-2"
-                                  >
-                                    <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
-                                    <span>Finalize Quote</span>
-                                  </button>
-                                )}
-
-                                {/* Convert to Invoice */}
-                                {est.status === 2 && (
-                                  <button
-                                    onClick={() => { setActiveDropdownId(null); setConvertModal(est); }}
-                                    className="w-full px-3 py-1.5 text-left text-xs font-medium text-purple-600 hover:bg-purple-500/10 flex items-center gap-2"
-                                  >
-                                    <ArrowUpRight className="w-3.5 h-3.5 text-purple-600" />
-                                    <span>Convert to Invoice</span>
-                                  </button>
-                                )}
-
-                                {/* Download PDF */}
+                                {/* 2. Finalize */}
                                 <button
-                                  onClick={() => { setActiveDropdownId(null); downloadQuotePdf(est, index); }}
-                                  className="w-full px-3 py-1.5 text-left text-xs font-medium text-sky-600 hover:bg-sky-500/10 flex items-center gap-2"
+                                  onClick={() => { setActiveDropdownId(null); finalizeEstimate(est); }}
+                                  disabled={statusNum === 2}
+                                  className={`w-full px-3 py-2 text-left text-xs font-medium flex items-center gap-2 transition-colors ${
+                                    statusNum === 2
+                                      ? 'text-[var(--color-text-muted)] opacity-50 cursor-not-allowed'
+                                      : 'text-emerald-600 hover:bg-emerald-500/10 cursor-pointer'
+                                  }`}
                                 >
-                                  <Download className="w-3.5 h-3.5 text-sky-600" />
-                                  <span>Download PDF</span>
+                                  <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
+                                  <span>{statusNum === 2 ? 'Finalized' : 'Finalize'}</span>
                                 </button>
 
-                                {/* Cancel */}
-                                {est.status !== 3 && est.status !== 5 && (
-                                  <div className="border-t border-[var(--color-border)] mt-1 pt-1">
-                                    <button
-                                      onClick={() => { setActiveDropdownId(null); cancelEstimate(est); }}
-                                      className="w-full px-3 py-1.5 text-left text-xs font-medium text-rose-600 hover:bg-rose-500/10 flex items-center gap-2"
-                                    >
-                                      <Ban className="w-3.5 h-3.5 text-rose-500" />
-                                      <span>Cancel Quote</span>
-                                    </button>
-                                  </div>
-                                )}
+                                {/* 3. Cancel */}
+                                <button
+                                  onClick={() => { setActiveDropdownId(null); cancelEstimate(est); }}
+                                  disabled={statusNum === 3}
+                                  className={`w-full px-3 py-2 text-left text-xs font-medium flex items-center gap-2 transition-colors border-t border-[var(--color-border)] mt-1 pt-1.5 ${
+                                    statusNum === 3
+                                      ? 'text-[var(--color-text-muted)] opacity-50 cursor-not-allowed'
+                                      : 'text-rose-600 hover:bg-rose-500/10 cursor-pointer'
+                                  }`}
+                                >
+                                  <Ban className="w-3.5 h-3.5 text-rose-500" />
+                                  <span>{statusNum === 3 ? 'Cancelled' : 'Cancel'}</span>
+                                </button>
                               </div>
                             )}
                           </div>

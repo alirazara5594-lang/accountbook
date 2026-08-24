@@ -105,6 +105,12 @@ export const useSalesStore = create<SalesState>((set, get) => ({
   },
 
   updateEstimateStatus: async (id: string, status: string) => {
+    const numStatus = Number(status);
+    set((state) => ({
+      estimates: state.estimates.map((e) =>
+        e.id === id ? { ...e, status: isNaN(numStatus) ? e.status : numStatus } : e
+      ),
+    }));
     await salesApi.updateEstimateStatus(id, status);
     await get().fetchEstimates();
   },
