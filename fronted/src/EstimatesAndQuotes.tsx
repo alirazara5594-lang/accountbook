@@ -3,12 +3,12 @@ import jsPDF from 'jspdf'
 import autoTable from 'jspdf-autotable'
 import {
   FileText, Plus, Check, X, ArrowRight,
-  ArrowLeft, Coins, CheckCircle2, Hash, Users, ArrowUpRight, Eye, Pencil, Ban,
+  ArrowLeft, Coins, CheckCircle2, Hash, Users, Eye, Pencil, Ban,
   Download
 } from 'lucide-react'
 import { useSalesStore, useCustomersStore, useProductsStore, useCompanyStore } from './stores'
 import { useFormDraft } from './hooks/useFormDraft'
-import { DataToolbar } from '@/components/ui/data-toolbar'
+
 import { money } from './lib/currency'
 
 const statusStyles: Record<number, { label: string; class: string }> = {
@@ -38,7 +38,7 @@ interface Line {
   description: string
   quantity: string
   unitPrice: string
-  discountType: 0 | 1 // 0=Percentage, 1=FixedAmount
+  discountType: 0 | 1
   discountValue: string
   taxPercent: string
 }
@@ -55,21 +55,17 @@ const defaultLine = (): Line => ({
 })
 
 export const EstimatesAndQuotes: React.FC<{ activeEntityId: string; entities?: any[] }> = ({
-  activeEntityId,
-  entities = []
+  activeEntityId
 }) => {
   const allEntities = useCompanyStore((s) => s.entities)
   const estimates = useSalesStore((s) => s.estimates)
   const fetchEstimates = useSalesStore((s) => s.fetchEstimates)
   const createEstimateStore = useSalesStore((s) => s.createEstimate)
   const updateEstimateStatusStore = useSalesStore((s) => s.updateEstimateStatus)
-
   const customers = useCustomersStore((s) => s.customers)
   const fetchCustomers = useCustomersStore((s) => s.fetchCustomers)
-
   const products = useProductsStore((s) => s.products)
   const fetchProducts = useProductsStore((s) => s.fetchProducts)
-
   const createInvoiceStore = useSalesStore((s) => s.createInvoice)
 
   const [loading, setLoading] = useState(true)
@@ -80,6 +76,7 @@ export const EstimatesAndQuotes: React.FC<{ activeEntityId: string; entities?: a
   const [toast, setToast] = useState('')
   const [query, setQuery] = useState('')
   const [statusFilter, setStatusFilter] = useState<string>('all')
+  const [editingEstimate, setEditingEstimate] = useState<any>(null)
 
   const [form, setForm] = useState({
     customerId: '',
@@ -101,35 +98,21 @@ export const EstimatesAndQuotes: React.FC<{ activeEntityId: string; entities?: a
   const fetchData = async () => {
     setLoading(true)
     try {
-      await Promise.all([
-        fetchEstimates(activeEntityId),
-        fetchCustomers(activeEntityId),
-        fetchProducts(),
-      ])
-    } catch {}
+      await Promise.all([fetchEstimates(activeEntityId), fetchCustomers(activeEntityId), fetchProducts()])
+    } catch { /* empty */ }
     setLoading(false)
   }
 
-  useEffect(() => {
-    fetchData()
-  }, [activeEntityId])
+  useEffect(() => { fetchData() }, [activeEntityId])
 
-  const notify = (m: string) => {
-    setToast(m)
-    setTimeout(() => setToast(''), 3500)
-  }
-
-  const [editingEstimate, setEditingEstimate] = useState<any>(null)
+  const notify = (m: string) => { setToast(m); setTimeout(() => setToast(''), 3500) }
 
   const computeNextEstimateNumber = () => {
     let maxNum = 0
     for (const item of estimates) {
       const str = (item.estimateNumber || item.reference || '') + ''
       const match = str.match(/EST-(\d+)/)
-      if (match) {
-        const num = parseInt(match[1], 10)
-        if (!isNaN(num) && num < 100000 && num > maxNum) maxNum = num
-      }
+      if (match) { const num = parseInt(match[1], 10); if (!isNaN(num) && num < 100000 && num > maxNum) maxNum = num }
     }
     return `EST-${(maxNum + 1).toString().padStart(5, '0')}`
   }
@@ -139,193 +122,79 @@ export const EstimatesAndQuotes: React.FC<{ activeEntityId: string; entities?: a
     clearDraft()
     const nextRef = computeNextEstimateNumber()
     const today = new Date().toISOString().slice(0, 10)
-
-    setForm({
-      customerId: customers[0]?.id || '',
-      estimateDate: today,
-      expiryDate: new Date(Date.now() + 30 * 86400000).toISOString().slice(0, 10),
-      reference: nextRef,
-      notes: 'Quotations valid for 30 days from date of issue.',
-      terms: 'Standard trade terms apply.',
-      currencyCode: 'PKR'
-    })
+    setForm({ customerId: customers[0]?.id || '', estimateDate: today, expiryDate: new Date(Date.now() + 30 * 86400000).toISOString().slice(0, 10), reference: nextRef, notes: 'Quotations valid for 30 days from date of issue.', terms: 'Standard trade terms apply.', currencyCode: 'PKR' })
     setLines([defaultLine()])
     setModalTab('details')
     setShowForm(true)
   }
 
-  const handleCancelForm = () => {
-    clearDraft()
-    setShowForm(false)
-    setEditingEstimate(null)
-  }
+  const handleCancelForm = () => { clearDraft(); setShowForm(false); setEditingEstimate(null) }
 
   const openEditModal = (est: any) => {
     setEditingEstimate(est)
-    setForm({
-      customerId: est.customerId || '',
-      estimateDate: est.estimateDate || new Date().toISOString().slice(0, 10),
-      expiryDate: est.expiryDate || '',
-      reference: est.estimateNumber || est.reference || '',
-      notes: est.notes || '',
-      terms: est.terms || '',
-      currencyCode: est.currencyCode || 'PKR'
-    })
-    setLines(
-      est.lines && est.lines.length > 0
-        ? est.lines.map((l: any) => {
-            const prod = products.find((p: any) => p.id === l.productId)
-            return {
-              productId: l.productId || '',
-              productName: l.productName || prod?.name || l.description || '',
-              description: l.description || '',
-              quantity: String(l.quantity || 1),
-              unitPrice: String(l.unitPrice || 0),
-              discountType: (l.discountType ?? 0) as 0 | 1,
-              discountValue: String(l.discountValue || 0),
-              taxPercent: String(l.taxPercent || 0),
-            }
-          })
-        : [defaultLine()]
-    )
+    setForm({ customerId: est.customerId || '', estimateDate: est.estimateDate || new Date().toISOString().slice(0, 10), expiryDate: est.expiryDate || '', reference: est.estimateNumber || est.reference || '', notes: est.notes || '', terms: est.terms || '', currencyCode: est.currencyCode || 'PKR' })
+    setLines(est.lines && est.lines.length > 0 ? est.lines.map((l: any) => { const prod = products.find((p: any) => p.id === l.productId); return { productId: l.productId || '', productName: l.productName || prod?.name || l.description || '', description: l.description || '', quantity: String(l.quantity || 1), unitPrice: String(l.unitPrice || 0), discountType: l.discountType ?? 0, discountValue: String(l.discountValue || l.discountAmount || 0), taxPercent: String(l.taxPercent || 0) } }) : [defaultLine()])
     setModalTab('details')
     setShowForm(true)
   }
 
-  const finalizeEstimate = async (est: any) => {
-    try {
-      await updateEstimateStatusStore(est.id, '2') // 2 = Finalized / Accepted
-      notify(`✓ Quotation ${getFormattedEstimateNumber(est.estimateNumber || est.reference, 0)} Finalized! "To Invoice" is now active.`)
-      await fetchData()
-    } catch (e: any) {
-      notify(e.message || 'Failed to finalize quotation')
-    }
-  }
-
-  const cancelEstimate = async (est: any) => {
-    try {
-      await updateEstimateStatusStore(est.id, '3') // 3 = Rejected / Cancelled
-      notify(`✓ Quotation ${getFormattedEstimateNumber(est.estimateNumber || est.reference, 0)} marked as Cancelled.`)
-      await fetchData()
-    } catch (e: any) {
-      notify(e.message || 'Failed to cancel quotation')
-    }
-  }
-
-  const openViewModal = (est: any) => {
-    setViewingEstimate(est)
-  }
+  const finalizeEstimate = async (est: any) => { try { await updateEstimateStatusStore(est.id, '2'); notify(`Quotation ${est.estimateNumber || est.reference} Finalized!`); await fetchData() } catch (e: any) { notify(e.message || 'Failed to finalize') } }
+  const cancelEstimate = async (est: any) => { try { await updateEstimateStatusStore(est.id, '3'); notify(`Quotation ${est.estimateNumber || est.reference} Cancelled.`); await fetchData() } catch (e: any) { notify(e.message || 'Failed to cancel') } }
 
   const updateLine = (i: number, field: string, value: any) => {
     const updated = [...lines]
     updated[i] = { ...updated[i], [field]: value }
-    if (field === 'productId' && value) {
-      const prod = products.find((p: any) => p.id === value)
-      if (prod) {
-        updated[i] = {
-          ...updated[i],
-          productName: prod.name,
-          description: prod.name,
-          unitPrice: String(prod.unitPrice || prod.salesPrice || 0)
-        }
-      }
-    }
+    if (field === 'productId' && value) { const prod = products.find((p: any) => p.id === value); if (prod) { updated[i].productName = prod.name || ''; updated[i].description = updated[i].description || prod.name || ''; updated[i].unitPrice = String(prod.salesPrice || prod.unitPrice || updated[i].unitPrice) } }
     setLines(updated)
   }
 
   const addLine = () => setLines([...lines, defaultLine()])
   const removeLine = (idx: number) => setLines(lines.filter((_, j) => j !== idx))
 
-  const lineCalculations = lines.map(l => {
-    const qty = parseFloat(l.quantity) || 0
-    const price = parseFloat(l.unitPrice) || 0
-    const sub = qty * price
-    const discAmt = l.discountType === 0
-      ? Math.round(sub * (parseFloat(l.discountValue) || 0) / 100 * 100) / 100
-      : (parseFloat(l.discountValue) || 0)
-    const afterDisc = sub - discAmt
-    const taxAmt = Math.round(afterDisc * (parseFloat(l.taxPercent) || 0) / 100 * 100) / 100
-    return { sub, discAmt, taxAmt, total: afterDisc + taxAmt }
+  const calculateLineTotals = () => lines.map(line => {
+    const qty = parseFloat(line.quantity) || 0; const price = parseFloat(line.unitPrice) || 0; const gross = qty * price
+    const dv = parseFloat(line.discountValue) || 0; const dt = line.discountType || 0
+    const da = dt === 0 ? (gross * dv) / 100 : Math.min(dv, gross)
+    const taxable = Math.max(0, gross - da); const tp = parseFloat(line.taxPercent) || 0; const ta = (taxable * tp) / 100
+    return { gross, discountAmount: da, taxable, taxAmount: ta, total: taxable + ta }
   })
 
-  const totals = lineCalculations.reduce(
-    (acc, c) => ({
-      sub: acc.sub + c.sub,
-      disc: acc.disc + c.discAmt,
-      tax: acc.tax + c.taxAmt,
-      total: acc.total + c.total,
-    }),
-    { sub: 0, disc: 0, tax: 0, total: 0 }
-  )
+  const calculateTotals = () => {
+    const lt = calculateLineTotals()
+    return { sub: lt.reduce((s, l) => s + l.gross, 0), disc: lt.reduce((s, l) => s + l.discountAmount, 0), tax: lt.reduce((s, l) => s + l.taxAmount, 0), total: lt.reduce((s, l) => s + l.total, 0) }
+  }
+
+  const lineCalculations = calculateLineTotals()
+  const totals = calculateTotals()
 
   const saveEstimate = async () => {
-    if (!form.customerId) {
-      notify('Please select a customer.')
-      return
-    }
-    const body = {
-      ...form,
-      estimateNumber: form.reference,
-      companyId: activeEntityId || null,
-      expiryDate: form.expiryDate || null,
-      lines: lines.map(l => ({
-        productId: l.productId || null,
-        productName: l.productName || l.description || '',
-        description: l.description,
-        quantity: parseFloat(l.quantity || '1'),
-        unitPrice: parseFloat(l.unitPrice || '0'),
-        discountType: l.discountType,
-        discountValue: parseFloat(l.discountValue || '0'),
-        taxCodeId: null,
-        taxPercent: parseFloat(l.taxPercent || '0'),
-      }))
-    }
-    try {
-      await createEstimateStore(body)
-      clearDraft()
-      notify(editingEstimate ? '✓ Quotation updated successfully!' : '✓ Quotation saved as Draft!')
-      setShowForm(false)
-      fetchData()
-    } catch (e: any) {
-      notify(e.message || 'Error saving estimate')
-    }
+    if (!form.customerId) { notify('Please select a customer.'); return }
+    const body = { ...form, estimateNumber: form.reference, companyId: activeEntityId || null, expiryDate: form.expiryDate || null, lines: lines.map(l => ({ productId: l.productId || null, productName: l.productName || l.description || '', description: l.description, quantity: parseFloat(l.quantity || '1'), unitPrice: parseFloat(l.unitPrice || '0'), discountType: l.discountType, discountValue: parseFloat(l.discountValue || '0'), taxCodeId: null, taxPercent: parseFloat(l.taxPercent || '0') })) }
+    try { await createEstimateStore(body); clearDraft(); notify(editingEstimate ? 'Quotation updated!' : 'Quotation saved as Draft!'); setShowForm(false); fetchData() } catch (e: any) { notify(e.message || 'Error saving') }
   }
 
-  const createInvoiceFromEstimate = async (invoicePayload: any) => {
-    try {
-      await createInvoiceStore(invoicePayload)
-      if (convertModal?.id) {
-        await updateEstimateStatusStore(convertModal.id, '5') // 5 = Invoiced
-      }
-      notify('✓ Sales invoice created from quotation! Check Sales Invoices.')
-      setConvertModal(null)
-      await fetchData()
-    } catch (e: any) {
-      notify(e.message || 'Invoice creation failed')
-    }
+  const createInvoiceFromEstimate = async (payload: any) => {
+    try { await createInvoiceStore(payload); if (convertModal?.id) await updateEstimateStatusStore(convertModal.id, '5'); notify('Invoice created!'); setConvertModal(null); await fetchData() } catch (e: any) { notify(e.message || 'Invoice failed') }
   }
 
-  const filteredEstimates = useMemo(() => {
-    return estimates.filter((est: any) => {
-      const statusNum = getNumericStatus(est.status)
-      const matchesQuery = !query.trim()
-        ? true
-        : `${est.estimateNumber || ''} ${est.customerName || ''} ${est.reference || ''}`
-            .toLowerCase()
-            .includes(query.toLowerCase())
-
-      const matchesStatus = statusFilter === 'all' || String(statusNum) === statusFilter
-
-      return matchesQuery && matchesStatus
-    })
-  }, [estimates, query, statusFilter])
+  const filteredEstimates = useMemo(() => estimates.filter((est: any) => { const sn = getNumericStatus(est.status); const mq = !query.trim() ? true : `${est.estimateNumber || ''} ${est.customerName || ''} ${est.reference || ''}`.toLowerCase().includes(query.toLowerCase()); const ms = statusFilter === 'all' || String(sn) === statusFilter; return mq && ms }), [estimates, query, statusFilter])
 
   const getFormattedEstimateNumber = (rawNum: string, index: number) => {
-    if (!rawNum || rawNum.startsWith('EST-202') || rawNum.length > 10 || rawNum.includes('/')) {
-      return `EST-${(index + 1).toString().padStart(5, '0')}`
-    }
+    if (!rawNum || rawNum.startsWith('EST-202') || rawNum.length > 10 || rawNum.includes('/')) return `EST-${(index + 1).toString().padStart(5, '0')}`
     return rawNum
   }
+
+  const assignedCompany = allEntities?.find((e: any) => e.id === activeEntityId)
+
+  const stats = useMemo(() => {
+    const totalValue = estimates.reduce((s: number, e: any) => s + (parseFloat(e.totalAmount) || 0), 0)
+    const accepted = estimates.filter((e: any) => getNumericStatus(e.status) === 2)
+    const acceptedValue = accepted.reduce((s: number, e: any) => s + (parseFloat(e.totalAmount) || 0), 0)
+    const pending = estimates.filter((e: any) => getNumericStatus(e.status) === 0 || getNumericStatus(e.status) === 1)
+    const cancelled = estimates.filter((e: any) => getNumericStatus(e.status) === 3)
+    const invoiced = estimates.filter((e: any) => getNumericStatus(e.status) === 5)
+    return { totalValue, acceptedValue, accepted: accepted.length, total: estimates.length, pending: pending.length, cancelled: cancelled.length, invoiced: invoiced.length }
+  }, [estimates])
 
   const downloadQuotePdf = (est: any, index?: number) => {
     try {
@@ -335,1005 +204,325 @@ export const EstimatesAndQuotes: React.FC<{ activeEntityId: string; entities?: a
       const statusNum = getNumericStatus(est.status)
       const statusLabel = statusStyles[statusNum]?.label || 'Draft'
       const pageW = doc.internal.pageSize.getWidth()
-
       const tealDark: [number, number, number] = [1, 72, 113]
       const mintLight: [number, number, number] = [160, 235, 207]
-      const tealMid: [number, number, number] = [30, 130, 160]
 
-      // ── Gradient Header Banner ──
-      for (let x = 0; x < pageW; x++) {
-        const ratio = x / pageW
-        const r = Math.round(tealDark[0] + (mintLight[0] - tealDark[0]) * ratio)
-        const g = Math.round(tealDark[1] + (mintLight[1] - tealDark[1]) * ratio)
-        const b = Math.round(tealDark[2] + (mintLight[2] - tealDark[2]) * ratio)
-        doc.setFillColor(r, g, b)
-        doc.rect(x, 0, 1, 38, 'F')
-      }
+      for (let x = 0; x < pageW; x++) { const r = x / pageW; doc.setFillColor(Math.round(tealDark[0] + (mintLight[0] - tealDark[0]) * r), Math.round(tealDark[1] + (mintLight[1] - tealDark[1]) * r), Math.round(tealDark[2] + (mintLight[2] - tealDark[2]) * r)); doc.rect(x, 0, 1, 42, 'F') }
 
-      doc.setFont('helvetica', 'bold')
-      doc.setFontSize(22)
-      doc.setTextColor(255, 255, 255)
-      doc.text('QUOTATION', 14, 18)
+      doc.setTextColor(255, 255, 255); doc.setFontSize(18); doc.setFont('helvetica', 'bold'); doc.text('QUOTATION', 14, 16)
+      doc.setFontSize(9); doc.setFont('helvetica', 'normal'); doc.text(`${quoteNum} | ${statusLabel}`, 14, 23)
+      doc.setFontSize(7); doc.text(compName, 14, 30); doc.text(`Date: ${est.estimateDate || '—'} | Expiry: ${est.expiryDate || '—'}`, 14, 36)
 
-      doc.setFontSize(10)
-      doc.setFont('helvetica', 'normal')
-      doc.setTextColor(220, 245, 235)
-      doc.text(compName, 14, 26)
+      const customer = customers.find((c: any) => c.id === est.customerId)
+      let yPos = 50; doc.setTextColor(30, 41, 59); doc.setFontSize(8); doc.setFont('helvetica', 'bold'); doc.text('BILL TO:', 14, yPos)
+      doc.setFont('helvetica', 'normal'); doc.setFontSize(9); doc.text(customer?.name || est.customerName || '—', 14, yPos + 6)
 
-      doc.setFontSize(8)
-      doc.text('Thank you for your business inquiry', 14, 33)
+      let docLines = est.lines && est.lines.length > 0 ? est.lines : [{ description: est.customerName ? `${est.customerName} - Commercial Products & Services` : 'Commercial Products & Services', quantity: 1, unitPrice: est.totalAmount || est.subtotal || 0, discountAmount: est.discountTotal || 0, taxAmount: est.taxTotal || 0, totalAmount: est.totalAmount || 0 }]
 
-      // Quote meta (right side of header)
-      doc.setFontSize(9)
-      doc.setTextColor(255, 255, 255)
-      doc.setFont('helvetica', 'normal')
-      doc.text('Quote Number:', pageW - 80, 14)
-      doc.setFont('helvetica', 'bold')
-      doc.text(quoteNum, pageW - 80, 20)
-      doc.setFont('helvetica', 'normal')
-      doc.text('Date:', pageW - 80, 26)
-      doc.text(est.estimateDate || '—', pageW - 80, 32)
-      doc.text('Expiry:', pageW - 42, 26)
-      doc.text(est.expiryDate || '—', pageW - 42, 32)
-      doc.text('Status:', pageW - 42, 14)
-      doc.setFont('helvetica', 'bold')
-      doc.text(statusLabel.toUpperCase(), pageW - 42, 20)
+      autoTable(doc, { startY: yPos + 16, head: [['#', 'Description', 'Qty', 'Unit Price', 'Subtotal', 'Discount', 'Tax', 'Total']], body: docLines.map((l: any, i: number) => { const q = parseFloat(l.quantity || '1') || 1; const p = parseFloat(l.unitPrice || '0') || 0; const g = q * p; const d = parseFloat(l.discountAmount || l.discountValue || '0') || 0; const t = parseFloat(l.taxAmount || '0') || 0; const tot = g - d + t; return [i + 1, l.description || '—', String(q), money(p), money(g), money(d), money(t), money(tot)] }), headStyles: { fillColor: tealDark, textColor: [255, 255, 255], fontStyle: 'bold', fontSize: 7.5 }, bodyStyles: { fontSize: 7.5, textColor: [30, 41, 59] }, alternateRowStyles: { fillColor: [235, 248, 245] }, margin: { left: 14, right: 14 } })
 
-      // ── Customer Section ──
-      const custY = 44
-      doc.setFillColor(235, 248, 245)
-      doc.rect(14, custY, pageW - 28, 22, 'F')
-      doc.setDrawColor(...tealMid)
-      doc.rect(14, custY, pageW - 28, 22, 'S')
+      const nt = est.totalAmount || est.netTotal || totals.total
+      const sy = (doc as any).lastAutoTable?.finalY + 8 || 100
+      doc.setFontSize(9); doc.setFont('helvetica', 'bold'); doc.setTextColor(1, 72, 113); doc.text('Grand Total:', 120, sy); doc.text(money(nt), pageW - 14, sy, { align: 'right' })
 
-      doc.setFont('helvetica', 'bold')
-      doc.setFontSize(8)
-      doc.setTextColor(...tealDark)
-      doc.text('PREPARED FOR', 18, custY + 6)
-      doc.setFontSize(11)
-      doc.setTextColor(15, 23, 42)
-      doc.text(est.customerName || 'Valued Customer', 18, custY + 14)
-      if (est.customerEmail) {
-        doc.setFontSize(8)
-        doc.setTextColor(100, 116, 139)
-        doc.text(est.customerEmail, 18, custY + 19)
-      }
+      doc.setFontSize(7); doc.setFont('helvetica', 'normal'); doc.setTextColor(30, 41, 59); doc.text('Terms & Conditions', 14, sy + 12); doc.text(doc.splitTextToSize(est.terms || 'Standard terms apply.', pageW - 28).slice(0, 2), 14, sy + 17)
 
-      // ── Line Items Table ──
-      const tableStartY = custY + 28
-      const currency = est.currencyCode || 'PKR'
+      doc.setDrawColor(tealDark[0], tealDark[1], tealDark[2]); doc.setLineWidth(0.3); doc.line(14, 280, pageW - 14, 280); doc.setFontSize(6.5); doc.setTextColor(100, 116, 139); doc.text(`${compName} | AMS ERP`, 14, 284)
 
-      const tableRows = (est.lines && est.lines.length > 0 ? est.lines : []).map((l: any, i: number) => {
-        const qty = parseFloat(l.quantity || '1') || 1
-        const price = parseFloat(l.unitPrice || '0') || 0
-        const gross = qty * price
-        const discVal = parseFloat(l.discountValue || '0') || 0
-        const disc = l.discountType === 0 ? (gross * discVal / 100) : discVal
-        const taxVal = parseFloat(l.taxPercent || '0') || 0
-        const afterDisc = gross - disc
-        const tax = afterDisc * taxVal / 100
-        const total = afterDisc + tax
-        const prod = products.find((p: any) => p.id === l.productId)
-        const itemName = l.productName || prod?.name || l.description || ''
-        const desc = l.description || ''
-
-        return [
-          i + 1,
-          itemName,
-          desc,
-          String(qty),
-          money(price),
-          money(gross),
-          money(disc),
-          money(tax),
-          money(total)
-        ]
-      })
-
-      autoTable(doc, {
-        startY: tableStartY,
-        head: [['#', 'Item Name', 'Description', 'Qty', 'Unit Price', 'Gross', 'Discount Amt', 'Tax Amt', 'Total']],
-        body: tableRows.length > 0 ? tableRows : [[1, 'Products & Services', '', '1', money(est.totalAmount), money(est.totalAmount), '0', '0', money(est.totalAmount)]],
-        headStyles: { fillColor: tealDark, textColor: [255, 255, 255], fontStyle: 'bold', fontSize: 7.5, cellPadding: 2.5 },
-        bodyStyles: { fontSize: 7.5, textColor: [30, 41, 59], cellPadding: 2.5 },
-        alternateRowStyles: { fillColor: [235, 248, 245] },
-        margin: { left: 14, right: 14 },
-        columnStyles: {
-          0: { cellWidth: 8, halign: 'center' },
-          1: { cellWidth: 35 },
-          2: { cellWidth: 40 },
-          3: { cellWidth: 14, halign: 'center' },
-          4: { cellWidth: 24, halign: 'right' },
-          5: { cellWidth: 24, halign: 'right' },
-          6: { cellWidth: 22, halign: 'right' },
-          7: { cellWidth: 22, halign: 'right' },
-          8: { cellWidth: 26, halign: 'right', fontStyle: 'bold' }
-        }
-      })
-
-      const finalY = (doc as any).lastAutoTable?.finalY || 120
-
-      // ── Totals Summary (Always show all lines) ──
-      const totalsX = 120
-      const totalsValX = pageW - 14
-
-      doc.setDrawColor(...tealMid)
-      doc.line(totalsX, finalY + 8, totalsValX, finalY + 8)
-
-      doc.setFontSize(9)
-      doc.setFont('helvetica', 'normal')
-      doc.setTextColor(100, 116, 139)
-      doc.text('Subtotal:', totalsX, finalY + 14)
-      doc.setTextColor(30, 41, 59)
-      doc.text(money(est.subtotal || est.totalAmount), totalsValX, finalY + 14, { align: 'right' })
-
-      doc.setTextColor(225, 29, 72)
-      doc.text('Discount Total:', totalsX, finalY + 20)
-      doc.text(`-${money(est.discountTotal || 0)}`, totalsValX, finalY + 20, { align: 'right' })
-
-      doc.setTextColor(217, 119, 6)
-      doc.text('Tax / VAT Total:', totalsX, finalY + 26)
-      doc.text(`+${money(est.taxTotal || 0)}`, totalsValX, finalY + 26, { align: 'right' })
-
-      doc.setDrawColor(...tealDark)
-      doc.setLineWidth(0.5)
-      doc.line(totalsX, finalY + 30, totalsValX, finalY + 30)
-
-      doc.setFont('helvetica', 'bold')
-      doc.setFontSize(12)
-      doc.setTextColor(...tealDark)
-      doc.text(`TOTAL (${currency}):`, totalsX, finalY + 37)
-      doc.text(money(est.totalAmount), totalsValX, finalY + 37, { align: 'right' })
-
-      // ── Terms & Conditions ──
-      const termsY = finalY + 48
-      doc.setFillColor(235, 248, 245)
-      doc.rect(14, termsY, pageW - 28, 32, 'F')
-      doc.setDrawColor(...tealMid)
-      doc.rect(14, termsY, pageW - 28, 32, 'S')
-
-      doc.setFont('helvetica', 'bold')
-      doc.setFontSize(8)
-      doc.setTextColor(...tealDark)
-      doc.text('TERMS & CONDITIONS', 18, termsY + 6)
-
-      doc.setFont('helvetica', 'normal')
-      doc.setFontSize(7.5)
-      doc.setTextColor(71, 85, 105)
-      const terms = est.terms || '1. This quotation is valid for 30 days from the date of issue.\n2. Payment terms: Net 30 days from date of invoice.\n3. Prices are subject to change without prior notice.\n4. All goods remain the property of the seller until fully paid.\n5. Any dispute arising shall be subject to local jurisdiction.'
-      const splitTerms = doc.splitTextToSize(terms, pageW - 36)
-      doc.text(splitTerms.slice(0, 6), 18, termsY + 12)
-
-      // ── Notes ──
-      if (est.notes) {
-        doc.setFont('helvetica', 'bold')
-        doc.setFontSize(8)
-        doc.setTextColor(...tealDark)
-        doc.text('NOTES:', 14, termsY + 38)
-        doc.setFont('helvetica', 'normal')
-        doc.setFontSize(7.5)
-        doc.setTextColor(71, 85, 105)
-        const splitNotes = doc.splitTextToSize(est.notes, pageW - 28)
-        doc.text(splitNotes.slice(0, 3), 14, termsY + 43)
-      }
-
-      // ── Signature Area ──
-      const sigY = 260
-      doc.setDrawColor(...tealMid)
-      doc.line(14, sigY, 80, sigY)
-      doc.line(pageW - 80, sigY, pageW - 14, sigY)
-
-      doc.setFontSize(8)
-      doc.setTextColor(100, 116, 139)
-      doc.text('Authorized Signature', 14, sigY + 5)
-      doc.text('Customer Signature', pageW - 80, sigY + 5)
-
-      // ── Footer ──
-      doc.setFontSize(7)
-      doc.setTextColor(148, 163, 184)
-      doc.text(`Generated by ${compName} • AccountBook ERP`, 14, 287)
-      doc.text(`Page 1 of 1`, pageW - 14, 287, { align: 'right' })
-
-      doc.save(`Quotation_${quoteNum}.pdf`)
-      notify(`✓ Downloaded ${quoteNum}.pdf successfully!`)
-    } catch (err: any) {
-      notify('Failed to generate PDF: ' + err.message)
-    }
+      doc.save(`${quoteNum}.pdf`); notify(`PDF: ${quoteNum}`)
+    } catch { notify('PDF failed') }
   }
-
-  const exportHeaders = ['Quote #', 'Customer', 'Date', 'Expiry Date', 'Discount', 'Tax', 'Total', 'Status']
-  const exportRows = filteredEstimates.map((est: any, idx: number) => [
-    getFormattedEstimateNumber(est.estimateNumber || est.reference, idx),
-    est.customerName,
-    est.estimateDate,
-    est.expiryDate || '—',
-    est.discountTotal || 0,
-    est.taxTotal || 0,
-    est.totalAmount || 0,
-    statusStyles[getNumericStatus(est.status)]?.label || 'Draft'
-  ])
-
-  const totalQuoteValue = estimates.reduce((s: number, e: any) => s + (e.totalAmount || 0), 0)
-  const acceptedValue = estimates.filter((e: any) => getNumericStatus(e.status) === 2).reduce((s: number, e: any) => s + (e.totalAmount || 0), 0)
-  const pendingCount = estimates.filter((e: any) => getNumericStatus(e.status) === 0 || getNumericStatus(e.status) === 1).length
-
-  const assignedCompany = (entities && entities.length > 0 ? entities : allEntities).find((e: any) => e.id === activeEntityId) || allEntities.find((e: any) => e.id === activeEntityId) || allEntities[0]
 
   return (
     <div className="space-y-6">
-      {toast && (
-        <div className="px-3.5 py-2 bg-emerald-500/10 border border-emerald-500/20 text-emerald-600 rounded-xl text-xs font-semibold">
-          {toast}
-        </div>
-      )}
+      {toast && <div className="fixed top-4 right-4 z-[9999] bg-[var(--color-surface)] border border-[var(--color-border)] rounded-xl shadow-lg px-4 py-3 text-sm font-medium text-[var(--color-text-strong)]">{toast}</div>}
 
-      {/* Submodule Heading Banner (Row 1) */}
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-3 bg-[var(--color-surface)] p-3.5 rounded-xl border border-[var(--color-border)] shadow-sm">
+      {/* Page Header */}
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h1 className="text-base font-bold text-[var(--color-text-strong)] tracking-tight flex items-center gap-2">
-            <span className="text-lg">📑</span> Estimates & Quotations
+          <h1 className="text-2xl font-bold text-[var(--color-text-strong)] flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-white"><FileText className="w-5 h-5" /></div>
+            Estimates & Quotations
           </h1>
-          <p className="text-[var(--color-text-muted)] text-xs mt-0.5">
-            Prepare commercial quotes, RFQ estimates, pricing proposals, and 1-click invoice conversion.
-          </p>
+          <p className="text-sm text-[var(--color-text-muted)] mt-1 ml-13">Create, manage, and convert commercial quotations into invoices.</p>
         </div>
-        <div className="flex items-center gap-2 shrink-0 flex-wrap">
-          <DataToolbar
-            query={query}
-            setQuery={setQuery}
-            searchPlaceholder="Search quote #, customer..."
-            exportFileName="estimates-and-quotes"
-            exportSheetName="Quotations"
-            exportTitle="Quotations Register"
-            exportSubtitle="Sales proposals and quotation records."
-            exportHeaders={exportHeaders}
-            exportRows={exportRows}
-          >
-            <select
-              className="h-9 px-3 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] text-xs text-[var(--color-text)] outline-none focus:border-[var(--color-primary)] transition-colors shadow-2xs box-border"
-              style={{ paddingTop: 0, paddingBottom: 0 }}
-              value={statusFilter}
-              onChange={e => setStatusFilter(e.target.value)}
-            >
-              <option value="all">⚡ All Statuses</option>
-              <option value="0">⚪ Draft</option>
-              <option value="1">🔵 Sent</option>
-              <option value="2">🟢 Finalized</option>
-              <option value="3">🔴 Cancelled</option>
-              <option value="4">🟡 Expired</option>
-              <option value="5">🟣 Invoiced</option>
-            </select>
-          </DataToolbar>
-          <button
-            onClick={openCreateModal}
-            className="primary h-9 px-4 rounded-xl text-xs font-semibold whitespace-nowrap flex items-center justify-center gap-1.5 shadow-sm"
-          >
-            <span>＋</span> New Quote
-          </button>
-        </div>
+        <button onClick={openCreateModal} className="inline-flex items-center gap-2 px-5 py-2.5 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white text-sm font-semibold rounded-xl shadow-lg shadow-indigo-500/25 transition-all hover:shadow-xl hover:shadow-indigo-500/30">
+          <Plus className="w-4 h-4" /> New Quote
+        </button>
       </div>
 
-      {/* Stats Cards (Row 2) */}
-      <section className="stats">
-        <article>
-          <span className="stat-icon blue">
-            <Coins className="w-4 h-4" />
-          </span>
-          <div>
-            <small>TOTAL PIPELINE VALUE</small>
-            <h2>{money(totalQuoteValue)}</h2>
-            <p>All issued proposals</p>
+      {/* KPI Cards */}
+      <div className="grid grid-cols-2 lg:grid-cols-5 gap-4">
+        {[
+          { label: 'Total Pipeline', value: money(stats.totalValue), desc: `${stats.total} quotations`, icon: Coins, color: 'from-blue-500 to-indigo-600', bg: 'bg-blue-50 dark:bg-blue-950/30', textColor: 'text-blue-600 dark:text-blue-400' },
+          { label: 'Accepted', value: money(stats.acceptedValue), desc: `${stats.accepted} finalized`, icon: CheckCircle2, color: 'from-emerald-500 to-green-600', bg: 'bg-emerald-50 dark:bg-emerald-950/30', textColor: 'text-emerald-600 dark:text-emerald-400' },
+          { label: 'Pending', value: String(stats.pending), desc: 'Awaiting approval', icon: Users, color: 'from-amber-500 to-orange-600', bg: 'bg-amber-50 dark:bg-amber-950/30', textColor: 'text-amber-600 dark:text-amber-400' },
+          { label: 'Cancelled', value: String(stats.cancelled), desc: 'Declined quotes', icon: Ban, color: 'from-rose-500 to-red-600', bg: 'bg-rose-50 dark:bg-rose-950/30', textColor: 'text-rose-600 dark:text-rose-400' },
+          { label: 'Invoiced', value: String(stats.invoiced), desc: 'Converted to bill', icon: FileText, color: 'from-purple-500 to-violet-600', bg: 'bg-purple-50 dark:bg-purple-950/30', textColor: 'text-purple-600 dark:text-purple-400' },
+        ].map((kpi) => (
+          <div key={kpi.label} className={`relative overflow-hidden rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)] p-5 shadow-sm hover:shadow-md transition-shadow`}>
+            <div className="flex items-start justify-between">
+              <div>
+                <p className="text-xs font-semibold text-[var(--color-text-muted)] uppercase tracking-wider">{kpi.label}</p>
+                <p className={`text-2xl font-bold mt-2 ${kpi.textColor}`}>{kpi.value}</p>
+                <p className="text-xs text-[var(--color-text-muted)] mt-1">{kpi.desc}</p>
+              </div>
+              <div className={`w-11 h-11 rounded-xl bg-gradient-to-br ${kpi.color} flex items-center justify-center text-white shadow-lg`}>
+                <kpi.icon className="w-5 h-5" />
+              </div>
+            </div>
+            <div className={`absolute -bottom-4 -right-4 w-24 h-24 rounded-full ${kpi.bg} opacity-50`} />
           </div>
-        </article>
-        <article>
-          <span className="stat-icon teal">
-            <CheckCircle2 className="w-4 h-4" />
-          </span>
-          <div>
-            <small>ACCEPTED PROPOSALS</small>
-            <h2>{money(acceptedValue)}</h2>
-            <p>Won & ready to bill</p>
-          </div>
-        </article>
-        <article>
-          <span className="stat-icon violet">
-            <FileText className="w-4 h-4" />
-          </span>
-          <div>
-            <small>PENDING PROPOSALS</small>
-            <h2>{pendingCount}</h2>
-            <p>Awaiting customer approval</p>
-          </div>
-        </article>
-      </section>
-
-      {/* Quotes Table */}
-      <div className="bg-[var(--color-surface)] border border-[var(--color-border)] rounded-xl overflow-hidden shadow-sm">
-        <div className="px-4 py-2.5 border-b border-[var(--color-border)] bg-[var(--color-surface-muted)] flex items-center justify-between">
-          <p className="text-xs font-semibold text-[var(--color-text-strong)]">Quotations Directory</p>
-          <span className="text-[11px] text-[var(--color-text-muted)]">
-            Showing {filteredEstimates.length} of {estimates.length} quote{estimates.length !== 1 ? 's' : ''}
-          </span>
-        </div>
-
-        {loading ? (
-          <div className="py-12 text-center text-xs text-[var(--color-text-muted)]">Loading quotations...</div>
-        ) : filteredEstimates.length === 0 ? (
-          <div className="py-12 text-center text-xs text-[var(--color-text-muted)]">No estimates found matching your criteria.</div>
-        ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full text-xs">
-              <thead>
-                <tr className="border-b border-[var(--color-border)] bg-[var(--color-surface-muted)]">
-                  <th className="text-left px-3 py-2 font-semibold text-[var(--color-text-muted)]">Quote #</th>
-                  <th className="text-left px-3 py-2 font-semibold text-[var(--color-text-muted)]">Customer</th>
-                  <th className="text-left px-3 py-2 font-semibold text-[var(--color-text-muted)]">Date</th>
-                  <th className="text-left px-3 py-2 font-semibold text-[var(--color-text-muted)]">Expiry</th>
-                  <th className="text-right px-3 py-2 font-semibold text-[var(--color-text-muted)]">Gross Amount</th>
-                  <th className="text-right px-3 py-2 font-semibold text-[var(--color-text-muted)]">Discount</th>
-                  <th className="text-right px-3 py-2 font-semibold text-[var(--color-text-muted)]">Tax</th>
-                  <th className="text-right px-3 py-2 font-semibold text-[var(--color-text-muted)]">Net Total</th>
-                  <th className="text-center px-3 py-2 font-semibold text-[var(--color-text-muted)]">Status</th>
-                  <th className="text-right px-3 py-2 font-semibold text-[var(--color-text-muted)]">Actions</th>
-                </tr>
-              </thead>
-              <tbody>
-                {filteredEstimates.map((est: any, index: number) => {
-                  const statusNum = getNumericStatus(est.status)
-                  const badge = statusStyles[statusNum] || statusStyles[0]
-                  const lines: any[] = est.lines || []
-                  const grossAmount = est.subTotal ?? est.grossAmount ?? (lines.length > 0 ? lines.reduce((s, l) => s + ((parseFloat(l.quantity) || 1) * (parseFloat(l.unitPrice) || 0)), 0) : (est.totalAmount || 0))
-                  const discountAmount = est.totalDiscount ?? est.discountTotal ?? (lines.length > 0 ? lines.reduce((s, l) => {
-                    const lineSub = (parseFloat(l.quantity) || 1) * (parseFloat(l.unitPrice) || 0)
-                    const dv = parseFloat(l.discountValue) || 0
-                    return s + (l.discountType === 1 || l.discountType === 'Fixed' ? dv : (lineSub * dv / 100))
-                  }, 0) : 0)
-                  const taxAmount = est.totalTax ?? est.taxTotal ?? (lines.length > 0 ? lines.reduce((s, l) => {
-                    const lineSub = (parseFloat(l.quantity) || 1) * (parseFloat(l.unitPrice) || 0)
-                    const dv = parseFloat(l.discountValue) || 0
-                    const disc = l.discountType === 1 || l.discountType === 'Fixed' ? dv : (lineSub * dv / 100)
-                    const afterDisc = lineSub - disc
-                    return s + (afterDisc * (parseFloat(l.taxPercent) || 0) / 100)
-                  }, 0) : 0)
-                  const netTotal = est.totalAmount ?? (grossAmount - discountAmount + taxAmount)
-
-                  return (
-                    <tr
-                      key={est.id}
-                      className="border-b border-[var(--color-border)] hover:bg-[var(--color-surface-muted)] transition-colors"
-                    >
-                      <td className="px-3 py-2 font-mono font-semibold text-[var(--color-text-strong)]">
-                        {getFormattedEstimateNumber(est.estimateNumber || est.reference, index)}
-                      </td>
-                      <td className="px-3 py-2 font-semibold text-[var(--color-text-strong)]">{est.customerName || '—'}</td>
-                      <td className="px-3 py-2 text-[var(--color-text-muted)]">{est.estimateDate}</td>
-                      <td className="px-3 py-2 text-[var(--color-text-muted)]">{est.expiryDate || '—'}</td>
-                      <td className="px-3 py-2 text-right font-mono font-semibold text-[var(--color-text-strong)]">
-                        {money(grossAmount)}
-                      </td>
-                      <td className="px-3 py-2 text-right font-mono text-rose-500">
-                        {discountAmount > 0 ? `-${money(discountAmount)}` : '—'}
-                      </td>
-                      <td className="px-3 py-2 text-right font-mono text-amber-600">
-                        {taxAmount > 0 ? `+${money(taxAmount)}` : '—'}
-                      </td>
-                      <td className="px-3 py-2 text-right font-bold text-sky-600 font-mono">{money(netTotal)}</td>
-                      <td className="px-3 py-2 text-center">
-                        {statusNum === 0 ? (
-                          <button
-                            onClick={(e) => { e.stopPropagation(); finalizeEstimate(est); }}
-                            title="Click to Finalize Quotation"
-                            className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-slate-500/10 text-slate-700 dark:text-slate-300 border border-slate-500/30 hover:bg-emerald-500/15 hover:border-emerald-500/40 hover:text-emerald-700 dark:hover:text-emerald-300 cursor-pointer transition-all shadow-2xs group"
-                          >
-                            <span>Draft</span>
-                            <span className="text-[9px] opacity-70 group-hover:opacity-100 font-normal">→ Finalize</span>
-                          </button>
-                        ) : (
-                          <span className={`inline-block px-2 py-0.5 rounded-full text-[10px] font-semibold ${badge.class}`}>
-                            {badge.label}
-                          </span>
-                        )}
-                      </td>
-                      <td className="px-3 py-2 text-right">
-                        <div className="flex items-center justify-end gap-1" onClick={e => e.stopPropagation()}>
-
-                          {/* PDF Download */}
-                          <button
-                            onClick={() => downloadQuotePdf(est, index)}
-                            title="Download Quotation PDF"
-                            className="w-7 h-7 rounded-lg border border-sky-500/20 bg-sky-500/5 hover:bg-sky-500/15 flex items-center justify-center transition-colors"
-                          >
-                            <Download className="w-3.5 h-3.5 text-sky-600" />
-                          </button>
-
-                          {/* To Invoice (finalized only) */}
-                          {statusNum === 2 && (
-                            <button
-                              onClick={() => setConvertModal(est)}
-                              title="Convert to Sales Invoice"
-                              className="w-7 h-7 rounded-lg bg-emerald-600 hover:bg-emerald-700 flex items-center justify-center transition-colors shadow-2xs animate-in fade-in"
-                            >
-                              <ArrowUpRight className="w-3.5 h-3.5 text-white" />
-                            </button>
-                          )}
-
-                          {/* Cancel */}
-                          <button
-                            onClick={() => cancelEstimate(est)}
-                            disabled={statusNum === 3}
-                            title={statusNum === 3 ? 'Already Cancelled' : 'Cancel Quote'}
-                            className={`w-7 h-7 rounded-lg border flex items-center justify-center transition-colors ${
-                              statusNum === 3
-                                ? 'border-[var(--color-border)] bg-[var(--color-surface)] opacity-40 cursor-not-allowed'
-                                : 'border-rose-500/30 bg-rose-500/5 hover:bg-rose-500/15 cursor-pointer'
-                            }`}
-                          >
-                            <Ban className="w-3.5 h-3.5 text-rose-500" />
-                          </button>
-
-                          {/* Finalize / Approve */}
-                          <button
-                            onClick={() => finalizeEstimate(est)}
-                            disabled={statusNum === 2}
-                            title={statusNum === 2 ? 'Already Finalized' : 'Finalize Quote'}
-                            className={`w-7 h-7 rounded-lg border flex items-center justify-center transition-colors ${
-                              statusNum === 2
-                                ? 'border-[var(--color-border)] bg-[var(--color-surface)] opacity-40 cursor-not-allowed'
-                                : 'border-emerald-500/30 bg-emerald-500/5 hover:bg-emerald-500/15 cursor-pointer'
-                            }`}
-                          >
-                            <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
-                          </button>
-
-                          {/* Edit */}
-                          <button
-                            onClick={() => openEditModal(est)}
-                            title="Edit Quote"
-                            className="w-7 h-7 rounded-lg border border-indigo-500/20 bg-indigo-500/5 hover:bg-indigo-500/15 flex items-center justify-center transition-colors"
-                          >
-                            <Pencil className="w-3.5 h-3.5 text-indigo-500" />
-                          </button>
-
-                          {/* View */}
-                          <button
-                            onClick={() => openViewModal(est)}
-                            title="View Quote"
-                            className="w-7 h-7 rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] hover:bg-sky-500/10 hover:border-sky-500/30 flex items-center justify-center transition-colors"
-                          >
-                            <Eye className="w-3.5 h-3.5 text-sky-500" />
-                          </button>
-                        </div>
-                      </td>
-                    </tr>
-                  )
-                })}
-              </tbody>
-            </table>
-          </div>
-        )}
+        ))}
       </div>
 
-      {/* Professional Multi-Tab Quote Creation Modal */}
-      {showForm && (
-        <div className="overlay animate-in fade-in duration-200">
-          <div className="w-full max-w-5xl bg-[var(--color-surface)] border border-[var(--color-border)] rounded-2xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh]">
-            {/* Modal Header */}
-            <div className="px-6 py-4.5 border-b border-[var(--color-border)] bg-[var(--color-surface-muted)]/50 flex items-center justify-between">
-              <div className="flex items-center gap-3.5">
-                <div className="w-11 h-11 rounded-xl bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-white shadow-sm shrink-0">
-                  <FileText className="w-5 h-5" />
-                </div>
-                <div>
-                  <div className="flex items-center gap-2">
-                    <h2 className="text-base font-bold text-[var(--color-text-strong)] tracking-tight">Create Commercial Quotation</h2>
-                    <span className="px-2.5 py-0.5 rounded-full text-[10px] font-semibold bg-indigo-500/10 text-indigo-600 border border-indigo-500/20">
-                      Draft Estimate
-                    </span>
+      {/* Search & Filter Bar */}
+      <div className="flex flex-col sm:flex-row gap-3">
+        <div className="flex-1 relative">
+          <input type="text" placeholder="Search by quote #, customer name..." value={query} onChange={e => setQuery(e.target.value)} className="w-full h-10 pl-4 pr-4 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] text-sm text-[var(--color-text-strong)] placeholder:text-[var(--color-text-muted)] focus:border-[var(--color-primary)] outline-none" />
+        </div>
+        <select value={statusFilter} onChange={e => setStatusFilter(e.target.value)} className="h-10 px-4 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] text-sm text-[var(--color-text-strong)] focus:border-[var(--color-primary)] outline-none">
+          <option value="all">All Statuses</option>
+          <option value="0">Draft</option>
+          <option value="1">Sent</option>
+          <option value="2">Finalized</option>
+          <option value="3">Cancelled</option>
+          <option value="5">Invoiced</option>
+        </select>
+      </div>
+
+      {/* Quotations Table */}
+      <div className="rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)] shadow-sm overflow-hidden">
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="bg-[var(--color-surface-muted)] border-b border-[var(--color-border)]">
+                <th className="px-5 py-3.5 text-left text-xs font-semibold text-[var(--color-text-muted)] uppercase tracking-wider">Quote #</th>
+                <th className="px-5 py-3.5 text-left text-xs font-semibold text-[var(--color-text-muted)] uppercase tracking-wider">Customer</th>
+                <th className="px-5 py-3.5 text-left text-xs font-semibold text-[var(--color-text-muted)] uppercase tracking-wider">Date</th>
+                <th className="px-5 py-3.5 text-left text-xs font-semibold text-[var(--color-text-muted)] uppercase tracking-wider">Expiry</th>
+                <th className="px-5 py-3.5 text-right text-xs font-semibold text-[var(--color-text-muted)] uppercase tracking-wider">Subtotal</th>
+                <th className="px-5 py-3.5 text-right text-xs font-semibold text-[var(--color-text-muted)] uppercase tracking-wider">Discount</th>
+                <th className="px-5 py-3.5 text-right text-xs font-semibold text-[var(--color-text-muted)] uppercase tracking-wider">Tax</th>
+                <th className="px-5 py-3.5 text-right text-xs font-semibold text-[var(--color-text-muted)] uppercase tracking-wider">Net Total</th>
+                <th className="px-5 py-3.5 text-center text-xs font-semibold text-[var(--color-text-muted)] uppercase tracking-wider">Status</th>
+                <th className="px-5 py-3.5 text-center text-xs font-semibold text-[var(--color-text-muted)] uppercase tracking-wider">Actions</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-[var(--color-border)]">
+              {filteredEstimates.length === 0 ? (
+                <tr><td colSpan={10} className="px-5 py-16 text-center">
+                  <div className="flex flex-col items-center gap-3">
+                    <div className="w-16 h-16 rounded-2xl bg-[var(--color-surface-muted)] flex items-center justify-center"><FileText className="w-8 h-8 text-[var(--color-text-muted)]" /></div>
+                    <div><p className="font-semibold text-[var(--color-text-strong)]">{loading ? 'Loading...' : 'No quotations found'}</p><p className="text-xs text-[var(--color-text-muted)] mt-1">{loading ? 'Fetching data...' : 'Click "New Quote" to create your first quotation.'}</p></div>
                   </div>
-                  <p className="text-xs text-[var(--color-text-muted)] mt-0.5 flex items-center gap-1.5">
-                    <span>Assigned Entity:</span>
-                    <span className="font-semibold text-[var(--color-text-strong)]">
-                      🏢 {assignedCompany ? assignedCompany.name : 'Global Group Book'}
-                    </span>
-                  </p>
+                </td></tr>
+              ) : filteredEstimates.map((est: any, idx: number) => {
+                const sn = getNumericStatus(est.status); const st = statusStyles[sn]; const customer = customers.find((c: any) => c.id === est.customerId)
+                return (
+                  <tr key={est.id || idx} className="hover:bg-[var(--color-surface-muted)]/30 transition-colors">
+                    <td className="px-5 py-3.5 font-mono text-xs font-bold text-indigo-600">{getFormattedEstimateNumber(est.estimateNumber || est.reference, idx)}</td>
+                    <td className="px-5 py-3.5 font-medium text-[var(--color-text-strong)]">{customer?.name || est.customerName || '—'}</td>
+                    <td className="px-5 py-3.5 text-[var(--color-text-muted)] text-xs">{est.estimateDate || '—'}</td>
+                    <td className="px-5 py-3.5 text-[var(--color-text-muted)] text-xs">{est.expiryDate || '—'}</td>
+                    <td className="px-5 py-3.5 text-right font-mono text-xs text-[var(--color-text-strong)]">{money(est.subtotal || est.grossAmount || 0)}</td>
+                    <td className="px-5 py-3.5 text-right font-mono text-xs text-rose-500">{(est.discountTotal || est.discount || 0) > 0 ? `-${money(est.discountTotal || est.discount || 0)}` : '—'}</td>
+                    <td className="px-5 py-3.5 text-right font-mono text-xs text-amber-600">{(est.taxTotal || est.tax || 0) > 0 ? `+${money(est.taxTotal || est.tax || 0)}` : '—'}</td>
+                    <td className="px-5 py-3.5 text-right font-mono text-xs font-bold text-[var(--color-text-strong)]">{money(est.totalAmount || est.netTotal || 0)}</td>
+                    <td className="px-5 py-3.5 text-center"><span className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-semibold ${st?.class || ''}`}><span className="w-1.5 h-1.5 rounded-full bg-current" />{st?.label || 'Draft'}</span></td>
+                    <td className="px-5 py-3.5">
+                      <div className="flex items-center justify-center gap-1.5">
+                        <button onClick={() => openEditModal(est)} title="Edit" className="w-8 h-8 rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] hover:bg-blue-500/10 hover:border-blue-500/30 flex items-center justify-center transition-all"><Pencil className="w-3.5 h-3.5 text-blue-500" /></button>
+                        <button onClick={() => setViewingEstimate(est)} title="View" className="w-8 h-8 rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] hover:bg-sky-500/10 hover:border-sky-500/30 flex items-center justify-center transition-all"><Eye className="w-3.5 h-3.5 text-sky-500" /></button>
+                        {sn === 0 && <button onClick={() => finalizeEstimate(est)} title="Finalize" className="w-8 h-8 rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] hover:bg-emerald-500/10 hover:border-emerald-500/30 flex items-center justify-center transition-all"><CheckCircle2 className="w-3.5 h-3.5 text-emerald-500" /></button>}
+                        {sn === 2 && <button onClick={() => setConvertModal(est)} title="Convert to Invoice" className="w-8 h-8 rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] hover:bg-purple-500/10 hover:border-purple-500/30 flex items-center justify-center transition-all"><ArrowRight className="w-3.5 h-3.5 text-purple-500" /></button>}
+                        <button onClick={() => downloadQuotePdf(est, idx)} title="Download PDF" className="w-8 h-8 rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] hover:bg-gray-500/10 hover:border-gray-500/30 flex items-center justify-center transition-all"><Download className="w-3.5 h-3.5 text-gray-500" /></button>
+                        {(sn === 0 || sn === 1) && <button onClick={() => cancelEstimate(est)} title="Cancel" className="w-8 h-8 rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] hover:bg-rose-500/10 hover:border-rose-500/30 flex items-center justify-center transition-all"><Ban className="w-3.5 h-3.5 text-rose-500" /></button>}
+                      </div>
+                    </td>
+                  </tr>
+                )
+              })}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      {/* CREATE / EDIT MODAL */}
+      {showForm && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm" onClick={handleCancelForm}>
+          <div className="w-full max-w-5xl bg-[var(--color-surface)] border border-[var(--color-border)] rounded-2xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh]" onClick={e => e.stopPropagation()}>
+            {/* Modal Header */}
+            <div className="px-6 py-4 border-b border-[var(--color-border)] flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="w-11 h-11 rounded-xl bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-white shadow-sm"><FileText className="w-5 h-5" /></div>
+                <div>
+                  <h2 className="text-base font-bold text-[var(--color-text-strong)]">{editingEstimate ? 'Edit Quotation' : 'New Quotation'}</h2>
+                  <p className="text-xs text-[var(--color-text-muted)] mt-0.5">Ref: <span className="font-mono font-bold text-[var(--color-text-strong)]">{form.reference}</span></p>
                 </div>
               </div>
-
-              <button
-                type="button"
-                className="w-8 h-8 rounded-lg flex items-center justify-center text-[var(--color-text-muted)] hover:text-[var(--color-text-strong)] hover:bg-[var(--color-surface-muted)] transition-colors"
-                onClick={() => setShowForm(false)}
-              >
-                <X className="w-4 h-4" />
-              </button>
+              <button onClick={handleCancelForm} className="w-8 h-8 rounded-lg flex items-center justify-center text-[var(--color-text-muted)] hover:text-[var(--color-text-strong)] hover:bg-[var(--color-surface-muted)] transition-colors"><X className="w-4 h-4" /></button>
             </div>
 
-            {/* Modal Tabs */}
-            <div className="flex items-center gap-1 px-4 pt-3 border-b border-[var(--color-border)] bg-[var(--color-surface)]">
-              <button
-                type="button"
-                onClick={() => setModalTab('details')}
-                className={`flex items-center gap-1.5 px-2.5 py-1.5 text-[11px] font-semibold rounded-t-lg border-b-2 transition-all whitespace-nowrap ${
-                  modalTab === 'details'
-                    ? 'border-[var(--color-primary)] text-[var(--color-primary)] bg-[var(--color-primary)]/5'
-                    : 'border-transparent text-[var(--color-text-muted)] hover:text-[var(--color-text-strong)]'
-                }`}
-              >
-                <Users className="w-3 h-3" /> 1. Customer & Expiry
-              </button>
-
-              <button
-                type="button"
-                onClick={() => setModalTab('lines')}
-                className={`flex items-center gap-1.5 px-2.5 py-1.5 text-[11px] font-semibold rounded-t-lg border-b-2 transition-all whitespace-nowrap ${
-                  modalTab === 'lines'
-                    ? 'border-[var(--color-primary)] text-[var(--color-primary)] bg-[var(--color-primary)]/5'
-                    : 'border-transparent text-[var(--color-text-muted)] hover:text-[var(--color-text-strong)]'
-                }`}
-              >
-                <Coins className="w-3 h-3" /> 2. Items & Pricing ({lines.length})
-              </button>
-
-              <button
-                type="button"
-                onClick={() => setModalTab('summary')}
-                className={`flex items-center gap-1.5 px-2.5 py-1.5 text-[11px] font-semibold rounded-t-lg border-b-2 transition-all whitespace-nowrap ${
-                  modalTab === 'summary'
-                    ? 'border-[var(--color-primary)] text-[var(--color-primary)] bg-[var(--color-primary)]/5'
-                    : 'border-transparent text-[var(--color-text-muted)] hover:text-[var(--color-text-strong)]'
-                }`}
-              >
-                <FileText className="w-3 h-3" /> 3. Terms & Summary
-              </button>
-
-              <button
-                type="button"
-                onClick={() => setModalTab('preview')}
-                className={`flex items-center gap-1.5 px-2.5 py-1.5 text-[11px] font-semibold rounded-t-lg border-b-2 transition-all whitespace-nowrap ${
-                  modalTab === 'preview'
-                    ? 'border-emerald-600 text-emerald-600 bg-emerald-500/10'
-                    : 'border-transparent text-[var(--color-text-muted)] hover:text-[var(--color-text-strong)]'
-                }`}
-              >
-                <Eye className="w-3 h-3" /> Preview
-              </button>
+            {/* Tabs */}
+            <div className="flex items-center gap-1 px-4 pt-3 border-b border-[var(--color-border)]">
+              {(['details', 'lines', 'summary', 'preview'] as const).map(tab => (
+                <button key={tab} onClick={() => setModalTab(tab)} className={`flex items-center gap-1.5 px-3 py-2 text-[11px] font-semibold rounded-t-lg border-b-2 transition-all ${modalTab === tab ? (tab === 'preview' ? 'border-emerald-600 text-emerald-600 bg-emerald-500/10' : 'border-indigo-600 text-indigo-600 bg-indigo-500/10') : 'border-transparent text-[var(--color-text-muted)] hover:text-[var(--color-text-strong)]'}`}>
+                  {tab === 'details' && <><Users className="w-3 h-3" /> 1. Customer & Dates</>}
+                  {tab === 'lines' && <><Coins className="w-3 h-3" /> 2. Line Items ({lines.length})</>}
+                  {tab === 'summary' && <><FileText className="w-3 h-3" /> 3. Terms & Summary</>}
+                  {tab === 'preview' && <><Eye className="w-3 h-3" /> Preview & Submit</>}
+                </button>
+              ))}
             </div>
 
-            {/* Modal Body */}
-            <div className="p-6 md:p-8 overflow-y-auto flex-1 space-y-5">
+            {/* Body */}
+            <div className="p-6 md:p-8 overflow-y-auto flex-1">
               {modalTab === 'details' && (
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-5 max-w-3xl">
                   <div className="md:col-span-2">
-                    <label className="block text-xs font-semibold text-[var(--color-text-strong)] mb-1.5">
-                      <span className="text-rose-500 font-bold mr-1">*</span> Customer / Client
-                    </label>
-                    <select
-                      value={form.customerId}
-                      onChange={e => setForm({ ...form, customerId: e.target.value })}
-                      className="w-full h-10 px-3.5 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] text-xs text-[var(--color-text-strong)] focus:border-[var(--color-primary)] outline-none shadow-2xs"
-                    >
+                    <label className="block text-xs font-semibold text-[var(--color-text-strong)] mb-1.5"><span className="text-rose-500 mr-1">*</span>Customer / Client</label>
+                    <select value={form.customerId} onChange={e => setForm({ ...form, customerId: e.target.value })} className="w-full h-10 px-3.5 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] text-xs text-[var(--color-text-strong)] focus:border-[var(--color-primary)] outline-none">
                       <option value="">Select customer...</option>
-                      {customers.map((c: any) => (
-                        <option key={c.id} value={c.id}>
-                          {c.name} {c.customerNumber ? `(${c.customerNumber})` : ''}
-                        </option>
-                      ))}
+                      {customers.map((c: any) => (<option key={c.id} value={c.id}>{c.name} {c.customerNumber ? `(${c.customerNumber})` : ''}</option>))}
                     </select>
                   </div>
-
                   <div>
-                    <label className="block text-xs font-semibold text-[var(--color-text-strong)] mb-1.5">
-                      Quote Reference / RFQ #
-                    </label>
-                    <div className="flex items-center gap-2.5 h-10 px-3.5 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] focus-within:border-[var(--color-primary)] transition-colors shadow-2xs">
-                      <Hash className="w-4 h-4 text-[var(--color-text-muted)] shrink-0" />
-                      <input
-                        placeholder="e.g. EST-0001"
-                        value={form.reference}
-                        onChange={e => setForm({ ...form, reference: e.target.value })}
-                        className="w-full h-full border-0 outline-none bg-transparent font-mono text-xs text-[var(--color-text-strong)] placeholder:text-[var(--color-text-muted)]"
-                        style={{ border: 0, outline: 'none', padding: 0, background: 'transparent' }}
-                      />
+                    <label className="block text-xs font-semibold text-[var(--color-text-strong)] mb-1.5">Quote Reference</label>
+                    <div className="flex items-center gap-2 h-10 px-3.5 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] focus-within:border-[var(--color-primary)]">
+                      <Hash className="w-4 h-4 text-[var(--color-text-muted)]" />
+                      <input value={form.reference} onChange={e => setForm({ ...form, reference: e.target.value })} className="flex-1 h-full border-0 outline-none bg-transparent font-mono text-xs text-[var(--color-text-strong)]" />
                     </div>
                   </div>
-
                   <div>
-                    <label className="block text-xs font-semibold text-[var(--color-text-strong)] mb-1.5">
-                      Quotation Currency
-                    </label>
-                    <select
-                      value={form.currencyCode}
-                      onChange={e => setForm({ ...form, currencyCode: e.target.value })}
-                      className="w-full h-10 px-3.5 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] text-xs font-semibold text-[var(--color-text-strong)] focus:border-[var(--color-primary)] outline-none shadow-2xs"
-                    >
-                      {['PKR', 'USD', 'AED', 'SAR', 'GBP', 'EUR', 'CAD', 'AUD'].map(curr => (
-                        <option key={curr} value={curr}>{curr}</option>
-                      ))}
+                    <label className="block text-xs font-semibold text-[var(--color-text-strong)] mb-1.5">Currency</label>
+                    <select value={form.currencyCode} onChange={e => setForm({ ...form, currencyCode: e.target.value })} className="w-full h-10 px-3.5 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] text-xs font-semibold text-[var(--color-text-strong)] focus:border-[var(--color-primary)] outline-none">
+                      {['PKR', 'USD', 'AED', 'SAR', 'GBP', 'EUR', 'CAD', 'AUD'].map(c => <option key={c} value={c}>{c}</option>)}
                     </select>
                   </div>
-
                   <div>
-                    <label className="block text-xs font-semibold text-[var(--color-text-strong)] mb-1.5">
-                      Quotation Date
-                    </label>
-                    <input
-                      type="date"
-                      value={form.estimateDate}
-                      onChange={e => setForm({ ...form, estimateDate: e.target.value })}
-                      className="w-full h-10 px-3.5 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] text-xs text-[var(--color-text-strong)] focus:border-[var(--color-primary)] outline-none shadow-2xs"
-                    />
+                    <label className="block text-xs font-semibold text-[var(--color-text-strong)] mb-1.5">Quotation Date</label>
+                    <input type="date" value={form.estimateDate} onChange={e => setForm({ ...form, estimateDate: e.target.value })} className="w-full h-10 px-3.5 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] text-xs text-[var(--color-text-strong)] focus:border-[var(--color-primary)] outline-none" />
                   </div>
-
                   <div>
-                    <label className="block text-xs font-semibold text-[var(--color-text-strong)] mb-1.5">
-                      Proposal Expiry Date
-                    </label>
-                    <input
-                      type="date"
-                      value={form.expiryDate}
-                      onChange={e => setForm({ ...form, expiryDate: e.target.value })}
-                      className="w-full h-10 px-3.5 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] text-xs text-[var(--color-text-strong)] focus:border-[var(--color-primary)] outline-none shadow-2xs"
-                    />
+                    <label className="block text-xs font-semibold text-[var(--color-text-strong)] mb-1.5">Expiry Date</label>
+                    <input type="date" value={form.expiryDate} onChange={e => setForm({ ...form, expiryDate: e.target.value })} className="w-full h-10 px-3.5 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] text-xs text-[var(--color-text-strong)] focus:border-[var(--color-primary)] outline-none" />
                   </div>
                 </div>
               )}
 
               {modalTab === 'lines' && (
                 <div className="space-y-3">
-                  <div>
-                    <p className="text-xs font-semibold text-[var(--color-text-strong)]">Quotation Line Items</p>
-                  </div>
-
-                  <div className="border border-[var(--color-border)] rounded-xl shadow-2xs bg-[var(--color-surface)] overflow-hidden">
+                  <div className="rounded-xl border border-[var(--color-border)] overflow-hidden">
                     <table className="w-full text-xs">
-                      <thead className="bg-[var(--color-surface-muted)] text-[var(--color-text-muted)] font-semibold border-b border-[var(--color-border)]">
+                      <thead className="bg-[var(--color-surface-muted)] border-b border-[var(--color-border)]">
                         <tr>
-                          <th className="p-2.5 text-left w-[200px]">Product / Service</th>
+                          <th className="p-2.5 text-left w-[180px]">Product</th>
                           <th className="p-2.5 text-left">Description</th>
                           <th className="p-2.5 text-right w-16">Qty</th>
-                          <th className="p-2.5 text-right w-24">Price ({form.currencyCode || 'PKR'})</th>
+                          <th className="p-2.5 text-right w-24">Price</th>
                           <th className="p-2.5 text-center w-28">Discount</th>
                           <th className="p-2.5 text-right w-16">Tax %</th>
-                          <th className="p-2.5 text-right w-28">Total ({form.currencyCode || 'PKR'})</th>
+                          <th className="p-2.5 text-right w-28">Total</th>
                           <th className="p-2.5 w-8"></th>
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-[var(--color-border)]">
                         {lines.map((l, i) => (
-                          <tr key={i} className="hover:bg-[var(--color-surface-muted)]/50 transition-colors">
-                            <td className="p-2">
-                              <select
-                                value={l.productId}
-                                onChange={e => updateLine(i, 'productId', e.target.value)}
-                                className="w-full h-8.5 px-2 rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] text-xs text-[var(--color-text-strong)] outline-none"
-                              >
-                                <option value="">Select Item...</option>
-                                {products.map((p: any) => (
-                                  <option key={p.id} value={p.id}>
-                                    {p.name}
-                                  </option>
-                                ))}
-                              </select>
-                            </td>
-                            <td className="p-2">
-                              <textarea
-                                placeholder="Description"
-                                value={l.description}
-                                onChange={e => updateLine(i, 'description', e.target.value)}
-                                rows={2}
-                                className="w-full px-2.5 py-1.5 rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] text-xs text-[var(--color-text-strong)] outline-none resize-none"
-                              />
-                            </td>
-                            <td className="p-2">
-                              <input
-                                type="number"
-                                min="1"
-                                value={l.quantity}
-                                onChange={e => updateLine(i, 'quantity', e.target.value)}
-                                className="w-full h-8.5 px-2 rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] text-xs text-right font-mono text-[var(--color-text-strong)] outline-none"
-                              />
-                            </td>
-                            <td className="p-2">
-                              <input
-                                type="number"
-                                step="0.01"
-                                value={l.unitPrice}
-                                onChange={e => updateLine(i, 'unitPrice', e.target.value)}
-                                className="w-full h-8.5 px-2 rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] text-xs text-right font-mono text-[var(--color-text-strong)] outline-none"
-                              />
-                            </td>
-                            <td className="p-2">
-                              <div className="flex items-center gap-1.5">
-                                <select
-                                  value={l.discountType}
-                                  onChange={e => updateLine(i, 'discountType', parseInt(e.target.value))}
-                                  className="h-8.5 min-w-[62px] shrink-0 border border-[var(--color-border)] rounded-lg px-2 text-xs bg-[var(--color-surface)] text-[var(--color-text-strong)] font-semibold outline-none"
-                                >
-                                  <option value={0}>%</option>
-                                  <option value={1}>{form.currencyCode || 'PKR'}</option>
-                                </select>
-                                <input
-                                  type="number"
-                                  min="0"
-                                  step={l.discountType === 0 ? "1" : "0.01"}
-                                  placeholder="0"
-                                  value={l.discountValue}
-                                  onChange={e => updateLine(i, 'discountValue', e.target.value)}
-                                  className="w-full min-w-[85px] h-8.5 px-3 rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] text-xs text-right font-mono font-medium text-[var(--color-text-strong)] outline-none"
-                                />
-                              </div>
-                            </td>
-                            <td className="p-2">
-                              <input
-                                type="number"
-                                min="0"
-                                max="100"
-                                placeholder="0"
-                                value={l.taxPercent}
-                                onChange={e => updateLine(i, 'taxPercent', e.target.value)}
-                                className="w-full h-8.5 px-2 rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] text-xs text-right font-mono text-[var(--color-text-strong)] outline-none"
-                              />
-                            </td>
-                            <td className="p-2 text-right font-mono font-bold text-emerald-600 dark:text-emerald-400 whitespace-nowrap">
-                              {money(lineCalculations[i]?.total || 0)}
-                            </td>
-                            <td className="p-2 text-center">
-                              {lines.length > 1 && (
-                                <button
-                                  type="button"
-                                  onClick={() => removeLine(i)}
-                                  className="w-6 h-6 rounded flex items-center justify-center text-rose-500 hover:bg-rose-500/10"
-                                >
-                                  <X className="w-3 h-3" />
-                                </button>
-                              )}
-                            </td>
+                          <tr key={i} className="hover:bg-[var(--color-surface-muted)]/30">
+                            <td className="p-2"><select value={l.productId} onChange={e => updateLine(i, 'productId', e.target.value)} className="w-full h-8 px-2 rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] text-xs outline-none"><option value="">Select...</option>{products.map((p: any) => <option key={p.id} value={p.id}>{p.name}</option>)}</select></td>
+                            <td className="p-2"><textarea value={l.description} onChange={e => updateLine(i, 'description', e.target.value)} rows={2} placeholder="Description" className="w-full px-2 py-1 rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] text-xs outline-none resize-none" /></td>
+                            <td className="p-2"><input type="number" min="1" value={l.quantity} onChange={e => updateLine(i, 'quantity', e.target.value)} className="w-full h-8 px-2 rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] text-xs text-right font-mono outline-none" /></td>
+                            <td className="p-2"><input type="number" step="0.01" value={l.unitPrice} onChange={e => updateLine(i, 'unitPrice', e.target.value)} className="w-full h-8 px-2 rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] text-xs text-right font-mono outline-none" /></td>
+                            <td className="p-2"><div className="flex items-center gap-1"><select value={l.discountType} onChange={e => updateLine(i, 'discountType', parseInt(e.target.value))} className="h-8 w-12 shrink-0 border border-[var(--color-border)] rounded-lg px-1 text-xs bg-[var(--color-surface)] outline-none"><option value={0}>%</option><option value={1}>{form.currencyCode}</option></select><input type="number" min="0" step={l.discountType === 0 ? "1" : "0.01"} value={l.discountValue} onChange={e => updateLine(i, 'discountValue', e.target.value)} className="w-full h-8 px-2 rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] text-xs text-right font-mono outline-none" /></div></td>
+                            <td className="p-2"><input type="number" min="0" max="100" value={l.taxPercent} onChange={e => updateLine(i, 'taxPercent', e.target.value)} className="w-full h-8 px-2 rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] text-xs text-right font-mono outline-none" /></td>
+                            <td className="p-2 text-right font-mono font-bold text-emerald-600">{money(lineCalculations[i]?.total || 0)}</td>
+                            <td className="p-2 text-center">{lines.length > 1 && <button onClick={() => removeLine(i)} className="text-rose-500 hover:bg-rose-500/10 rounded p-1"><X className="w-3 h-3" /></button>}</td>
                           </tr>
                         ))}
                       </tbody>
                     </table>
                   </div>
-
-                  <div className="flex justify-start pt-1">
-                    <button
-                      type="button"
-                      onClick={addLine}
-                      className="h-8 px-3.5 rounded-lg border border-[var(--color-primary)] text-[var(--color-primary)] text-xs font-semibold hover:bg-[var(--color-primary)]/10 transition-colors flex items-center gap-1.5 shadow-2xs"
-                    >
-                      <Plus className="w-3 h-3" /> Add Line
-                    </button>
-                  </div>
+                  <button onClick={addLine} className="h-8 px-3 rounded-lg border border-indigo-500 text-indigo-600 text-xs font-semibold hover:bg-indigo-500/10 transition-colors flex items-center gap-1"><Plus className="w-3 h-3" /> Add Line</button>
                 </div>
               )}
 
               {modalTab === 'summary' && (
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
                   <div className="md:col-span-2 space-y-4">
-                    <div>
-                      <label className="block text-xs font-semibold text-[var(--color-text-strong)] mb-1.5">
-                        Terms & Conditions
-                      </label>
-                      <textarea
-                        rows={3}
-                        value={form.terms}
-                        onChange={e => setForm({ ...form, terms: e.target.value })}
-                        className="w-full p-3 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] text-xs text-[var(--color-text-strong)] placeholder:text-[var(--color-text-muted)] focus:border-[var(--color-primary)] outline-none shadow-2xs resize-none"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-xs font-semibold text-[var(--color-text-strong)] mb-1.5">
-                        Client Notes
-                      </label>
-                      <textarea
-                        rows={2}
-                        value={form.notes}
-                        onChange={e => setForm({ ...form, notes: e.target.value })}
-                        placeholder="Additional remarks or scope inclusions..."
-                        className="w-full p-3 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] text-xs text-[var(--color-text-strong)] placeholder:text-[var(--color-text-muted)] focus:border-[var(--color-primary)] outline-none shadow-2xs resize-none"
-                      />
-                    </div>
+                    <div><label className="block text-xs font-semibold text-[var(--color-text-strong)] mb-1.5">Terms & Conditions</label><textarea rows={3} value={form.terms} onChange={e => setForm({ ...form, terms: e.target.value })} className="w-full p-3 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] text-xs text-[var(--color-text-strong)] focus:border-[var(--color-primary)] outline-none resize-none" /></div>
+                    <div><label className="block text-xs font-semibold text-[var(--color-text-strong)] mb-1.5">Client Notes</label><textarea rows={2} value={form.notes} onChange={e => setForm({ ...form, notes: e.target.value })} placeholder="Additional remarks..." className="w-full p-3 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] text-xs text-[var(--color-text-strong)] placeholder:text-[var(--color-text-muted)] focus:border-[var(--color-primary)] outline-none resize-none" /></div>
                   </div>
-
-                  <div className="bg-[var(--color-surface-muted)]/60 border border-[var(--color-border)] rounded-xl p-4 space-y-3">
-                    <p className="text-xs font-bold uppercase tracking-wider text-[var(--color-text-strong)]">Quotation Summary</p>
-                    <div className="flex justify-between text-xs text-[var(--color-text-muted)]">
-                      <span>Gross Subtotal</span>
-                      <span className="font-semibold font-mono text-[var(--color-text-strong)]">{money(totals.sub)}</span>
-                    </div>
-                    {totals.disc > 0 && (
-                      <div className="flex justify-between text-xs text-rose-500 font-mono">
-                        <span>Total Discount</span>
-                        <span>-{money(totals.disc)}</span>
-                      </div>
-                    )}
-                    {totals.tax > 0 && (
-                      <div className="flex justify-between text-xs text-amber-500 font-mono">
-                        <span>Sales Tax / VAT</span>
-                        <span>+{money(totals.tax)}</span>
-                      </div>
-                    )}
-                    <div className="border-t border-[var(--color-border)] pt-2.5 flex justify-between text-sm font-bold text-[var(--color-text-strong)]">
-                      <span>Estimated Total</span>
-                      <span className="text-indigo-600 font-mono">{money(totals.total)}</span>
-                    </div>
+                  <div className="rounded-xl border border-[var(--color-border)] bg-[var(--color-surface-muted)]/50 p-4 space-y-3">
+                    <p className="text-xs font-bold uppercase tracking-wider text-[var(--color-text-strong)]">Summary</p>
+                    <div className="flex justify-between text-xs"><span className="text-[var(--color-text-muted)]">Subtotal</span><span className="font-mono font-semibold">{money(totals.sub)}</span></div>
+                    {totals.disc > 0 && <div className="flex justify-between text-xs text-rose-500"><span>Discount</span><span>-{money(totals.disc)}</span></div>}
+                    {totals.tax > 0 && <div className="flex justify-between text-xs text-amber-600"><span>Tax</span><span>+{money(totals.tax)}</span></div>}
+                    <div className="border-t border-[var(--color-border)] pt-2 flex justify-between text-sm font-bold"><span>Total</span><span className="text-indigo-600 font-mono">{money(totals.total)}</span></div>
                   </div>
                 </div>
               )}
 
               {modalTab === 'preview' && (
-                <div className="space-y-6">
-                  {/* Quote Header Card */}
+                <div className="space-y-5">
                   <div className="p-5 rounded-2xl bg-gradient-to-r from-indigo-500/10 via-purple-500/5 to-sky-500/10 border border-indigo-500/20 flex flex-col md:flex-row md:items-center justify-between gap-4">
                     <div>
-                      <div className="flex items-center gap-2">
-                        <span className="text-base font-bold text-[var(--color-text-strong)]">Quotation / Estimate: {form.reference || 'Auto-generated'}</span>
-                        <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-indigo-500/10 text-indigo-600 border border-indigo-500/20">Draft Quotation</span>
-                      </div>
-                      <p className="text-xs text-[var(--color-text-muted)] mt-1">
-                        Client: <strong className="text-[var(--color-text-strong)]">{customers.find((c: any) => c.id === form.customerId)?.name || 'Selected Customer'}</strong> • Currency: <span className="font-mono font-bold">{form.currencyCode || 'PKR'}</span>
-                      </p>
-                    </div>
-                    <div className="flex items-center gap-4 text-xs">
-                      <div>
-                        <span className="text-[var(--color-text-muted)] block text-[11px]">Estimate Date:</span>
-                        <strong className="text-[var(--color-text-strong)]">{form.estimateDate}</strong>
-                      </div>
-                      <div>
-                        <span className="text-[var(--color-text-muted)] block text-[11px]">Expiration Date:</span>
-                        <strong className="text-[var(--color-text-strong)]">{form.expiryDate}</strong>
-                      </div>
+                      <div className="flex items-center gap-2"><span className="text-lg font-bold text-[var(--color-text-strong)]">{form.reference}</span><span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-indigo-500/10 text-indigo-600 border border-indigo-500/20">Ready to Submit</span></div>
+                      <p className="text-xs text-[var(--color-text-muted)] mt-1">Client: <strong>{customers.find((c: any) => c.id === form.customerId)?.name || 'N/A'}</strong> | Currency: <span className="font-mono font-bold">{form.currencyCode}</span> | Lines: <strong>{lines.length}</strong></p>
                     </div>
                   </div>
-
-                  {/* Line Items Table */}
-                  <div className="border border-[var(--color-border)] rounded-xl overflow-hidden shadow-2xs">
-                    <div className="px-4 py-2.5 bg-[var(--color-surface-muted)] border-b border-[var(--color-border)] text-xs font-bold text-[var(--color-text-strong)]">
-                      Quotation Items & Cost Breakdown
-                    </div>
+                  <div className="rounded-xl border border-[var(--color-border)] overflow-hidden">
                     <table className="w-full text-xs">
-                      <thead>
-                        <tr className="border-b border-[var(--color-border)] bg-[var(--color-surface)] text-[var(--color-text-muted)]">
-                          <th className="text-left px-3.5 py-2 font-semibold">#</th>
-                          <th className="text-left px-3.5 py-2 font-semibold">Description</th>
-                          <th className="text-center px-3.5 py-2 font-semibold">Qty</th>
-                          <th className="text-right px-3.5 py-2 font-semibold">Unit Price</th>
-                          <th className="text-right px-3.5 py-2 font-semibold">Discount</th>
-                          <th className="text-right px-3.5 py-2 font-semibold">Tax</th>
-                          <th className="text-right px-3.5 py-2 font-semibold">Line Total</th>
-                        </tr>
-                      </thead>
+                      <thead><tr className="bg-[var(--color-surface-muted)] border-b border-[var(--color-border)]">
+                        <th className="px-4 py-2.5 text-left font-semibold">#</th>
+                        <th className="px-4 py-2.5 text-left font-semibold">Description</th>
+                        <th className="px-4 py-2.5 text-center font-semibold">Qty</th>
+                        <th className="px-4 py-2.5 text-right font-semibold">Price</th>
+                        <th className="px-4 py-2.5 text-right font-semibold">Discount</th>
+                        <th className="px-4 py-2.5 text-right font-semibold">Tax</th>
+                        <th className="px-4 py-2.5 text-right font-semibold">Total</th>
+                      </tr></thead>
                       <tbody className="divide-y divide-[var(--color-border)]">
-                        {lines.map((l, i) => {
-                          const q = parseFloat(l.quantity) || 0;
-                          const p = parseFloat(l.unitPrice) || 0;
-                          const gross = q * p;
-                          const dVal = parseFloat(l.discountValue) || 0;
-                          const dAmt = l.discountType === 0 ? (gross * dVal) / 100 : dVal;
-                          const taxable = Math.max(0, gross - dAmt);
-                          const tAmt = (taxable * (parseFloat(l.taxPercent) || 0)) / 100;
-                          const total = taxable + tAmt;
-                          return (
-                            <tr key={i} className="hover:bg-[var(--color-surface-muted)]/50">
-                              <td className="px-3.5 py-2 text-[var(--color-text-muted)] font-mono">{i + 1}</td>
-                              <td className="px-3.5 py-2 font-semibold text-[var(--color-text-strong)]">{l.description || '—'}</td>
-                              <td className="px-3.5 py-2 text-center font-mono">{q}</td>
-                              <td className="px-3.5 py-2 text-right font-mono">{money(p)}</td>
-                              <td className="px-3.5 py-2 text-right font-mono text-rose-500">{dAmt > 0 ? `-${money(dAmt)}` : '—'}</td>
-                              <td className="px-3.5 py-2 text-right font-mono text-amber-600">{tAmt > 0 ? `+${money(tAmt)}` : '—'}</td>
-                              <td className="px-3.5 py-2 text-right font-mono font-bold text-[var(--color-text-strong)]">{money(total)}</td>
-                            </tr>
-                          );
-                        })}
+                        {lines.map((l, i) => { const c = lineCalculations[i]; return (
+                          <tr key={i} className="hover:bg-[var(--color-surface-muted)]/30">
+                            <td className="px-4 py-2.5 font-mono">{i + 1}</td>
+                            <td className="px-4 py-2.5 font-semibold">{l.description || products.find((p: any) => p.id === l.productId)?.name || '—'}</td>
+                            <td className="px-4 py-2.5 text-center font-mono">{parseFloat(l.quantity) || 0}</td>
+                            <td className="px-4 py-2.5 text-right font-mono">{money(parseFloat(l.unitPrice) || 0)}</td>
+                            <td className="px-4 py-2.5 text-right font-mono text-rose-500">{c?.discountAmount > 0 ? `-${money(c.discountAmount)}` : '—'}</td>
+                            <td className="px-4 py-2.5 text-right font-mono text-amber-600">{c?.taxAmount > 0 ? `+${money(c.taxAmount)}` : '—'}</td>
+                            <td className="px-4 py-2.5 text-right font-mono font-bold">{money(c?.total || 0)}</td>
+                          </tr>
+                        )})}
                       </tbody>
                     </table>
                   </div>
-
-                  {/* Bottom Financial Grid */}
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs">
-                    <div className="p-4 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] space-y-2">
-                      <p className="font-bold text-[var(--color-text-strong)]">Terms, Conditions & Expiration</p>
-                      <p className="text-[11px] text-[var(--color-text-muted)] leading-relaxed">{form.terms || 'Standard quotation terms apply.'}</p>
-                    </div>
-
-                    <div className="p-4 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] space-y-2 shadow-2xs">
-                      <div className="flex justify-between text-[11px] text-[var(--color-text-muted)]">
-                        <span>Gross Items Subtotal:</span>
-                        <span className="font-mono font-semibold text-[var(--color-text-strong)]">{money(totals.sub)}</span>
-                      </div>
-                      {totals.disc > 0 && (
-                        <div className="flex justify-between text-[11px] text-rose-500 font-mono">
-                          <span>Total Discount:</span>
-                          <span>-{money(totals.disc)}</span>
-                        </div>
-                      )}
-                      {totals.tax > 0 && (
-                        <div className="flex justify-between text-[11px] text-amber-600 font-mono">
-                          <span>Sales Tax / VAT:</span>
-                          <span>+{money(totals.tax)}</span>
-                        </div>
-                      )}
-                      <div className="border-t border-[var(--color-border)] pt-2 flex justify-between text-sm font-bold text-[var(--color-text-strong)]">
-                        <span>Total Estimated Quote:</span>
-                        <span className="text-indigo-600 font-mono text-base">{money(totals.total)}</span>
-                      </div>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="rounded-xl border border-[var(--color-border)] p-4"><p className="text-xs font-bold mb-1">Terms</p><p className="text-xs text-[var(--color-text-muted)]">{form.terms || 'Standard terms.'}</p></div>
+                    <div className="rounded-xl border border-[var(--color-border)] p-4 space-y-2 text-xs">
+                      <div className="flex justify-between"><span className="text-[var(--color-text-muted)]">Subtotal</span><span className="font-mono">{money(totals.sub)}</span></div>
+                      {totals.disc > 0 && <div className="flex justify-between text-rose-500"><span>Discount</span><span>-{money(totals.disc)}</span></div>}
+                      {totals.tax > 0 && <div className="flex justify-between text-amber-600"><span>Tax</span><span>+{money(totals.tax)}</span></div>}
+                      <div className="border-t border-[var(--color-border)] pt-2 flex justify-between font-bold text-sm"><span>Total</span><span className="text-indigo-600 font-mono">{money(totals.total)}</span></div>
                     </div>
                   </div>
                 </div>
               )}
             </div>
 
-            {/* Modal Footer */}
-            <div className="px-6 py-3.5 border-t border-[var(--color-border)] bg-[var(--color-surface-muted)]/50 flex items-center justify-between gap-3">
-              <div className="text-[11px] text-[var(--color-text-muted)] flex items-center gap-1.5">
-                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 inline-block" />
-                <span>{modalTab === 'preview' ? 'Ready for final verification & creation' : 'Auto-draft protection active'}</span>
-              </div>
-
+            {/* Footer */}
+            <div className="px-6 py-4 border-t border-[var(--color-border)] flex items-center justify-between">
+              <div className="text-[11px] text-[var(--color-text-muted)] flex items-center gap-1.5"><span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />{modalTab === 'preview' ? 'Ready to submit' : 'Draft auto-saved'}</div>
               <div className="flex items-center gap-2">
-                <button
-                  type="button"
-                  className="h-8.5 px-3.5 rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] text-xs font-medium text-[var(--color-text)] hover:bg-[var(--color-surface-muted)] transition-colors"
-                  onClick={handleCancelForm}
-                >
-                  Cancel
-                </button>
-                {modalTab !== 'preview' && (
-                  <button
-                    type="button"
-                    className="h-8.5 px-3.5 rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] text-xs font-medium text-[var(--color-text-muted)] hover:text-[var(--color-text-strong)] transition-colors"
-                    onClick={(e) => { e.preventDefault(); saveDraft(); notify('Estimate draft saved locally.'); }}
-                  >
-                    Save Draft
-                  </button>
-                )}
-
-                {modalTab !== 'details' && (
-                  <button
-                    type="button"
-                    onClick={() => {
-                      if (modalTab === 'preview') setModalTab('summary')
-                      else if (modalTab === 'summary') setModalTab('lines')
-                      else if (modalTab === 'lines') setModalTab('details')
-                    }}
-                    className="h-8.5 px-3 rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] text-xs font-medium text-[var(--color-text)] hover:bg-[var(--color-surface-muted)] transition-colors flex items-center gap-1"
-                  >
-                    <ArrowLeft className="w-3 h-3" />
-                    <span>{modalTab === 'preview' ? 'Back to Edit' : 'Back'}</span>
-                  </button>
-                )}
-
+                <button onClick={handleCancelForm} className="h-9 px-4 rounded-xl border border-[var(--color-border)] text-xs font-medium hover:bg-[var(--color-surface-muted)] transition-colors">Cancel</button>
+                {modalTab !== 'preview' && <button onClick={(e) => { e.preventDefault(); saveDraft(); notify('Draft saved.'); }} className="h-9 px-4 rounded-xl border border-[var(--color-border)] text-xs font-medium hover:bg-[var(--color-surface-muted)] transition-colors">Save Draft</button>}
+                {modalTab !== 'details' && <button onClick={() => { if (modalTab === 'preview') setModalTab('summary'); else if (modalTab === 'summary') setModalTab('lines'); else setModalTab('details'); }} className="h-9 px-4 rounded-xl border border-[var(--color-border)] text-xs font-medium hover:bg-[var(--color-surface-muted)] transition-colors flex items-center gap-1"><ArrowLeft className="w-3 h-3" /> Back</button>}
                 {modalTab !== 'preview' ? (
-                  <button
-                    type="button"
-                    onClick={() => {
-                      if (modalTab === 'details') {
-                        if (!form.customerId) {
-                          notify('Please select a customer.')
-                          return
-                        }
-                        setModalTab('lines')
-                      } else if (modalTab === 'lines') {
-                        setModalTab('summary')
-                      } else if (modalTab === 'summary') {
-                        setModalTab('preview')
-                      }
-                    }}
-                    className="primary h-8.5 px-4 rounded-lg text-xs font-semibold shadow-xs flex items-center gap-1.5"
-                  >
-                    <span>
-                      {modalTab === 'details' ? 'Next: Items & Pricing' : modalTab === 'lines' ? 'Next: Terms & Summary' : 'Preview & Review'}
-                    </span>
-                    {modalTab === 'summary' ? <Eye className="w-3 h-3" /> : <ArrowRight className="w-3 h-3" />}
+                  <button onClick={() => { if (modalTab === 'details') { if (!form.customerId) { notify('Select customer.'); return } setModalTab('lines') } else if (modalTab === 'lines') setModalTab('summary'); else setModalTab('preview') }} className="h-9 px-5 rounded-xl bg-gradient-to-r from-indigo-600 to-purple-600 text-white text-xs font-semibold shadow-lg shadow-indigo-500/25 flex items-center gap-1.5">
+                    {modalTab === 'details' ? 'Next: Line Items' : modalTab === 'lines' ? 'Next: Summary' : 'Preview'} <ArrowRight className="w-3 h-3" />
                   </button>
                 ) : (
-                  <button
-                    type="button"
-                    onClick={saveEstimate}
-                    className="primary h-8.5 px-5 rounded-lg text-xs font-semibold shadow-xs flex items-center gap-1.5 bg-indigo-600 hover:bg-indigo-700 text-white"
-                  >
-                    <Check className="w-3 h-3" />
-                    <span>Confirm & Create Estimate</span>
-                  </button>
+                  <button onClick={saveEstimate} className="h-9 px-6 rounded-xl bg-gradient-to-r from-emerald-600 to-green-600 text-white text-xs font-bold shadow-lg shadow-emerald-500/25 flex items-center gap-1.5"><Check className="w-3.5 h-3.5" /> Confirm & Create</button>
                 )}
               </div>
             </div>
@@ -1341,562 +530,119 @@ export const EstimatesAndQuotes: React.FC<{ activeEntityId: string; entities?: a
         </div>
       )}
 
-      {/* Full Manual Invoice Creation Modal From Estimate (No Auto Invoice Posting) */}
-      {convertModal && (
-        <CreateInvoiceFromEstimateModal
-          estimate={convertModal}
-          customers={customers}
-          products={products}
-          onConfirm={createInvoiceFromEstimate}
-          onClose={() => setConvertModal(null)}
-        />
-      )}
-
-      {/* Read-Only View Quotation Modal */}
+      {/* VIEW MODAL */}
       {viewingEstimate && (() => {
-        const est = viewingEstimate
-        const customer = customers.find((c: any) => c.id === est.customerId)
-        const lines: any[] = est.lines || []
-        const subTotal = lines.reduce((s: number, l: any) => s + (parseFloat(l.unitPrice || 0) * parseFloat(l.quantity || 1)), 0)
-        const discTotal = lines.reduce((s: number, l: any) => s + parseFloat(l.discountValue || 0), 0)
-        const taxTotal = lines.reduce((s: number, l: any) => {
-          const base = parseFloat(l.unitPrice || 0) * parseFloat(l.quantity || 1) - parseFloat(l.discountValue || 0)
-          return s + base * (parseFloat(l.taxPercent || 0) / 100)
-        }, 0)
-        const netTotal = subTotal - discTotal + taxTotal
-        const fmt = (n: number) => `${est.currencyCode || 'PKR'} ${n.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+        const est = viewingEstimate; const customer = customers.find((c: any) => c.id === est.customerId)
+        const vLines: any[] = (est.lines && est.lines.length > 0) ? est.lines : [{ description: est.customerName ? `${est.customerName} - Products & Services` : 'Products & Services', quantity: 1, unitPrice: est.totalAmount || est.subtotal || 0 }]
+        const sub = vLines.reduce((s: number, l: any) => s + (parseFloat(l.unitPrice || 0) * parseFloat(l.quantity || 1)), 0)
+        const disc = vLines.reduce((s: number, l: any) => s + parseFloat(l.discountValue || l.discountAmount || 0), 0)
+        const tax = vLines.reduce((s: number, l: any) => { const b = parseFloat(l.unitPrice || 0) * parseFloat(l.quantity || 1) - parseFloat(l.discountValue || l.discountAmount || 0); return s + b * (parseFloat(l.taxPercent || '0') / 100) }, 0)
+        const net = sub - disc + tax; const fmt = (n: number) => `${est.currencyCode || 'PKR'} ${n.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
         return (
-          <div className="overlay animate-in fade-in duration-200" onClick={() => setViewingEstimate(null)}>
-            <div
-              className="w-full max-w-3xl bg-[var(--color-surface)] border border-[var(--color-border)] rounded-2xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh]"
-              onClick={e => e.stopPropagation()}
-            >
-              {/* Header */}
-              <div className="px-6 py-4 border-b border-[var(--color-border)] bg-[var(--color-surface-muted)]/50 flex items-center justify-between">
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm" onClick={() => setViewingEstimate(null)}>
+            <div className="w-full max-w-3xl bg-[var(--color-surface)] border border-[var(--color-border)] rounded-2xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh]" onClick={e => e.stopPropagation()}>
+              <div className="px-6 py-4 border-b border-[var(--color-border)] flex items-center justify-between">
                 <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-sky-500 to-indigo-600 flex items-center justify-center text-white shadow-sm shrink-0">
-                    <Eye className="w-5 h-5" />
-                  </div>
-                  <div>
-                    <div className="flex items-center gap-2">
-                      <h2 className="text-sm font-bold text-[var(--color-text-strong)] tracking-tight">
-                        Quotation: {est.estimateNumber || est.reference || '—'}
-                      </h2>
-                      <span className="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-sky-500/10 text-sky-600 border border-sky-500/20">
-                        Read-Only
-                      </span>
-                    </div>
-                    <p className="text-xs text-[var(--color-text-muted)] mt-0.5">
-                      Customer: <strong className="text-[var(--color-text-strong)]">{customer?.name || 'N/A'}</strong>
-                      {' · '}Currency: <span className="font-mono font-bold">{est.currencyCode || 'PKR'}</span>
-                    </p>
-                  </div>
+                  <div className="w-11 h-11 rounded-xl bg-gradient-to-br from-sky-500 to-indigo-600 flex items-center justify-center text-white"><Eye className="w-5 h-5" /></div>
+                  <div><h2 className="text-sm font-bold text-[var(--color-text-strong)]">Quotation: {est.estimateNumber || est.reference}</h2><p className="text-xs text-[var(--color-text-muted)]">Customer: <strong>{customer?.name || 'N/A'}</strong></p></div>
                 </div>
-                <button
-                  onClick={() => setViewingEstimate(null)}
-                  className="w-8 h-8 rounded-lg flex items-center justify-center text-[var(--color-text-muted)] hover:text-[var(--color-text-strong)] hover:bg-[var(--color-surface-muted)] transition-colors"
-                >
-                  <X className="w-4 h-4" />
-                </button>
+                <button onClick={() => setViewingEstimate(null)} className="w-8 h-8 rounded-lg flex items-center justify-center text-[var(--color-text-muted)] hover:bg-[var(--color-surface-muted)]"><X className="w-4 h-4" /></button>
               </div>
-
-              {/* Meta info */}
-              <div className="px-6 py-3 border-b border-[var(--color-border)] grid grid-cols-2 md:grid-cols-4 gap-4 text-xs bg-[var(--color-surface)]">
-                <div>
-                  <span className="text-[var(--color-text-muted)] block">Quotation Date</span>
-                  <strong className="text-[var(--color-text-strong)]">{est.estimateDate || '—'}</strong>
-                </div>
-                <div>
-                  <span className="text-[var(--color-text-muted)] block">Expiry Date</span>
-                  <strong className="text-[var(--color-text-strong)]">{est.expiryDate || '—'}</strong>
-                </div>
-                <div>
-                  <span className="text-[var(--color-text-muted)] block">Reference</span>
-                  <strong className="text-[var(--color-text-strong)]">{est.reference || '—'}</strong>
-                </div>
-                <div>
-                  <span className="text-[var(--color-text-muted)] block">Status</span>
-                  <span className={`inline-block px-2 py-0.5 rounded-full text-[10px] font-semibold ${statusStyles[getNumericStatus(est.status)]?.class || ''}`}>
-                    {statusStyles[getNumericStatus(est.status)]?.label || 'Draft'}
-                  </span>
-                </div>
-              </div>
-
-              {/* Customer & Notes */}
-              <div className="px-6 py-3 border-b border-[var(--color-border)] grid grid-cols-1 md:grid-cols-2 gap-4 text-xs bg-[var(--color-surface)]">
-                <div>
-                  <span className="text-[var(--color-text-muted)] block">Customer Details</span>
-                  <strong className="text-[var(--color-text-strong)]">{customer?.name || 'N/A'}</strong>
-                  {customer?.email && <div className="text-[var(--color-text-muted)]">{customer.email}</div>}
-                  {customer?.phone && <div className="text-[var(--color-text-muted)]">{customer.phone}</div>}
-                </div>
-                <div>
-                  <span className="text-[var(--color-text-muted)] block">Notes</span>
-                  <strong className="text-[var(--color-text-strong)]">{est.notes || '—'}</strong>
-                </div>
-              </div>
-
-              {/* Line Items */}
               <div className="flex-1 overflow-y-auto px-6 py-4">
-                <div className="border border-[var(--color-border)] rounded-xl overflow-hidden">
+                <div className="rounded-xl border border-[var(--color-border)] overflow-hidden mb-4">
                   <table className="w-full text-xs">
-                    <thead>
-                      <tr className="bg-[var(--color-surface-muted)] border-b border-[var(--color-border)] text-[var(--color-text-muted)]">
-                        <th className="text-left px-3 py-2 font-semibold">#</th>
-                        <th className="text-left px-3 py-2 font-semibold">Description</th>
-                        <th className="text-right px-3 py-2 font-semibold">Qty</th>
-                        <th className="text-right px-3 py-2 font-semibold">Unit Price</th>
-                        <th className="text-right px-3 py-2 font-semibold">Discount</th>
-                        <th className="text-right px-3 py-2 font-semibold">Tax %</th>
-                        <th className="text-right px-3 py-2 font-semibold">Line Total</th>
-                      </tr>
-                    </thead>
+                    <thead><tr className="bg-[var(--color-surface-muted)] border-b border-[var(--color-border)]">
+                      <th className="px-3 py-2 text-left font-semibold">#</th>
+                      <th className="px-3 py-2 text-left font-semibold">Description</th>
+                      <th className="px-3 py-2 text-right font-semibold">Qty</th>
+                      <th className="px-3 py-2 text-right font-semibold">Price</th>
+                      <th className="px-3 py-2 text-right font-semibold">Total</th>
+                    </tr></thead>
                     <tbody className="divide-y divide-[var(--color-border)]">
-                      {lines.length === 0 ? (
-                        <tr>
-                          <td colSpan={7} className="px-3 py-4 text-center text-[var(--color-text-muted)] italic">No line items</td>
-                        </tr>
-                      ) : lines.map((l: any, i: number) => {
-                        const qty = parseFloat(l.quantity || 1)
-                        const up = parseFloat(l.unitPrice || 0)
-                        const disc = parseFloat(l.discountValue || 0)
-                        const taxPct = parseFloat(l.taxPercent || 0)
-                        const base = qty * up - disc
-                        const tax = base * (taxPct / 100)
-                        const total = base + tax
-                        return (
-                          <tr key={i} className="hover:bg-[var(--color-surface-muted)]/40">
-                            <td className="px-3 py-2 text-[var(--color-text-muted)]">{i + 1}</td>
-                            <td className="px-3 py-2 text-[var(--color-text-strong)] font-medium max-w-[160px] truncate">{l.description || '—'}</td>
-                            <td className="px-3 py-2 text-right font-mono">{qty}</td>
-                            <td className="px-3 py-2 text-right font-mono">{up.toFixed(2)}</td>
-                            <td className="px-3 py-2 text-right font-mono text-rose-500">{disc > 0 ? `-${disc.toFixed(2)}` : '—'}</td>
-                            <td className="px-3 py-2 text-right font-mono text-amber-600">{taxPct > 0 ? `${taxPct}%` : '—'}</td>
-                            <td className="px-3 py-2 text-right font-mono font-semibold text-[var(--color-text-strong)]">{fmt(total)}</td>
-                          </tr>
-                        )
-                      })}
+                      {vLines.map((l: any, i: number) => { const q = parseFloat(l.quantity || 1); const p = parseFloat(l.unitPrice || 0); return (
+                        <tr key={i}><td className="px-3 py-2 font-mono">{i + 1}</td><td className="px-3 py-2 font-medium">{l.description || '—'}</td><td className="px-3 py-2 text-right font-mono">{q}</td><td className="px-3 py-2 text-right font-mono">{p.toFixed(2)}</td><td className="px-3 py-2 text-right font-mono font-bold">{fmt(q * p)}</td></tr>
+                      )})}
                     </tbody>
                   </table>
                 </div>
-
-                {/* Totals */}
-                <div className="mt-4 ml-auto w-64 space-y-1.5 text-xs">
-                  <div className="flex justify-between text-[var(--color-text-muted)]">
-                    <span>Subtotal</span>
-                    <span className="font-mono font-semibold text-[var(--color-text-strong)]">{fmt(subTotal)}</span>
-                  </div>
-                  {discTotal > 0 && (
-                    <div className="flex justify-between text-rose-500 font-mono">
-                      <span>Total Discount</span>
-                      <span>-{fmt(discTotal)}</span>
-                    </div>
-                  )}
-                  {taxTotal > 0 && (
-                    <div className="flex justify-between text-amber-600 font-mono">
-                      <span>Total Tax</span>
-                      <span>+{fmt(taxTotal)}</span>
-                    </div>
-                  )}
-                  <div className="border-t border-[var(--color-border)] pt-2 flex justify-between font-bold text-sm text-[var(--color-text-strong)]">
-                    <span>Net Total</span>
-                    <span className="text-sky-600 font-mono">{fmt(netTotal)}</span>
-                  </div>
+                <div className="w-64 ml-auto space-y-1.5 text-xs">
+                  <div className="flex justify-between"><span className="text-[var(--color-text-muted)]">Subtotal</span><span className="font-mono font-semibold">{fmt(sub)}</span></div>
+                  {disc > 0 && <div className="flex justify-between text-rose-500"><span>Discount</span><span>-{fmt(disc)}</span></div>}
+                  {tax > 0 && <div className="flex justify-between text-amber-600"><span>Tax</span><span>+{fmt(tax)}</span></div>}
+                  <div className="border-t border-[var(--color-border)] pt-2 flex justify-between font-bold"><span>Total</span><span className="text-indigo-600 font-mono">{fmt(net)}</span></div>
                 </div>
-              </div>
-
-              {/* Terms & Conditions */}
-              {est.terms && (
-                <div className="px-6 py-3 border-t border-[var(--color-border)] bg-[var(--color-surface)] text-xs">
-                  <span className="text-[var(--color-text-muted)] font-semibold">Terms & Conditions:</span>
-                  <p className="text-[var(--color-text-strong)] mt-1">{est.terms}</p>
-                </div>
-              )}
-
-              {/* Footer */}
-              <div className="px-6 py-3 border-t border-[var(--color-border)] bg-[var(--color-surface-muted)]/50 flex items-center justify-end gap-2">
-                <button
-                  onClick={() => { setViewingEstimate(null); openEditModal(est); }}
-                  className="h-8 px-4 rounded-lg border border-indigo-500/30 bg-indigo-500/5 hover:bg-indigo-500/15 text-indigo-600 text-xs font-semibold flex items-center gap-1.5 transition-colors"
-                >
-                  <Pencil className="w-3 h-3" />
-                  Edit Quote
-                </button>
-                <button
-                  onClick={() => setViewingEstimate(null)}
-                  className="h-8 px-4 rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] hover:bg-[var(--color-surface-muted)] text-xs font-medium text-[var(--color-text)] transition-colors"
-                >
-                  Close
-                </button>
               </div>
             </div>
           </div>
         )
       })()}
+
+      {/* CONVERT TO INVOICE MODAL */}
+      {convertModal && <ConvertToInvoiceModal estimate={convertModal} customers={customers} products={products} onConfirm={createInvoiceFromEstimate} onClose={() => setConvertModal(null)} />}
     </div>
   )
 }
 
-const CreateInvoiceFromEstimateModal = ({
-  estimate,
-  customers,
-  products,
-  onConfirm,
-  onClose
-}: {
-  estimate: any
-  customers: any[]
-  products: any[]
-  onConfirm: (payload: any) => Promise<void>
-  onClose: () => void
-}) => {
+function ConvertToInvoiceModal({ estimate, products, onConfirm, onClose }: { estimate: any; customers: any[]; products: any[]; onConfirm: (p: any) => void; onClose: () => void }) {
   const [submitting, setSubmitting] = useState(false)
-  const invoices = useSalesStore(s => s.invoices)
+  const est = estimate
+  const [invForm, setInvForm] = useState({ customerId: est.customerId || '', invoiceDate: new Date().toISOString().slice(0, 10), dueDate: new Date(Date.now() + 30 * 86400000).toISOString().slice(0, 10), reference: '', notes: est.notes || '', currencyCode: est.currencyCode || 'PKR' })
+  const [invLines, setInvLines] = useState<any[]>(est.lines && est.lines.length > 0 ? est.lines.map((l: any) => ({ productId: l.productId || '', description: l.description || '', quantity: String(l.quantity || 1), unitPrice: String(l.unitPrice || 0), discountAmount: String(l.discountAmount || l.discountValue || 0), taxAmount: String(l.taxAmount || 0) })) : [{ productId: '', description: est.customerName ? `${est.customerName} - Products & Services` : 'Products & Services', quantity: '1', unitPrice: String(est.totalAmount || est.subtotal || 0), discountAmount: String(est.discountTotal || 0), taxAmount: String(est.taxTotal || 0) }])
 
-  const computeNextInvoiceRef = () => {
-    let maxNum = 0
-    for (const item of invoices) {
-      const str = (item.invoiceNumber || item.reference || '') + ''
-      const match = str.match(/\d+/)
-      if (match) {
-        const num = parseInt(match[0], 10)
-        if (!isNaN(num) && num > maxNum) maxNum = num
-      }
-    }
-    return `INV-${(maxNum + 1).toString().padStart(5, '0')}`
-  }
+  const updateInvLine = (i: number, f: string, v: string) => { const u = [...invLines]; u[i] = { ...u[i], [f]: v }; if (f === 'productId' && v) { const p = products.find((pp: any) => pp.id === v); if (p) { u[i].description = u[i].description || p.name; u[i].unitPrice = String(p.unitPrice || p.salesPrice || 0) } } setInvLines(u) }
+  const addInvLine = () => setInvLines([...invLines, { productId: '', description: '', quantity: '1', unitPrice: '0', discountAmount: '0', taxAmount: '0' }])
+  const removeInvLine = (i: number) => { if (invLines.length > 1) setInvLines(invLines.filter((_, j) => j !== i)) }
 
-  const [invForm, setInvForm] = useState({
-    customerId: estimate.customerId || '',
-    invoiceDate: new Date().toISOString().slice(0, 10),
-    dueDate: new Date(Date.now() + 30 * 86400000).toISOString().slice(0, 10),
-    reference: computeNextInvoiceRef(),
-    notes: estimate.notes || `Generated from quote ${estimate.estimateNumber || estimate.reference || ''}`,
-    currencyCode: estimate.currencyCode || 'PKR'
-  })
+  const lcs = invLines.map(l => { const q = parseFloat(l.quantity) || 0; const p = parseFloat(l.unitPrice) || 0; const g = q * p; const d = parseFloat(l.discountAmount) || 0; const t = parseFloat(l.taxAmount) || 0; return { g, d, t, total: g - d + t } })
+  const invTotals = lcs.reduce((a, c) => ({ sub: a.sub + c.g, disc: a.disc + c.d, tax: a.tax + c.t, total: a.total + c.total }), { sub: 0, disc: 0, tax: 0, total: 0 })
 
-  const [invLines, setInvLines] = useState<any[]>(
-    estimate.lines && estimate.lines.length > 0
-      ? estimate.lines.map((l: any) => ({
-          productId: l.productId || '',
-          description: l.description || '',
-          quantity: String(l.quantity || 1),
-          unitPrice: String(l.unitPrice || 0),
-          discountAmount: String(l.discountValue || l.discountAmount || 0),
-          taxAmount: String(
-            l.taxPercent
-              ? Math.round((parseFloat(l.quantity || 1) * parseFloat(l.unitPrice || 0) * parseFloat(l.taxPercent) / 100) * 100) / 100
-              : (l.taxAmount || 0)
-          )
-        }))
-      : [{ productId: '', description: '', quantity: '1', unitPrice: '0', discountAmount: '0', taxAmount: '0' }]
-  )
-
-  const updateInvLine = (i: number, field: string, value: string) => {
-    const updated = [...invLines]
-    updated[i] = { ...updated[i], [field]: value }
-    if (field === 'productId' && value) {
-      const prod = products.find((p: any) => p.id === value)
-      if (prod) {
-        updated[i] = {
-          ...updated[i],
-          description: prod.name,
-          unitPrice: String(prod.unitPrice || prod.salesPrice || 0)
-        }
-      }
-    }
-    setInvLines(updated)
-  }
-
-  const addInvLine = () =>
-    setInvLines([...invLines, { productId: '', description: '', quantity: '1', unitPrice: '0', discountAmount: '0', taxAmount: '0' }])
-
-  const removeInvLine = (i: number) => setInvLines(invLines.filter((_, idx) => idx !== i))
-
-  const lineCalcs = invLines.map(l => {
-    const qty = parseFloat(l.quantity) || 0
-    const price = parseFloat(l.unitPrice) || 0
-    const disc = parseFloat(l.discountAmount) || 0
-    const tax = parseFloat(l.taxAmount) || 0
-    const total = (qty * price) - disc + tax
-    return { qty, price, disc, tax, total }
-  })
-
-  const invTotals = lineCalcs.reduce(
-    (acc, c) => ({
-      sub: acc.sub + (c.qty * c.price),
-      disc: acc.disc + c.disc,
-      tax: acc.tax + c.tax,
-      total: acc.total + c.total
-    }),
-    { sub: 0, disc: 0, tax: 0, total: 0 }
-  )
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
-    if (!invForm.customerId) return
-    setSubmitting(true)
-    try {
-      const payload = {
-        companyId: estimate.companyId,
-        customerId: invForm.customerId,
-        invoiceDate: invForm.invoiceDate,
-        dueDate: invForm.dueDate,
-        reference: invForm.reference,
-        notes: invForm.notes,
-        currencyCode: invForm.currencyCode,
-        lines: invLines.map(l => ({
-          productId: l.productId || null,
-          description: l.description,
-          quantity: parseFloat(l.quantity) || 1,
-          unitPrice: parseFloat(l.unitPrice) || 0,
-          discountAmount: parseFloat(l.discountAmount) || 0,
-          taxAmount: parseFloat(l.taxAmount) || 0
-        }))
-      }
-      await onConfirm(payload)
-    } finally {
-      setSubmitting(false)
-    }
-  }
+  const handleSubmit = async () => { setSubmitting(true); await onConfirm({ ...invForm, companyId: est.companyId || null, estimateId: est.id || null, lines: invLines.map(l => ({ productId: l.productId || null, description: l.description, quantity: parseFloat(l.quantity || '1'), unitPrice: parseFloat(l.unitPrice || '0'), discountAmount: parseFloat(l.discountAmount || '0'), taxCodeId: null, taxAmount: parseFloat(l.taxAmount || '0') })) }); setSubmitting(false) }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs">
-      <div className="w-full max-w-3xl bg-[var(--color-surface)] border border-[var(--color-border)] rounded-2xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh] animate-in fade-in zoom-in-95">
-        {/* Header */}
-        <div className="px-6 py-4 border-b border-[var(--color-border)] bg-[var(--color-surface-muted)] flex items-center justify-between">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm" onClick={onClose}>
+      <div className="w-full max-w-4xl bg-[var(--color-surface)] border border-[var(--color-border)] rounded-2xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh]" onClick={e => e.stopPropagation()}>
+        <div className="px-6 py-4 border-b border-[var(--color-border)] flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-emerald-600 text-white font-bold flex items-center justify-center shadow-xs">
-              <FileText className="w-5 h-5" />
-            </div>
-            <div>
-              <h3 className="font-bold text-sm text-[var(--color-text-strong)] flex items-center gap-2">
-                <span>Create Sales Invoice from Quotation</span>
-                <span className="font-mono text-xs px-2 py-0.5 rounded-md bg-emerald-500/10 text-emerald-600 border border-emerald-500/20">
-                  {estimate.estimateNumber || estimate.reference}
-                </span>
-              </h3>
-              <p className="text-[11px] text-[var(--color-text-muted)]">
-                Review and modify lines, prices, and terms before creating the sales invoice.
-              </p>
-            </div>
+            <div className="w-11 h-11 rounded-xl bg-gradient-to-br from-emerald-500 to-teal-600 flex items-center justify-center text-white"><ArrowRight className="w-5 h-5" /></div>
+            <div><h2 className="text-base font-bold text-[var(--color-text-strong)]">Convert to Invoice</h2><p className="text-xs text-[var(--color-text-muted)]">From: <strong>{est.estimateNumber || est.reference}</strong></p></div>
           </div>
-          <button onClick={onClose} className="p-1.5 rounded-lg hover:bg-[var(--color-surface)] text-[var(--color-text-muted)]">
-            <X className="w-4 h-4" />
-          </button>
+          <button onClick={onClose} className="w-8 h-8 rounded-lg flex items-center justify-center text-[var(--color-text-muted)] hover:bg-[var(--color-surface-muted)]"><X className="w-4 h-4" /></button>
         </div>
-
-        {/* Form Body */}
-        <form onSubmit={handleSubmit} className="flex-1 overflow-y-auto p-6 space-y-5">
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
-            <div className="sm:col-span-2">
-              <label className="block text-xs font-semibold text-[var(--color-text-strong)] mb-1">
-                Customer Account <span className="text-rose-500">*</span>
-              </label>
-              <select
-                value={invForm.customerId}
-                onChange={e => setInvForm({ ...invForm, customerId: e.target.value })}
-                className="w-full max-w-full truncate h-9 px-3 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] text-xs text-[var(--color-text-strong)] outline-none"
-                required
-              >
-                <option value="">Select customer...</option>
-                {customers.map((c: any) => (
-                  <option key={c.id} value={c.id}>
-                    {c.name} {c.customerNumber ? `(${c.customerNumber})` : ''}
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            <div>
-              <label className="block text-xs font-semibold text-[var(--color-text-strong)] mb-1">
-                Invoice Reference #
-              </label>
-              <input
-                value={invForm.reference}
-                onChange={e => setInvForm({ ...invForm, reference: e.target.value })}
-                className="w-full max-w-full truncate h-9 px-3 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] text-xs font-mono text-[var(--color-text-strong)] outline-none"
-                required
-              />
-            </div>
-
-            <div>
-              <label className="block text-xs font-semibold text-[var(--color-text-strong)] mb-1">
-                Currency
-              </label>
-              <input
-                value={invForm.currencyCode}
-                readOnly
-                className="w-full max-w-full truncate h-9 px-3 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface-muted)] text-xs font-mono font-bold text-[var(--color-text-strong)] outline-none cursor-not-allowed"
-              />
-            </div>
-
-            <div>
-              <label className="block text-xs font-semibold text-[var(--color-text-strong)] mb-1">
-                Invoice Date
-              </label>
-              <input
-                type="date"
-                value={invForm.invoiceDate}
-                onChange={e => setInvForm({ ...invForm, invoiceDate: e.target.value })}
-                className="w-full max-w-full truncate h-9 px-3 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] text-xs text-[var(--color-text-strong)] outline-none"
-                required
-              />
-            </div>
-
-            <div>
-              <label className="block text-xs font-semibold text-[var(--color-text-strong)] mb-1">
-                Due Date
-              </label>
-              <input
-                type="date"
-                value={invForm.dueDate}
-                onChange={e => setInvForm({ ...invForm, dueDate: e.target.value })}
-                className="w-full max-w-full truncate h-9 px-3 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] text-xs text-[var(--color-text-strong)] outline-none"
-                required
-              />
-            </div>
+        <form className="flex-1 overflow-y-auto p-6 space-y-5" onSubmit={e => { e.preventDefault(); handleSubmit() }}>
+          <div className="grid grid-cols-2 gap-4">
+            <div><label className="block text-xs font-semibold mb-1.5">Invoice Date</label><input type="date" value={invForm.invoiceDate} onChange={e => setInvForm({ ...invForm, invoiceDate: e.target.value })} className="w-full h-10 px-3 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] text-xs outline-none" /></div>
+            <div><label className="block text-xs font-semibold mb-1.5">Due Date</label><input type="date" value={invForm.dueDate} onChange={e => setInvForm({ ...invForm, dueDate: e.target.value })} className="w-full h-10 px-3 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] text-xs outline-none" /></div>
           </div>
-
-          {/* Line Items Table */}
-          <div className="space-y-2">
-            <div className="flex items-center justify-between">
-              <label className="text-xs font-semibold text-[var(--color-text-strong)]">Invoice Line Items</label>
-              <button
-                type="button"
-                onClick={addInvLine}
-                className="h-7 px-2.5 rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] hover:bg-[var(--color-surface-muted)] text-xs font-semibold text-[var(--color-text-strong)] flex items-center gap-1"
-              >
-                <Plus className="w-3 h-3" /> Add Item
-              </button>
-            </div>
-
-            <div className="w-full max-w-full overflow-x-auto border border-[var(--color-border)] rounded-xl bg-[var(--color-surface)]">
-              <table className="w-full text-xs">
-                <thead className="bg-[var(--color-surface-muted)] text-[var(--color-text-muted)] border-b border-[var(--color-border)]">
-                  <tr>
-                    <th className="p-2.5 text-left w-[200px]">Product / Service</th>
-                    <th className="p-2.5 text-left">Description</th>
-                    <th className="p-2.5 text-right w-16">Qty</th>
-                    <th className="p-2.5 text-right w-24">Price</th>
-                    <th className="p-2.5 text-right w-20">Discount</th>
-                    <th className="p-2.5 text-right w-20">Tax</th>
-                    <th className="p-2.5 text-right w-28">Total</th>
-                    <th className="p-2.5 w-8"></th>
+          <div className="rounded-xl border border-[var(--color-border)] overflow-hidden">
+            <table className="w-full text-xs">
+              <thead className="bg-[var(--color-surface-muted)] border-b border-[var(--color-border)]"><tr>
+                <th className="p-2.5 text-left">Description</th><th className="p-2.5 text-right w-16">Qty</th><th className="p-2.5 text-right w-24">Price</th><th className="p-2.5 text-right w-24">Discount</th><th className="p-2.5 text-right w-24">Tax</th><th className="p-2.5 text-right w-28">Total</th><th className="p-2.5 w-8"></th>
+              </tr></thead>
+              <tbody className="divide-y divide-[var(--color-border)]">
+                {invLines.map((l: any, i: number) => (
+                  <tr key={i}>
+                    <td className="p-2"><input value={l.description} onChange={e => updateInvLine(i, 'description', e.target.value)} className="w-full px-2 py-1 rounded border border-[var(--color-border)] bg-[var(--color-surface)] text-xs outline-none" /></td>
+                    <td className="p-2"><input type="number" value={l.quantity} onChange={e => updateInvLine(i, 'quantity', e.target.value)} className="w-full px-2 py-1 rounded border border-[var(--color-border)] bg-[var(--color-surface)] text-xs text-right font-mono outline-none" /></td>
+                    <td className="p-2"><input type="number" step="0.01" value={l.unitPrice} onChange={e => updateInvLine(i, 'unitPrice', e.target.value)} className="w-full px-2 py-1 rounded border border-[var(--color-border)] bg-[var(--color-surface)] text-xs text-right font-mono outline-none" /></td>
+                    <td className="p-2"><input type="number" step="0.01" value={l.discountAmount} onChange={e => updateInvLine(i, 'discountAmount', e.target.value)} className="w-full px-2 py-1 rounded border border-[var(--color-border)] bg-[var(--color-surface)] text-xs text-right font-mono outline-none" /></td>
+                    <td className="p-2"><input type="number" step="0.01" value={l.taxAmount} onChange={e => updateInvLine(i, 'taxAmount', e.target.value)} className="w-full px-2 py-1 rounded border border-[var(--color-border)] bg-[var(--color-surface)] text-xs text-right font-mono outline-none" /></td>
+                    <td className="p-2 text-right font-mono font-bold">{money(lcs[i]?.total || 0)}</td>
+                    <td className="p-2 text-center">{invLines.length > 1 && <button type="button" onClick={() => removeInvLine(i)} className="text-rose-500"><X className="w-3 h-3" /></button>}</td>
                   </tr>
-                </thead>
-                <tbody className="divide-y divide-[var(--color-border)]">
-                  {invLines.map((line, idx) => (
-                    <tr key={idx} className="hover:bg-[var(--color-surface-muted)]/40">
-                      <td className="p-1.5">
-                        <select
-                          value={line.productId}
-                          onChange={e => updateInvLine(idx, 'productId', e.target.value)}
-                          className="w-full max-w-full truncate h-8 px-2 rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] text-xs text-[var(--color-text-strong)] outline-none"
-                        >
-                          <option value="">Select Item...</option>
-                          {products.map((p: any) => (
-                            <option key={p.id} value={p.id}>
-                              {p.name}
-                            </option>
-                          ))}
-                        </select>
-                      </td>
-                      <td className="p-1.5">
-                        <textarea
-                          value={line.description}
-                          onChange={e => updateInvLine(idx, 'description', e.target.value)}
-                          placeholder="Line description"
-                          rows={2}
-                          className="w-full max-w-full px-2 py-1.5 rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] text-xs text-[var(--color-text-strong)] outline-none resize-none"
-                        />
-                      </td>
-                      <td className="p-1.5">
-                        <input
-                          type="number"
-                          min="1"
-                          value={line.quantity}
-                          onChange={e => updateInvLine(idx, 'quantity', e.target.value)}
-                          className="w-full max-w-full h-8 px-2 rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] text-xs text-right font-mono text-[var(--color-text-strong)] outline-none"
-                        />
-                      </td>
-                      <td className="p-1.5">
-                        <input
-                          type="number"
-                          step="0.01"
-                          value={line.unitPrice}
-                          onChange={e => updateInvLine(idx, 'unitPrice', e.target.value)}
-                          className="w-full max-w-full h-8 px-2 rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] text-xs text-right font-mono text-[var(--color-text-strong)] outline-none"
-                        />
-                      </td>
-                      <td className="p-1.5">
-                        <input
-                          type="number"
-                          step="0.01"
-                          value={line.discountAmount}
-                          onChange={e => updateInvLine(idx, 'discountAmount', e.target.value)}
-                          className="w-full max-w-full h-8 px-2 rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] text-xs text-right font-mono text-[var(--color-text-strong)] outline-none"
-                        />
-                      </td>
-                      <td className="p-1.5">
-                        <input
-                          type="number"
-                          step="0.01"
-                          value={line.taxAmount}
-                          onChange={e => updateInvLine(idx, 'taxAmount', e.target.value)}
-                          className="w-full max-w-full h-8 px-2 rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] text-xs text-right font-mono text-[var(--color-text-strong)] outline-none"
-                        />
-                      </td>
-                      <td className="p-1.5 text-right font-mono font-bold text-sky-600 dark:text-sky-400 whitespace-nowrap">
-                        {money(lineCalcs[idx]?.total || 0)}
-                      </td>
-                      <td className="p-1.5 text-center">
-                        {invLines.length > 1 && (
-                          <button
-                            type="button"
-                            onClick={() => removeInvLine(idx)}
-                            className="p-1 text-rose-500 hover:bg-rose-500/10 rounded-md"
-                          >
-                            <X className="w-3.5 h-3.5" />
-                          </button>
-                        )}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+                ))}
+              </tbody>
+            </table>
           </div>
-
-          {/* Totals Summary */}
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between p-4 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface-muted)] gap-3">
-            <div className="text-xs text-[var(--color-text-muted)] space-y-0.5">
-              <p>Subtotal: <strong className="text-[var(--color-text-strong)]">{money(invTotals.sub)}</strong></p>
-              <p>Discount: <span className="text-rose-500">-{money(invTotals.disc)}</span> • Tax: <span className="text-amber-500">+{money(invTotals.tax)}</span></p>
-            </div>
-            <div className="text-right">
-              <span className="text-[11px] font-semibold text-[var(--color-text-muted)] uppercase tracking-wider block">Total Sales Invoice</span>
-              <span className="text-xl font-bold font-mono text-emerald-600 dark:text-emerald-400">{money(invTotals.total)}</span>
-            </div>
+          <button type="button" onClick={addInvLine} className="h-8 px-3 rounded-lg border border-indigo-500 text-indigo-600 text-xs font-semibold hover:bg-indigo-500/10 flex items-center gap-1"><Plus className="w-3 h-3" /> Add Line</button>
+          <div className="w-64 ml-auto rounded-xl border border-[var(--color-border)] bg-[var(--color-surface-muted)]/50 p-4 space-y-2 text-xs">
+            <div className="flex justify-between"><span className="text-[var(--color-text-muted)]">Subtotal</span><span className="font-mono font-semibold">{money(invTotals.sub)}</span></div>
+            {invTotals.disc > 0 && <div className="flex justify-between text-rose-500"><span>Discount</span><span>-{money(invTotals.disc)}</span></div>}
+            {invTotals.tax > 0 && <div className="flex justify-between text-amber-600"><span>Tax</span><span>+{money(invTotals.tax)}</span></div>}
+            <div className="border-t border-[var(--color-border)] pt-2 flex justify-between font-bold text-sm"><span>Total</span><span className="text-emerald-600 font-mono">{money(invTotals.total)}</span></div>
           </div>
-
-          {/* Actions */}
-          <div className="flex items-center justify-end gap-2.5 pt-2 border-t border-[var(--color-border)]">
-            <button
-              type="button"
-              onClick={onClose}
-              className="h-9 px-4 rounded-xl border border-[var(--color-border)] text-xs font-semibold text-[var(--color-text-strong)] hover:bg-[var(--color-surface-muted)] transition-colors"
-            >
-              Cancel
-            </button>
-            <button
-              type="submit"
-              disabled={submitting}
-              className="h-9 px-5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold shadow-md flex items-center gap-1.5 transition-colors disabled:opacity-50"
-            >
-              <Check className="w-4 h-4" />
-              <span>{submitting ? 'Creating Invoice...' : 'Confirm & Create Sales Invoice'}</span>
-            </button>
+          <div className="flex justify-end gap-2.5 pt-2 border-t border-[var(--color-border)]">
+            <button type="button" onClick={onClose} className="h-9 px-4 rounded-xl border border-[var(--color-border)] text-xs font-semibold hover:bg-[var(--color-surface-muted)]">Cancel</button>
+            <button type="submit" disabled={submitting} className="h-9 px-5 rounded-xl bg-gradient-to-r from-emerald-600 to-green-600 text-white text-xs font-bold shadow-lg flex items-center gap-1.5 disabled:opacity-50"><Check className="w-4 h-4" />{submitting ? 'Creating...' : 'Create Sales Invoice'}</button>
           </div>
         </form>
       </div>
