@@ -61,7 +61,6 @@ export const EstimatesAndQuotes: React.FC<{ activeEntityId: string; entities?: a
   const fetchEstimates = useSalesStore((s) => s.fetchEstimates)
   const createEstimateStore = useSalesStore((s) => s.createEstimate)
   const updateEstimateStatusStore = useSalesStore((s) => s.updateEstimateStatus)
-  const convertToInvoiceStore = useSalesStore((s) => s.convertToInvoice)
 
   const customers = useCustomersStore((s) => s.customers)
   const fetchCustomers = useCustomersStore((s) => s.fetchCustomers)
@@ -69,14 +68,16 @@ export const EstimatesAndQuotes: React.FC<{ activeEntityId: string; entities?: a
   const products = useProductsStore((s) => s.products)
   const fetchProducts = useProductsStore((s) => s.fetchProducts)
 
+  const createInvoiceStore = useSalesStore((s) => s.createInvoice)
+
   const [loading, setLoading] = useState(true)
   const [showForm, setShowForm] = useState(false)
   const [modalTab, setModalTab] = useState<'details' | 'lines' | 'summary' | 'preview'>('details')
   const [convertModal, setConvertModal] = useState<any>(null)
+  const [activeDropdownId, setActiveDropdownId] = useState<string | null>(null)
   const [toast, setToast] = useState('')
   const [query, setQuery] = useState('')
   const [statusFilter, setStatusFilter] = useState<string>('all')
-  const [activeDropdownId, setActiveDropdownId] = useState<string | null>(null)
 
   // Close dropdown on click outside
   useEffect(() => {
@@ -125,17 +126,30 @@ export const EstimatesAndQuotes: React.FC<{ activeEntityId: string; entities?: a
 
   const [editingEstimate, setEditingEstimate] = useState<any>(null)
 
-  const openCreateModal = async () => {
+  const computeNextEstimateNumber = () => {
+    let maxNum = 0
+    for (const item of estimates) {
+      const str = (item.estimateNumber || item.reference || '') + ''
+      const match = str.match(/\d+/)
+      if (match) {
+        const num = parseInt(match[0], 10)
+        if (!isNaN(num) && num > maxNum) maxNum = num
+      }
+    }
+    return `EST-${(maxNum + 1).toString().padStart(5, '0')}`
+  }
+
+  const openCreateModal = () => {
     setEditingEstimate(null)
-    const salesStore = useSalesStore.getState()
-    const nextRef = await salesStore.fetchNextNumber('estimate')
+    clearDraft()
+    const nextRef = computeNextEstimateNumber()
     const today = new Date().toISOString().slice(0, 10)
 
     setForm({
       customerId: customers[0]?.id || '',
       estimateDate: today,
       expiryDate: new Date(Date.now() + 30 * 86400000).toISOString().slice(0, 10),
-      reference: nextRef || 'EST-00001',
+      reference: nextRef,
       notes: 'Quotations valid for 30 days from date of issue.',
       terms: 'Standard trade terms apply.',
       currencyCode: 'PKR'
@@ -143,6 +157,12 @@ export const EstimatesAndQuotes: React.FC<{ activeEntityId: string; entities?: a
     setLines([defaultLine()])
     setModalTab('details')
     setShowForm(true)
+  }
+
+  const handleCancelForm = () => {
+    clearDraft()
+    setShowForm(false)
+    setEditingEstimate(null)
   }
 
   const openEditModal = (est: any) => {
@@ -266,14 +286,17 @@ export const EstimatesAndQuotes: React.FC<{ activeEntityId: string; entities?: a
     }
   }
 
-  const convertToInvoice = async (invDate: string, dueDate: string) => {
+  const createInvoiceFromEstimate = async (invoicePayload: any) => {
     try {
-      await convertToInvoiceStore(convertModal.id, { invoiceDate: invDate, dueDate })
-      notify('✓ Sales invoice created! Check Sales Invoices.')
+      await createInvoiceStore(invoicePayload)
+      if (convertModal?.id) {
+        await updateEstimateStatusStore(convertModal.id, '5') // 5 = Invoiced
+      }
+      notify('✓ Sales invoice created from quotation! Check Sales Invoices.')
       setConvertModal(null)
-      fetchData()
+      await fetchData()
     } catch (e: any) {
-      notify(e.message || 'Conversion failed')
+      notify(e.message || 'Invoice creation failed')
     }
   }
 
@@ -1155,7 +1178,7 @@ export const EstimatesAndQuotes: React.FC<{ activeEntityId: string; entities?: a
                 <button
                   type="button"
                   className="h-8.5 px-3.5 rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] text-xs font-medium text-[var(--color-text)] hover:bg-[var(--color-surface-muted)] transition-colors"
-                  onClick={() => setShowForm(false)}
+                  onClick={handleCancelForm}
                 >
                   Cancel
                 </button>
@@ -1223,11 +1246,13 @@ export const EstimatesAndQuotes: React.FC<{ activeEntityId: string; entities?: a
         </div>
       )}
 
-      {/* Convert to Invoice Modal */}
+      {/* Full Manual Invoice Creation Modal From Estimate (No Auto Invoice Posting) */}
       {convertModal && (
-        <ConvertModal
+        <CreateInvoiceFromEstimateModal
           estimate={convertModal}
-          onConfirm={convertToInvoice}
+          customers={customers}
+          products={products}
+          onConfirm={createInvoiceFromEstimate}
           onClose={() => setConvertModal(null)}
         />
       )}
@@ -1235,61 +1260,367 @@ export const EstimatesAndQuotes: React.FC<{ activeEntityId: string; entities?: a
   )
 }
 
-const ConvertModal = ({
+const CreateInvoiceFromEstimateModal = ({
   estimate,
+  customers,
+  products,
   onConfirm,
   onClose
 }: {
   estimate: any
-  onConfirm: (inv: string, due: string) => void
+  customers: any[]
+  products: any[]
+  onConfirm: (payload: any) => Promise<void>
   onClose: () => void
 }) => {
-  const [invDate, setInvDate] = useState(new Date().toISOString().slice(0, 10))
-  const [dueDate, setDueDate] = useState(new Date(Date.now() + 30 * 86400000).toISOString().slice(0, 10))
+  const [submitting, setSubmitting] = useState(false)
+  const invoices = useSalesStore(s => s.invoices)
+
+  const computeNextInvoiceRef = () => {
+    let maxNum = 0
+    for (const item of invoices) {
+      const str = (item.invoiceNumber || item.reference || '') + ''
+      const match = str.match(/\d+/)
+      if (match) {
+        const num = parseInt(match[0], 10)
+        if (!isNaN(num) && num > maxNum) maxNum = num
+      }
+    }
+    return `INV-${(maxNum + 1).toString().padStart(5, '0')}`
+  }
+
+  const [invForm, setInvForm] = useState({
+    customerId: estimate.customerId || '',
+    invoiceDate: new Date().toISOString().slice(0, 10),
+    dueDate: new Date(Date.now() + 30 * 86400000).toISOString().slice(0, 10),
+    reference: computeNextInvoiceRef(),
+    notes: estimate.notes || `Generated from quote ${estimate.estimateNumber || estimate.reference || ''}`,
+    currencyCode: estimate.currencyCode || 'PKR'
+  })
+
+  const [invLines, setInvLines] = useState<any[]>(
+    estimate.lines && estimate.lines.length > 0
+      ? estimate.lines.map((l: any) => ({
+          productId: l.productId || '',
+          description: l.description || '',
+          quantity: String(l.quantity || 1),
+          unitPrice: String(l.unitPrice || 0),
+          discountAmount: String(l.discountValue || l.discountAmount || 0),
+          taxAmount: String(
+            l.taxPercent
+              ? Math.round((parseFloat(l.quantity || 1) * parseFloat(l.unitPrice || 0) * parseFloat(l.taxPercent) / 100) * 100) / 100
+              : (l.taxAmount || 0)
+          )
+        }))
+      : [{ productId: '', description: '', quantity: '1', unitPrice: '0', discountAmount: '0', taxAmount: '0' }]
+  )
+
+  const updateInvLine = (i: number, field: string, value: string) => {
+    const updated = [...invLines]
+    updated[i] = { ...updated[i], [field]: value }
+    if (field === 'productId' && value) {
+      const prod = products.find((p: any) => p.id === value)
+      if (prod) {
+        updated[i] = {
+          ...updated[i],
+          description: prod.name,
+          unitPrice: String(prod.unitPrice || prod.salesPrice || 0)
+        }
+      }
+    }
+    setInvLines(updated)
+  }
+
+  const addInvLine = () =>
+    setInvLines([...invLines, { productId: '', description: '', quantity: '1', unitPrice: '0', discountAmount: '0', taxAmount: '0' }])
+
+  const removeInvLine = (i: number) => setInvLines(invLines.filter((_, idx) => idx !== i))
+
+  const lineCalcs = invLines.map(l => {
+    const qty = parseFloat(l.quantity) || 0
+    const price = parseFloat(l.unitPrice) || 0
+    const disc = parseFloat(l.discountAmount) || 0
+    const tax = parseFloat(l.taxAmount) || 0
+    const total = (qty * price) - disc + tax
+    return { qty, price, disc, tax, total }
+  })
+
+  const invTotals = lineCalcs.reduce(
+    (acc, c) => ({
+      sub: acc.sub + (c.qty * c.price),
+      disc: acc.disc + c.disc,
+      tax: acc.tax + c.tax,
+      total: acc.total + c.total
+    }),
+    { sub: 0, disc: 0, tax: 0, total: 0 }
+  )
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!invForm.customerId) return
+    setSubmitting(true)
+    try {
+      const payload = {
+        companyId: estimate.companyId,
+        customerId: invForm.customerId,
+        invoiceDate: invForm.invoiceDate,
+        dueDate: invForm.dueDate,
+        reference: invForm.reference,
+        notes: invForm.notes,
+        currencyCode: invForm.currencyCode,
+        lines: invLines.map(l => ({
+          productId: l.productId || null,
+          description: l.description,
+          quantity: parseFloat(l.quantity) || 1,
+          unitPrice: parseFloat(l.unitPrice) || 0,
+          discountAmount: parseFloat(l.discountAmount) || 0,
+          taxAmount: parseFloat(l.taxAmount) || 0
+        }))
+      }
+      await onConfirm(payload)
+    } finally {
+      setSubmitting(false)
+    }
+  }
+
   return (
-    <div className="overlay animate-in fade-in duration-200">
-      <div className="w-full max-w-md bg-[var(--color-surface)] border border-[var(--color-border)] rounded-2xl shadow-2xl p-6 space-y-4">
-        <h3 className="text-base font-bold text-[var(--color-text-strong)] tracking-tight">Convert to Sales Invoice</h3>
-        <div className="bg-indigo-500/10 border border-indigo-500/20 rounded-xl p-3.5 text-xs space-y-1">
-          <p className="font-semibold text-[var(--color-text-strong)]">{estimate.estimateNumber} — {estimate.customerName}</p>
-          <p className="text-[var(--color-text-muted)]">Total Amount: <strong className="text-indigo-600 font-mono">{money(estimate.totalAmount)}</strong></p>
-        </div>
-        <div className="grid grid-cols-2 gap-3">
-          <div>
-            <label className="block text-xs font-semibold text-[var(--color-text-strong)] mb-1">Invoice Date</label>
-            <input
-              type="date"
-              value={invDate}
-              onChange={e => setInvDate(e.target.value)}
-              className="w-full h-10 px-3 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] text-xs text-[var(--color-text-strong)] outline-none"
-            />
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs">
+      <div className="w-full max-w-3xl bg-[var(--color-surface)] border border-[var(--color-border)] rounded-2xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh] animate-in fade-in zoom-in-95">
+        {/* Header */}
+        <div className="px-6 py-4 border-b border-[var(--color-border)] bg-[var(--color-surface-muted)] flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-emerald-600 text-white font-bold flex items-center justify-center shadow-xs">
+              <FileText className="w-5 h-5" />
+            </div>
+            <div>
+              <h3 className="font-bold text-sm text-[var(--color-text-strong)] flex items-center gap-2">
+                <span>Create Sales Invoice from Quotation</span>
+                <span className="font-mono text-xs px-2 py-0.5 rounded-md bg-emerald-500/10 text-emerald-600 border border-emerald-500/20">
+                  {estimate.estimateNumber || estimate.reference}
+                </span>
+              </h3>
+              <p className="text-[11px] text-[var(--color-text-muted)]">
+                Review and modify lines, prices, and terms before creating the sales invoice.
+              </p>
+            </div>
           </div>
-          <div>
-            <label className="block text-xs font-semibold text-[var(--color-text-strong)] mb-1">Due Date</label>
-            <input
-              type="date"
-              value={dueDate}
-              onChange={e => setDueDate(e.target.value)}
-              className="w-full h-10 px-3 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] text-xs text-[var(--color-text-strong)] outline-none"
-            />
-          </div>
-        </div>
-        <div className="flex gap-2.5 pt-2">
-          <button
-            type="button"
-            onClick={() => onConfirm(invDate, dueDate)}
-            className="flex-1 h-8.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white font-semibold text-xs transition-colors"
-          >
-            Create Invoice
-          </button>
-          <button
-            type="button"
-            onClick={onClose}
-            className="h-8.5 px-4 rounded-lg border border-[var(--color-border)] text-xs font-medium text-[var(--color-text)] hover:bg-[var(--color-surface-muted)] transition-colors"
-          >
-            Cancel
+          <button onClick={onClose} className="p-1.5 rounded-lg hover:bg-[var(--color-surface)] text-[var(--color-text-muted)]">
+            <X className="w-4 h-4" />
           </button>
         </div>
+
+        {/* Form Body */}
+        <form onSubmit={handleSubmit} className="flex-1 overflow-y-auto p-6 space-y-5">
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
+            <div className="sm:col-span-2">
+              <label className="block text-xs font-semibold text-[var(--color-text-strong)] mb-1">
+                Customer Account <span className="text-rose-500">*</span>
+              </label>
+              <select
+                value={invForm.customerId}
+                onChange={e => setInvForm({ ...invForm, customerId: e.target.value })}
+                className="w-full max-w-full truncate h-9 px-3 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] text-xs text-[var(--color-text-strong)] outline-none"
+                required
+              >
+                <option value="">Select customer...</option>
+                {customers.map((c: any) => (
+                  <option key={c.id} value={c.id}>
+                    {c.name} {c.customerNumber ? `(${c.customerNumber})` : ''}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div>
+              <label className="block text-xs font-semibold text-[var(--color-text-strong)] mb-1">
+                Invoice Reference #
+              </label>
+              <input
+                value={invForm.reference}
+                onChange={e => setInvForm({ ...invForm, reference: e.target.value })}
+                className="w-full max-w-full truncate h-9 px-3 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] text-xs font-mono text-[var(--color-text-strong)] outline-none"
+                required
+              />
+            </div>
+
+            <div>
+              <label className="block text-xs font-semibold text-[var(--color-text-strong)] mb-1">
+                Currency
+              </label>
+              <input
+                value={invForm.currencyCode}
+                readOnly
+                className="w-full max-w-full truncate h-9 px-3 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface-muted)] text-xs font-mono font-bold text-[var(--color-text-strong)] outline-none cursor-not-allowed"
+              />
+            </div>
+
+            <div>
+              <label className="block text-xs font-semibold text-[var(--color-text-strong)] mb-1">
+                Invoice Date
+              </label>
+              <input
+                type="date"
+                value={invForm.invoiceDate}
+                onChange={e => setInvForm({ ...invForm, invoiceDate: e.target.value })}
+                className="w-full max-w-full truncate h-9 px-3 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] text-xs text-[var(--color-text-strong)] outline-none"
+                required
+              />
+            </div>
+
+            <div>
+              <label className="block text-xs font-semibold text-[var(--color-text-strong)] mb-1">
+                Due Date
+              </label>
+              <input
+                type="date"
+                value={invForm.dueDate}
+                onChange={e => setInvForm({ ...invForm, dueDate: e.target.value })}
+                className="w-full max-w-full truncate h-9 px-3 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] text-xs text-[var(--color-text-strong)] outline-none"
+                required
+              />
+            </div>
+          </div>
+
+          {/* Line Items Table */}
+          <div className="space-y-2">
+            <div className="flex items-center justify-between">
+              <label className="text-xs font-semibold text-[var(--color-text-strong)]">Invoice Line Items</label>
+              <button
+                type="button"
+                onClick={addInvLine}
+                className="h-7 px-2.5 rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] hover:bg-[var(--color-surface-muted)] text-xs font-semibold text-[var(--color-text-strong)] flex items-center gap-1"
+              >
+                <Plus className="w-3 h-3" /> Add Item
+              </button>
+            </div>
+
+            <div className="w-full max-w-full overflow-x-auto border border-[var(--color-border)] rounded-xl bg-[var(--color-surface)]">
+              <table className="w-full text-xs">
+                <thead className="bg-[var(--color-surface-muted)] text-[var(--color-text-muted)] border-b border-[var(--color-border)]">
+                  <tr>
+                    <th className="p-2.5 text-left min-w-[160px]">Product / Service</th>
+                    <th className="p-2.5 text-left min-w-[150px]">Description</th>
+                    <th className="p-2.5 text-right w-16">Qty</th>
+                    <th className="p-2.5 text-right w-24">Price</th>
+                    <th className="p-2.5 text-right w-20">Discount</th>
+                    <th className="p-2.5 text-right w-20">Tax</th>
+                    <th className="p-2.5 text-right w-28">Total</th>
+                    <th className="p-2.5 w-8"></th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-[var(--color-border)]">
+                  {invLines.map((line, idx) => (
+                    <tr key={idx} className="hover:bg-[var(--color-surface-muted)]/40">
+                      <td className="p-1.5">
+                        <select
+                          value={line.productId}
+                          onChange={e => updateInvLine(idx, 'productId', e.target.value)}
+                          className="w-full max-w-full truncate h-8 px-2 rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] text-xs text-[var(--color-text-strong)] outline-none"
+                        >
+                          <option value="">Select Item...</option>
+                          {products.map((p: any) => (
+                            <option key={p.id} value={p.id}>
+                              {p.code} — {p.name}
+                            </option>
+                          ))}
+                        </select>
+                      </td>
+                      <td className="p-1.5">
+                        <input
+                          value={line.description}
+                          onChange={e => updateInvLine(idx, 'description', e.target.value)}
+                          placeholder="Line description"
+                          className="w-full max-w-full truncate h-8 px-2 rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] text-xs text-[var(--color-text-strong)] outline-none"
+                        />
+                      </td>
+                      <td className="p-1.5">
+                        <input
+                          type="number"
+                          min="1"
+                          value={line.quantity}
+                          onChange={e => updateInvLine(idx, 'quantity', e.target.value)}
+                          className="w-full max-w-full h-8 px-2 rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] text-xs text-right font-mono text-[var(--color-text-strong)] outline-none"
+                        />
+                      </td>
+                      <td className="p-1.5">
+                        <input
+                          type="number"
+                          step="0.01"
+                          value={line.unitPrice}
+                          onChange={e => updateInvLine(idx, 'unitPrice', e.target.value)}
+                          className="w-full max-w-full h-8 px-2 rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] text-xs text-right font-mono text-[var(--color-text-strong)] outline-none"
+                        />
+                      </td>
+                      <td className="p-1.5">
+                        <input
+                          type="number"
+                          step="0.01"
+                          value={line.discountAmount}
+                          onChange={e => updateInvLine(idx, 'discountAmount', e.target.value)}
+                          className="w-full max-w-full h-8 px-2 rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] text-xs text-right font-mono text-[var(--color-text-strong)] outline-none"
+                        />
+                      </td>
+                      <td className="p-1.5">
+                        <input
+                          type="number"
+                          step="0.01"
+                          value={line.taxAmount}
+                          onChange={e => updateInvLine(idx, 'taxAmount', e.target.value)}
+                          className="w-full max-w-full h-8 px-2 rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] text-xs text-right font-mono text-[var(--color-text-strong)] outline-none"
+                        />
+                      </td>
+                      <td className="p-1.5 text-right font-mono font-bold text-sky-600 dark:text-sky-400 whitespace-nowrap">
+                        {money(lineCalcs[idx]?.total || 0)}
+                      </td>
+                      <td className="p-1.5 text-center">
+                        {invLines.length > 1 && (
+                          <button
+                            type="button"
+                            onClick={() => removeInvLine(idx)}
+                            className="p-1 text-rose-500 hover:bg-rose-500/10 rounded-md"
+                          >
+                            <X className="w-3.5 h-3.5" />
+                          </button>
+                        )}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          {/* Totals Summary */}
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between p-4 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface-muted)] gap-3">
+            <div className="text-xs text-[var(--color-text-muted)] space-y-0.5">
+              <p>Subtotal: <strong className="text-[var(--color-text-strong)]">{money(invTotals.sub)}</strong></p>
+              <p>Discount: <span className="text-rose-500">-{money(invTotals.disc)}</span> • Tax: <span className="text-amber-500">+{money(invTotals.tax)}</span></p>
+            </div>
+            <div className="text-right">
+              <span className="text-[11px] font-semibold text-[var(--color-text-muted)] uppercase tracking-wider block">Total Sales Invoice</span>
+              <span className="text-xl font-bold font-mono text-emerald-600 dark:text-emerald-400">{money(invTotals.total)}</span>
+            </div>
+          </div>
+
+          {/* Actions */}
+          <div className="flex items-center justify-end gap-2.5 pt-2 border-t border-[var(--color-border)]">
+            <button
+              type="button"
+              onClick={onClose}
+              className="h-9 px-4 rounded-xl border border-[var(--color-border)] text-xs font-semibold text-[var(--color-text-strong)] hover:bg-[var(--color-surface-muted)] transition-colors"
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              disabled={submitting}
+              className="h-9 px-5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold shadow-md flex items-center gap-1.5 transition-colors disabled:opacity-50"
+            >
+              <Check className="w-4 h-4" />
+              <span>{submitting ? 'Creating Invoice...' : 'Confirm & Create Sales Invoice'}</span>
+            </button>
+          </div>
+        </form>
       </div>
     </div>
   )

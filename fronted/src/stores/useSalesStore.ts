@@ -23,6 +23,8 @@ interface SalesState {
   updateEstimateStatus: (id: string, status: string) => Promise<void>;
   convertToInvoice: (estimateId: string, options?: any) => Promise<Invoice>;
   createInvoice: (data: any) => Promise<Invoice>;
+  updateInvoice: (id: string, data: any) => Promise<Invoice>;
+  updateInvoiceStatus: (id: string, status: number | string) => Promise<void>;
   createCustomerReceipt: (data: any) => Promise<CustomerReceipt>;
 }
 
@@ -125,6 +127,17 @@ export const useSalesStore = create<SalesState>((set, get) => ({
     const res = await salesApi.createInvoice(data);
     await get().fetchInvoices();
     return res;
+  },
+
+  updateInvoice: async (id: string, data: any) => {
+    const res = await salesApi.updateInvoice(id, data);
+    await get().fetchInvoices();
+    return res;
+  },
+
+  updateInvoiceStatus: async (id: string, status: number | string) => {
+    await salesApi.updateInvoiceStatus(id, status);
+    await get().fetchInvoices();
   },
 
   createCustomerReceipt: async (data: any) => {

@@ -3463,6 +3463,38 @@ public IReadOnlyList<EmployeeCompensation> EmployeeCompensations => _employeeCom
         }
     }
 
+    public bool UpdateSalesInvoice(Guid id, SalesInvoiceRequest request, out SalesInvoice? invoice, out string? error)
+    {
+        error = null; invoice = null;
+        lock (_lock)
+        {
+            invoice = _salesInvoices.FirstOrDefault(i => i.Id == id);
+            if (invoice == null) { error = "Invoice not found."; return false; }
+            if (invoice.Status != SalesInvoiceStatus.Draft) { error = "Only draft invoices can be edited."; return false; }
+
+            invoice.CustomerId = request.CustomerId;
+            invoice.InvoiceDate = request.InvoiceDate;
+            invoice.DueDate = request.DueDate;
+            invoice.Reference = request.Reference;
+            invoice.Notes = request.Notes;
+            invoice.Lines = request.Lines?.Select(l => new SalesInvoiceLine
+            {
+                ProductId = l.ProductId,
+                Description = l.Description,
+                Quantity = l.Quantity,
+                UnitPrice = l.UnitPrice,
+                DiscountAmount = l.DiscountAmount,
+                TaxAmount = l.TaxAmount,
+                TaxCodeId = l.TaxCodeId
+            }).ToList() ?? [];
+
+            invoice.UpdatedAt = DateTime.UtcNow;
+
+            Persist();
+            return true;
+        }
+    }
+
     public bool UpdateSalesInvoiceStatus(Guid invoiceId, SalesInvoiceStatus status, out string? error)
     {
         error = null;

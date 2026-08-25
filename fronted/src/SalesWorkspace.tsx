@@ -1,7 +1,10 @@
 import { useState, useEffect, useMemo } from 'react'
+import jsPDF from 'jspdf'
+import autoTable from 'jspdf-autotable'
 import {
   Receipt, Plus, Check, X, ShieldCheck, ArrowRight,
-  ArrowLeft, Hash, Users, FileText, Coins, CheckCircle2, Eye
+  ArrowLeft, Hash, Users, FileText, Coins, CheckCircle2, Eye,
+  Download, ChevronDown, Pencil, Ban
 } from 'lucide-react'
 import { useSalesStore, useCustomersStore, useProductsStore, useCoaStore } from './stores'
 import { useFormDraft } from './hooks/useFormDraft'
@@ -10,11 +13,11 @@ import { money } from './lib/currency'
 
 const statusStyles: Record<string, { label: string; class: string }> = {
   Draft: { label: 'Draft', class: 'bg-slate-500/10 text-slate-600 border border-slate-500/20' },
-  Sent: { label: 'Sent', class: 'bg-sky-500/10 text-sky-600 border border-sky-500/20' },
+  Sent: { label: 'Approved', class: 'bg-sky-500/10 text-sky-600 border border-sky-500/20' },
   Paid: { label: 'Paid', class: 'bg-emerald-500/10 text-emerald-600 border border-emerald-500/20' },
   PartiallyPaid: { label: 'Partially Paid', class: 'bg-amber-500/10 text-amber-600 border border-amber-500/20' },
   Overdue: { label: 'Overdue', class: 'bg-rose-500/10 text-rose-600 border border-rose-500/20' },
-  Void: { label: 'Void', class: 'bg-rose-500/10 text-rose-400 border border-rose-500/20' }
+  Void: { label: 'Cancelled / Void', class: 'bg-rose-500/10 text-rose-400 border border-rose-500/20' }
 }
 
 export const SalesWorkspace: React.FC<{ activeEntityId: string; entities?: any[] }> = ({
@@ -24,6 +27,8 @@ export const SalesWorkspace: React.FC<{ activeEntityId: string; entities?: any[]
   const invoices = useSalesStore((s) => s.invoices)
   const fetchInvoices = useSalesStore((s) => s.fetchInvoices)
   const createInvoiceStore = useSalesStore((s) => s.createInvoice)
+  const updateInvoiceStore = useSalesStore((s) => s.updateInvoice)
+  const updateInvoiceStatusStore = useSalesStore((s) => s.updateInvoiceStatus)
 
   const customers = useCustomersStore((s) => s.customers)
   const fetchCustomers = useCustomersStore((s) => s.fetchCustomers)
@@ -36,11 +41,20 @@ export const SalesWorkspace: React.FC<{ activeEntityId: string; entities?: any[]
 
   const [loading, setLoading] = useState(true)
   const [showForm, setShowForm] = useState(false)
+  const [editingInvoice, setEditingInvoice] = useState<any>(null)
   const [modalTab, setModalTab] = useState<'details' | 'lines' | 'summary' | 'preview'>('details')
   const [postModal, setPostModal] = useState<any>(null)
+  const [activeDropdownId, setActiveDropdownId] = useState<string | null>(null)
   const [toast, setToast] = useState('')
   const [query, setQuery] = useState('')
   const [statusFilter, setStatusFilter] = useState<string>('all')
+
+  // Close dropdown on click outside
+  useEffect(() => {
+    const handleClickOutside = () => setActiveDropdownId(null)
+    window.addEventListener('click', handleClickOutside)
+    return () => window.removeEventListener('click', handleClickOutside)
+  }, [])
 
   // Form state
   const [form, setForm] = useState({
@@ -86,20 +100,96 @@ export const SalesWorkspace: React.FC<{ activeEntityId: string; entities?: any[]
     setTimeout(() => setToast(''), 3500)
   }
 
-  const openCreateModal = async () => {
-    const salesStore = useSalesStore.getState()
-    const nextRef = await salesStore.fetchNextNumber('invoice')
+  const computeNextInvoiceNumber = () => {
+    let maxNum = 0
+    for (const item of invoices) {
+      const str = (item.invoiceNumber || item.reference || '') + ''
+      const match = str.match(/\d+/)
+      if (match) {
+        const num = parseInt(match[0], 10)
+        if (!isNaN(num) && num > maxNum) maxNum = num
+      }
+    }
+    return `INV-${(maxNum + 1).toString().padStart(5, '0')}`
+  }
+
+  const openCreateModal = () => {
+    setEditingInvoice(null)
+    clearDraft()
+    const nextRef = computeNextInvoiceNumber()
     setForm({
       customerId: customers[0]?.id || '',
       invoiceDate: new Date().toISOString().slice(0, 10),
       dueDate: new Date(Date.now() + 30 * 86400000).toISOString().slice(0, 10),
-      reference: nextRef || 'INV-0001',
+      reference: nextRef,
       notes: 'Payment is due within invoice terms. Thank you for your business.',
       currencyCode: 'PKR'
     })
     setLines([{ productId: '', description: '', quantity: '1', unitPrice: '0', discountAmount: '0', taxAmount: '0' }])
     setModalTab('details')
     setShowForm(true)
+  }
+
+  const openEditModal = (inv: any) => {
+    setEditingInvoice(inv)
+    setForm({
+      customerId: inv.customerId || '',
+      invoiceDate: inv.invoiceDate || new Date().toISOString().slice(0, 10),
+      dueDate: inv.dueDate || '',
+      reference: inv.invoiceNumber || inv.reference || '',
+      notes: inv.notes || '',
+      currencyCode: inv.currencyCode || 'PKR'
+    })
+    setLines(
+      inv.lines && inv.lines.length > 0
+        ? inv.lines.map((l: any) => ({
+            productId: l.productId || '',
+            description: l.description || '',
+            quantity: String(l.quantity || 1),
+            unitPrice: String(l.unitPrice || 0),
+            discountAmount: String(l.discountAmount || 0),
+            taxAmount: String(l.taxAmount || 0)
+          }))
+        : [{ productId: '', description: '', quantity: '1', unitPrice: '0', discountAmount: '0', taxAmount: '0' }]
+    )
+    setModalTab('details')
+    setShowForm(true)
+  }
+
+  const handleCancelForm = () => {
+    clearDraft()
+    setShowForm(false)
+    setEditingInvoice(null)
+  }
+
+  const cancelInvoice = async (inv: any) => {
+    try {
+      await updateInvoiceStatusStore(inv.id, 3) // 3 = Void / Cancelled
+      notify(`✓ Invoice ${inv.invoiceNumber || inv.reference} marked as Cancelled / Void.`)
+      await fetchData()
+    } catch (e: any) {
+      notify(e.message || 'Failed to cancel invoice')
+    }
+  }
+
+  const openPostModal = (inv: any) => {
+    const mappingsStr = localStorage.getItem('system_account_mappings')
+    let mappings: any = {}
+    if (mappingsStr) {
+      try {
+        mappings = JSON.parse(mappingsStr)
+      } catch {}
+    }
+    const arAccount = accounts.find((a: any) => a.id === mappings.arAccountId || a.code === '12000')
+    const revAccount = accounts.find((a: any) => a.id === mappings.revenueAccountId || a.code === '41100')
+    const taxAccount = accounts.find((a: any) => a.id === mappings.taxAccountId || a.code === '22000')
+
+    setPostModal(inv)
+    setPostForm({
+      arAccId: arAccount?.id || '',
+      revenueAccId: revAccount?.id || '',
+      taxLiabilityAccId: taxAccount?.id || ''
+    })
   }
 
   const addLine = () =>
@@ -147,21 +237,140 @@ export const SalesWorkspace: React.FC<{ activeEntityId: string; entities?: any[]
       }))
     }
     try {
-      await createInvoiceStore(body)
+      if (editingInvoice) {
+        await updateInvoiceStore(editingInvoice.id, body)
+        notify('✓ Sales invoice updated successfully!')
+      } else {
+        await createInvoiceStore(body)
+        notify('✓ Sales invoice created as Draft')
+      }
       clearDraft()
-      notify('✓ Sales invoice created as Draft')
       setShowForm(false)
+      setEditingInvoice(null)
       fetchData()
     } catch (e: any) {
       notify(e.message || 'Error saving invoice')
     }
   }
 
+  const downloadInvoicePdf = (inv: any) => {
+    try {
+      const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' })
+      const invNum = inv.invoiceNumber || inv.reference || 'INV-00001'
+      const compName = assignedCompany?.name || 'Muhammad Ali Enterprises'
+      const statusText = typeof inv.status === 'number'
+        ? ['Draft', 'Approved', 'Paid', 'Cancelled / Void', 'Partially Paid', 'Overdue'][inv.status] || 'Draft'
+        : String(inv.status || 'Draft')
+
+      // Header Banner
+      doc.setFont('helvetica', 'bold')
+      doc.setFontSize(20)
+      doc.setTextColor(15, 23, 42)
+      doc.text('TAX / SALES INVOICE', 14, 20)
+
+      doc.setFontSize(11)
+      doc.setTextColor(14, 116, 144)
+      doc.text(compName, 14, 27)
+
+      // Meta Info Grid
+      doc.setFontSize(9)
+      doc.setFont('helvetica', 'normal')
+      doc.setTextColor(71, 85, 105)
+      doc.text(`Invoice Number: ${invNum}`, 14, 35)
+      doc.text(`Issue Date: ${inv.invoiceDate || '—'}`, 14, 40)
+      doc.text(`Due Date: ${inv.dueDate || '—'}`, 14, 45)
+      doc.text(`Status: ${statusText.toUpperCase()}`, 14, 50)
+
+      doc.text(`Billed To:`, 120, 35)
+      doc.setFont('helvetica', 'bold')
+      doc.setTextColor(15, 23, 42)
+      doc.text(`${inv.customerName || 'Valued Customer'}`, 120, 40)
+      doc.setFont('helvetica', 'normal')
+      doc.setTextColor(71, 85, 105)
+      if (inv.reference) doc.text(`Reference / PO: ${inv.reference}`, 120, 45)
+      doc.text(`Currency: ${inv.currencyCode || 'PKR'}`, 120, 50)
+
+      // Line items table
+      const linesData = (inv.lines && inv.lines.length > 0)
+        ? inv.lines.map((l: any, idx: number) => [
+            String(idx + 1),
+            l.description || 'Sales Line Item',
+            String(l.quantity || 1),
+            money(l.unitPrice || 0),
+            l.discountAmount > 0 ? `-${money(l.discountAmount)}` : '0',
+            l.taxAmount > 0 ? `+${money(l.taxAmount)}` : '0',
+            money(l.totalAmount || ((l.quantity || 1) * (l.unitPrice || 0) - (l.discountAmount || 0) + (l.taxAmount || 0)))
+          ])
+        : [
+            ['1', 'Sales Item / Commercial Invoice Service', '1', money(inv.totalAmount || 0), '0', '0', money(inv.totalAmount || 0)]
+          ]
+
+      autoTable(doc, {
+        startY: 57,
+        head: [['#', 'Description', 'Qty', 'Unit Price', 'Discount', 'Tax', 'Total']],
+        body: linesData,
+        theme: 'striped',
+        headStyles: { fillColor: [14, 116, 144], textColor: 255, fontStyle: 'bold' },
+        styles: { fontSize: 8.5, cellPadding: 3 },
+        columnStyles: {
+          0: { cellWidth: 10, halign: 'center' },
+          1: { cellWidth: 'auto' },
+          2: { cellWidth: 16, halign: 'right' },
+          3: { cellWidth: 26, halign: 'right' },
+          4: { cellWidth: 24, halign: 'right' },
+          5: { cellWidth: 24, halign: 'right' },
+          6: { cellWidth: 30, halign: 'right', fontStyle: 'bold' }
+        }
+      })
+
+      const finalY = (doc as any).lastAutoTable?.finalY || 120
+
+      // Financial Summary Box
+      autoTable(doc, {
+        startY: finalY + 5,
+        body: [
+          ['Subtotal:', money(inv.subTotal || inv.totalAmount || 0)],
+          ['Discount Total:', `-${money(inv.discountTotal || 0)}`],
+          ['Tax / VAT Total:', `+${money(inv.taxTotal || 0)}`],
+          ['Total Invoice Amount:', money(inv.totalAmount || 0)],
+          ['Amount Paid / Settled:', money(inv.paidAmount || 0)],
+          ['Balance Due:', money(inv.amountDue != null ? inv.amountDue : inv.totalAmount)]
+        ],
+        theme: 'plain',
+        styles: { fontSize: 9, cellPadding: 1.5 },
+        columnStyles: {
+          0: { cellWidth: 140, halign: 'right', fontStyle: 'normal' },
+          1: { cellWidth: 40, halign: 'right', fontStyle: 'bold' }
+        }
+      })
+
+      doc.setFontSize(8)
+      doc.setTextColor(148, 163, 184)
+      doc.text('This is a computer-generated official commercial tax invoice generated by AccountBook ERP.', 14, 280)
+
+      doc.save(`Invoice_${invNum}.pdf`)
+      notify(`✓ Invoice ${invNum} PDF downloaded successfully!`)
+    } catch (err: any) {
+      notify(`PDF generation error: ${err.message}`)
+    }
+  }
+
   const postInvoice = async () => {
     try {
+      if (postModal) {
+        const salesStore = useSalesStore.getState()
+        if ((salesStore as any).postInvoice) {
+          await (salesStore as any).postInvoice(postModal.id, {
+            arAccountId: postForm.arAccId || null,
+            revenueAccountId: postForm.revenueAccId || null,
+            taxLiabilityAccountId: postForm.taxLiabilityAccId || null
+          })
+        }
+      }
       await useSalesStore.getState().fetchAllSales(activeEntityId)
       notify('✓ Invoice posted to General Ledger!')
       setPostModal(null)
+      fetchData()
     } catch (e: any) {
       notify(e.message || 'Error posting invoice')
     }
@@ -357,32 +566,78 @@ export const SalesWorkspace: React.FC<{ activeEntityId: string; entities?: any[]
                         </span>
                       </td>
                       <td className="px-3 py-2 text-right">
-                        {inv.status === 0 && (
+                        <div className="flex items-center justify-end gap-1.5" onClick={e => e.stopPropagation()}>
+                          {/* Dedicated PDF Download Button */}
                           <button
-                            onClick={() => {
-                              const mappingsStr = localStorage.getItem('system_account_mappings')
-                              let mappings: any = {}
-                              if (mappingsStr) {
-                                try {
-                                  mappings = JSON.parse(mappingsStr)
-                                } catch {}
-                              }
-                              const arAccount = accounts.find((a: any) => a.id === mappings.arAccountId || a.code === '12000')
-                              const revAccount = accounts.find((a: any) => a.id === mappings.revenueAccountId || a.code === '41100')
-                              const taxAccount = accounts.find((a: any) => a.id === mappings.taxAccountId || a.code === '22000')
-
-                              setPostModal(inv)
-                              setPostForm({
-                                arAccId: arAccount?.id || '',
-                                revenueAccId: revAccount?.id || '',
-                                taxLiabilityAccId: taxAccount?.id || ''
-                              })
-                            }}
-                            className="h-7 px-2.5 rounded-lg border border-[var(--color-primary)]/30 text-[var(--color-primary)] hover:bg-[var(--color-primary)]/10 text-xs font-semibold transition-colors"
+                            onClick={() => downloadInvoicePdf(inv)}
+                            title="Download Sales Invoice PDF"
+                            className="h-7 px-2 rounded-lg border border-sky-500/20 bg-sky-500/5 hover:bg-sky-500/15 text-sky-600 text-[11px] font-semibold flex items-center gap-1 shadow-2xs transition-colors"
                           >
-                            Post to Ledger
+                            <Download className="w-3 h-3 text-sky-600" />
+                            <span>PDF</span>
                           </button>
-                        )}
+
+                          {/* Actions Dropdown Button */}
+                          <div className="relative inline-block text-left">
+                            <button
+                              onClick={() => setActiveDropdownId(activeDropdownId === inv.id ? null : inv.id)}
+                              className="h-7 px-2.5 rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] hover:bg-[var(--color-surface-muted)] text-[var(--color-text-strong)] text-[11px] font-semibold flex items-center gap-1 shadow-2xs transition-colors"
+                              title="More actions"
+                            >
+                              <span>Actions</span>
+                              <ChevronDown className="w-3 h-3 text-[var(--color-text-muted)]" />
+                            </button>
+
+                            {activeDropdownId === inv.id && (
+                              <div className="absolute right-0 top-full mt-1 w-44 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] shadow-2xl z-50 py-1.5 animate-in fade-in zoom-in-95 duration-100">
+                                {/* Edit Invoice (if Draft) */}
+                                {(inv.status === 0 || inv.status === 'Draft') && (
+                                  <button
+                                    onClick={() => { setActiveDropdownId(null); openEditModal(inv); }}
+                                    className="w-full px-3 py-1.5 text-left text-xs font-semibold text-indigo-600 dark:text-indigo-400 hover:bg-indigo-500/10 flex items-center gap-2 transition-colors"
+                                  >
+                                    <Pencil className="w-3.5 h-3.5" />
+                                    <span>Edit Invoice</span>
+                                  </button>
+                                )}
+
+                                {/* Approve / Post to Ledger */}
+                                {(inv.status === 0 || inv.status === 'Draft') && (
+                                  <button
+                                    onClick={() => {
+                                      setActiveDropdownId(null);
+                                      openPostModal(inv);
+                                    }}
+                                    className="w-full px-3 py-1.5 text-left text-xs font-semibold text-emerald-600 dark:text-emerald-400 hover:bg-emerald-500/10 flex items-center gap-2 transition-colors"
+                                  >
+                                    <CheckCircle2 className="w-3.5 h-3.5" />
+                                    <span>Approve & Post</span>
+                                  </button>
+                                )}
+
+                                {/* Cancel / Void Invoice */}
+                                {inv.status !== 3 && inv.status !== 'Void' && (
+                                  <button
+                                    onClick={() => { setActiveDropdownId(null); cancelInvoice(inv); }}
+                                    className="w-full px-3 py-1.5 text-left text-xs font-semibold text-rose-600 dark:text-rose-400 hover:bg-rose-500/10 flex items-center gap-2 transition-colors"
+                                  >
+                                    <Ban className="w-3.5 h-3.5" />
+                                    <span>Cancel / Void</span>
+                                  </button>
+                                )}
+
+                                {/* Preview Details */}
+                                <button
+                                  onClick={() => { setActiveDropdownId(null); openEditModal(inv); setModalTab('preview'); }}
+                                  className="w-full px-3 py-1.5 text-left text-xs font-medium text-[var(--color-text-muted)] hover:text-[var(--color-text-strong)] hover:bg-[var(--color-surface-muted)] flex items-center gap-2 transition-colors"
+                                >
+                                  <Eye className="w-3.5 h-3.5" />
+                                  <span>Preview Details</span>
+                                </button>
+                              </div>
+                            )}
+                          </div>
+                        </div>
                       </td>
                     </tr>
                   )
@@ -405,9 +660,11 @@ export const SalesWorkspace: React.FC<{ activeEntityId: string; entities?: any[]
                 </div>
                 <div>
                   <div className="flex items-center gap-2">
-                    <h2 className="text-base font-bold text-[var(--color-text-strong)] tracking-tight">Create Sales Invoice</h2>
+                    <h2 className="text-base font-bold text-[var(--color-text-strong)] tracking-tight">
+                      {editingInvoice ? 'Edit Sales Invoice' : 'Create Sales Invoice'}
+                    </h2>
                     <span className="px-2.5 py-0.5 rounded-full text-[10px] font-semibold bg-sky-500/10 text-sky-600 border border-sky-500/20">
-                      Draft Voucher
+                      {editingInvoice ? 'Editing Record' : 'Draft Voucher'}
                     </span>
                   </div>
                   <p className="text-xs text-[var(--color-text-muted)] mt-0.5 flex items-center gap-1.5">
@@ -422,7 +679,7 @@ export const SalesWorkspace: React.FC<{ activeEntityId: string; entities?: any[]
               <button
                 type="button"
                 className="w-8 h-8 rounded-lg flex items-center justify-center text-[var(--color-text-muted)] hover:text-[var(--color-text-strong)] hover:bg-[var(--color-surface-muted)] transition-colors"
-                onClick={() => setShowForm(false)}
+                onClick={handleCancelForm}
               >
                 <X className="w-4 h-4" />
               </button>
@@ -829,7 +1086,7 @@ export const SalesWorkspace: React.FC<{ activeEntityId: string; entities?: any[]
                 <button
                   type="button"
                   className="h-8.5 px-3.5 rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] text-xs font-medium text-[var(--color-text)] hover:bg-[var(--color-surface-muted)] transition-colors"
-                  onClick={() => setShowForm(false)}
+                  onClick={handleCancelForm}
                 >
                   Cancel
                 </button>
@@ -888,7 +1145,7 @@ export const SalesWorkspace: React.FC<{ activeEntityId: string; entities?: any[]
                     className="primary h-8.5 px-5 rounded-lg text-xs font-semibold shadow-xs flex items-center gap-1.5 bg-emerald-600 hover:bg-emerald-700 text-white"
                   >
                     <Check className="w-3 h-3" />
-                    <span>Confirm & Create Invoice (Draft)</span>
+                    <span>{editingInvoice ? 'Confirm & Save Changes' : 'Confirm & Create Invoice (Draft)'}</span>
                   </button>
                 )}
               </div>
