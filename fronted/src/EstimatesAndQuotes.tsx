@@ -4,7 +4,7 @@ import autoTable from 'jspdf-autotable'
 import {
   FileText, Plus, Check, X, ArrowRight,
   ArrowLeft, Coins, CheckCircle2, Hash, Users, ArrowUpRight, Eye, Pencil, Ban,
-  Download, ChevronDown
+  Download
 } from 'lucide-react'
 import { useSalesStore, useCustomersStore, useProductsStore, useCompanyStore } from './stores'
 import { useFormDraft } from './hooks/useFormDraft'
@@ -34,6 +34,7 @@ export const getNumericStatus = (status: any): number => {
 
 interface Line {
   productId: string
+  productName: string
   description: string
   quantity: string
   unitPrice: string
@@ -44,6 +45,7 @@ interface Line {
 
 const defaultLine = (): Line => ({
   productId: '',
+  productName: '',
   description: '',
   quantity: '1',
   unitPrice: '0',
@@ -74,17 +76,10 @@ export const EstimatesAndQuotes: React.FC<{ activeEntityId: string; entities?: a
   const [showForm, setShowForm] = useState(false)
   const [modalTab, setModalTab] = useState<'details' | 'lines' | 'summary' | 'preview'>('details')
   const [convertModal, setConvertModal] = useState<any>(null)
-  const [activeDropdownId, setActiveDropdownId] = useState<string | null>(null)
+  const [viewingEstimate, setViewingEstimate] = useState<any>(null)
   const [toast, setToast] = useState('')
   const [query, setQuery] = useState('')
   const [statusFilter, setStatusFilter] = useState<string>('all')
-
-  // Close dropdown on click outside
-  useEffect(() => {
-    const handleClickOutside = () => setActiveDropdownId(null)
-    window.addEventListener('click', handleClickOutside)
-    return () => window.removeEventListener('click', handleClickOutside)
-  }, [])
 
   const [form, setForm] = useState({
     customerId: '',
@@ -130,10 +125,10 @@ export const EstimatesAndQuotes: React.FC<{ activeEntityId: string; entities?: a
     let maxNum = 0
     for (const item of estimates) {
       const str = (item.estimateNumber || item.reference || '') + ''
-      const match = str.match(/\d+/)
+      const match = str.match(/EST-(\d+)/)
       if (match) {
-        const num = parseInt(match[0], 10)
-        if (!isNaN(num) && num > maxNum) maxNum = num
+        const num = parseInt(match[1], 10)
+        if (!isNaN(num) && num < 100000 && num > maxNum) maxNum = num
       }
     }
     return `EST-${(maxNum + 1).toString().padStart(5, '0')}`
@@ -178,15 +173,19 @@ export const EstimatesAndQuotes: React.FC<{ activeEntityId: string; entities?: a
     })
     setLines(
       est.lines && est.lines.length > 0
-        ? est.lines.map((l: any) => ({
-            productId: l.productId || '',
-            description: l.description || '',
-            quantity: String(l.quantity || 1),
-            unitPrice: String(l.unitPrice || 0),
-            discountType: (l.discountType ?? 0) as 0 | 1,
-            discountValue: String(l.discountValue || 0),
-            taxPercent: String(l.taxPercent || 0),
-          }))
+        ? est.lines.map((l: any) => {
+            const prod = products.find((p: any) => p.id === l.productId)
+            return {
+              productId: l.productId || '',
+              productName: l.productName || prod?.name || l.description || '',
+              description: l.description || '',
+              quantity: String(l.quantity || 1),
+              unitPrice: String(l.unitPrice || 0),
+              discountType: (l.discountType ?? 0) as 0 | 1,
+              discountValue: String(l.discountValue || 0),
+              taxPercent: String(l.taxPercent || 0),
+            }
+          })
         : [defaultLine()]
     )
     setModalTab('details')
@@ -213,6 +212,10 @@ export const EstimatesAndQuotes: React.FC<{ activeEntityId: string; entities?: a
     }
   }
 
+  const openViewModal = (est: any) => {
+    setViewingEstimate(est)
+  }
+
   const updateLine = (i: number, field: string, value: any) => {
     const updated = [...lines]
     updated[i] = { ...updated[i], [field]: value }
@@ -221,6 +224,7 @@ export const EstimatesAndQuotes: React.FC<{ activeEntityId: string; entities?: a
       if (prod) {
         updated[i] = {
           ...updated[i],
+          productName: prod.name,
           description: prod.name,
           unitPrice: String(prod.unitPrice || prod.salesPrice || 0)
         }
@@ -266,6 +270,7 @@ export const EstimatesAndQuotes: React.FC<{ activeEntityId: string; entities?: a
       expiryDate: form.expiryDate || null,
       lines: lines.map(l => ({
         productId: l.productId || null,
+        productName: l.productName || l.description || '',
         description: l.description,
         quantity: parseFloat(l.quantity || '1'),
         unitPrice: parseFloat(l.unitPrice || '0'),
@@ -328,55 +333,76 @@ export const EstimatesAndQuotes: React.FC<{ activeEntityId: string; entities?: a
       const quoteNum = getFormattedEstimateNumber(est.estimateNumber || est.reference, index ?? 0)
       const compName = assignedCompany?.name || 'Muhammad Ali Enterprises'
       const statusNum = getNumericStatus(est.status)
+      const statusLabel = statusStyles[statusNum]?.label || 'Draft'
+      const pageW = doc.internal.pageSize.getWidth()
 
-      // Title & Company
+      const tealDark: [number, number, number] = [1, 72, 113]
+      const mintLight: [number, number, number] = [160, 235, 207]
+      const tealMid: [number, number, number] = [30, 130, 160]
+
+      // ── Gradient Header Banner ──
+      for (let x = 0; x < pageW; x++) {
+        const ratio = x / pageW
+        const r = Math.round(tealDark[0] + (mintLight[0] - tealDark[0]) * ratio)
+        const g = Math.round(tealDark[1] + (mintLight[1] - tealDark[1]) * ratio)
+        const b = Math.round(tealDark[2] + (mintLight[2] - tealDark[2]) * ratio)
+        doc.setFillColor(r, g, b)
+        doc.rect(x, 0, 1, 38, 'F')
+      }
+
       doc.setFont('helvetica', 'bold')
-      doc.setFontSize(18)
-      doc.setTextColor(30, 41, 59)
-      doc.text('COMMERCIAL QUOTATION', 14, 20)
+      doc.setFontSize(22)
+      doc.setTextColor(255, 255, 255)
+      doc.text('QUOTATION', 14, 18)
 
-      doc.setFontSize(11)
-      doc.setTextColor(79, 70, 229)
-      doc.text(compName, 14, 27)
+      doc.setFontSize(10)
+      doc.setFont('helvetica', 'normal')
+      doc.setTextColor(220, 245, 235)
+      doc.text(compName, 14, 26)
 
-      // Meta Info Grid
+      doc.setFontSize(8)
+      doc.text('Thank you for your business inquiry', 14, 33)
+
+      // Quote meta (right side of header)
       doc.setFontSize(9)
+      doc.setTextColor(255, 255, 255)
       doc.setFont('helvetica', 'normal')
-      doc.setTextColor(100, 116, 139)
-
-      doc.text('Quote Number:', 130, 20)
+      doc.text('Quote Number:', pageW - 80, 14)
       doc.setFont('helvetica', 'bold')
-      doc.setTextColor(30, 41, 59)
-      doc.text(quoteNum, 162, 20)
-
+      doc.text(quoteNum, pageW - 80, 20)
       doc.setFont('helvetica', 'normal')
-      doc.setTextColor(100, 116, 139)
-      doc.text('Quote Date:', 130, 25)
-      doc.setTextColor(30, 41, 59)
-      doc.text(est.estimateDate || '—', 162, 25)
+      doc.text('Date:', pageW - 80, 26)
+      doc.text(est.estimateDate || '—', pageW - 80, 32)
+      doc.text('Expiry:', pageW - 42, 26)
+      doc.text(est.expiryDate || '—', pageW - 42, 32)
+      doc.text('Status:', pageW - 42, 14)
+      doc.setFont('helvetica', 'bold')
+      doc.text(statusLabel.toUpperCase(), pageW - 42, 20)
 
-      doc.setTextColor(100, 116, 139)
-      doc.text('Expiry Date:', 130, 30)
-      doc.setTextColor(30, 41, 59)
-      doc.text(est.expiryDate || '—', 162, 30)
+      // ── Customer Section ──
+      const custY = 44
+      doc.setFillColor(235, 248, 245)
+      doc.rect(14, custY, pageW - 28, 22, 'F')
+      doc.setDrawColor(...tealMid)
+      doc.rect(14, custY, pageW - 28, 22, 'S')
 
-      doc.setTextColor(100, 116, 139)
-      doc.text('Status:', 130, 35)
-      doc.setTextColor(30, 41, 59)
-      doc.text(statusStyles[statusNum]?.label || 'Draft', 162, 35)
-
-      // Customer Box
-      doc.setFillColor(248, 250, 252)
-      doc.rect(14, 40, 182, 16, 'F')
       doc.setFont('helvetica', 'bold')
       doc.setFontSize(8)
-      doc.setTextColor(71, 85, 105)
-      doc.text('QUOTATION PREPARED FOR:', 18, 46)
-      doc.setFontSize(10)
+      doc.setTextColor(...tealDark)
+      doc.text('PREPARED FOR', 18, custY + 6)
+      doc.setFontSize(11)
       doc.setTextColor(15, 23, 42)
-      doc.text(est.customerName || 'Valued Customer', 18, 52)
+      doc.text(est.customerName || 'Valued Customer', 18, custY + 14)
+      if (est.customerEmail) {
+        doc.setFontSize(8)
+        doc.setTextColor(100, 116, 139)
+        doc.text(est.customerEmail, 18, custY + 19)
+      }
 
-      // Table Lines
+      // ── Line Items Table ──
+      const tableStartY = custY + 28
+      const currency = est.currencyCode || 'PKR'
+
       const tableRows = (est.lines && est.lines.length > 0 ? est.lines : []).map((l: any, i: number) => {
         const qty = parseFloat(l.quantity || '1') || 1
         const price = parseFloat(l.unitPrice || '0') || 0
@@ -385,72 +411,128 @@ export const EstimatesAndQuotes: React.FC<{ activeEntityId: string; entities?: a
         const disc = l.discountType === 0 ? (gross * discVal / 100) : discVal
         const taxVal = parseFloat(l.taxPercent || '0') || 0
         const afterDisc = gross - disc
-        const tax = (afterDisc * taxVal / 100)
+        const tax = afterDisc * taxVal / 100
         const total = afterDisc + tax
+        const prod = products.find((p: any) => p.id === l.productId)
+        const itemName = l.productName || prod?.name || l.description || ''
+        const desc = l.description || ''
 
         return [
           i + 1,
-          l.description || 'Commercial Product / Service Item',
-          qty,
+          itemName,
+          desc,
+          String(qty),
           money(price),
-          l.discountType === 0 ? `${discVal}%` : money(discVal),
-          `${taxVal}%`,
+          money(gross),
+          money(disc),
+          money(tax),
           money(total)
         ]
       })
 
       autoTable(doc, {
-        startY: 60,
-        head: [['#', 'Item / Description', 'Qty', 'Unit Price', 'Discount', 'Tax %', 'Total Amount']],
-        body: tableRows.length > 0 ? tableRows : [[1, 'Products & Services Quotation', 1, money(est.totalAmount), '—', '0%', money(est.totalAmount)]],
-        headStyles: { fillColor: [67, 56, 202], textColor: [255, 255, 255], fontStyle: 'bold', fontSize: 8 },
-        bodyStyles: { fontSize: 8, textColor: [30, 41, 59] },
-        alternateRowStyles: { fillColor: [248, 250, 252] },
-        margin: { left: 14, right: 14 }
+        startY: tableStartY,
+        head: [['#', 'Item Name', 'Description', 'Qty', 'Unit Price', 'Gross', 'Discount Amt', 'Tax Amt', 'Total']],
+        body: tableRows.length > 0 ? tableRows : [[1, 'Products & Services', '', '1', money(est.totalAmount), money(est.totalAmount), '0', '0', money(est.totalAmount)]],
+        headStyles: { fillColor: tealDark, textColor: [255, 255, 255], fontStyle: 'bold', fontSize: 7.5, cellPadding: 2.5 },
+        bodyStyles: { fontSize: 7.5, textColor: [30, 41, 59], cellPadding: 2.5 },
+        alternateRowStyles: { fillColor: [235, 248, 245] },
+        margin: { left: 14, right: 14 },
+        columnStyles: {
+          0: { cellWidth: 8, halign: 'center' },
+          1: { cellWidth: 35 },
+          2: { cellWidth: 40 },
+          3: { cellWidth: 14, halign: 'center' },
+          4: { cellWidth: 24, halign: 'right' },
+          5: { cellWidth: 24, halign: 'right' },
+          6: { cellWidth: 22, halign: 'right' },
+          7: { cellWidth: 22, halign: 'right' },
+          8: { cellWidth: 26, halign: 'right', fontStyle: 'bold' }
+        }
       })
 
       const finalY = (doc as any).lastAutoTable?.finalY || 120
 
-      // Totals Card
+      // ── Totals Summary (Always show all lines) ──
+      const totalsX = 120
+      const totalsValX = pageW - 14
+
+      doc.setDrawColor(...tealMid)
+      doc.line(totalsX, finalY + 8, totalsValX, finalY + 8)
+
       doc.setFontSize(9)
       doc.setFont('helvetica', 'normal')
       doc.setTextColor(100, 116, 139)
-      doc.text('Subtotal:', 130, finalY + 10)
+      doc.text('Subtotal:', totalsX, finalY + 14)
       doc.setTextColor(30, 41, 59)
-      doc.text(money(est.subtotal || est.totalAmount), 196, finalY + 10, { align: 'right' })
+      doc.text(money(est.subtotal || est.totalAmount), totalsValX, finalY + 14, { align: 'right' })
 
-      if (est.discountTotal > 0) {
-        doc.setTextColor(225, 29, 72)
-        doc.text('Total Discount:', 130, finalY + 16)
-        doc.text(`-${money(est.discountTotal)}`, 196, finalY + 16, { align: 'right' })
-      }
+      doc.setTextColor(225, 29, 72)
+      doc.text('Discount Total:', totalsX, finalY + 20)
+      doc.text(`-${money(est.discountTotal || 0)}`, totalsValX, finalY + 20, { align: 'right' })
 
-      if (est.taxTotal > 0) {
-        doc.setTextColor(217, 119, 6)
-        doc.text('Tax / VAT:', 130, finalY + 22)
-        doc.text(`+${money(est.taxTotal)}`, 196, finalY + 22, { align: 'right' })
-      }
+      doc.setTextColor(217, 119, 6)
+      doc.text('Tax / VAT Total:', totalsX, finalY + 26)
+      doc.text(`+${money(est.taxTotal || 0)}`, totalsValX, finalY + 26, { align: 'right' })
 
-      doc.setDrawColor(226, 232, 240)
-      doc.line(130, finalY + 25, 196, finalY + 25)
+      doc.setDrawColor(...tealDark)
+      doc.setLineWidth(0.5)
+      doc.line(totalsX, finalY + 30, totalsValX, finalY + 30)
 
       doc.setFont('helvetica', 'bold')
-      doc.setFontSize(11)
-      doc.setTextColor(67, 56, 202)
-      doc.text('Total Amount (PKR):', 130, finalY + 32)
-      doc.text(money(est.totalAmount), 196, finalY + 32, { align: 'right' })
+      doc.setFontSize(12)
+      doc.setTextColor(...tealDark)
+      doc.text(`TOTAL (${currency}):`, totalsX, finalY + 37)
+      doc.text(money(est.totalAmount), totalsValX, finalY + 37, { align: 'right' })
 
-      // Terms & Notes
-      if (est.terms || est.notes) {
-        doc.setFontSize(8)
+      // ── Terms & Conditions ──
+      const termsY = finalY + 48
+      doc.setFillColor(235, 248, 245)
+      doc.rect(14, termsY, pageW - 28, 32, 'F')
+      doc.setDrawColor(...tealMid)
+      doc.rect(14, termsY, pageW - 28, 32, 'S')
+
+      doc.setFont('helvetica', 'bold')
+      doc.setFontSize(8)
+      doc.setTextColor(...tealDark)
+      doc.text('TERMS & CONDITIONS', 18, termsY + 6)
+
+      doc.setFont('helvetica', 'normal')
+      doc.setFontSize(7.5)
+      doc.setTextColor(71, 85, 105)
+      const terms = est.terms || '1. This quotation is valid for 30 days from the date of issue.\n2. Payment terms: Net 30 days from date of invoice.\n3. Prices are subject to change without prior notice.\n4. All goods remain the property of the seller until fully paid.\n5. Any dispute arising shall be subject to local jurisdiction.'
+      const splitTerms = doc.splitTextToSize(terms, pageW - 36)
+      doc.text(splitTerms.slice(0, 6), 18, termsY + 12)
+
+      // ── Notes ──
+      if (est.notes) {
         doc.setFont('helvetica', 'bold')
-        doc.setTextColor(71, 85, 105)
-        doc.text('Terms & Conditions:', 14, finalY + 12)
+        doc.setFontSize(8)
+        doc.setTextColor(...tealDark)
+        doc.text('NOTES:', 14, termsY + 38)
         doc.setFont('helvetica', 'normal')
-        doc.setTextColor(100, 116, 139)
-        const splitTerms = doc.splitTextToSize(est.terms || est.notes || 'Standard commercial terms apply.', 105)
-        doc.text(splitTerms, 14, finalY + 17)
+        doc.setFontSize(7.5)
+        doc.setTextColor(71, 85, 105)
+        const splitNotes = doc.splitTextToSize(est.notes, pageW - 28)
+        doc.text(splitNotes.slice(0, 3), 14, termsY + 43)
       }
+
+      // ── Signature Area ──
+      const sigY = 260
+      doc.setDrawColor(...tealMid)
+      doc.line(14, sigY, 80, sigY)
+      doc.line(pageW - 80, sigY, pageW - 14, sigY)
+
+      doc.setFontSize(8)
+      doc.setTextColor(100, 116, 139)
+      doc.text('Authorized Signature', 14, sigY + 5)
+      doc.text('Customer Signature', pageW - 80, sigY + 5)
+
+      // ── Footer ──
+      doc.setFontSize(7)
+      doc.setTextColor(148, 163, 184)
+      doc.text(`Generated by ${compName} • AccountBook ERP`, 14, 287)
+      doc.text(`Page 1 of 1`, pageW - 14, 287, { align: 'right' })
 
       doc.save(`Quotation_${quoteNum}.pdf`)
       notify(`✓ Downloaded ${quoteNum}.pdf successfully!`)
@@ -587,9 +669,10 @@ export const EstimatesAndQuotes: React.FC<{ activeEntityId: string; entities?: a
                   <th className="text-left px-3 py-2 font-semibold text-[var(--color-text-muted)]">Customer</th>
                   <th className="text-left px-3 py-2 font-semibold text-[var(--color-text-muted)]">Date</th>
                   <th className="text-left px-3 py-2 font-semibold text-[var(--color-text-muted)]">Expiry</th>
+                  <th className="text-right px-3 py-2 font-semibold text-[var(--color-text-muted)]">Gross Amount</th>
                   <th className="text-right px-3 py-2 font-semibold text-[var(--color-text-muted)]">Discount</th>
                   <th className="text-right px-3 py-2 font-semibold text-[var(--color-text-muted)]">Tax</th>
-                  <th className="text-right px-3 py-2 font-semibold text-[var(--color-text-muted)]">Total</th>
+                  <th className="text-right px-3 py-2 font-semibold text-[var(--color-text-muted)]">Net Total</th>
                   <th className="text-center px-3 py-2 font-semibold text-[var(--color-text-muted)]">Status</th>
                   <th className="text-right px-3 py-2 font-semibold text-[var(--color-text-muted)]">Actions</th>
                 </tr>
@@ -598,6 +681,22 @@ export const EstimatesAndQuotes: React.FC<{ activeEntityId: string; entities?: a
                 {filteredEstimates.map((est: any, index: number) => {
                   const statusNum = getNumericStatus(est.status)
                   const badge = statusStyles[statusNum] || statusStyles[0]
+                  const lines: any[] = est.lines || []
+                  const grossAmount = est.subTotal ?? est.grossAmount ?? (lines.length > 0 ? lines.reduce((s, l) => s + ((parseFloat(l.quantity) || 1) * (parseFloat(l.unitPrice) || 0)), 0) : (est.totalAmount || 0))
+                  const discountAmount = est.totalDiscount ?? est.discountTotal ?? (lines.length > 0 ? lines.reduce((s, l) => {
+                    const lineSub = (parseFloat(l.quantity) || 1) * (parseFloat(l.unitPrice) || 0)
+                    const dv = parseFloat(l.discountValue) || 0
+                    return s + (l.discountType === 1 || l.discountType === 'Fixed' ? dv : (lineSub * dv / 100))
+                  }, 0) : 0)
+                  const taxAmount = est.totalTax ?? est.taxTotal ?? (lines.length > 0 ? lines.reduce((s, l) => {
+                    const lineSub = (parseFloat(l.quantity) || 1) * (parseFloat(l.unitPrice) || 0)
+                    const dv = parseFloat(l.discountValue) || 0
+                    const disc = l.discountType === 1 || l.discountType === 'Fixed' ? dv : (lineSub * dv / 100)
+                    const afterDisc = lineSub - disc
+                    return s + (afterDisc * (parseFloat(l.taxPercent) || 0) / 100)
+                  }, 0) : 0)
+                  const netTotal = est.totalAmount ?? (grossAmount - discountAmount + taxAmount)
+
                   return (
                     <tr
                       key={est.id}
@@ -609,13 +708,16 @@ export const EstimatesAndQuotes: React.FC<{ activeEntityId: string; entities?: a
                       <td className="px-3 py-2 font-semibold text-[var(--color-text-strong)]">{est.customerName || '—'}</td>
                       <td className="px-3 py-2 text-[var(--color-text-muted)]">{est.estimateDate}</td>
                       <td className="px-3 py-2 text-[var(--color-text-muted)]">{est.expiryDate || '—'}</td>
-                      <td className="px-3 py-2 text-right text-rose-500 font-mono">
-                        {est.discountTotal > 0 ? `-${money(est.discountTotal)}` : '—'}
+                      <td className="px-3 py-2 text-right font-mono font-semibold text-[var(--color-text-strong)]">
+                        {money(grossAmount)}
                       </td>
-                      <td className="px-3 py-2 text-right text-amber-500 font-mono">
-                        {est.taxTotal > 0 ? money(est.taxTotal) : '—'}
+                      <td className="px-3 py-2 text-right font-mono text-rose-500">
+                        {discountAmount > 0 ? `-${money(discountAmount)}` : '—'}
                       </td>
-                      <td className="px-3 py-2 text-right font-bold text-sky-600 font-mono">{money(est.totalAmount)}</td>
+                      <td className="px-3 py-2 text-right font-mono text-amber-600">
+                        {taxAmount > 0 ? `+${money(taxAmount)}` : '—'}
+                      </td>
+                      <td className="px-3 py-2 text-right font-bold text-sky-600 font-mono">{money(netTotal)}</td>
                       <td className="px-3 py-2 text-center">
                         {statusNum === 0 ? (
                           <button
@@ -633,81 +735,73 @@ export const EstimatesAndQuotes: React.FC<{ activeEntityId: string; entities?: a
                         )}
                       </td>
                       <td className="px-3 py-2 text-right">
-                        <div className="flex items-center justify-end gap-1.5" onClick={e => e.stopPropagation()}>
-                          {/* QUICK PDF DOWNLOAD BUTTON */}
+                        <div className="flex items-center justify-end gap-1" onClick={e => e.stopPropagation()}>
+
+                          {/* PDF Download */}
                           <button
                             onClick={() => downloadQuotePdf(est, index)}
                             title="Download Quotation PDF"
-                            className="h-7 px-2 rounded-lg border border-sky-500/20 bg-sky-500/5 hover:bg-sky-500/15 text-sky-600 text-[11px] font-semibold flex items-center gap-1 shadow-2xs transition-colors"
+                            className="w-7 h-7 rounded-lg border border-sky-500/20 bg-sky-500/5 hover:bg-sky-500/15 flex items-center justify-center transition-colors"
                           >
-                            <Download className="w-3 h-3 text-sky-600" />
-                            <span>PDF</span>
+                            <Download className="w-3.5 h-3.5 text-sky-600" />
                           </button>
 
-                          {/* CONVERT INTO INVOICE BUTTON (When Finalized) */}
+                          {/* To Invoice (finalized only) */}
                           {statusNum === 2 && (
                             <button
                               onClick={() => setConvertModal(est)}
-                              title="Convert Finalized Quotation into Sales Invoice"
-                              className="h-7 px-2.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-[11px] font-semibold flex items-center gap-1 shadow-2xs transition-colors animate-in fade-in"
+                              title="Convert to Sales Invoice"
+                              className="w-7 h-7 rounded-lg bg-emerald-600 hover:bg-emerald-700 flex items-center justify-center transition-colors shadow-2xs animate-in fade-in"
                             >
-                              <ArrowUpRight className="w-3.5 h-3.5" />
-                              <span>To Invoice</span>
+                              <ArrowUpRight className="w-3.5 h-3.5 text-white" />
                             </button>
                           )}
 
-                          {/* ACTIONS DROPDOWN MENU */}
-                          <div className="relative inline-block text-left">
-                            <button
-                              onClick={() => setActiveDropdownId(activeDropdownId === est.id ? null : est.id)}
-                              className="h-7 px-2.5 rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] hover:bg-[var(--color-surface-muted)] text-[var(--color-text-strong)] text-[11px] font-semibold flex items-center gap-1 shadow-2xs transition-colors"
-                              title="More actions"
-                            >
-                              <span>Actions</span>
-                              <ChevronDown className="w-3 h-3 text-[var(--color-text-muted)]" />
-                            </button>
+                          {/* Cancel */}
+                          <button
+                            onClick={() => cancelEstimate(est)}
+                            disabled={statusNum === 3}
+                            title={statusNum === 3 ? 'Already Cancelled' : 'Cancel Quote'}
+                            className={`w-7 h-7 rounded-lg border flex items-center justify-center transition-colors ${
+                              statusNum === 3
+                                ? 'border-[var(--color-border)] bg-[var(--color-surface)] opacity-40 cursor-not-allowed'
+                                : 'border-rose-500/30 bg-rose-500/5 hover:bg-rose-500/15 cursor-pointer'
+                            }`}
+                          >
+                            <Ban className="w-3.5 h-3.5 text-rose-500" />
+                          </button>
 
-                            {activeDropdownId === est.id && (
-                              <div className="absolute right-0 top-full mt-1 w-40 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] shadow-2xl z-40 py-1.5 animate-in fade-in zoom-in-95 duration-100">
-                                {/* 1. Edit */}
-                                <button
-                                  onClick={() => { setActiveDropdownId(null); openEditModal(est); }}
-                                  className="w-full px-3 py-2 text-left text-xs font-medium text-[var(--color-text-strong)] hover:bg-[var(--color-surface-muted)] flex items-center gap-2 transition-colors"
-                                >
-                                  <Pencil className="w-3.5 h-3.5 text-indigo-500" />
-                                  <span>Edit</span>
-                                </button>
+                          {/* Finalize / Approve */}
+                          <button
+                            onClick={() => finalizeEstimate(est)}
+                            disabled={statusNum === 2}
+                            title={statusNum === 2 ? 'Already Finalized' : 'Finalize Quote'}
+                            className={`w-7 h-7 rounded-lg border flex items-center justify-center transition-colors ${
+                              statusNum === 2
+                                ? 'border-[var(--color-border)] bg-[var(--color-surface)] opacity-40 cursor-not-allowed'
+                                : 'border-emerald-500/30 bg-emerald-500/5 hover:bg-emerald-500/15 cursor-pointer'
+                            }`}
+                          >
+                            <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
+                          </button>
 
-                                {/* 2. Finalize */}
-                                <button
-                                  onClick={() => { setActiveDropdownId(null); finalizeEstimate(est); }}
-                                  disabled={statusNum === 2}
-                                  className={`w-full px-3 py-2 text-left text-xs font-medium flex items-center gap-2 transition-colors ${
-                                    statusNum === 2
-                                      ? 'text-[var(--color-text-muted)] opacity-50 cursor-not-allowed'
-                                      : 'text-emerald-600 hover:bg-emerald-500/10 cursor-pointer'
-                                  }`}
-                                >
-                                  <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
-                                  <span>{statusNum === 2 ? 'Finalized' : 'Finalize'}</span>
-                                </button>
+                          {/* Edit */}
+                          <button
+                            onClick={() => openEditModal(est)}
+                            title="Edit Quote"
+                            className="w-7 h-7 rounded-lg border border-indigo-500/20 bg-indigo-500/5 hover:bg-indigo-500/15 flex items-center justify-center transition-colors"
+                          >
+                            <Pencil className="w-3.5 h-3.5 text-indigo-500" />
+                          </button>
 
-                                {/* 3. Cancel */}
-                                <button
-                                  onClick={() => { setActiveDropdownId(null); cancelEstimate(est); }}
-                                  disabled={statusNum === 3}
-                                  className={`w-full px-3 py-2 text-left text-xs font-medium flex items-center gap-2 transition-colors border-t border-[var(--color-border)] mt-1 pt-1.5 ${
-                                    statusNum === 3
-                                      ? 'text-[var(--color-text-muted)] opacity-50 cursor-not-allowed'
-                                      : 'text-rose-600 hover:bg-rose-500/10 cursor-pointer'
-                                  }`}
-                                >
-                                  <Ban className="w-3.5 h-3.5 text-rose-500" />
-                                  <span>{statusNum === 3 ? 'Cancelled' : 'Cancel'}</span>
-                                </button>
-                              </div>
-                            )}
-                          </div>
+                          {/* View */}
+                          <button
+                            onClick={() => openViewModal(est)}
+                            title="View Quote"
+                            className="w-7 h-7 rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] hover:bg-sky-500/10 hover:border-sky-500/30 flex items-center justify-center transition-colors"
+                          >
+                            <Eye className="w-3.5 h-3.5 text-sky-500" />
+                          </button>
                         </div>
                       </td>
                     </tr>
@@ -894,13 +988,13 @@ export const EstimatesAndQuotes: React.FC<{ activeEntityId: string; entities?: a
                     <table className="w-full text-xs">
                       <thead className="bg-[var(--color-surface-muted)] text-[var(--color-text-muted)] font-semibold border-b border-[var(--color-border)]">
                         <tr>
-                          <th className="p-2.5 text-left min-w-[180px]">Product / Service</th>
-                          <th className="p-2.5 text-left min-w-[160px]">Description</th>
-                          <th className="p-2.5 text-right w-20">Qty</th>
-                          <th className="p-2.5 text-right w-28">Price ({form.currencyCode || 'PKR'})</th>
-                          <th className="p-2.5 text-center min-w-[170px] w-48">Discount</th>
-                          <th className="p-2.5 text-right w-20">Tax %</th>
-                          <th className="p-2.5 text-right w-36">Total ({form.currencyCode || 'PKR'})</th>
+                          <th className="p-2.5 text-left w-[200px]">Product / Service</th>
+                          <th className="p-2.5 text-left">Description</th>
+                          <th className="p-2.5 text-right w-16">Qty</th>
+                          <th className="p-2.5 text-right w-24">Price ({form.currencyCode || 'PKR'})</th>
+                          <th className="p-2.5 text-center w-28">Discount</th>
+                          <th className="p-2.5 text-right w-16">Tax %</th>
+                          <th className="p-2.5 text-right w-28">Total ({form.currencyCode || 'PKR'})</th>
                           <th className="p-2.5 w-8"></th>
                         </tr>
                       </thead>
@@ -916,17 +1010,18 @@ export const EstimatesAndQuotes: React.FC<{ activeEntityId: string; entities?: a
                                 <option value="">Select Item...</option>
                                 {products.map((p: any) => (
                                   <option key={p.id} value={p.id}>
-                                    {p.code} — {p.name}
+                                    {p.name}
                                   </option>
                                 ))}
                               </select>
                             </td>
                             <td className="p-2">
-                              <input
+                              <textarea
                                 placeholder="Description"
                                 value={l.description}
                                 onChange={e => updateLine(i, 'description', e.target.value)}
-                                className="w-full h-8.5 px-2.5 rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] text-xs text-[var(--color-text-strong)] outline-none"
+                                rows={2}
+                                className="w-full px-2.5 py-1.5 rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] text-xs text-[var(--color-text-strong)] outline-none resize-none"
                               />
                             </td>
                             <td className="p-2">
@@ -1256,6 +1351,188 @@ export const EstimatesAndQuotes: React.FC<{ activeEntityId: string; entities?: a
           onClose={() => setConvertModal(null)}
         />
       )}
+
+      {/* Read-Only View Quotation Modal */}
+      {viewingEstimate && (() => {
+        const est = viewingEstimate
+        const customer = customers.find((c: any) => c.id === est.customerId)
+        const lines: any[] = est.lines || []
+        const subTotal = lines.reduce((s: number, l: any) => s + (parseFloat(l.unitPrice || 0) * parseFloat(l.quantity || 1)), 0)
+        const discTotal = lines.reduce((s: number, l: any) => s + parseFloat(l.discountValue || 0), 0)
+        const taxTotal = lines.reduce((s: number, l: any) => {
+          const base = parseFloat(l.unitPrice || 0) * parseFloat(l.quantity || 1) - parseFloat(l.discountValue || 0)
+          return s + base * (parseFloat(l.taxPercent || 0) / 100)
+        }, 0)
+        const netTotal = subTotal - discTotal + taxTotal
+        const fmt = (n: number) => `${est.currencyCode || 'PKR'} ${n.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+        return (
+          <div className="overlay animate-in fade-in duration-200" onClick={() => setViewingEstimate(null)}>
+            <div
+              className="w-full max-w-3xl bg-[var(--color-surface)] border border-[var(--color-border)] rounded-2xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh]"
+              onClick={e => e.stopPropagation()}
+            >
+              {/* Header */}
+              <div className="px-6 py-4 border-b border-[var(--color-border)] bg-[var(--color-surface-muted)]/50 flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-sky-500 to-indigo-600 flex items-center justify-center text-white shadow-sm shrink-0">
+                    <Eye className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <h2 className="text-sm font-bold text-[var(--color-text-strong)] tracking-tight">
+                        Quotation: {est.estimateNumber || est.reference || '—'}
+                      </h2>
+                      <span className="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-sky-500/10 text-sky-600 border border-sky-500/20">
+                        Read-Only
+                      </span>
+                    </div>
+                    <p className="text-xs text-[var(--color-text-muted)] mt-0.5">
+                      Customer: <strong className="text-[var(--color-text-strong)]">{customer?.name || 'N/A'}</strong>
+                      {' · '}Currency: <span className="font-mono font-bold">{est.currencyCode || 'PKR'}</span>
+                    </p>
+                  </div>
+                </div>
+                <button
+                  onClick={() => setViewingEstimate(null)}
+                  className="w-8 h-8 rounded-lg flex items-center justify-center text-[var(--color-text-muted)] hover:text-[var(--color-text-strong)] hover:bg-[var(--color-surface-muted)] transition-colors"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+
+              {/* Meta info */}
+              <div className="px-6 py-3 border-b border-[var(--color-border)] grid grid-cols-2 md:grid-cols-4 gap-4 text-xs bg-[var(--color-surface)]">
+                <div>
+                  <span className="text-[var(--color-text-muted)] block">Quotation Date</span>
+                  <strong className="text-[var(--color-text-strong)]">{est.estimateDate || '—'}</strong>
+                </div>
+                <div>
+                  <span className="text-[var(--color-text-muted)] block">Expiry Date</span>
+                  <strong className="text-[var(--color-text-strong)]">{est.expiryDate || '—'}</strong>
+                </div>
+                <div>
+                  <span className="text-[var(--color-text-muted)] block">Reference</span>
+                  <strong className="text-[var(--color-text-strong)]">{est.reference || '—'}</strong>
+                </div>
+                <div>
+                  <span className="text-[var(--color-text-muted)] block">Status</span>
+                  <span className={`inline-block px-2 py-0.5 rounded-full text-[10px] font-semibold ${statusStyles[getNumericStatus(est.status)]?.class || ''}`}>
+                    {statusStyles[getNumericStatus(est.status)]?.label || 'Draft'}
+                  </span>
+                </div>
+              </div>
+
+              {/* Customer & Notes */}
+              <div className="px-6 py-3 border-b border-[var(--color-border)] grid grid-cols-1 md:grid-cols-2 gap-4 text-xs bg-[var(--color-surface)]">
+                <div>
+                  <span className="text-[var(--color-text-muted)] block">Customer Details</span>
+                  <strong className="text-[var(--color-text-strong)]">{customer?.name || 'N/A'}</strong>
+                  {customer?.email && <div className="text-[var(--color-text-muted)]">{customer.email}</div>}
+                  {customer?.phone && <div className="text-[var(--color-text-muted)]">{customer.phone}</div>}
+                </div>
+                <div>
+                  <span className="text-[var(--color-text-muted)] block">Notes</span>
+                  <strong className="text-[var(--color-text-strong)]">{est.notes || '—'}</strong>
+                </div>
+              </div>
+
+              {/* Line Items */}
+              <div className="flex-1 overflow-y-auto px-6 py-4">
+                <div className="border border-[var(--color-border)] rounded-xl overflow-hidden">
+                  <table className="w-full text-xs">
+                    <thead>
+                      <tr className="bg-[var(--color-surface-muted)] border-b border-[var(--color-border)] text-[var(--color-text-muted)]">
+                        <th className="text-left px-3 py-2 font-semibold">#</th>
+                        <th className="text-left px-3 py-2 font-semibold">Description</th>
+                        <th className="text-right px-3 py-2 font-semibold">Qty</th>
+                        <th className="text-right px-3 py-2 font-semibold">Unit Price</th>
+                        <th className="text-right px-3 py-2 font-semibold">Discount</th>
+                        <th className="text-right px-3 py-2 font-semibold">Tax %</th>
+                        <th className="text-right px-3 py-2 font-semibold">Line Total</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-[var(--color-border)]">
+                      {lines.length === 0 ? (
+                        <tr>
+                          <td colSpan={7} className="px-3 py-4 text-center text-[var(--color-text-muted)] italic">No line items</td>
+                        </tr>
+                      ) : lines.map((l: any, i: number) => {
+                        const qty = parseFloat(l.quantity || 1)
+                        const up = parseFloat(l.unitPrice || 0)
+                        const disc = parseFloat(l.discountValue || 0)
+                        const taxPct = parseFloat(l.taxPercent || 0)
+                        const base = qty * up - disc
+                        const tax = base * (taxPct / 100)
+                        const total = base + tax
+                        return (
+                          <tr key={i} className="hover:bg-[var(--color-surface-muted)]/40">
+                            <td className="px-3 py-2 text-[var(--color-text-muted)]">{i + 1}</td>
+                            <td className="px-3 py-2 text-[var(--color-text-strong)] font-medium max-w-[160px] truncate">{l.description || '—'}</td>
+                            <td className="px-3 py-2 text-right font-mono">{qty}</td>
+                            <td className="px-3 py-2 text-right font-mono">{up.toFixed(2)}</td>
+                            <td className="px-3 py-2 text-right font-mono text-rose-500">{disc > 0 ? `-${disc.toFixed(2)}` : '—'}</td>
+                            <td className="px-3 py-2 text-right font-mono text-amber-600">{taxPct > 0 ? `${taxPct}%` : '—'}</td>
+                            <td className="px-3 py-2 text-right font-mono font-semibold text-[var(--color-text-strong)]">{fmt(total)}</td>
+                          </tr>
+                        )
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+
+                {/* Totals */}
+                <div className="mt-4 ml-auto w-64 space-y-1.5 text-xs">
+                  <div className="flex justify-between text-[var(--color-text-muted)]">
+                    <span>Subtotal</span>
+                    <span className="font-mono font-semibold text-[var(--color-text-strong)]">{fmt(subTotal)}</span>
+                  </div>
+                  {discTotal > 0 && (
+                    <div className="flex justify-between text-rose-500 font-mono">
+                      <span>Total Discount</span>
+                      <span>-{fmt(discTotal)}</span>
+                    </div>
+                  )}
+                  {taxTotal > 0 && (
+                    <div className="flex justify-between text-amber-600 font-mono">
+                      <span>Total Tax</span>
+                      <span>+{fmt(taxTotal)}</span>
+                    </div>
+                  )}
+                  <div className="border-t border-[var(--color-border)] pt-2 flex justify-between font-bold text-sm text-[var(--color-text-strong)]">
+                    <span>Net Total</span>
+                    <span className="text-sky-600 font-mono">{fmt(netTotal)}</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Terms & Conditions */}
+              {est.terms && (
+                <div className="px-6 py-3 border-t border-[var(--color-border)] bg-[var(--color-surface)] text-xs">
+                  <span className="text-[var(--color-text-muted)] font-semibold">Terms & Conditions:</span>
+                  <p className="text-[var(--color-text-strong)] mt-1">{est.terms}</p>
+                </div>
+              )}
+
+              {/* Footer */}
+              <div className="px-6 py-3 border-t border-[var(--color-border)] bg-[var(--color-surface-muted)]/50 flex items-center justify-end gap-2">
+                <button
+                  onClick={() => { setViewingEstimate(null); openEditModal(est); }}
+                  className="h-8 px-4 rounded-lg border border-indigo-500/30 bg-indigo-500/5 hover:bg-indigo-500/15 text-indigo-600 text-xs font-semibold flex items-center gap-1.5 transition-colors"
+                >
+                  <Pencil className="w-3 h-3" />
+                  Edit Quote
+                </button>
+                <button
+                  onClick={() => setViewingEstimate(null)}
+                  className="h-8 px-4 rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] hover:bg-[var(--color-surface-muted)] text-xs font-medium text-[var(--color-text)] transition-colors"
+                >
+                  Close
+                </button>
+              </div>
+            </div>
+          </div>
+        )
+      })()}
     </div>
   )
 }
@@ -1498,8 +1775,8 @@ const CreateInvoiceFromEstimateModal = ({
               <table className="w-full text-xs">
                 <thead className="bg-[var(--color-surface-muted)] text-[var(--color-text-muted)] border-b border-[var(--color-border)]">
                   <tr>
-                    <th className="p-2.5 text-left min-w-[160px]">Product / Service</th>
-                    <th className="p-2.5 text-left min-w-[150px]">Description</th>
+                    <th className="p-2.5 text-left w-[200px]">Product / Service</th>
+                    <th className="p-2.5 text-left">Description</th>
                     <th className="p-2.5 text-right w-16">Qty</th>
                     <th className="p-2.5 text-right w-24">Price</th>
                     <th className="p-2.5 text-right w-20">Discount</th>
@@ -1520,17 +1797,18 @@ const CreateInvoiceFromEstimateModal = ({
                           <option value="">Select Item...</option>
                           {products.map((p: any) => (
                             <option key={p.id} value={p.id}>
-                              {p.code} — {p.name}
+                              {p.name}
                             </option>
                           ))}
                         </select>
                       </td>
                       <td className="p-1.5">
-                        <input
+                        <textarea
                           value={line.description}
                           onChange={e => updateInvLine(idx, 'description', e.target.value)}
                           placeholder="Line description"
-                          className="w-full max-w-full truncate h-8 px-2 rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] text-xs text-[var(--color-text-strong)] outline-none"
+                          rows={2}
+                          className="w-full max-w-full px-2 py-1.5 rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] text-xs text-[var(--color-text-strong)] outline-none resize-none"
                         />
                       </td>
                       <td className="p-1.5">

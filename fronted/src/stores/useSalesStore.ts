@@ -93,10 +93,10 @@ export const useSalesStore = create<SalesState>((set, get) => ({
       let maxNum = 0;
       for (const item of items) {
         const str = (type === 'invoice' ? (item.invoiceNumber || item.reference) : (item.estimateNumber || item.reference)) || '';
-        const match = str.match(/\d+/);
+        const match = str.match(new RegExp(`${prefix}-(\\d+)`));
         if (match) {
-          const num = parseInt(match[0], 10);
-          if (!isNaN(num) && num > maxNum) maxNum = num;
+          const num = parseInt(match[1], 10);
+          if (!isNaN(num) && num < 100000 && num > maxNum) maxNum = num;
         }
       }
       const nextNum = maxNum > 0 ? maxNum + 1 : 1;

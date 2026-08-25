@@ -4,7 +4,7 @@ import autoTable from 'jspdf-autotable'
 import {
   Receipt, Plus, Check, X, ShieldCheck, ArrowRight,
   ArrowLeft, Hash, Users, FileText, Coins, CheckCircle2, Eye,
-  Download, ChevronDown, Pencil, Ban
+  Download, Pencil, Ban
 } from 'lucide-react'
 import { useSalesStore, useCustomersStore, useProductsStore, useCoaStore } from './stores'
 import { useFormDraft } from './hooks/useFormDraft'
@@ -44,17 +44,9 @@ export const SalesWorkspace: React.FC<{ activeEntityId: string; entities?: any[]
   const [editingInvoice, setEditingInvoice] = useState<any>(null)
   const [modalTab, setModalTab] = useState<'details' | 'lines' | 'summary' | 'preview'>('details')
   const [postModal, setPostModal] = useState<any>(null)
-  const [activeDropdownId, setActiveDropdownId] = useState<string | null>(null)
   const [toast, setToast] = useState('')
   const [query, setQuery] = useState('')
   const [statusFilter, setStatusFilter] = useState<string>('all')
-
-  // Close dropdown on click outside
-  useEffect(() => {
-    const handleClickOutside = () => setActiveDropdownId(null)
-    window.addEventListener('click', handleClickOutside)
-    return () => window.removeEventListener('click', handleClickOutside)
-  }, [])
 
   // Form state
   const [form, setForm] = useState({
@@ -67,7 +59,7 @@ export const SalesWorkspace: React.FC<{ activeEntityId: string; entities?: any[]
   })
 
   const [lines, setLines] = useState([
-    { productId: '', description: '', quantity: '1', unitPrice: '0', discountAmount: '0', taxAmount: '0' }
+    { productId: '', productName: '', description: '', quantity: '1', unitPrice: '0', discountAmount: '0', taxAmount: '0' }
   ])
 
   const { saveDraft, clearDraft } = useFormDraft('sales_invoice', { form, lines }, (saved: any) => {
@@ -104,10 +96,10 @@ export const SalesWorkspace: React.FC<{ activeEntityId: string; entities?: any[]
     let maxNum = 0
     for (const item of invoices) {
       const str = (item.invoiceNumber || item.reference || '') + ''
-      const match = str.match(/\d+/)
+      const match = str.match(/INV-(\d+)/)
       if (match) {
-        const num = parseInt(match[0], 10)
-        if (!isNaN(num) && num > maxNum) maxNum = num
+        const num = parseInt(match[1], 10)
+        if (!isNaN(num) && num < 100000 && num > maxNum) maxNum = num
       }
     }
     return `INV-${(maxNum + 1).toString().padStart(5, '0')}`
@@ -125,7 +117,7 @@ export const SalesWorkspace: React.FC<{ activeEntityId: string; entities?: any[]
       notes: 'Payment is due within invoice terms. Thank you for your business.',
       currencyCode: 'PKR'
     })
-    setLines([{ productId: '', description: '', quantity: '1', unitPrice: '0', discountAmount: '0', taxAmount: '0' }])
+    setLines([{ productId: '', productName: '', description: '', quantity: '1', unitPrice: '0', discountAmount: '0', taxAmount: '0' }])
     setModalTab('details')
     setShowForm(true)
   }
@@ -142,15 +134,19 @@ export const SalesWorkspace: React.FC<{ activeEntityId: string; entities?: any[]
     })
     setLines(
       inv.lines && inv.lines.length > 0
-        ? inv.lines.map((l: any) => ({
-            productId: l.productId || '',
-            description: l.description || '',
-            quantity: String(l.quantity || 1),
-            unitPrice: String(l.unitPrice || 0),
-            discountAmount: String(l.discountAmount || 0),
-            taxAmount: String(l.taxAmount || 0)
-          }))
-        : [{ productId: '', description: '', quantity: '1', unitPrice: '0', discountAmount: '0', taxAmount: '0' }]
+        ? inv.lines.map((l: any) => {
+            const prod = products.find((p: any) => p.id === l.productId)
+            return {
+              productId: l.productId || '',
+              productName: l.productName || prod?.name || l.description || '',
+              description: l.description || '',
+              quantity: String(l.quantity || 1),
+              unitPrice: String(l.unitPrice || 0),
+              discountAmount: String(l.discountAmount || 0),
+              taxAmount: String(l.taxAmount || 0)
+            }
+          })
+        : [{ productId: '', productName: '', description: '', quantity: '1', unitPrice: '0', discountAmount: '0', taxAmount: '0' }]
     )
     setModalTab('details')
     setShowForm(true)
@@ -193,7 +189,7 @@ export const SalesWorkspace: React.FC<{ activeEntityId: string; entities?: any[]
   }
 
   const addLine = () =>
-    setLines([...lines, { productId: '', description: '', quantity: '1', unitPrice: '0', discountAmount: '0', taxAmount: '0' }])
+    setLines([...lines, { productId: '', productName: '', description: '', quantity: '1', unitPrice: '0', discountAmount: '0', taxAmount: '0' }])
   
   const removeLine = (i: number) => setLines(lines.filter((_, idx) => idx !== i))
 
@@ -205,6 +201,7 @@ export const SalesWorkspace: React.FC<{ activeEntityId: string; entities?: any[]
       if (prod) {
         updated[i] = {
           ...updated[i],
+          productName: prod.name,
           description: prod.name,
           unitPrice: String(prod.unitPrice || prod.salesPrice || 0)
         }
@@ -228,6 +225,7 @@ export const SalesWorkspace: React.FC<{ activeEntityId: string; entities?: any[]
       companyId: activeEntityId || null,
       lines: lines.map(l => ({
         productId: l.productId || null,
+        productName: l.productName || l.description || '',
         description: l.description,
         quantity: parseFloat(l.quantity || '1'),
         unitPrice: parseFloat(l.unitPrice || '0'),
@@ -261,92 +259,229 @@ export const SalesWorkspace: React.FC<{ activeEntityId: string; entities?: any[]
       const statusText = typeof inv.status === 'number'
         ? ['Draft', 'Approved', 'Paid', 'Cancelled / Void', 'Partially Paid', 'Overdue'][inv.status] || 'Draft'
         : String(inv.status || 'Draft')
+      const currency = inv.currencyCode || 'PKR'
+      const pageW = doc.internal.pageSize.getWidth()
 
-      // Header Banner
+      const tealDark: [number, number, number] = [1, 72, 113]
+      const mintLight: [number, number, number] = [160, 235, 207]
+      const tealMid: [number, number, number] = [30, 130, 160]
+
+      // ── Gradient Header Banner ──
+      for (let x = 0; x < pageW; x++) {
+        const ratio = x / pageW
+        const r = Math.round(tealDark[0] + (mintLight[0] - tealDark[0]) * ratio)
+        const g = Math.round(tealDark[1] + (mintLight[1] - tealDark[1]) * ratio)
+        const b = Math.round(tealDark[2] + (mintLight[2] - tealDark[2]) * ratio)
+        doc.setFillColor(r, g, b)
+        doc.rect(x, 0, 1, 38, 'F')
+      }
+
       doc.setFont('helvetica', 'bold')
-      doc.setFontSize(20)
-      doc.setTextColor(15, 23, 42)
-      doc.text('TAX / SALES INVOICE', 14, 20)
+      doc.setFontSize(22)
+      doc.setTextColor(255, 255, 255)
+      doc.text('TAX INVOICE', 14, 18)
 
-      doc.setFontSize(11)
-      doc.setTextColor(14, 116, 144)
-      doc.text(compName, 14, 27)
+      doc.setFontSize(10)
+      doc.setFont('helvetica', 'normal')
+      doc.setTextColor(220, 245, 235)
+      doc.text(compName, 14, 26)
 
-      // Meta Info Grid
+      doc.setFontSize(8)
+      doc.text('Official Commercial Tax Invoice', 14, 33)
+
+      // Invoice meta (right side of header)
       doc.setFontSize(9)
+      doc.setTextColor(255, 255, 255)
       doc.setFont('helvetica', 'normal')
-      doc.setTextColor(71, 85, 105)
-      doc.text(`Invoice Number: ${invNum}`, 14, 35)
-      doc.text(`Issue Date: ${inv.invoiceDate || '—'}`, 14, 40)
-      doc.text(`Due Date: ${inv.dueDate || '—'}`, 14, 45)
-      doc.text(`Status: ${statusText.toUpperCase()}`, 14, 50)
-
-      doc.text(`Billed To:`, 120, 35)
+      doc.text('Invoice Number:', pageW - 80, 14)
       doc.setFont('helvetica', 'bold')
-      doc.setTextColor(15, 23, 42)
-      doc.text(`${inv.customerName || 'Valued Customer'}`, 120, 40)
+      doc.text(invNum, pageW - 80, 20)
       doc.setFont('helvetica', 'normal')
-      doc.setTextColor(71, 85, 105)
-      if (inv.reference) doc.text(`Reference / PO: ${inv.reference}`, 120, 45)
-      doc.text(`Currency: ${inv.currencyCode || 'PKR'}`, 120, 50)
+      doc.text('Issue Date:', pageW - 80, 26)
+      doc.text(inv.invoiceDate || '—', pageW - 80, 32)
+      doc.text('Due Date:', pageW - 42, 26)
+      doc.text(inv.dueDate || '—', pageW - 42, 32)
+      doc.text('Status:', pageW - 42, 14)
+      doc.setFont('helvetica', 'bold')
+      doc.text(statusText.toUpperCase(), pageW - 42, 20)
 
-      // Line items table
+      // ── Customer Section ──
+      const custY = 44
+      doc.setFillColor(235, 248, 245)
+      doc.rect(14, custY, pageW - 28, 26, 'F')
+      doc.setDrawColor(...tealMid)
+      doc.rect(14, custY, pageW - 28, 26, 'S')
+
+      doc.setFont('helvetica', 'bold')
+      doc.setFontSize(8)
+      doc.setTextColor(...tealDark)
+      doc.text('BILL TO', 18, custY + 6)
+      doc.setFontSize(11)
+      doc.setTextColor(15, 23, 42)
+      doc.text(inv.customerName || 'Valued Customer', 18, custY + 14)
+      doc.setFontSize(8)
+      doc.setTextColor(100, 116, 139)
+      if (inv.customerEmail) doc.text(inv.customerEmail, 18, custY + 19)
+      if (inv.reference) doc.text(`Ref / PO: ${inv.reference}`, 18, custY + 23)
+
+      doc.setFont('helvetica', 'bold')
+      doc.setFontSize(8)
+      doc.setTextColor(...tealDark)
+      doc.text('CURRENCY', pageW - 80, custY + 6)
+      doc.setFont('helvetica', 'normal')
+      doc.setTextColor(15, 23, 42)
+      doc.text(currency, pageW - 80, custY + 14)
+
+      // ── Line Items Table ──
+      const tableStartY = custY + 32
+
       const linesData = (inv.lines && inv.lines.length > 0)
-        ? inv.lines.map((l: any, idx: number) => [
-            String(idx + 1),
-            l.description || 'Sales Line Item',
-            String(l.quantity || 1),
-            money(l.unitPrice || 0),
-            l.discountAmount > 0 ? `-${money(l.discountAmount)}` : '0',
-            l.taxAmount > 0 ? `+${money(l.taxAmount)}` : '0',
-            money(l.totalAmount || ((l.quantity || 1) * (l.unitPrice || 0) - (l.discountAmount || 0) + (l.taxAmount || 0)))
-          ])
+        ? inv.lines.map((l: any, idx: number) => {
+            const qty = parseFloat(l.quantity || '1') || 1
+            const price = parseFloat(l.unitPrice || '0') || 0
+            const gross = qty * price
+            const discAmt = parseFloat(l.discountAmount || '0') || 0
+            const taxPct = parseFloat(l.taxPercent || '0') || 0
+            const taxAmt = parseFloat(l.taxAmount || '0') || (gross - discAmt) * taxPct / 100
+            const total = gross - discAmt + taxAmt
+            const prod = products.find((p: any) => p.id === l.productId)
+            const itemName = l.productName || prod?.name || l.description || ''
+            const desc = l.description || ''
+
+            return [
+              idx + 1,
+              itemName,
+              desc,
+              String(qty),
+              money(price),
+              money(gross),
+              money(discAmt),
+              money(taxAmt),
+              money(total)
+            ]
+          })
         : [
-            ['1', 'Sales Item / Commercial Invoice Service', '1', money(inv.totalAmount || 0), '0', '0', money(inv.totalAmount || 0)]
+            ['1', 'Sales Item', '', '1', money(inv.totalAmount || 0), money(inv.totalAmount || 0), '0', '0', money(inv.totalAmount || 0)]
           ]
 
       autoTable(doc, {
-        startY: 57,
-        head: [['#', 'Description', 'Qty', 'Unit Price', 'Discount', 'Tax', 'Total']],
+        startY: tableStartY,
+        head: [['#', 'Item Name', 'Description', 'Qty', 'Unit Price', 'Gross', 'Discount Amt', 'Tax Amt', 'Total']],
         body: linesData,
-        theme: 'striped',
-        headStyles: { fillColor: [14, 116, 144], textColor: 255, fontStyle: 'bold' },
-        styles: { fontSize: 8.5, cellPadding: 3 },
+        headStyles: { fillColor: tealDark, textColor: [255, 255, 255], fontStyle: 'bold', fontSize: 7.5, cellPadding: 2.5 },
+        bodyStyles: { fontSize: 7.5, textColor: [30, 41, 59], cellPadding: 2.5 },
+        alternateRowStyles: { fillColor: [235, 248, 245] },
+        margin: { left: 14, right: 14 },
         columnStyles: {
-          0: { cellWidth: 10, halign: 'center' },
-          1: { cellWidth: 'auto' },
-          2: { cellWidth: 16, halign: 'right' },
-          3: { cellWidth: 26, halign: 'right' },
+          0: { cellWidth: 8, halign: 'center' },
+          1: { cellWidth: 35 },
+          2: { cellWidth: 40 },
+          3: { cellWidth: 14, halign: 'center' },
           4: { cellWidth: 24, halign: 'right' },
           5: { cellWidth: 24, halign: 'right' },
-          6: { cellWidth: 30, halign: 'right', fontStyle: 'bold' }
+          6: { cellWidth: 22, halign: 'right' },
+          7: { cellWidth: 22, halign: 'right' },
+          8: { cellWidth: 26, halign: 'right', fontStyle: 'bold' }
         }
       })
 
       const finalY = (doc as any).lastAutoTable?.finalY || 120
 
-      // Financial Summary Box
-      autoTable(doc, {
-        startY: finalY + 5,
-        body: [
-          ['Subtotal:', money(inv.subTotal || inv.totalAmount || 0)],
-          ['Discount Total:', `-${money(inv.discountTotal || 0)}`],
-          ['Tax / VAT Total:', `+${money(inv.taxTotal || 0)}`],
-          ['Total Invoice Amount:', money(inv.totalAmount || 0)],
-          ['Amount Paid / Settled:', money(inv.paidAmount || 0)],
-          ['Balance Due:', money(inv.amountDue != null ? inv.amountDue : inv.totalAmount)]
-        ],
-        theme: 'plain',
-        styles: { fontSize: 9, cellPadding: 1.5 },
-        columnStyles: {
-          0: { cellWidth: 140, halign: 'right', fontStyle: 'normal' },
-          1: { cellWidth: 40, halign: 'right', fontStyle: 'bold' }
-        }
-      })
+      // ── Financial Summary (Always show all lines) ──
+      const totalsX = 120
+      const totalsValX = pageW - 14
+
+      doc.setDrawColor(...tealMid)
+      doc.line(totalsX, finalY + 8, totalsValX, finalY + 8)
+
+      doc.setFontSize(9)
+      doc.setFont('helvetica', 'normal')
+      doc.setTextColor(100, 116, 139)
+      doc.text('Subtotal:', totalsX, finalY + 14)
+      doc.setTextColor(30, 41, 59)
+      doc.text(money(inv.subTotal || inv.totalAmount || 0), totalsValX, finalY + 14, { align: 'right' })
+
+      doc.setTextColor(225, 29, 72)
+      doc.text('Discount Total:', totalsX, finalY + 20)
+      doc.text(`-${money(inv.discountTotal || 0)}`, totalsValX, finalY + 20, { align: 'right' })
+
+      doc.setTextColor(217, 119, 6)
+      doc.text('Tax / VAT Total:', totalsX, finalY + 26)
+      doc.text(`+${money(inv.taxTotal || 0)}`, totalsValX, finalY + 26, { align: 'right' })
+
+      doc.setDrawColor(...tealDark)
+      doc.setLineWidth(0.5)
+      doc.line(totalsX, finalY + 30, totalsValX, finalY + 30)
+
+      doc.setFont('helvetica', 'bold')
+      doc.setFontSize(12)
+      doc.setTextColor(...tealDark)
+      doc.text(`TOTAL (${currency}):`, totalsX, finalY + 37)
+      doc.text(money(inv.totalAmount || 0), totalsValX, finalY + 37, { align: 'right' })
+
+      if (inv.paidAmount > 0) {
+        doc.setDrawColor(...tealMid)
+        doc.line(totalsX, finalY + 40, totalsValX, finalY + 40)
+        doc.setFontSize(9)
+        doc.setTextColor(16, 185, 129)
+        doc.text('Amount Paid:', totalsX, finalY + 46)
+        doc.text(money(inv.paidAmount), totalsValX, finalY + 46, { align: 'right' })
+
+        doc.setFontSize(10)
+        doc.setFont('helvetica', 'bold')
+        doc.setTextColor(225, 29, 72)
+        doc.text('Balance Due:', totalsX, finalY + 52)
+        doc.text(money(inv.amountDue != null ? inv.amountDue : inv.totalAmount), totalsValX, finalY + 52, { align: 'right' })
+      }
+
+      // ── Terms & Conditions ──
+      const termsY = finalY + (inv.paidAmount > 0 ? 58 : 48)
+      doc.setFillColor(235, 248, 245)
+      doc.rect(14, termsY, pageW - 28, 32, 'F')
+      doc.setDrawColor(...tealMid)
+      doc.rect(14, termsY, pageW - 28, 32, 'S')
+
+      doc.setFont('helvetica', 'bold')
+      doc.setFontSize(8)
+      doc.setTextColor(...tealDark)
+      doc.text('TERMS & CONDITIONS', 18, termsY + 6)
+
+      doc.setFont('helvetica', 'normal')
+      doc.setFontSize(7.5)
+      doc.setTextColor(71, 85, 105)
+      const terms = inv.terms || '1. Payment is due within 30 days of invoice date.\n2. Late payments are subject to a 1.5% monthly interest charge.\n3. All goods remain property of seller until fully paid.\n4. Returns accepted within 14 days of delivery with original packaging.\n5. Any dispute shall be resolved under local jurisdiction.'
+      const splitTerms = doc.splitTextToSize(terms, pageW - 36)
+      doc.text(splitTerms.slice(0, 6), 18, termsY + 12)
+
+      // ── Notes ──
+      if (inv.notes) {
+        doc.setFont('helvetica', 'bold')
+        doc.setFontSize(8)
+        doc.setTextColor(...tealDark)
+        doc.text('NOTES:', 14, termsY + 38)
+        doc.setFont('helvetica', 'normal')
+        doc.setFontSize(7.5)
+        doc.setTextColor(71, 85, 105)
+        const splitNotes = doc.splitTextToSize(inv.notes, pageW - 28)
+        doc.text(splitNotes.slice(0, 3), 14, termsY + 43)
+      }
+
+      // ── Signature Area ──
+      const sigY = 260
+      doc.setDrawColor(...tealMid)
+      doc.line(14, sigY, 80, sigY)
+      doc.line(pageW - 80, sigY, pageW - 14, sigY)
 
       doc.setFontSize(8)
+      doc.setTextColor(100, 116, 139)
+      doc.text('Authorized Signature', 14, sigY + 5)
+      doc.text('Customer Signature', pageW - 80, sigY + 5)
+
+      // ── Footer ──
+      doc.setFontSize(7)
       doc.setTextColor(148, 163, 184)
-      doc.text('This is a computer-generated official commercial tax invoice generated by AccountBook ERP.', 14, 280)
+      doc.text(`Generated by ${compName} • AccountBook ERP • Tax Invoice`, 14, 287)
+      doc.text(`Page 1 of 1`, pageW - 14, 287, { align: 'right' })
 
       doc.save(`Invoice_${invNum}.pdf`)
       notify(`✓ Invoice ${invNum} PDF downloaded successfully!`)
@@ -531,9 +666,10 @@ export const SalesWorkspace: React.FC<{ activeEntityId: string; entities?: any[]
                   <th className="text-left px-3 py-2 font-semibold text-[var(--color-text-muted)]">Customer</th>
                   <th className="text-left px-3 py-2 font-semibold text-[var(--color-text-muted)]">Date</th>
                   <th className="text-left px-3 py-2 font-semibold text-[var(--color-text-muted)]">Due Date</th>
+                  <th className="text-right px-3 py-2 font-semibold text-[var(--color-text-muted)]">Gross Amount</th>
                   <th className="text-right px-3 py-2 font-semibold text-[var(--color-text-muted)]">Discount</th>
                   <th className="text-right px-3 py-2 font-semibold text-[var(--color-text-muted)]">Tax</th>
-                  <th className="text-right px-3 py-2 font-semibold text-[var(--color-text-muted)]">Total</th>
+                  <th className="text-right px-3 py-2 font-semibold text-[var(--color-text-muted)]">Net Total</th>
                   <th className="text-right px-3 py-2 font-semibold text-[var(--color-text-muted)]">Due</th>
                   <th className="text-center px-3 py-2 font-semibold text-[var(--color-text-muted)]">Status</th>
                   <th className="text-right px-3 py-2 font-semibold text-[var(--color-text-muted)]">Actions</th>
@@ -545,6 +681,12 @@ export const SalesWorkspace: React.FC<{ activeEntityId: string; entities?: any[]
                     ? ['Draft', 'Sent', 'Paid', 'Void', 'PartiallyPaid', 'Overdue'][inv.status] || 'Draft'
                     : String(inv.status || 'Draft')
                   const badge = statusStyles[statusKey] || statusStyles.Draft
+                  const lines: any[] = inv.lines || []
+                  const grossAmount = inv.subTotal ?? inv.grossAmount ?? (lines.length > 0 ? lines.reduce((s, l) => s + ((parseFloat(l.quantity) || 1) * (parseFloat(l.unitPrice) || 0)), 0) : (inv.totalAmount || 0))
+                  const discountAmount = inv.discountTotal ?? (lines.length > 0 ? lines.reduce((s, l) => s + (parseFloat(l.discountAmount) || 0), 0) : 0)
+                  const taxAmount = inv.taxTotal ?? (lines.length > 0 ? lines.reduce((s, l) => s + (parseFloat(l.taxAmount) || 0), 0) : 0)
+                  const netTotal = inv.totalAmount ?? (grossAmount - discountAmount + taxAmount)
+                  const amountDue = inv.amountDue ?? (netTotal - (inv.paidAmount || inv.amountPaid || 0))
 
                   return (
                     <tr key={inv.id} className="border-b border-[var(--color-border)] hover:bg-[var(--color-surface-muted)] transition-colors">
@@ -552,91 +694,75 @@ export const SalesWorkspace: React.FC<{ activeEntityId: string; entities?: any[]
                       <td className="px-3 py-2 font-semibold text-[var(--color-text-strong)]">{inv.customerName || '—'}</td>
                       <td className="px-3 py-2 text-[var(--color-text-muted)]">{inv.invoiceDate}</td>
                       <td className="px-3 py-2 text-[var(--color-text-muted)]">{inv.dueDate}</td>
+                      <td className="px-3 py-2 text-right font-mono font-semibold text-[var(--color-text-strong)]">
+                        {money(grossAmount)}
+                      </td>
                       <td className="px-3 py-2 text-right text-rose-500 font-mono">
-                        {inv.discountTotal > 0 ? `-${money(inv.discountTotal)}` : '—'}
+                        {discountAmount > 0 ? `-${money(discountAmount)}` : '—'}
                       </td>
-                      <td className="px-3 py-2 text-right text-amber-500 font-mono">
-                        {inv.taxTotal > 0 ? money(inv.taxTotal) : '—'}
+                      <td className="px-3 py-2 text-right text-amber-600 font-mono">
+                        {taxAmount > 0 ? `+${money(taxAmount)}` : '—'}
                       </td>
-                      <td className="px-3 py-2 text-right font-bold text-sky-600 font-mono">{money(inv.totalAmount)}</td>
-                      <td className="px-3 py-2 text-right font-semibold text-rose-600 font-mono">{money(inv.amountDue)}</td>
+                      <td className="px-3 py-2 text-right font-bold text-sky-600 font-mono">{money(netTotal)}</td>
+                      <td className="px-3 py-2 text-right font-semibold text-rose-600 font-mono">{money(amountDue)}</td>
                       <td className="px-3 py-2 text-center">
                         <span className={`inline-block px-2 py-0.5 rounded-full text-[10px] font-semibold ${badge.class}`}>
                           {badge.label}
                         </span>
                       </td>
                       <td className="px-3 py-2 text-right">
-                        <div className="flex items-center justify-end gap-1.5" onClick={e => e.stopPropagation()}>
-                          {/* Dedicated PDF Download Button */}
+                        <div className="flex items-center justify-end gap-1" onClick={e => e.stopPropagation()}>
+
+                          {/* PDF Download */}
                           <button
                             onClick={() => downloadInvoicePdf(inv)}
-                            title="Download Sales Invoice PDF"
-                            className="h-7 px-2 rounded-lg border border-sky-500/20 bg-sky-500/5 hover:bg-sky-500/15 text-sky-600 text-[11px] font-semibold flex items-center gap-1 shadow-2xs transition-colors"
+                            title="Download PDF"
+                            className="w-7 h-7 rounded-lg border border-sky-500/20 bg-sky-500/5 hover:bg-sky-500/15 flex items-center justify-center transition-colors"
                           >
-                            <Download className="w-3 h-3 text-sky-600" />
-                            <span>PDF</span>
+                            <Download className="w-3.5 h-3.5 text-sky-600" />
                           </button>
 
-                          {/* Actions Dropdown Button */}
-                          <div className="relative inline-block text-left">
+                          {/* Cancel / Void */}
+                          {inv.status !== 3 && inv.status !== 'Void' && (
                             <button
-                              onClick={() => setActiveDropdownId(activeDropdownId === inv.id ? null : inv.id)}
-                              className="h-7 px-2.5 rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] hover:bg-[var(--color-surface-muted)] text-[var(--color-text-strong)] text-[11px] font-semibold flex items-center gap-1 shadow-2xs transition-colors"
-                              title="More actions"
+                              onClick={() => cancelInvoice(inv)}
+                              title="Cancel / Void Invoice"
+                              className="w-7 h-7 rounded-lg border border-rose-500/20 bg-rose-500/5 hover:bg-rose-500/15 flex items-center justify-center transition-colors"
                             >
-                              <span>Actions</span>
-                              <ChevronDown className="w-3 h-3 text-[var(--color-text-muted)]" />
+                              <Ban className="w-3.5 h-3.5 text-rose-500" />
                             </button>
+                          )}
 
-                            {activeDropdownId === inv.id && (
-                              <div className="absolute right-0 top-full mt-1 w-44 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] shadow-2xl z-50 py-1.5 animate-in fade-in zoom-in-95 duration-100">
-                                {/* Edit Invoice (if Draft) */}
-                                {(inv.status === 0 || inv.status === 'Draft') && (
-                                  <button
-                                    onClick={() => { setActiveDropdownId(null); openEditModal(inv); }}
-                                    className="w-full px-3 py-1.5 text-left text-xs font-semibold text-indigo-600 dark:text-indigo-400 hover:bg-indigo-500/10 flex items-center gap-2 transition-colors"
-                                  >
-                                    <Pencil className="w-3.5 h-3.5" />
-                                    <span>Edit Invoice</span>
-                                  </button>
-                                )}
+                          {/* Approve & Post (Draft only) */}
+                          {(inv.status === 0 || inv.status === 'Draft') && (
+                            <button
+                              onClick={() => openPostModal(inv)}
+                              title="Approve & Post to Ledger"
+                              className="w-7 h-7 rounded-lg border border-emerald-500/20 bg-emerald-500/5 hover:bg-emerald-500/15 flex items-center justify-center transition-colors"
+                            >
+                              <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
+                            </button>
+                          )}
 
-                                {/* Approve / Post to Ledger */}
-                                {(inv.status === 0 || inv.status === 'Draft') && (
-                                  <button
-                                    onClick={() => {
-                                      setActiveDropdownId(null);
-                                      openPostModal(inv);
-                                    }}
-                                    className="w-full px-3 py-1.5 text-left text-xs font-semibold text-emerald-600 dark:text-emerald-400 hover:bg-emerald-500/10 flex items-center gap-2 transition-colors"
-                                  >
-                                    <CheckCircle2 className="w-3.5 h-3.5" />
-                                    <span>Approve & Post</span>
-                                  </button>
-                                )}
+                          {/* Edit (Draft only) */}
+                          {(inv.status === 0 || inv.status === 'Draft') && (
+                            <button
+                              onClick={() => openEditModal(inv)}
+                              title="Edit Invoice"
+                              className="w-7 h-7 rounded-lg border border-indigo-500/20 bg-indigo-500/5 hover:bg-indigo-500/15 flex items-center justify-center transition-colors"
+                            >
+                              <Pencil className="w-3.5 h-3.5 text-indigo-500" />
+                            </button>
+                          )}
 
-                                {/* Cancel / Void Invoice */}
-                                {inv.status !== 3 && inv.status !== 'Void' && (
-                                  <button
-                                    onClick={() => { setActiveDropdownId(null); cancelInvoice(inv); }}
-                                    className="w-full px-3 py-1.5 text-left text-xs font-semibold text-rose-600 dark:text-rose-400 hover:bg-rose-500/10 flex items-center gap-2 transition-colors"
-                                  >
-                                    <Ban className="w-3.5 h-3.5" />
-                                    <span>Cancel / Void</span>
-                                  </button>
-                                )}
-
-                                {/* Preview Details */}
-                                <button
-                                  onClick={() => { setActiveDropdownId(null); openEditModal(inv); setModalTab('preview'); }}
-                                  className="w-full px-3 py-1.5 text-left text-xs font-medium text-[var(--color-text-muted)] hover:text-[var(--color-text-strong)] hover:bg-[var(--color-surface-muted)] flex items-center gap-2 transition-colors"
-                                >
-                                  <Eye className="w-3.5 h-3.5" />
-                                  <span>Preview Details</span>
-                                </button>
-                              </div>
-                            )}
-                          </div>
+                          {/* View */}
+                          <button
+                            onClick={() => { openEditModal(inv); setModalTab('preview'); }}
+                            title="View Invoice"
+                            className="w-7 h-7 rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] hover:bg-sky-500/10 hover:border-sky-500/30 flex items-center justify-center transition-colors"
+                          >
+                            <Eye className="w-3.5 h-3.5 text-sky-500" />
+                          </button>
                         </div>
                       </td>
                     </tr>
@@ -825,7 +951,7 @@ export const SalesWorkspace: React.FC<{ activeEntityId: string; entities?: any[]
                     <table className="w-full text-xs">
                       <thead className="bg-[var(--color-surface-muted)] text-[var(--color-text-muted)] font-semibold border-b border-[var(--color-border)]">
                         <tr>
-                          <th className="p-2.5 text-left">Product / Service</th>
+                          <th className="p-2.5 text-left w-[200px]">Product / Service</th>
                           <th className="p-2.5 text-left">Description</th>
                           <th className="p-2.5 text-right w-16">Qty</th>
                           <th className="p-2.5 text-right w-24">Price (Rs)</th>
@@ -847,17 +973,18 @@ export const SalesWorkspace: React.FC<{ activeEntityId: string; entities?: any[]
                                 <option value="">Select Item...</option>
                                 {products.map((p: any) => (
                                   <option key={p.id} value={p.id}>
-                                    {p.code} — {p.name}
+                                    {p.name}
                                   </option>
                                 ))}
                               </select>
                             </td>
                             <td className="p-2">
-                              <input
+                              <textarea
                                 placeholder="Description"
                                 value={l.description}
                                 onChange={e => updateLine(i, 'description', e.target.value)}
-                                className="w-full h-8 px-2 rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] text-xs text-[var(--color-text-strong)] outline-none"
+                                rows={2}
+                                className="w-full px-2 py-1.5 rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] text-xs text-[var(--color-text-strong)] outline-none resize-none"
                               />
                             </td>
                             <td className="p-2">

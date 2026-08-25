@@ -143,6 +143,7 @@ export const SalesOrdersWorkspace: React.FC<{ activeEntityId: string; entities?:
       companyId: activeEntityId || undefined,
       lines: lines.map(l => ({
         productId: l.productId,
+        productName: l.productName || l.description || '',
         description: l.description,
         quantity: parseFloat(l.quantity || '1'),
         unitPrice: parseFloat(l.unitPrice || '0'),
