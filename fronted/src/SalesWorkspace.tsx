@@ -59,7 +59,7 @@ export const SalesWorkspace: React.FC<{ activeEntityId: string; entities?: any[]
   })
 
   const [lines, setLines] = useState([
-    { productId: '', productName: '', description: '', quantity: '1', unitPrice: '0', discountAmount: '0', taxAmount: '0' }
+    { productId: '', productName: '', description: '', quantity: '1', unitPrice: '0', discountType: 0, discountValue: '0', taxPercent: '0' }
   ])
 
   const { saveDraft, clearDraft } = useFormDraft('sales_invoice', { form, lines }, (saved: any) => {
@@ -117,7 +117,7 @@ export const SalesWorkspace: React.FC<{ activeEntityId: string; entities?: any[]
       notes: 'Payment is due within invoice terms. Thank you for your business.',
       currencyCode: 'PKR'
     })
-    setLines([{ productId: '', productName: '', description: '', quantity: '1', unitPrice: '0', discountAmount: '0', taxAmount: '0' }])
+    setLines([{ productId: '', productName: '', description: '', quantity: '1', unitPrice: '0', discountType: 0, discountValue: '0', taxPercent: '0' }])
     setModalTab('details')
     setShowForm(true)
   }
@@ -142,11 +142,12 @@ export const SalesWorkspace: React.FC<{ activeEntityId: string; entities?: any[]
               description: l.description || '',
               quantity: String(l.quantity || 1),
               unitPrice: String(l.unitPrice || 0),
-              discountAmount: String(l.discountAmount || 0),
-              taxAmount: String(l.taxAmount || 0)
+              discountType: l.discountType ?? 0,
+              discountValue: String(l.discountValue || l.discountAmount || 0),
+              taxPercent: String(l.taxPercent || 0)
             }
           })
-        : [{ productId: '', productName: '', description: inv.notes || inv.reference || 'Commercial Tax Invoice Items', quantity: '1', unitPrice: String(inv.subTotal || inv.totalAmount || 0), discountAmount: String(inv.discountTotal || 0), taxAmount: String(inv.taxTotal || 0) }]
+        : [{ productId: '', productName: '', description: inv.notes || inv.reference || 'Commercial Tax Invoice Items', quantity: '1', unitPrice: String(inv.subTotal || inv.totalAmount || 0), discountType: 0, discountValue: String(inv.discountTotal || 0), taxPercent: '0' }]
     )
     setModalTab('details')
     setShowForm(true)
@@ -189,7 +190,7 @@ export const SalesWorkspace: React.FC<{ activeEntityId: string; entities?: any[]
   }
 
   const addLine = () =>
-    setLines([...lines, { productId: '', productName: '', description: '', quantity: '1', unitPrice: '0', discountAmount: '0', taxAmount: '0' }])
+    setLines([...lines, { productId: '', productName: '', description: '', quantity: '1', unitPrice: '0', discountType: 0, discountValue: '0', taxPercent: '0' }])
   
   const removeLine = (i: number) => setLines(lines.filter((_, idx) => idx !== i))
 
@@ -215,9 +216,14 @@ export const SalesWorkspace: React.FC<{ activeEntityId: string; entities?: any[]
       const qty = parseFloat(line.quantity) || 0;
       const price = parseFloat(line.unitPrice) || 0;
       const gross = qty * price;
-      const discountAmount = parseFloat(line.discountAmount) || 0;
+      // Calculate discount based on discountType (0=percentage, 1=fixed)
+      const dv = parseFloat(line.discountValue) || 0;
+      const dt = line.discountType || 0;
+      const discountAmount = dt === 0 ? (gross * dv) / 100 : Math.min(dv, gross);
       const taxable = Math.max(0, gross - discountAmount);
-      const taxAmount = parseFloat(line.taxAmount) || 0;
+      // Calculate tax based on tax percentage
+      const tp = parseFloat(line.taxPercent) || 0;
+      const taxAmount = (taxable * tp) / 100;
       const total = taxable + taxAmount;
       return { gross, discountAmount, taxable, taxAmount, total };
     });
@@ -247,16 +253,30 @@ export const SalesWorkspace: React.FC<{ activeEntityId: string; entities?: any[]
     const body = {
       ...form,
       companyId: activeEntityId || null,
-      lines: lines.map(l => ({
-        productId: l.productId || null,
-        productName: l.productName || l.description || '',
-        description: l.description,
-        quantity: parseFloat(l.quantity || '1'),
-        unitPrice: parseFloat(l.unitPrice || '0'),
-        discountAmount: parseFloat(l.discountAmount || '0'),
-        taxCodeId: null,
-        taxAmount: parseFloat(l.taxAmount || '0')
-      }))
+      lines: lines.map(l => {
+        const qty = parseFloat(l.quantity || '1')
+        const price = parseFloat(l.unitPrice || '0')
+        const gross = qty * price
+        const dv = parseFloat(l.discountValue || '0')
+        const dt = l.discountType || 0
+        const discountAmount = dt === 0 ? (gross * dv) / 100 : Math.min(dv, gross)
+        const taxable = Math.max(0, gross - discountAmount)
+        const tp = parseFloat(l.taxPercent || '0')
+        const taxAmount = (taxable * tp) / 100
+        return {
+          productId: l.productId || null,
+          productName: l.productName || l.description || '',
+          description: l.description,
+          quantity: qty,
+          unitPrice: price,
+          discountType: dt,
+          discountValue: dv,
+          discountAmount: discountAmount,
+          taxCodeId: null,
+          taxPercent: tp,
+          taxAmount: taxAmount
+        }
+      })
     }
     try {
       if (editingInvoice) {
@@ -380,16 +400,16 @@ export const SalesWorkspace: React.FC<{ activeEntityId: string; entities?: any[]
         const price = parseFloat(l.unitPrice || l.price || l.unit_price || '0') || 0
         const gross = qty * price
         
-        const discFromApi = parseFloat(l.discountAmount || l.discountValue || l.discount || '0') || 0
-        const discVal = parseFloat(l.discountPercent || l.discountPercentage || '0') || 0
-        const discType = l.discountType ?? (l.discountAmount ? 1 : 0)
-        const discAmt = discFromApi > 0 ? discFromApi : (discType === 0 && discVal > 0 ? (gross * discVal / 100) : discVal)
+        // Calculate discount based on discountType (0=percentage, 1=fixed)
+        const dv = parseFloat(l.discountValue || l.discountAmount || l.discount || '0') || 0
+        const dt = l.discountType ?? 1
+        const discAmt = dt === 0 ? (gross * dv / 100) : Math.min(dv, gross)
         
-        const taxFromApi = parseFloat(l.taxAmount || l.tax || '0') || 0
-        const taxPct = parseFloat(l.taxPercent || l.taxPercentage || l.taxRate || '0') || 0
-        const afterDisc = gross - discAmt
-        const taxAmt = taxFromApi > 0 ? taxFromApi : (taxPct > 0 ? (afterDisc * taxPct / 100) : 0)
-        const total = parseFloat(l.totalAmount || l.total || l.netTotal || '0') || (afterDisc + taxAmt)
+        // Calculate tax based on tax percentage
+        const taxable = Math.max(0, gross - discAmt)
+        const tp = parseFloat(l.taxPercent || l.taxPercentage || l.taxRate || '0') || 0
+        const taxAmt = (taxable * tp) / 100
+        const total = taxable + taxAmt
         
         const desc = l.description || l.itemDescription || l.desc || l.productName || l.itemName || l.name || 'Commercial Tax Invoice Items'
 
@@ -398,7 +418,6 @@ export const SalesWorkspace: React.FC<{ activeEntityId: string; entities?: any[]
           desc,
           String(qty),
           money(price),
-          money(gross),
           money(discAmt),
           money(taxAmt),
           money(total)
@@ -407,71 +426,102 @@ export const SalesWorkspace: React.FC<{ activeEntityId: string; entities?: any[]
 
       autoTable(doc, {
         startY: tableStartY,
-        head: [['#', 'Description', 'Qty', 'Unit Price', 'Gross', 'Discount Amt', 'Tax Amt', 'Total']],
+        head: [['#', 'Description', 'Qty', 'Unit Price', 'Discount', 'Tax', 'Total']],
         body: linesData,
-        headStyles: { fillColor: tealDark, textColor: [255, 255, 255], fontStyle: 'bold', fontSize: 7.5, cellPadding: 2.5 },
-        bodyStyles: { fontSize: 7.5, textColor: [30, 41, 59], cellPadding: 2.5 },
+        headStyles: { fillColor: tealDark, textColor: [255, 255, 255], fontStyle: 'bold', fontSize: 7.5, cellPadding: 2, halign: 'center' },
+        bodyStyles: { fontSize: 7.5, textColor: [30, 41, 59], cellPadding: 2 },
         alternateRowStyles: { fillColor: [235, 248, 245] },
         margin: { left: 14, right: 14 },
         columnStyles: {
-          0: { cellWidth: 8, halign: 'center' },
-          1: { cellWidth: 70 },
-          2: { cellWidth: 14, halign: 'center' },
-          3: { cellWidth: 24, halign: 'right' },
+          0: { cellWidth: 10, halign: 'center' },
+          1: { cellWidth: 62, halign: 'left' },
+          2: { cellWidth: 16, halign: 'center' },
+          3: { cellWidth: 26, halign: 'right' },
           4: { cellWidth: 24, halign: 'right' },
           5: { cellWidth: 22, halign: 'right' },
-          6: { cellWidth: 22, halign: 'right' },
-          7: { cellWidth: 26, halign: 'right', fontStyle: 'bold' }
+          6: { cellWidth: 26, halign: 'right', fontStyle: 'bold' }
         }
       })
 
       const finalY = (doc as any).lastAutoTable?.finalY || 120
 
-      // ── Financial Summary (Always show all lines) ──
+      // ── Financial Summary ──
       const totalsX = 120
       const totalsValX = pageW - 14
 
       doc.setDrawColor(...tealMid)
       doc.line(totalsX, finalY + 8, totalsValX, finalY + 8)
 
+      // Compute totals from lines
+      const subTotal = lines.reduce((s: number, l: any) => {
+        const q = parseFloat(l.quantity || '1') || 1
+        const p = parseFloat(l.unitPrice || '0') || 0
+        return s + (q * p)
+      }, 0)
+      const discTotal = lines.reduce((s: number, l: any) => {
+        const q = parseFloat(l.quantity || '1') || 1
+        const p = parseFloat(l.unitPrice || '0') || 0
+        const gross = q * p
+        const dv = parseFloat(l.discountValue || l.discountAmount || '0') || 0
+        const dt = l.discountType ?? 1
+        return s + (dt === 0 ? (gross * dv / 100) : Math.min(dv, gross))
+      }, 0)
+      const taxTotal = lines.reduce((s: number, l: any) => {
+        const q = parseFloat(l.quantity || '1') || 1
+        const p = parseFloat(l.unitPrice || '0') || 0
+        const gross = q * p
+        const dv = parseFloat(l.discountValue || l.discountAmount || '0') || 0
+        const dt = l.discountType ?? 1
+        const da = dt === 0 ? (gross * dv / 100) : Math.min(dv, gross)
+        const taxable = Math.max(0, gross - da)
+        const tp = parseFloat(l.taxPercent || '0') || 0
+        return s + (taxable * tp) / 100
+      }, 0)
+      const netTotal = inv.totalAmount || (subTotal - discTotal + taxTotal)
+
       doc.setFontSize(9)
       doc.setFont('helvetica', 'normal')
       doc.setTextColor(100, 116, 139)
       doc.text('Subtotal:', totalsX, finalY + 14)
       doc.setTextColor(30, 41, 59)
-      doc.text(money(inv.subTotal || inv.totalAmount || 0), totalsValX, finalY + 14, { align: 'right' })
+      doc.text(money(subTotal), totalsValX, finalY + 14, { align: 'right' })
 
-      doc.setTextColor(225, 29, 72)
-      doc.text('Discount Total:', totalsX, finalY + 20)
-      doc.text(`-${money(inv.discountTotal || 0)}`, totalsValX, finalY + 20, { align: 'right' })
+      if (discTotal > 0) {
+        doc.setTextColor(225, 29, 72)
+        doc.text('Discount:', totalsX, finalY + 20)
+        doc.text(`-${money(discTotal)}`, totalsValX, finalY + 20, { align: 'right' })
+      }
 
-      doc.setTextColor(217, 119, 6)
-      doc.text('Tax / VAT Total:', totalsX, finalY + 26)
-      doc.text(`+${money(inv.taxTotal || 0)}`, totalsValX, finalY + 26, { align: 'right' })
+      if (taxTotal > 0) {
+        doc.setTextColor(217, 119, 6)
+        doc.text('Tax / VAT:', totalsX, finalY + (discTotal > 0 ? 26 : 20))
+        doc.text(`+${money(taxTotal)}`, totalsValX, finalY + (discTotal > 0 ? 26 : 20), { align: 'right' })
+      }
 
       doc.setDrawColor(...tealDark)
       doc.setLineWidth(0.5)
-      doc.line(totalsX, finalY + 30, totalsValX, finalY + 30)
+      doc.line(totalsX, finalY + (discTotal > 0 ? 30 : 24), totalsValX, finalY + (discTotal > 0 ? 30 : 24))
 
       doc.setFont('helvetica', 'bold')
       doc.setFontSize(12)
       doc.setTextColor(...tealDark)
-      doc.text(`TOTAL (${currency}):`, totalsX, finalY + 37)
-      doc.text(money(inv.totalAmount || 0), totalsValX, finalY + 37, { align: 'right' })
+      doc.text(`TOTAL (${currency}):`, totalsX, finalY + (discTotal > 0 ? 37 : 31))
+      doc.text(money(netTotal), totalsValX, finalY + (discTotal > 0 ? 37 : 31), { align: 'right' })
 
       if (inv.paidAmount > 0) {
+        const paidY = discTotal > 0 ? 40 : 34
         doc.setDrawColor(...tealMid)
-        doc.line(totalsX, finalY + 40, totalsValX, finalY + 40)
+        doc.line(totalsX, finalY + paidY, totalsValX, finalY + paidY)
         doc.setFontSize(9)
         doc.setTextColor(16, 185, 129)
-        doc.text('Amount Paid:', totalsX, finalY + 46)
-        doc.text(money(inv.paidAmount), totalsValX, finalY + 46, { align: 'right' })
+        doc.text('Amount Paid:', totalsX, finalY + paidY + 6)
+        doc.text(money(inv.paidAmount), totalsValX, finalY + paidY + 6, { align: 'right' })
 
         doc.setFontSize(10)
         doc.setFont('helvetica', 'bold')
         doc.setTextColor(225, 29, 72)
-        doc.text('Balance Due:', totalsX, finalY + 52)
-        doc.text(money(inv.amountDue != null ? inv.amountDue : inv.totalAmount), totalsValX, finalY + 52, { align: 'right' })
+        doc.text('Balance Due:', totalsX, finalY + paidY + 12)
+        doc.text(money(inv.amountDue != null ? inv.amountDue : netTotal), totalsValX, finalY + paidY + 12, { align: 'right' })
       }
 
       // ── Terms & Conditions ──
@@ -703,9 +753,37 @@ export const SalesWorkspace: React.FC<{ activeEntityId: string; entities?: any[]
                     : String(inv.status || 'Draft')
                   const badge = statusStyles[statusKey] || statusStyles.Draft
                   const lines: any[] = inv.lines || []
-                  const grossAmount = inv.subTotal ?? inv.grossAmount ?? (lines.length > 0 ? lines.reduce((s, l) => s + ((parseFloat(l.quantity) || 1) * (parseFloat(l.unitPrice) || 0)), 0) : (inv.totalAmount || 0))
-                  const discountAmount = inv.discountTotal ?? (lines.length > 0 ? lines.reduce((s, l) => s + (parseFloat(l.discountAmount) || 0), 0) : 0)
-                  const taxAmount = inv.taxTotal ?? (lines.length > 0 ? lines.reduce((s, l) => s + (parseFloat(l.taxAmount) || 0), 0) : 0)
+                  
+                  // Compute from lines if available, otherwise use API fields
+                  const grossAmount = lines.length > 0
+                    ? lines.reduce((s, l) => s + ((parseFloat(l.quantity) || 1) * (parseFloat(l.unitPrice) || 0)), 0)
+                    : (inv.subTotal ?? inv.grossAmount ?? inv.totalAmount ?? 0)
+                  // Compute discount amount from lines
+                  const discountAmount = lines.length > 0
+                    ? lines.reduce((s, l) => {
+                        const qty = parseFloat(l.quantity) || 1
+                        const price = parseFloat(l.unitPrice) || 0
+                        const gross = qty * price
+                        const dv = parseFloat(l.discountValue || l.discountAmount) || 0
+                        const dt = l.discountType ?? 1
+                        // dt=0 is percentage, dt=1 is fixed amount
+                        return s + (dt === 0 ? (gross * dv) / 100 : Math.min(dv, gross))
+                      }, 0)
+                    : (inv.discountTotal ?? 0)
+                  // Compute tax amount from lines (tax is always percentage)
+                  const taxAmount = lines.length > 0
+                    ? lines.reduce((s, l) => {
+                        const qty = parseFloat(l.quantity) || 1
+                        const price = parseFloat(l.unitPrice) || 0
+                        const gross = qty * price
+                        const dv = parseFloat(l.discountValue || l.discountAmount) || 0
+                        const dt = l.discountType ?? 1
+                        const da = dt === 0 ? (gross * dv) / 100 : Math.min(dv, gross)
+                        const taxable = Math.max(0, gross - da)
+                        const tp = parseFloat(l.taxPercent || l.taxAmount) || 0
+                        return s + (taxable * tp) / 100
+                      }, 0)
+                    : (inv.taxTotal ?? 0)
                   const netTotal = inv.totalAmount ?? (grossAmount - discountAmount + taxAmount)
                   const amountDue = inv.amountDue ?? (netTotal - (inv.paidAmount || inv.amountPaid || 0))
 
@@ -898,9 +976,9 @@ export const SalesWorkspace: React.FC<{ activeEntityId: string; entities?: any[]
                           <th className="p-2.5 text-left w-[200px]">Product / Service</th>
                           <th className="p-2.5 text-left">Description</th>
                           <th className="p-2.5 text-right w-16">Qty</th>
-                          <th className="p-2.5 text-right w-24">Price (Rs)</th>
-                          <th className="p-2.5 text-right w-20">Disc (Rs)</th>
-                          <th className="p-2.5 text-right w-20">Tax (Rs)</th>
+                          <th className="p-2.5 text-right w-24">Price</th>
+                          <th className="p-2.5 text-center w-28">Discount</th>
+                          <th className="p-2.5 text-right w-16">Tax %</th>
                           <th className="p-2.5 text-right w-24">Total</th>
                           <th className="p-2.5 w-8"></th>
                         </tr>
@@ -949,29 +1027,37 @@ export const SalesWorkspace: React.FC<{ activeEntityId: string; entities?: any[]
                               />
                             </td>
                             <td className="p-2">
-                              <input
-                                type="number"
-                                step="0.01"
-                                value={l.discountAmount}
-                                onChange={e => updateLine(i, 'discountAmount', e.target.value)}
-                                className="w-full h-8 px-2 rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] text-xs text-right font-mono text-[var(--color-text-strong)] outline-none"
-                              />
+                              <div className="flex items-center gap-1">
+                                <select
+                                  value={l.discountType}
+                                  onChange={e => updateLine(i, 'discountType', e.target.value)}
+                                  className="h-8 w-12 shrink-0 border border-[var(--color-border)] rounded-lg px-1 text-xs bg-[var(--color-surface)] outline-none"
+                                >
+                                  <option value={0}>%</option>
+                                  <option value={1}>{form.currencyCode}</option>
+                                </select>
+                                <input
+                                  type="number"
+                                  min="0"
+                                  step={l.discountType === 0 ? "1" : "0.01"}
+                                  value={l.discountValue}
+                                  onChange={e => updateLine(i, 'discountValue', e.target.value)}
+                                  className="w-full h-8 px-2 rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] text-xs text-right font-mono text-[var(--color-text-strong)] outline-none"
+                                />
+                              </div>
                             </td>
                             <td className="p-2">
                               <input
                                 type="number"
-                                step="0.01"
-                                value={l.taxAmount}
-                                onChange={e => updateLine(i, 'taxAmount', e.target.value)}
+                                min="0"
+                                max="100"
+                                value={l.taxPercent}
+                                onChange={e => updateLine(i, 'taxPercent', e.target.value)}
                                 className="w-full h-8 px-2 rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] text-xs text-right font-mono text-[var(--color-text-strong)] outline-none"
                               />
                             </td>
                             <td className="p-2 text-right font-mono font-semibold text-[var(--color-text-strong)]">
-                              {money(
-                                parseFloat(l.quantity || '0') * parseFloat(l.unitPrice || '0') -
-                                  parseFloat(l.discountAmount || '0') +
-                                  parseFloat(l.taxAmount || '0')
-                              )}
+                              {money(lineCalculations[i]?.total || 0)}
                             </td>
                             <td className="p-2 text-center">
                               {lines.length > 1 && (

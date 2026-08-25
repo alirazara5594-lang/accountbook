@@ -206,28 +206,108 @@ export const EstimatesAndQuotes: React.FC<{ activeEntityId: string; entities?: a
       const pageW = doc.internal.pageSize.getWidth()
       const tealDark: [number, number, number] = [1, 72, 113]
       const mintLight: [number, number, number] = [160, 235, 207]
+      const tealMid: [number, number, number] = [30, 130, 160]
 
+      // Gradient Header Banner
       for (let x = 0; x < pageW; x++) { const r = x / pageW; doc.setFillColor(Math.round(tealDark[0] + (mintLight[0] - tealDark[0]) * r), Math.round(tealDark[1] + (mintLight[1] - tealDark[1]) * r), Math.round(tealDark[2] + (mintLight[2] - tealDark[2]) * r)); doc.rect(x, 0, 1, 42, 'F') }
 
       doc.setTextColor(255, 255, 255); doc.setFontSize(18); doc.setFont('helvetica', 'bold'); doc.text('QUOTATION', 14, 16)
       doc.setFontSize(9); doc.setFont('helvetica', 'normal'); doc.text(`${quoteNum} | ${statusLabel}`, 14, 23)
       doc.setFontSize(7); doc.text(compName, 14, 30); doc.text(`Date: ${est.estimateDate || '—'} | Expiry: ${est.expiryDate || '—'}`, 14, 36)
 
+      // Customer Section
       const customer = customers.find((c: any) => c.id === est.customerId)
-      let yPos = 50; doc.setTextColor(30, 41, 59); doc.setFontSize(8); doc.setFont('helvetica', 'bold'); doc.text('BILL TO:', 14, yPos)
-      doc.setFont('helvetica', 'normal'); doc.setFontSize(9); doc.text(customer?.name || est.customerName || '—', 14, yPos + 6)
+      let yPos = 50
+      doc.setFillColor(235, 248, 245)
+      doc.rect(14, yPos, pageW - 28, 20, 'F')
+      doc.setDrawColor(...tealMid)
+      doc.rect(14, yPos, pageW - 28, 20, 'S')
+      doc.setTextColor(...tealDark); doc.setFontSize(8); doc.setFont('helvetica', 'bold'); doc.text('BILL TO:', 18, yPos + 6)
+      doc.setTextColor(15, 23, 42); doc.setFontSize(10); doc.setFont('helvetica', 'normal'); doc.text(customer?.name || est.customerName || '—', 18, yPos + 14)
 
-      let docLines = est.lines && est.lines.length > 0 ? est.lines : [{ description: est.customerName ? `${est.customerName} - Commercial Products & Services` : 'Commercial Products & Services', quantity: 1, unitPrice: est.totalAmount || est.subtotal || 0, discountAmount: est.discountTotal || 0, taxAmount: est.taxTotal || 0, totalAmount: est.totalAmount || 0 }]
+      // Line Items Table
+      let docLines = est.lines && est.lines.length > 0 ? est.lines : [{ description: est.customerName ? `${est.customerName} - Commercial Products & Services` : 'Commercial Products & Services', quantity: 1, unitPrice: est.totalAmount || est.subtotal || 0, discountType: 0, discountValue: 0, taxPercent: 0 }]
 
-      autoTable(doc, { startY: yPos + 16, head: [['#', 'Description', 'Qty', 'Unit Price', 'Subtotal', 'Discount', 'Tax', 'Total']], body: docLines.map((l: any, i: number) => { const q = parseFloat(l.quantity || '1') || 1; const p = parseFloat(l.unitPrice || '0') || 0; const g = q * p; const d = parseFloat(l.discountAmount || l.discountValue || '0') || 0; const t = parseFloat(l.taxAmount || '0') || 0; const tot = g - d + t; return [i + 1, l.description || '—', String(q), money(p), money(g), money(d), money(t), money(tot)] }), headStyles: { fillColor: tealDark, textColor: [255, 255, 255], fontStyle: 'bold', fontSize: 7.5 }, bodyStyles: { fontSize: 7.5, textColor: [30, 41, 59] }, alternateRowStyles: { fillColor: [235, 248, 245] }, margin: { left: 14, right: 14 } })
+      const tableData = docLines.map((l: any, i: number) => {
+        const q = parseFloat(l.quantity || '1') || 1
+        const p = parseFloat(l.unitPrice || '0') || 0
+        const gross = q * p
+        const dv = parseFloat(l.discountValue || l.discountAmount || '0') || 0
+        const dt = l.discountType ?? 0
+        const da = dt === 0 ? (gross * dv) / 100 : Math.min(dv, gross)
+        const taxable = Math.max(0, gross - da)
+        const tp = parseFloat(l.taxPercent || '0') || 0
+        const ta = (taxable * tp) / 100
+        const total = taxable + ta
+        return [i + 1, l.description || '—', String(q), money(p), money(da), money(ta), money(total)]
+      })
 
-      const nt = est.totalAmount || est.netTotal || totals.total
-      const sy = (doc as any).lastAutoTable?.finalY + 8 || 100
-      doc.setFontSize(9); doc.setFont('helvetica', 'bold'); doc.setTextColor(1, 72, 113); doc.text('Grand Total:', 120, sy); doc.text(money(nt), pageW - 14, sy, { align: 'right' })
+      autoTable(doc, {
+        startY: yPos + 26,
+        head: [['#', 'Description', 'Qty', 'Unit Price', 'Discount', 'Tax', 'Total']],
+        body: tableData,
+        headStyles: { fillColor: tealDark, textColor: [255, 255, 255], fontStyle: 'bold', fontSize: 7.5, cellPadding: 2, halign: 'center' },
+        bodyStyles: { fontSize: 7.5, textColor: [30, 41, 59], cellPadding: 2 },
+        alternateRowStyles: { fillColor: [235, 248, 245] },
+        margin: { left: 14, right: 14 },
+        columnStyles: {
+          0: { cellWidth: 10, halign: 'center' },
+          1: { cellWidth: 62, halign: 'left' },
+          2: { cellWidth: 16, halign: 'center' },
+          3: { cellWidth: 26, halign: 'right' },
+          4: { cellWidth: 24, halign: 'right' },
+          5: { cellWidth: 22, halign: 'right' },
+          6: { cellWidth: 26, halign: 'right', fontStyle: 'bold' }
+        }
+      })
 
-      doc.setFontSize(7); doc.setFont('helvetica', 'normal'); doc.setTextColor(30, 41, 59); doc.text('Terms & Conditions', 14, sy + 12); doc.text(doc.splitTextToSize(est.terms || 'Standard terms apply.', pageW - 28).slice(0, 2), 14, sy + 17)
+      const finalY = (doc as any).lastAutoTable?.finalY || 100
 
-      doc.setDrawColor(tealDark[0], tealDark[1], tealDark[2]); doc.setLineWidth(0.3); doc.line(14, 280, pageW - 14, 280); doc.setFontSize(6.5); doc.setTextColor(100, 116, 139); doc.text(`${compName} | AMS ERP`, 14, 284)
+      // Financial Summary
+      const totalsX = 120
+      const totalsValX = pageW - 14
+      doc.setDrawColor(...tealMid)
+      doc.line(totalsX, finalY + 8, totalsValX, finalY + 8)
+
+      // Compute totals
+      const subTotal = tableData.reduce((s: number, r: any[]) => s + parseFloat(String(r[3]).replace(/[^0-9.-]/g, '')) * parseFloat(String(r[2])), 0) || est.totalAmount || 0
+      const discTotal = tableData.reduce((s: number, r: any[]) => s + parseFloat(String(r[4]).replace(/[^0-9.-]/g, '')), 0)
+      const taxTotal = tableData.reduce((s: number, r: any[]) => s + parseFloat(String(r[5]).replace(/[^0-9.-]/g, '')), 0)
+      const netTotal = est.totalAmount || (subTotal - discTotal + taxTotal)
+
+      doc.setFontSize(9); doc.setFont('helvetica', 'normal'); doc.setTextColor(100, 116, 139)
+      doc.text('Subtotal:', totalsX, finalY + 14); doc.setTextColor(30, 41, 59); doc.text(money(subTotal), totalsValX, finalY + 14, { align: 'right' })
+      if (discTotal > 0) { doc.setTextColor(225, 29, 72); doc.text('Discount:', totalsX, finalY + 20); doc.text(`-${money(discTotal)}`, totalsValX, finalY + 20, { align: 'right' }) }
+      if (taxTotal > 0) { doc.setTextColor(217, 119, 6); doc.text('Tax / VAT:', totalsX, finalY + (discTotal > 0 ? 26 : 20)); doc.text(`+${money(taxTotal)}`, totalsValX, finalY + (discTotal > 0 ? 26 : 20), { align: 'right' }) }
+
+      doc.setDrawColor(...tealDark); doc.setLineWidth(0.5)
+      doc.line(totalsX, finalY + (discTotal > 0 ? 30 : 24), totalsValX, finalY + (discTotal > 0 ? 30 : 24))
+      doc.setFont('helvetica', 'bold'); doc.setFontSize(11); doc.setTextColor(...tealDark)
+      doc.text('TOTAL:', totalsX, finalY + (discTotal > 0 ? 37 : 31)); doc.text(money(netTotal), totalsValX, finalY + (discTotal > 0 ? 37 : 31), { align: 'right' })
+
+      // Terms & Conditions
+      const termsY = finalY + (discTotal > 0 ? 48 : 42)
+      doc.setFillColor(235, 248, 245)
+      doc.rect(14, termsY, pageW - 28, 28, 'F')
+      doc.setDrawColor(...tealMid)
+      doc.rect(14, termsY, pageW - 28, 28, 'S')
+      doc.setFont('helvetica', 'bold'); doc.setFontSize(8); doc.setTextColor(...tealDark); doc.text('TERMS & CONDITIONS', 18, termsY + 6)
+      doc.setFont('helvetica', 'normal'); doc.setFontSize(7.5); doc.setTextColor(71, 85, 105)
+      doc.text(doc.splitTextToSize(est.terms || 'Standard terms apply.', pageW - 36).slice(0, 4), 18, termsY + 12)
+
+      // Signature Area
+      const sigY = 260
+      doc.setDrawColor(...tealMid)
+      doc.line(14, sigY, 80, sigY)
+      doc.line(pageW - 80, sigY, pageW - 14, sigY)
+      doc.setFontSize(8); doc.setTextColor(100, 116, 139)
+      doc.text('Authorized Signature', 14, sigY + 5)
+      doc.text('Customer Signature', pageW - 80, sigY + 5)
+
+      // Footer
+      doc.setDrawColor(...tealDark); doc.setLineWidth(0.3); doc.line(14, 280, pageW - 14, 280)
+      doc.setFontSize(6.5); doc.setTextColor(100, 116, 139); doc.text(`${compName} | AMS ERP`, 14, 284)
+      doc.text('Page 1 of 1', pageW - 14, 284, { align: 'right' })
 
       doc.save(`${quoteNum}.pdf`); notify(`PDF: ${quoteNum}`)
     } catch { notify('PDF failed') }
@@ -303,7 +383,7 @@ export const EstimatesAndQuotes: React.FC<{ activeEntityId: string; entities?: a
                 <th className="px-5 py-3.5 text-left text-xs font-semibold text-[var(--color-text-muted)] uppercase tracking-wider">Expiry</th>
                 <th className="px-5 py-3.5 text-right text-xs font-semibold text-[var(--color-text-muted)] uppercase tracking-wider">Subtotal</th>
                 <th className="px-5 py-3.5 text-right text-xs font-semibold text-[var(--color-text-muted)] uppercase tracking-wider">Discount</th>
-                <th className="px-5 py-3.5 text-right text-xs font-semibold text-[var(--color-text-muted)] uppercase tracking-wider">Tax</th>
+                <th className="px-5 py-3.5 text-right text-xs font-semibold text-[var(--color-text-muted)] uppercase tracking-wider">Tax %</th>
                 <th className="px-5 py-3.5 text-right text-xs font-semibold text-[var(--color-text-muted)] uppercase tracking-wider">Net Total</th>
                 <th className="px-5 py-3.5 text-center text-xs font-semibold text-[var(--color-text-muted)] uppercase tracking-wider">Status</th>
                 <th className="px-5 py-3.5 text-center text-xs font-semibold text-[var(--color-text-muted)] uppercase tracking-wider">Actions</th>
@@ -319,15 +399,45 @@ export const EstimatesAndQuotes: React.FC<{ activeEntityId: string; entities?: a
                 </td></tr>
               ) : filteredEstimates.map((est: any, idx: number) => {
                 const sn = getNumericStatus(est.status); const st = statusStyles[sn]; const customer = customers.find((c: any) => c.id === est.customerId)
+                const estLines: any[] = est.lines || []
+                const estGross = estLines.length > 0
+                  ? estLines.reduce((s: number, l: any) => s + ((parseFloat(l.quantity) || 1) * (parseFloat(l.unitPrice) || 0)), 0)
+                  : (est.subtotal ?? est.grossAmount ?? est.totalAmount ?? 0)
+                // Compute discount amount from lines
+                const estDiscount = estLines.length > 0
+                  ? estLines.reduce((s: number, l: any) => {
+                      const qty = parseFloat(l.quantity) || 1
+                      const price = parseFloat(l.unitPrice) || 0
+                      const gross = qty * price
+                      const dv = parseFloat(l.discountValue || l.discountAmount) || 0
+                      const dt = l.discountType ?? 0
+                      // dt=0 is percentage, dt=1 is fixed amount
+                      return s + (dt === 0 ? (gross * dv) / 100 : Math.min(dv, gross))
+                    }, 0)
+                  : (est.discountTotal ?? 0)
+                // Compute tax amount from lines (tax is always percentage)
+                const estTax = estLines.length > 0
+                  ? estLines.reduce((s: number, l: any) => {
+                      const qty = parseFloat(l.quantity) || 1
+                      const price = parseFloat(l.unitPrice) || 0
+                      const gross = qty * price
+                      const dv = parseFloat(l.discountValue || l.discountAmount) || 0
+                      const dt = l.discountType ?? 0
+                      const da = dt === 0 ? (gross * dv) / 100 : Math.min(dv, gross)
+                      const taxable = Math.max(0, gross - da)
+                      const tp = parseFloat(l.taxPercent) || 0
+                      return s + (taxable * tp) / 100
+                    }, 0)
+                  : (est.taxTotal ?? 0)
                 return (
                   <tr key={est.id || idx} className="hover:bg-[var(--color-surface-muted)]/30 transition-colors">
                     <td className="px-5 py-3.5 font-mono text-xs font-bold text-indigo-600">{getFormattedEstimateNumber(est.estimateNumber || est.reference, idx)}</td>
                     <td className="px-5 py-3.5 font-medium text-[var(--color-text-strong)]">{customer?.name || est.customerName || '—'}</td>
                     <td className="px-5 py-3.5 text-[var(--color-text-muted)] text-xs">{est.estimateDate || '—'}</td>
                     <td className="px-5 py-3.5 text-[var(--color-text-muted)] text-xs">{est.expiryDate || '—'}</td>
-                    <td className="px-5 py-3.5 text-right font-mono text-xs text-[var(--color-text-strong)]">{money(est.subtotal || est.grossAmount || 0)}</td>
-                    <td className="px-5 py-3.5 text-right font-mono text-xs text-rose-500">{(est.discountTotal || est.discount || 0) > 0 ? `-${money(est.discountTotal || est.discount || 0)}` : '—'}</td>
-                    <td className="px-5 py-3.5 text-right font-mono text-xs text-amber-600">{(est.taxTotal || est.tax || 0) > 0 ? `+${money(est.taxTotal || est.tax || 0)}` : '—'}</td>
+                    <td className="px-5 py-3.5 text-right font-mono text-xs text-[var(--color-text-strong)]">{money(estGross)}</td>
+                    <td className="px-5 py-3.5 text-right font-mono text-xs text-rose-500">{estDiscount > 0 ? `-${money(estDiscount)}` : '—'}</td>
+                    <td className="px-5 py-3.5 text-right font-mono text-xs text-amber-600">{estTax > 0 ? `+${money(estTax)}` : '—'}</td>
                     <td className="px-5 py-3.5 text-right font-mono text-xs font-bold text-[var(--color-text-strong)]">{money(est.totalAmount || est.netTotal || 0)}</td>
                     <td className="px-5 py-3.5 text-center"><span className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-semibold ${st?.class || ''}`}><span className="w-1.5 h-1.5 rounded-full bg-current" />{st?.label || 'Draft'}</span></td>
                     <td className="px-5 py-3.5">
@@ -533,14 +643,27 @@ export const EstimatesAndQuotes: React.FC<{ activeEntityId: string; entities?: a
       {/* VIEW MODAL */}
       {viewingEstimate && (() => {
         const est = viewingEstimate; const customer = customers.find((c: any) => c.id === est.customerId)
-        const vLines: any[] = (est.lines && est.lines.length > 0) ? est.lines : [{ description: est.customerName ? `${est.customerName} - Products & Services` : 'Products & Services', quantity: 1, unitPrice: est.totalAmount || est.subtotal || 0 }]
-        const sub = vLines.reduce((s: number, l: any) => s + (parseFloat(l.unitPrice || 0) * parseFloat(l.quantity || 1)), 0)
-        const disc = vLines.reduce((s: number, l: any) => s + parseFloat(l.discountValue || l.discountAmount || 0), 0)
-        const tax = vLines.reduce((s: number, l: any) => { const b = parseFloat(l.unitPrice || 0) * parseFloat(l.quantity || 1) - parseFloat(l.discountValue || l.discountAmount || 0); return s + b * (parseFloat(l.taxPercent || '0') / 100) }, 0)
+        const vLines: any[] = (est.lines && est.lines.length > 0) ? est.lines : [{ description: est.customerName ? `${est.customerName} - Products & Services` : 'Products & Services', quantity: 1, unitPrice: est.totalAmount || est.subtotal || 0, discountType: 0, discountValue: 0, taxPercent: 0 }]
+        // Compute values properly
+        const vLineCalcs = vLines.map((l: any) => {
+          const q = parseFloat(l.quantity || 1)
+          const p = parseFloat(l.unitPrice || 0)
+          const gross = q * p
+          const dv = parseFloat(l.discountValue || l.discountAmount || 0)
+          const dt = l.discountType ?? 0
+          const da = dt === 0 ? (gross * dv) / 100 : Math.min(dv, gross)
+          const taxable = Math.max(0, gross - da)
+          const tp = parseFloat(l.taxPercent || '0')
+          const ta = (taxable * tp) / 100
+          return { gross, da, taxable, ta, total: taxable + ta }
+        })
+        const sub = vLineCalcs.reduce((s, c) => s + c.gross, 0)
+        const disc = vLineCalcs.reduce((s, c) => s + c.da, 0)
+        const tax = vLineCalcs.reduce((s, c) => s + c.ta, 0)
         const net = sub - disc + tax; const fmt = (n: number) => `${est.currencyCode || 'PKR'} ${n.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
         return (
           <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm" onClick={() => setViewingEstimate(null)}>
-            <div className="w-full max-w-3xl bg-[var(--color-surface)] border border-[var(--color-border)] rounded-2xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh]" onClick={e => e.stopPropagation()}>
+            <div className="w-full max-w-4xl bg-[var(--color-surface)] border border-[var(--color-border)] rounded-2xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh]" onClick={e => e.stopPropagation()}>
               <div className="px-6 py-4 border-b border-[var(--color-border)] flex items-center justify-between">
                 <div className="flex items-center gap-3">
                   <div className="w-11 h-11 rounded-xl bg-gradient-to-br from-sky-500 to-indigo-600 flex items-center justify-center text-white"><Eye className="w-5 h-5" /></div>
@@ -556,11 +679,21 @@ export const EstimatesAndQuotes: React.FC<{ activeEntityId: string; entities?: a
                       <th className="px-3 py-2 text-left font-semibold">Description</th>
                       <th className="px-3 py-2 text-right font-semibold">Qty</th>
                       <th className="px-3 py-2 text-right font-semibold">Price</th>
+                      <th className="px-3 py-2 text-right font-semibold">Discount</th>
+                      <th className="px-3 py-2 text-right font-semibold">Tax</th>
                       <th className="px-3 py-2 text-right font-semibold">Total</th>
                     </tr></thead>
                     <tbody className="divide-y divide-[var(--color-border)]">
-                      {vLines.map((l: any, i: number) => { const q = parseFloat(l.quantity || 1); const p = parseFloat(l.unitPrice || 0); return (
-                        <tr key={i}><td className="px-3 py-2 font-mono">{i + 1}</td><td className="px-3 py-2 font-medium">{l.description || '—'}</td><td className="px-3 py-2 text-right font-mono">{q}</td><td className="px-3 py-2 text-right font-mono">{p.toFixed(2)}</td><td className="px-3 py-2 text-right font-mono font-bold">{fmt(q * p)}</td></tr>
+                      {vLines.map((l: any, i: number) => { const c = vLineCalcs[i]; return (
+                        <tr key={i}>
+                          <td className="px-3 py-2 font-mono">{i + 1}</td>
+                          <td className="px-3 py-2 font-medium">{l.description || '—'}</td>
+                          <td className="px-3 py-2 text-right font-mono">{c.gross > 0 ? parseFloat(l.quantity || 1) : '—'}</td>
+                          <td className="px-3 py-2 text-right font-mono">{fmt(c.gross > 0 ? parseFloat(l.unitPrice || 0) : 0)}</td>
+                          <td className="px-3 py-2 text-right font-mono text-rose-500">{c.da > 0 ? `-${fmt(c.da)}` : '—'}</td>
+                          <td className="px-3 py-2 text-right font-mono text-amber-600">{c.ta > 0 ? `+${fmt(c.ta)}` : '—'}</td>
+                          <td className="px-3 py-2 text-right font-mono font-bold">{fmt(c.total)}</td>
+                        </tr>
                       )})}
                     </tbody>
                   </table>
