@@ -364,15 +364,17 @@ export default function CustomerManagement({
       </div>
 
       {/* Header Stats (Row 2) */}
-      <KpiGrid cols={3}>
-        {[
-          { label: 'Total Customers', value: stats.total, desc: `${stats.activeCount} active in group`, icon: Users, tone: 'blue' },
-          { label: 'Total Credit Limit', value: money(stats.totalCreditLimit), desc: 'Allocated credit exposure', icon: DollarSign, tone: 'teal' },
-          { label: 'Avg Payment Terms', value: `${stats.avgTerms} Days`, desc: 'Net payment period', icon: Clock, tone: 'purple' },
-        ].map((kpi) => (
-          <KpiCard key={kpi.label} {...kpi} />
-        ))}
-      </KpiGrid>
+      <div className="px-5">
+        <KpiGrid cols={3}>
+          {[
+            { label: 'Total Customers', value: stats.total, desc: `${stats.activeCount} active in group`, icon: Users, tone: 'blue' },
+            { label: 'Total Credit Limit', value: money(stats.totalCreditLimit), desc: 'Allocated credit exposure', icon: DollarSign, tone: 'teal' },
+            { label: 'Avg Payment Terms', value: `${stats.avgTerms} Days`, desc: 'Net payment period', icon: Clock, tone: 'purple' },
+          ].map((kpi) => (
+            <KpiCard key={kpi.label} {...kpi} />
+          ))}
+        </KpiGrid>
+      </div>
 
       {/* Customer Table */}
       <div className="bg-[var(--color-surface)] border border-[var(--color-border)] rounded-xl overflow-hidden shadow-sm">

@@ -1082,11 +1082,29 @@ tbody td {
 .module-actions .entity-picker{margin-left:0}
 .module-tabs{
   display:flex;
-  flex-wrap:wrap;
+  flex-wrap:nowrap;
   align-items:center;
   gap:4px;
   padding:6px 24px;
   background:var(--color-surface-muted);
+  overflow-x:auto;
+  overflow-y:hidden;
+  scrollbar-width:thin;
+  scrollbar-color:var(--color-border) transparent;
+  -webkit-overflow-scrolling:touch;
+}
+.module-tabs::-webkit-scrollbar{
+  height:4px;
+}
+.module-tabs::-webkit-scrollbar-track{
+  background:transparent;
+}
+.module-tabs::-webkit-scrollbar-thumb{
+  background:var(--color-border);
+  border-radius:4px;
+}
+.module-tabs::-webkit-scrollbar-thumb:hover{
+  background:var(--color-text-muted);
 }
 .module-tabs .tab{
   border:0;
@@ -1098,6 +1116,7 @@ tbody td {
   border-radius:9px;
   cursor:pointer;
   white-space:nowrap;
+  flex-shrink:0;
   transition:background .15s ease,color .15s ease;
 }
 .module-tabs .tab:hover{background:var(--color-surface);color:var(--color-text)}
