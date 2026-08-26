@@ -108,7 +108,7 @@ export const PurchaseRequests: React.FC<{activeEntityId: string, entities: any[]
             exportRows={requests.map((pr: any) => [pr.requestNumber, pr.date, pr.requesterName, ['Draft', 'Submitted', 'Approved', 'Rejected', 'Ordered'][pr.status]])}
             onRefresh={fetchData}
           />
-          <button onClick={() => setIsModalOpen(true)} className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-xl shadow-sm transition-all">
+          <button onClick={() => setIsModalOpen(true)} className="h-9 px-5 rounded-xl bg-gradient-to-r from-emerald-600 to-green-600 text-white text-xs font-bold shadow-lg shadow-emerald-500/25">
             + New Request
           </button>
         </div>

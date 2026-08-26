@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useProcurementStore, useVendorsStore, useProductsStore, useTaxStore } from './stores';
 import { DataToolbar } from '@/components/ui/data-toolbar';
-import './App.css';
+import { Package, ScrollText, Info, Plus, X, ShoppingCart, FileText } from 'lucide-react';
 
 interface TaxRate {
   percentage: number;
@@ -272,7 +272,7 @@ export const PurchaseOrders: React.FC<{activeEntityId?: string, entities?: any[]
     <div className="animate-fade-in space-y-4">
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-3 bg-white p-3 rounded-xl border border-gray-200 shadow-sm">
         <h2 className="text-base font-bold text-gray-900 flex items-center gap-2">
-          <span className="text-lg">📦</span> Purchase Orders & GRN
+          <Package className="w-5 h-5 text-blue-600" /> Purchase Orders & GRN
         </h2>
         <div className="flex items-center gap-1.5 shrink-0">
           <DataToolbar
@@ -380,11 +380,16 @@ export const PurchaseOrders: React.FC<{activeEntityId?: string, entities?: any[]
       </div>
 
       {isPoModalOpen && (
-        <div className="fixed inset-0 bg-gray-900/40 backdrop-blur-sm z-50 flex items-center justify-center animate-fade-in pl-64">
-          <div className="bg-white rounded-2xl shadow-xl w-full max-w-5xl max-h-[90vh] overflow-hidden flex flex-col">
-            <div className="p-6 border-b border-gray-100 flex justify-between items-center bg-gray-50/50">
-              <h2 className="text-xl font-bold text-gray-900">Create Purchase Order</h2>
-              <button onClick={() => setIsPoModalOpen(false)} className="p-2 hover:bg-gray-200 rounded-lg transition-colors">✕</button>
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
+          <div className="w-full max-w-5xl bg-[var(--color-surface)] border border-[var(--color-border)] rounded-2xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh]">
+            <div className="px-6 py-4 border-b border-[var(--color-border)] flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-blue-500 to-indigo-500 flex items-center justify-center text-white">
+                  <ShoppingCart className="w-4 h-4" />
+                </div>
+                <h2 className="text-xl font-bold text-[var(--color-text)]">Create Purchase Order</h2>
+              </div>
+              <button onClick={() => setIsPoModalOpen(false)} className="w-8 h-8 rounded-lg flex items-center justify-center text-[var(--color-text-muted)] hover:bg-[var(--color-surface-muted)] transition-colors"><X className="w-4 h-4" /></button>
             </div>
             <div className="p-6 overflow-y-auto flex-1">
               <div className="grid grid-cols-2 gap-6 mb-8">

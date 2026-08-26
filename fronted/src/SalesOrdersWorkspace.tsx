@@ -397,21 +397,16 @@ export const SalesOrdersWorkspace: React.FC<{ activeEntityId: string; entities?:
 
       {/* Stepped Order Creation Modal */}
       {showForm && (
-        <div className="overlay animate-in fade-in duration-200">
-          <div className="w-full max-w-4xl bg-[var(--color-surface)] border border-[var(--color-border)] rounded-2xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh]">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm animate-in fade-in duration-200">
+          <div className="w-full max-w-5xl bg-[var(--color-surface)] border border-[var(--color-border)] rounded-2xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh]">
             {/* Modal Header */}
-            <div className="px-6 py-4.5 border-b border-[var(--color-border)] bg-[var(--color-surface-muted)]/50 flex items-center justify-between">
+            <div className="px-6 py-4 border-b border-[var(--color-border)] flex items-center justify-between">
               <div className="flex items-center gap-3.5">
-                <div className="w-9 h-9 rounded-lg bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center text-white shadow-sm shrink-0">
-                  <Package className="w-5 h-5" />
+                <div className="w-11 h-11 rounded-xl bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-white shadow-sm shrink-0">
+                  <FileText className="w-5 h-5" />
                 </div>
                 <div>
-                  <div className="flex items-center gap-2">
-                    <h2 className="text-base font-bold text-[var(--color-text-strong)] tracking-tight">Create Sales Order</h2>
-                    <span className="px-2.5 py-0.5 rounded-full text-[10px] font-semibold bg-blue-500/10 text-blue-600 border border-blue-500/20">
-                      Draft Order
-                    </span>
-                  </div>
+                  <h2 className="text-base font-bold text-[var(--color-text-strong)]">New Sales Order</h2>
                   <p className="text-xs text-[var(--color-text-muted)] mt-0.5 flex items-center gap-1.5">
                     <span>Assigned Entity:</span>
                     <span className="font-semibold text-[var(--color-text-strong)]">
@@ -423,7 +418,7 @@ export const SalesOrdersWorkspace: React.FC<{ activeEntityId: string; entities?:
 
               <button
                 type="button"
-                className="w-8 h-8 rounded-lg flex items-center justify-center text-[var(--color-text-muted)] hover:text-[var(--color-text-strong)] hover:bg-[var(--color-surface-muted)] transition-colors"
+                className="w-8 h-8 rounded-lg flex items-center justify-center text-[var(--color-text-muted)] hover:bg-[var(--color-surface-muted)] transition-colors"
                 onClick={() => setShowForm(false)}
               >
                 <X className="w-4 h-4" />
@@ -811,7 +806,7 @@ export const SalesOrdersWorkspace: React.FC<{ activeEntityId: string; entities?:
             </div>
 
             {/* Modal Footer */}
-            <div className="px-6 py-3.5 border-t border-[var(--color-border)] bg-[var(--color-surface-muted)]/50 flex items-center justify-between gap-3">
+            <div className="px-6 py-4 border-t border-[var(--color-border)] flex items-center justify-between">
               <div className="text-[11px] text-[var(--color-text-muted)] flex items-center gap-1.5">
                 <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 inline-block" />
                 <span>{modalTab === 'preview' ? 'Ready for final verification & creation' : 'Auto-draft protection active'}</span>

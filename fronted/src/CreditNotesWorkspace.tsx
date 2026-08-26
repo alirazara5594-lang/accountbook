@@ -171,7 +171,7 @@ export function CreditNotesWorkspace({
           >
             <select
               className="h-9 px-3 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] text-xs text-[var(--color-text)] outline-none focus:border-[var(--color-primary)] transition-colors shadow-2xs box-border"
-              style={{ paddingTop: 0, paddingBottom: 0 }}
+              style={undefined}
               value={statusFilter}
               onChange={e => setStatusFilter(e.target.value)}
             >
@@ -183,7 +183,7 @@ export function CreditNotesWorkspace({
           </DataToolbar>
           <button
             onClick={openCreateModal}
-            className="primary h-9 px-4 rounded-xl text-xs font-semibold whitespace-nowrap flex items-center justify-center gap-1.5 shadow-sm"
+            className="h-9 px-5 rounded-xl bg-gradient-to-r from-emerald-600 to-green-600 text-white text-xs font-bold shadow-lg shadow-emerald-500/25"
           >
             <span>＋</span> Create Credit Note
           </button>
@@ -285,12 +285,12 @@ export function CreditNotesWorkspace({
 
       {/* Stepped / Tabbed Credit Note Modal */}
       {showCreate && (
-        <div className="overlay animate-in fade-in duration-200">
-          <div className="w-full max-w-4xl bg-[var(--color-surface)] border border-[var(--color-border)] rounded-2xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh]">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm animate-in fade-in duration-200">
+          <div className="w-full max-w-5xl bg-[var(--color-surface)] border border-[var(--color-border)] rounded-2xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh]">
             {/* Modal Header */}
-            <div className="px-6 py-4.5 border-b border-[var(--color-border)] bg-[var(--color-surface-muted)]/50 flex items-center justify-between">
+            <div className="px-6 py-4 border-b border-[var(--color-border)] flex items-center justify-between">
               <div className="flex items-center gap-3.5">
-                <div className="w-9 h-9 rounded-lg bg-gradient-to-br from-rose-500 to-pink-600 flex items-center justify-center text-white shadow-sm shrink-0">
+                <div className="w-9 h-9 rounded-lg bg-gradient-to-br from-emerald-500 to-green-600 flex items-center justify-center text-white shadow-sm shrink-0">
                   <FileText className="w-5 h-5" />
                 </div>
                 <div>
@@ -311,7 +311,7 @@ export function CreditNotesWorkspace({
 
               <button
                 type="button"
-                className="w-8 h-8 rounded-lg flex items-center justify-center text-[var(--color-text-muted)] hover:text-[var(--color-text-strong)] hover:bg-[var(--color-surface-muted)] transition-colors"
+                className="w-8 h-8 rounded-lg flex items-center justify-center text-[var(--color-text-muted)] hover:bg-[var(--color-surface-muted)] transition-colors"
                 onClick={() => setShowCreate(false)}
               >
                 <X className="w-4 h-4" />
