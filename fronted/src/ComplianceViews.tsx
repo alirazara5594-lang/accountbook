@@ -77,14 +77,14 @@ export function ComplianceSummaryView() {
           { label: 'Validated E-Invoices', value: validated, desc: 'Successfully validated', icon: ShieldCheck, color: 'from-teal-500 to-emerald-600', bg: 'bg-teal-50 dark:bg-teal-950/30', textColor: 'text-teal-600 dark:text-teal-400' },
           { label: 'Total Withheld', value: money(totalWithheld), desc: 'Withholding tax total', icon: Wallet, color: 'from-blue-500 to-indigo-600', bg: 'bg-blue-50 dark:bg-blue-950/30', textColor: 'text-blue-600 dark:text-blue-400' },
         ].map((kpi) => (
-          <div key={kpi.label} className="relative overflow-hidden rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)] p-4 shadow-sm hover:shadow-md transition-shadow">
+          <div key={kpi.label} className="relative overflow-hidden rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)] p-3 shadow-sm hover:shadow-md transition-shadow">
             <div className="flex items-start justify-between">
               <div>
                 <p className="text-xs font-semibold text-[var(--color-text-muted)] uppercase tracking-wider">{kpi.label}</p>
-                <p className={`text-xl font-semibold mt-1.5 ${kpi.textColor}`}>{kpi.value}</p>
+                <p className={`text-lg font-semibold mt-1 ${kpi.textColor}`}>{kpi.value}</p>
                 <p className="text-xs text-[var(--color-text-muted)] mt-1">{kpi.desc}</p>
               </div>
-              <div className={`w-10 h-10 rounded-lg bg-gradient-to-br ${kpi.color} flex items-center justify-center text-white shadow-lg`}>
+              <div className={`w-9 h-9 rounded-lg bg-gradient-to-br ${kpi.color} flex items-center justify-center text-white shadow-lg`}>
                 <kpi.icon className="w-4.5 h-4.5" />
               </div>
             </div>
@@ -143,14 +143,14 @@ export function TaxManagementView({ activeEntityId, entities }: { activeEntityId
           { label: 'Due / Overdue', value: filteredObligations.filter(o => o.status === 'Due' || o.status === 'Overdue').length, desc: 'Require payment', icon: AlertTriangle, color: 'from-amber-500 to-orange-600', bg: 'bg-amber-50 dark:bg-amber-950/30', textColor: 'text-amber-600 dark:text-amber-400' },
           { label: 'Amount Due', value: money(totalDue), desc: 'Outstanding balance', icon: Wallet, color: 'from-red-500 to-rose-600', bg: 'bg-red-50 dark:bg-red-950/30', textColor: 'text-red-600 dark:text-red-400' },
         ].map((kpi) => (
-          <div key={kpi.label} className="relative overflow-hidden rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)] p-4 shadow-sm hover:shadow-md transition-shadow">
+          <div key={kpi.label} className="relative overflow-hidden rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)] p-3 shadow-sm hover:shadow-md transition-shadow">
             <div className="flex items-start justify-between">
               <div>
                 <p className="text-xs font-semibold text-[var(--color-text-muted)] uppercase tracking-wider">{kpi.label}</p>
-                <p className={`text-xl font-semibold mt-1.5 ${kpi.textColor}`}>{kpi.value}</p>
+                <p className={`text-lg font-semibold mt-1 ${kpi.textColor}`}>{kpi.value}</p>
                 <p className="text-xs text-[var(--color-text-muted)] mt-1">{kpi.desc}</p>
               </div>
-              <div className={`w-10 h-10 rounded-lg bg-gradient-to-br ${kpi.color} flex items-center justify-center text-white shadow-lg`}>
+              <div className={`w-9 h-9 rounded-lg bg-gradient-to-br ${kpi.color} flex items-center justify-center text-white shadow-lg`}>
                 <kpi.icon className="w-4.5 h-4.5" />
               </div>
             </div>
@@ -224,14 +224,14 @@ export function VatSalesTaxView({ activeEntityId, entities }: { activeEntityId?:
           { label: 'Paid', value: vatObligations.filter(o => o.status === 'Paid').length, desc: 'Completed payments', icon: CheckCircle2, color: 'from-green-500 to-emerald-600', bg: 'bg-green-50 dark:bg-green-950/30', textColor: 'text-green-600 dark:text-green-400' },
           { label: 'Overdue', value: vatObligations.filter(o => o.status === 'Overdue').length, desc: 'Past due date', icon: AlertTriangle, color: 'from-red-500 to-rose-600', bg: 'bg-red-50 dark:bg-red-950/30', textColor: 'text-red-600 dark:text-red-400' },
         ].map((kpi) => (
-          <div key={kpi.label} className="relative overflow-hidden rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)] p-4 shadow-sm hover:shadow-md transition-shadow">
+          <div key={kpi.label} className="relative overflow-hidden rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)] p-3 shadow-sm hover:shadow-md transition-shadow">
             <div className="flex items-start justify-between">
               <div>
                 <p className="text-xs font-semibold text-[var(--color-text-muted)] uppercase tracking-wider">{kpi.label}</p>
-                <p className={`text-xl font-semibold mt-1.5 ${kpi.textColor}`}>{kpi.value}</p>
+                <p className={`text-lg font-semibold mt-1 ${kpi.textColor}`}>{kpi.value}</p>
                 <p className="text-xs text-[var(--color-text-muted)] mt-1">{kpi.desc}</p>
               </div>
-              <div className={`w-10 h-10 rounded-lg bg-gradient-to-br ${kpi.color} flex items-center justify-center text-white shadow-lg`}>
+              <div className={`w-9 h-9 rounded-lg bg-gradient-to-br ${kpi.color} flex items-center justify-center text-white shadow-lg`}>
                 <kpi.icon className="w-4.5 h-4.5" />
               </div>
             </div>
@@ -343,14 +343,14 @@ export function WithholdingTaxView({ activeEntityId }: { activeEntityId?: string
           { label: 'Avg Rate', value: `${withholding.length ? Math.round(withholding.reduce((s, c) => s + c.ratePercent, 0) / withholding.length) : 0}%`, desc: 'Average withholding', icon: Scale, color: 'from-violet-500 to-purple-600', bg: 'bg-violet-50 dark:bg-violet-950/30', textColor: 'text-violet-600 dark:text-violet-400' },
           { label: 'Issued', value: withholding.filter(c => c.status === 'Issued').length, desc: 'Active certificates', icon: ShieldCheck, color: 'from-green-500 to-emerald-600', bg: 'bg-green-50 dark:bg-green-950/30', textColor: 'text-green-600 dark:text-green-400' },
         ].map((kpi) => (
-          <div key={kpi.label} className="relative overflow-hidden rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)] p-4 shadow-sm hover:shadow-md transition-shadow">
+          <div key={kpi.label} className="relative overflow-hidden rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)] p-3 shadow-sm hover:shadow-md transition-shadow">
             <div className="flex items-start justify-between">
               <div>
                 <p className="text-xs font-semibold text-[var(--color-text-muted)] uppercase tracking-wider">{kpi.label}</p>
-                <p className={`text-xl font-semibold mt-1.5 ${kpi.textColor}`}>{kpi.value}</p>
+                <p className={`text-lg font-semibold mt-1 ${kpi.textColor}`}>{kpi.value}</p>
                 <p className="text-xs text-[var(--color-text-muted)] mt-1">{kpi.desc}</p>
               </div>
-              <div className={`w-10 h-10 rounded-lg bg-gradient-to-br ${kpi.color} flex items-center justify-center text-white shadow-lg`}>
+              <div className={`w-9 h-9 rounded-lg bg-gradient-to-br ${kpi.color} flex items-center justify-center text-white shadow-lg`}>
                 <kpi.icon className="w-4.5 h-4.5" />
               </div>
             </div>
@@ -438,14 +438,14 @@ export function TaxReturnsView({ activeEntityId, entities }: { activeEntityId?: 
           { label: 'Draft', value: filteredReturns.filter(r => r.status === 'Draft').length, desc: 'Pending submission', icon: Clock3, color: 'from-amber-500 to-orange-600', bg: 'bg-amber-50 dark:bg-amber-950/30', textColor: 'text-amber-600 dark:text-amber-400' },
           { label: 'Net Tax', value: money(totalNet), desc: 'Total net tax liability', icon: Wallet, color: 'from-violet-500 to-purple-600', bg: 'bg-violet-50 dark:bg-violet-950/30', textColor: 'text-violet-600 dark:text-violet-400' },
         ].map((kpi) => (
-          <div key={kpi.label} className="relative overflow-hidden rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)] p-4 shadow-sm hover:shadow-md transition-shadow">
+          <div key={kpi.label} className="relative overflow-hidden rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)] p-3 shadow-sm hover:shadow-md transition-shadow">
             <div className="flex items-start justify-between">
               <div>
                 <p className="text-xs font-semibold text-[var(--color-text-muted)] uppercase tracking-wider">{kpi.label}</p>
-                <p className={`text-xl font-semibold mt-1.5 ${kpi.textColor}`}>{kpi.value}</p>
+                <p className={`text-lg font-semibold mt-1 ${kpi.textColor}`}>{kpi.value}</p>
                 <p className="text-xs text-[var(--color-text-muted)] mt-1">{kpi.desc}</p>
               </div>
-              <div className={`w-10 h-10 rounded-lg bg-gradient-to-br ${kpi.color} flex items-center justify-center text-white shadow-lg`}>
+              <div className={`w-9 h-9 rounded-lg bg-gradient-to-br ${kpi.color} flex items-center justify-center text-white shadow-lg`}>
                 <kpi.icon className="w-4.5 h-4.5" />
               </div>
             </div>
@@ -539,14 +539,14 @@ export function EInvoicingView({ activeEntityId }: { activeEntityId?: string }) 
           { label: 'Rejected', value: rejected, desc: 'Need attention', icon: AlertTriangle, color: 'from-red-500 to-rose-600', bg: 'bg-red-50 dark:bg-red-950/30', textColor: 'text-red-600 dark:text-red-400' },
           { label: 'Total Amount', value: money(total), desc: 'Combined invoice value', icon: Wallet, color: 'from-amber-500 to-orange-600', bg: 'bg-amber-50 dark:bg-amber-950/30', textColor: 'text-amber-600 dark:text-amber-400' },
         ].map((kpi) => (
-          <div key={kpi.label} className="relative overflow-hidden rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)] p-4 shadow-sm hover:shadow-md transition-shadow">
+          <div key={kpi.label} className="relative overflow-hidden rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)] p-3 shadow-sm hover:shadow-md transition-shadow">
             <div className="flex items-start justify-between">
               <div>
                 <p className="text-xs font-semibold text-[var(--color-text-muted)] uppercase tracking-wider">{kpi.label}</p>
-                <p className={`text-xl font-semibold mt-1.5 ${kpi.textColor}`}>{kpi.value}</p>
+                <p className={`text-lg font-semibold mt-1 ${kpi.textColor}`}>{kpi.value}</p>
                 <p className="text-xs text-[var(--color-text-muted)] mt-1">{kpi.desc}</p>
               </div>
-              <div className={`w-10 h-10 rounded-lg bg-gradient-to-br ${kpi.color} flex items-center justify-center text-white shadow-lg`}>
+              <div className={`w-9 h-9 rounded-lg bg-gradient-to-br ${kpi.color} flex items-center justify-center text-white shadow-lg`}>
                 <kpi.icon className="w-4.5 h-4.5" />
               </div>
             </div>
@@ -640,14 +640,14 @@ export function ComplianceReportsView({ activeEntityId, entities }: { activeEnti
           { label: 'Validated E-Invoices', value: validated, desc: 'Successfully validated', icon: ShieldCheck, color: 'from-teal-500 to-emerald-600', bg: 'bg-teal-50 dark:bg-teal-950/30', textColor: 'text-teal-600 dark:text-teal-400' },
           { label: 'Jurisdictions Active', value: jurisdiction ? 1 : JURISDICTIONS.filter(j => obligations.some(o => o.jurisdictionId === j)).length, desc: 'Operating regions', icon: Building2, color: 'from-violet-500 to-purple-600', bg: 'bg-violet-50 dark:bg-violet-950/30', textColor: 'text-violet-600 dark:text-violet-400' },
         ].map((kpi) => (
-          <div key={kpi.label} className="relative overflow-hidden rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)] p-4 shadow-sm hover:shadow-md transition-shadow">
+          <div key={kpi.label} className="relative overflow-hidden rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)] p-3 shadow-sm hover:shadow-md transition-shadow">
             <div className="flex items-start justify-between">
               <div>
                 <p className="text-xs font-semibold text-[var(--color-text-muted)] uppercase tracking-wider">{kpi.label}</p>
-                <p className={`text-xl font-semibold mt-1.5 ${kpi.textColor}`}>{kpi.value}</p>
+                <p className={`text-lg font-semibold mt-1 ${kpi.textColor}`}>{kpi.value}</p>
                 <p className="text-xs text-[var(--color-text-muted)] mt-1">{kpi.desc}</p>
               </div>
-              <div className={`w-10 h-10 rounded-lg bg-gradient-to-br ${kpi.color} flex items-center justify-center text-white shadow-lg`}>
+              <div className={`w-9 h-9 rounded-lg bg-gradient-to-br ${kpi.color} flex items-center justify-center text-white shadow-lg`}>
                 <kpi.icon className="w-4.5 h-4.5" />
               </div>
             </div>

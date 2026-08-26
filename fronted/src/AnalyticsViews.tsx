@@ -158,14 +158,14 @@ export function AnalyticsDashboardView() {
           { label: 'Net Profit', value: money(d.totalProfit), desc: 'Revenue minus expenses', icon: TrendingUp, color: 'from-green-400 to-green-600', bg: 'bg-green-50 dark:bg-green-950/30', textColor: 'text-green-600 dark:text-green-400' },
           { label: 'AI Health Score', value: `${aiScore}/100`, desc: 'Overall business health', icon: Activity, color: 'from-violet-400 to-violet-600', bg: 'bg-violet-50 dark:bg-violet-950/30', textColor: 'text-violet-600 dark:text-violet-400' },
         ].map((kpi) => (
-          <div key={kpi.label} className="relative overflow-hidden rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)] p-4 shadow-sm hover:shadow-md transition-shadow">
+          <div key={kpi.label} className="relative overflow-hidden rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)] p-3 shadow-sm hover:shadow-md transition-shadow">
             <div className="flex items-start justify-between">
               <div>
                 <p className="text-xs font-semibold text-[var(--color-text-muted)] uppercase tracking-wider">{kpi.label}</p>
-                <p className={`text-xl font-semibold mt-1.5 ${kpi.textColor}`}>{kpi.value}</p>
+                <p className={`text-lg font-semibold mt-1 ${kpi.textColor}`}>{kpi.value}</p>
                 <p className="text-xs text-[var(--color-text-muted)] mt-1">{kpi.desc}</p>
               </div>
-              <div className={`w-10 h-10 rounded-lg bg-gradient-to-br ${kpi.color} flex items-center justify-center text-white shadow-lg`}>
+              <div className={`w-9 h-9 rounded-lg bg-gradient-to-br ${kpi.color} flex items-center justify-center text-white shadow-lg`}>
                 <kpi.icon className="w-4.5 h-4.5" />
               </div>
             </div>
@@ -216,14 +216,14 @@ export function FinancialAnalyticsView() {
           { label: 'Net Profit', value: money(d.totalProfit), desc: 'Revenue minus expenses', icon: TrendingUp, color: 'from-green-400 to-green-600', bg: 'bg-green-50 dark:bg-green-950/30', textColor: 'text-green-600 dark:text-green-400' },
           { label: 'Profit Margin', value: `${profitMargin.toFixed(1)}%`, desc: 'Net profit / revenue', icon: Scale, color: 'from-violet-400 to-violet-600', bg: 'bg-violet-50 dark:bg-violet-950/30', textColor: 'text-violet-600 dark:text-violet-400' },
         ].map((kpi) => (
-          <div key={kpi.label} className="relative overflow-hidden rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)] p-4 shadow-sm hover:shadow-md transition-shadow">
+          <div key={kpi.label} className="relative overflow-hidden rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)] p-3 shadow-sm hover:shadow-md transition-shadow">
             <div className="flex items-start justify-between">
               <div>
                 <p className="text-xs font-semibold text-[var(--color-text-muted)] uppercase tracking-wider">{kpi.label}</p>
-                <p className={`text-xl font-semibold mt-1.5 ${kpi.textColor}`}>{kpi.value}</p>
+                <p className={`text-lg font-semibold mt-1 ${kpi.textColor}`}>{kpi.value}</p>
                 <p className="text-xs text-[var(--color-text-muted)] mt-1">{kpi.desc}</p>
               </div>
-              <div className={`w-10 h-10 rounded-lg bg-gradient-to-br ${kpi.color} flex items-center justify-center text-white shadow-lg`}>
+              <div className={`w-9 h-9 rounded-lg bg-gradient-to-br ${kpi.color} flex items-center justify-center text-white shadow-lg`}>
                 <kpi.icon className="w-4.5 h-4.5" />
               </div>
             </div>
@@ -277,14 +277,14 @@ export function SalesAnalyticsView() {
           { label: 'Outstanding', value: money(outstanding), desc: 'Amount due on invoices', icon: ArrowDownRight, color: 'from-amber-400 to-amber-600', bg: 'bg-amber-50 dark:bg-amber-950/30', textColor: 'text-amber-600 dark:text-amber-400' },
           { label: 'Invoices', value: d.invoices.length, desc: 'Total invoices issued', icon: PieChart, color: 'from-blue-400 to-blue-600', bg: 'bg-blue-50 dark:bg-blue-950/30', textColor: 'text-blue-600 dark:text-blue-400' },
         ].map((kpi) => (
-          <div key={kpi.label} className="relative overflow-hidden rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)] p-4 shadow-sm hover:shadow-md transition-shadow">
+          <div key={kpi.label} className="relative overflow-hidden rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)] p-3 shadow-sm hover:shadow-md transition-shadow">
             <div className="flex items-start justify-between">
               <div>
                 <p className="text-xs font-semibold text-[var(--color-text-muted)] uppercase tracking-wider">{kpi.label}</p>
-                <p className={`text-xl font-semibold mt-1.5 ${kpi.textColor}`}>{kpi.value}</p>
+                <p className={`text-lg font-semibold mt-1 ${kpi.textColor}`}>{kpi.value}</p>
                 <p className="text-xs text-[var(--color-text-muted)] mt-1">{kpi.desc}</p>
               </div>
-              <div className={`w-10 h-10 rounded-lg bg-gradient-to-br ${kpi.color} flex items-center justify-center text-white shadow-lg`}>
+              <div className={`w-9 h-9 rounded-lg bg-gradient-to-br ${kpi.color} flex items-center justify-center text-white shadow-lg`}>
                 <kpi.icon className="w-4.5 h-4.5" />
               </div>
             </div>
@@ -356,14 +356,14 @@ export function ExpenseAnalyticsView() {
           { label: 'Pending Claims', value: pendingClaims, desc: 'Awaiting review or approval', icon: Clock3, color: 'from-amber-400 to-amber-600', bg: 'bg-amber-50 dark:bg-amber-950/30', textColor: 'text-amber-600 dark:text-amber-400' },
           { label: 'Avg Claim Size', value: money(d.claims.length ? (d.claims.reduce((s, c) => s + (c.totalAmount || 0), 0) / d.claims.length) : 0), desc: 'Mean claim amount', icon: Wallet, color: 'from-blue-400 to-blue-600', bg: 'bg-blue-50 dark:bg-blue-950/30', textColor: 'text-blue-600 dark:text-blue-400' },
         ].map((kpi) => (
-          <div key={kpi.label} className="relative overflow-hidden rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)] p-4 shadow-sm hover:shadow-md transition-shadow">
+          <div key={kpi.label} className="relative overflow-hidden rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)] p-3 shadow-sm hover:shadow-md transition-shadow">
             <div className="flex items-start justify-between">
               <div>
                 <p className="text-xs font-semibold text-[var(--color-text-muted)] uppercase tracking-wider">{kpi.label}</p>
-                <p className={`text-xl font-semibold mt-1.5 ${kpi.textColor}`}>{kpi.value}</p>
+                <p className={`text-lg font-semibold mt-1 ${kpi.textColor}`}>{kpi.value}</p>
                 <p className="text-xs text-[var(--color-text-muted)] mt-1">{kpi.desc}</p>
               </div>
-              <div className={`w-10 h-10 rounded-lg bg-gradient-to-br ${kpi.color} flex items-center justify-center text-white shadow-lg`}>
+              <div className={`w-9 h-9 rounded-lg bg-gradient-to-br ${kpi.color} flex items-center justify-center text-white shadow-lg`}>
                 <kpi.icon className="w-4.5 h-4.5" />
               </div>
             </div>
@@ -417,14 +417,14 @@ export function CashFlowAnalyticsView() {
           { label: 'Outflows', value: money(outflow), desc: 'Total cash spent', icon: ArrowDownRight, color: 'from-red-400 to-red-600', bg: 'bg-red-50 dark:bg-red-950/30', textColor: 'text-red-600 dark:text-red-400' },
           { label: 'Net Movement', value: money(inflow - outflow), desc: 'Inflow minus outflow', icon: Activity, color: 'from-blue-400 to-blue-600', bg: 'bg-blue-50 dark:bg-blue-950/30', textColor: 'text-blue-600 dark:text-blue-400' },
         ].map((kpi) => (
-          <div key={kpi.label} className="relative overflow-hidden rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)] p-4 shadow-sm hover:shadow-md transition-shadow">
+          <div key={kpi.label} className="relative overflow-hidden rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)] p-3 shadow-sm hover:shadow-md transition-shadow">
             <div className="flex items-start justify-between">
               <div>
                 <p className="text-xs font-semibold text-[var(--color-text-muted)] uppercase tracking-wider">{kpi.label}</p>
-                <p className={`text-xl font-semibold mt-1.5 ${kpi.textColor}`}>{kpi.value}</p>
+                <p className={`text-lg font-semibold mt-1 ${kpi.textColor}`}>{kpi.value}</p>
                 <p className="text-xs text-[var(--color-text-muted)] mt-1">{kpi.desc}</p>
               </div>
-              <div className={`w-10 h-10 rounded-lg bg-gradient-to-br ${kpi.color} flex items-center justify-center text-white shadow-lg`}>
+              <div className={`w-9 h-9 rounded-lg bg-gradient-to-br ${kpi.color} flex items-center justify-center text-white shadow-lg`}>
                 <kpi.icon className="w-4.5 h-4.5" />
               </div>
             </div>
@@ -481,14 +481,14 @@ export function InventoryAnalyticsView() {
           { label: 'Low Stock Items', value: d.lowStock, desc: 'Below reorder point', icon: AlertTriangle, color: 'from-amber-400 to-amber-600', bg: 'bg-amber-50 dark:bg-amber-950/30', textColor: 'text-amber-600 dark:text-amber-400' },
           { label: 'Fixed Assets (NBV)', value: money(assetValue), desc: 'Net book value of assets', icon: Scale, color: 'from-violet-400 to-violet-600', bg: 'bg-violet-50 dark:bg-violet-950/30', textColor: 'text-violet-600 dark:text-violet-400' },
         ].map((kpi) => (
-          <div key={kpi.label} className="relative overflow-hidden rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)] p-4 shadow-sm hover:shadow-md transition-shadow">
+          <div key={kpi.label} className="relative overflow-hidden rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)] p-3 shadow-sm hover:shadow-md transition-shadow">
             <div className="flex items-start justify-between">
               <div>
                 <p className="text-xs font-semibold text-[var(--color-text-muted)] uppercase tracking-wider">{kpi.label}</p>
-                <p className={`text-xl font-semibold mt-1.5 ${kpi.textColor}`}>{kpi.value}</p>
+                <p className={`text-lg font-semibold mt-1 ${kpi.textColor}`}>{kpi.value}</p>
                 <p className="text-xs text-[var(--color-text-muted)] mt-1">{kpi.desc}</p>
               </div>
-              <div className={`w-10 h-10 rounded-lg bg-gradient-to-br ${kpi.color} flex items-center justify-center text-white shadow-lg`}>
+              <div className={`w-9 h-9 rounded-lg bg-gradient-to-br ${kpi.color} flex items-center justify-center text-white shadow-lg`}>
                 <kpi.icon className="w-4.5 h-4.5" />
               </div>
             </div>
@@ -586,14 +586,14 @@ export function ForecastingView() {
           { label: 'Projected Expenses', value: money(forecast.filter(f => (f as any).forecast).reduce((s, f) => s + f.expenses, 0)), desc: 'Trend-based forecast', icon: TrendingDown, color: 'from-red-400 to-red-600', bg: 'bg-red-50 dark:bg-red-950/30', textColor: 'text-red-600 dark:text-red-400' },
           { label: 'Data Points', value: d.monthly.length, desc: 'Months of data available', icon: Lightbulb, color: 'from-blue-400 to-blue-600', bg: 'bg-blue-50 dark:bg-blue-950/30', textColor: 'text-blue-600 dark:text-blue-400' },
         ].map((kpi) => (
-          <div key={kpi.label} className="relative overflow-hidden rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)] p-4 shadow-sm hover:shadow-md transition-shadow">
+          <div key={kpi.label} className="relative overflow-hidden rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)] p-3 shadow-sm hover:shadow-md transition-shadow">
             <div className="flex items-start justify-between">
               <div>
                 <p className="text-xs font-semibold text-[var(--color-text-muted)] uppercase tracking-wider">{kpi.label}</p>
-                <p className={`text-xl font-semibold mt-1.5 ${kpi.textColor}`}>{kpi.value}</p>
+                <p className={`text-lg font-semibold mt-1 ${kpi.textColor}`}>{kpi.value}</p>
                 <p className="text-xs text-[var(--color-text-muted)] mt-1">{kpi.desc}</p>
               </div>
-              <div className={`w-10 h-10 rounded-lg bg-gradient-to-br ${kpi.color} flex items-center justify-center text-white shadow-lg`}>
+              <div className={`w-9 h-9 rounded-lg bg-gradient-to-br ${kpi.color} flex items-center justify-center text-white shadow-lg`}>
                 <kpi.icon className="w-4.5 h-4.5" />
               </div>
             </div>
@@ -669,14 +669,14 @@ export function AIInsightsView() {
           { label: 'Opportunities', value: insights.filter(i => i.tone === 'teal').length, desc: 'Positive indicators', icon: TrendingUp, color: 'from-green-400 to-green-600', bg: 'bg-green-50 dark:bg-green-950/30', textColor: 'text-green-600 dark:text-green-400' },
           { label: 'Recommendations', value: insights.filter(i => i.tone === 'amber').length, desc: 'Suggested actions', icon: Lightbulb, color: 'from-amber-400 to-amber-600', bg: 'bg-amber-50 dark:bg-amber-950/30', textColor: 'text-amber-600 dark:text-amber-400' },
         ].map((kpi) => (
-          <div key={kpi.label} className="relative overflow-hidden rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)] p-4 shadow-sm hover:shadow-md transition-shadow">
+          <div key={kpi.label} className="relative overflow-hidden rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)] p-3 shadow-sm hover:shadow-md transition-shadow">
             <div className="flex items-start justify-between">
               <div>
                 <p className="text-xs font-semibold text-[var(--color-text-muted)] uppercase tracking-wider">{kpi.label}</p>
-                <p className={`text-xl font-semibold mt-1.5 ${kpi.textColor}`}>{kpi.value}</p>
+                <p className={`text-lg font-semibold mt-1 ${kpi.textColor}`}>{kpi.value}</p>
                 <p className="text-xs text-[var(--color-text-muted)] mt-1">{kpi.desc}</p>
               </div>
-              <div className={`w-10 h-10 rounded-lg bg-gradient-to-br ${kpi.color} flex items-center justify-center text-white shadow-lg`}>
+              <div className={`w-9 h-9 rounded-lg bg-gradient-to-br ${kpi.color} flex items-center justify-center text-white shadow-lg`}>
                 <kpi.icon className="w-4.5 h-4.5" />
               </div>
             </div>

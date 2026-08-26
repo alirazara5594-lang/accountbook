@@ -62,14 +62,14 @@ export function FieldOperationsSummaryView() {
           { label: 'Open Work Orders', value: dashboard?.openOrders ?? 0, desc: 'Awaiting completion', icon: Wrench, color: 'from-amber-400 to-amber-600', bg: 'bg-amber-50 dark:bg-amber-950/30', textColor: 'text-amber-600 dark:text-amber-400' },
           { label: 'Pending Inspections', value: dashboard?.pendingInspections ?? 0, desc: 'Scheduled inspections', icon: ShieldCheck, color: 'from-violet-400 to-violet-600', bg: 'bg-violet-50 dark:bg-violet-950/30', textColor: 'text-violet-600 dark:text-violet-400' },
         ].map((kpi) => (
-          <div key={kpi.label} className="relative overflow-hidden rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)] p-4 shadow-sm hover:shadow-md transition-shadow">
+          <div key={kpi.label} className="relative overflow-hidden rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)] p-3 shadow-sm hover:shadow-md transition-shadow">
             <div className="flex items-start justify-between">
               <div>
                 <p className="text-xs font-semibold text-[var(--color-text-muted)] uppercase tracking-wider">{kpi.label}</p>
-                <p className={`text-xl font-semibold mt-1.5 ${kpi.textColor}`}>{kpi.value}</p>
+                <p className={`text-lg font-semibold mt-1 ${kpi.textColor}`}>{kpi.value}</p>
                 <p className="text-xs text-[var(--color-text-muted)] mt-1">{kpi.desc}</p>
               </div>
-              <div className={`w-10 h-10 rounded-lg bg-gradient-to-br ${kpi.color} flex items-center justify-center text-white shadow-lg`}>
+              <div className={`w-9 h-9 rounded-lg bg-gradient-to-br ${kpi.color} flex items-center justify-center text-white shadow-lg`}>
                 <kpi.icon className="w-4.5 h-4.5" />
               </div>
             </div>
@@ -145,14 +145,14 @@ export function SurveysView({ activeEntityId }: { activeEntityId?: string }) {
           { label: 'Closed', value: surveys.filter(s => s.status === 'Closed').length, desc: 'Completed surveys', icon: CheckCircle2, color: 'from-green-400 to-green-600', bg: 'bg-green-50 dark:bg-green-950/30', textColor: 'text-green-600 dark:text-green-400' },
           { label: 'Responses', value: responses, desc: 'Total responses', icon: AlertTriangle, color: 'from-amber-400 to-amber-600', bg: 'bg-amber-50 dark:bg-amber-950/30', textColor: 'text-amber-600 dark:text-amber-400' },
         ].map((kpi) => (
-          <div key={kpi.label} className="relative overflow-hidden rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)] p-4 shadow-sm hover:shadow-md transition-shadow">
+          <div key={kpi.label} className="relative overflow-hidden rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)] p-3 shadow-sm hover:shadow-md transition-shadow">
             <div className="flex items-start justify-between">
               <div>
                 <p className="text-xs font-semibold text-[var(--color-text-muted)] uppercase tracking-wider">{kpi.label}</p>
-                <p className={`text-xl font-semibold mt-1.5 ${kpi.textColor}`}>{kpi.value}</p>
+                <p className={`text-lg font-semibold mt-1 ${kpi.textColor}`}>{kpi.value}</p>
                 <p className="text-xs text-[var(--color-text-muted)] mt-1">{kpi.desc}</p>
               </div>
-              <div className={`w-10 h-10 rounded-lg bg-gradient-to-br ${kpi.color} flex items-center justify-center text-white shadow-lg`}>
+              <div className={`w-9 h-9 rounded-lg bg-gradient-to-br ${kpi.color} flex items-center justify-center text-white shadow-lg`}>
                 <kpi.icon className="w-4.5 h-4.5" />
               </div>
             </div>
@@ -248,14 +248,14 @@ export function FieldVisitsView({ activeEntityId }: { activeEntityId?: string })
           { label: 'In Progress', value: visits.filter(v => v.status === 'InProgress').length, desc: 'Currently active', icon: TrendingUp, color: 'from-amber-400 to-amber-600', bg: 'bg-amber-50 dark:bg-amber-950/30', textColor: 'text-amber-600 dark:text-amber-400' },
           { label: 'Completed', value: visits.filter(v => v.status === 'Completed').length, desc: 'Finished visits', icon: CheckCircle2, color: 'from-green-400 to-green-600', bg: 'bg-green-50 dark:bg-green-950/30', textColor: 'text-green-600 dark:text-green-400' },
         ].map((kpi) => (
-          <div key={kpi.label} className="relative overflow-hidden rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)] p-4 shadow-sm hover:shadow-md transition-shadow">
+          <div key={kpi.label} className="relative overflow-hidden rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)] p-3 shadow-sm hover:shadow-md transition-shadow">
             <div className="flex items-start justify-between">
               <div>
                 <p className="text-xs font-semibold text-[var(--color-text-muted)] uppercase tracking-wider">{kpi.label}</p>
-                <p className={`text-xl font-semibold mt-1.5 ${kpi.textColor}`}>{kpi.value}</p>
+                <p className={`text-lg font-semibold mt-1 ${kpi.textColor}`}>{kpi.value}</p>
                 <p className="text-xs text-[var(--color-text-muted)] mt-1">{kpi.desc}</p>
               </div>
-              <div className={`w-10 h-10 rounded-lg bg-gradient-to-br ${kpi.color} flex items-center justify-center text-white shadow-lg`}>
+              <div className={`w-9 h-9 rounded-lg bg-gradient-to-br ${kpi.color} flex items-center justify-center text-white shadow-lg`}>
                 <kpi.icon className="w-4.5 h-4.5" />
               </div>
             </div>
@@ -349,14 +349,14 @@ export function InspectionsView({ activeEntityId }: { activeEntityId?: string })
           { label: 'Passed', value: inspections.filter(i => i.status === 'Passed').length, desc: 'Passed inspections', icon: CheckCircle2, color: 'from-green-400 to-green-600', bg: 'bg-green-50 dark:bg-green-950/30', textColor: 'text-green-600 dark:text-green-400' },
           { label: 'Failed', value: inspections.filter(i => i.status === 'Failed').length, desc: 'Failed inspections', icon: AlertTriangle, color: 'from-red-400 to-red-600', bg: 'bg-red-50 dark:bg-red-950/30', textColor: 'text-red-600 dark:text-red-400' },
         ].map((kpi) => (
-          <div key={kpi.label} className="relative overflow-hidden rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)] p-4 shadow-sm hover:shadow-md transition-shadow">
+          <div key={kpi.label} className="relative overflow-hidden rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)] p-3 shadow-sm hover:shadow-md transition-shadow">
             <div className="flex items-start justify-between">
               <div>
                 <p className="text-xs font-semibold text-[var(--color-text-muted)] uppercase tracking-wider">{kpi.label}</p>
-                <p className={`text-xl font-semibold mt-1.5 ${kpi.textColor}`}>{kpi.value}</p>
+                <p className={`text-lg font-semibold mt-1 ${kpi.textColor}`}>{kpi.value}</p>
                 <p className="text-xs text-[var(--color-text-muted)] mt-1">{kpi.desc}</p>
               </div>
-              <div className={`w-10 h-10 rounded-lg bg-gradient-to-br ${kpi.color} flex items-center justify-center text-white shadow-lg`}>
+              <div className={`w-9 h-9 rounded-lg bg-gradient-to-br ${kpi.color} flex items-center justify-center text-white shadow-lg`}>
                 <kpi.icon className="w-4.5 h-4.5" />
               </div>
             </div>
@@ -450,14 +450,14 @@ export function WorkOrdersView({ activeEntityId }: { activeEntityId?: string }) 
           { label: 'In Progress', value: workOrders.filter(w => w.status === 'Assigned' || w.status === 'InProgress').length, desc: 'Currently active', icon: TrendingUp, color: 'from-amber-400 to-amber-600', bg: 'bg-amber-50 dark:bg-amber-950/30', textColor: 'text-amber-600 dark:text-amber-400' },
           { label: 'Total Cost', value: money(totalCost), desc: 'Combined costs', icon: Wallet, color: 'from-violet-400 to-violet-600', bg: 'bg-violet-50 dark:bg-violet-950/30', textColor: 'text-violet-600 dark:text-violet-400' },
         ].map((kpi) => (
-          <div key={kpi.label} className="relative overflow-hidden rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)] p-4 shadow-sm hover:shadow-md transition-shadow">
+          <div key={kpi.label} className="relative overflow-hidden rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)] p-3 shadow-sm hover:shadow-md transition-shadow">
             <div className="flex items-start justify-between">
               <div>
                 <p className="text-xs font-semibold text-[var(--color-text-muted)] uppercase tracking-wider">{kpi.label}</p>
-                <p className={`text-xl font-semibold mt-1.5 ${kpi.textColor}`}>{kpi.value}</p>
+                <p className={`text-lg font-semibold mt-1 ${kpi.textColor}`}>{kpi.value}</p>
                 <p className="text-xs text-[var(--color-text-muted)] mt-1">{kpi.desc}</p>
               </div>
-              <div className={`w-10 h-10 rounded-lg bg-gradient-to-br ${kpi.color} flex items-center justify-center text-white shadow-lg`}>
+              <div className={`w-9 h-9 rounded-lg bg-gradient-to-br ${kpi.color} flex items-center justify-center text-white shadow-lg`}>
                 <kpi.icon className="w-4.5 h-4.5" />
               </div>
             </div>
@@ -559,14 +559,14 @@ export function FieldExpensesView({ activeEntityId }: { activeEntityId?: string 
           { label: 'Reimbursed', value: expenses.filter(e => e.reimbursed).length, desc: 'Processed expenses', icon: CheckCircle2, color: 'from-green-400 to-green-600', bg: 'bg-green-50 dark:bg-green-950/30', textColor: 'text-green-600 dark:text-green-400' },
           { label: 'Pending', value: expenses.filter(e => !e.reimbursed).length, desc: 'Awaiting reimbursement', icon: AlertTriangle, color: 'from-amber-400 to-amber-600', bg: 'bg-amber-50 dark:bg-amber-950/30', textColor: 'text-amber-600 dark:text-amber-400' },
         ].map((kpi) => (
-          <div key={kpi.label} className="relative overflow-hidden rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)] p-4 shadow-sm hover:shadow-md transition-shadow">
+          <div key={kpi.label} className="relative overflow-hidden rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)] p-3 shadow-sm hover:shadow-md transition-shadow">
             <div className="flex items-start justify-between">
               <div>
                 <p className="text-xs font-semibold text-[var(--color-text-muted)] uppercase tracking-wider">{kpi.label}</p>
-                <p className={`text-xl font-semibold mt-1.5 ${kpi.textColor}`}>{kpi.value}</p>
+                <p className={`text-lg font-semibold mt-1 ${kpi.textColor}`}>{kpi.value}</p>
                 <p className="text-xs text-[var(--color-text-muted)] mt-1">{kpi.desc}</p>
               </div>
-              <div className={`w-10 h-10 rounded-lg bg-gradient-to-br ${kpi.color} flex items-center justify-center text-white shadow-lg`}>
+              <div className={`w-9 h-9 rounded-lg bg-gradient-to-br ${kpi.color} flex items-center justify-center text-white shadow-lg`}>
                 <kpi.icon className="w-4.5 h-4.5" />
               </div>
             </div>
@@ -642,14 +642,14 @@ export function FieldReportsView() {
           { label: 'Work Order Cost', value: money(totalCost), desc: 'Combined costs', icon: Wrench, color: 'from-amber-400 to-amber-600', bg: 'bg-amber-50 dark:bg-amber-950/30', textColor: 'text-amber-600 dark:text-amber-400' },
           { label: 'Field Expenses', value: money(totalExpenses), desc: 'Combined expenses', icon: ReceiptText, color: 'from-violet-400 to-violet-600', bg: 'bg-violet-50 dark:bg-violet-950/30', textColor: 'text-violet-600 dark:text-violet-400' },
         ].map((kpi) => (
-          <div key={kpi.label} className="relative overflow-hidden rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)] p-4 shadow-sm hover:shadow-md transition-shadow">
+          <div key={kpi.label} className="relative overflow-hidden rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)] p-3 shadow-sm hover:shadow-md transition-shadow">
             <div className="flex items-start justify-between">
               <div>
                 <p className="text-xs font-semibold text-[var(--color-text-muted)] uppercase tracking-wider">{kpi.label}</p>
-                <p className={`text-xl font-semibold mt-1.5 ${kpi.textColor}`}>{kpi.value}</p>
+                <p className={`text-lg font-semibold mt-1 ${kpi.textColor}`}>{kpi.value}</p>
                 <p className="text-xs text-[var(--color-text-muted)] mt-1">{kpi.desc}</p>
               </div>
-              <div className={`w-10 h-10 rounded-lg bg-gradient-to-br ${kpi.color} flex items-center justify-center text-white shadow-lg`}>
+              <div className={`w-9 h-9 rounded-lg bg-gradient-to-br ${kpi.color} flex items-center justify-center text-white shadow-lg`}>
                 <kpi.icon className="w-4.5 h-4.5" />
               </div>
             </div>

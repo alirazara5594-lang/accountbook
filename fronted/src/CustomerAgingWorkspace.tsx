@@ -645,14 +645,14 @@ export function CustomerAgingWorkspace({ activeEntityId }: Props) {
           { label: 'Total Overdue', value: fmt(overdueAmount), desc: 'Past invoice due dates', icon: AlertTriangle, color: 'from-amber-500 to-amber-600', bg: 'bg-amber-50 dark:bg-amber-950/30', textColor: 'text-amber-600 dark:text-amber-400' },
           { label: 'Critical (90+ Days)', value: criticalCount, desc: 'High delinquency accounts', icon: Skull, color: 'from-rose-500 to-rose-600', bg: 'bg-rose-50 dark:bg-rose-950/30', textColor: 'text-rose-600 dark:text-rose-400' },
         ].map((kpi) => (
-          <div key={kpi.label} className="relative overflow-hidden rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)] p-4 shadow-sm hover:shadow-md transition-shadow">
+          <div key={kpi.label} className="relative overflow-hidden rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)] p-3 shadow-sm hover:shadow-md transition-shadow">
             <div className="flex items-start justify-between">
               <div>
                 <p className="text-xs font-semibold text-[var(--color-text-muted)] uppercase tracking-wider">{kpi.label}</p>
-                <p className={`text-xl font-semibold mt-1.5 ${kpi.textColor}`}>{kpi.value}</p>
+                <p className={`text-lg font-semibold mt-1 ${kpi.textColor}`}>{kpi.value}</p>
                 <p className="text-xs text-[var(--color-text-muted)] mt-1">{kpi.desc}</p>
               </div>
-              <div className={`w-10 h-10 rounded-lg bg-gradient-to-br ${kpi.color} flex items-center justify-center text-white shadow-lg`}>
+              <div className={`w-9 h-9 rounded-lg bg-gradient-to-br ${kpi.color} flex items-center justify-center text-white shadow-lg`}>
                 <kpi.icon className="w-5 h-5" />
               </div>
             </div>

@@ -107,14 +107,14 @@ export default function HRReportsView() {
           { label: 'Terminated', value: terminated.length, desc: 'No longer active', icon: AlertTriangle, color: 'from-red-400 to-red-600', bg: 'bg-red-50 dark:bg-red-950/30', textColor: 'text-red-600 dark:text-red-400' },
           { label: 'Avg. Basic Salary', value: money(avgSalary), desc: 'Per active employee', icon: Banknote, color: 'from-blue-400 to-blue-600', bg: 'bg-blue-50 dark:bg-blue-950/30', textColor: 'text-blue-600 dark:text-blue-400' },
         ].map((kpi) => (
-          <div key={kpi.label} className="relative overflow-hidden rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)] p-4 shadow-sm hover:shadow-md transition-shadow">
+          <div key={kpi.label} className="relative overflow-hidden rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)] p-3 shadow-sm hover:shadow-md transition-shadow">
             <div className="flex items-start justify-between">
               <div>
                 <p className="text-xs font-semibold text-[var(--color-text-muted)] uppercase tracking-wider">{kpi.label}</p>
-                <p className={`text-xl font-semibold mt-1.5 ${kpi.textColor}`}>{kpi.value}</p>
+                <p className={`text-lg font-semibold mt-1 ${kpi.textColor}`}>{kpi.value}</p>
                 <p className="text-xs text-[var(--color-text-muted)] mt-1">{kpi.desc}</p>
               </div>
-              <div className={`w-10 h-10 rounded-lg bg-gradient-to-br ${kpi.color} flex items-center justify-center text-white shadow-lg`}>
+              <div className={`w-9 h-9 rounded-lg bg-gradient-to-br ${kpi.color} flex items-center justify-center text-white shadow-lg`}>
                 <kpi.icon className="w-4.5 h-4.5" />
               </div>
             </div>
@@ -216,14 +216,14 @@ export default function HRReportsView() {
               { label: 'Late Arrivals', value: attendanceStats.late, desc: 'Late check-ins', icon: AlertTriangle, color: 'from-amber-400 to-amber-600', bg: 'bg-amber-50 dark:bg-amber-950/30', textColor: 'text-amber-600 dark:text-amber-400' },
               { label: 'Avg Hours / Day', value: attendanceStats.avgHours, desc: 'Average daily hours', icon: TrendingUp, color: 'from-blue-400 to-blue-600', bg: 'bg-blue-50 dark:bg-blue-950/30', textColor: 'text-blue-600 dark:text-blue-400' },
             ].map((kpi) => (
-              <div key={kpi.label} className="relative overflow-hidden rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)] p-4 shadow-sm hover:shadow-md transition-shadow">
+              <div key={kpi.label} className="relative overflow-hidden rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)] p-3 shadow-sm hover:shadow-md transition-shadow">
                 <div className="flex items-start justify-between">
                   <div>
                     <p className="text-xs font-semibold text-[var(--color-text-muted)] uppercase tracking-wider">{kpi.label}</p>
-                    <p className={`text-xl font-semibold mt-1.5 ${kpi.textColor}`}>{kpi.value}</p>
+                    <p className={`text-lg font-semibold mt-1 ${kpi.textColor}`}>{kpi.value}</p>
                     <p className="text-xs text-[var(--color-text-muted)] mt-1">{kpi.desc}</p>
                   </div>
-                  <div className={`w-10 h-10 rounded-lg bg-gradient-to-br ${kpi.color} flex items-center justify-center text-white shadow-lg`}>
+                  <div className={`w-9 h-9 rounded-lg bg-gradient-to-br ${kpi.color} flex items-center justify-center text-white shadow-lg`}>
                     <kpi.icon className="w-4.5 h-4.5" />
                   </div>
                 </div>
@@ -274,14 +274,14 @@ export default function HRReportsView() {
               { label: 'Pending', value: leaveRequests.filter(r => r.status === 'Pending').length, desc: 'Awaiting approval', icon: AlertTriangle, color: 'from-amber-400 to-amber-600', bg: 'bg-amber-50 dark:bg-amber-950/30', textColor: 'text-amber-600 dark:text-amber-400' },
               { label: 'Total Days Taken', value: leaveRequests.filter(r => r.status === 'Approved').reduce((s, r) => s + (r.totalDays || 0), 0), desc: 'Approved leave days', icon: CalendarCheck2, color: 'from-blue-400 to-blue-600', bg: 'bg-blue-50 dark:bg-blue-950/30', textColor: 'text-blue-600 dark:text-blue-400' },
             ].map((kpi) => (
-              <div key={kpi.label} className="relative overflow-hidden rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)] p-4 shadow-sm hover:shadow-md transition-shadow">
+              <div key={kpi.label} className="relative overflow-hidden rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)] p-3 shadow-sm hover:shadow-md transition-shadow">
                 <div className="flex items-start justify-between">
                   <div>
                     <p className="text-xs font-semibold text-[var(--color-text-muted)] uppercase tracking-wider">{kpi.label}</p>
-                    <p className={`text-xl font-semibold mt-1.5 ${kpi.textColor}`}>{kpi.value}</p>
+                    <p className={`text-lg font-semibold mt-1 ${kpi.textColor}`}>{kpi.value}</p>
                     <p className="text-xs text-[var(--color-text-muted)] mt-1">{kpi.desc}</p>
                   </div>
-                  <div className={`w-10 h-10 rounded-lg bg-gradient-to-br ${kpi.color} flex items-center justify-center text-white shadow-lg`}>
+                  <div className={`w-9 h-9 rounded-lg bg-gradient-to-br ${kpi.color} flex items-center justify-center text-white shadow-lg`}>
                     <kpi.icon className="w-4.5 h-4.5" />
                   </div>
                 </div>
@@ -327,14 +327,14 @@ export default function HRReportsView() {
               { label: 'Total Deductions', value: money(payrollSummary.totalDeductions), desc: 'All deductions', icon: Wallet, color: 'from-amber-400 to-amber-600', bg: 'bg-amber-50 dark:bg-amber-950/30', textColor: 'text-amber-600 dark:text-amber-400' },
               { label: 'Net Pay Issued', value: money(payrollSummary.totalNet), desc: 'Net pay disbursed', icon: UserCheck, color: 'from-blue-400 to-blue-600', bg: 'bg-blue-50 dark:bg-blue-950/30', textColor: 'text-blue-600 dark:text-blue-400' },
             ].map((kpi) => (
-              <div key={kpi.label} className="relative overflow-hidden rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)] p-4 shadow-sm hover:shadow-md transition-shadow">
+              <div key={kpi.label} className="relative overflow-hidden rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)] p-3 shadow-sm hover:shadow-md transition-shadow">
                 <div className="flex items-start justify-between">
                   <div>
                     <p className="text-xs font-semibold text-[var(--color-text-muted)] uppercase tracking-wider">{kpi.label}</p>
-                    <p className={`text-xl font-semibold mt-1.5 ${kpi.textColor}`}>{kpi.value}</p>
+                    <p className={`text-lg font-semibold mt-1 ${kpi.textColor}`}>{kpi.value}</p>
                     <p className="text-xs text-[var(--color-text-muted)] mt-1">{kpi.desc}</p>
                   </div>
-                  <div className={`w-10 h-10 rounded-lg bg-gradient-to-br ${kpi.color} flex items-center justify-center text-white shadow-lg`}>
+                  <div className={`w-9 h-9 rounded-lg bg-gradient-to-br ${kpi.color} flex items-center justify-center text-white shadow-lg`}>
                     <kpi.icon className="w-4.5 h-4.5" />
                   </div>
                 </div>
@@ -381,14 +381,14 @@ export default function HRReportsView() {
               { label: 'Outstanding Balance', value: money(loanSummary.outstanding), desc: 'Remaining balance', icon: Banknote, color: 'from-amber-400 to-amber-600', bg: 'bg-amber-50 dark:bg-amber-950/30', textColor: 'text-amber-600 dark:text-amber-400' },
               { label: 'Active Loans', value: loanSummary.active, desc: 'Currently active', icon: UserCheck, color: 'from-green-400 to-green-600', bg: 'bg-green-50 dark:bg-green-950/30', textColor: 'text-green-600 dark:text-green-400' },
             ].map((kpi) => (
-              <div key={kpi.label} className="relative overflow-hidden rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)] p-4 shadow-sm hover:shadow-md transition-shadow">
+              <div key={kpi.label} className="relative overflow-hidden rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)] p-3 shadow-sm hover:shadow-md transition-shadow">
                 <div className="flex items-start justify-between">
                   <div>
                     <p className="text-xs font-semibold text-[var(--color-text-muted)] uppercase tracking-wider">{kpi.label}</p>
-                    <p className={`text-xl font-semibold mt-1.5 ${kpi.textColor}`}>{kpi.value}</p>
+                    <p className={`text-lg font-semibold mt-1 ${kpi.textColor}`}>{kpi.value}</p>
                     <p className="text-xs text-[var(--color-text-muted)] mt-1">{kpi.desc}</p>
                   </div>
-                  <div className={`w-10 h-10 rounded-lg bg-gradient-to-br ${kpi.color} flex items-center justify-center text-white shadow-lg`}>
+                  <div className={`w-9 h-9 rounded-lg bg-gradient-to-br ${kpi.color} flex items-center justify-center text-white shadow-lg`}>
                     <kpi.icon className="w-4.5 h-4.5" />
                   </div>
                 </div>

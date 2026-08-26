@@ -633,14 +633,14 @@ export const VoucherManagement: React.FC<VoucherManagementProps> = ({ activeEnti
           { label: 'NET VOUCHER LIQUIDITY', value: money(netLiquidity, currentEntity?.currencyCode), desc: netLiquidity >= 0 ? 'Net positive liquidity' : 'Net disbursement surplus', icon: TrendingUp, color: netLiquidity >= 0 ? 'from-blue-500 to-blue-600' : 'from-amber-500 to-amber-600', bg: netLiquidity >= 0 ? 'bg-blue-50 dark:bg-blue-950/30' : 'bg-amber-50 dark:bg-amber-950/30', textColor: netLiquidity >= 0 ? 'text-blue-600 dark:text-blue-400' : 'text-amber-600 dark:text-amber-400' },
           { label: 'VOUCHERS COUNT', value: totalCount, desc: 'Posted financial vouchers', icon: Hash, color: 'from-violet-500 to-violet-600', bg: 'bg-violet-50 dark:bg-violet-950/30', textColor: 'text-violet-600 dark:text-violet-400' },
         ].map((kpi) => (
-          <div key={kpi.label} className="relative overflow-hidden rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)] p-4 shadow-sm hover:shadow-md transition-shadow">
+          <div key={kpi.label} className="relative overflow-hidden rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)] p-3 shadow-sm hover:shadow-md transition-shadow">
             <div className="flex items-start justify-between">
               <div>
                 <p className="text-xs font-semibold text-[var(--color-text-muted)] uppercase tracking-wider">{kpi.label}</p>
-                <p className={`text-xl font-semibold mt-1.5 ${kpi.textColor}`}>{kpi.value}</p>
+                <p className={`text-lg font-semibold mt-1 ${kpi.textColor}`}>{kpi.value}</p>
                 <p className="text-xs text-[var(--color-text-muted)] mt-1">{kpi.desc}</p>
               </div>
-              <div className={`w-10 h-10 rounded-lg bg-gradient-to-br ${kpi.color} flex items-center justify-center text-white shadow-lg`}>
+              <div className={`w-9 h-9 rounded-lg bg-gradient-to-br ${kpi.color} flex items-center justify-center text-white shadow-lg`}>
                 <kpi.icon className="w-5 h-5" />
               </div>
             </div>
