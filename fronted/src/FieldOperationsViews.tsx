@@ -7,8 +7,7 @@ import { Badge } from '@/components/ui/badge';
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@/components/ui/select';
 import { FormField } from '@/components/ui/form-field';
 import { PageHeader } from '@/components/ui/page-header';
-import { StatCard } from '@/components/ui/stat-card';
-import { ModuleSummaryLayout, SummaryPanel } from '@/components/module-summary-layout';
+
 import {
   Plus, ClipboardList, CalendarCheck2, ShieldCheck, Wrench, ReceiptText, Save, CheckCircle2, AlertTriangle, TrendingUp, FileBarChart, Clock3, Wallet
 } from 'lucide-react';
@@ -54,47 +53,65 @@ export function FieldOperationsSummaryView() {
   const totalExpenses = expenses.reduce((s, e) => s + e.amount, 0);
 
   return (
-    <ModuleSummaryLayout
-      title="Survey & Field Operations"
-      description="Manage surveys, field visits, inspections, field work orders, and expenses"
-      stats={[
-        { icon: ClipboardList, label: 'Active Surveys', value: dashboard?.activeSurveys ?? 0, tone: 'teal' },
-        { icon: CalendarCheck2, label: 'Upcoming Visits', value: dashboard?.upcomingVisits ?? 0, tone: 'blue' },
-        { icon: Wrench, label: 'Open Work Orders', value: dashboard?.openOrders ?? 0, tone: 'amber' },
-        { icon: ShieldCheck, label: 'Pending Inspections', value: dashboard?.pendingInspections ?? 0, tone: 'violet' },
-      ]}
-    >
-      <SummaryPanel icon={TrendingUp} title="Performance">
-        <div className="space-y-2">
-          {[
-            { label: 'Survey Responses', value: responses },
-            { label: 'Completed Visits', value: dashboard?.completedVisits ?? 0 },
-            { label: 'Failed Inspections', value: dashboard?.failedInspections ?? 0 },
-            { label: 'Field Expenses', value: money(totalExpenses) },
-          ].map(r => (
-            <div key={r.label} className="flex items-center justify-between border rounded-lg p-3 text-sm">
-              <span className="text-muted-foreground">{r.label}</span>
-              <span className="font-mono font-medium">{r.value}</span>
+    <div className="p-6 max-w-[1400px] mx-auto space-y-4">
+      <PageHeader title="Survey & Field Operations" description="Manage surveys, field visits, inspections, field work orders, and expenses" />
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        {[
+          { label: 'Active Surveys', value: dashboard?.activeSurveys ?? 0, desc: 'Currently running', icon: ClipboardList, color: 'from-teal-400 to-teal-600', bg: 'bg-teal-50 dark:bg-teal-950/30', textColor: 'text-teal-600 dark:text-teal-400' },
+          { label: 'Upcoming Visits', value: dashboard?.upcomingVisits ?? 0, desc: 'Scheduled field visits', icon: CalendarCheck2, color: 'from-blue-400 to-blue-600', bg: 'bg-blue-50 dark:bg-blue-950/30', textColor: 'text-blue-600 dark:text-blue-400' },
+          { label: 'Open Work Orders', value: dashboard?.openOrders ?? 0, desc: 'Awaiting completion', icon: Wrench, color: 'from-amber-400 to-amber-600', bg: 'bg-amber-50 dark:bg-amber-950/30', textColor: 'text-amber-600 dark:text-amber-400' },
+          { label: 'Pending Inspections', value: dashboard?.pendingInspections ?? 0, desc: 'Scheduled inspections', icon: ShieldCheck, color: 'from-violet-400 to-violet-600', bg: 'bg-violet-50 dark:bg-violet-950/30', textColor: 'text-violet-600 dark:text-violet-400' },
+        ].map((kpi) => (
+          <div key={kpi.label} className="relative overflow-hidden rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)] p-4 shadow-sm hover:shadow-md transition-shadow">
+            <div className="flex items-start justify-between">
+              <div>
+                <p className="text-xs font-semibold text-[var(--color-text-muted)] uppercase tracking-wider">{kpi.label}</p>
+                <p className={`text-xl font-semibold mt-1.5 ${kpi.textColor}`}>{kpi.value}</p>
+                <p className="text-xs text-[var(--color-text-muted)] mt-1">{kpi.desc}</p>
+              </div>
+              <div className={`w-10 h-10 rounded-lg bg-gradient-to-br ${kpi.color} flex items-center justify-center text-white shadow-lg`}>
+                <kpi.icon className="w-4.5 h-4.5" />
+              </div>
             </div>
-          ))}
-        </div>
-      </SummaryPanel>
-      <SummaryPanel icon={Wrench} title="Activity Overview">
-        <div className="space-y-2">
-          {[
-            { label: 'Total Surveys', value: dashboard?.surveys ?? 0 },
-            { label: 'Total Visits', value: dashboard?.visits ?? 0 },
-            { label: 'Total Work Orders', value: dashboard?.workOrders ?? 0 },
-            { label: 'Work Order Cost', value: money(dashboard?.totalOrderCost ?? 0) },
-          ].map(r => (
-            <div key={r.label} className="flex items-center justify-between border rounded-lg p-3 text-sm">
-              <span className="text-muted-foreground">{r.label}</span>
-              <span className="font-mono font-medium">{r.value}</span>
-            </div>
-          ))}
-        </div>
-      </SummaryPanel>
-    </ModuleSummaryLayout>
+            <div className={`absolute -bottom-4 -right-4 w-24 h-24 rounded-full ${kpi.bg} opacity-50`} />
+          </div>
+        ))}
+      </div>
+      <div className="grid grid-cols-2 gap-4">
+        <Card className="p-4 space-y-3">
+          <p className="text-sm font-medium flex items-center gap-2"><TrendingUp className="h-4 w-4" /> Performance</p>
+          <div className="space-y-2">
+            {[
+              { label: 'Survey Responses', value: responses },
+              { label: 'Completed Visits', value: dashboard?.completedVisits ?? 0 },
+              { label: 'Failed Inspections', value: dashboard?.failedInspections ?? 0 },
+              { label: 'Field Expenses', value: money(totalExpenses) },
+            ].map(r => (
+              <div key={r.label} className="flex items-center justify-between border rounded-lg p-3 text-sm">
+                <span className="text-muted-foreground">{r.label}</span>
+                <span className="font-mono font-medium">{r.value}</span>
+              </div>
+            ))}
+          </div>
+        </Card>
+        <Card className="p-4 space-y-3">
+          <p className="text-sm font-medium flex items-center gap-2"><Wrench className="h-4 w-4" /> Activity Overview</p>
+          <div className="space-y-2">
+            {[
+              { label: 'Total Surveys', value: dashboard?.surveys ?? 0 },
+              { label: 'Total Visits', value: dashboard?.visits ?? 0 },
+              { label: 'Total Work Orders', value: dashboard?.workOrders ?? 0 },
+              { label: 'Work Order Cost', value: money(dashboard?.totalOrderCost ?? 0) },
+            ].map(r => (
+              <div key={r.label} className="flex items-center justify-between border rounded-lg p-3 text-sm">
+                <span className="text-muted-foreground">{r.label}</span>
+                <span className="font-mono font-medium">{r.value}</span>
+              </div>
+            ))}
+          </div>
+        </Card>
+      </div>
+    </div>
   );
 }
 
@@ -121,11 +138,27 @@ export function SurveysView({ activeEntityId }: { activeEntityId?: string }) {
   return (
     <div className="p-6 max-w-[1400px] mx-auto space-y-4">
       <PageHeader title="Surveys" description="Launch and track customer and field surveys" actions={<Button onClick={() => setShowForm(v => !v)}><Plus className="mr-2 h-4 w-4" /> New Survey</Button>} />
-      <div className="grid grid-cols-4 gap-4">
-        <StatCard icon={ClipboardList} label="Total Surveys" value={surveys.length} tone="teal" />
-        <StatCard icon={TrendingUp} label="Active" value={active} tone="blue" />
-        <StatCard icon={CheckCircle2} label="Closed" value={surveys.filter(s => s.status === 'Closed').length} tone="green" />
-        <StatCard icon={AlertTriangle} label="Responses" value={responses} tone="amber" />
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        {[
+          { label: 'Total Surveys', value: surveys.length, desc: 'All time surveys', icon: ClipboardList, color: 'from-teal-400 to-teal-600', bg: 'bg-teal-50 dark:bg-teal-950/30', textColor: 'text-teal-600 dark:text-teal-400' },
+          { label: 'Active', value: active, desc: 'Currently running', icon: TrendingUp, color: 'from-blue-400 to-blue-600', bg: 'bg-blue-50 dark:bg-blue-950/30', textColor: 'text-blue-600 dark:text-blue-400' },
+          { label: 'Closed', value: surveys.filter(s => s.status === 'Closed').length, desc: 'Completed surveys', icon: CheckCircle2, color: 'from-green-400 to-green-600', bg: 'bg-green-50 dark:bg-green-950/30', textColor: 'text-green-600 dark:text-green-400' },
+          { label: 'Responses', value: responses, desc: 'Total responses', icon: AlertTriangle, color: 'from-amber-400 to-amber-600', bg: 'bg-amber-50 dark:bg-amber-950/30', textColor: 'text-amber-600 dark:text-amber-400' },
+        ].map((kpi) => (
+          <div key={kpi.label} className="relative overflow-hidden rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)] p-4 shadow-sm hover:shadow-md transition-shadow">
+            <div className="flex items-start justify-between">
+              <div>
+                <p className="text-xs font-semibold text-[var(--color-text-muted)] uppercase tracking-wider">{kpi.label}</p>
+                <p className={`text-xl font-semibold mt-1.5 ${kpi.textColor}`}>{kpi.value}</p>
+                <p className="text-xs text-[var(--color-text-muted)] mt-1">{kpi.desc}</p>
+              </div>
+              <div className={`w-10 h-10 rounded-lg bg-gradient-to-br ${kpi.color} flex items-center justify-center text-white shadow-lg`}>
+                <kpi.icon className="w-4.5 h-4.5" />
+              </div>
+            </div>
+            <div className={`absolute -bottom-4 -right-4 w-24 h-24 rounded-full ${kpi.bg} opacity-50`} />
+          </div>
+        ))}
       </div>
       {showForm && (
         <Card className="p-4">
@@ -208,11 +241,27 @@ export function FieldVisitsView({ activeEntityId }: { activeEntityId?: string })
   return (
     <div className="p-6 max-w-[1400px] mx-auto space-y-4">
       <PageHeader title="Field Visits" description="Schedule and complete on-site field visits" actions={<Button onClick={() => setShowForm(v => !v)}><Plus className="mr-2 h-4 w-4" /> Schedule Visit</Button>} />
-      <div className="grid grid-cols-4 gap-4">
-        <StatCard icon={CalendarCheck2} label="Total Visits" value={visits.length} tone="teal" />
-        <StatCard icon={Clock3} label="Upcoming" value={visits.filter(v => v.status === 'Scheduled').length} tone="blue" />
-        <StatCard icon={TrendingUp} label="In Progress" value={visits.filter(v => v.status === 'InProgress').length} tone="amber" />
-        <StatCard icon={CheckCircle2} label="Completed" value={visits.filter(v => v.status === 'Completed').length} tone="green" />
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        {[
+          { label: 'Total Visits', value: visits.length, desc: 'All time visits', icon: CalendarCheck2, color: 'from-teal-400 to-teal-600', bg: 'bg-teal-50 dark:bg-teal-950/30', textColor: 'text-teal-600 dark:text-teal-400' },
+          { label: 'Upcoming', value: visits.filter(v => v.status === 'Scheduled').length, desc: 'Scheduled visits', icon: Clock3, color: 'from-blue-400 to-blue-600', bg: 'bg-blue-50 dark:bg-blue-950/30', textColor: 'text-blue-600 dark:text-blue-400' },
+          { label: 'In Progress', value: visits.filter(v => v.status === 'InProgress').length, desc: 'Currently active', icon: TrendingUp, color: 'from-amber-400 to-amber-600', bg: 'bg-amber-50 dark:bg-amber-950/30', textColor: 'text-amber-600 dark:text-amber-400' },
+          { label: 'Completed', value: visits.filter(v => v.status === 'Completed').length, desc: 'Finished visits', icon: CheckCircle2, color: 'from-green-400 to-green-600', bg: 'bg-green-50 dark:bg-green-950/30', textColor: 'text-green-600 dark:text-green-400' },
+        ].map((kpi) => (
+          <div key={kpi.label} className="relative overflow-hidden rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)] p-4 shadow-sm hover:shadow-md transition-shadow">
+            <div className="flex items-start justify-between">
+              <div>
+                <p className="text-xs font-semibold text-[var(--color-text-muted)] uppercase tracking-wider">{kpi.label}</p>
+                <p className={`text-xl font-semibold mt-1.5 ${kpi.textColor}`}>{kpi.value}</p>
+                <p className="text-xs text-[var(--color-text-muted)] mt-1">{kpi.desc}</p>
+              </div>
+              <div className={`w-10 h-10 rounded-lg bg-gradient-to-br ${kpi.color} flex items-center justify-center text-white shadow-lg`}>
+                <kpi.icon className="w-4.5 h-4.5" />
+              </div>
+            </div>
+            <div className={`absolute -bottom-4 -right-4 w-24 h-24 rounded-full ${kpi.bg} opacity-50`} />
+          </div>
+        ))}
       </div>
       {showForm && (
         <Card className="p-4">
@@ -293,11 +342,27 @@ export function InspectionsView({ activeEntityId }: { activeEntityId?: string })
   return (
     <div className="p-6 max-w-[1400px] mx-auto space-y-4">
       <PageHeader title="Inspections" description="Schedule and record field inspection results" actions={<Button onClick={() => setShowForm(v => !v)}><Plus className="mr-2 h-4 w-4" /> Schedule Inspection</Button>} />
-      <div className="grid grid-cols-4 gap-4">
-        <StatCard icon={ShieldCheck} label="Total Inspections" value={inspections.length} tone="teal" />
-        <StatCard icon={Clock3} label="Scheduled" value={inspections.filter(i => i.status === 'Scheduled').length} tone="blue" />
-        <StatCard icon={CheckCircle2} label="Passed" value={inspections.filter(i => i.status === 'Passed').length} tone="green" />
-        <StatCard icon={AlertTriangle} label="Failed" value={inspections.filter(i => i.status === 'Failed').length} tone="red" />
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        {[
+          { label: 'Total Inspections', value: inspections.length, desc: 'All time inspections', icon: ShieldCheck, color: 'from-teal-400 to-teal-600', bg: 'bg-teal-50 dark:bg-teal-950/30', textColor: 'text-teal-600 dark:text-teal-400' },
+          { label: 'Scheduled', value: inspections.filter(i => i.status === 'Scheduled').length, desc: 'Awaiting inspection', icon: Clock3, color: 'from-blue-400 to-blue-600', bg: 'bg-blue-50 dark:bg-blue-950/30', textColor: 'text-blue-600 dark:text-blue-400' },
+          { label: 'Passed', value: inspections.filter(i => i.status === 'Passed').length, desc: 'Passed inspections', icon: CheckCircle2, color: 'from-green-400 to-green-600', bg: 'bg-green-50 dark:bg-green-950/30', textColor: 'text-green-600 dark:text-green-400' },
+          { label: 'Failed', value: inspections.filter(i => i.status === 'Failed').length, desc: 'Failed inspections', icon: AlertTriangle, color: 'from-red-400 to-red-600', bg: 'bg-red-50 dark:bg-red-950/30', textColor: 'text-red-600 dark:text-red-400' },
+        ].map((kpi) => (
+          <div key={kpi.label} className="relative overflow-hidden rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)] p-4 shadow-sm hover:shadow-md transition-shadow">
+            <div className="flex items-start justify-between">
+              <div>
+                <p className="text-xs font-semibold text-[var(--color-text-muted)] uppercase tracking-wider">{kpi.label}</p>
+                <p className={`text-xl font-semibold mt-1.5 ${kpi.textColor}`}>{kpi.value}</p>
+                <p className="text-xs text-[var(--color-text-muted)] mt-1">{kpi.desc}</p>
+              </div>
+              <div className={`w-10 h-10 rounded-lg bg-gradient-to-br ${kpi.color} flex items-center justify-center text-white shadow-lg`}>
+                <kpi.icon className="w-4.5 h-4.5" />
+              </div>
+            </div>
+            <div className={`absolute -bottom-4 -right-4 w-24 h-24 rounded-full ${kpi.bg} opacity-50`} />
+          </div>
+        ))}
       </div>
       {showForm && (
         <Card className="p-4">
@@ -378,11 +443,27 @@ export function WorkOrdersView({ activeEntityId }: { activeEntityId?: string }) 
   return (
     <div className="p-6 max-w-[1400px] mx-auto space-y-4">
       <PageHeader title="Work Orders" description="Create, assign, and complete field work orders" actions={<Button onClick={() => setShowForm(v => !v)}><Plus className="mr-2 h-4 w-4" /> New Work Order</Button>} />
-      <div className="grid grid-cols-4 gap-4">
-        <StatCard icon={Wrench} label="Total Orders" value={workOrders.length} tone="teal" />
-        <StatCard icon={Clock3} label="Open" value={workOrders.filter(w => w.status === 'Open').length} tone="blue" />
-        <StatCard icon={TrendingUp} label="In Progress" value={workOrders.filter(w => w.status === 'Assigned' || w.status === 'InProgress').length} tone="amber" />
-        <StatCard icon={Wallet} label="Total Cost" value={money(totalCost)} tone="violet" />
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        {[
+          { label: 'Total Orders', value: workOrders.length, desc: 'All time orders', icon: Wrench, color: 'from-teal-400 to-teal-600', bg: 'bg-teal-50 dark:bg-teal-950/30', textColor: 'text-teal-600 dark:text-teal-400' },
+          { label: 'Open', value: workOrders.filter(w => w.status === 'Open').length, desc: 'Awaiting assignment', icon: Clock3, color: 'from-blue-400 to-blue-600', bg: 'bg-blue-50 dark:bg-blue-950/30', textColor: 'text-blue-600 dark:text-blue-400' },
+          { label: 'In Progress', value: workOrders.filter(w => w.status === 'Assigned' || w.status === 'InProgress').length, desc: 'Currently active', icon: TrendingUp, color: 'from-amber-400 to-amber-600', bg: 'bg-amber-50 dark:bg-amber-950/30', textColor: 'text-amber-600 dark:text-amber-400' },
+          { label: 'Total Cost', value: money(totalCost), desc: 'Combined costs', icon: Wallet, color: 'from-violet-400 to-violet-600', bg: 'bg-violet-50 dark:bg-violet-950/30', textColor: 'text-violet-600 dark:text-violet-400' },
+        ].map((kpi) => (
+          <div key={kpi.label} className="relative overflow-hidden rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)] p-4 shadow-sm hover:shadow-md transition-shadow">
+            <div className="flex items-start justify-between">
+              <div>
+                <p className="text-xs font-semibold text-[var(--color-text-muted)] uppercase tracking-wider">{kpi.label}</p>
+                <p className={`text-xl font-semibold mt-1.5 ${kpi.textColor}`}>{kpi.value}</p>
+                <p className="text-xs text-[var(--color-text-muted)] mt-1">{kpi.desc}</p>
+              </div>
+              <div className={`w-10 h-10 rounded-lg bg-gradient-to-br ${kpi.color} flex items-center justify-center text-white shadow-lg`}>
+                <kpi.icon className="w-4.5 h-4.5" />
+              </div>
+            </div>
+            <div className={`absolute -bottom-4 -right-4 w-24 h-24 rounded-full ${kpi.bg} opacity-50`} />
+          </div>
+        ))}
       </div>
       {showForm && (
         <Card className="p-4">
@@ -471,11 +552,27 @@ export function FieldExpensesView({ activeEntityId }: { activeEntityId?: string 
   return (
     <div className="p-6 max-w-[1400px] mx-auto space-y-4">
       <PageHeader title="Field Expenses" description="Log and reimburse field operation expenses" actions={<Button onClick={() => setShowForm(v => !v)}><Plus className="mr-2 h-4 w-4" /> Log Expense</Button>} />
-      <div className="grid grid-cols-4 gap-4">
-        <StatCard icon={ReceiptText} label="Total Expenses" value={expenses.length} tone="teal" />
-        <StatCard icon={Wallet} label="Total Amount" value={money(total)} tone="blue" />
-        <StatCard icon={CheckCircle2} label="Reimbursed" value={expenses.filter(e => e.reimbursed).length} tone="green" />
-        <StatCard icon={AlertTriangle} label="Pending" value={expenses.filter(e => !e.reimbursed).length} tone="amber" />
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        {[
+          { label: 'Total Expenses', value: expenses.length, desc: 'All time expenses', icon: ReceiptText, color: 'from-teal-400 to-teal-600', bg: 'bg-teal-50 dark:bg-teal-950/30', textColor: 'text-teal-600 dark:text-teal-400' },
+          { label: 'Total Amount', value: money(total), desc: 'Combined expenses', icon: Wallet, color: 'from-blue-400 to-blue-600', bg: 'bg-blue-50 dark:bg-blue-950/30', textColor: 'text-blue-600 dark:text-blue-400' },
+          { label: 'Reimbursed', value: expenses.filter(e => e.reimbursed).length, desc: 'Processed expenses', icon: CheckCircle2, color: 'from-green-400 to-green-600', bg: 'bg-green-50 dark:bg-green-950/30', textColor: 'text-green-600 dark:text-green-400' },
+          { label: 'Pending', value: expenses.filter(e => !e.reimbursed).length, desc: 'Awaiting reimbursement', icon: AlertTriangle, color: 'from-amber-400 to-amber-600', bg: 'bg-amber-50 dark:bg-amber-950/30', textColor: 'text-amber-600 dark:text-amber-400' },
+        ].map((kpi) => (
+          <div key={kpi.label} className="relative overflow-hidden rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)] p-4 shadow-sm hover:shadow-md transition-shadow">
+            <div className="flex items-start justify-between">
+              <div>
+                <p className="text-xs font-semibold text-[var(--color-text-muted)] uppercase tracking-wider">{kpi.label}</p>
+                <p className={`text-xl font-semibold mt-1.5 ${kpi.textColor}`}>{kpi.value}</p>
+                <p className="text-xs text-[var(--color-text-muted)] mt-1">{kpi.desc}</p>
+              </div>
+              <div className={`w-10 h-10 rounded-lg bg-gradient-to-br ${kpi.color} flex items-center justify-center text-white shadow-lg`}>
+                <kpi.icon className="w-4.5 h-4.5" />
+              </div>
+            </div>
+            <div className={`absolute -bottom-4 -right-4 w-24 h-24 rounded-full ${kpi.bg} opacity-50`} />
+          </div>
+        ))}
       </div>
       {showForm && (
         <Card className="p-4">
@@ -538,11 +635,27 @@ export function FieldReportsView() {
   return (
     <div className="p-6 max-w-[1400px] mx-auto space-y-4">
       <PageHeader title="Field Reports" description="Field operations performance and reporting" />
-      <div className="grid grid-cols-4 gap-4">
-        <StatCard icon={ClipboardList} label="Total Surveys" value={surveys.length} tone="teal" />
-        <StatCard icon={CalendarCheck2} label="Total Visits" value={visits.length} tone="blue" />
-        <StatCard icon={Wrench} label="Work Order Cost" value={money(totalCost)} tone="amber" />
-        <StatCard icon={ReceiptText} label="Field Expenses" value={money(totalExpenses)} tone="violet" />
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        {[
+          { label: 'Total Surveys', value: surveys.length, desc: 'All time surveys', icon: ClipboardList, color: 'from-teal-400 to-teal-600', bg: 'bg-teal-50 dark:bg-teal-950/30', textColor: 'text-teal-600 dark:text-teal-400' },
+          { label: 'Total Visits', value: visits.length, desc: 'All time visits', icon: CalendarCheck2, color: 'from-blue-400 to-blue-600', bg: 'bg-blue-50 dark:bg-blue-950/30', textColor: 'text-blue-600 dark:text-blue-400' },
+          { label: 'Work Order Cost', value: money(totalCost), desc: 'Combined costs', icon: Wrench, color: 'from-amber-400 to-amber-600', bg: 'bg-amber-50 dark:bg-amber-950/30', textColor: 'text-amber-600 dark:text-amber-400' },
+          { label: 'Field Expenses', value: money(totalExpenses), desc: 'Combined expenses', icon: ReceiptText, color: 'from-violet-400 to-violet-600', bg: 'bg-violet-50 dark:bg-violet-950/30', textColor: 'text-violet-600 dark:text-violet-400' },
+        ].map((kpi) => (
+          <div key={kpi.label} className="relative overflow-hidden rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)] p-4 shadow-sm hover:shadow-md transition-shadow">
+            <div className="flex items-start justify-between">
+              <div>
+                <p className="text-xs font-semibold text-[var(--color-text-muted)] uppercase tracking-wider">{kpi.label}</p>
+                <p className={`text-xl font-semibold mt-1.5 ${kpi.textColor}`}>{kpi.value}</p>
+                <p className="text-xs text-[var(--color-text-muted)] mt-1">{kpi.desc}</p>
+              </div>
+              <div className={`w-10 h-10 rounded-lg bg-gradient-to-br ${kpi.color} flex items-center justify-center text-white shadow-lg`}>
+                <kpi.icon className="w-4.5 h-4.5" />
+              </div>
+            </div>
+            <div className={`absolute -bottom-4 -right-4 w-24 h-24 rounded-full ${kpi.bg} opacity-50`} />
+          </div>
+        ))}
       </div>
       <div className="grid grid-cols-2 gap-4">
         <Card className="p-4 space-y-3">

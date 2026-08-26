@@ -2,8 +2,8 @@ import React, { useState, useMemo, useEffect } from 'react';
 import {
   Layers, Search, Plus, CheckCircle2,
   FileSpreadsheet, Download, Printer, RefreshCw,
-  Send, ArrowDownLeft, Wallet, Building2, BookOpen,
-  DollarSign, Clock, X, FileText
+  Send, ArrowDownCircle, Wallet, Building2, BookOpen,
+  DollarSign, Clock, X, FileText, TrendingUp, Hash
 } from 'lucide-react';
 import type { Entity } from './EntitySettings';
 import { useVendorsStore, useCustomersStore, useVouchersStore, useBankingStore } from './stores';
@@ -544,7 +544,7 @@ export const VoucherManagement: React.FC<VoucherManagementProps> = ({ activeEnti
         >
           <div className="flex items-center justify-between mb-1.5">
             <span className="p-2 rounded-lg bg-emerald-100 dark:bg-emerald-900/40 text-emerald-700 dark:text-emerald-300">
-              <ArrowDownLeft className="w-4 h-4" />
+              <ArrowDownCircle className="w-4 h-4" />
             </span>
             <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-100 dark:bg-emerald-900/50 text-emerald-800 dark:text-emerald-200">
               BRV
@@ -626,42 +626,28 @@ export const VoucherManagement: React.FC<VoucherManagementProps> = ({ activeEnti
       </div>
 
       {/* 4 Financial Metric Cards - 4 in 1 Row */}
-      <section className="stats" style={{ gridTemplateColumns: 'repeat(4, minmax(0, 1fr))' }}>
-        <article>
-          <span className="stat-icon blue"><Send className="w-4 h-4 text-rose-600" /></span>
-          <div>
-            <small>PAYMENTS (BPV + CPV)</small>
-            <h2 className="text-rose-600 dark:text-rose-400">{money(totalDisbursements, currentEntity?.currencyCode)}</h2>
-            <p>Disbursements to vendors</p>
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        {[
+          { label: 'PAYMENTS (BPV + CPV)', value: money(totalDisbursements, currentEntity?.currencyCode), desc: 'Disbursements to vendors', icon: Send, color: 'from-rose-500 to-rose-600', bg: 'bg-rose-50 dark:bg-rose-950/30', textColor: 'text-rose-600 dark:text-rose-400' },
+          { label: 'RECEIPTS (BRV + CRV)', value: money(totalReceipts, currentEntity?.currencyCode), desc: 'Collections from customers', icon: ArrowDownCircle, color: 'from-emerald-500 to-emerald-600', bg: 'bg-emerald-50 dark:bg-emerald-950/30', textColor: 'text-emerald-600 dark:text-emerald-400' },
+          { label: 'NET VOUCHER LIQUIDITY', value: money(netLiquidity, currentEntity?.currencyCode), desc: netLiquidity >= 0 ? 'Net positive liquidity' : 'Net disbursement surplus', icon: TrendingUp, color: netLiquidity >= 0 ? 'from-blue-500 to-blue-600' : 'from-amber-500 to-amber-600', bg: netLiquidity >= 0 ? 'bg-blue-50 dark:bg-blue-950/30' : 'bg-amber-50 dark:bg-amber-950/30', textColor: netLiquidity >= 0 ? 'text-blue-600 dark:text-blue-400' : 'text-amber-600 dark:text-amber-400' },
+          { label: 'VOUCHERS COUNT', value: totalCount, desc: 'Posted financial vouchers', icon: Hash, color: 'from-violet-500 to-violet-600', bg: 'bg-violet-50 dark:bg-violet-950/30', textColor: 'text-violet-600 dark:text-violet-400' },
+        ].map((kpi) => (
+          <div key={kpi.label} className="relative overflow-hidden rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)] p-4 shadow-sm hover:shadow-md transition-shadow">
+            <div className="flex items-start justify-between">
+              <div>
+                <p className="text-xs font-semibold text-[var(--color-text-muted)] uppercase tracking-wider">{kpi.label}</p>
+                <p className={`text-xl font-semibold mt-1.5 ${kpi.textColor}`}>{kpi.value}</p>
+                <p className="text-xs text-[var(--color-text-muted)] mt-1">{kpi.desc}</p>
+              </div>
+              <div className={`w-10 h-10 rounded-lg bg-gradient-to-br ${kpi.color} flex items-center justify-center text-white shadow-lg`}>
+                <kpi.icon className="w-5 h-5" />
+              </div>
+            </div>
+            <div className={`absolute -bottom-4 -right-4 w-24 h-24 rounded-full ${kpi.bg} opacity-50`} />
           </div>
-        </article>
-        <article>
-          <span className="stat-icon teal"><ArrowDownLeft className="w-4 h-4 text-emerald-600" /></span>
-          <div>
-            <small>RECEIPTS (BRV + CRV)</small>
-            <h2 className="text-emerald-600 dark:text-emerald-400">{money(totalReceipts, currentEntity?.currencyCode)}</h2>
-            <p>Collections from customers</p>
-          </div>
-        </article>
-        <article>
-          <span className="stat-icon blue"><DollarSign className="w-4 h-4" /></span>
-          <div>
-            <small>NET VOUCHER LIQUIDITY</small>
-            <h2 className={netLiquidity >= 0 ? 'text-blue-600 dark:text-blue-400' : 'text-amber-600 dark:text-amber-400'}>
-              {money(netLiquidity, currentEntity?.currencyCode)}
-            </h2>
-            <p>{netLiquidity >= 0 ? 'Net positive liquidity' : 'Net disbursement surplus'}</p>
-          </div>
-        </article>
-        <article>
-          <span className="stat-icon violet"><Clock className="w-4 h-4" /></span>
-          <div>
-            <small>VOUCHERS COUNT</small>
-            <h2>{totalCount}</h2>
-            <p>Posted financial vouchers</p>
-          </div>
-        </article>
-      </section>
+        ))}
+      </div>
 
       {/* Filter Toolbar & Non-Overlapping Search Box */}
       <div className="flex flex-wrap items-center justify-between gap-3 bg-[var(--color-surface)] p-3 rounded-xl border border-[var(--color-border)] shadow-xs">

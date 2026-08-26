@@ -2,7 +2,7 @@ import React, { useState, useEffect, useMemo } from 'react';
 import {
   Building2, Search, Plus, CheckCircle2,
   FileSpreadsheet, Download, Printer, RefreshCw,
-  Landmark, CreditCard, DollarSign, X, Edit3
+  Landmark, DollarSign, X, Edit3
 } from 'lucide-react';
 import type { Entity } from './EntitySettings';
 import { apiClient } from './api/client';
@@ -410,41 +410,29 @@ export const BankAccountsView: React.FC<BankAccountsViewProps> = ({ activeEntity
         </div>
       </div>
 
-      {/* 4 Financial Metric Cards - 4 in 1 Row */}
-      <section className="stats" style={{ gridTemplateColumns: 'repeat(4, minmax(0, 1fr))' }}>
-        <article>
-          <span className="stat-icon blue"><Landmark className="w-4 h-4" /></span>
-          <div>
-            <small>TOTAL BANK LIQUIDITY</small>
-            <h2 className="text-blue-600 dark:text-blue-400">{money(totalBalance, currentEntity?.currencyCode)}</h2>
-            <p>Across {filtered.length} bank accounts</p>
+      {/* 4 Financial KPI Cards */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        {[
+          { label: 'TOTAL BANK LIQUIDITY', value: money(totalBalance, currentEntity?.currencyCode), desc: `Across ${filtered.length} bank accounts`, icon: Landmark, color: 'from-blue-500 to-blue-600', bg: 'bg-blue-50 dark:bg-blue-950/30', textColor: 'text-blue-600 dark:text-blue-400' },
+          { label: 'ACTIVE ACCOUNTS', value: activeCount, desc: 'Operational institutional accounts', icon: CheckCircle2, color: 'from-emerald-500 to-emerald-600', bg: 'bg-emerald-50 dark:bg-emerald-950/30', textColor: 'text-emerald-600 dark:text-emerald-400' },
+          { label: 'RECONCILIATION READY', value: reconciledCount, desc: 'Statement matching enabled', icon: RefreshCw, color: 'from-violet-500 to-violet-600', bg: 'bg-violet-50 dark:bg-violet-950/30', textColor: 'text-violet-600 dark:text-violet-400' },
+          { label: 'AVERAGE BALANCE', value: money(avgBalance, currentEntity?.currencyCode), desc: 'Per account average', icon: DollarSign, color: 'from-amber-500 to-orange-500', bg: 'bg-amber-50 dark:bg-amber-950/30', textColor: 'text-amber-600 dark:text-amber-400' },
+        ].map((kpi) => (
+          <div key={kpi.label} className="relative overflow-hidden rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)] p-4 shadow-sm hover:shadow-md transition-shadow">
+            <div className="flex items-start justify-between">
+              <div>
+                <p className="text-xs font-semibold text-[var(--color-text-muted)] uppercase tracking-wider">{kpi.label}</p>
+                <p className={`text-xl font-semibold mt-1.5 ${kpi.textColor}`}>{kpi.value}</p>
+                <p className="text-xs text-[var(--color-text-muted)] mt-1">{kpi.desc}</p>
+              </div>
+              <div className={`w-10 h-10 rounded-lg bg-gradient-to-br ${kpi.color} flex items-center justify-center text-white shadow-lg`}>
+                <kpi.icon className="w-5 h-5" />
+              </div>
+            </div>
+            <div className={`absolute -bottom-4 -right-4 w-24 h-24 rounded-full ${kpi.bg} opacity-50`} />
           </div>
-        </article>
-        <article>
-          <span className="stat-icon teal"><CheckCircle2 className="w-4 h-4 text-emerald-600" /></span>
-          <div>
-            <small>ACTIVE ACCOUNTS</small>
-            <h2 className="text-emerald-600 dark:text-emerald-400">{activeCount}</h2>
-            <p>Operational institutional accounts</p>
-          </div>
-        </article>
-        <article>
-          <span className="stat-icon violet"><CreditCard className="w-4 h-4 text-violet-500" /></span>
-          <div>
-            <small>RECONCILIATION READY</small>
-            <h2 className="text-violet-600 dark:text-violet-400">{reconciledCount}</h2>
-            <p>Statement matching enabled</p>
-          </div>
-        </article>
-        <article>
-          <span className="stat-icon blue"><DollarSign className="w-4 h-4" /></span>
-          <div>
-            <small>AVERAGE BALANCE</small>
-            <h2>{money(avgBalance, currentEntity?.currencyCode)}</h2>
-            <p>Per account average</p>
-          </div>
-        </article>
-      </section>
+        ))}
+      </div>
 
       {/* Filter Toolbar & Non-Overlapping Search Box */}
       <div className="flex flex-wrap items-center justify-between gap-3 bg-[var(--color-surface)] p-3 rounded-xl border border-[var(--color-border)] shadow-xs">

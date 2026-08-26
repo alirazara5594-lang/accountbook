@@ -464,48 +464,29 @@ export function SalesReportsWorkspace({ activeEntityId }: Props) {
       </div>
 
       {/* Top 5 KPI Metrics Cards */}
-      <section className="stats" style={{ gridTemplateColumns: 'repeat(5, minmax(0, 1fr))' }}>
-        <article>
-          <span className="stat-icon blue"><DollarSign className="w-4 h-4" /></span>
-          <div>
-            <small>TOTAL INVOICED</small>
-            <h2>{money(totalRevenue)}</h2>
-            <p>{totalInvoicesCount} invoices billed</p>
+      <div className="grid grid-cols-2 lg:grid-cols-5 gap-4">
+        {[
+          { label: 'TOTAL INVOICED', value: money(totalRevenue), desc: `${totalInvoicesCount} invoices billed`, icon: DollarSign, color: 'from-blue-500 to-blue-600', bg: 'bg-blue-50 dark:bg-blue-950/30', textColor: 'text-blue-600 dark:text-blue-400' },
+          { label: 'COLLECTED CASH', value: money(totalPaid), desc: `${totalRevenue > 0 ? ((totalPaid / totalRevenue) * 100).toFixed(1) : 0}% collection rate`, icon: CheckCircle2, color: 'from-emerald-500 to-emerald-600', bg: 'bg-emerald-50 dark:bg-emerald-950/30', textColor: 'text-emerald-600 dark:text-emerald-400' },
+          { label: 'NET AR OUTSTANDING', value: money(totalOutstanding), desc: 'Receivables pending', icon: Clock, color: 'from-rose-500 to-rose-600', bg: 'bg-rose-50 dark:bg-rose-950/30', textColor: 'text-rose-600 dark:text-rose-400' },
+          { label: 'GROSS PROFIT', value: money(grossProfit), desc: `${grossMargin.toFixed(1)}% estimated margin`, icon: TrendingUp, color: 'from-violet-500 to-violet-600', bg: 'bg-violet-50 dark:bg-violet-950/30', textColor: 'text-violet-600 dark:text-violet-400' },
+          { label: 'AVERAGE INVOICE', value: money(avgInvoiceValue), desc: `Across ${customerSalesSummary.length} customers`, icon: ShoppingCart, color: 'from-blue-500 to-indigo-600', bg: 'bg-blue-50 dark:bg-blue-950/30', textColor: 'text-blue-600 dark:text-blue-400' },
+        ].map((kpi) => (
+          <div key={kpi.label} className="relative overflow-hidden rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)] p-4 shadow-sm hover:shadow-md transition-shadow">
+            <div className="flex items-start justify-between">
+              <div>
+                <p className="text-xs font-semibold text-[var(--color-text-muted)] uppercase tracking-wider">{kpi.label}</p>
+                <p className={`text-xl font-semibold mt-1.5 ${kpi.textColor}`}>{kpi.value}</p>
+                <p className="text-xs text-[var(--color-text-muted)] mt-1">{kpi.desc}</p>
+              </div>
+              <div className={`w-10 h-10 rounded-lg bg-gradient-to-br ${kpi.color} flex items-center justify-center text-white shadow-lg`}>
+                <kpi.icon className="w-5 h-5" />
+              </div>
+            </div>
+            <div className={`absolute -bottom-4 -right-4 w-24 h-24 rounded-full ${kpi.bg} opacity-50`} />
           </div>
-        </article>
-        <article>
-          <span className="stat-icon teal"><CheckCircle2 className="w-4 h-4" /></span>
-          <div>
-            <small>COLLECTED CASH</small>
-            <h2 className="text-emerald-600 dark:text-emerald-400">{money(totalPaid)}</h2>
-            <p>{totalRevenue > 0 ? ((totalPaid / totalRevenue) * 100).toFixed(1) : 0}% collection rate</p>
-          </div>
-        </article>
-        <article>
-          <span className="stat-icon red"><Clock className="w-4 h-4 text-rose-500" /></span>
-          <div>
-            <small>NET AR OUTSTANDING</small>
-            <h2 className="text-rose-600 dark:text-rose-400">{money(totalOutstanding)}</h2>
-            <p>Receivables pending</p>
-          </div>
-        </article>
-        <article>
-          <span className="stat-icon violet"><TrendingUp className="w-4 h-4 text-violet-500" /></span>
-          <div>
-            <small>GROSS PROFIT</small>
-            <h2 className="text-violet-600 dark:text-violet-400">{money(grossProfit)}</h2>
-            <p>{grossMargin.toFixed(1)}% estimated margin</p>
-          </div>
-        </article>
-        <article>
-          <span className="stat-icon blue"><ShoppingCart className="w-4 h-4" /></span>
-          <div>
-            <small>AVERAGE INVOICE</small>
-            <h2>{money(avgInvoiceValue)}</h2>
-            <p>Across {customerSalesSummary.length} customers</p>
-          </div>
-        </article>
-      </section>
+        ))}
+      </div>
 
       {/* Multi-Tab Navigation */}
       <div className="flex items-center gap-2 border-b border-[var(--color-border)] pb-1">

@@ -1,7 +1,6 @@
 import React from 'react';
-import { ModuleSummaryLayout, SummaryPanel } from '@/components/module-summary-layout';
 import { money } from '@/lib/currency';
-import { Users, ShoppingBag, Landmark, Scale, Boxes, Wallet, Sparkles, Settings2 } from 'lucide-react';
+import { Users, ShoppingBag, Landmark, Scale, Boxes, Wallet, Sparkles, Settings2, FileText, BarChart3, BookOpen, CreditCard, ClipboardCheck, Building2, PiggyBank, TrendingUp, CheckCircle2, Package } from 'lucide-react';
 
 interface Account {
   id: string;
@@ -201,39 +200,92 @@ export const ModuleSummary: React.FC<ModuleSummaryProps> = ({
   const meta = MODULE_META[moduleName] || { icon: Scale };
   const Icon = meta.icon;
 
+  const kpiIcons: Record<string, React.ComponentType<{ className?: string }>> = {
+    'RECEIVABLES LEDGER': CreditCard,
+    'TOTAL SALES REVENUE': TrendingUp,
+    'ACTIVE CUSTOMERS': Users,
+    'PAYABLES LEDGER': FileText,
+    'GRNI ACCRUALS': ClipboardCheck,
+    'TOTAL VENDORS': Building2,
+    'CASH & EQUIVALENTS': PiggyBank,
+    'RECONCILED ACCOUNTS': CheckCircle2,
+    'BANK JOURNAL ACTIVITY': BarChart3,
+    'ASSET LEDGER CODES': Boxes,
+    'LIABILITY LEDGER CODES': FileText,
+    'EQUITY LEDGER CODES': Scale,
+    'FIXED ASSETS (PPE)': Building2,
+    'INVENTORY VALUE': Package,
+    'ACCUMULATED DEPRECIATION': TrendingUp,
+    'ACTIVE MODULE': Icon,
+    'METRIC MONITOR': BarChart3,
+    'GL POSTINGS': BookOpen,
+  };
+
+  const kpiList = [
+    { label: metrics.card1.title, value: metrics.card1.val, desc: metrics.card1.desc, icon: kpiIcons[metrics.card1.title] || Icon, color: 'from-teal-500 to-emerald-500', bg: 'bg-teal-50 dark:bg-teal-950/30', textColor: 'text-teal-600 dark:text-teal-400' },
+    { label: metrics.card2.title, value: metrics.card2.val, desc: metrics.card2.desc, icon: kpiIcons[metrics.card2.title] || Icon, color: 'from-blue-500 to-indigo-500', bg: 'bg-blue-50 dark:bg-blue-950/30', textColor: 'text-blue-600 dark:text-blue-400' },
+    { label: metrics.card3.title, value: metrics.card3.val, desc: metrics.card3.desc, icon: kpiIcons[metrics.card3.title] || Icon, color: 'from-violet-500 to-purple-500', bg: 'bg-violet-50 dark:bg-violet-950/30', textColor: 'text-violet-600 dark:text-violet-400' },
+    { label: 'GL POSTINGS', value: entries.length, desc: 'System journal entries recorded', icon: BookOpen, color: 'from-cyan-500 to-sky-500', bg: 'bg-cyan-50 dark:bg-cyan-950/30', textColor: 'text-cyan-600 dark:text-cyan-400' },
+  ];
+
   return (
-    <ModuleSummaryLayout
-      title={moduleName}
-      description="Module overview with key metrics, quick workflows, and direct navigation"
-      stats={[
-        { icon: Icon, label: metrics.card1.title, value: metrics.card1.val, tone: 'teal' },
-        { icon: Icon, label: metrics.card2.title, value: metrics.card2.val, tone: 'blue' },
-        { icon: Icon, label: metrics.card3.title, value: metrics.card3.val, tone: 'violet' },
-        { icon: Icon, label: 'GL POSTINGS', value: entries.length, tone: 'cyan' },
-      ]}
-    >
-      <SummaryPanel icon={Icon} title="Workflows & Actions">
-        <div className="space-y-2">
-          {workflows.map(w => (
-            <button key={w.label} onClick={() => w.openAccount ? openCreateAccount() : setPage(w.page)} className="w-full text-left border rounded-lg p-3 hover:bg-muted/40 transition-colors cursor-pointer">
-              <p className="font-medium text-sm">{w.label}</p>
-              <p className="text-xs text-muted-foreground mt-0.5">{w.desc}</p>
-            </button>
-          ))}
-          {workflows.length === 0 && <p className="text-sm text-muted-foreground">Use the sub-menus in the sidebar to navigate.</p>}
+    <div className="space-y-6">
+      <div>
+        <h2 className="text-2xl font-semibold">{moduleName}</h2>
+        <p className="text-sm text-muted-foreground mt-1">Module overview with key metrics, quick workflows, and direct navigation</p>
+      </div>
+
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        {kpiList.map((kpi) => (
+          <div key={kpi.label} className="relative overflow-hidden rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)] p-4 shadow-sm hover:shadow-md transition-shadow">
+            <div className="flex items-start justify-between">
+              <div>
+                <p className="text-xs font-semibold text-[var(--color-text-muted)] uppercase tracking-wider">{kpi.label}</p>
+                <p className={`text-xl font-semibold mt-1.5 ${kpi.textColor}`}>{kpi.value}</p>
+                <p className="text-xs text-[var(--color-text-muted)] mt-1">{kpi.desc}</p>
+              </div>
+              <div className={`w-10 h-10 rounded-lg bg-gradient-to-br ${kpi.color} flex items-center justify-center text-white shadow-lg`}>
+                <kpi.icon className="w-4.5 h-4.5" />
+              </div>
+            </div>
+            <div className={`absolute -bottom-4 -right-4 w-24 h-24 rounded-full ${kpi.bg} opacity-50`} />
+          </div>
+        ))}
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        <div className="rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)] p-5 shadow-sm">
+          <div className="flex items-center gap-2 mb-4">
+            <Icon className="w-5 h-5 text-primary" />
+            <h3 className="font-semibold text-sm">Workflows & Actions</h3>
+          </div>
+          <div className="space-y-2">
+            {workflows.map(w => (
+              <button key={w.label} onClick={() => w.openAccount ? openCreateAccount() : setPage(w.page)} className="w-full text-left border rounded-lg p-3 hover:bg-muted/40 transition-colors cursor-pointer">
+                <p className="font-medium text-sm">{w.label}</p>
+                <p className="text-xs text-muted-foreground mt-0.5">{w.desc}</p>
+              </button>
+            ))}
+            {workflows.length === 0 && <p className="text-sm text-muted-foreground">Use the sub-menus in the sidebar to navigate.</p>}
+          </div>
         </div>
-      </SummaryPanel>
-      <SummaryPanel icon={Icon} title="Available Sub-sections">
-        <div className="space-y-1.5">
-          {subItems.map(item => (
-            <button key={item} onClick={() => setPage(`${moduleName}.${item}`)} className="w-full flex items-center justify-between border rounded-lg px-3 py-2.5 text-sm hover:bg-muted/40 transition-colors cursor-pointer">
-              <span className="font-medium">• {item}</span>
-              <span className="text-primary">View →</span>
-            </button>
-          ))}
-          {subItems.length === 0 && <p className="text-sm text-muted-foreground">Navigate using the sidebar menu items.</p>}
+
+        <div className="rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)] p-5 shadow-sm">
+          <div className="flex items-center gap-2 mb-4">
+            <Icon className="w-5 h-5 text-primary" />
+            <h3 className="font-semibold text-sm">Available Sub-sections</h3>
+          </div>
+          <div className="space-y-1.5">
+            {subItems.map(item => (
+              <button key={item} onClick={() => setPage(`${moduleName}.${item}`)} className="w-full flex items-center justify-between border rounded-lg px-3 py-2.5 text-sm hover:bg-muted/40 transition-colors cursor-pointer">
+                <span className="font-medium">• {item}</span>
+                <span className="text-primary">View →</span>
+              </button>
+            ))}
+            {subItems.length === 0 && <p className="text-sm text-muted-foreground">Navigate using the sidebar menu items.</p>}
+          </div>
         </div>
-      </SummaryPanel>
-    </ModuleSummaryLayout>
+      </div>
+    </div>
   );
 };

@@ -6,7 +6,7 @@ import {
   Receipt, Search, FileSpreadsheet,
   Building2, Mail, Phone, MapPin, CheckCircle2,
   Clock, ArrowUpRight, ArrowDownLeft, ChevronRight,
-  RefreshCw, FileCheck
+  RefreshCw, FileCheck, AlertTriangle
 } from 'lucide-react';
 import { money } from './lib/currency';
 import { downloadExcel, downloadCSV } from './lib/exportUtils';
@@ -769,42 +769,28 @@ export function VendorStatementsWorkspace({ activeEntityId }: Props) {
         </div>
 
         {/* 4 Key Financial Summary Cards */}
-        <section className="stats" style={{ gridTemplateColumns: 'repeat(4, minmax(0, 1fr))' }}>
-          <article>
-            <span className="stat-icon blue"><Clock className="w-4 h-4" /></span>
-            <div>
-              <small>OPENING PAYABLE</small>
-              <h2>{fmt(activeStatement.openingBalance)}</h2>
-              <p>As of {dateFrom ? new Date(dateFrom).toLocaleDateString() : 'Beginning'}</p>
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+          {[
+            { label: 'OPENING PAYABLE', value: fmt(activeStatement.openingBalance), desc: `As of ${dateFrom ? new Date(dateFrom).toLocaleDateString() : 'Beginning'}`, icon: Clock, color: 'from-blue-500 to-blue-600', bg: 'bg-blue-50 dark:bg-blue-950/30', textColor: 'text-blue-600 dark:text-blue-400' },
+            { label: 'TOTAL PURCHASES / BILLS (+)', value: fmt(activeStatement.totalCredits), desc: 'Vendor bills in period', icon: ArrowUpRight, color: 'from-rose-500 to-rose-600', bg: 'bg-rose-50 dark:bg-rose-950/30', textColor: 'text-rose-600 dark:text-rose-400' },
+            { label: 'PAYMENTS DISBURSED (-)', value: fmt(activeStatement.totalDebits), desc: 'Payments made in period', icon: ArrowDownLeft, color: 'from-emerald-500 to-emerald-600', bg: 'bg-emerald-50 dark:bg-emerald-950/30', textColor: 'text-emerald-600 dark:text-emerald-400' },
+            { label: 'NET PAYABLE CLOSING', value: fmt(activeStatement.closingBalance), desc: 'Net liability position', icon: DollarSign, color: 'from-violet-500 to-violet-600', bg: 'bg-violet-50 dark:bg-violet-950/30', textColor: activeStatement.closingBalance > 0 ? 'text-blue-600 dark:text-blue-400' : 'text-emerald-600' },
+          ].map((kpi) => (
+            <div key={kpi.label} className="relative overflow-hidden rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)] p-4 shadow-sm hover:shadow-md transition-shadow">
+              <div className="flex items-start justify-between">
+                <div>
+                  <p className="text-xs font-semibold text-[var(--color-text-muted)] uppercase tracking-wider">{kpi.label}</p>
+                  <p className={`text-xl font-semibold mt-1.5 ${kpi.textColor}`}>{kpi.value}</p>
+                  <p className="text-xs text-[var(--color-text-muted)] mt-1">{kpi.desc}</p>
+                </div>
+                <div className={`w-10 h-10 rounded-lg bg-gradient-to-br ${kpi.color} flex items-center justify-center text-white shadow-lg`}>
+                  <kpi.icon className="w-5 h-5" />
+                </div>
+              </div>
+              <div className={`absolute -bottom-4 -right-4 w-24 h-24 rounded-full ${kpi.bg} opacity-50`} />
             </div>
-          </article>
-          <article>
-            <span className="stat-icon blue"><ArrowUpRight className="w-4 h-4 text-rose-600" /></span>
-            <div>
-              <small>TOTAL PURCHASES / BILLS (+)</small>
-              <h2 className="text-rose-600 dark:text-rose-400">{fmt(activeStatement.totalCredits)}</h2>
-              <p>Vendor bills in period</p>
-            </div>
-          </article>
-          <article>
-            <span className="stat-icon teal"><ArrowDownLeft className="w-4 h-4 text-emerald-600" /></span>
-            <div>
-              <small>PAYMENTS DISBURSED (-)</small>
-              <h2 className="text-emerald-600 dark:text-emerald-400">{fmt(activeStatement.totalDebits)}</h2>
-              <p>Payments made in period</p>
-            </div>
-          </article>
-          <article>
-            <span className="stat-icon violet"><DollarSign className="w-4 h-4" /></span>
-            <div>
-              <small>NET PAYABLE CLOSING</small>
-              <h2 className={activeStatement.closingBalance > 0 ? 'text-blue-600 dark:text-blue-400' : 'text-emerald-600'}>
-                {fmt(activeStatement.closingBalance)}
-              </h2>
-              <p>Net liability position</p>
-            </div>
-          </article>
-        </section>
+          ))}
+        </div>
 
         {/* Statement Transactions Table */}
         <div className="bg-[var(--color-surface)] border border-[var(--color-border)] rounded-xl shadow-xs overflow-hidden">
@@ -1072,40 +1058,28 @@ export function VendorStatementsWorkspace({ activeEntityId }: Props) {
       </div>
 
       {/* 4 Summary Metric Cards */}
-      <section className="stats" style={{ gridTemplateColumns: 'repeat(4, minmax(0, 1fr))' }}>
-        <article>
-          <span className="stat-icon blue"><Users className="w-4 h-4" /></span>
-          <div>
-            <small>TOTAL REGISTERED</small>
-            <h2>{vendors.length}</h2>
-            <p>Supplier accounts</p>
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        {[
+          { label: 'TOTAL REGISTERED', value: vendors.length, desc: 'Supplier accounts', icon: Users, color: 'from-blue-500 to-blue-600', bg: 'bg-blue-50 dark:bg-blue-950/30', textColor: 'text-blue-600 dark:text-blue-400' },
+          { label: 'TOTAL AP PAYABLES', value: fmt(totalPayables), desc: 'Outstanding liabilities', icon: DollarSign, color: 'from-violet-500 to-violet-600', bg: 'bg-violet-50 dark:bg-violet-950/30', textColor: 'text-violet-600 dark:text-violet-400' },
+          { label: 'OVERDUE BILLS', value: fmt(totalOverdue), desc: 'Past bill due dates', icon: AlertTriangle, color: 'from-amber-500 to-amber-600', bg: 'bg-amber-50 dark:bg-amber-950/30', textColor: 'text-amber-600 dark:text-amber-400' },
+          { label: 'SETTLED VENDORS', value: settledVendorsCount, desc: 'Zero balance accounts', icon: CheckCircle2, color: 'from-emerald-500 to-emerald-600', bg: 'bg-emerald-50 dark:bg-emerald-950/30', textColor: 'text-emerald-600 dark:text-emerald-400' },
+        ].map((kpi) => (
+          <div key={kpi.label} className="relative overflow-hidden rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)] p-4 shadow-sm hover:shadow-md transition-shadow">
+            <div className="flex items-start justify-between">
+              <div>
+                <p className="text-xs font-semibold text-[var(--color-text-muted)] uppercase tracking-wider">{kpi.label}</p>
+                <p className={`text-xl font-semibold mt-1.5 ${kpi.textColor}`}>{kpi.value}</p>
+                <p className="text-xs text-[var(--color-text-muted)] mt-1">{kpi.desc}</p>
+              </div>
+              <div className={`w-10 h-10 rounded-lg bg-gradient-to-br ${kpi.color} flex items-center justify-center text-white shadow-lg`}>
+                <kpi.icon className="w-5 h-5" />
+              </div>
+            </div>
+            <div className={`absolute -bottom-4 -right-4 w-24 h-24 rounded-full ${kpi.bg} opacity-50`} />
           </div>
-        </article>
-        <article>
-          <span className="stat-icon blue"><DollarSign className="w-4 h-4" /></span>
-          <div>
-            <small>TOTAL AP PAYABLES</small>
-            <h2>{fmt(totalPayables)}</h2>
-            <p>Outstanding liabilities</p>
-          </div>
-        </article>
-        <article>
-          <span className="stat-icon violet"><Clock className="w-4 h-4 text-amber-500" /></span>
-          <div>
-            <small>OVERDUE BILLS</small>
-            <h2 className="text-amber-600 dark:text-amber-400">{fmt(totalOverdue)}</h2>
-            <p>Past bill due dates</p>
-          </div>
-        </article>
-        <article>
-          <span className="stat-icon teal"><CheckCircle2 className="w-4 h-4 text-emerald-500" /></span>
-          <div>
-            <small>SETTLED VENDORS</small>
-            <h2>{settledVendorsCount}</h2>
-            <p>Zero balance accounts</p>
-          </div>
-        </article>
-      </section>
+        ))}
+      </div>
 
       {/* Vendors List Table with Individual Download Buttons */}
       <div className="bg-[var(--color-surface)] border border-[var(--color-border)] rounded-xl shadow-xs overflow-hidden">

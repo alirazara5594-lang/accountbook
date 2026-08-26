@@ -4,7 +4,8 @@ import { vendorPaymentsApi, type VendorPayment, type WithdrawAccount, type Vendo
 import { useFormDraft } from './hooks/useFormDraft'
 import {
   Check, X, ArrowRight, ArrowLeft, Coins,
-  CheckCircle2, Users, CreditCard, ShieldCheck, FileText, Eye, Download
+  Users, CreditCard, ShieldCheck, FileText, Eye, Download,
+  DollarSign, Zap, BarChart3
 } from 'lucide-react'
 import { DataToolbar } from '@/components/ui/data-toolbar'
 import { money } from '@/lib/currency'
@@ -356,39 +357,28 @@ export const VendorPaymentsView: React.FC<VendorPaymentsViewProps> = ({
         </div>
       </div>
 
-      {/* Stats Cards (4 in one row) */}
-      <section className="stats" style={{ gridTemplateColumns: 'repeat(4, minmax(0, 1fr))' }}>
-        <article>
-          <span className="stat-icon blue">
-            <Coins className="w-4 h-4" />
-          </span>
-          <div>
-            <small>TOTAL DISBURSED</small>
-            <h2>{money(totalDisbursed)}</h2>
-            <p>Settled vendor liabilities</p>
+      {/* Stats Cards (KPI Design) */}
+      <div className="grid grid-cols-2 lg:grid-cols-3 gap-4">
+        {[
+          { label: 'TOTAL DISBURSED', value: money(totalDisbursed), desc: 'Settled vendor liabilities', icon: DollarSign, color: 'from-emerald-500 to-teal-600', bg: 'bg-emerald-50 dark:bg-emerald-950/30', textColor: 'text-emerald-600 dark:text-emerald-400' },
+          { label: 'ELECTRONIC TRANSFERS', value: bankPaymentsCount, desc: 'Bank wires & RTGS settlements', icon: Zap, color: 'from-teal-500 to-cyan-600', bg: 'bg-teal-50 dark:bg-teal-950/30', textColor: 'text-teal-600 dark:text-teal-400' },
+          { label: 'TOTAL TRANSACTIONS', value: filtered.length, desc: 'All recorded payments', icon: BarChart3, color: 'from-violet-500 to-purple-600', bg: 'bg-violet-50 dark:bg-violet-950/30', textColor: 'text-violet-600 dark:text-violet-400' },
+        ].map((kpi) => (
+          <div key={kpi.label} className="relative overflow-hidden rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)] p-4 shadow-sm hover:shadow-md transition-shadow">
+            <div className="flex items-start justify-between">
+              <div>
+                <p className="text-xs font-semibold text-[var(--color-text-muted)] uppercase tracking-wider">{kpi.label}</p>
+                <p className={`text-xl font-semibold mt-1.5 ${kpi.textColor}`}>{kpi.value}</p>
+                <p className="text-xs text-[var(--color-text-muted)] mt-1">{kpi.desc}</p>
+              </div>
+              <div className={`w-10 h-10 rounded-lg bg-gradient-to-br ${kpi.color} flex items-center justify-center text-white shadow-lg`}>
+                <kpi.icon className="w-5 h-5" />
+              </div>
+            </div>
+            <div className={`absolute -bottom-4 -right-4 w-24 h-24 rounded-full ${kpi.bg} opacity-50`} />
           </div>
-        </article>
-        <article>
-          <span className="stat-icon teal">
-            <CreditCard className="w-4 h-4" />
-          </span>
-          <div>
-            <small>ELECTRONIC TRANSFERS</small>
-            <h2>{bankPaymentsCount}</h2>
-            <p>Bank wires & RTGS settlements</p>
-          </div>
-        </article>
-        <article>
-          <span className="stat-icon violet">
-            <CheckCircle2 className="w-4 h-4" />
-          </span>
-          <div>
-            <small>TOTAL TRANSACTIONS</small>
-            <h2>{filtered.length}</h2>
-            <p>All recorded payments</p>
-          </div>
-        </article>
-      </section>
+        ))}
+      </div>
 
       {/* Payments Table */}
       <div className="bg-[var(--color-surface)] border border-[var(--color-border)] rounded-xl overflow-hidden shadow-sm">
@@ -461,7 +451,7 @@ export const VendorPaymentsView: React.FC<VendorPaymentsViewProps> = ({
             {/* Modal Header */}
             <div className="px-6 py-4.5 border-b border-[var(--color-border)] bg-[var(--color-surface-muted)]/50 flex items-center justify-between">
               <div className="flex items-center gap-3.5">
-                <div className="w-11 h-11 rounded-xl bg-gradient-to-br from-emerald-500 to-teal-600 flex items-center justify-center text-white shadow-sm shrink-0">
+                <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-emerald-500 to-teal-600 flex items-center justify-center text-white shadow-sm shrink-0">
                   <CreditCard className="w-5 h-5" />
                 </div>
                 <div>

@@ -1,7 +1,8 @@
 import { useEffect, useMemo, useState } from 'react'
 import {
   ReceiptText, Check, X, ArrowRight, ArrowLeft, Coins,
-  CheckCircle2, Users, FileText, ShieldCheck, Eye
+  Users, FileText, ShieldCheck, Eye,
+  Receipt, CheckCircle, Clock
 } from 'lucide-react'
 import { useCoaStore, useExpenseClaimsStore } from './stores'
 import { useFormDraft } from './hooks/useFormDraft'
@@ -189,38 +190,27 @@ export const ExpenseClaimsView: React.FC<{ activeEntityId: string; entities?: En
       </div>
 
       {/* Stats Cards (Row 2) */}
-      <section className="stats">
-        <article>
-          <span className="stat-icon blue">
-            <Coins className="w-4 h-4" />
-          </span>
-          <div>
-            <small>TOTAL EXPENSE VALUE</small>
-            <h2>{money(totalClaims)}</h2>
-            <p>All recorded vouchers</p>
+      <div className="grid grid-cols-2 lg:grid-cols-3 gap-4">
+        {[
+          { label: 'TOTAL EXPENSE VALUE', value: money(totalClaims), desc: 'All recorded vouchers', icon: Receipt, color: 'from-sky-500 to-blue-600', bg: 'bg-sky-50 dark:bg-sky-950/30', textColor: 'text-sky-600 dark:text-sky-400' },
+          { label: 'PAID & SETTLED', value: paidCount, desc: 'Posted to GL ledger', icon: CheckCircle, color: 'from-emerald-500 to-teal-600', bg: 'bg-emerald-50 dark:bg-emerald-950/30', textColor: 'text-emerald-600 dark:text-emerald-400' },
+          { label: 'AWAITING APPROVAL', value: pendingCount, desc: 'Pending manager sign-off', icon: Clock, color: 'from-violet-500 to-purple-600', bg: 'bg-violet-50 dark:bg-violet-950/30', textColor: 'text-violet-600 dark:text-violet-400' },
+        ].map((kpi) => (
+          <div key={kpi.label} className="relative overflow-hidden rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)] p-4 shadow-sm hover:shadow-md transition-shadow">
+            <div className="flex items-start justify-between">
+              <div>
+                <p className="text-xs font-semibold text-[var(--color-text-muted)] uppercase tracking-wider">{kpi.label}</p>
+                <p className={`text-xl font-semibold mt-1.5 ${kpi.textColor}`}>{kpi.value}</p>
+                <p className="text-xs text-[var(--color-text-muted)] mt-1">{kpi.desc}</p>
+              </div>
+              <div className={`w-10 h-10 rounded-lg bg-gradient-to-br ${kpi.color} flex items-center justify-center text-white shadow-lg`}>
+                <kpi.icon className="w-5 h-5" />
+              </div>
+            </div>
+            <div className={`absolute -bottom-4 -right-4 w-24 h-24 rounded-full ${kpi.bg} opacity-50`} />
           </div>
-        </article>
-        <article>
-          <span className="stat-icon teal">
-            <CheckCircle2 className="w-4 h-4" />
-          </span>
-          <div>
-            <small>PAID & SETTLED</small>
-            <h2>{paidCount}</h2>
-            <p>Posted to GL ledger</p>
-          </div>
-        </article>
-        <article>
-          <span className="stat-icon violet">
-            <FileText className="w-4 h-4" />
-          </span>
-          <div>
-            <small>AWAITING APPROVAL</small>
-            <h2>{pendingCount}</h2>
-            <p>Pending manager sign-off</p>
-          </div>
-        </article>
-      </section>
+        ))}
+      </div>
 
       {/* Claims Table */}
       <div className="bg-[var(--color-surface)] border border-[var(--color-border)] rounded-xl overflow-hidden shadow-sm">
@@ -300,7 +290,7 @@ export const ExpenseClaimsView: React.FC<{ activeEntityId: string; entities?: En
             {/* Modal Header */}
             <div className="px-6 py-4.5 border-b border-[var(--color-border)] bg-[var(--color-surface-muted)]/50 flex items-center justify-between">
               <div className="flex items-center gap-3.5">
-                <div className="w-11 h-11 rounded-xl bg-gradient-to-br from-emerald-500 to-teal-600 flex items-center justify-center text-white shadow-sm shrink-0">
+                <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-emerald-500 to-teal-600 flex items-center justify-center text-white shadow-sm shrink-0">
                   <ReceiptText className="w-5 h-5" />
                 </div>
                 <div>

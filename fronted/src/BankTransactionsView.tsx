@@ -2,8 +2,7 @@ import { useState, useMemo, useEffect } from 'react';
 import {
   ArrowLeftRight, Search, Download, Printer,
   FileSpreadsheet, RefreshCw, Landmark,
-  ArrowUpRight, ArrowDownLeft, DollarSign,
-  Clock, CheckCircle2, X
+  Clock, CheckCircle2, X, TrendingUp, TrendingDown, ArrowRightLeft, Hash
 } from 'lucide-react';
 import type { Entity } from './EntitySettings';
 import { useBankingStore } from './stores';
@@ -398,43 +397,29 @@ export const BankTransactionsView = ({
         </div>
       </div>
 
-      {/* 4 Financial Metric Cards - 4 in 1 Row */}
-      <section className="stats" style={{ gridTemplateColumns: 'repeat(4, minmax(0, 1fr))' }}>
-        <article>
-          <span className="stat-icon teal"><ArrowDownLeft className="w-4 h-4 text-emerald-600" /></span>
-          <div>
-            <small>TOTAL INFLOW (+)</small>
-            <h2 className="text-emerald-600 dark:text-emerald-400">{money(totalInflow, currentEntity?.currencyCode)}</h2>
-            <p>Deposits & customer receipts</p>
+      {/* 4 Financial Metric Cards - Modern KPI Design */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        {[
+          { label: 'TOTAL INFLOW (+)', value: money(totalInflow, currentEntity?.currencyCode), desc: 'Deposits & customer receipts', icon: TrendingUp, color: 'from-emerald-500 to-teal-500', bg: 'bg-emerald-50 dark:bg-emerald-950/30', textColor: 'text-emerald-600 dark:text-emerald-400' },
+          { label: 'TOTAL OUTFLOW (-)', value: money(totalOutflow, currentEntity?.currencyCode), desc: 'Disbursements & payments', icon: TrendingDown, color: 'from-rose-500 to-red-500', bg: 'bg-rose-50 dark:bg-rose-950/30', textColor: 'text-rose-600 dark:text-rose-400' },
+          { label: 'NET CASH MOVEMENT', value: money(netMovement, currentEntity?.currencyCode), desc: netMovement >= 0 ? 'Net positive liquidity' : 'Net liquidity contraction', icon: ArrowRightLeft, color: 'from-blue-500 to-indigo-500', bg: netMovement >= 0 ? 'bg-blue-50 dark:bg-blue-950/30' : 'bg-amber-50 dark:bg-amber-950/30', textColor: netMovement >= 0 ? 'text-blue-600 dark:text-blue-400' : 'text-amber-600 dark:text-amber-400' },
+          { label: 'TRANSACTIONS COUNT', value: totalCount, desc: 'Ledger movement records', icon: Hash, color: 'from-violet-500 to-purple-500', bg: 'bg-violet-50 dark:bg-violet-950/30', textColor: 'text-violet-600 dark:text-violet-400' },
+        ].map((kpi) => (
+          <div key={kpi.label} className="relative overflow-hidden rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)] p-4 shadow-sm hover:shadow-md transition-shadow">
+            <div className="flex items-start justify-between">
+              <div>
+                <p className="text-xs font-semibold text-[var(--color-text-muted)] uppercase tracking-wider">{kpi.label}</p>
+                <p className={`text-xl font-semibold mt-1.5 ${kpi.textColor}`}>{kpi.value}</p>
+                <p className="text-xs text-[var(--color-text-muted)] mt-1">{kpi.desc}</p>
+              </div>
+              <div className={`w-10 h-10 rounded-lg bg-gradient-to-br ${kpi.color} flex items-center justify-center text-white shadow-lg`}>
+                <kpi.icon className="w-5 h-5" />
+              </div>
+            </div>
+            <div className={`absolute -bottom-4 -right-4 w-24 h-24 rounded-full ${kpi.bg} opacity-50`} />
           </div>
-        </article>
-        <article>
-          <span className="stat-icon blue"><ArrowUpRight className="w-4 h-4 text-rose-600" /></span>
-          <div>
-            <small>TOTAL OUTFLOW (-)</small>
-            <h2 className="text-rose-600 dark:text-rose-400">{money(totalOutflow, currentEntity?.currencyCode)}</h2>
-            <p>Disbursements & payments</p>
-          </div>
-        </article>
-        <article>
-          <span className="stat-icon blue"><DollarSign className="w-4 h-4" /></span>
-          <div>
-            <small>NET CASH MOVEMENT</small>
-            <h2 className={netMovement >= 0 ? 'text-blue-600 dark:text-blue-400' : 'text-amber-600 dark:text-amber-400'}>
-              {money(netMovement, currentEntity?.currencyCode)}
-            </h2>
-            <p>{netMovement >= 0 ? 'Net positive liquidity' : 'Net liquidity contraction'}</p>
-          </div>
-        </article>
-        <article>
-          <span className="stat-icon violet"><Clock className="w-4 h-4" /></span>
-          <div>
-            <small>TRANSACTIONS COUNT</small>
-            <h2>{totalCount}</h2>
-            <p>Ledger movement records</p>
-          </div>
-        </article>
-      </section>
+        ))}
+      </div>
 
       {/* Filter & Search Toolbar */}
       <div className="flex flex-wrap items-center justify-between gap-3 bg-[var(--color-surface)] p-3 rounded-xl border border-[var(--color-border)] shadow-xs">

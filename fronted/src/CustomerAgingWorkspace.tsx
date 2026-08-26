@@ -4,7 +4,7 @@ import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContaine
 import {
   Users, DollarSign, AlertTriangle, Clock, FileSpreadsheet,
   ArrowLeft, Search, Download, RefreshCw,
-  ChevronRight, CheckCircle2, ShieldAlert
+  ChevronRight, CheckCircle2, Skull
 } from 'lucide-react';
 import { downloadExcel } from './lib/exportUtils';
 import ExportDropdown from './components/ExportDropdown';
@@ -637,41 +637,29 @@ export function CustomerAgingWorkspace({ activeEntityId }: Props) {
         </div>
       </div>
 
-      {/* KPI Stats - 4 in one row */}
-      <section className="stats" style={{ gridTemplateColumns: 'repeat(4, minmax(0, 1fr))' }}>
-        <article>
-          <span className="stat-icon blue"><DollarSign className="w-4 h-4" /></span>
-          <div>
-            <small>TOTAL RECEIVABLES</small>
-            <h2>{fmt(totalOutstanding)}</h2>
-            <p>Outstanding customer balances</p>
+      {/* KPI Stats - Modern Cards */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        {[
+          { label: 'Total Receivables', value: fmt(totalOutstanding), desc: 'Outstanding customer balances', icon: DollarSign, color: 'from-blue-500 to-blue-600', bg: 'bg-blue-50 dark:bg-blue-950/30', textColor: 'text-blue-600 dark:text-blue-400' },
+          { label: 'Customers with Balance', value: customerAgingList.length, desc: 'Active debtors', icon: Users, color: 'from-teal-500 to-teal-600', bg: 'bg-teal-50 dark:bg-teal-950/30', textColor: 'text-teal-600 dark:text-teal-400' },
+          { label: 'Total Overdue', value: fmt(overdueAmount), desc: 'Past invoice due dates', icon: AlertTriangle, color: 'from-amber-500 to-amber-600', bg: 'bg-amber-50 dark:bg-amber-950/30', textColor: 'text-amber-600 dark:text-amber-400' },
+          { label: 'Critical (90+ Days)', value: criticalCount, desc: 'High delinquency accounts', icon: Skull, color: 'from-rose-500 to-rose-600', bg: 'bg-rose-50 dark:bg-rose-950/30', textColor: 'text-rose-600 dark:text-rose-400' },
+        ].map((kpi) => (
+          <div key={kpi.label} className="relative overflow-hidden rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)] p-4 shadow-sm hover:shadow-md transition-shadow">
+            <div className="flex items-start justify-between">
+              <div>
+                <p className="text-xs font-semibold text-[var(--color-text-muted)] uppercase tracking-wider">{kpi.label}</p>
+                <p className={`text-xl font-semibold mt-1.5 ${kpi.textColor}`}>{kpi.value}</p>
+                <p className="text-xs text-[var(--color-text-muted)] mt-1">{kpi.desc}</p>
+              </div>
+              <div className={`w-10 h-10 rounded-lg bg-gradient-to-br ${kpi.color} flex items-center justify-center text-white shadow-lg`}>
+                <kpi.icon className="w-5 h-5" />
+              </div>
+            </div>
+            <div className={`absolute -bottom-4 -right-4 w-24 h-24 rounded-full ${kpi.bg} opacity-50`} />
           </div>
-        </article>
-        <article>
-          <span className="stat-icon teal"><Users className="w-4 h-4" /></span>
-          <div>
-            <small>CUSTOMERS WITH BALANCE</small>
-            <h2>{customerAgingList.length}</h2>
-            <p>Active debtors</p>
-          </div>
-        </article>
-        <article>
-          <span className="stat-icon violet"><AlertTriangle className="w-4 h-4 text-amber-500" /></span>
-          <div>
-            <small>TOTAL OVERDUE</small>
-            <h2 className="text-amber-600 dark:text-amber-400">{fmt(overdueAmount)}</h2>
-            <p>Past invoice due dates</p>
-          </div>
-        </article>
-        <article>
-          <span className="stat-icon blue"><ShieldAlert className="w-4 h-4 text-rose-500" /></span>
-          <div>
-            <small>CRITICAL (90+ DAYS)</small>
-            <h2 className="text-rose-600 dark:text-rose-400">{criticalCount}</h2>
-            <p>High delinquency accounts</p>
-          </div>
-        </article>
-      </section>
+        ))}
+      </div>
 
       {/* Aging Distribution Chart & Bucket Chips */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-3">

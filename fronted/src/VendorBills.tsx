@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useProcurementStore, useVendorsStore, useProductsStore, useCoaStore } from './stores';
 import { DataToolbar } from '@/components/ui/data-toolbar';
 import { money } from './lib/currency';
+import { FileText, Receipt, CheckCircle } from 'lucide-react';
 
 export const VendorBills: React.FC<{ activeEntityId: string }> = ({ activeEntityId }) => {
   const bills = useProcurementStore((s) => s.bills);
@@ -184,32 +185,27 @@ export const VendorBills: React.FC<{ activeEntityId: string }> = ({ activeEntity
       </div>
 
       {/* Summary KPI Cards */}
-      <section className="stats">
-        <article>
-          <span className="stat-icon blue"><span className="text-sm">💰</span></span>
-          <div>
-            <small>TOTAL OUTSTANDING BILLS</small>
-            <h2>{money(totalOutstanding)}</h2>
-            <p>Amount due to suppliers</p>
+      <div className="grid grid-cols-2 lg:grid-cols-3 gap-4">
+        {[
+          { label: 'Total Outstanding Bills', value: money(totalOutstanding), desc: 'Amount due to suppliers', icon: FileText, color: 'from-amber-500 to-orange-600', bg: 'bg-amber-50 dark:bg-amber-950/30', textColor: 'text-amber-600 dark:text-amber-400' },
+          { label: 'Supplier Invoices', value: bills.length, desc: 'Vendor bills recorded', icon: Receipt, color: 'from-teal-500 to-cyan-600', bg: 'bg-teal-50 dark:bg-teal-950/30', textColor: 'text-teal-600 dark:text-teal-400' },
+          { label: '3-Way Match', value: 'Active', desc: 'Audit engine running', icon: CheckCircle, color: 'from-violet-500 to-purple-600', bg: 'bg-violet-50 dark:bg-violet-950/30', textColor: 'text-violet-600 dark:text-violet-400' },
+        ].map((kpi) => (
+          <div key={kpi.label} className="relative overflow-hidden rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)] p-4 shadow-sm hover:shadow-md transition-shadow">
+            <div className="flex items-start justify-between">
+              <div>
+                <p className="text-xs font-semibold text-[var(--color-text-muted)] uppercase tracking-wider">{kpi.label}</p>
+                <p className={`text-xl font-semibold mt-1.5 ${kpi.textColor}`}>{kpi.value}</p>
+                <p className="text-xs text-[var(--color-text-muted)] mt-1">{kpi.desc}</p>
+              </div>
+              <div className={`w-10 h-10 rounded-lg bg-gradient-to-br ${kpi.color} flex items-center justify-center text-white shadow-lg`}>
+                <kpi.icon className="w-5 h-5" />
+              </div>
+            </div>
+            <div className={`absolute -bottom-4 -right-4 w-24 h-24 rounded-full ${kpi.bg} opacity-50`} />
           </div>
-        </article>
-        <article>
-          <span className="stat-icon teal"><span className="text-sm">📄</span></span>
-          <div>
-            <small>SUPPLIER INVOICES</small>
-            <h2>{bills.length}</h2>
-            <p>Vendor bills recorded</p>
-          </div>
-        </article>
-        <article>
-          <span className="stat-icon violet"><span className="text-sm">✅</span></span>
-          <div>
-            <small>3-WAY MATCH</small>
-            <h2>Active</h2>
-            <p>Audit engine running</p>
-          </div>
-        </article>
-      </section>
+        ))}
+      </div>
 
       {/* Table */}
       <div className="bg-white border border-gray-200 rounded-2xl shadow-sm overflow-hidden">

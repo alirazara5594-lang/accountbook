@@ -4,8 +4,7 @@ import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@/components/ui/select';
 import { PageHeader } from '@/components/ui/page-header';
-import { StatCard } from '@/components/ui/stat-card';
-import { ModuleSummaryLayout, SummaryPanel } from '@/components/module-summary-layout';
+
 import {
   Sparkles, TrendingUp, TrendingDown, BarChart3, PieChart, Activity, AlertTriangle, Wallet, ShoppingBag, ArrowDownRight, ArrowUpRight, Lightbulb, Target, Boxes, Scale, FileCheck, Clock3, Landmark, LineChart, Info
 } from 'lucide-react';
@@ -150,17 +149,32 @@ export function AnalyticsDashboardView() {
   const aiScore = Math.min(100, Math.round((d.totalProfit / Math.max(d.totalRevenue, 1)) * 50 + 50));
 
   return (
-    <ModuleSummaryLayout
-      title="AI & Analytics"
-      description="Business intelligence across financial, sales, expense, cash flow, inventory, and forecasting"
-      stats={[
-        { icon: Wallet, label: 'Total Revenue', value: money(d.totalRevenue), tone: 'teal' },
-        { icon: TrendingDown, label: 'Total Expenses', value: money(d.totalExpenses), tone: 'red' },
-        { icon: TrendingUp, label: 'Net Profit', value: money(d.totalProfit), tone: 'green' },
-        { icon: Activity, label: 'AI Health Score', value: `${aiScore}/100`, tone: 'violet' },
-      ]}
-    >
-      <SummaryPanel icon={BarChart3} title="Revenue vs Expenses (6 months)">
+    <div className="p-6 max-w-[1400px] mx-auto space-y-4">
+      <PageHeader title="AI & Analytics" description="Business intelligence across financial, sales, expense, cash flow, inventory, and forecasting" />
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        {[
+          { label: 'Total Revenue', value: money(d.totalRevenue), desc: 'Sum of all invoices', icon: Wallet, color: 'from-teal-400 to-teal-600', bg: 'bg-teal-50 dark:bg-teal-950/30', textColor: 'text-teal-600 dark:text-teal-400' },
+          { label: 'Total Expenses', value: money(d.totalExpenses), desc: 'All claims and field costs', icon: TrendingDown, color: 'from-red-400 to-red-600', bg: 'bg-red-50 dark:bg-red-950/30', textColor: 'text-red-600 dark:text-red-400' },
+          { label: 'Net Profit', value: money(d.totalProfit), desc: 'Revenue minus expenses', icon: TrendingUp, color: 'from-green-400 to-green-600', bg: 'bg-green-50 dark:bg-green-950/30', textColor: 'text-green-600 dark:text-green-400' },
+          { label: 'AI Health Score', value: `${aiScore}/100`, desc: 'Overall business health', icon: Activity, color: 'from-violet-400 to-violet-600', bg: 'bg-violet-50 dark:bg-violet-950/30', textColor: 'text-violet-600 dark:text-violet-400' },
+        ].map((kpi) => (
+          <div key={kpi.label} className="relative overflow-hidden rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)] p-4 shadow-sm hover:shadow-md transition-shadow">
+            <div className="flex items-start justify-between">
+              <div>
+                <p className="text-xs font-semibold text-[var(--color-text-muted)] uppercase tracking-wider">{kpi.label}</p>
+                <p className={`text-xl font-semibold mt-1.5 ${kpi.textColor}`}>{kpi.value}</p>
+                <p className="text-xs text-[var(--color-text-muted)] mt-1">{kpi.desc}</p>
+              </div>
+              <div className={`w-10 h-10 rounded-lg bg-gradient-to-br ${kpi.color} flex items-center justify-center text-white shadow-lg`}>
+                <kpi.icon className="w-4.5 h-4.5" />
+              </div>
+            </div>
+            <div className={`absolute -bottom-4 -right-4 w-24 h-24 rounded-full ${kpi.bg} opacity-50`} />
+          </div>
+        ))}
+      </div>
+      <Card className="p-4 space-y-3">
+        <p className="text-sm font-medium flex items-center gap-2"><BarChart3 className="h-4 w-4" /> Revenue vs Expenses (6 months)</p>
         <ResponsiveContainer width="100%" height={220}>
           <RAreaChart data={chartData}>
             <RCartesianGrid strokeDasharray="3 3" stroke="var(--color-border)" />
@@ -172,16 +186,17 @@ export function AnalyticsDashboardView() {
             <RArea type="monotone" dataKey="expenses" stroke="var(--color-danger)" fill="var(--color-danger)" fillOpacity={0.15} name="Expenses" />
           </RAreaChart>
         </ResponsiveContainer>
-      </SummaryPanel>
-      <SummaryPanel icon={Sparkles} title="Module Activity">
+      </Card>
+      <Card className="p-4 space-y-3">
+        <p className="text-sm font-medium flex items-center gap-2"><Sparkles className="h-4 w-4" /> Module Activity</p>
         <div className="grid grid-cols-2 gap-3">
           <div className="border rounded-lg p-2.5 text-center"><p className="text-base font-bold">{d.projectsList.length}</p><p className="text-[10px] text-muted-foreground">Projects</p></div>
           <div className="border rounded-lg p-2.5 text-center"><p className="text-base font-bold">{d.openProjects}</p><p className="text-[10px] text-muted-foreground">Active Projects</p></div>
           <div className="border rounded-lg p-2.5 text-center"><p className="text-base font-bold">{d.fieldCounts.surveys}</p><p className="text-[10px] text-muted-foreground">Field Surveys</p></div>
           <div className="border rounded-lg p-2.5 text-center"><p className="text-base font-bold">{d.obligationsDue}</p><p className="text-[10px] text-muted-foreground">Tax Obligations Due</p></div>
         </div>
-      </SummaryPanel>
-    </ModuleSummaryLayout>
+      </Card>
+    </div>
   );
 }
 
@@ -194,11 +209,27 @@ export function FinancialAnalyticsView() {
   return (
     <div className="p-6 max-w-[1400px] mx-auto space-y-4">
       <PageHeader title="Financial Analytics" description="Revenue, expense, and profitability trends across the business" />
-      <div className="grid grid-cols-4 gap-4">
-        <StatCard icon={Wallet} label="Total Revenue" value={money(d.totalRevenue)} tone="teal" />
-        <StatCard icon={TrendingDown} label="Total Expenses" value={money(d.totalExpenses)} tone="red" />
-        <StatCard icon={TrendingUp} label="Net Profit" value={money(d.totalProfit)} tone="green" />
-        <StatCard icon={Scale} label="Profit Margin" value={`${profitMargin.toFixed(1)}%`} tone="violet" />
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        {[
+          { label: 'Total Revenue', value: money(d.totalRevenue), desc: 'Sum of all invoices', icon: Wallet, color: 'from-teal-400 to-teal-600', bg: 'bg-teal-50 dark:bg-teal-950/30', textColor: 'text-teal-600 dark:text-teal-400' },
+          { label: 'Total Expenses', value: money(d.totalExpenses), desc: 'All claims and field costs', icon: TrendingDown, color: 'from-red-400 to-red-600', bg: 'bg-red-50 dark:bg-red-950/30', textColor: 'text-red-600 dark:text-red-400' },
+          { label: 'Net Profit', value: money(d.totalProfit), desc: 'Revenue minus expenses', icon: TrendingUp, color: 'from-green-400 to-green-600', bg: 'bg-green-50 dark:bg-green-950/30', textColor: 'text-green-600 dark:text-green-400' },
+          { label: 'Profit Margin', value: `${profitMargin.toFixed(1)}%`, desc: 'Net profit / revenue', icon: Scale, color: 'from-violet-400 to-violet-600', bg: 'bg-violet-50 dark:bg-violet-950/30', textColor: 'text-violet-600 dark:text-violet-400' },
+        ].map((kpi) => (
+          <div key={kpi.label} className="relative overflow-hidden rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)] p-4 shadow-sm hover:shadow-md transition-shadow">
+            <div className="flex items-start justify-between">
+              <div>
+                <p className="text-xs font-semibold text-[var(--color-text-muted)] uppercase tracking-wider">{kpi.label}</p>
+                <p className={`text-xl font-semibold mt-1.5 ${kpi.textColor}`}>{kpi.value}</p>
+                <p className="text-xs text-[var(--color-text-muted)] mt-1">{kpi.desc}</p>
+              </div>
+              <div className={`w-10 h-10 rounded-lg bg-gradient-to-br ${kpi.color} flex items-center justify-center text-white shadow-lg`}>
+                <kpi.icon className="w-4.5 h-4.5" />
+              </div>
+            </div>
+            <div className={`absolute -bottom-4 -right-4 w-24 h-24 rounded-full ${kpi.bg} opacity-50`} />
+          </div>
+        ))}
       </div>
       <div className="grid grid-cols-5 gap-4">
         <Card className="p-4 col-span-3 space-y-3">
@@ -239,11 +270,27 @@ export function SalesAnalyticsView() {
   return (
     <div className="p-6 max-w-[1400px] mx-auto space-y-4">
       <PageHeader title="Sales Analytics" description="Revenue, collections, and customer concentration analysis" />
-      <div className="grid grid-cols-4 gap-4">
-        <StatCard icon={ShoppingBag} label="Total Sales" value={money(d.totalRevenue)} tone="teal" />
-        <StatCard icon={ArrowUpRight} label="Collected" value={money(collected)} tone="green" />
-        <StatCard icon={ArrowDownRight} label="Outstanding" value={money(outstanding)} tone="amber" />
-        <StatCard icon={PieChart} label="Invoices" value={d.invoices.length} tone="blue" />
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        {[
+          { label: 'Total Sales', value: money(d.totalRevenue), desc: 'Sum of all invoices', icon: ShoppingBag, color: 'from-teal-400 to-teal-600', bg: 'bg-teal-50 dark:bg-teal-950/30', textColor: 'text-teal-600 dark:text-teal-400' },
+          { label: 'Collected', value: money(collected), desc: 'Receipts received', icon: ArrowUpRight, color: 'from-green-400 to-green-600', bg: 'bg-green-50 dark:bg-green-950/30', textColor: 'text-green-600 dark:text-green-400' },
+          { label: 'Outstanding', value: money(outstanding), desc: 'Amount due on invoices', icon: ArrowDownRight, color: 'from-amber-400 to-amber-600', bg: 'bg-amber-50 dark:bg-amber-950/30', textColor: 'text-amber-600 dark:text-amber-400' },
+          { label: 'Invoices', value: d.invoices.length, desc: 'Total invoices issued', icon: PieChart, color: 'from-blue-400 to-blue-600', bg: 'bg-blue-50 dark:bg-blue-950/30', textColor: 'text-blue-600 dark:text-blue-400' },
+        ].map((kpi) => (
+          <div key={kpi.label} className="relative overflow-hidden rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)] p-4 shadow-sm hover:shadow-md transition-shadow">
+            <div className="flex items-start justify-between">
+              <div>
+                <p className="text-xs font-semibold text-[var(--color-text-muted)] uppercase tracking-wider">{kpi.label}</p>
+                <p className={`text-xl font-semibold mt-1.5 ${kpi.textColor}`}>{kpi.value}</p>
+                <p className="text-xs text-[var(--color-text-muted)] mt-1">{kpi.desc}</p>
+              </div>
+              <div className={`w-10 h-10 rounded-lg bg-gradient-to-br ${kpi.color} flex items-center justify-center text-white shadow-lg`}>
+                <kpi.icon className="w-4.5 h-4.5" />
+              </div>
+            </div>
+            <div className={`absolute -bottom-4 -right-4 w-24 h-24 rounded-full ${kpi.bg} opacity-50`} />
+          </div>
+        ))}
       </div>
       <div className="grid grid-cols-5 gap-4">
         <Card className="p-4 col-span-3 space-y-3">
@@ -302,11 +349,27 @@ export function ExpenseAnalyticsView() {
   return (
     <div className="p-6 max-w-[1400px] mx-auto space-y-4">
       <PageHeader title="Expense Analytics" description="Spend analysis by category and department" />
-      <div className="grid grid-cols-4 gap-4">
-        <StatCard icon={TrendingDown} label="Total Expenses" value={money(d.totalExpenses)} tone="red" />
-        <StatCard icon={FileCheck} label="Paid Claims" value={paidClaims} tone="teal" />
-        <StatCard icon={Clock3} label="Pending Claims" value={pendingClaims} tone="amber" />
-        <StatCard icon={Wallet} label="Avg Claim Size" value={money(d.claims.length ? (d.claims.reduce((s, c) => s + (c.totalAmount || 0), 0) / d.claims.length) : 0)} tone="blue" />
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        {[
+          { label: 'Total Expenses', value: money(d.totalExpenses), desc: 'All claims and field costs', icon: TrendingDown, color: 'from-red-400 to-red-600', bg: 'bg-red-50 dark:bg-red-950/30', textColor: 'text-red-600 dark:text-red-400' },
+          { label: 'Paid Claims', value: paidClaims, desc: 'Claims approved and paid', icon: FileCheck, color: 'from-teal-400 to-teal-600', bg: 'bg-teal-50 dark:bg-teal-950/30', textColor: 'text-teal-600 dark:text-teal-400' },
+          { label: 'Pending Claims', value: pendingClaims, desc: 'Awaiting review or approval', icon: Clock3, color: 'from-amber-400 to-amber-600', bg: 'bg-amber-50 dark:bg-amber-950/30', textColor: 'text-amber-600 dark:text-amber-400' },
+          { label: 'Avg Claim Size', value: money(d.claims.length ? (d.claims.reduce((s, c) => s + (c.totalAmount || 0), 0) / d.claims.length) : 0), desc: 'Mean claim amount', icon: Wallet, color: 'from-blue-400 to-blue-600', bg: 'bg-blue-50 dark:bg-blue-950/30', textColor: 'text-blue-600 dark:text-blue-400' },
+        ].map((kpi) => (
+          <div key={kpi.label} className="relative overflow-hidden rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)] p-4 shadow-sm hover:shadow-md transition-shadow">
+            <div className="flex items-start justify-between">
+              <div>
+                <p className="text-xs font-semibold text-[var(--color-text-muted)] uppercase tracking-wider">{kpi.label}</p>
+                <p className={`text-xl font-semibold mt-1.5 ${kpi.textColor}`}>{kpi.value}</p>
+                <p className="text-xs text-[var(--color-text-muted)] mt-1">{kpi.desc}</p>
+              </div>
+              <div className={`w-10 h-10 rounded-lg bg-gradient-to-br ${kpi.color} flex items-center justify-center text-white shadow-lg`}>
+                <kpi.icon className="w-4.5 h-4.5" />
+              </div>
+            </div>
+            <div className={`absolute -bottom-4 -right-4 w-24 h-24 rounded-full ${kpi.bg} opacity-50`} />
+          </div>
+        ))}
       </div>
       <div className="grid grid-cols-5 gap-4">
         <Card className="p-4 col-span-2 space-y-3">
@@ -347,11 +410,27 @@ export function CashFlowAnalyticsView() {
   return (
     <div className="p-6 max-w-[1400px] mx-auto space-y-4">
       <PageHeader title="Cash Flow Analytics" description="Cash movements across bank and cash accounts" />
-      <div className="grid grid-cols-4 gap-4">
-        <StatCard icon={Wallet} label="Cash & Equivalents" value={money(d.cashBalances)} tone="teal" />
-        <StatCard icon={ArrowUpRight} label="Inflows" value={money(inflow)} tone="green" />
-        <StatCard icon={ArrowDownRight} label="Outflows" value={money(outflow)} tone="red" />
-        <StatCard icon={Activity} label="Net Movement" value={money(inflow - outflow)} tone="blue" />
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        {[
+          { label: 'Cash & Equivalents', value: money(d.cashBalances), desc: 'Bank and cash balances', icon: Wallet, color: 'from-teal-400 to-teal-600', bg: 'bg-teal-50 dark:bg-teal-950/30', textColor: 'text-teal-600 dark:text-teal-400' },
+          { label: 'Inflows', value: money(inflow), desc: 'Total cash received', icon: ArrowUpRight, color: 'from-green-400 to-green-600', bg: 'bg-green-50 dark:bg-green-950/30', textColor: 'text-green-600 dark:text-green-400' },
+          { label: 'Outflows', value: money(outflow), desc: 'Total cash spent', icon: ArrowDownRight, color: 'from-red-400 to-red-600', bg: 'bg-red-50 dark:bg-red-950/30', textColor: 'text-red-600 dark:text-red-400' },
+          { label: 'Net Movement', value: money(inflow - outflow), desc: 'Inflow minus outflow', icon: Activity, color: 'from-blue-400 to-blue-600', bg: 'bg-blue-50 dark:bg-blue-950/30', textColor: 'text-blue-600 dark:text-blue-400' },
+        ].map((kpi) => (
+          <div key={kpi.label} className="relative overflow-hidden rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)] p-4 shadow-sm hover:shadow-md transition-shadow">
+            <div className="flex items-start justify-between">
+              <div>
+                <p className="text-xs font-semibold text-[var(--color-text-muted)] uppercase tracking-wider">{kpi.label}</p>
+                <p className={`text-xl font-semibold mt-1.5 ${kpi.textColor}`}>{kpi.value}</p>
+                <p className="text-xs text-[var(--color-text-muted)] mt-1">{kpi.desc}</p>
+              </div>
+              <div className={`w-10 h-10 rounded-lg bg-gradient-to-br ${kpi.color} flex items-center justify-center text-white shadow-lg`}>
+                <kpi.icon className="w-4.5 h-4.5" />
+              </div>
+            </div>
+            <div className={`absolute -bottom-4 -right-4 w-24 h-24 rounded-full ${kpi.bg} opacity-50`} />
+          </div>
+        ))}
       </div>
       <div className="grid grid-cols-5 gap-4">
         <Card className="p-4 col-span-3 space-y-3">
@@ -395,11 +474,27 @@ export function InventoryAnalyticsView() {
   return (
     <div className="p-6 max-w-[1400px] mx-auto space-y-4">
       <PageHeader title="Inventory Analytics" description="Stock valuation, availability, and fixed asset position" />
-      <div className="grid grid-cols-4 gap-4">
-        <StatCard icon={Boxes} label="Inventory Value" value={money(d.inventoryValue)} tone="teal" />
-        <StatCard icon={Target} label="Units on Hand" value={totalUnits} tone="blue" />
-        <StatCard icon={AlertTriangle} label="Low Stock Items" value={d.lowStock} tone="amber" />
-        <StatCard icon={Scale} label="Fixed Assets (NBV)" value={money(assetValue)} tone="violet" />
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        {[
+          { label: 'Inventory Value', value: money(d.inventoryValue), desc: 'On-hand stock value', icon: Boxes, color: 'from-teal-400 to-teal-600', bg: 'bg-teal-50 dark:bg-teal-950/30', textColor: 'text-teal-600 dark:text-teal-400' },
+          { label: 'Units on Hand', value: totalUnits, desc: 'Total stock quantity', icon: Target, color: 'from-blue-400 to-blue-600', bg: 'bg-blue-50 dark:bg-blue-950/30', textColor: 'text-blue-600 dark:text-blue-400' },
+          { label: 'Low Stock Items', value: d.lowStock, desc: 'Below reorder point', icon: AlertTriangle, color: 'from-amber-400 to-amber-600', bg: 'bg-amber-50 dark:bg-amber-950/30', textColor: 'text-amber-600 dark:text-amber-400' },
+          { label: 'Fixed Assets (NBV)', value: money(assetValue), desc: 'Net book value of assets', icon: Scale, color: 'from-violet-400 to-violet-600', bg: 'bg-violet-50 dark:bg-violet-950/30', textColor: 'text-violet-600 dark:text-violet-400' },
+        ].map((kpi) => (
+          <div key={kpi.label} className="relative overflow-hidden rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)] p-4 shadow-sm hover:shadow-md transition-shadow">
+            <div className="flex items-start justify-between">
+              <div>
+                <p className="text-xs font-semibold text-[var(--color-text-muted)] uppercase tracking-wider">{kpi.label}</p>
+                <p className={`text-xl font-semibold mt-1.5 ${kpi.textColor}`}>{kpi.value}</p>
+                <p className="text-xs text-[var(--color-text-muted)] mt-1">{kpi.desc}</p>
+              </div>
+              <div className={`w-10 h-10 rounded-lg bg-gradient-to-br ${kpi.color} flex items-center justify-center text-white shadow-lg`}>
+                <kpi.icon className="w-4.5 h-4.5" />
+              </div>
+            </div>
+            <div className={`absolute -bottom-4 -right-4 w-24 h-24 rounded-full ${kpi.bg} opacity-50`} />
+          </div>
+        ))}
       </div>
       <div className="grid grid-cols-5 gap-4">
         <Card className="p-4 col-span-3 space-y-3">
@@ -484,11 +579,27 @@ export function ForecastingView() {
           </Select>
         }
       />
-      <div className="grid grid-cols-4 gap-4">
-        <StatCard icon={Target} label="Forecast Horizon" value={`${horizon} mo`} tone="teal" />
-        <StatCard icon={TrendingUp} label="Projected Revenue" value={money(projectedRevenue)} tone="green" />
-        <StatCard icon={TrendingDown} label="Projected Expenses" value={money(forecast.filter(f => (f as any).forecast).reduce((s, f) => s + f.expenses, 0))} tone="red" />
-        <StatCard icon={Lightbulb} label="Data Points" value={d.monthly.length} tone="blue" />
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        {[
+          { label: 'Forecast Horizon', value: `${horizon} mo`, desc: 'Projection period', icon: Target, color: 'from-teal-400 to-teal-600', bg: 'bg-teal-50 dark:bg-teal-950/30', textColor: 'text-teal-600 dark:text-teal-400' },
+          { label: 'Projected Revenue', value: money(projectedRevenue), desc: 'Trend-based forecast', icon: TrendingUp, color: 'from-green-400 to-green-600', bg: 'bg-green-50 dark:bg-green-950/30', textColor: 'text-green-600 dark:text-green-400' },
+          { label: 'Projected Expenses', value: money(forecast.filter(f => (f as any).forecast).reduce((s, f) => s + f.expenses, 0)), desc: 'Trend-based forecast', icon: TrendingDown, color: 'from-red-400 to-red-600', bg: 'bg-red-50 dark:bg-red-950/30', textColor: 'text-red-600 dark:text-red-400' },
+          { label: 'Data Points', value: d.monthly.length, desc: 'Months of data available', icon: Lightbulb, color: 'from-blue-400 to-blue-600', bg: 'bg-blue-50 dark:bg-blue-950/30', textColor: 'text-blue-600 dark:text-blue-400' },
+        ].map((kpi) => (
+          <div key={kpi.label} className="relative overflow-hidden rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)] p-4 shadow-sm hover:shadow-md transition-shadow">
+            <div className="flex items-start justify-between">
+              <div>
+                <p className="text-xs font-semibold text-[var(--color-text-muted)] uppercase tracking-wider">{kpi.label}</p>
+                <p className={`text-xl font-semibold mt-1.5 ${kpi.textColor}`}>{kpi.value}</p>
+                <p className="text-xs text-[var(--color-text-muted)] mt-1">{kpi.desc}</p>
+              </div>
+              <div className={`w-10 h-10 rounded-lg bg-gradient-to-br ${kpi.color} flex items-center justify-center text-white shadow-lg`}>
+                <kpi.icon className="w-4.5 h-4.5" />
+              </div>
+            </div>
+            <div className={`absolute -bottom-4 -right-4 w-24 h-24 rounded-full ${kpi.bg} opacity-50`} />
+          </div>
+        ))}
       </div>
       <Card className="p-4 space-y-3">
         <p className="text-sm font-medium flex items-center gap-2"><LineChart className="h-4 w-4" /> Revenue Forecast (Linear Trend)</p>
@@ -551,11 +662,27 @@ export function AIInsightsView() {
   return (
     <div className="p-6 max-w-[1400px] mx-auto space-y-4">
       <PageHeader title="AI Insights" description="Automated, rule-based business intelligence generated from live data" />
-      <div className="grid grid-cols-4 gap-4">
-        <StatCard icon={Sparkles} label="Insights Generated" value={insights.length} tone="violet" />
-        <StatCard icon={AlertTriangle} label="Risks Detected" value={insights.filter(i => i.tone === 'red').length} tone="red" />
-        <StatCard icon={TrendingUp} label="Opportunities" value={insights.filter(i => i.tone === 'teal').length} tone="green" />
-        <StatCard icon={Lightbulb} label="Recommendations" value={insights.filter(i => i.tone === 'amber').length} tone="amber" />
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        {[
+          { label: 'Insights Generated', value: insights.length, desc: 'Total AI findings', icon: Sparkles, color: 'from-violet-400 to-violet-600', bg: 'bg-violet-50 dark:bg-violet-950/30', textColor: 'text-violet-600 dark:text-violet-400' },
+          { label: 'Risks Detected', value: insights.filter(i => i.tone === 'red').length, desc: 'Items requiring attention', icon: AlertTriangle, color: 'from-red-400 to-red-600', bg: 'bg-red-50 dark:bg-red-950/30', textColor: 'text-red-600 dark:text-red-400' },
+          { label: 'Opportunities', value: insights.filter(i => i.tone === 'teal').length, desc: 'Positive indicators', icon: TrendingUp, color: 'from-green-400 to-green-600', bg: 'bg-green-50 dark:bg-green-950/30', textColor: 'text-green-600 dark:text-green-400' },
+          { label: 'Recommendations', value: insights.filter(i => i.tone === 'amber').length, desc: 'Suggested actions', icon: Lightbulb, color: 'from-amber-400 to-amber-600', bg: 'bg-amber-50 dark:bg-amber-950/30', textColor: 'text-amber-600 dark:text-amber-400' },
+        ].map((kpi) => (
+          <div key={kpi.label} className="relative overflow-hidden rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)] p-4 shadow-sm hover:shadow-md transition-shadow">
+            <div className="flex items-start justify-between">
+              <div>
+                <p className="text-xs font-semibold text-[var(--color-text-muted)] uppercase tracking-wider">{kpi.label}</p>
+                <p className={`text-xl font-semibold mt-1.5 ${kpi.textColor}`}>{kpi.value}</p>
+                <p className="text-xs text-[var(--color-text-muted)] mt-1">{kpi.desc}</p>
+              </div>
+              <div className={`w-10 h-10 rounded-lg bg-gradient-to-br ${kpi.color} flex items-center justify-center text-white shadow-lg`}>
+                <kpi.icon className="w-4.5 h-4.5" />
+              </div>
+            </div>
+            <div className={`absolute -bottom-4 -right-4 w-24 h-24 rounded-full ${kpi.bg} opacity-50`} />
+          </div>
+        ))}
       </div>
       <div className="grid gap-3 md:grid-cols-2">
         {insights.map((ins, i) => (

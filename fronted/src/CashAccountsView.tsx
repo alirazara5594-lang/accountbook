@@ -408,41 +408,29 @@ export const CashAccountsView: React.FC<CashAccountsViewProps> = ({ activeEntity
         </div>
       </div>
 
-      {/* 4 Financial Metric Cards - 4 in 1 Row */}
-      <section className="stats" style={{ gridTemplateColumns: 'repeat(4, minmax(0, 1fr))' }}>
-        <article>
-          <span className="stat-icon teal"><Coins className="w-4 h-4 text-emerald-600" /></span>
-          <div>
-            <small>TOTAL CASH ON HAND</small>
-            <h2 className="text-emerald-600 dark:text-emerald-400">{money(totalBalance, currentEntity?.currencyCode)}</h2>
-            <p>Across {filtered.length} cash registers</p>
+      {/* 4 Financial Metric Cards - KPI Grid */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        {[
+          { label: 'TOTAL CASH ON HAND', value: money(totalBalance, currentEntity?.currencyCode), desc: `Across ${filtered.length} cash registers`, icon: Wallet, color: 'from-emerald-500 to-teal-500', bg: 'bg-emerald-50 dark:bg-emerald-950/30', textColor: 'text-emerald-600 dark:text-emerald-400' },
+          { label: 'ACTIVE REGISTERS', value: activeCount, desc: 'Operational tills and vaults', icon: CheckCircle2, color: 'from-blue-500 to-indigo-500', bg: 'bg-blue-50 dark:bg-blue-950/30', textColor: 'text-blue-600 dark:text-blue-400' },
+          { label: 'CUSTODIANS ASSIGNED', value: custodianCount, desc: 'Monitored cash handlers', icon: Users, color: 'from-violet-500 to-purple-500', bg: 'bg-violet-50 dark:bg-violet-950/30', textColor: 'text-violet-600 dark:text-violet-400' },
+          { label: 'AVERAGE TILL BALANCE', value: money(avgBalance, currentEntity?.currencyCode), desc: 'Per register average', icon: DollarSign, color: 'from-amber-500 to-orange-500', bg: 'bg-amber-50 dark:bg-amber-950/30', textColor: 'text-amber-600 dark:text-amber-400' },
+        ].map((kpi) => (
+          <div key={kpi.label} className="relative overflow-hidden rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)] p-4 shadow-sm hover:shadow-md transition-shadow">
+            <div className="flex items-start justify-between">
+              <div>
+                <p className="text-xs font-semibold text-[var(--color-text-muted)] uppercase tracking-wider">{kpi.label}</p>
+                <p className={`text-xl font-semibold mt-1.5 ${kpi.textColor}`}>{kpi.value}</p>
+                <p className="text-xs text-[var(--color-text-muted)] mt-1">{kpi.desc}</p>
+              </div>
+              <div className={`w-10 h-10 rounded-lg bg-gradient-to-br ${kpi.color} flex items-center justify-center text-white shadow-lg`}>
+                <kpi.icon className="w-5 h-5" />
+              </div>
+            </div>
+            <div className={`absolute -bottom-4 -right-4 w-24 h-24 rounded-full ${kpi.bg} opacity-50`} />
           </div>
-        </article>
-        <article>
-          <span className="stat-icon blue"><CheckCircle2 className="w-4 h-4 text-blue-600" /></span>
-          <div>
-            <small>ACTIVE REGISTERS</small>
-            <h2 className="text-blue-600 dark:text-blue-400">{activeCount}</h2>
-            <p>Operational tills and vaults</p>
-          </div>
-        </article>
-        <article>
-          <span className="stat-icon violet"><Users className="w-4 h-4 text-violet-500" /></span>
-          <div>
-            <small>CUSTODIANS ASSIGNED</small>
-            <h2 className="text-violet-600 dark:text-violet-400">{custodianCount}</h2>
-            <p>Monitored cash handlers</p>
-          </div>
-        </article>
-        <article>
-          <span className="stat-icon blue"><DollarSign className="w-4 h-4" /></span>
-          <div>
-            <small>AVERAGE TILL BALANCE</small>
-            <h2>{money(avgBalance, currentEntity?.currencyCode)}</h2>
-            <p>Per register average</p>
-          </div>
-        </article>
-      </section>
+        ))}
+      </div>
 
       {/* Filter Toolbar & Non-Overlapping Search Box */}
       <div className="flex flex-wrap items-center justify-between gap-3 bg-[var(--color-surface)] p-3 rounded-xl border border-[var(--color-border)] shadow-xs">

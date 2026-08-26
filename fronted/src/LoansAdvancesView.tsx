@@ -8,7 +8,6 @@ import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@
 import { FormSection } from '@/components/ui/form-section';
 import { FormField } from '@/components/ui/form-field';
 import { PageHeader } from '@/components/ui/page-header';
-import { StatCard } from '@/components/ui/stat-card';
 import { Plus, Banknote, TrendingUp, CheckCircle2, ArrowLeft, Save, User, Wallet } from 'lucide-react';
 
 const EMPTY_FORM = { employeeId: '', loanNumber: '', loanType: 'SalaryAdvance', principalAmount: 0, interestRate: 0, totalInstallments: 1, installmentAmount: 0, startDate: new Date().toISOString().split('T')[0] };
@@ -112,10 +111,26 @@ export default function LoansAdvancesView() {
         actions={<Button onClick={() => setView('form')}><Plus className="mr-2 h-4 w-4" /> New Loan</Button>}
       />
 
-      <div className="grid grid-cols-3 gap-4">
-        <StatCard icon={Banknote} label="Active Loans" value={activeLoans} tone="teal" />
-        <StatCard icon={TrendingUp} label="Outstanding Balance" value={totalOutstanding.toLocaleString()} tone="amber" />
-        <StatCard icon={CheckCircle2} label="Completed" value={completedLoans} tone="green" />
+      <div className="grid grid-cols-2 lg:grid-cols-3 gap-4">
+        {[
+          { label: 'Active Loans', value: activeLoans, desc: 'Currently active', icon: Banknote, color: 'from-teal-500 to-teal-600', bg: 'bg-teal-50 dark:bg-teal-950/30', textColor: 'text-teal-600 dark:text-teal-400' },
+          { label: 'Outstanding Balance', value: totalOutstanding.toLocaleString(), desc: 'Total remaining', icon: TrendingUp, color: 'from-amber-500 to-orange-500', bg: 'bg-amber-50 dark:bg-amber-950/30', textColor: 'text-amber-600 dark:text-amber-400' },
+          { label: 'Completed', value: completedLoans, desc: 'Fully repaid loans', icon: CheckCircle2, color: 'from-emerald-500 to-green-500', bg: 'bg-green-50 dark:bg-green-950/30', textColor: 'text-green-600 dark:text-green-400' },
+        ].map((kpi) => (
+          <div key={kpi.label} className="relative overflow-hidden rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)] p-4 shadow-sm hover:shadow-md transition-shadow">
+            <div className="flex items-start justify-between">
+              <div>
+                <p className="text-xs font-semibold text-[var(--color-text-muted)] uppercase tracking-wider">{kpi.label}</p>
+                <p className={`text-xl font-semibold mt-1.5 ${kpi.textColor}`}>{kpi.value}</p>
+                <p className="text-xs text-[var(--color-text-muted)] mt-1">{kpi.desc}</p>
+              </div>
+              <div className={`w-10 h-10 rounded-lg bg-gradient-to-br ${kpi.color} flex items-center justify-center text-white shadow-lg`}>
+                <kpi.icon className="w-4.5 h-4.5" />
+              </div>
+            </div>
+            <div className={`absolute -bottom-4 -right-4 w-24 h-24 rounded-full ${kpi.bg} opacity-50`} />
+          </div>
+        ))}
       </div>
 
       <div className="flex gap-3 items-center">

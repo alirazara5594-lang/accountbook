@@ -6,8 +6,8 @@ import {
   Users, DollarSign, Download, ArrowLeft,
   Receipt, Search, FileSpreadsheet,
   Building2, Mail, Phone, MapPin, CheckCircle2,
-  Clock, ArrowUpRight, ArrowDownLeft, ChevronRight,
-  RefreshCw, FileCheck
+  Clock, ChevronRight,
+  RefreshCw, FileCheck, FileText, CreditCard, AlertTriangle
 } from 'lucide-react';
 import { money } from './lib/currency';
 import { downloadExcel, downloadCSV } from './lib/exportUtils';
@@ -810,42 +810,28 @@ export function CustomerStatementsWorkspace({ activeEntityId }: Props) {
         </div>
 
         {/* 4 Key Financial Summary Cards */}
-        <section className="stats" style={{ gridTemplateColumns: 'repeat(4, minmax(0, 1fr))' }}>
-          <article>
-            <span className="stat-icon blue"><Clock className="w-4 h-4" /></span>
-            <div>
-              <small>OPENING BALANCE</small>
-              <h2>{fmt(activeStatement.openingBalance)}</h2>
-              <p>As of {dateFrom ? new Date(dateFrom).toLocaleDateString() : 'Beginning'}</p>
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+          {[
+            { label: 'OPENING BALANCE', value: fmt(activeStatement.openingBalance), desc: `As of ${dateFrom ? new Date(dateFrom).toLocaleDateString() : 'Beginning'}`, icon: Clock, color: 'from-blue-500 to-blue-600', bg: 'bg-blue-50 dark:bg-blue-950/30', textColor: 'text-blue-600 dark:text-blue-400' },
+            { label: 'TOTAL INVOICED (+)', value: fmt(activeStatement.totalDebits), desc: 'Invoices issued in period', icon: FileText, color: 'from-rose-500 to-rose-600', bg: 'bg-rose-50 dark:bg-rose-950/30', textColor: 'text-rose-600 dark:text-rose-400' },
+            { label: 'PAYMENTS / CREDITS (-)', value: fmt(activeStatement.totalCredits), desc: 'Receipts & credit notes', icon: CreditCard, color: 'from-emerald-500 to-emerald-600', bg: 'bg-emerald-50 dark:bg-emerald-950/30', textColor: 'text-emerald-600 dark:text-emerald-400' },
+            { label: 'CLOSING BALANCE DUE', value: fmt(activeStatement.closingBalance), desc: 'Net receivable position', icon: DollarSign, color: 'from-blue-500 to-indigo-600', bg: 'bg-blue-50 dark:bg-blue-950/30', textColor: activeStatement.closingBalance > 0 ? 'text-blue-600 dark:text-blue-400' : 'text-emerald-600 dark:text-emerald-400' },
+          ].map((kpi) => (
+            <div key={kpi.label} className="relative overflow-hidden rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)] p-4 shadow-sm hover:shadow-md transition-shadow">
+              <div className="flex items-start justify-between">
+                <div>
+                  <p className="text-xs font-semibold text-[var(--color-text-muted)] uppercase tracking-wider">{kpi.label}</p>
+                  <p className={`text-xl font-semibold mt-1.5 ${kpi.textColor}`}>{kpi.value}</p>
+                  <p className="text-xs text-[var(--color-text-muted)] mt-1">{kpi.desc}</p>
+                </div>
+                <div className={`w-10 h-10 rounded-lg bg-gradient-to-br ${kpi.color} flex items-center justify-center text-white shadow-lg`}>
+                  <kpi.icon className="w-5 h-5" />
+                </div>
+              </div>
+              <div className={`absolute -bottom-4 -right-4 w-24 h-24 rounded-full ${kpi.bg} opacity-50`} />
             </div>
-          </article>
-          <article>
-            <span className="stat-icon blue"><ArrowUpRight className="w-4 h-4 text-rose-600" /></span>
-            <div>
-              <small>TOTAL INVOICED (+)</small>
-              <h2 className="text-rose-600 dark:text-rose-400">{fmt(activeStatement.totalDebits)}</h2>
-              <p>Invoices issued in period</p>
-            </div>
-          </article>
-          <article>
-            <span className="stat-icon teal"><ArrowDownLeft className="w-4 h-4 text-emerald-600" /></span>
-            <div>
-              <small>PAYMENTS / CREDITS (-)</small>
-              <h2 className="text-emerald-600 dark:text-emerald-400">{fmt(activeStatement.totalCredits)}</h2>
-              <p>Receipts & credit notes</p>
-            </div>
-          </article>
-          <article>
-            <span className="stat-icon violet"><DollarSign className="w-4 h-4" /></span>
-            <div>
-              <small>CLOSING BALANCE DUE</small>
-              <h2 className={activeStatement.closingBalance > 0 ? 'text-blue-600 dark:text-blue-400' : 'text-emerald-600'}>
-                {fmt(activeStatement.closingBalance)}
-              </h2>
-              <p>Net receivable position</p>
-            </div>
-          </article>
-        </section>
+          ))}
+        </div>
 
         {/* Statement Transactions Table */}
         <div className="bg-[var(--color-surface)] border border-[var(--color-border)] rounded-xl shadow-xs overflow-hidden">
@@ -1116,40 +1102,28 @@ export function CustomerStatementsWorkspace({ activeEntityId }: Props) {
       </div>
 
       {/* 4 Summary Metric Cards */}
-      <section className="stats" style={{ gridTemplateColumns: 'repeat(4, minmax(0, 1fr))' }}>
-        <article>
-          <span className="stat-icon blue"><Users className="w-4 h-4" /></span>
-          <div>
-            <small>TOTAL REGISTERED</small>
-            <h2>{customers.length}</h2>
-            <p>Customer accounts</p>
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        {[
+          { label: 'TOTAL REGISTERED', value: customers.length, desc: 'Customer accounts', icon: Users, color: 'from-blue-500 to-blue-600', bg: 'bg-blue-50 dark:bg-blue-950/30', textColor: 'text-blue-600 dark:text-blue-400' },
+          { label: 'TOTAL RECEIVABLES', value: fmt(totalReceivables), desc: 'Outstanding AR balance', icon: DollarSign, color: 'from-blue-500 to-indigo-600', bg: 'bg-blue-50 dark:bg-blue-950/30', textColor: 'text-blue-600 dark:text-blue-400' },
+          { label: 'OVERDUE RECEIVABLES', value: fmt(totalOverdue), desc: 'Past due invoices', icon: AlertTriangle, color: 'from-amber-500 to-amber-600', bg: 'bg-amber-50 dark:bg-amber-950/30', textColor: 'text-amber-600 dark:text-amber-400' },
+          { label: 'SETTLED ACCOUNTS', value: currentCountAccounts(customerSummaries), desc: 'Zero balance / fully paid', icon: CheckCircle2, color: 'from-emerald-500 to-emerald-600', bg: 'bg-emerald-50 dark:bg-emerald-950/30', textColor: 'text-emerald-600 dark:text-emerald-400' },
+        ].map((kpi) => (
+          <div key={kpi.label} className="relative overflow-hidden rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)] p-4 shadow-sm hover:shadow-md transition-shadow">
+            <div className="flex items-start justify-between">
+              <div>
+                <p className="text-xs font-semibold text-[var(--color-text-muted)] uppercase tracking-wider">{kpi.label}</p>
+                <p className={`text-xl font-semibold mt-1.5 ${kpi.textColor}`}>{kpi.value}</p>
+                <p className="text-xs text-[var(--color-text-muted)] mt-1">{kpi.desc}</p>
+              </div>
+              <div className={`w-10 h-10 rounded-lg bg-gradient-to-br ${kpi.color} flex items-center justify-center text-white shadow-lg`}>
+                <kpi.icon className="w-5 h-5" />
+              </div>
+            </div>
+            <div className={`absolute -bottom-4 -right-4 w-24 h-24 rounded-full ${kpi.bg} opacity-50`} />
           </div>
-        </article>
-        <article>
-          <span className="stat-icon blue"><DollarSign className="w-4 h-4" /></span>
-          <div>
-            <small>TOTAL RECEIVABLES</small>
-            <h2>{fmt(totalReceivables)}</h2>
-            <p>Outstanding AR balance</p>
-          </div>
-        </article>
-        <article>
-          <span className="stat-icon violet"><Clock className="w-4 h-4 text-amber-500" /></span>
-          <div>
-            <small>OVERDUE RECEIVABLES</small>
-            <h2 className="text-amber-600 dark:text-amber-400">{fmt(totalOverdue)}</h2>
-            <p>Past due invoices</p>
-          </div>
-        </article>
-        <article>
-          <span className="stat-icon teal"><CheckCircle2 className="w-4 h-4 text-emerald-500" /></span>
-          <div>
-            <small>SETTLED ACCOUNTS</small>
-            <h2>{currentCountAccounts(customerSummaries)}</h2>
-            <p>Zero balance / fully paid</p>
-          </div>
-        </article>
-      </section>
+        ))}
+      </div>
 
       {/* Customers List Table with Individual Download Buttons */}
       <div className="bg-[var(--color-surface)] border border-[var(--color-border)] rounded-xl shadow-xs overflow-hidden">

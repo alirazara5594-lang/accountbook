@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import {
   BarChart3, Search, RefreshCw, ShoppingCart,
-  CreditCard, Clock, Users,
+  CreditCard, Users, TrendingDown,
   Layers, FileText, CheckCircle2
 } from 'lucide-react';
 import type { Entity } from './EntitySettings';
@@ -321,42 +321,28 @@ export const PurchaseReportsView: React.FC<{ activeEntityId: string; entities: E
       </div>
 
       {/* 4 Financial Metric Cards (4 in one row) */}
-      <section className="stats" style={{ gridTemplateColumns: 'repeat(4, minmax(0, 1fr))' }}>
-        <article>
-          <span className="stat-icon blue"><ShoppingCart className="w-4 h-4" /></span>
-          <div>
-            <small>PO COMMITTED VALUE</small>
-            <h2>{fmt(report?.purchaseOrderValue)}</h2>
-            <p>{report?.totalPurchaseOrders || 0} Purchase Orders</p>
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        {[
+          { label: 'PO COMMITTED VALUE', value: fmt(report?.purchaseOrderValue), desc: `${report?.totalPurchaseOrders || 0} Purchase Orders`, icon: ShoppingCart, color: 'from-blue-500 to-blue-600', bg: 'bg-blue-50 dark:bg-blue-950/30', textColor: 'text-blue-600 dark:text-blue-400' },
+          { label: 'TOTAL INVOICED SPEND', value: fmt(report?.totalBilled), desc: `${report?.totalBills || 0} Vendor Bills`, icon: FileText, color: 'from-slate-500 to-slate-600', bg: 'bg-slate-50 dark:bg-slate-950/30', textColor: 'text-[var(--color-text-strong)]' },
+          { label: 'PAYMENTS DISBURSED', value: fmt(report?.vendorPayments || report?.amountPaid), desc: 'Settled liabilities', icon: CreditCard, color: 'from-emerald-500 to-emerald-600', bg: 'bg-emerald-50 dark:bg-emerald-950/30', textColor: 'text-emerald-600 dark:text-emerald-400' },
+          { label: 'NET AP OUTSTANDING', value: fmt(report?.amountDue), desc: `${report?.openBills || 0} Open / Unpaid Bills`, icon: TrendingDown, color: report?.amountDue > 0 ? 'from-amber-500 to-amber-600' : 'from-emerald-500 to-emerald-600', bg: report?.amountDue > 0 ? 'bg-amber-50 dark:bg-amber-950/30' : 'bg-emerald-50 dark:bg-emerald-950/30', textColor: report?.amountDue > 0 ? 'text-amber-600 dark:text-amber-400' : 'text-emerald-600 dark:text-emerald-400' },
+        ].map((kpi) => (
+          <div key={kpi.label} className="relative overflow-hidden rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)] p-4 shadow-sm hover:shadow-md transition-shadow">
+            <div className="flex items-start justify-between">
+              <div>
+                <p className="text-xs font-semibold text-[var(--color-text-muted)] uppercase tracking-wider">{kpi.label}</p>
+                <p className={`text-xl font-semibold mt-1.5 ${kpi.textColor}`}>{kpi.value}</p>
+                <p className="text-xs text-[var(--color-text-muted)] mt-1">{kpi.desc}</p>
+              </div>
+              <div className={`w-10 h-10 rounded-lg bg-gradient-to-br ${kpi.color} flex items-center justify-center text-white shadow-lg`}>
+                <kpi.icon className="w-5 h-5" />
+              </div>
+            </div>
+            <div className={`absolute -bottom-4 -right-4 w-24 h-24 rounded-full ${kpi.bg} opacity-50`} />
           </div>
-        </article>
-        <article>
-          <span className="stat-icon blue"><FileText className="w-4 h-4 text-blue-600" /></span>
-          <div>
-            <small>TOTAL INVOICED SPEND</small>
-            <h2>{fmt(report?.totalBilled)}</h2>
-            <p>{report?.totalBills || 0} Vendor Bills</p>
-          </div>
-        </article>
-        <article>
-          <span className="stat-icon teal"><CreditCard className="w-4 h-4 text-emerald-600" /></span>
-          <div>
-            <small>PAYMENTS DISBURSED</small>
-            <h2 className="text-emerald-600 dark:text-emerald-400">{fmt(report?.vendorPayments || report?.amountPaid)}</h2>
-            <p>Settled liabilities</p>
-          </div>
-        </article>
-        <article>
-          <span className="stat-icon violet"><Clock className="w-4 h-4 text-amber-600" /></span>
-          <div>
-            <small>NET AP OUTSTANDING</small>
-            <h2 className={report?.amountDue > 0 ? 'text-amber-600 dark:text-amber-400' : 'text-emerald-600'}>
-              {fmt(report?.amountDue)}
-            </h2>
-            <p>{report?.openBills || 0} Open / Unpaid Bills</p>
-          </div>
-        </article>
-      </section>
+        ))}
+      </div>
 
       {/* Search & Tabs Toolbar */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 p-3 bg-[var(--color-surface)] border border-[var(--color-border)] rounded-xl shadow-2xs">

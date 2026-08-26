@@ -1,8 +1,8 @@
 import { useState, useEffect, useMemo } from 'react'
 import {
-  Package, Plus, Check, X, ArrowRight, ArrowLeft, Coins,
+  Package, Plus, Check, X, ArrowRight, ArrowLeft,   Coins,
   CheckCircle2, Hash, Users, Truck, Eye, XCircle,
-  FileText, ArrowUpRight
+  FileText, ArrowUpRight, TrendingUp
 } from 'lucide-react'
 import { useSalesOrdersStore, useCustomersStore, useProductsStore } from './stores'
 import { useFormDraft } from './hooks/useFormDraft'
@@ -280,38 +280,27 @@ export const SalesOrdersWorkspace: React.FC<{ activeEntityId: string; entities?:
       </div>
 
       {/* Stats Cards (Row 2) */}
-      <section className="stats">
-        <article>
-          <span className="stat-icon blue">
-            <Coins className="w-4 h-4" />
-          </span>
-          <div>
-            <small>ACTIVE PIPELINE VALUE</small>
-            <h2>{money(metrics.totalVal)}</h2>
-            <p>Non-cancelled orders</p>
+      <div className="grid grid-cols-2 lg:grid-cols-3 gap-4">
+        {[
+          { label: 'ACTIVE PIPELINE VALUE', value: money(metrics.totalVal), desc: 'Non-cancelled orders', icon: TrendingUp, color: 'from-blue-500 to-indigo-600', bg: 'bg-blue-50 dark:bg-blue-950/30', textColor: 'text-blue-600 dark:text-blue-400' },
+          { label: 'PENDING DELIVERY', value: metrics.confirmed, desc: 'Confirmed sales orders', icon: Truck, color: 'from-teal-500 to-emerald-600', bg: 'bg-teal-50 dark:bg-teal-950/30', textColor: 'text-teal-600 dark:text-teal-400' },
+          { label: 'INVOICED ORDERS', value: metrics.invoiced, desc: 'Billed to customers', icon: CheckCircle2, color: 'from-violet-500 to-purple-600', bg: 'bg-violet-50 dark:bg-violet-950/30', textColor: 'text-violet-600 dark:text-violet-400' },
+        ].map((kpi) => (
+          <div key={kpi.label} className="relative overflow-hidden rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)] p-4 shadow-sm hover:shadow-md transition-shadow">
+            <div className="flex items-start justify-between">
+              <div>
+                <p className="text-xs font-semibold text-[var(--color-text-muted)] uppercase tracking-wider">{kpi.label}</p>
+                <p className={`text-xl font-semibold mt-1.5 ${kpi.textColor}`}>{kpi.value}</p>
+                <p className="text-xs text-[var(--color-text-muted)] mt-1">{kpi.desc}</p>
+              </div>
+              <div className={`w-10 h-10 rounded-lg bg-gradient-to-br ${kpi.color} flex items-center justify-center text-white shadow-lg`}>
+                <kpi.icon className="w-5 h-5" />
+              </div>
+            </div>
+            <div className={`absolute -bottom-4 -right-4 w-24 h-24 rounded-full ${kpi.bg} opacity-50`} />
           </div>
-        </article>
-        <article>
-          <span className="stat-icon teal">
-            <Truck className="w-4 h-4" />
-          </span>
-          <div>
-            <small>PENDING DELIVERY</small>
-            <h2>{metrics.confirmed}</h2>
-            <p>Confirmed sales orders</p>
-          </div>
-        </article>
-        <article>
-          <span className="stat-icon violet">
-            <CheckCircle2 className="w-4 h-4" />
-          </span>
-          <div>
-            <small>INVOICED ORDERS</small>
-            <h2>{metrics.invoiced}</h2>
-            <p>Billed to customers</p>
-          </div>
-        </article>
-      </section>
+        ))}
+      </div>
 
       {/* Orders Table */}
       <div className="bg-[var(--color-surface)] border border-[var(--color-border)] rounded-xl overflow-hidden shadow-sm">
@@ -413,7 +402,7 @@ export const SalesOrdersWorkspace: React.FC<{ activeEntityId: string; entities?:
             {/* Modal Header */}
             <div className="px-6 py-4.5 border-b border-[var(--color-border)] bg-[var(--color-surface-muted)]/50 flex items-center justify-between">
               <div className="flex items-center gap-3.5">
-                <div className="w-11 h-11 rounded-xl bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center text-white shadow-sm shrink-0">
+                <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center text-white shadow-sm shrink-0">
                   <Package className="w-5 h-5" />
                 </div>
                 <div>
