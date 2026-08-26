@@ -170,11 +170,20 @@ export const SystemSettingsView: React.FC<SystemSettingsProps> = ({ setPage, not
   };
 
   const handleFactoryReset = async () => {
-    if (window.confirm("⚠️ DANGER ZONE: This will permanently wipe all transactional data (Journals, Invoices, Vouchers, Bills, Customers, Vendors) and re-seed clean IAS/IFRS chart of accounts. Proceed?")) {
+    if (window.confirm("⚠️ DANGER ZONE: This will permanently wipe ALL data — products, quotes, estimates, invoices, orders, bills, journals, customers, vendors, payments — everything you entered for testing. Proceed?")) {
       try {
         await useCoaStore.getState().resetDatabase();
+        // Purge cached document lines + stale company/entity references so
+        // wiped records don't reappear after reload.
+        [
+          'ams_estimates_lines_cache',
+          'ams_invoices_lines_cache',
+          'active_entity_id',
+          'ab_companies',
+          'ams_selected_entity',
+        ].forEach((k) => localStorage.removeItem(k));
         notify("✓ Factory reset successful. System restored to baseline.");
-        window.location.reload();
+        setTimeout(() => window.location.reload(), 600);
       } catch (err: any) {
         notify(err.message || "Failed to reset database");
       }
