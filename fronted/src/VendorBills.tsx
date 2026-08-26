@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useProcurementStore, useVendorsStore, useProductsStore, useCoaStore } from './stores';
 import { DataToolbar } from '@/components/ui/data-toolbar';
+import { KpiCard, KpiGrid } from '@/components/ui/kpi-card';
 import { money } from './lib/currency';
 import {
   FileText, Receipt, CheckCircle, Plus, X, Eye, ArrowRight,
@@ -221,33 +222,17 @@ export const VendorBills: React.FC<{ activeEntityId: string }> = ({ activeEntity
       </div>
 
       {/* KPI Cards */}
-      <div className="grid grid-cols-2 lg:grid-cols-3 gap-4">
-        {[
-          { label: 'Total Outstanding', value: money(totalOutstanding), desc: `${bills.length} bills recorded`, icon: FileText, color: 'from-amber-500 to-orange-600', bg: 'bg-amber-50 dark:bg-amber-950/30', textColor: 'text-amber-600 dark:text-amber-400' },
-          { label: 'Direct Bills', value: String(directCount), desc: 'Posted to AP directly', icon: CreditCard, color: 'from-blue-500 to-indigo-600', bg: 'bg-blue-50 dark:bg-blue-950/30', textColor: 'text-blue-600 dark:text-blue-400' },
-          { label: 'PO Linked Bills', value: String(poCount), desc: '3-way match active', icon: Truck, color: 'from-emerald-500 to-green-600', bg: 'bg-emerald-50 dark:bg-emerald-950/30', textColor: 'text-emerald-600 dark:text-emerald-400' },
-        ].map((kpi) => (
-          <div key={kpi.label} className="relative overflow-hidden rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)] p-3 shadow-sm hover:shadow-md transition-shadow">
-            <div className="flex items-start justify-between">
-              <div>
-                <p className="text-xs font-semibold text-[var(--color-text-muted)] uppercase tracking-wider">{kpi.label}</p>
-                <p className={`text-lg font-semibold mt-1 ${kpi.textColor}`}>{kpi.value}</p>
-                <p className="text-xs text-[var(--color-text-muted)] mt-1">{kpi.desc}</p>
-              </div>
-              <div className={`w-9 h-9 rounded-lg bg-gradient-to-br ${kpi.color} flex items-center justify-center text-white shadow-lg`}>
-                <kpi.icon className="w-4 h-4" />
-              </div>
-            </div>
-            <div className={`absolute -bottom-4 -right-4 w-24 h-24 rounded-full ${kpi.bg} opacity-50`} />
-          </div>
-        ))}
-      </div>
+      <KpiGrid cols={3}>
+        <KpiCard icon={FileText} label="Total Outstanding" value={money(totalOutstanding)} desc={`${bills.length} bills recorded`} tone="amber" />
+        <KpiCard icon={CreditCard} label="Direct Bills" value={String(directCount)} desc="Posted to AP directly" tone="blue" />
+        <KpiCard icon={Truck} label="PO Linked Bills" value={String(poCount)} desc="3-way match active" tone="emerald" />
+      </KpiGrid>
 
       {/* Bills Table */}
       <div className="rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)] shadow-sm overflow-hidden">
         <div className="px-5 py-3.5 border-b border-[var(--color-border)] bg-[var(--color-surface-muted)] flex items-center justify-between">
-          <h3 className="text-sm font-bold text-[var(--color-text-strong)]">All Vendor Bills</h3>
-          <span className="text-xs text-[var(--color-text-muted)]">{filteredBills.length} bills</span>
+          <p className="text-xs font-bold uppercase tracking-wider text-[var(--color-text-strong)]">All Vendor Bills</p>
+          <span className="text-[11px] text-[var(--color-text-muted)]">{filteredBills.length} bills</span>
         </div>
         <table className="w-full text-left text-xs">
           <thead className="border-b border-[var(--color-border)]">

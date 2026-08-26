@@ -4,6 +4,7 @@ import {
   Play, RefreshCw, X, Trash2, Sparkles, UserCheck
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { KpiCard, KpiGrid } from './components/ui/kpi-card';
 
 const formatCurrency = (val: number, currency: string = 'USD') => {
   return new Intl.NumberFormat('en-US', {
@@ -291,61 +292,21 @@ export default function CustomerDeferredRevenueView({ activeEntityId, accounts =
       )}
 
       {/* KPI Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        <div className="p-4 rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-xs">
-          <div className="flex items-center justify-between text-slate-500 dark:text-slate-400 text-xs">
-            <span>Total Contract Value</span>
-            <DollarSign className="w-4 h-4 text-teal-600" />
-          </div>
-          <div className="text-xl font-black text-slate-900 dark:text-white mt-1">
-            {formatCurrency(totalDeferred)}
-          </div>
-          <div className="text-[11px] text-slate-400 mt-0.5">{schedules.length} customer contracts</div>
-        </div>
-
-        <div className="p-4 rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-xs">
-          <div className="flex items-center justify-between text-slate-500 dark:text-slate-400 text-xs">
-            <span>Recognized Revenue (Earned)</span>
-            <CheckCircle2 className="w-4 h-4 text-emerald-600" />
-          </div>
-          <div className="text-xl font-black text-emerald-600 dark:text-emerald-400 mt-1">
-            {formatCurrency(totalRecognized)}
-          </div>
-          <div className="text-[11px] text-emerald-600 mt-0.5 font-semibold">
-            {totalDeferred > 0 ? Math.round((totalRecognized / totalDeferred) * 100) : 0}% recognized
-          </div>
-        </div>
-
-        <div className="p-4 rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-xs">
-          <div className="flex items-center justify-between text-slate-500 dark:text-slate-400 text-xs">
-            <span>Deferred Revenue Liability</span>
-            <Clock className="w-4 h-4 text-indigo-600" />
-          </div>
-          <div className="text-xl font-black text-indigo-600 dark:text-indigo-400 mt-1">
-            {formatCurrency(totalPending)}
-          </div>
-          <div className="text-[11px] text-slate-400 mt-0.5">Current Liability (23000)</div>
-        </div>
-
-        <div className="p-4 rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-xs">
-          <div className="flex items-center justify-between text-slate-500 dark:text-slate-400 text-xs">
-            <span>Active Subscriptions</span>
-            <UserCheck className="w-4 h-4 text-teal-600" />
-          </div>
-          <div className="text-xl font-black text-teal-600 dark:text-teal-400 mt-1">
-            {activeCount}
-          </div>
-          <div className="text-[11px] text-slate-400 mt-0.5">Ongoing amortization</div>
-        </div>
-      </div>
+      <KpiGrid cols={4}>
+        {[
+          { label: 'Total Contract Value', value: formatCurrency(totalDeferred), desc: `${schedules.length} customer contracts`, icon: DollarSign, tone: 'teal' },
+          { label: 'Recognized Revenue (Earned)', value: formatCurrency(totalRecognized), desc: `${totalDeferred > 0 ? Math.round((totalRecognized / totalDeferred) * 100) : 0}% recognized`, icon: CheckCircle2, tone: 'emerald' },
+          { label: 'Deferred Revenue Liability', value: formatCurrency(totalPending), desc: 'Current Liability (23000)', icon: Clock, tone: 'indigo' },
+          { label: 'Active Subscriptions', value: activeCount, desc: 'Ongoing amortization', icon: UserCheck, tone: 'teal' },
+        ].map((kpi) => (
+          <KpiCard key={kpi.label} {...kpi} />
+        ))}
+      </KpiGrid>
 
       {/* Schedules Table */}
       <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl overflow-hidden shadow-xs">
-        <div className="p-4 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between flex-wrap gap-2">
-          <div>
-            <h3 className="font-bold text-sm text-slate-900 dark:text-white">Customer Deferred Revenue Contracts</h3>
-            <p className="text-xs text-slate-500">IFRS 15 Performance obligations & monthly recognition schedules.</p>
-          </div>
+        <div className="px-5 py-3.5 border-b border-slate-200 dark:border-slate-800 bg-[var(--color-surface-muted)] flex items-center justify-between flex-wrap gap-2">
+          <p className="text-xs font-bold uppercase tracking-wider text-[var(--color-text-strong)]">Customer Deferred Revenue Contracts</p>
           <button
             onClick={loadSchedules}
             className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-slate-300 dark:border-slate-700 text-xs font-semibold text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 cursor-pointer"

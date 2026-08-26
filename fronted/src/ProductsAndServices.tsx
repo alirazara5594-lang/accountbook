@@ -10,6 +10,7 @@ import {
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { DataToolbar } from '@/components/ui/data-toolbar'
+import { KpiCard, KpiGrid } from '@/components/ui/kpi-card'
 
 import { useProductsStore, useCoaStore, useTaxStore } from './stores'
 import { useFormDraft } from './hooks/useFormDraft'
@@ -365,27 +366,11 @@ export default function ProductsAndServices({
       </div>
 
       {/* Stats Cards (Row 2) */}
-      <div className="grid grid-cols-2 lg:grid-cols-3 gap-4">
-        {[
-          { label: 'TOTAL CATALOG ITEMS', value: stats.total, desc: 'Active products & services', icon: Package, color: 'from-blue-500 to-blue-600', bg: 'bg-blue-50 dark:bg-blue-950/30', textColor: 'text-blue-600 dark:text-blue-400' },
-          { label: 'PHYSICAL GOODS', value: stats.physical, desc: 'Inventory tracked in warehouse', icon: Archive, color: 'from-teal-500 to-teal-600', bg: 'bg-teal-50 dark:bg-teal-950/30', textColor: 'text-teal-600 dark:text-teal-400' },
-          { label: 'BILLABLE SERVICES', value: stats.services, desc: 'Non-inventory consulting & labor', icon: Wrench, color: 'from-violet-500 to-violet-600', bg: 'bg-violet-50 dark:bg-violet-950/30', textColor: 'text-violet-600 dark:text-violet-400' },
-        ].map((kpi) => (
-          <div key={kpi.label} className="relative overflow-hidden rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)] p-3 shadow-sm hover:shadow-md transition-shadow">
-            <div className="flex items-start justify-between">
-              <div>
-                <p className="text-xs font-semibold text-[var(--color-text-muted)] uppercase tracking-wider">{kpi.label}</p>
-                <p className={`text-lg font-semibold mt-1 ${kpi.textColor}`}>{kpi.value}</p>
-                <p className="text-xs text-[var(--color-text-muted)] mt-1">{kpi.desc}</p>
-              </div>
-              <div className={`w-9 h-9 rounded-lg bg-gradient-to-br ${kpi.color} flex items-center justify-center text-white shadow-lg`}>
-                <kpi.icon className="w-5 h-5" />
-              </div>
-            </div>
-            <div className={`absolute -bottom-4 -right-4 w-24 h-24 rounded-full ${kpi.bg} opacity-50`} />
-          </div>
-        ))}
-      </div>
+      <KpiGrid cols={3}>
+        <KpiCard icon={Package} label="Total Catalog Items" value={stats.total} desc="Active products & services" tone="blue" />
+        <KpiCard icon={Archive} label="Physical Goods" value={stats.physical} desc="Inventory tracked in warehouse" tone="teal" />
+        <KpiCard icon={Wrench} label="Billable Services" value={stats.services} desc="Non-inventory consulting & labor" tone="purple" />
+      </KpiGrid>
 
       {/* Products & Services View */}
       {viewMode === 'table' ? (

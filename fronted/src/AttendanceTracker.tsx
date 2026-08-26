@@ -6,6 +6,7 @@ import {
   FileText, Search, RefreshCw, X, Building2, Factory
 } from 'lucide-react';
 import { downloadCSV, downloadExcel } from './lib/exportUtils';
+import { KpiCard, KpiGrid } from './components/ui/kpi-card';
 import type { AttendancePolicy } from './AttendancePoliciesView';
 import { DEFAULT_POLICIES } from './AttendancePoliciesView';
 
@@ -234,43 +235,12 @@ export default function AttendanceTracker() {
       </div>
 
       {/* 4 Core Attendance KPI Tiles */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        <div className="p-4 rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)] shadow-xs space-y-1">
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-semibold text-[var(--color-text-muted)] uppercase">Present Today</span>
-            <div className="p-1.5 rounded-lg bg-emerald-500/10 text-emerald-600"><CheckCircle2 className="w-4 h-4" /></div>
-          </div>
-          <div className="text-2xl font-black text-emerald-600 font-mono">{presentCount} / {employees.length}</div>
-          <div className="text-[10.5px] text-[var(--color-text-muted)]">Workforce Across All Locations</div>
-        </div>
-
-        <div className="p-4 rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)] shadow-xs space-y-1">
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-semibold text-[var(--color-text-muted)] uppercase">Late Arrivals</span>
-            <div className="p-1.5 rounded-lg bg-amber-500/10 text-amber-600"><AlertTriangle className="w-4 h-4" /></div>
-          </div>
-          <div className="text-2xl font-black text-amber-600 font-mono">{lateCount}</div>
-          <div className="text-[10.5px] text-[var(--color-text-muted)]">Arrived past location grace period</div>
-        </div>
-
-        <div className="p-4 rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)] shadow-xs space-y-1">
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-semibold text-[var(--color-text-muted)] uppercase">Unexplained Absences</span>
-            <div className="p-1.5 rounded-lg bg-rose-500/10 text-rose-600"><XCircle className="w-4 h-4" /></div>
-          </div>
-          <div className="text-2xl font-black text-rose-600 font-mono">{absentCount}</div>
-          <div className="text-[10.5px] text-[var(--color-text-muted)]">Flagged for salary deduction</div>
-        </div>
-
-        <div className="p-4 rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)] shadow-xs space-y-1">
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-semibold text-[var(--color-text-muted)] uppercase">Accumulated Overtime</span>
-            <div className="p-1.5 rounded-lg bg-purple-500/10 text-purple-600"><Clock className="w-4 h-4" /></div>
-          </div>
-          <div className="text-2xl font-black text-purple-600 font-mono">{totalOvertime} Hours</div>
-          <div className="text-[10.5px] text-[var(--color-text-muted)]">Calculated for monthly payrun</div>
-        </div>
-      </div>
+      <KpiGrid cols={4}>
+        <KpiCard icon={CheckCircle2} label="Present Today" value={<>{presentCount} / {employees.length}</>} desc="Workforce Across All Locations" tone="emerald" />
+        <KpiCard icon={AlertTriangle} label="Late Arrivals" value={lateCount} desc="Arrived past location grace period" tone="amber" />
+        <KpiCard icon={XCircle} label="Unexplained Absences" value={absentCount} desc="Flagged for salary deduction" tone="rose" />
+        <KpiCard icon={Clock} label="Accumulated Overtime" value={`${totalOvertime} Hours`} desc="Calculated for monthly payrun" tone="purple" />
+      </KpiGrid>
 
       {/* Control & Search Toolbar with Location / Branch Filter */}
       <div className="p-4 rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)] shadow-xs space-y-3">

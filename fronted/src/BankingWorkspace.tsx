@@ -21,6 +21,7 @@ import {
   Clock
 } from 'lucide-react';
 import { DataToolbar } from '@/components/ui/data-toolbar';
+import { KpiCard, KpiGrid } from '@/components/ui/kpi-card';
 import { getActiveCurrency } from '@/lib/currency';
 import type { Entity } from './EntitySettings';
 
@@ -434,59 +435,12 @@ const formatted = new Intl.NumberFormat('en-US', { style: 'currency', currency: 
       </div>
 
       {/* KPI Summary Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3">
-        <Card className="bg-white border-slate-200 shadow-xs">
-          <CardContent className="p-3 flex items-center gap-2.5">
-            <div className="p-2 bg-emerald-50 rounded-lg text-emerald-600 border border-emerald-100">
-              <Wallet className="w-4 h-4" />
-            </div>
-            <div className="min-w-0">
-              <p className="text-[10px] font-semibold uppercase tracking-wider text-slate-500">Total Liquid Reserves</p>
-              <h3 className="text-base font-bold text-slate-900">PKR 6,475,000</h3>
-              <p className="text-[10px] text-emerald-600 font-medium">Across 4 active accounts</p>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card className="bg-white border-slate-200 shadow-xs">
-          <CardContent className="p-3 flex items-center gap-2.5">
-            <div className="p-2 bg-indigo-50 rounded-lg text-indigo-600 border border-indigo-100">
-              <Zap className="w-4 h-4" />
-            </div>
-            <div className="min-w-0">
-              <p className="text-[10px] font-semibold uppercase tracking-wider text-slate-500">Live Bank Connections</p>
-              <h3 className="text-base font-bold text-slate-900">2 Accounts Active</h3>
-              <p className="text-[10px] text-indigo-600 font-medium">HBL & Standard Chartered feeds</p>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card className="bg-white border-slate-200 shadow-xs">
-          <CardContent className="p-3 flex items-center gap-2.5">
-            <div className="p-2 bg-amber-50 rounded-lg text-amber-600 border border-amber-100">
-              <Clock className="w-4 h-4" />
-            </div>
-            <div className="min-w-0">
-              <p className="text-[10px] font-semibold uppercase tracking-wider text-slate-500">Pending Reconciliation</p>
-              <h3 className="text-base font-bold text-slate-900">1 Bank Account</h3>
-              <p className="text-[10px] text-amber-600 font-medium">Meezan Bank needs review</p>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card className="bg-white border-slate-200 shadow-xs">
-          <CardContent className="p-3 flex items-center gap-2.5">
-            <div className="p-2 bg-blue-50 rounded-lg text-blue-600 border border-blue-100">
-              <DollarSign className="w-4 h-4" />
-            </div>
-            <div className="min-w-0">
-              <p className="text-[10px] font-semibold uppercase tracking-wider text-slate-500">Foreign Currency Reserves</p>
-              <h3 className="text-base font-bold text-slate-900">{formatMoney(bankAccounts.filter(a => a.currency === 'USD').reduce((s, a) => s + a.balance, 0), 'USD')} USD</h3>
-              <p className="text-[10px] text-blue-600 font-medium">Global SCB USD Account</p>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
+      <KpiGrid cols={4}>
+        <KpiCard icon={Wallet} label="Total Liquid Reserves" value="PKR 6,475,000" desc="Across 4 active accounts" tone="emerald" />
+        <KpiCard icon={Zap} label="Live Bank Connections" value="2 Accounts Active" desc="HBL & Standard Chartered feeds" tone="indigo" />
+        <KpiCard icon={Clock} label="Pending Reconciliation" value="1 Bank Account" desc="Meezan Bank needs review" tone="amber" />
+        <KpiCard icon={DollarSign} label="Foreign Currency Reserves" value={`${formatMoney(bankAccounts.filter(a => a.currency === 'USD').reduce((s, a) => s + a.balance, 0), 'USD')} USD`} desc="Global SCB USD Account" tone="blue" />
+      </KpiGrid>
 
       {/* Banking Sidebar Menu / Tabs Navigation matching selected option 3 */}
       <Tabs value={activeTab} onValueChange={(val: string) => setActiveTab(val)} className="w-full space-y-4">

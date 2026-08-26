@@ -10,6 +10,7 @@ import {
 } from 'lucide-react';
 import { money } from './lib/currency';
 import { downloadExcel, downloadCSV } from './lib/exportUtils';
+import { KpiCard, KpiGrid } from './components/ui/kpi-card';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 
@@ -464,79 +465,43 @@ export const JournalEntriesView: React.FC<JournalEntriesViewProps> = ({ accounts
       </div>
 
       {/* ─── 4-in-1 Top Financial KPI Cards ─── */}
-      <div className="grid gap-3" style={{ gridTemplateColumns: 'repeat(4, minmax(0, 1fr))' }}>
+      <KpiGrid cols={4}>
         {/* Total Posted */}
-        <div className="bg-[var(--color-surface)] border border-[var(--color-border)] rounded-2xl p-4 shadow-xs flex flex-col justify-between hover:border-emerald-500/30 transition-all">
-          <div className="flex items-center justify-between">
-            <span className="text-[10px] font-extrabold uppercase tracking-wider text-[var(--color-text-muted)]">
-              POSTED GENERAL JOURNALS
-            </span>
-            <div className="p-1.5 rounded-lg bg-emerald-50 dark:bg-emerald-950/40 text-emerald-600">
-              <CheckCircle2 className="w-4 h-4" />
-            </div>
-          </div>
-          <div className="mt-2">
-            <div className="text-xl font-mono font-extrabold text-emerald-600 dark:text-emerald-400">
-              {totalPostedCount} Entries
-            </div>
-            <p className="text-[10px] text-[var(--color-text-muted)] mt-0.5">Active & verified in General Ledger</p>
-          </div>
-        </div>
+        <KpiCard
+          icon={CheckCircle2}
+          label="POSTED GENERAL JOURNALS"
+          value={`${totalPostedCount}`}
+          desc="Entries · Active & verified in General Ledger"
+          tone="emerald"
+        />
 
         {/* Pending Approval */}
-        <div className="bg-[var(--color-surface)] border border-[var(--color-border)] rounded-2xl p-4 shadow-xs flex flex-col justify-between hover:border-blue-500/30 transition-all">
-          <div className="flex items-center justify-between">
-            <span className="text-[10px] font-extrabold uppercase tracking-wider text-[var(--color-text-muted)]">
-              PENDING APPROVAL & WORKFLOW
-            </span>
-            <div className="p-1.5 rounded-lg bg-blue-50 dark:bg-blue-950/40 text-blue-600">
-              <Clock className="w-4 h-4" />
-            </div>
-          </div>
-          <div className="mt-2">
-            <div className="text-xl font-mono font-extrabold text-blue-600 dark:text-blue-400">
-              {totalPendingCount} Entries
-            </div>
-            <p className="text-[10px] text-[var(--color-text-muted)] mt-0.5">Submitted & awaiting final review</p>
-          </div>
-        </div>
+        <KpiCard
+          icon={Clock}
+          label="PENDING APPROVAL & WORKFLOW"
+          value={`${totalPendingCount}`}
+          desc="Entries · Submitted & awaiting final review"
+          tone="blue"
+        />
 
         {/* Draft Workpapers */}
-        <div className="bg-[var(--color-surface)] border border-[var(--color-border)] rounded-2xl p-4 shadow-xs flex flex-col justify-between hover:border-purple-500/30 transition-all">
-          <div className="flex items-center justify-between">
-            <span className="text-[10px] font-extrabold uppercase tracking-wider text-[var(--color-text-muted)]">
-              DRAFT WORKPAPERS
-            </span>
-            <div className="p-1.5 rounded-lg bg-purple-50 dark:bg-purple-950/40 text-purple-600">
-              <Layers className="w-4 h-4" />
-            </div>
-          </div>
-          <div className="mt-2">
-            <div className="text-xl font-mono font-extrabold text-purple-600 dark:text-purple-400">
-              {totalDraftCount} Drafts
-            </div>
-            <p className="text-[10px] text-[var(--color-text-muted)] mt-0.5">Unposted preparation adjustments</p>
-          </div>
-        </div>
+        <KpiCard
+          icon={Layers}
+          label="DRAFT WORKPAPERS"
+          value={`${totalDraftCount}`}
+          desc="Drafts · Unposted preparation adjustments"
+          tone="purple"
+        />
 
         {/* Journal Turnover */}
-        <div className="bg-[var(--color-surface)] border border-[var(--color-border)] rounded-2xl p-4 shadow-xs flex flex-col justify-between hover:border-emerald-500/30 transition-all">
-          <div className="flex items-center justify-between">
-            <span className="text-[10px] font-extrabold uppercase tracking-wider text-[var(--color-text-muted)]">
-              JOURNAL TRANSACTION VOLUME
-            </span>
-            <div className="p-1.5 rounded-lg bg-emerald-50 dark:bg-emerald-950/40 text-emerald-600">
-              <Landmark className="w-4 h-4" />
-            </div>
-          </div>
-          <div className="mt-2">
-            <div className="text-xl font-mono font-extrabold text-[var(--color-text-strong)]">
-              {money(totalJournalTurnover)}
-            </div>
-            <p className="text-[10px] text-[var(--color-text-muted)] mt-0.5">Cumulative double-entry volume</p>
-          </div>
-        </div>
-      </div>
+        <KpiCard
+          icon={Landmark}
+          label="JOURNAL TRANSACTION VOLUME"
+          value={money(totalJournalTurnover)}
+          desc="Cumulative double-entry volume"
+          tone="teal"
+        />
+      </KpiGrid>
 
       {/* ─── Search & Status Filter Toolbar (Zero Overlap Guaranteed) ─── */}
       <div className="bg-[var(--color-surface)] p-3 rounded-2xl border border-[var(--color-border)] shadow-xs flex flex-wrap items-center justify-between gap-3">

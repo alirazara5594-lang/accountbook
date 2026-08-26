@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { useManufacturingStore, useProductsStore, useAssetsInventoryStore } from './stores';
+import { KpiCard, KpiGrid } from './components/ui/kpi-card';
 import { assetsInventoryApi } from './api/modules/assetsInventory.api';
 import type { FixedAsset } from './api/modules/assetsInventory.api';
 import { manufacturingApi } from './api/modules/manufacturing.api';
@@ -415,43 +416,12 @@ export const ManufacturingWorkspace: React.FC<{ activeEntityId: string; entities
       </div>
 
       {/* KPI Cards */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-        <div className="bg-[var(--color-surface)] border border-[var(--color-border)] rounded-2xl p-4 shadow-2xs space-y-1">
-          <div className="flex items-center justify-between text-xs text-[var(--color-text-muted)] font-semibold">
-            <span>Active Shop Floor Jobs</span>
-            <Activity className="w-4 h-4 text-amber-600 animate-spin" />
-          </div>
-          <p className="text-xl font-bold text-amber-600 font-mono">{activeJobsCount}</p>
-          <p className="text-[10px] text-[var(--color-text-muted)]">In-Production Work Centers</p>
-        </div>
-
-        <div className="bg-[var(--color-surface)] border border-[var(--color-border)] rounded-2xl p-4 shadow-2xs space-y-1">
-          <div className="flex items-center justify-between text-xs text-[var(--color-text-muted)] font-semibold">
-            <span>WIP Valuation (IAS 2)</span>
-            <Layers className="w-4 h-4 text-teal-600" />
-          </div>
-          <p className="text-xl font-bold text-teal-600 font-mono">{money(totalWipValuation)}</p>
-          <p className="text-[10px] text-[var(--color-text-muted)]">Materials + Labor + Overhead</p>
-        </div>
-
-        <div className="bg-[var(--color-surface)] border border-[var(--color-border)] rounded-2xl p-4 shadow-2xs space-y-1">
-          <div className="flex items-center justify-between text-xs text-[var(--color-text-muted)] font-semibold">
-            <span>Plant Machines Engaged</span>
-            <Cpu className="w-4 h-4 text-purple-600" />
-          </div>
-          <p className="text-xl font-bold text-purple-600 font-mono">{machines.length}</p>
-          <p className="text-[10px] text-[var(--color-text-muted)]">Fixed Assets Linked</p>
-        </div>
-
-        <div className="bg-[var(--color-surface)] border border-[var(--color-border)] rounded-2xl p-4 shadow-2xs space-y-1">
-          <div className="flex items-center justify-between text-xs text-[var(--color-text-muted)] font-semibold">
-            <span>Completed Work Orders</span>
-            <CheckCircle2 className="w-4 h-4 text-emerald-600" />
-          </div>
-          <p className="text-xl font-bold text-emerald-600 font-mono">{completedJobsCount}</p>
-          <p className="text-[10px] text-emerald-600/80 font-semibold">{money(totalProductionCost)} Capitalized</p>
-        </div>
-      </div>
+      <KpiGrid cols={4}>
+        <KpiCard icon={Activity} label="Active Shop Floor Jobs" value={activeJobsCount} desc="In-Production Work Centers" tone="amber" />
+        <KpiCard icon={Layers} label="WIP Valuation (IAS 2)" value={money(totalWipValuation)} desc="Materials + Labor + Overhead" tone="teal" />
+        <KpiCard icon={Cpu} label="Plant Machines Engaged" value={machines.length} desc="Fixed Assets Linked" tone="purple" />
+        <KpiCard icon={CheckCircle2} label="Completed Work Orders" value={completedJobsCount} desc={`${money(totalProductionCost)} Capitalized`} tone="emerald" />
+      </KpiGrid>
 
       {/* Tabs */}
       <div className="flex items-center gap-1.5 bg-[var(--color-surface-muted)] p-1.5 rounded-2xl border border-[var(--color-border)] overflow-x-auto text-xs font-semibold">

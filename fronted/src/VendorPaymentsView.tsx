@@ -8,6 +8,7 @@ import {
   DollarSign, Zap, BarChart3
 } from 'lucide-react'
 import { DataToolbar } from '@/components/ui/data-toolbar'
+import { KpiCard, KpiGrid } from '@/components/ui/kpi-card'
 import { money } from '@/lib/currency'
 import type { Entity } from './EntitySettings'
 import jsPDF from 'jspdf'
@@ -357,32 +358,16 @@ export const VendorPaymentsView: React.FC<VendorPaymentsViewProps> = ({
       </div>
 
       {/* Stats Cards (KPI Design) */}
-      <div className="grid grid-cols-2 lg:grid-cols-3 gap-4">
-        {[
-          { label: 'TOTAL DISBURSED', value: money(totalDisbursed), desc: 'Settled vendor liabilities', icon: DollarSign, color: 'from-emerald-500 to-teal-600', bg: 'bg-emerald-50 dark:bg-emerald-950/30', textColor: 'text-emerald-600 dark:text-emerald-400' },
-          { label: 'ELECTRONIC TRANSFERS', value: bankPaymentsCount, desc: 'Bank wires & RTGS settlements', icon: Zap, color: 'from-teal-500 to-cyan-600', bg: 'bg-teal-50 dark:bg-teal-950/30', textColor: 'text-teal-600 dark:text-teal-400' },
-          { label: 'TOTAL TRANSACTIONS', value: filtered.length, desc: 'All recorded payments', icon: BarChart3, color: 'from-violet-500 to-purple-600', bg: 'bg-violet-50 dark:bg-violet-950/30', textColor: 'text-violet-600 dark:text-violet-400' },
-        ].map((kpi) => (
-          <div key={kpi.label} className="relative overflow-hidden rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)] p-3 shadow-sm hover:shadow-md transition-shadow">
-            <div className="flex items-start justify-between">
-              <div>
-                <p className="text-xs font-semibold text-[var(--color-text-muted)] uppercase tracking-wider">{kpi.label}</p>
-                <p className={`text-lg font-semibold mt-1 ${kpi.textColor}`}>{kpi.value}</p>
-                <p className="text-xs text-[var(--color-text-muted)] mt-1">{kpi.desc}</p>
-              </div>
-              <div className={`w-9 h-9 rounded-lg bg-gradient-to-br ${kpi.color} flex items-center justify-center text-white shadow-lg`}>
-                <kpi.icon className="w-5 h-5" />
-              </div>
-            </div>
-            <div className={`absolute -bottom-4 -right-4 w-24 h-24 rounded-full ${kpi.bg} opacity-50`} />
-          </div>
-        ))}
-      </div>
+      <KpiGrid cols={3}>
+        <KpiCard icon={DollarSign} label="TOTAL DISBURSED" value={money(totalDisbursed)} desc="Settled vendor liabilities" tone="emerald" />
+        <KpiCard icon={Zap} label="ELECTRONIC TRANSFERS" value={bankPaymentsCount} desc="Bank wires & RTGS settlements" tone="teal" />
+        <KpiCard icon={BarChart3} label="TOTAL TRANSACTIONS" value={filtered.length} desc="All recorded payments" tone="violet" />
+      </KpiGrid>
 
       {/* Payments Table */}
       <div className="bg-[var(--color-surface)] border border-[var(--color-border)] rounded-xl overflow-hidden shadow-sm">
-        <div className="px-4 py-2.5 border-b border-[var(--color-border)] bg-[var(--color-surface-muted)] flex items-center justify-between">
-          <p className="text-xs font-semibold text-[var(--color-text-strong)]">Disbursements Register</p>
+        <div className="px-5 py-3.5 border-b border-[var(--color-border)] bg-[var(--color-surface-muted)] flex items-center justify-between">
+          <p className="text-xs font-bold uppercase tracking-wider text-[var(--color-text-strong)]">Disbursements Register</p>
           <span className="text-[11px] text-[var(--color-text-muted)]">
             Showing {filtered.length} of {payments.length} record{payments.length !== 1 ? 's' : ''}
           </span>

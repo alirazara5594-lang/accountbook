@@ -7,6 +7,7 @@ import { Badge } from '@/components/ui/badge';
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@/components/ui/select';
 import { FormField } from '@/components/ui/form-field';
 import { PageHeader } from '@/components/ui/page-header';
+import { KpiCard, KpiGrid } from '@/components/ui/kpi-card';
 
 import {
   Scale, Plus, TrendingUp, AlertTriangle, CheckCircle2, FileText, Send, ShieldCheck, ReceiptText, Landmark, Clock3, Wallet, Save, Building2, BadgeDollarSign
@@ -70,28 +71,12 @@ export function ComplianceSummaryView() {
   return (
     <div className="p-6 max-w-[1400px] mx-auto space-y-4">
       <PageHeader title="Government Compliance" description="Tax management, VAT / sales tax, withholding, returns, and e-invoicing across jurisdictions" />
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        {[
-          { label: 'Obligations Due', value: dashboard?.due ?? 0, desc: 'Require attention', icon: AlertTriangle, color: 'from-amber-500 to-orange-600', bg: 'bg-amber-50 dark:bg-amber-950/30', textColor: 'text-amber-600 dark:text-amber-400' },
-          { label: 'Total Tax Due', value: money(totalDue), desc: 'Outstanding amount', icon: Scale, color: 'from-red-500 to-rose-600', bg: 'bg-red-50 dark:bg-red-950/30', textColor: 'text-red-600 dark:text-red-400' },
-          { label: 'Validated E-Invoices', value: validated, desc: 'Successfully validated', icon: ShieldCheck, color: 'from-teal-500 to-emerald-600', bg: 'bg-teal-50 dark:bg-teal-950/30', textColor: 'text-teal-600 dark:text-teal-400' },
-          { label: 'Total Withheld', value: money(totalWithheld), desc: 'Withholding tax total', icon: Wallet, color: 'from-blue-500 to-indigo-600', bg: 'bg-blue-50 dark:bg-blue-950/30', textColor: 'text-blue-600 dark:text-blue-400' },
-        ].map((kpi) => (
-          <div key={kpi.label} className="relative overflow-hidden rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)] p-3 shadow-sm hover:shadow-md transition-shadow">
-            <div className="flex items-start justify-between">
-              <div>
-                <p className="text-xs font-semibold text-[var(--color-text-muted)] uppercase tracking-wider">{kpi.label}</p>
-                <p className={`text-lg font-semibold mt-1 ${kpi.textColor}`}>{kpi.value}</p>
-                <p className="text-xs text-[var(--color-text-muted)] mt-1">{kpi.desc}</p>
-              </div>
-              <div className={`w-9 h-9 rounded-lg bg-gradient-to-br ${kpi.color} flex items-center justify-center text-white shadow-lg`}>
-                <kpi.icon className="w-4.5 h-4.5" />
-              </div>
-            </div>
-            <div className={`absolute -bottom-4 -right-4 w-24 h-24 rounded-full ${kpi.bg} opacity-50`} />
-          </div>
-        ))}
-      </div>
+      <KpiGrid cols={4}>
+        <KpiCard icon={AlertTriangle} label="Obligations Due" value={dashboard?.due ?? 0} desc="Require attention" tone="amber" />
+        <KpiCard icon={Scale} label="Total Tax Due" value={money(totalDue)} desc="Outstanding amount" tone="rose" />
+        <KpiCard icon={ShieldCheck} label="Validated E-Invoices" value={validated} desc="Successfully validated" tone="teal" />
+        <KpiCard icon={Wallet} label="Total Withheld" value={money(totalWithheld)} desc="Withholding tax total" tone="blue" />
+      </KpiGrid>
       <div className="grid grid-cols-2 lg:grid-cols-2 gap-4">
         <Card className="p-4 space-y-3">
           <p className="text-sm font-medium flex items-center gap-2"><Clock3 className="h-4 w-4" /> Upcoming Filing Deadlines</p>
@@ -136,28 +121,12 @@ export function TaxManagementView({ activeEntityId, entities }: { activeEntityId
   return (
     <div className="p-6 max-w-[1400px] mx-auto space-y-4">
       <PageHeader title="Tax Management" description={`Monitor tax obligations and liability${jurisdiction ? ` for ${jurisdiction}` : ' across jurisdictions'}`} />
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        {[
-          { label: 'Jurisdictions', value: jurisdiction ? 1 : JURISDICTIONS.length, desc: 'Active regions', icon: Landmark, color: 'from-teal-500 to-emerald-600', bg: 'bg-teal-50 dark:bg-teal-950/30', textColor: 'text-teal-600 dark:text-teal-400' },
-          { label: 'Total Obligations', value: filteredObligations.length, desc: 'Across jurisdictions', icon: Scale, color: 'from-blue-500 to-indigo-600', bg: 'bg-blue-50 dark:bg-blue-950/30', textColor: 'text-blue-600 dark:text-blue-400' },
-          { label: 'Due / Overdue', value: filteredObligations.filter(o => o.status === 'Due' || o.status === 'Overdue').length, desc: 'Require payment', icon: AlertTriangle, color: 'from-amber-500 to-orange-600', bg: 'bg-amber-50 dark:bg-amber-950/30', textColor: 'text-amber-600 dark:text-amber-400' },
-          { label: 'Amount Due', value: money(totalDue), desc: 'Outstanding balance', icon: Wallet, color: 'from-red-500 to-rose-600', bg: 'bg-red-50 dark:bg-red-950/30', textColor: 'text-red-600 dark:text-red-400' },
-        ].map((kpi) => (
-          <div key={kpi.label} className="relative overflow-hidden rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)] p-3 shadow-sm hover:shadow-md transition-shadow">
-            <div className="flex items-start justify-between">
-              <div>
-                <p className="text-xs font-semibold text-[var(--color-text-muted)] uppercase tracking-wider">{kpi.label}</p>
-                <p className={`text-lg font-semibold mt-1 ${kpi.textColor}`}>{kpi.value}</p>
-                <p className="text-xs text-[var(--color-text-muted)] mt-1">{kpi.desc}</p>
-              </div>
-              <div className={`w-9 h-9 rounded-lg bg-gradient-to-br ${kpi.color} flex items-center justify-center text-white shadow-lg`}>
-                <kpi.icon className="w-4.5 h-4.5" />
-              </div>
-            </div>
-            <div className={`absolute -bottom-4 -right-4 w-24 h-24 rounded-full ${kpi.bg} opacity-50`} />
-          </div>
-        ))}
-      </div>
+      <KpiGrid cols={4}>
+        <KpiCard icon={Landmark} label="Jurisdictions" value={jurisdiction ? 1 : JURISDICTIONS.length} desc="Active regions" tone="teal" />
+        <KpiCard icon={Scale} label="Total Obligations" value={filteredObligations.length} desc="Across jurisdictions" tone="blue" />
+        <KpiCard icon={AlertTriangle} label="Due / Overdue" value={filteredObligations.filter(o => o.status === 'Due' || o.status === 'Overdue').length} desc="Require payment" tone="amber" />
+        <KpiCard icon={Wallet} label="Amount Due" value={money(totalDue)} desc="Outstanding balance" tone="rose" />
+      </KpiGrid>
       <div className="grid grid-cols-4 gap-4">
         {(jurisdiction ? [jurisdiction] : JURISDICTIONS).map(j => {
           const jOblig = filteredObligations.filter(o => o.jurisdictionId === j);
@@ -217,28 +186,12 @@ export function VatSalesTaxView({ activeEntityId, entities }: { activeEntityId?:
   return (
     <div className="p-6 max-w-[1400px] mx-auto space-y-4">
       <PageHeader title="VAT / Sales Tax" description={`Manage value-added and sales tax obligations${jurisdiction ? ` for ${jurisdiction}` : ''}`} actions={<Button onClick={() => setShowForm(v => !v)}><Plus className="mr-2 h-4 w-4" /> New Obligation</Button>} />
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        {[
-          { label: 'VAT / Sales Obligations', value: vatObligations.length, desc: 'Total obligations', icon: Scale, color: 'from-blue-500 to-indigo-600', bg: 'bg-blue-50 dark:bg-blue-950/30', textColor: 'text-blue-600 dark:text-blue-400' },
-          { label: 'Amount Due', value: money(due), desc: 'Outstanding balance', icon: Wallet, color: 'from-amber-500 to-orange-600', bg: 'bg-amber-50 dark:bg-amber-950/30', textColor: 'text-amber-600 dark:text-amber-400' },
-          { label: 'Paid', value: vatObligations.filter(o => o.status === 'Paid').length, desc: 'Completed payments', icon: CheckCircle2, color: 'from-green-500 to-emerald-600', bg: 'bg-green-50 dark:bg-green-950/30', textColor: 'text-green-600 dark:text-green-400' },
-          { label: 'Overdue', value: vatObligations.filter(o => o.status === 'Overdue').length, desc: 'Past due date', icon: AlertTriangle, color: 'from-red-500 to-rose-600', bg: 'bg-red-50 dark:bg-red-950/30', textColor: 'text-red-600 dark:text-red-400' },
-        ].map((kpi) => (
-          <div key={kpi.label} className="relative overflow-hidden rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)] p-3 shadow-sm hover:shadow-md transition-shadow">
-            <div className="flex items-start justify-between">
-              <div>
-                <p className="text-xs font-semibold text-[var(--color-text-muted)] uppercase tracking-wider">{kpi.label}</p>
-                <p className={`text-lg font-semibold mt-1 ${kpi.textColor}`}>{kpi.value}</p>
-                <p className="text-xs text-[var(--color-text-muted)] mt-1">{kpi.desc}</p>
-              </div>
-              <div className={`w-9 h-9 rounded-lg bg-gradient-to-br ${kpi.color} flex items-center justify-center text-white shadow-lg`}>
-                <kpi.icon className="w-4.5 h-4.5" />
-              </div>
-            </div>
-            <div className={`absolute -bottom-4 -right-4 w-24 h-24 rounded-full ${kpi.bg} opacity-50`} />
-          </div>
-        ))}
-      </div>
+      <KpiGrid cols={4}>
+        <KpiCard icon={Scale} label="VAT / Sales Obligations" value={vatObligations.length} desc="Total obligations" tone="blue" />
+        <KpiCard icon={Wallet} label="Amount Due" value={money(due)} desc="Outstanding balance" tone="amber" />
+        <KpiCard icon={CheckCircle2} label="Paid" value={vatObligations.filter(o => o.status === 'Paid').length} desc="Completed payments" tone="emerald" />
+        <KpiCard icon={AlertTriangle} label="Overdue" value={vatObligations.filter(o => o.status === 'Overdue').length} desc="Past due date" tone="rose" />
+      </KpiGrid>
       {showForm && (
         <Card className="p-4">
           <div className="grid grid-cols-12 gap-3 items-end">
@@ -336,28 +289,12 @@ export function WithholdingTaxView({ activeEntityId }: { activeEntityId?: string
   return (
     <div className="p-6 max-w-[1400px] mx-auto space-y-4">
       <PageHeader title="Withholding Tax" description="Issue and track withholding tax certificates" actions={<Button onClick={() => setShowForm(v => !v)}><Plus className="mr-2 h-4 w-4" /> Issue Certificate</Button>} />
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        {[
-          { label: 'Certificates', value: withholding.length, desc: 'Total issued', icon: BadgeDollarSign, color: 'from-blue-500 to-indigo-600', bg: 'bg-blue-50 dark:bg-blue-950/30', textColor: 'text-blue-600 dark:text-blue-400' },
-          { label: 'Total Withheld', value: money(totalWithheld), desc: 'Withholding tax total', icon: Wallet, color: 'from-amber-500 to-orange-600', bg: 'bg-amber-50 dark:bg-amber-950/30', textColor: 'text-amber-600 dark:text-amber-400' },
-          { label: 'Avg Rate', value: `${withholding.length ? Math.round(withholding.reduce((s, c) => s + c.ratePercent, 0) / withholding.length) : 0}%`, desc: 'Average withholding', icon: Scale, color: 'from-violet-500 to-purple-600', bg: 'bg-violet-50 dark:bg-violet-950/30', textColor: 'text-violet-600 dark:text-violet-400' },
-          { label: 'Issued', value: withholding.filter(c => c.status === 'Issued').length, desc: 'Active certificates', icon: ShieldCheck, color: 'from-green-500 to-emerald-600', bg: 'bg-green-50 dark:bg-green-950/30', textColor: 'text-green-600 dark:text-green-400' },
-        ].map((kpi) => (
-          <div key={kpi.label} className="relative overflow-hidden rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)] p-3 shadow-sm hover:shadow-md transition-shadow">
-            <div className="flex items-start justify-between">
-              <div>
-                <p className="text-xs font-semibold text-[var(--color-text-muted)] uppercase tracking-wider">{kpi.label}</p>
-                <p className={`text-lg font-semibold mt-1 ${kpi.textColor}`}>{kpi.value}</p>
-                <p className="text-xs text-[var(--color-text-muted)] mt-1">{kpi.desc}</p>
-              </div>
-              <div className={`w-9 h-9 rounded-lg bg-gradient-to-br ${kpi.color} flex items-center justify-center text-white shadow-lg`}>
-                <kpi.icon className="w-4.5 h-4.5" />
-              </div>
-            </div>
-            <div className={`absolute -bottom-4 -right-4 w-24 h-24 rounded-full ${kpi.bg} opacity-50`} />
-          </div>
-        ))}
-      </div>
+      <KpiGrid cols={4}>
+        <KpiCard icon={BadgeDollarSign} label="Certificates" value={withholding.length} desc="Total issued" tone="blue" />
+        <KpiCard icon={Wallet} label="Total Withheld" value={money(totalWithheld)} desc="Withholding tax total" tone="amber" />
+        <KpiCard icon={Scale} label="Avg Rate" value={`${withholding.length ? Math.round(withholding.reduce((s, c) => s + c.ratePercent, 0) / withholding.length) : 0}%`} desc="Average withholding" tone="purple" />
+        <KpiCard icon={ShieldCheck} label="Issued" value={withholding.filter(c => c.status === 'Issued').length} desc="Active certificates" tone="emerald" />
+      </KpiGrid>
       {showForm && (
         <Card className="p-4">
           <div className="grid grid-cols-12 gap-3 items-end">
@@ -431,28 +368,12 @@ export function TaxReturnsView({ activeEntityId, entities }: { activeEntityId?: 
   return (
     <div className="p-6 max-w-[1400px] mx-auto space-y-4">
       <PageHeader title="Tax Returns" description={`Prepare and file tax returns${jurisdiction ? ` for ${jurisdiction}` : ''}`} />
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        {[
-          { label: 'Total Returns', value: filteredReturns.length, desc: 'Across jurisdictions', icon: FileText, color: 'from-blue-500 to-indigo-600', bg: 'bg-blue-50 dark:bg-blue-950/30', textColor: 'text-blue-600 dark:text-blue-400' },
-          { label: 'Filed', value: filteredReturns.filter(r => r.status === 'Filed').length, desc: 'Successfully filed', icon: CheckCircle2, color: 'from-green-500 to-emerald-600', bg: 'bg-green-50 dark:bg-green-950/30', textColor: 'text-green-600 dark:text-green-400' },
-          { label: 'Draft', value: filteredReturns.filter(r => r.status === 'Draft').length, desc: 'Pending submission', icon: Clock3, color: 'from-amber-500 to-orange-600', bg: 'bg-amber-50 dark:bg-amber-950/30', textColor: 'text-amber-600 dark:text-amber-400' },
-          { label: 'Net Tax', value: money(totalNet), desc: 'Total net tax liability', icon: Wallet, color: 'from-violet-500 to-purple-600', bg: 'bg-violet-50 dark:bg-violet-950/30', textColor: 'text-violet-600 dark:text-violet-400' },
-        ].map((kpi) => (
-          <div key={kpi.label} className="relative overflow-hidden rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)] p-3 shadow-sm hover:shadow-md transition-shadow">
-            <div className="flex items-start justify-between">
-              <div>
-                <p className="text-xs font-semibold text-[var(--color-text-muted)] uppercase tracking-wider">{kpi.label}</p>
-                <p className={`text-lg font-semibold mt-1 ${kpi.textColor}`}>{kpi.value}</p>
-                <p className="text-xs text-[var(--color-text-muted)] mt-1">{kpi.desc}</p>
-              </div>
-              <div className={`w-9 h-9 rounded-lg bg-gradient-to-br ${kpi.color} flex items-center justify-center text-white shadow-lg`}>
-                <kpi.icon className="w-4.5 h-4.5" />
-              </div>
-            </div>
-            <div className={`absolute -bottom-4 -right-4 w-24 h-24 rounded-full ${kpi.bg} opacity-50`} />
-          </div>
-        ))}
-      </div>
+      <KpiGrid cols={4}>
+        <KpiCard icon={FileText} label="Total Returns" value={filteredReturns.length} desc="Across jurisdictions" tone="blue" />
+        <KpiCard icon={CheckCircle2} label="Filed" value={filteredReturns.filter(r => r.status === 'Filed').length} desc="Successfully filed" tone="emerald" />
+        <KpiCard icon={Clock3} label="Draft" value={filteredReturns.filter(r => r.status === 'Draft').length} desc="Pending submission" tone="amber" />
+        <KpiCard icon={Wallet} label="Net Tax" value={money(totalNet)} desc="Total net tax liability" tone="purple" />
+      </KpiGrid>
       {!jurisdiction && (
         <div className="flex gap-3 items-center">
           <Select value={filter} onValueChange={v => v !== null && setFilter(v)}>
@@ -532,28 +453,12 @@ export function EInvoicingView({ activeEntityId }: { activeEntityId?: string }) 
   return (
     <div className="p-6 max-w-[1400px] mx-auto space-y-4">
       <PageHeader title="E-Invoicing" description="Submit and validate electronic invoices" actions={<Button onClick={() => setShowForm(v => !v)}><Plus className="mr-2 h-4 w-4" /> Create E-Invoice</Button>} />
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        {[
-          { label: 'Total Invoices', value: eInvoices.length, desc: 'All e-invoices', icon: ReceiptText, color: 'from-blue-500 to-indigo-600', bg: 'bg-blue-50 dark:bg-blue-950/30', textColor: 'text-blue-600 dark:text-blue-400' },
-          { label: 'Validated', value: validated, desc: 'Successfully validated', icon: ShieldCheck, color: 'from-green-500 to-emerald-600', bg: 'bg-green-50 dark:bg-green-950/30', textColor: 'text-green-600 dark:text-green-400' },
-          { label: 'Rejected', value: rejected, desc: 'Need attention', icon: AlertTriangle, color: 'from-red-500 to-rose-600', bg: 'bg-red-50 dark:bg-red-950/30', textColor: 'text-red-600 dark:text-red-400' },
-          { label: 'Total Amount', value: money(total), desc: 'Combined invoice value', icon: Wallet, color: 'from-amber-500 to-orange-600', bg: 'bg-amber-50 dark:bg-amber-950/30', textColor: 'text-amber-600 dark:text-amber-400' },
-        ].map((kpi) => (
-          <div key={kpi.label} className="relative overflow-hidden rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)] p-3 shadow-sm hover:shadow-md transition-shadow">
-            <div className="flex items-start justify-between">
-              <div>
-                <p className="text-xs font-semibold text-[var(--color-text-muted)] uppercase tracking-wider">{kpi.label}</p>
-                <p className={`text-lg font-semibold mt-1 ${kpi.textColor}`}>{kpi.value}</p>
-                <p className="text-xs text-[var(--color-text-muted)] mt-1">{kpi.desc}</p>
-              </div>
-              <div className={`w-9 h-9 rounded-lg bg-gradient-to-br ${kpi.color} flex items-center justify-center text-white shadow-lg`}>
-                <kpi.icon className="w-4.5 h-4.5" />
-              </div>
-            </div>
-            <div className={`absolute -bottom-4 -right-4 w-24 h-24 rounded-full ${kpi.bg} opacity-50`} />
-          </div>
-        ))}
-      </div>
+      <KpiGrid cols={4}>
+        <KpiCard icon={ReceiptText} label="Total Invoices" value={eInvoices.length} desc="All e-invoices" tone="blue" />
+        <KpiCard icon={ShieldCheck} label="Validated" value={validated} desc="Successfully validated" tone="emerald" />
+        <KpiCard icon={AlertTriangle} label="Rejected" value={rejected} desc="Need attention" tone="rose" />
+        <KpiCard icon={Wallet} label="Total Amount" value={money(total)} desc="Combined invoice value" tone="amber" />
+      </KpiGrid>
       {showForm && (
         <Card className="p-4">
           <div className="grid grid-cols-12 gap-3 items-end">
@@ -633,28 +538,12 @@ export function ComplianceReportsView({ activeEntityId, entities }: { activeEnti
   return (
     <div className="p-6 max-w-[1400px] mx-auto space-y-4">
       <PageHeader title="Compliance Reports" description={`Compliance posture and reporting${jurisdiction ? ` for ${jurisdiction}` : ' across jurisdictions'}`} />
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        {[
-          { label: 'Total Tax Due', value: money(totalDue), desc: 'Outstanding balance', icon: Scale, color: 'from-red-500 to-rose-600', bg: 'bg-red-50 dark:bg-red-950/30', textColor: 'text-red-600 dark:text-red-400' },
-          { label: 'Total Withheld', value: money(totalWithheld), desc: 'Withholding tax total', icon: Wallet, color: 'from-blue-500 to-indigo-600', bg: 'bg-blue-50 dark:bg-blue-950/30', textColor: 'text-blue-600 dark:text-blue-400' },
-          { label: 'Validated E-Invoices', value: validated, desc: 'Successfully validated', icon: ShieldCheck, color: 'from-teal-500 to-emerald-600', bg: 'bg-teal-50 dark:bg-teal-950/30', textColor: 'text-teal-600 dark:text-teal-400' },
-          { label: 'Jurisdictions Active', value: jurisdiction ? 1 : JURISDICTIONS.filter(j => obligations.some(o => o.jurisdictionId === j)).length, desc: 'Operating regions', icon: Building2, color: 'from-violet-500 to-purple-600', bg: 'bg-violet-50 dark:bg-violet-950/30', textColor: 'text-violet-600 dark:text-violet-400' },
-        ].map((kpi) => (
-          <div key={kpi.label} className="relative overflow-hidden rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)] p-3 shadow-sm hover:shadow-md transition-shadow">
-            <div className="flex items-start justify-between">
-              <div>
-                <p className="text-xs font-semibold text-[var(--color-text-muted)] uppercase tracking-wider">{kpi.label}</p>
-                <p className={`text-lg font-semibold mt-1 ${kpi.textColor}`}>{kpi.value}</p>
-                <p className="text-xs text-[var(--color-text-muted)] mt-1">{kpi.desc}</p>
-              </div>
-              <div className={`w-9 h-9 rounded-lg bg-gradient-to-br ${kpi.color} flex items-center justify-center text-white shadow-lg`}>
-                <kpi.icon className="w-4.5 h-4.5" />
-              </div>
-            </div>
-            <div className={`absolute -bottom-4 -right-4 w-24 h-24 rounded-full ${kpi.bg} opacity-50`} />
-          </div>
-        ))}
-      </div>
+      <KpiGrid cols={4}>
+        <KpiCard icon={Scale} label="Total Tax Due" value={money(totalDue)} desc="Outstanding balance" tone="rose" />
+        <KpiCard icon={Wallet} label="Total Withheld" value={money(totalWithheld)} desc="Withholding tax total" tone="blue" />
+        <KpiCard icon={ShieldCheck} label="Validated E-Invoices" value={validated} desc="Successfully validated" tone="teal" />
+        <KpiCard icon={Building2} label="Jurisdictions Active" value={jurisdiction ? 1 : JURISDICTIONS.filter(j => obligations.some(o => o.jurisdictionId === j)).length} desc="Operating regions" tone="purple" />
+      </KpiGrid>
       <div className="grid grid-cols-2 gap-4">
         <Card className="p-4 space-y-3">
           <p className="text-sm font-medium flex items-center gap-2"><FileText className="h-4 w-4" /> Obligation Status Breakdown</p>

@@ -10,6 +10,7 @@ import {
   Power, X, Download, FileSpreadsheet, Eye, RefreshCw, ArrowRight, FileText, Shield, UserCheck, LayoutGrid, ListFilter, Copy, Check,
   MapPin, Receipt, Sparkles
 } from 'lucide-react';
+import { KpiCard, KpiGrid } from './components/ui/kpi-card';
 import { downloadExcel, downloadCSV } from './lib/exportUtils';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
@@ -103,51 +104,12 @@ export function AdministrationSummaryView({ setPage }: { setPage?: (p: string) =
       </div>
 
       {/* 4-in-1 Top KPI Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        <div className="p-4 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] shadow-sm space-y-1">
-          <div className="flex items-center justify-between text-[var(--color-text-muted)]">
-            <span className="text-xs font-semibold uppercase tracking-wider">System Users</span>
-            <Users className="w-4 h-4 text-teal-600" />
-          </div>
-          <div className="text-2xl font-black text-[var(--color-text-strong)] font-mono">{users.length}</div>
-          <div className="text-[11px] text-[var(--color-text-muted)] flex items-center gap-1">
-            <span className="text-emerald-600 font-bold">{activeUsers} Active</span> · <span className="text-rose-600 font-bold">{lockedUsers} Locked</span>
-          </div>
-        </div>
-
-        <div className="p-4 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] shadow-sm space-y-1">
-          <div className="flex items-center justify-between text-[var(--color-text-muted)]">
-            <span className="text-xs font-semibold uppercase tracking-wider">Security Roles</span>
-            <KeyRound className="w-4 h-4 text-blue-600" />
-          </div>
-          <div className="text-2xl font-black text-[var(--color-text-strong)] font-mono">{roles.length}</div>
-          <div className="text-[11px] text-[var(--color-text-muted)]">
-            {roles.reduce((s, r) => s + r.permissions.length, 0)} Total module grants
-          </div>
-        </div>
-
-        <div className="p-4 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] shadow-sm space-y-1">
-          <div className="flex items-center justify-between text-[var(--color-text-muted)]">
-            <span className="text-xs font-semibold uppercase tracking-wider">Companies & Entities</span>
-            <Building2 className="w-4 h-4 text-emerald-600" />
-          </div>
-          <div className="text-2xl font-black text-[var(--color-text-strong)] font-mono">{entities.length}</div>
-          <div className="text-[11px] text-[var(--color-text-muted)]">
-            <span className="text-emerald-600 font-bold">{activeEntities} Operational</span> ({new Set(entities.map(e => e.country)).size} Countries)
-          </div>
-        </div>
-
-        <div className="p-4 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] shadow-sm space-y-1">
-          <div className="flex items-center justify-between text-[var(--color-text-muted)]">
-            <span className="text-xs font-semibold uppercase tracking-wider">Branches & Units</span>
-            <GitBranch className="w-4 h-4 text-purple-600" />
-          </div>
-          <div className="text-2xl font-black text-[var(--color-text-strong)] font-mono">{branches.length}</div>
-          <div className="text-[11px] text-[var(--color-text-muted)]">
-            {branches.filter(b => b.active).length} Active operating branches
-          </div>
-        </div>
-      </div>
+      <KpiGrid cols={4}>
+        <KpiCard icon={Users} label="System Users" value={users.length} desc={<>{activeUsers} Active · {lockedUsers} Locked</>} tone="teal" />
+        <KpiCard icon={KeyRound} label="Security Roles" value={roles.length} desc={`${roles.reduce((s, r) => s + r.permissions.length, 0)} Total module grants`} tone="blue" />
+        <KpiCard icon={Building2} label="Companies & Entities" value={entities.length} desc={<>{activeEntities} Operational ({new Set(entities.map(e => e.country)).size} Countries)</>} tone="emerald" />
+        <KpiCard icon={GitBranch} label="Branches & Units" value={branches.length} desc={`${branches.filter(b => b.active).length} Active operating branches`} tone="purple" />
+      </KpiGrid>
 
       {/* Quick Navigation Matrix */}
       <div>
@@ -569,43 +531,12 @@ export function UsersView({ activeEntityId, notify }: { activeEntityId?: string;
       </div>
 
       {/* 4-in-1 KPI Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        <div className="p-4 rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)] shadow-xs space-y-1">
-          <div className="flex items-center justify-between text-[var(--color-text-muted)]">
-            <span className="text-xs font-semibold uppercase tracking-wider">Total Operators</span>
-            <Users className="w-4 h-4 text-teal-600" />
-          </div>
-          <div className="text-2xl font-black text-[var(--color-text-strong)] font-mono">{users.length}</div>
-          <div className="text-[11px] text-[var(--color-text-muted)]">Registered accounts in tenant</div>
-        </div>
-
-        <div className="p-4 rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)] shadow-xs space-y-1">
-          <div className="flex items-center justify-between text-[var(--color-text-muted)]">
-            <span className="text-xs font-semibold uppercase tracking-wider">Active Operators</span>
-            <UserCheck className="w-4 h-4 text-emerald-600" />
-          </div>
-          <div className="text-2xl font-black text-emerald-600 font-mono">{activeCount}</div>
-          <div className="text-[11px] text-emerald-600 font-medium">Ready for immediate login</div>
-        </div>
-
-        <div className="p-4 rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)] shadow-xs space-y-1">
-          <div className="flex items-center justify-between text-[var(--color-text-muted)]">
-            <span className="text-xs font-semibold uppercase tracking-wider">Locked / Restricted</span>
-            <Lock className="w-4 h-4 text-rose-600" />
-          </div>
-          <div className="text-2xl font-black text-rose-600 font-mono">{lockedCount + inactiveCount}</div>
-          <div className="text-[11px] text-rose-600 font-medium">{lockedCount} Locked · {inactiveCount} Inactive</div>
-        </div>
-
-        <div className="p-4 rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)] shadow-xs space-y-1">
-          <div className="flex items-center justify-between text-[var(--color-text-muted)]">
-            <span className="text-xs font-semibold uppercase tracking-wider">Assigned Roles</span>
-            <ShieldCheck className="w-4 h-4 text-purple-600" />
-          </div>
-          <div className="text-2xl font-black text-purple-600 font-mono">{uniqueRoles.length}</div>
-          <div className="text-[11px] text-[var(--color-text-muted)]">Security access matrix groups</div>
-        </div>
-      </div>
+      <KpiGrid cols={4}>
+        <KpiCard icon={Users} label="Total Operators" value={users.length} desc="Registered accounts in tenant" tone="teal" />
+        <KpiCard icon={UserCheck} label="Active Operators" value={activeCount} desc="Ready for immediate login" tone="emerald" />
+        <KpiCard icon={Lock} label="Locked / Restricted" value={lockedCount + inactiveCount} desc={`${lockedCount} Locked · ${inactiveCount} Inactive`} tone="rose" />
+        <KpiCard icon={ShieldCheck} label="Assigned Roles" value={uniqueRoles.length} desc="Security access matrix groups" tone="purple" />
+      </KpiGrid>
 
       {/* Control & Filter Center */}
       <div className="p-4 rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)] shadow-xs space-y-3">
@@ -1472,47 +1403,12 @@ export function RolesPermissionsView({ notify }: { activeEntityId?: string; noti
       </div>
 
       {/* 4-in-1 KPI Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        <div className="p-4 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] shadow-sm space-y-1">
-          <div className="flex items-center justify-between text-[var(--color-text-muted)]">
-            <span className="text-xs font-semibold uppercase tracking-wider">Defined Roles</span>
-            <ShieldCheck className="w-4 h-4 text-blue-600" />
-          </div>
-          <div className="text-2xl font-black text-[var(--color-text-strong)] font-mono">{roles.length}</div>
-          <div className="text-[11px] text-[var(--color-text-muted)]">Active security roles</div>
-        </div>
-
-        <div className="p-4 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] shadow-sm space-y-1">
-          <div className="flex items-center justify-between text-[var(--color-text-muted)]">
-            <span className="text-xs font-semibold uppercase tracking-wider">Permission Grants</span>
-            <KeyRound className="w-4 h-4 text-emerald-600" />
-          </div>
-          <div className="text-2xl font-black text-emerald-600 font-mono">
-            {roles.reduce((s, r) => s + r.permissions.length, 0)}
-          </div>
-          <div className="text-[11px] text-[var(--color-text-muted)]">Total granted module privileges</div>
-        </div>
-
-        <div className="p-4 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] shadow-sm space-y-1">
-          <div className="flex items-center justify-between text-[var(--color-text-muted)]">
-            <span className="text-xs font-semibold uppercase tracking-wider">Modules Protected</span>
-            <Lock className="w-4 h-4 text-purple-600" />
-          </div>
-          <div className="text-2xl font-black text-[var(--color-text-strong)] font-mono">{ALL_MODULES.length}</div>
-          <div className="text-[11px] text-[var(--color-text-muted)]">13 ERP operational modules</div>
-        </div>
-
-        <div className="p-4 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] shadow-sm space-y-1">
-          <div className="flex items-center justify-between text-[var(--color-text-muted)]">
-            <span className="text-xs font-semibold uppercase tracking-wider">Full Access Roles</span>
-            <CheckCircle2 className="w-4 h-4 text-teal-600" />
-          </div>
-          <div className="text-2xl font-black text-teal-600 font-mono">
-            {roles.filter(r => r.permissions.length === ALL_MODULES.length).length}
-          </div>
-          <div className="text-[11px] text-[var(--color-text-muted)]">Unrestricted superuser profiles</div>
-        </div>
-      </div>
+      <KpiGrid cols={4}>
+        <KpiCard icon={ShieldCheck} label="Defined Roles" value={roles.length} desc="Active security roles" tone="blue" />
+        <KpiCard icon={KeyRound} label="Permission Grants" value={roles.reduce((s, r) => s + r.permissions.length, 0)} desc="Total granted module privileges" tone="emerald" />
+        <KpiCard icon={Lock} label="Modules Protected" value={ALL_MODULES.length} desc="13 ERP operational modules" tone="purple" />
+        <KpiCard icon={CheckCircle2} label="Full Access Roles" value={roles.filter(r => r.permissions.length === ALL_MODULES.length).length} desc="Unrestricted superuser profiles" tone="teal" />
+      </KpiGrid>
 
       {/* Preset Role Templates */}
       <div className="p-4 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] space-y-3">
@@ -2046,47 +1942,12 @@ export function CompaniesView({ activeEntityId, notify }: { activeEntityId?: str
       </div>
 
       {/* 4-in-1 KPI Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        <div className="p-4 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] shadow-sm space-y-1">
-          <div className="flex items-center justify-between text-[var(--color-text-muted)]">
-            <span className="text-xs font-semibold uppercase tracking-wider">Registered Entities</span>
-            <Building2 className="w-4 h-4 text-emerald-600" />
-          </div>
-          <div className="text-2xl font-black text-[var(--color-text-strong)] font-mono">{entities.length}</div>
-          <div className="text-[11px] text-[var(--color-text-muted)]">Multi-company ecosystem</div>
-        </div>
-
-        <div className="p-4 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] shadow-sm space-y-1">
-          <div className="flex items-center justify-between text-[var(--color-text-muted)]">
-            <span className="text-xs font-semibold uppercase tracking-wider">Active Entities</span>
-            <CheckCircle2 className="w-4 h-4 text-teal-600" />
-          </div>
-          <div className="text-2xl font-black text-teal-600 font-mono">{entities.filter(e => e.active).length}</div>
-          <div className="text-[11px] text-teal-600 font-medium">Open for financial postings</div>
-        </div>
-
-        <div className="p-4 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] shadow-sm space-y-1">
-          <div className="flex items-center justify-between text-[var(--color-text-muted)]">
-            <span className="text-xs font-semibold uppercase tracking-wider">Jurisdictions</span>
-            <Globe className="w-4 h-4 text-blue-600" />
-          </div>
-          <div className="text-2xl font-black text-[var(--color-text-strong)] font-mono">
-            {new Set(entities.map(e => e.country)).size}
-          </div>
-          <div className="text-[11px] text-[var(--color-text-muted)]">Operating countries</div>
-        </div>
-
-        <div className="p-4 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] shadow-sm space-y-1">
-          <div className="flex items-center justify-between text-[var(--color-text-muted)]">
-            <span className="text-xs font-semibold uppercase tracking-wider">Ledger Currencies</span>
-            <Coins className="w-4 h-4 text-purple-600" />
-          </div>
-          <div className="text-2xl font-black text-[var(--color-text-strong)] font-mono">
-            {new Set(entities.map(e => e.currencyCode || e.functionalCurrency)).size}
-          </div>
-          <div className="text-[11px] text-[var(--color-text-muted)]">Multi-currency functional books</div>
-        </div>
-      </div>
+      <KpiGrid cols={4}>
+        <KpiCard icon={Building2} label="Registered Entities" value={entities.length} desc="Multi-company ecosystem" tone="emerald" />
+        <KpiCard icon={CheckCircle2} label="Active Entities" value={entities.filter(e => e.active).length} desc="Open for financial postings" tone="teal" />
+        <KpiCard icon={Globe} label="Jurisdictions" value={new Set(entities.map(e => e.country)).size} desc="Operating countries" tone="blue" />
+        <KpiCard icon={Coins} label="Ledger Currencies" value={new Set(entities.map(e => e.currencyCode || e.functionalCurrency)).size} desc="Multi-currency functional books" tone="purple" />
+      </KpiGrid>
 
       {/* Search Bar */}
       <div className="relative flex items-center">
@@ -2796,49 +2657,12 @@ export function BranchesView({ activeEntityId, notify }: { activeEntityId?: stri
       </div>
 
       {/* 4-in-1 KPI Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        <div className="p-4 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] shadow-sm space-y-1">
-          <div className="flex items-center justify-between text-[var(--color-text-muted)]">
-            <span className="text-xs font-semibold uppercase tracking-wider">Total Branches</span>
-            <GitBranch className="w-4 h-4 text-purple-600" />
-          </div>
-          <div className="text-2xl font-black text-[var(--color-text-strong)] font-mono">{branches.length}</div>
-          <div className="text-[11px] text-[var(--color-text-muted)]">Operating units</div>
-        </div>
-
-        <div className="p-4 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] shadow-sm space-y-1">
-          <div className="flex items-center justify-between text-[var(--color-text-muted)]">
-            <span className="text-xs font-semibold uppercase tracking-wider">Active Units</span>
-            <CheckCircle2 className="w-4 h-4 text-emerald-600" />
-          </div>
-          <div className="text-2xl font-black text-emerald-600 font-mono">
-            {branches.filter(b => b.active).length}
-          </div>
-          <div className="text-[11px] text-emerald-600 font-medium">Accepting transactions</div>
-        </div>
-
-        <div className="p-4 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] shadow-sm space-y-1">
-          <div className="flex items-center justify-between text-[var(--color-text-muted)]">
-            <span className="text-xs font-semibold uppercase tracking-wider">Operating Cities</span>
-            <Building2 className="w-4 h-4 text-blue-600" />
-          </div>
-          <div className="text-2xl font-black text-[var(--color-text-strong)] font-mono">
-            {new Set(branches.map(b => b.city).filter(Boolean)).size}
-          </div>
-          <div className="text-[11px] text-[var(--color-text-muted)]">Geographic reach</div>
-        </div>
-
-        <div className="p-4 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] shadow-sm space-y-1">
-          <div className="flex items-center justify-between text-[var(--color-text-muted)]">
-            <span className="text-xs font-semibold uppercase tracking-wider">Network Architecture</span>
-            <Globe className="w-4 h-4 text-teal-600" />
-          </div>
-          <div className="text-2xl font-black text-[var(--color-text-strong)] font-mono">
-            {branches.length > 1 ? 'Multi-Branch' : 'Single Unit'}
-          </div>
-          <div className="text-[11px] text-[var(--color-text-muted)]">Branch segment reporting</div>
-        </div>
-      </div>
+      <KpiGrid cols={4}>
+        <KpiCard icon={GitBranch} label="Total Branches" value={branches.length} desc="Operating units" tone="purple" />
+        <KpiCard icon={CheckCircle2} label="Active Units" value={branches.filter(b => b.active).length} desc="Accepting transactions" tone="emerald" />
+        <KpiCard icon={Building2} label="Operating Cities" value={new Set(branches.map(b => b.city).filter(Boolean)).size} desc="Geographic reach" tone="blue" />
+        <KpiCard icon={Globe} label="Network Architecture" value={branches.length > 1 ? 'Multi-Branch' : 'Single Unit'} desc="Branch segment reporting" tone="teal" />
+      </KpiGrid>
 
       {/* Branches Table */}
       <div className="rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] overflow-hidden shadow-sm">
@@ -3033,49 +2857,12 @@ export function ApprovalWorkflowsView({ activeEntityId, notify }: { activeEntity
       </div>
 
       {/* 4-in-1 KPI Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        <div className="p-4 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] shadow-sm space-y-1">
-          <div className="flex items-center justify-between text-[var(--color-text-muted)]">
-            <span className="text-xs font-semibold uppercase tracking-wider">Defined Workflows</span>
-            <CheckCircle2 className="w-4 h-4 text-amber-600" />
-          </div>
-          <div className="text-2xl font-black text-[var(--color-text-strong)] font-mono">{workflows.length}</div>
-          <div className="text-[11px] text-[var(--color-text-muted)]">Governance approval chains</div>
-        </div>
-
-        <div className="p-4 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] shadow-sm space-y-1">
-          <div className="flex items-center justify-between text-[var(--color-text-muted)]">
-            <span className="text-xs font-semibold uppercase tracking-wider">Active Routing</span>
-            <Power className="w-4 h-4 text-emerald-600" />
-          </div>
-          <div className="text-2xl font-black text-emerald-600 font-mono">
-            {workflows.filter(w => w.active).length}
-          </div>
-          <div className="text-[11px] text-emerald-600 font-medium">Currently intercepting submissions</div>
-        </div>
-
-        <div className="p-4 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] shadow-sm space-y-1">
-          <div className="flex items-center justify-between text-[var(--color-text-muted)]">
-            <span className="text-xs font-semibold uppercase tracking-wider">Approval Steps</span>
-            <GitBranch className="w-4 h-4 text-blue-600" />
-          </div>
-          <div className="text-2xl font-black text-[var(--color-text-strong)] font-mono">
-            {workflows.reduce((s, w) => s + w.steps, 0)}
-          </div>
-          <div className="text-[11px] text-[var(--color-text-muted)]">Sequential audit checkpoints</div>
-        </div>
-
-        <div className="p-4 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] shadow-sm space-y-1">
-          <div className="flex items-center justify-between text-[var(--color-text-muted)]">
-            <span className="text-xs font-semibold uppercase tracking-wider">Approver Roles</span>
-            <ShieldCheck className="w-4 h-4 text-purple-600" />
-          </div>
-          <div className="text-2xl font-black text-[var(--color-text-strong)] font-mono">
-            {new Set(workflows.map(w => w.approverRole)).size}
-          </div>
-          <div className="text-[11px] text-[var(--color-text-muted)]">Designated authorizers</div>
-        </div>
-      </div>
+      <KpiGrid cols={4}>
+        <KpiCard icon={CheckCircle2} label="Defined Workflows" value={workflows.length} desc="Governance approval chains" tone="amber" />
+        <KpiCard icon={Power} label="Active Routing" value={workflows.filter(w => w.active).length} desc="Currently intercepting submissions" tone="emerald" />
+        <KpiCard icon={GitBranch} label="Approval Steps" value={workflows.reduce((s, w) => s + w.steps, 0)} desc="Sequential audit checkpoints" tone="blue" />
+        <KpiCard icon={ShieldCheck} label="Approver Roles" value={new Set(workflows.map(w => w.approverRole)).size} desc="Designated authorizers" tone="purple" />
+      </KpiGrid>
 
       {/* Workflows Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -3289,49 +3076,12 @@ export function NumberSeriesView({ activeEntityId, notify }: { activeEntityId?: 
       </div>
 
       {/* 4-in-1 KPI Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        <div className="p-4 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] shadow-sm space-y-1">
-          <div className="flex items-center justify-between text-[var(--color-text-muted)]">
-            <span className="text-xs font-semibold uppercase tracking-wider">Configured Series</span>
-            <Hash className="w-4 h-4 text-indigo-600" />
-          </div>
-          <div className="text-2xl font-black text-[var(--color-text-strong)] font-mono">{numberSeries.length}</div>
-          <div className="text-[11px] text-[var(--color-text-muted)]">Document sequence definitions</div>
-        </div>
-
-        <div className="p-4 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] shadow-sm space-y-1">
-          <div className="flex items-center justify-between text-[var(--color-text-muted)]">
-            <span className="text-xs font-semibold uppercase tracking-wider">Active Series</span>
-            <CheckCircle2 className="w-4 h-4 text-emerald-600" />
-          </div>
-          <div className="text-2xl font-black text-emerald-600 font-mono">
-            {numberSeries.filter(s => s.active).length}
-          </div>
-          <div className="text-[11px] text-emerald-600 font-medium">Ready for document creation</div>
-        </div>
-
-        <div className="p-4 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] shadow-sm space-y-1">
-          <div className="flex items-center justify-between text-[var(--color-text-muted)]">
-            <span className="text-xs font-semibold uppercase tracking-wider">Unique Prefixes</span>
-            <KeyRound className="w-4 h-4 text-blue-600" />
-          </div>
-          <div className="text-2xl font-black text-[var(--color-text-strong)] font-mono">
-            {new Set(numberSeries.map(s => s.prefix)).size}
-          </div>
-          <div className="text-[11px] text-[var(--color-text-muted)]">Document type prefixes</div>
-        </div>
-
-        <div className="p-4 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] shadow-sm space-y-1">
-          <div className="flex items-center justify-between text-[var(--color-text-muted)]">
-            <span className="text-xs font-semibold uppercase tracking-wider">Next Sequenced Count</span>
-            <ScrollText className="w-4 h-4 text-purple-600" />
-          </div>
-          <div className="text-2xl font-black text-[var(--color-text-strong)] font-mono">
-            {numberSeries.reduce((s, x) => s + x.nextNumber, 0)}
-          </div>
-          <div className="text-[11px] text-[var(--color-text-muted)]">Issued document count</div>
-        </div>
-      </div>
+      <KpiGrid cols={4}>
+        <KpiCard icon={Hash} label="Configured Series" value={numberSeries.length} desc="Document sequence definitions" tone="indigo" />
+        <KpiCard icon={CheckCircle2} label="Active Series" value={numberSeries.filter(s => s.active).length} desc="Ready for document creation" tone="emerald" />
+        <KpiCard icon={KeyRound} label="Unique Prefixes" value={new Set(numberSeries.map(s => s.prefix)).size} desc="Document type prefixes" tone="blue" />
+        <KpiCard icon={ScrollText} label="Next Sequenced Count" value={numberSeries.reduce((s, x) => s + x.nextNumber, 0)} desc="Issued document count" tone="purple" />
+      </KpiGrid>
 
       {/* Number Series Register */}
       <div className="rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] overflow-hidden shadow-sm">
@@ -3526,45 +3276,12 @@ export function CurrencyView({ activeEntityId, notify }: { activeEntityId?: stri
       </div>
 
       {/* 4-in-1 KPI Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        <div className="p-4 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] shadow-sm space-y-1">
-          <div className="flex items-center justify-between text-[var(--color-text-muted)]">
-            <span className="text-xs font-semibold uppercase tracking-wider">Currencies Supported</span>
-            <Coins className="w-4 h-4 text-rose-600" />
-          </div>
-          <div className="text-2xl font-black text-[var(--color-text-strong)] font-mono">{currencies.length}</div>
-          <div className="text-[11px] text-[var(--color-text-muted)]">Active multi-currency pool</div>
-        </div>
-
-        <div className="p-4 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] shadow-sm space-y-1">
-          <div className="flex items-center justify-between text-[var(--color-text-muted)]">
-            <span className="text-xs font-semibold uppercase tracking-wider">Functional Base</span>
-            <Building2 className="w-4 h-4 text-blue-600" />
-          </div>
-          <div className="text-2xl font-black text-blue-600 font-mono">{baseCurrency?.code || 'PKR'}</div>
-          <div className="text-[11px] text-blue-600 font-medium">Standard GL reporting currency</div>
-        </div>
-
-        <div className="p-4 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] shadow-sm space-y-1">
-          <div className="flex items-center justify-between text-[var(--color-text-muted)]">
-            <span className="text-xs font-semibold uppercase tracking-wider">Enabled Currencies</span>
-            <CheckCircle2 className="w-4 h-4 text-emerald-600" />
-          </div>
-          <div className="text-2xl font-black text-emerald-600 font-mono">
-            {currencies.filter(c => c.active).length}
-          </div>
-          <div className="text-[11px] text-emerald-600 font-medium">Available for transactions</div>
-        </div>
-
-        <div className="p-4 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] shadow-sm space-y-1">
-          <div className="flex items-center justify-between text-[var(--color-text-muted)]">
-            <span className="text-xs font-semibold uppercase tracking-wider">IAS 21 FX Standard</span>
-            <Globe className="w-4 h-4 text-purple-600" />
-          </div>
-          <div className="text-2xl font-black text-[var(--color-text-strong)] font-mono">Active</div>
-          <div className="text-[11px] text-[var(--color-text-muted)]">Realized / Unrealized FX Gain</div>
-        </div>
-      </div>
+      <KpiGrid cols={4}>
+        <KpiCard icon={Coins} label="Currencies Supported" value={currencies.length} desc="Active multi-currency pool" tone="rose" />
+        <KpiCard icon={Building2} label="Functional Base" value={baseCurrency?.code || 'PKR'} desc="Standard GL reporting currency" tone="blue" />
+        <KpiCard icon={CheckCircle2} label="Enabled Currencies" value={currencies.filter(c => c.active).length} desc="Available for transactions" tone="emerald" />
+        <KpiCard icon={Globe} label="IAS 21 FX Standard" value="Active" desc="Realized / Unrealized FX Gain" tone="purple" />
+      </KpiGrid>
 
       {/* Currencies Table */}
       <div className="rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] overflow-hidden shadow-sm">
@@ -3858,45 +3575,12 @@ export function AuditLogsView({ activeEntityId, notify }: { activeEntityId?: str
       </div>
 
       {/* 4-in-1 KPI Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        <div className="p-4 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] shadow-sm space-y-1">
-          <div className="flex items-center justify-between text-[var(--color-text-muted)]">
-            <span className="text-xs font-semibold uppercase tracking-wider">Logged Events</span>
-            <ScrollText className="w-4 h-4 text-teal-600" />
-          </div>
-          <div className="text-2xl font-black text-[var(--color-text-strong)] font-mono">{items.length}</div>
-          <div className="text-[11px] text-[var(--color-text-muted)]">Total chronological events</div>
-        </div>
-
-        <div className="p-4 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] shadow-sm space-y-1">
-          <div className="flex items-center justify-between text-[var(--color-text-muted)]">
-            <span className="text-xs font-semibold uppercase tracking-wider">Action Types</span>
-            <Hash className="w-4 h-4 text-blue-600" />
-          </div>
-          <div className="text-2xl font-black text-blue-600 font-mono">{uniqueActions.length}</div>
-          <div className="text-[11px] text-blue-600 font-medium">Distinct transaction types</div>
-        </div>
-
-        <div className="p-4 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] shadow-sm space-y-1">
-          <div className="flex items-center justify-between text-[var(--color-text-muted)]">
-            <span className="text-xs font-semibold uppercase tracking-wider">Entities Tracked</span>
-            <Building2 className="w-4 h-4 text-purple-600" />
-          </div>
-          <div className="text-2xl font-black text-[var(--color-text-strong)] font-mono">
-            {new Set(items.map(i => i.entityName)).size}
-          </div>
-          <div className="text-[11px] text-[var(--color-text-muted)]">Data models monitored</div>
-        </div>
-
-        <div className="p-4 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] shadow-sm space-y-1">
-          <div className="flex items-center justify-between text-[var(--color-text-muted)]">
-            <span className="text-xs font-semibold uppercase tracking-wider">Audit Integrity</span>
-            <CheckCircle2 className="w-4 h-4 text-emerald-600" />
-          </div>
-          <div className="text-2xl font-black text-emerald-600 font-mono">100% SECURE</div>
-          <div className="text-[11px] text-emerald-600 font-medium">Tamper-evident WORM storage</div>
-        </div>
-      </div>
+      <KpiGrid cols={4}>
+        <KpiCard icon={ScrollText} label="Logged Events" value={items.length} desc="Total chronological events" tone="teal" />
+        <KpiCard icon={Hash} label="Action Types" value={uniqueActions.length} desc="Distinct transaction types" tone="blue" />
+        <KpiCard icon={Building2} label="Entities Tracked" value={new Set(items.map(i => i.entityName)).size} desc="Data models monitored" tone="purple" />
+        <KpiCard icon={CheckCircle2} label="Audit Integrity" value="100% SECURE" desc="Tamper-evident WORM storage" tone="emerald" />
+      </KpiGrid>
 
       {/* Filter Bar */}
       <div className="flex flex-col sm:flex-row items-center gap-3 p-3 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)]">

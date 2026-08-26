@@ -8,6 +8,7 @@ import {
 } from 'lucide-react'
 import { useSalesStore, useCustomersStore, useProductsStore, useCompanyStore } from './stores'
 import { useFormDraft } from './hooks/useFormDraft'
+import { KpiCard, KpiGrid } from './components/ui/kpi-card'
 
 import { money } from './lib/currency'
 
@@ -351,29 +352,17 @@ export const EstimatesAndQuotes: React.FC<{ activeEntityId: string; entities?: a
       </div>
 
       {/* KPI Cards */}
-      <div className="grid grid-cols-2 lg:grid-cols-5 gap-4">
+      <KpiGrid cols={5}>
         {[
-          { label: 'Total Pipeline', value: money(stats.totalValue), desc: `${stats.total} quotations`, icon: Coins, color: 'from-blue-500 to-indigo-600', bg: 'bg-blue-50 dark:bg-blue-950/30', textColor: 'text-blue-600 dark:text-blue-400' },
-          { label: 'Accepted', value: money(stats.acceptedValue), desc: `${stats.accepted} finalized`, icon: CheckCircle2, color: 'from-emerald-500 to-green-600', bg: 'bg-emerald-50 dark:bg-emerald-950/30', textColor: 'text-emerald-600 dark:text-emerald-400' },
-          { label: 'Pending', value: String(stats.pending), desc: 'Awaiting approval', icon: Users, color: 'from-amber-500 to-orange-600', bg: 'bg-amber-50 dark:bg-amber-950/30', textColor: 'text-amber-600 dark:text-amber-400' },
-          { label: 'Cancelled', value: String(stats.cancelled), desc: 'Declined quotes', icon: Ban, color: 'from-rose-500 to-red-600', bg: 'bg-rose-50 dark:bg-rose-950/30', textColor: 'text-rose-600 dark:text-rose-400' },
-          { label: 'Invoiced', value: String(stats.invoiced), desc: 'Converted to bill', icon: FileText, color: 'from-purple-500 to-violet-600', bg: 'bg-purple-50 dark:bg-purple-950/30', textColor: 'text-purple-600 dark:text-purple-400' },
+          { label: 'Total Pipeline', value: money(stats.totalValue), desc: `${stats.total} quotations`, icon: Coins, tone: 'blue' },
+          { label: 'Accepted', value: money(stats.acceptedValue), desc: `${stats.accepted} finalized`, icon: CheckCircle2, tone: 'emerald' },
+          { label: 'Pending', value: String(stats.pending), desc: 'Awaiting approval', icon: Users, tone: 'amber' },
+          { label: 'Cancelled', value: String(stats.cancelled), desc: 'Declined quotes', icon: Ban, tone: 'rose' },
+          { label: 'Invoiced', value: String(stats.invoiced), desc: 'Converted to bill', icon: FileText, tone: 'purple' },
         ].map((kpi) => (
-          <div key={kpi.label} className={`relative overflow-hidden rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)] p-3 shadow-sm hover:shadow-md transition-shadow`}>
-            <div className="flex items-start justify-between">
-              <div>
-                <p className="text-xs font-semibold text-[var(--color-text-muted)] uppercase tracking-wider">{kpi.label}</p>
-                <p className={`text-lg font-semibold mt-1 ${kpi.textColor}`}>{kpi.value}</p>
-                <p className="text-xs text-[var(--color-text-muted)] mt-1">{kpi.desc}</p>
-              </div>
-              <div className={`w-9 h-9 rounded-lg bg-gradient-to-br ${kpi.color} flex items-center justify-center text-white shadow-lg`}>
-                <kpi.icon className="w-4.5 h-4.5" />
-              </div>
-            </div>
-            <div className={`absolute -bottom-4 -right-4 w-24 h-24 rounded-full ${kpi.bg} opacity-50`} />
-          </div>
+          <KpiCard key={kpi.label} {...kpi} />
         ))}
-      </div>
+      </KpiGrid>
 
       {/* Search & Filter Bar */}
       <div className="flex flex-col sm:flex-row gap-3">

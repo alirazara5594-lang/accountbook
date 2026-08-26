@@ -70,9 +70,12 @@ const AssetRegister: React.FC<{ activeEntityId: string; accounts: any[] }> = ({ 
   return (
     <div className="space-y-4">
       {toast && <div className="px-4 py-2 bg-green-50 border border-green-200 text-green-800 rounded-xl text-sm">{toast}</div>}
-      <div className="flex flex-wrap justify-between items-center">
-        <h2 className="text-xl font-bold text-gray-900">Fixed Asset Register</h2>
-        <div className="flex flex-wrap items-center gap-2">
+      <div className="bg-white border border-gray-200 rounded-2xl shadow-sm overflow-hidden">
+        <div className="px-5 py-3.5 border-b border-[var(--color-border)] bg-[var(--color-surface-muted)] flex items-center justify-between">
+          <p className="text-xs font-bold uppercase tracking-wider text-[var(--color-text-strong)]">Fixed Asset Register</p>
+          <span className="text-[11px] text-[var(--color-text-muted)]">{filteredAssets.length} assets · Total Net Book Value {money(totalNBV)}</span>
+        </div>
+        <div className="flex flex-wrap justify-end items-center px-4 py-2">
           <DataToolbar
             query={searchTerm}
             setQuery={setSearchTerm}
@@ -87,9 +90,6 @@ const AssetRegister: React.FC<{ activeEntityId: string; accounts: any[] }> = ({ 
             onRefresh={() => fetchFixedAssets(activeEntityId)}
           />
         </div>
-        <div className="text-right"><p className="text-xs text-gray-500 uppercase tracking-wide">Total Net Book Value</p><p className="text-2xl font-bold text-emerald-600">{money(totalNBV)}</p></div>
-      </div>
-      <div className="bg-white border border-gray-200 rounded-2xl shadow-sm overflow-hidden">
         <table className="w-full text-left text-sm">
           <thead className="bg-gray-50 text-gray-500 border-b border-gray-100 text-xs uppercase tracking-wider">
             <tr>
@@ -225,10 +225,6 @@ const Warehouses: React.FC<{ activeEntityId: string }> = ({ activeEntityId }) =>
 
   return (
     <div className="space-y-4">
-      <div className="flex justify-between items-center">
-        <h2 className="text-xl font-bold text-gray-900">Warehouses</h2>
-        <button onClick={() => setShowForm(true)} className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-xl">+ New Warehouse</button>
-      </div>
       {showForm && (
         <div className="overlay">
           <div className="modal" style={{ maxWidth: '600px', width: '95%' }}>
@@ -258,6 +254,10 @@ const Warehouses: React.FC<{ activeEntityId: string }> = ({ activeEntityId }) =>
         </div>
       )}
       <div className="bg-white border border-gray-200 rounded-2xl shadow-sm overflow-hidden">
+        <div className="px-5 py-3.5 border-b border-[var(--color-border)] bg-[var(--color-surface-muted)] flex items-center justify-between">
+          <p className="text-xs font-bold uppercase tracking-wider text-[var(--color-text-strong)]">Warehouses</p>
+          <button onClick={() => setShowForm(true)} className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-xl">+ New Warehouse</button>
+        </div>
         <table className="w-full text-left text-sm">
           <thead className="bg-gray-50 text-gray-500 border-b border-gray-100 text-xs uppercase tracking-wider"><tr><th className="py-3 px-4">Name</th><th className="py-3 px-4">Location</th></tr></thead>
           <tbody className="divide-y divide-gray-50">
@@ -282,11 +282,11 @@ const StockLevels: React.FC<{ activeEntityId: string }> = ({ activeEntityId }) =
 
   return (
     <div className="space-y-4">
-      <div className="flex justify-between items-center">
-        <h2 className="text-xl font-bold text-gray-900">Stock Levels</h2>
-        <div className="text-right"><p className="text-xs text-gray-500 uppercase tracking-wide">Total Inventory Value</p><p className="text-2xl font-bold text-blue-600">{money(totalValue)}</p></div>
-      </div>
       <div className="bg-white border border-gray-200 rounded-2xl shadow-sm overflow-hidden">
+        <div className="px-5 py-3.5 border-b border-[var(--color-border)] bg-[var(--color-surface-muted)] flex items-center justify-between">
+          <p className="text-xs font-bold uppercase tracking-wider text-[var(--color-text-strong)]">Stock Levels</p>
+          <span className="text-[11px] text-[var(--color-text-muted)]">Total Inventory Value: {money(totalValue)}</span>
+        </div>
         <table className="w-full text-left text-sm">
           <thead className="bg-gray-50 text-gray-500 border-b border-gray-100 text-xs uppercase tracking-wider">
             <tr><th className="py-3 px-4">Product</th><th className="py-3 px-4">Code</th><th className="py-3 px-4">Warehouse</th><th className="py-3 px-4 text-right">Qty on Hand</th><th className="py-3 px-4 text-right">Avg. Cost</th><th className="py-3 px-4 text-right">Total Value</th></tr>
@@ -335,8 +335,7 @@ const StockTransactionsView: React.FC<{ activeEntityId: string; warehouses: any[
   return (
     <div className="space-y-4">
       {toast && <div className="px-4 py-2 bg-green-50 border border-green-200 text-green-800 rounded-xl text-sm">{toast}</div>}
-      <div className="flex justify-between items-center">
-        <h2 className="text-xl font-bold text-gray-900">Stock Transactions</h2>
+      <div className="flex justify-end">
         <button onClick={() => setShowForm(true)} className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-xl">+ Manual Adjustment</button>
       </div>
       {showForm && (
@@ -400,6 +399,10 @@ const StockTransactionsView: React.FC<{ activeEntityId: string; warehouses: any[
         </div>
       )}
       <div className="bg-white border border-gray-200 rounded-2xl shadow-sm overflow-hidden">
+        <div className="px-5 py-3.5 border-b border-[var(--color-border)] bg-[var(--color-surface-muted)] flex items-center justify-between">
+          <p className="text-xs font-bold uppercase tracking-wider text-[var(--color-text-strong)]">Stock Transactions</p>
+          <span className="text-[11px] text-[var(--color-text-muted)]">{txns.length} movements</span>
+        </div>
         <table className="w-full text-left text-sm">
           <thead className="bg-gray-50 text-gray-500 border-b border-gray-100 text-xs uppercase tracking-wider">
             <tr><th className="py-3 px-4">Date</th><th className="py-3 px-4">Type</th><th className="py-3 px-4">Product</th><th className="py-3 px-4">Warehouse</th><th className="py-3 px-4 text-right">Qty</th><th className="py-3 px-4 text-right">Unit Cost</th><th className="py-3 px-4 text-right">Total</th><th className="py-3 px-4">Reference</th></tr>

@@ -4,6 +4,7 @@ import {
   Play, RefreshCw, X, Trash2, Tag
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { KpiCard, KpiGrid } from '@/components/ui/kpi-card';
 
 const formatCurrency = (val: number, currency: string = 'USD') => {
   return new Intl.NumberFormat('en-US', {
@@ -291,61 +292,17 @@ export default function VendorPrepaymentsView({ activeEntityId, accounts = [] }:
       )}
 
       {/* KPI Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        <div className="p-4 rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-xs">
-          <div className="flex items-center justify-between text-slate-500 dark:text-slate-400 text-xs">
-            <span>Total Prepaid Contracts</span>
-            <DollarSign className="w-4 h-4 text-teal-600" />
-          </div>
-          <div className="text-xl font-black text-slate-900 dark:text-white mt-1">
-            {formatCurrency(totalPrepaid)}
-          </div>
-          <div className="text-[11px] text-slate-400 mt-0.5">{schedules.length} total schedules</div>
-        </div>
-
-        <div className="p-4 rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-xs">
-          <div className="flex items-center justify-between text-slate-500 dark:text-slate-400 text-xs">
-            <span>Amortized Expensed (P&L)</span>
-            <CheckCircle2 className="w-4 h-4 text-emerald-600" />
-          </div>
-          <div className="text-xl font-black text-emerald-600 dark:text-emerald-400 mt-1">
-            {formatCurrency(totalAmortized)}
-          </div>
-          <div className="text-[11px] text-emerald-600 mt-0.5 font-semibold">
-            {totalPrepaid > 0 ? Math.round((totalAmortized / totalPrepaid) * 100) : 0}% recognized
-          </div>
-        </div>
-
-        <div className="p-4 rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-xs">
-          <div className="flex items-center justify-between text-slate-500 dark:text-slate-400 text-xs">
-            <span>Unamortized Asset Balance</span>
-            <Clock className="w-4 h-4 text-amber-600" />
-          </div>
-          <div className="text-xl font-black text-amber-600 dark:text-amber-400 mt-1">
-            {formatCurrency(totalRemaining)}
-          </div>
-          <div className="text-[11px] text-slate-400 mt-0.5">Current Asset (14000)</div>
-        </div>
-
-        <div className="p-4 rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-xs">
-          <div className="flex items-center justify-between text-slate-500 dark:text-slate-400 text-xs">
-            <span>Active Policy Schedules</span>
-            <Tag className="w-4 h-4 text-indigo-600" />
-          </div>
-          <div className="text-xl font-black text-indigo-600 dark:text-indigo-400 mt-1">
-            {activeCount}
-          </div>
-          <div className="text-[11px] text-slate-400 mt-0.5">Pending monthly runs</div>
-        </div>
-      </div>
+      <KpiGrid cols={4}>
+        <KpiCard icon={DollarSign} label="Total Prepaid Contracts" value={formatCurrency(totalPrepaid)} desc={`${schedules.length} total schedules`} tone="teal" />
+        <KpiCard icon={CheckCircle2} label="Amortized Expensed (P&L)" value={formatCurrency(totalAmortized)} desc={`${totalPrepaid > 0 ? Math.round((totalAmortized / totalPrepaid) * 100) : 0}% recognized`} tone="emerald" />
+        <KpiCard icon={Clock} label="Unamortized Asset Balance" value={formatCurrency(totalRemaining)} desc="Current Asset (14000)" tone="amber" />
+        <KpiCard icon={Tag} label="Active Policy Schedules" value={activeCount} desc="Pending monthly runs" tone="indigo" />
+      </KpiGrid>
 
       {/* Schedules Table */}
       <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl overflow-hidden shadow-xs">
-        <div className="p-4 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between flex-wrap gap-2">
-          <div>
-            <h3 className="font-bold text-sm text-slate-900 dark:text-white">Active Prepayment Schedules</h3>
-            <p className="text-xs text-slate-500">Track and execute monthly amortization batches into General Journal.</p>
-          </div>
+        <div className="px-5 py-3.5 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between flex-wrap gap-2">
+          <p className="text-xs font-bold uppercase tracking-wider text-[var(--color-text-strong)]">Active Prepayment Schedules</p>
           <button
             onClick={loadSchedules}
             className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-slate-300 dark:border-slate-700 text-xs font-semibold text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 cursor-pointer"

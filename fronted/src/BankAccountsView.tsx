@@ -8,6 +8,7 @@ import type { Entity } from './EntitySettings';
 import { apiClient } from './api/client';
 import { money } from './lib/currency';
 import { downloadExcel, downloadCSV } from './lib/exportUtils';
+import { KpiCard, KpiGrid } from './components/ui/kpi-card';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 
@@ -411,28 +412,12 @@ export const BankAccountsView: React.FC<BankAccountsViewProps> = ({ activeEntity
       </div>
 
       {/* 4 Financial KPI Cards */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        {[
-          { label: 'TOTAL BANK LIQUIDITY', value: money(totalBalance, currentEntity?.currencyCode), desc: `Across ${filtered.length} bank accounts`, icon: Landmark, color: 'from-blue-500 to-blue-600', bg: 'bg-blue-50 dark:bg-blue-950/30', textColor: 'text-blue-600 dark:text-blue-400' },
-          { label: 'ACTIVE ACCOUNTS', value: activeCount, desc: 'Operational institutional accounts', icon: CheckCircle2, color: 'from-emerald-500 to-emerald-600', bg: 'bg-emerald-50 dark:bg-emerald-950/30', textColor: 'text-emerald-600 dark:text-emerald-400' },
-          { label: 'RECONCILIATION READY', value: reconciledCount, desc: 'Statement matching enabled', icon: RefreshCw, color: 'from-violet-500 to-violet-600', bg: 'bg-violet-50 dark:bg-violet-950/30', textColor: 'text-violet-600 dark:text-violet-400' },
-          { label: 'AVERAGE BALANCE', value: money(avgBalance, currentEntity?.currencyCode), desc: 'Per account average', icon: DollarSign, color: 'from-amber-500 to-orange-500', bg: 'bg-amber-50 dark:bg-amber-950/30', textColor: 'text-amber-600 dark:text-amber-400' },
-        ].map((kpi) => (
-          <div key={kpi.label} className="relative overflow-hidden rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)] p-3 shadow-sm hover:shadow-md transition-shadow">
-            <div className="flex items-start justify-between">
-              <div>
-                <p className="text-xs font-semibold text-[var(--color-text-muted)] uppercase tracking-wider">{kpi.label}</p>
-                <p className={`text-lg font-semibold mt-1 ${kpi.textColor}`}>{kpi.value}</p>
-                <p className="text-xs text-[var(--color-text-muted)] mt-1">{kpi.desc}</p>
-              </div>
-              <div className={`w-9 h-9 rounded-lg bg-gradient-to-br ${kpi.color} flex items-center justify-center text-white shadow-lg`}>
-                <kpi.icon className="w-5 h-5" />
-              </div>
-            </div>
-            <div className={`absolute -bottom-4 -right-4 w-24 h-24 rounded-full ${kpi.bg} opacity-50`} />
-          </div>
-        ))}
-      </div>
+      <KpiGrid cols={4}>
+        <KpiCard icon={Landmark} label="TOTAL BANK LIQUIDITY" value={money(totalBalance, currentEntity?.currencyCode)} desc={`Across ${filtered.length} bank accounts`} tone="blue" />
+        <KpiCard icon={CheckCircle2} label="ACTIVE ACCOUNTS" value={activeCount} desc="Operational institutional accounts" tone="emerald" />
+        <KpiCard icon={RefreshCw} label="RECONCILIATION READY" value={reconciledCount} desc="Statement matching enabled" tone="purple" />
+        <KpiCard icon={DollarSign} label="AVERAGE BALANCE" value={money(avgBalance, currentEntity?.currencyCode)} desc="Per account average" tone="amber" />
+      </KpiGrid>
 
       {/* Filter Toolbar & Non-Overlapping Search Box */}
       <div className="flex flex-wrap items-center justify-between gap-3 bg-[var(--color-surface)] p-3 rounded-xl border border-[var(--color-border)] shadow-xs">
@@ -497,12 +482,12 @@ export const BankAccountsView: React.FC<BankAccountsViewProps> = ({ activeEntity
 
       {/* Bank Accounts Table */}
       <div className="bg-[var(--color-surface)] border border-[var(--color-border)] rounded-xl shadow-xs overflow-hidden">
-        <div className="p-3 border-b border-[var(--color-border)] flex justify-between items-center bg-gray-50/50 dark:bg-gray-900/50">
-          <span className="text-xs font-bold text-[var(--color-text-strong)] flex items-center gap-2">
-            <Landmark className="w-3.5 h-3.5 text-blue-600" /> Bank Accounts Directory ({filtered.length})
-          </span>
+        <div className="px-5 py-3.5 border-b border-[var(--color-border)] bg-[var(--color-surface-muted)] flex items-center justify-between">
+          <p className="text-xs font-bold uppercase tracking-wider text-[var(--color-text-strong)]">
+            <Landmark className="w-3.5 h-3.5 text-blue-600 inline mr-1.5 -mt-0.5" /> Bank Accounts Directory
+          </p>
           <span className="text-[11px] text-[var(--color-text-muted)]">
-            Click <strong>Certificate PDF</strong> to download an official account balance certificate.
+            {filtered.length} accounts · Click <strong>Certificate PDF</strong> to download an official account balance certificate.
           </span>
         </div>
 

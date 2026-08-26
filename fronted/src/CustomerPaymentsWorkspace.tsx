@@ -6,6 +6,7 @@ import { apiClient } from './api/client';
 import { useCompanyStore } from './stores';
 import { money } from './lib/currency';
 import { downloadExcel, downloadCSV } from './lib/exportUtils';
+import { KpiCard, KpiGrid } from './components/ui/kpi-card';
 import {
   Plus, X, DollarSign, Receipt,
   Search, Download, FileSpreadsheet,
@@ -428,36 +429,22 @@ export function CustomerPaymentsWorkspace() {
         </div>
       </div>
 
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+      <KpiGrid cols={4}>
         {[
-          { label: 'TOTAL COLLECTED', value: money(totalReceived), desc: 'Customer payments received', icon: DollarSign, color: 'from-blue-500 to-blue-600', bg: 'bg-blue-50 dark:bg-blue-950/30', textColor: 'text-blue-600 dark:text-blue-400' },
-          { label: 'TOTAL RECEIPTS', value: totalCount, desc: 'Settlement transactions', icon: Receipt, color: 'from-teal-500 to-teal-600', bg: 'bg-teal-50 dark:bg-teal-950/30', textColor: 'text-teal-600 dark:text-teal-400' },
-          { label: 'PAYING CUSTOMERS', value: uniqueCustomers, desc: 'Active accounts settled', icon: Users, color: 'from-violet-500 to-violet-600', bg: 'bg-violet-50 dark:bg-violet-950/30', textColor: 'text-violet-600 dark:text-violet-400' },
-          { label: 'AVERAGE RECEIPT', value: money(avgReceipt), desc: 'Per receipt average', icon: BarChart3, color: 'from-emerald-500 to-emerald-600', bg: 'bg-emerald-50 dark:bg-emerald-950/30', textColor: 'text-emerald-600 dark:text-emerald-400' },
+          { label: 'TOTAL COLLECTED', value: money(totalReceived), desc: 'Customer payments received', icon: DollarSign, tone: 'blue' },
+          { label: 'TOTAL RECEIPTS', value: totalCount, desc: 'Settlement transactions', icon: Receipt, tone: 'teal' },
+          { label: 'PAYING CUSTOMERS', value: uniqueCustomers, desc: 'Active accounts settled', icon: Users, tone: 'violet' },
+          { label: 'AVERAGE RECEIPT', value: money(avgReceipt), desc: 'Per receipt average', icon: BarChart3, tone: 'emerald' },
         ].map((kpi) => (
-          <div key={kpi.label} className="relative overflow-hidden rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)] p-3 shadow-sm hover:shadow-md transition-shadow">
-            <div className="flex items-start justify-between">
-              <div>
-                <p className="text-xs font-semibold text-[var(--color-text-muted)] uppercase tracking-wider">{kpi.label}</p>
-                <p className={`text-lg font-semibold mt-1 ${kpi.textColor}`}>{kpi.value}</p>
-                <p className="text-xs text-[var(--color-text-muted)] mt-1">{kpi.desc}</p>
-              </div>
-              <div className={`w-9 h-9 rounded-lg bg-gradient-to-br ${kpi.color} flex items-center justify-center text-white shadow-lg`}>
-                <kpi.icon className="w-5 h-5" />
-              </div>
-            </div>
-            <div className={`absolute -bottom-4 -right-4 w-24 h-24 rounded-full ${kpi.bg} opacity-50`} />
-          </div>
+          <KpiCard key={kpi.label} {...kpi} />
         ))}
-      </div>
+      </KpiGrid>
 
       <div className="bg-[var(--color-surface)] border border-[var(--color-border)] rounded-xl shadow-xs overflow-hidden">
-        <div className="p-3 border-b border-[var(--color-border)] flex justify-between items-center bg-gray-50/50 dark:bg-gray-900/50">
-          <span className="text-xs font-bold text-[var(--color-text-strong)] flex items-center gap-2">
-            <Receipt className="w-3.5 h-3.5 text-blue-600" /> Collections & Receipts Register ({filteredPayments.length})
-          </span>
+        <div className="px-5 py-3.5 border-b border-[var(--color-border)] bg-[var(--color-surface-muted)] flex items-center justify-between">
+          <p className="text-xs font-bold uppercase tracking-wider text-[var(--color-text-strong)]">Collections & Receipts Register</p>
           <span className="text-[11px] text-[var(--color-text-muted)]">
-            Click <strong>Receipt PDF</strong> on any row to download an official payment receipt slip.
+            {filteredPayments.length} receipts · Click <strong>Receipt PDF</strong> on any row to download an official payment receipt slip.
           </span>
         </div>
 

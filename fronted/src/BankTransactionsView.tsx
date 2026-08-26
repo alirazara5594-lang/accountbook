@@ -8,6 +8,7 @@ import type { Entity } from './EntitySettings';
 import { useBankingStore } from './stores';
 import { money } from './lib/currency';
 import { downloadExcel, downloadCSV } from './lib/exportUtils';
+import { KpiCard, KpiGrid } from './components/ui/kpi-card';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 
@@ -398,28 +399,12 @@ export const BankTransactionsView = ({
       </div>
 
       {/* 4 Financial Metric Cards - Modern KPI Design */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        {[
-          { label: 'TOTAL INFLOW (+)', value: money(totalInflow, currentEntity?.currencyCode), desc: 'Deposits & customer receipts', icon: TrendingUp, color: 'from-emerald-500 to-teal-500', bg: 'bg-emerald-50 dark:bg-emerald-950/30', textColor: 'text-emerald-600 dark:text-emerald-400' },
-          { label: 'TOTAL OUTFLOW (-)', value: money(totalOutflow, currentEntity?.currencyCode), desc: 'Disbursements & payments', icon: TrendingDown, color: 'from-rose-500 to-red-500', bg: 'bg-rose-50 dark:bg-rose-950/30', textColor: 'text-rose-600 dark:text-rose-400' },
-          { label: 'NET CASH MOVEMENT', value: money(netMovement, currentEntity?.currencyCode), desc: netMovement >= 0 ? 'Net positive liquidity' : 'Net liquidity contraction', icon: ArrowRightLeft, color: 'from-blue-500 to-indigo-500', bg: netMovement >= 0 ? 'bg-blue-50 dark:bg-blue-950/30' : 'bg-amber-50 dark:bg-amber-950/30', textColor: netMovement >= 0 ? 'text-blue-600 dark:text-blue-400' : 'text-amber-600 dark:text-amber-400' },
-          { label: 'TRANSACTIONS COUNT', value: totalCount, desc: 'Ledger movement records', icon: Hash, color: 'from-violet-500 to-purple-500', bg: 'bg-violet-50 dark:bg-violet-950/30', textColor: 'text-violet-600 dark:text-violet-400' },
-        ].map((kpi) => (
-          <div key={kpi.label} className="relative overflow-hidden rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)] p-3 shadow-sm hover:shadow-md transition-shadow">
-            <div className="flex items-start justify-between">
-              <div>
-                <p className="text-xs font-semibold text-[var(--color-text-muted)] uppercase tracking-wider">{kpi.label}</p>
-                <p className={`text-lg font-semibold mt-1 ${kpi.textColor}`}>{kpi.value}</p>
-                <p className="text-xs text-[var(--color-text-muted)] mt-1">{kpi.desc}</p>
-              </div>
-              <div className={`w-9 h-9 rounded-lg bg-gradient-to-br ${kpi.color} flex items-center justify-center text-white shadow-lg`}>
-                <kpi.icon className="w-5 h-5" />
-              </div>
-            </div>
-            <div className={`absolute -bottom-4 -right-4 w-24 h-24 rounded-full ${kpi.bg} opacity-50`} />
-          </div>
-        ))}
-      </div>
+      <KpiGrid cols={4}>
+        <KpiCard icon={TrendingUp} label="TOTAL INFLOW (+)" value={money(totalInflow, currentEntity?.currencyCode)} desc="Deposits & customer receipts" tone="emerald" />
+        <KpiCard icon={TrendingDown} label="TOTAL OUTFLOW (-)" value={money(totalOutflow, currentEntity?.currencyCode)} desc="Disbursements & payments" tone="rose" />
+        <KpiCard icon={ArrowRightLeft} label="NET CASH MOVEMENT" value={money(netMovement, currentEntity?.currencyCode)} desc={netMovement >= 0 ? 'Net positive liquidity' : 'Net liquidity contraction'} tone={netMovement >= 0 ? 'blue' : 'amber'} />
+        <KpiCard icon={Hash} label="TRANSACTIONS COUNT" value={totalCount} desc="Ledger movement records" tone="purple" />
+      </KpiGrid>
 
       {/* Filter & Search Toolbar */}
       <div className="flex flex-wrap items-center justify-between gap-3 bg-[var(--color-surface)] p-3 rounded-xl border border-[var(--color-border)] shadow-xs">
@@ -527,12 +512,12 @@ export const BankTransactionsView = ({
 
       {/* Transactions Table */}
       <div className="bg-[var(--color-surface)] border border-[var(--color-border)] rounded-xl shadow-xs overflow-hidden">
-        <div className="p-3 border-b border-[var(--color-border)] flex justify-between items-center bg-gray-50/50 dark:bg-gray-900/50">
-          <span className="text-xs font-bold text-[var(--color-text-strong)] flex items-center gap-2">
-            <Landmark className="w-3.5 h-3.5 text-blue-600" /> Bank & Cash Transactions Ledger ({filtered.length})
-          </span>
+        <div className="px-5 py-3.5 border-b border-[var(--color-border)] bg-[var(--color-surface-muted)] flex items-center justify-between">
+          <p className="text-xs font-bold uppercase tracking-wider text-[var(--color-text-strong)]">
+            <Landmark className="w-3.5 h-3.5 text-blue-600 inline mr-1.5 -mt-0.5" /> Bank & Cash Transactions Ledger
+          </p>
           <span className="text-[11px] text-[var(--color-text-muted)]">
-            Click <strong>Voucher PDF</strong> to generate an official transaction advice slip.
+            {filtered.length} records · Click <strong>Voucher PDF</strong> to generate an official transaction advice slip.
           </span>
         </div>
 

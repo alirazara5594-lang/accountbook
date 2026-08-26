@@ -1,13 +1,15 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useVendorsStore, useCompanyStore, useProcurementStore } from './stores';
 import {
-  Clock, Download, ArrowLeft,
+  Download, ArrowLeft,
   Search, Printer, FileSpreadsheet,
-  CheckCircle2, ChevronRight, RefreshCw, Layers
+  CheckCircle2, ChevronRight, RefreshCw,
+  CalendarCheck, Hourglass, History, AlertTriangle, ShieldAlert, Wallet
 } from 'lucide-react';
 import { money } from './lib/currency';
 import { downloadExcel, downloadCSV } from './lib/exportUtils';
 import ExportDropdown from './components/ExportDropdown';
+import { KpiCard, KpiGrid } from './components/ui/kpi-card';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 
@@ -540,47 +542,21 @@ export function PayablesAgingWorkspace({ activeEntityId }: PayablesAgingProps) {
         </div>
 
         {/* Aging Bucket Metric Cards */}
-        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-2">
-          <div className="bg-[var(--color-surface)] p-3 rounded-xl border border-[var(--color-border)] shadow-2xs text-center">
-            <span className="text-[10px] font-bold text-emerald-600 block uppercase">Current</span>
-            <span className="text-sm font-extrabold text-[var(--color-text-strong)] mt-0.5 block">{fmt(summary.current)}</span>
-            <span className="text-[9px] text-[var(--color-text-muted)]">Not yet due</span>
-          </div>
-          <div className="bg-[var(--color-surface)] p-3 rounded-xl border border-[var(--color-border)] shadow-2xs text-center">
-            <span className="text-[10px] font-bold text-amber-600 block uppercase">1 - 30 Days</span>
-            <span className="text-sm font-extrabold text-[var(--color-text-strong)] mt-0.5 block">{fmt(summary.days30)}</span>
-            <span className="text-[9px] text-[var(--color-text-muted)]">Past due</span>
-          </div>
-          <div className="bg-[var(--color-surface)] p-3 rounded-xl border border-[var(--color-border)] shadow-2xs text-center">
-            <span className="text-[10px] font-bold text-amber-600 block uppercase">31 - 60 Days</span>
-            <span className="text-sm font-extrabold text-[var(--color-text-strong)] mt-0.5 block">{fmt(summary.days60)}</span>
-            <span className="text-[9px] text-[var(--color-text-muted)]">Overdue</span>
-          </div>
-          <div className="bg-[var(--color-surface)] p-3 rounded-xl border border-[var(--color-border)] shadow-2xs text-center">
-            <span className="text-[10px] font-bold text-rose-600 block uppercase">61 - 90 Days</span>
-            <span className="text-sm font-extrabold text-[var(--color-text-strong)] mt-0.5 block">{fmt(summary.days90)}</span>
-            <span className="text-[9px] text-[var(--color-text-muted)]">High Risk</span>
-          </div>
-          <div className="bg-[var(--color-surface)] p-3 rounded-xl border border-[var(--color-border)] shadow-2xs text-center">
-            <span className="text-[10px] font-bold text-rose-700 block uppercase">90+ Days</span>
-            <span className="text-sm font-extrabold text-rose-600 mt-0.5 block">{fmt(summary.days90Plus)}</span>
-            <span className="text-[9px] text-[var(--color-text-muted)]">Critical</span>
-          </div>
-          <div className="bg-blue-50/50 dark:bg-blue-950/20 p-3 rounded-xl border border-blue-200 dark:border-blue-800 shadow-2xs text-center">
-            <span className="text-[10px] font-bold text-blue-700 dark:text-blue-300 block uppercase">Total Balance</span>
-            <span className="text-sm font-extrabold text-blue-800 dark:text-blue-200 mt-0.5 block">{fmt(summary.totalDue)}</span>
-            <span className="text-[9px] text-blue-600 dark:text-blue-400">{summary.openBillsCount} open bills</span>
-          </div>
-        </div>
+        <KpiGrid cols={3}>
+          <KpiCard icon={CalendarCheck} label="Current" value={fmt(summary.current)} desc="Not yet due" tone="emerald" />
+          <KpiCard icon={Hourglass} label="1 - 30 Days" value={fmt(summary.days30)} desc="Past due" tone="amber" />
+          <KpiCard icon={History} label="31 - 60 Days" value={fmt(summary.days60)} desc="Overdue" tone="amber" />
+          <KpiCard icon={AlertTriangle} label="61 - 90 Days" value={fmt(summary.days90)} desc="High Risk" tone="rose" />
+          <KpiCard icon={ShieldAlert} label="90+ Days" value={fmt(summary.days90Plus)} desc="Critical" tone="red" />
+          <KpiCard icon={Wallet} label="Total Balance" value={fmt(summary.totalDue)} desc={`${summary.openBillsCount} open bills`} tone="blue" />
+        </KpiGrid>
 
         {/* Itemized Open Bills Table */}
         <div className="bg-[var(--color-surface)] border border-[var(--color-border)] rounded-xl shadow-xs overflow-hidden">
-          <div className="p-3 border-b border-[var(--color-border)] flex justify-between items-center bg-gray-50/50 dark:bg-gray-900/50">
-            <span className="text-xs font-bold text-[var(--color-text-strong)] flex items-center gap-1.5">
-              <Layers className="w-3.5 h-3.5 text-blue-600" /> Open Vendor Bills Schedule ({openBills.length})
-            </span>
+          <div className="px-5 py-3.5 border-b border-[var(--color-border)] bg-[var(--color-surface-muted)] flex items-center justify-between">
+            <p className="text-xs font-bold uppercase tracking-wider text-[var(--color-text-strong)]">Open Vendor Bills Schedule</p>
             <span className="text-[11px] text-[var(--color-text-muted)]">
-              Ranked from oldest overdue bill to newest
+              {openBills.length} bills • Ranked from oldest overdue bill to newest
             </span>
           </div>
 
@@ -741,38 +717,14 @@ export function PayablesAgingWorkspace({ activeEntityId }: PayablesAgingProps) {
       </div>
 
       {/* Top Aging Exposure Breakdown Grid */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-2">
-        <div className="bg-[var(--color-surface)] p-3 rounded-xl border border-[var(--color-border)] shadow-2xs text-center">
-          <span className="text-[10px] font-bold text-emerald-600 block uppercase">Current (Not Due)</span>
-          <span className="text-sm font-extrabold text-[var(--color-text-strong)] mt-0.5 block">{fmt(overallTotals.current)}</span>
-          <span className="text-[9px] text-[var(--color-text-muted)]">Within credit terms</span>
-        </div>
-        <div className="bg-[var(--color-surface)] p-3 rounded-xl border border-[var(--color-border)] shadow-2xs text-center">
-          <span className="text-[10px] font-bold text-amber-600 block uppercase">1 - 30 Days</span>
-          <span className="text-sm font-extrabold text-[var(--color-text-strong)] mt-0.5 block">{fmt(overallTotals.days30)}</span>
-          <span className="text-[9px] text-[var(--color-text-muted)]">Grace period</span>
-        </div>
-        <div className="bg-[var(--color-surface)] p-3 rounded-xl border border-[var(--color-border)] shadow-2xs text-center">
-          <span className="text-[10px] font-bold text-amber-600 block uppercase">31 - 60 Days</span>
-          <span className="text-sm font-extrabold text-[var(--color-text-strong)] mt-0.5 block">{fmt(overallTotals.days60)}</span>
-          <span className="text-[9px] text-[var(--color-text-muted)]">Overdue</span>
-        </div>
-        <div className="bg-[var(--color-surface)] p-3 rounded-xl border border-[var(--color-border)] shadow-2xs text-center">
-          <span className="text-[10px] font-bold text-rose-600 block uppercase">61 - 90 Days</span>
-          <span className="text-sm font-extrabold text-[var(--color-text-strong)] mt-0.5 block">{fmt(overallTotals.days90)}</span>
-          <span className="text-[9px] text-[var(--color-text-muted)]">Immediate action</span>
-        </div>
-        <div className="bg-[var(--color-surface)] p-3 rounded-xl border border-[var(--color-border)] shadow-2xs text-center">
-          <span className="text-[10px] font-bold text-rose-700 block uppercase">90+ Days</span>
-          <span className="text-sm font-extrabold text-rose-600 mt-0.5 block">{fmt(overallTotals.days90Plus)}</span>
-          <span className="text-[9px] text-[var(--color-text-muted)]">Critical risk</span>
-        </div>
-        <div className="bg-blue-50/50 dark:bg-blue-950/20 p-3 rounded-xl border border-blue-200 dark:border-blue-800 shadow-2xs text-center">
-          <span className="text-[10px] font-bold text-blue-700 dark:text-blue-300 block uppercase">Total AP Due</span>
-          <span className="text-sm font-extrabold text-blue-800 dark:text-blue-200 mt-0.5 block">{fmt(overallTotals.totalDue)}</span>
-          <span className="text-[9px] text-blue-600 dark:text-blue-400">{overallTotals.vendorsWithBalances} suppliers</span>
-        </div>
-      </div>
+      <KpiGrid cols={3}>
+        <KpiCard icon={CalendarCheck} label="Current (Not Due)" value={fmt(overallTotals.current)} desc="Within credit terms" tone="emerald" />
+        <KpiCard icon={Hourglass} label="1 - 30 Days" value={fmt(overallTotals.days30)} desc="Grace period" tone="amber" />
+        <KpiCard icon={History} label="31 - 60 Days" value={fmt(overallTotals.days60)} desc="Overdue" tone="amber" />
+        <KpiCard icon={AlertTriangle} label="61 - 90 Days" value={fmt(overallTotals.days90)} desc="Immediate action" tone="rose" />
+        <KpiCard icon={ShieldAlert} label="90+ Days" value={fmt(overallTotals.days90Plus)} desc="Critical risk" tone="red" />
+        <KpiCard icon={Wallet} label="Total AP Due" value={fmt(overallTotals.totalDue)} desc={`${overallTotals.vendorsWithBalances} suppliers`} tone="blue" />
+      </KpiGrid>
 
       {/* Aging Risk Filter Tabs */}
       <div className="flex items-center gap-1.5 overflow-x-auto pb-1">
@@ -801,12 +753,10 @@ export function PayablesAgingWorkspace({ activeEntityId }: PayablesAgingProps) {
 
       {/* Vendors Aging Schedule Table */}
       <div className="bg-[var(--color-surface)] border border-[var(--color-border)] rounded-xl shadow-xs overflow-hidden">
-        <div className="p-3 border-b border-[var(--color-border)] flex justify-between items-center bg-gray-50/50 dark:bg-gray-900/50">
-          <span className="text-xs font-bold text-[var(--color-text-strong)] flex items-center gap-2">
-            <Clock className="w-3.5 h-3.5 text-blue-600" /> Supplier Payables Aging Matrix ({filteredData.length})
-          </span>
+        <div className="px-5 py-3.5 border-b border-[var(--color-border)] bg-[var(--color-surface-muted)] flex items-center justify-between">
+          <p className="text-xs font-bold uppercase tracking-wider text-[var(--color-text-strong)]">Supplier Payables Aging Matrix</p>
           <span className="text-[11px] text-[var(--color-text-muted)]">
-            Click <strong>Download PDF</strong> on any vendor row to export their schedule.
+            {filteredData.length} suppliers • Click <strong>Download PDF</strong> on any vendor row to export their schedule.
           </span>
         </div>
 

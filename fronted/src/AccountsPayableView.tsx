@@ -2,8 +2,9 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { reportsApi } from './api/modules/reports.api';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Input } from '@/components/ui/input';
-import { Search, Wallet } from 'lucide-react';
+import { Search, Wallet, CalendarCheck, AlarmClock } from 'lucide-react';
 import { DataToolbar } from '@/components/ui/data-toolbar';
+import { KpiCard, KpiGrid } from '@/components/ui/kpi-card';
 import type { Entity } from './EntitySettings';
 
 interface ApBill {
@@ -95,20 +96,11 @@ export const AccountsPayableView: React.FC<AccountsPayableViewProps> = ({ active
         </div>
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-        <div className="p-3 bg-white border border-slate-200 rounded-xl shadow-xs">
-          <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Total Payable</p>
-          <p className="text-lg font-bold text-slate-900 font-mono mt-0.5">{totalDue.toLocaleString(undefined, { minimumFractionDigits: 2 })}</p>
-        </div>
-        <div className="p-3 bg-emerald-50 border border-emerald-200 rounded-xl shadow-xs">
-          <p className="text-[10px] font-bold text-emerald-600 uppercase tracking-wider">Current (Not Yet Due)</p>
-          <p className="text-lg font-bold text-emerald-800 font-mono mt-0.5">{current.toLocaleString(undefined, { minimumFractionDigits: 2 })}</p>
-        </div>
-        <div className="p-3 bg-rose-50 border border-rose-200 rounded-xl shadow-xs">
-          <p className="text-[10px] font-bold text-rose-600 uppercase tracking-wider">Past Due</p>
-          <p className="text-lg font-bold text-rose-800 font-mono mt-0.5">{pastDue.toLocaleString(undefined, { minimumFractionDigits: 2 })}</p>
-        </div>
-      </div>
+      <KpiGrid cols={3}>
+        <KpiCard icon={Wallet} label="Total Payable" value={totalDue.toLocaleString(undefined, { minimumFractionDigits: 2 })} tone="blue" />
+        <KpiCard icon={CalendarCheck} label="Current (Not Yet Due)" value={current.toLocaleString(undefined, { minimumFractionDigits: 2 })} tone="emerald" />
+        <KpiCard icon={AlarmClock} label="Past Due" value={pastDue.toLocaleString(undefined, { minimumFractionDigits: 2 })} tone="rose" />
+      </KpiGrid>
 
       <div className="flex flex-wrap items-center gap-3 p-3 bg-slate-50 border border-slate-200 rounded-xl">
         <div className="relative w-72">

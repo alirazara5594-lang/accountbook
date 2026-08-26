@@ -15,6 +15,7 @@ import {
 import { money } from './lib/currency';
 import { downloadExcel, downloadCSV } from './lib/exportUtils';
 import ExportDropdown from './components/ExportDropdown';
+import { KpiCard } from './components/ui/kpi-card';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 
@@ -633,59 +634,12 @@ export const FixedAssets: React.FC<{ activeEntityId: string }> = ({ activeEntity
 
       {/* KPI Cards */}
       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
-        <div className="bg-[var(--color-surface)] border border-[var(--color-border)] rounded-2xl p-3.5 shadow-2xs space-y-1">
-          <div className="flex items-center justify-between text-[11px] font-semibold text-[var(--color-text-muted)]">
-            <span>Capitalized Cost</span>
-            <DollarSign className="w-3.5 h-3.5 text-blue-600" />
-          </div>
-          <p className="text-base font-bold text-[var(--color-text-strong)] font-mono">{money(totalCost)}</p>
-          <p className="text-[10px] text-blue-600 font-semibold">{assets.length} Total Assets</p>
-        </div>
-
-        <div className="bg-[var(--color-surface)] border border-[var(--color-border)] rounded-2xl p-3.5 shadow-2xs space-y-1">
-          <div className="flex items-center justify-between text-[11px] font-semibold text-[var(--color-text-muted)]">
-            <span>Accum. Depreciation</span>
-            <TrendingDown className="w-3.5 h-3.5 text-amber-600" />
-          </div>
-          <p className="text-base font-bold text-amber-600 font-mono">{money(totalAccumDepr)}</p>
-          <p className="text-[10px] text-[var(--color-text-muted)]">Contra-Asset Balance</p>
-        </div>
-
-        <div className="bg-[var(--color-surface)] border border-[var(--color-border)] rounded-2xl p-3.5 shadow-2xs space-y-1">
-          <div className="flex items-center justify-between text-[11px] font-semibold text-[var(--color-text-muted)]">
-            <span>Net Book Value (NBV)</span>
-            <Building className="w-3.5 h-3.5 text-teal-600" />
-          </div>
-          <p className="text-base font-bold text-teal-600 font-mono">{money(totalNBV)}</p>
-          <p className="text-[10px] text-[var(--color-text-muted)]">Carrying Value</p>
-        </div>
-
-        <div className="bg-[var(--color-surface)] border border-[var(--color-border)] rounded-2xl p-3.5 shadow-2xs space-y-1">
-          <div className="flex items-center justify-between text-[11px] font-semibold text-[var(--color-text-muted)]">
-            <span>Factory Machinery</span>
-            <Cpu className="w-3.5 h-3.5 text-purple-600" />
-          </div>
-          <p className="text-base font-bold text-purple-600 font-mono">{plantMachineryCount}</p>
-          <p className="text-[10px] text-purple-600/80 font-semibold">MOH Cost Centers</p>
-        </div>
-
-        <div className="bg-[var(--color-surface)] border border-[var(--color-border)] rounded-2xl p-3.5 shadow-2xs space-y-1">
-          <div className="flex items-center justify-between text-[11px] font-semibold text-[var(--color-text-muted)]">
-            <span>Under Maintenance</span>
-            <Wrench className="w-3.5 h-3.5 text-rose-600" />
-          </div>
-          <p className="text-base font-bold text-rose-600 font-mono">{underMaintenanceCount}</p>
-          <p className="text-[10px] text-rose-600/80 font-semibold">Service Tickets</p>
-        </div>
-
-        <div className="bg-[var(--color-surface)] border border-[var(--color-border)] rounded-2xl p-3.5 shadow-2xs space-y-1">
-          <div className="flex items-center justify-between text-[11px] font-semibold text-[var(--color-text-muted)]">
-            <span>Procurement Pending</span>
-            <ShoppingCart className="w-3.5 h-3.5 text-emerald-600" />
-          </div>
-          <p className="text-base font-bold text-emerald-600 font-mono">{uncapitalizedProcurementLines.length}</p>
-          <p className="text-[10px] text-emerald-600 font-semibold">Capital Goods Lines</p>
-        </div>
+        <KpiCard icon={DollarSign} label="Capitalized Cost" value={money(totalCost)} desc={`${assets.length} Total Assets`} tone="blue" />
+        <KpiCard icon={TrendingDown} label="Accum. Depreciation" value={money(totalAccumDepr)} desc="Contra-Asset Balance" tone="amber" />
+        <KpiCard icon={Building} label="Net Book Value (NBV)" value={money(totalNBV)} desc="Carrying Value" tone="teal" />
+        <KpiCard icon={Cpu} label="Factory Machinery" value={plantMachineryCount} desc="MOH Cost Centers" tone="purple" />
+        <KpiCard icon={Wrench} label="Under Maintenance" value={underMaintenanceCount} desc="Service Tickets" tone="rose" />
+        <KpiCard icon={ShoppingCart} label="Procurement Pending" value={uncapitalizedProcurementLines.length} desc="Capital Goods Lines" tone="emerald" />
       </div>
 
       {/* Navigation Tabs */}

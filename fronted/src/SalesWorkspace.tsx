@@ -9,6 +9,7 @@ import {
 import { useSalesStore, useCustomersStore, useProductsStore, useCoaStore } from './stores'
 import { useFormDraft } from './hooks/useFormDraft'
 import { DataToolbar } from '@/components/ui/data-toolbar'
+import { KpiCard, KpiGrid } from './components/ui/kpi-card'
 import { money } from './lib/currency'
 
 const statusStyles: Record<string, { label: string; class: string }> = {
@@ -706,33 +707,21 @@ export const SalesWorkspace: React.FC<{ activeEntityId: string; entities?: any[]
       </div>
 
       {/* Modern KPI Cards */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+      <KpiGrid cols={4}>
         {[
-          { label: 'Total Outstanding', value: money(totalOutstanding), desc: `${invoices.filter((i: any) => i.status !== 2 && i.status !== 3).length} open invoices`, icon: Coins, color: 'from-blue-500 to-indigo-600', bg: 'bg-blue-50 dark:bg-blue-950/30', textColor: 'text-blue-600 dark:text-blue-400' },
-          { label: 'Paid Collections', value: money(totalPaid), desc: `${invoices.filter((i: any) => i.status === 2).length} settled invoices`, icon: CheckCircle2, color: 'from-emerald-500 to-green-600', bg: 'bg-emerald-50 dark:bg-emerald-950/30', textColor: 'text-emerald-600 dark:text-emerald-400' },
-          { label: 'Draft Invoices', value: String(draftCount), desc: 'Ready for posting', icon: FileText, color: 'from-amber-500 to-orange-600', bg: 'bg-amber-50 dark:bg-amber-950/30', textColor: 'text-amber-600 dark:text-amber-400' },
-          { label: 'Total Invoices', value: String(invoices.length), desc: 'All time records', icon: Receipt, color: 'from-purple-500 to-violet-600', bg: 'bg-purple-50 dark:bg-purple-950/30', textColor: 'text-purple-600 dark:text-purple-400' },
+          { label: 'Total Outstanding', value: money(totalOutstanding), desc: `${invoices.filter((i: any) => i.status !== 2 && i.status !== 3).length} open invoices`, icon: Coins, tone: 'blue' },
+          { label: 'Paid Collections', value: money(totalPaid), desc: `${invoices.filter((i: any) => i.status === 2).length} settled invoices`, icon: CheckCircle2, tone: 'emerald' },
+          { label: 'Draft Invoices', value: String(draftCount), desc: 'Ready for posting', icon: FileText, tone: 'amber' },
+          { label: 'Total Invoices', value: String(invoices.length), desc: 'All time records', icon: Receipt, tone: 'purple' },
         ].map((kpi) => (
-          <div key={kpi.label} className={`relative overflow-hidden rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)] p-3 shadow-sm hover:shadow-md transition-shadow`}>
-            <div className="flex items-start justify-between">
-              <div>
-                <p className="text-xs font-semibold text-[var(--color-text-muted)] uppercase tracking-wider">{kpi.label}</p>
-                <p className={`text-lg font-semibold mt-1 ${kpi.textColor}`}>{kpi.value}</p>
-                <p className="text-xs text-[var(--color-text-muted)] mt-1">{kpi.desc}</p>
-              </div>
-              <div className={`w-9 h-9 rounded-lg bg-gradient-to-br ${kpi.color} flex items-center justify-center text-white shadow-lg`}>
-                <kpi.icon className="w-4.5 h-4.5" />
-              </div>
-            </div>
-            <div className={`absolute -bottom-4 -right-4 w-24 h-24 rounded-full ${kpi.bg} opacity-50`} />
-          </div>
+          <KpiCard key={kpi.label} {...kpi} />
         ))}
-      </div>
+      </KpiGrid>
 
       {/* Invoices Table */}
       <div className="rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)] shadow-sm overflow-hidden">
         <div className="px-5 py-3.5 border-b border-[var(--color-border)] bg-[var(--color-surface-muted)] flex items-center justify-between">
-          <p className="text-xs font-semibold text-[var(--color-text-strong)] uppercase tracking-wider">Invoice Register</p>
+          <p className="text-xs font-bold uppercase tracking-wider text-[var(--color-text-strong)]">Invoice Register</p>
           <span className="text-[11px] text-[var(--color-text-muted)]">
             Showing {filteredInvoices.length} of {invoices.length} record{invoices.length !== 1 ? 's' : ''}
           </span>

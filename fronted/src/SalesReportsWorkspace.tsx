@@ -13,6 +13,7 @@ import {
 } from 'lucide-react';
 import { money, moneyCompact } from './lib/currency';
 import { downloadExcel, downloadCSV } from './lib/exportUtils';
+import { KpiCard, KpiGrid } from './components/ui/kpi-card';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 
@@ -454,29 +455,17 @@ export function SalesReportsWorkspace({ activeEntityId }: Props) {
       </div>
 
       {/* Top 5 KPI Metrics Cards */}
-      <div className="grid grid-cols-2 lg:grid-cols-5 gap-4">
+      <KpiGrid cols={5}>
         {[
-          { label: 'TOTAL INVOICED', value: money(totalRevenue), desc: `${totalInvoicesCount} invoices billed`, icon: DollarSign, color: 'from-blue-500 to-blue-600', bg: 'bg-blue-50 dark:bg-blue-950/30', textColor: 'text-blue-600 dark:text-blue-400' },
-          { label: 'COLLECTED CASH', value: money(totalPaid), desc: `${totalRevenue > 0 ? ((totalPaid / totalRevenue) * 100).toFixed(1) : 0}% collection rate`, icon: CheckCircle2, color: 'from-emerald-500 to-emerald-600', bg: 'bg-emerald-50 dark:bg-emerald-950/30', textColor: 'text-emerald-600 dark:text-emerald-400' },
-          { label: 'NET AR OUTSTANDING', value: money(totalOutstanding), desc: 'Receivables pending', icon: Clock, color: 'from-rose-500 to-rose-600', bg: 'bg-rose-50 dark:bg-rose-950/30', textColor: 'text-rose-600 dark:text-rose-400' },
-          { label: 'GROSS PROFIT', value: money(grossProfit), desc: `${grossMargin.toFixed(1)}% estimated margin`, icon: TrendingUp, color: 'from-violet-500 to-violet-600', bg: 'bg-violet-50 dark:bg-violet-950/30', textColor: 'text-violet-600 dark:text-violet-400' },
-          { label: 'AVERAGE INVOICE', value: money(avgInvoiceValue), desc: `Across ${customerSalesSummary.length} customers`, icon: ShoppingCart, color: 'from-blue-500 to-indigo-600', bg: 'bg-blue-50 dark:bg-blue-950/30', textColor: 'text-blue-600 dark:text-blue-400' },
+          { label: 'TOTAL INVOICED', value: money(totalRevenue), desc: `${totalInvoicesCount} invoices billed`, icon: DollarSign, tone: 'blue' },
+          { label: 'COLLECTED CASH', value: money(totalPaid), desc: `${totalRevenue > 0 ? ((totalPaid / totalRevenue) * 100).toFixed(1) : 0}% collection rate`, icon: CheckCircle2, tone: 'emerald' },
+          { label: 'NET AR OUTSTANDING', value: money(totalOutstanding), desc: 'Receivables pending', icon: Clock, tone: 'rose' },
+          { label: 'GROSS PROFIT', value: money(grossProfit), desc: `${grossMargin.toFixed(1)}% estimated margin`, icon: TrendingUp, tone: 'violet' },
+          { label: 'AVERAGE INVOICE', value: money(avgInvoiceValue), desc: `Across ${customerSalesSummary.length} customers`, icon: ShoppingCart, tone: 'indigo' },
         ].map((kpi) => (
-          <div key={kpi.label} className="relative overflow-hidden rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)] p-3 shadow-sm hover:shadow-md transition-shadow">
-            <div className="flex items-start justify-between">
-              <div>
-                <p className="text-xs font-semibold text-[var(--color-text-muted)] uppercase tracking-wider">{kpi.label}</p>
-                <p className={`text-lg font-semibold mt-1 ${kpi.textColor}`}>{kpi.value}</p>
-                <p className="text-xs text-[var(--color-text-muted)] mt-1">{kpi.desc}</p>
-              </div>
-              <div className={`w-9 h-9 rounded-lg bg-gradient-to-br ${kpi.color} flex items-center justify-center text-white shadow-lg`}>
-                <kpi.icon className="w-5 h-5" />
-              </div>
-            </div>
-            <div className={`absolute -bottom-4 -right-4 w-24 h-24 rounded-full ${kpi.bg} opacity-50`} />
-          </div>
+          <KpiCard key={kpi.label} {...kpi} />
         ))}
-      </div>
+      </KpiGrid>
 
       {/* Multi-Tab Navigation */}
       <div className="flex items-center gap-2 border-b border-[var(--color-border)] pb-1">

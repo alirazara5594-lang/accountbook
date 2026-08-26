@@ -5,10 +5,11 @@ import {
   BookOpen, Search, X, ShieldCheck,
   Download, FileSpreadsheet, RefreshCw,
   Layers, ArrowUpRight, ArrowDownRight,
-  FileText, CheckCircle2, AlertCircle, Filter
+  FileText, AlertCircle, Filter
 } from 'lucide-react';
 import { money } from './lib/currency';
 import { downloadExcel, downloadCSV } from './lib/exportUtils';
+import { KpiCard, KpiGrid } from './components/ui/kpi-card';
 import type { Entity } from './EntitySettings';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
@@ -360,89 +361,43 @@ export const GeneralLedgerView: React.FC<GeneralLedgerViewProps> = ({ activeEnti
       </div>
 
       {/* ─── 4-in-1 Financial KPI Summary Cards ─── */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+      <KpiGrid cols={4}>
         {/* Total Debit */}
-        <div className="bg-[var(--color-surface)] border border-[var(--color-border)] rounded-2xl p-4 shadow-xs flex flex-col justify-between hover:border-emerald-500/30 transition-all">
-          <div className="flex items-center justify-between">
-            <span className="text-[10px] font-extrabold uppercase tracking-wider text-[var(--color-text-muted)]">
-              TOTAL POSTED DEBITS (DR)
-            </span>
-            <div className="p-1.5 rounded-lg bg-emerald-500/10 text-emerald-600">
-              <ArrowUpRight className="w-4 h-4" />
-            </div>
-          </div>
-          <div className="mt-2">
-            <div className="text-xl font-mono font-extrabold text-emerald-600 dark:text-emerald-400">
-              {money(totalDebit)}
-            </div>
-            <p className="text-[10px] text-[var(--color-text-muted)] mt-0.5">Asset & Expense debit movements</p>
-          </div>
-        </div>
+        <KpiCard
+          icon={ArrowUpRight}
+          label="TOTAL POSTED DEBITS (DR)"
+          value={money(totalDebit)}
+          desc="Asset & Expense debit movements"
+          tone="emerald"
+        />
 
         {/* Total Credit */}
-        <div className="bg-[var(--color-surface)] border border-[var(--color-border)] rounded-2xl p-4 shadow-xs flex flex-col justify-between hover:border-rose-500/30 transition-all">
-          <div className="flex items-center justify-between">
-            <span className="text-[10px] font-extrabold uppercase tracking-wider text-[var(--color-text-muted)]">
-              TOTAL POSTED CREDITS (CR)
-            </span>
-            <div className="p-1.5 rounded-lg bg-rose-500/10 text-rose-600">
-              <ArrowDownRight className="w-4 h-4" />
-            </div>
-          </div>
-          <div className="mt-2">
-            <div className="text-xl font-mono font-extrabold text-rose-600 dark:text-rose-400">
-              {money(totalCredit)}
-            </div>
-            <p className="text-[10px] text-[var(--color-text-muted)] mt-0.5">Liability, Equity & Income credit movements</p>
-          </div>
-        </div>
+        <KpiCard
+          icon={ArrowDownRight}
+          label="TOTAL POSTED CREDITS (CR)"
+          value={money(totalCredit)}
+          desc="Liability, Equity & Income credit movements"
+          tone="rose"
+        />
 
         {/* Ledger Integrity */}
-        <div className="bg-[var(--color-surface)] border border-[var(--color-border)] rounded-2xl p-4 shadow-xs flex flex-col justify-between hover:border-blue-500/30 transition-all">
-          <div className="flex items-center justify-between">
-            <span className="text-[10px] font-extrabold uppercase tracking-wider text-[var(--color-text-muted)]">
-              DOUBLE-ENTRY INTEGRITY
-            </span>
-            <div className="p-1.5 rounded-lg bg-blue-500/10 text-blue-600">
-              <ShieldCheck className="w-4 h-4" />
-            </div>
-          </div>
-          <div className="mt-2">
-            <div className="text-xl font-mono font-extrabold text-[var(--color-text-strong)] flex items-center gap-1.5">
-              {isBalanced ? (
-                <span className="text-emerald-600 dark:text-emerald-400 flex items-center gap-1">
-                  <CheckCircle2 className="w-4 h-4" /> 0.00 Diff
-                </span>
-              ) : (
-                <span className="text-rose-600 flex items-center gap-1">
-                  <AlertCircle className="w-4 h-4" /> {money(netDifference)} Diff
-                </span>
-              )}
-            </div>
-            <p className="text-[10px] text-[var(--color-text-muted)] mt-0.5">
-              {isBalanced ? '✓ 100% Balanced (IAS 1 Double-Entry)' : '⚠ Imbalance Detected'}
-            </p>
-          </div>
-        </div>
+        <KpiCard
+          icon={ShieldCheck}
+          label="DOUBLE-ENTRY INTEGRITY"
+          value={isBalanced ? '0.00 Diff' : `${money(netDifference)} Diff`}
+          desc={isBalanced ? '✓ 100% Balanced (IAS 1 Double-Entry)' : '⚠ Imbalance Detected'}
+          tone={isBalanced ? 'blue' : 'red'}
+        />
 
         {/* Transaction Lines */}
-        <div className="bg-[var(--color-surface)] border border-[var(--color-border)] rounded-2xl p-4 shadow-xs flex flex-col justify-between hover:border-teal-500/30 transition-all">
-          <div className="flex items-center justify-between">
-            <span className="text-[10px] font-extrabold uppercase tracking-wider text-[var(--color-text-muted)]">
-              POSTED LEDGER LINES
-            </span>
-            <div className="p-1.5 rounded-lg bg-teal-500/10 text-teal-600">
-              <Layers className="w-4 h-4" />
-            </div>
-          </div>
-          <div className="mt-2">
-            <div className="text-xl font-mono font-extrabold text-[var(--color-text-strong)]">
-              {filtered.length} Lines
-            </div>
-            <p className="text-[10px] text-[var(--color-text-muted)] mt-0.5">Across {availableAccounts.length} Chart Accounts</p>
-          </div>
-        </div>
-      </div>
+        <KpiCard
+          icon={Layers}
+          label="POSTED LEDGER LINES"
+          value={`${filtered.length}`}
+          desc={`Lines · Across ${availableAccounts.length} Chart Accounts`}
+          tone="teal"
+        />
+      </KpiGrid>
 
       {/* ─── Search, Date Range & Filter Toolbar ─── */}
       <div className="bg-[var(--color-surface)] p-4 rounded-2xl border border-[var(--color-border)] shadow-xs space-y-3">

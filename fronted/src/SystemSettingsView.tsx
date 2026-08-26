@@ -5,6 +5,7 @@ import {
   Key, MessageSquarePlus, Copy, Star
 } from 'lucide-react';
 import { useCoaStore } from './stores';
+import { KpiCard, KpiGrid } from './components/ui/kpi-card';
 
 interface SystemSettingsProps {
   setPage: (page: string) => void;
@@ -214,43 +215,12 @@ export const SystemSettingsView: React.FC<SystemSettingsProps> = ({ setPage, not
       </div>
 
       {/* 4-in-1 Top KPI Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        <div className="p-4 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] shadow-sm space-y-1">
-          <div className="flex items-center justify-between text-[var(--color-text-muted)]">
-            <span className="text-xs font-semibold uppercase tracking-wider">Accounting Standard</span>
-            <ShieldCheck className="w-4 h-4 text-teal-600" />
-          </div>
-          <div className="text-lg font-black text-[var(--color-text-strong)] font-mono">{accountingConfig.accountingStandard.split(' ')[0]} / IFRS</div>
-          <div className="text-[11px] text-[var(--color-text-muted)]">Strict double-entry & accrual basis</div>
-        </div>
-
-        <div className="p-4 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] shadow-sm space-y-1">
-          <div className="flex items-center justify-between text-[var(--color-text-muted)]">
-            <span className="text-xs font-semibold uppercase tracking-wider">Global Localization</span>
-            <Globe className="w-4 h-4 text-blue-600" />
-          </div>
-          <div className="text-lg font-black text-blue-600 font-mono">7 Jurisdictions</div>
-          <div className="text-[11px] text-[var(--color-text-muted)]">PK, US, UK, UAE, KSA, CA, EU</div>
-        </div>
-
-        <div className="p-4 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] shadow-sm space-y-1">
-          <div className="flex items-center justify-between text-[var(--color-text-muted)]">
-            <span className="text-xs font-semibold uppercase tracking-wider">AI Assistant Tier</span>
-            <Sparkles className="w-4 h-4 text-amber-500" />
-          </div>
-          <div className="text-lg font-black text-amber-500 font-mono">{aiConfig.planTier === 'pro' ? 'Enterprise Pro' : 'Free Advisor'}</div>
-          <div className="text-[11px] text-[var(--color-text-muted)]">{aiConfig.enableActionExecution ? 'Command Execution Active' : 'Guidance & Help Only'}</div>
-        </div>
-
-        <div className="p-4 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] shadow-sm space-y-1">
-          <div className="flex items-center justify-between text-[var(--color-text-muted)]">
-            <span className="text-xs font-semibold uppercase tracking-wider">Multi-Sector Suite</span>
-            <Layers className="w-4 h-4 text-purple-600" />
-          </div>
-          <div className="text-lg font-black text-purple-600 font-mono">{selectedSectors.length} / 14 Active</div>
-          <div className="text-[11px] text-[var(--color-text-muted)]">14 Commercial Industry Profiles</div>
-        </div>
-      </div>
+      <KpiGrid cols={4}>
+        <KpiCard icon={ShieldCheck} label="Accounting Standard" value={`${accountingConfig.accountingStandard.split(' ')[0]} / IFRS`} desc="Strict double-entry & accrual basis" tone="teal" />
+        <KpiCard icon={Globe} label="Global Localization" value="7 Jurisdictions" desc="PK, US, UK, UAE, KSA, CA, EU" tone="blue" />
+        <KpiCard icon={Sparkles} label="AI Assistant Tier" value={aiConfig.planTier === 'pro' ? 'Enterprise Pro' : 'Free Advisor'} desc={aiConfig.enableActionExecution ? 'Command Execution Active' : 'Guidance & Help Only'} tone="amber" />
+        <KpiCard icon={Layers} label="Multi-Sector Suite" value={`${selectedSectors.length} / 14 Active`} desc="14 Commercial Industry Profiles" tone="purple" />
+      </KpiGrid>
 
       {/* Navigation Tabs - Responsive Wrapped (Zero Horizontal Scroll) */}
       <div className="flex flex-wrap items-center gap-1.5 p-1.5 bg-[var(--color-surface-muted)] border border-[var(--color-border)] rounded-xl w-full">

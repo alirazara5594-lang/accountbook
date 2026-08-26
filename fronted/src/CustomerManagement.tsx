@@ -12,6 +12,7 @@ import { DataToolbar } from '@/components/ui/data-toolbar'
 import type { Entity } from './EntitySettings'
 import { useCustomersStore } from './stores'
 import { useFormDraft } from './hooks/useFormDraft'
+import { KpiCard, KpiGrid } from './components/ui/kpi-card'
 import { money } from './lib/currency'
 
 export type CustomerStatus = 'Active' | 'Inactive' | 'Blocked'
@@ -350,32 +351,20 @@ export default function CustomerManagement({
       </div>
 
       {/* Header Stats (Row 2) */}
-      <div className="grid grid-cols-2 lg:grid-cols-3 gap-4">
+      <KpiGrid cols={3}>
         {[
-          { label: 'Total Customers', value: stats.total, desc: `${stats.activeCount} active in group`, icon: Users, color: 'from-sky-400 to-blue-600', bg: 'bg-blue-50 dark:bg-blue-950/30', textColor: 'text-blue-600 dark:text-blue-400' },
-          { label: 'Total Credit Limit', value: money(stats.totalCreditLimit), desc: 'Allocated credit exposure', icon: DollarSign, color: 'from-emerald-400 to-teal-600', bg: 'bg-teal-50 dark:bg-teal-950/30', textColor: 'text-teal-600 dark:text-teal-400' },
-          { label: 'Avg Payment Terms', value: `${stats.avgTerms} Days`, desc: 'Net payment period', icon: Clock, color: 'from-violet-400 to-purple-600', bg: 'bg-purple-50 dark:bg-purple-950/30', textColor: 'text-purple-600 dark:text-purple-400' },
+          { label: 'Total Customers', value: stats.total, desc: `${stats.activeCount} active in group`, icon: Users, tone: 'blue' },
+          { label: 'Total Credit Limit', value: money(stats.totalCreditLimit), desc: 'Allocated credit exposure', icon: DollarSign, tone: 'teal' },
+          { label: 'Avg Payment Terms', value: `${stats.avgTerms} Days`, desc: 'Net payment period', icon: Clock, tone: 'purple' },
         ].map((kpi) => (
-          <div key={kpi.label} className="relative overflow-hidden rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)] p-3 shadow-sm hover:shadow-md transition-shadow">
-            <div className="flex items-start justify-between">
-              <div>
-                <p className="text-xs font-semibold text-[var(--color-text-muted)] uppercase tracking-wider">{kpi.label}</p>
-                <p className={`text-lg font-semibold mt-1 ${kpi.textColor}`}>{kpi.value}</p>
-                <p className="text-xs text-[var(--color-text-muted)] mt-1">{kpi.desc}</p>
-              </div>
-              <div className={`w-9 h-9 rounded-lg bg-gradient-to-br ${kpi.color} flex items-center justify-center text-white shadow-lg`}>
-                <kpi.icon className="w-5 h-5" />
-              </div>
-            </div>
-            <div className={`absolute -bottom-4 -right-4 w-24 h-24 rounded-full ${kpi.bg} opacity-50`} />
-          </div>
+          <KpiCard key={kpi.label} {...kpi} />
         ))}
-      </div>
+      </KpiGrid>
 
       {/* Customer Table */}
       <div className="bg-[var(--color-surface)] border border-[var(--color-border)] rounded-xl overflow-hidden shadow-sm">
-        <div className="px-4 py-2.5 border-b border-[var(--color-border)] bg-[var(--color-surface-muted)] flex items-center justify-between">
-          <p className="text-xs font-semibold text-[var(--color-text-strong)]">Customer Directory & Receivables</p>
+        <div className="px-5 py-3.5 border-b border-[var(--color-border)] bg-[var(--color-surface-muted)] flex items-center justify-between">
+          <p className="text-xs font-bold uppercase tracking-wider text-[var(--color-text-strong)]">Customer Directory & Receivables</p>
           <span className="text-[11px] text-[var(--color-text-muted)]">Showing {filteredCustomers.length} of {customers.length} customer{customers.length !== 1 ? 's' : ''}</span>
         </div>
 

@@ -3,7 +3,7 @@ import { useVendorsStore, useCompanyStore, useProcurementStore } from './stores'
 import { vendorPaymentsApi, type VendorPayment } from './api/modules/vendorPayments.api';
 import {
   Users, DollarSign, Download, ArrowLeft,
-  Receipt, Search, FileSpreadsheet,
+  Search, FileSpreadsheet,
   Building2, Mail, Phone, MapPin, CheckCircle2,
   Clock, ArrowUpRight, ArrowDownLeft, ChevronRight,
   RefreshCw, FileCheck, AlertTriangle
@@ -11,6 +11,7 @@ import {
 import { money } from './lib/currency';
 import { downloadExcel, downloadCSV } from './lib/exportUtils';
 import ExportDropdown from './components/ExportDropdown';
+import { KpiCard, KpiGrid } from './components/ui/kpi-card';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 
@@ -769,39 +770,19 @@ export function VendorStatementsWorkspace({ activeEntityId }: Props) {
         </div>
 
         {/* 4 Key Financial Summary Cards */}
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-          {[
-            { label: 'OPENING PAYABLE', value: fmt(activeStatement.openingBalance), desc: `As of ${dateFrom ? new Date(dateFrom).toLocaleDateString() : 'Beginning'}`, icon: Clock, color: 'from-blue-500 to-blue-600', bg: 'bg-blue-50 dark:bg-blue-950/30', textColor: 'text-blue-600 dark:text-blue-400' },
-            { label: 'TOTAL PURCHASES / BILLS (+)', value: fmt(activeStatement.totalCredits), desc: 'Vendor bills in period', icon: ArrowUpRight, color: 'from-rose-500 to-rose-600', bg: 'bg-rose-50 dark:bg-rose-950/30', textColor: 'text-rose-600 dark:text-rose-400' },
-            { label: 'PAYMENTS DISBURSED (-)', value: fmt(activeStatement.totalDebits), desc: 'Payments made in period', icon: ArrowDownLeft, color: 'from-emerald-500 to-emerald-600', bg: 'bg-emerald-50 dark:bg-emerald-950/30', textColor: 'text-emerald-600 dark:text-emerald-400' },
-            { label: 'NET PAYABLE CLOSING', value: fmt(activeStatement.closingBalance), desc: 'Net liability position', icon: DollarSign, color: 'from-violet-500 to-violet-600', bg: 'bg-violet-50 dark:bg-violet-950/30', textColor: activeStatement.closingBalance > 0 ? 'text-blue-600 dark:text-blue-400' : 'text-emerald-600' },
-          ].map((kpi) => (
-            <div key={kpi.label} className="relative overflow-hidden rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)] p-3 shadow-sm hover:shadow-md transition-shadow">
-              <div className="flex items-start justify-between">
-                <div>
-                  <p className="text-xs font-semibold text-[var(--color-text-muted)] uppercase tracking-wider">{kpi.label}</p>
-                  <p className={`text-lg font-semibold mt-1 ${kpi.textColor}`}>{kpi.value}</p>
-                  <p className="text-xs text-[var(--color-text-muted)] mt-1">{kpi.desc}</p>
-                </div>
-                <div className={`w-9 h-9 rounded-lg bg-gradient-to-br ${kpi.color} flex items-center justify-center text-white shadow-lg`}>
-                  <kpi.icon className="w-5 h-5" />
-                </div>
-              </div>
-              <div className={`absolute -bottom-4 -right-4 w-24 h-24 rounded-full ${kpi.bg} opacity-50`} />
-            </div>
-          ))}
-        </div>
+        <KpiGrid cols={4}>
+          <KpiCard icon={Clock} label="OPENING PAYABLE" value={fmt(activeStatement.openingBalance)} desc={`As of ${dateFrom ? new Date(dateFrom).toLocaleDateString() : 'Beginning'}`} tone="blue" />
+          <KpiCard icon={ArrowUpRight} label="TOTAL PURCHASES / BILLS (+)" value={fmt(activeStatement.totalCredits)} desc="Vendor bills in period" tone="rose" />
+          <KpiCard icon={ArrowDownLeft} label="PAYMENTS DISBURSED (-)" value={fmt(activeStatement.totalDebits)} desc="Payments made in period" tone="emerald" />
+          <KpiCard icon={DollarSign} label="NET PAYABLE CLOSING" value={fmt(activeStatement.closingBalance)} desc="Net liability position" tone="violet" />
+        </KpiGrid>
 
         {/* Statement Transactions Table */}
         <div className="bg-[var(--color-surface)] border border-[var(--color-border)] rounded-xl shadow-xs overflow-hidden">
-          <div className="p-3 border-b border-[var(--color-border)] flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 bg-gray-50/50 dark:bg-gray-900/50">
+          <div className="px-5 py-3.5 border-b border-[var(--color-border)] bg-[var(--color-surface-muted)] flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2">
             <div className="flex items-center gap-2">
-              <span className="text-xs font-bold text-[var(--color-text-strong)] flex items-center gap-1.5">
-                <Receipt className="w-3.5 h-3.5 text-blue-600" /> Statement Ledger
-              </span>
-              <span className="text-[10px] px-2 py-0.5 bg-gray-200 dark:bg-gray-800 rounded-full font-bold text-gray-700 dark:text-gray-300">
-                {displayedStatementLines.length} Entries
-              </span>
+              <p className="text-xs font-bold uppercase tracking-wider text-[var(--color-text-strong)]">Statement Ledger</p>
+              <span className="text-[11px] text-[var(--color-text-muted)]">{displayedStatementLines.length} Entries</span>
             </div>
 
             {/* Type Filter */}
@@ -1048,37 +1029,19 @@ export function VendorStatementsWorkspace({ activeEntityId }: Props) {
       </div>
 
       {/* 4 Summary Metric Cards */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        {[
-          { label: 'TOTAL REGISTERED', value: vendors.length, desc: 'Supplier accounts', icon: Users, color: 'from-blue-500 to-blue-600', bg: 'bg-blue-50 dark:bg-blue-950/30', textColor: 'text-blue-600 dark:text-blue-400' },
-          { label: 'TOTAL AP PAYABLES', value: fmt(totalPayables), desc: 'Outstanding liabilities', icon: DollarSign, color: 'from-violet-500 to-violet-600', bg: 'bg-violet-50 dark:bg-violet-950/30', textColor: 'text-violet-600 dark:text-violet-400' },
-          { label: 'OVERDUE BILLS', value: fmt(totalOverdue), desc: 'Past bill due dates', icon: AlertTriangle, color: 'from-amber-500 to-amber-600', bg: 'bg-amber-50 dark:bg-amber-950/30', textColor: 'text-amber-600 dark:text-amber-400' },
-          { label: 'SETTLED VENDORS', value: settledVendorsCount, desc: 'Zero balance accounts', icon: CheckCircle2, color: 'from-emerald-500 to-emerald-600', bg: 'bg-emerald-50 dark:bg-emerald-950/30', textColor: 'text-emerald-600 dark:text-emerald-400' },
-        ].map((kpi) => (
-          <div key={kpi.label} className="relative overflow-hidden rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)] p-3 shadow-sm hover:shadow-md transition-shadow">
-            <div className="flex items-start justify-between">
-              <div>
-                <p className="text-xs font-semibold text-[var(--color-text-muted)] uppercase tracking-wider">{kpi.label}</p>
-                <p className={`text-lg font-semibold mt-1 ${kpi.textColor}`}>{kpi.value}</p>
-                <p className="text-xs text-[var(--color-text-muted)] mt-1">{kpi.desc}</p>
-              </div>
-              <div className={`w-9 h-9 rounded-lg bg-gradient-to-br ${kpi.color} flex items-center justify-center text-white shadow-lg`}>
-                <kpi.icon className="w-5 h-5" />
-              </div>
-            </div>
-            <div className={`absolute -bottom-4 -right-4 w-24 h-24 rounded-full ${kpi.bg} opacity-50`} />
-          </div>
-        ))}
-      </div>
+      <KpiGrid cols={4}>
+        <KpiCard icon={Users} label="TOTAL REGISTERED" value={vendors.length} desc="Supplier accounts" tone="blue" />
+        <KpiCard icon={DollarSign} label="TOTAL AP PAYABLES" value={fmt(totalPayables)} desc="Outstanding liabilities" tone="violet" />
+        <KpiCard icon={AlertTriangle} label="OVERDUE BILLS" value={fmt(totalOverdue)} desc="Past bill due dates" tone="amber" />
+        <KpiCard icon={CheckCircle2} label="SETTLED VENDORS" value={settledVendorsCount} desc="Zero balance accounts" tone="emerald" />
+      </KpiGrid>
 
       {/* Vendors List Table with Individual Download Buttons */}
       <div className="bg-[var(--color-surface)] border border-[var(--color-border)] rounded-xl shadow-xs overflow-hidden">
-        <div className="p-3 border-b border-[var(--color-border)] flex justify-between items-center bg-gray-50/50 dark:bg-gray-900/50">
-          <span className="text-xs font-bold text-[var(--color-text-strong)] flex items-center gap-2">
-            <Users className="w-3.5 h-3.5 text-blue-600" /> Supplier Directory ({filteredVendors.length})
-          </span>
+        <div className="px-5 py-3.5 border-b border-[var(--color-border)] bg-[var(--color-surface-muted)] flex items-center justify-between">
+          <p className="text-xs font-bold uppercase tracking-wider text-[var(--color-text-strong)]">Supplier Directory</p>
           <span className="text-[11px] text-[var(--color-text-muted)]">
-            Click <strong>Download PDF</strong> on any vendor to export their individual statement instantly.
+            {filteredVendors.length} vendors • Click <strong>Download PDF</strong> on any vendor to export their individual statement instantly.
           </span>
         </div>
 

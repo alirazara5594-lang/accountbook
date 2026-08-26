@@ -9,6 +9,7 @@ import {
   Table as TableIcon, ArrowRight, ShieldCheck, Receipt
 } from 'lucide-react';
 import { money } from './lib/currency';
+import { KpiCard, KpiGrid } from './components/ui/kpi-card';
 import { downloadExcel, downloadCSV } from './lib/exportUtils';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
@@ -2167,39 +2168,13 @@ export function ProjectProfitabilityView({ activeEntityId: _activeEntityId }: { 
       </div>
 
       {/* EVM Performance KPI Dashboard */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
-        <div className="p-4 rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)] shadow-xs space-y-1">
-          <span className="text-[10px] font-bold text-[var(--color-text-muted)] uppercase">Budget At Completion (BAC)</span>
-          <div className="text-lg font-black text-blue-600 font-mono">{money(budget)}</div>
-          <div className="text-[10px] text-[var(--color-text-muted)]">Initial Baseline Contract</div>
-        </div>
-
-        <div className="p-4 rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)] shadow-xs space-y-1">
-          <span className="text-[10px] font-bold text-[var(--color-text-muted)] uppercase">Earned Value (EV)</span>
-          <div className="text-lg font-black text-teal-600 font-mono">{money(earnedValue)}</div>
-          <div className="text-[10px] text-[var(--color-text-muted)]">PoC: {progress}% Complete</div>
-        </div>
-
-        <div className="p-4 rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)] shadow-xs space-y-1">
-          <span className="text-[10px] font-bold text-[var(--color-text-muted)] uppercase">Actual Cost (AC)</span>
-          <div className="text-lg font-black text-purple-600 font-mono">{money(actualCost)}</div>
-          <div className="text-[10px] text-[var(--color-text-muted)]">Total Incurred Outflow</div>
-        </div>
-
-        <div className="p-4 rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)] shadow-xs space-y-1">
-          <span className="text-[10px] font-bold text-[var(--color-text-muted)] uppercase">Cost Variance (CV = EV - AC)</span>
-          <div className={`text-lg font-black font-mono ${costVariance >= 0 ? 'text-emerald-600' : 'text-rose-600'}`}>
-            {costVariance >= 0 ? `+${money(costVariance)}` : `-${money(Math.abs(costVariance))}`}
-          </div>
-          <div className="text-[10px] text-[var(--color-text-muted)]">{costVariance >= 0 ? 'Favorable profit' : 'Unfavorable variance'}</div>
-        </div>
-
-        <div className="p-4 rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)] shadow-xs space-y-1">
-          <span className="text-[10px] font-bold text-[var(--color-text-muted)] uppercase">Estimate At Completion (EAC)</span>
-          <div className="text-lg font-black text-indigo-600 font-mono">{money(eac)}</div>
-          <div className="text-[10px] text-[var(--color-text-muted)]">VAC: {money(vac)}</div>
-        </div>
-      </div>
+      <KpiGrid cols={5}>
+        <KpiCard icon={Banknote} label="Budget At Completion (BAC)" value={money(budget)} desc="Initial Baseline Contract" tone="blue" />
+        <KpiCard icon={Activity} label="Earned Value (EV)" value={money(earnedValue)} desc={`PoC: ${progress}% Complete`} tone="teal" />
+        <KpiCard icon={ReceiptText} label="Actual Cost (AC)" value={money(actualCost)} desc="Total Incurred Outflow" tone="purple" />
+        <KpiCard icon={costVariance >= 0 ? CheckCircle2 : AlertTriangle} label="Cost Variance (CV = EV - AC)" value={costVariance >= 0 ? `+${money(costVariance)}` : `-${money(Math.abs(costVariance))}`} desc={costVariance >= 0 ? 'Favorable profit' : 'Unfavorable variance'} tone={costVariance >= 0 ? 'emerald' : 'rose'} />
+        <KpiCard icon={Scale} label="Estimate At Completion (EAC)" value={money(eac)} desc={`VAC: ${money(vac)}`} tone="indigo" />
+      </KpiGrid>
 
       {/* Forensic Comparison Matrix Table */}
       <div className="p-5 rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)] shadow-xs space-y-4">

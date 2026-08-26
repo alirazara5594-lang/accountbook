@@ -6,6 +6,7 @@ import {
 import { useVendorsStore, useCompanyStore } from './stores'
 import { useFormDraft } from './hooks/useFormDraft'
 import { DataToolbar } from '@/components/ui/data-toolbar'
+import { KpiCard, KpiGrid } from '@/components/ui/kpi-card'
 import { money } from '@/lib/currency'
 
 interface DebitNoteItem {
@@ -212,32 +213,16 @@ export const DebitNotes: React.FC<{ activeEntityId: string; entities?: any[] }> 
       </div>
 
       {/* Stats Cards (Row 2) */}
-      <div className="grid grid-cols-2 lg:grid-cols-3 gap-4">
-        {[
-          { label: 'TOTAL DEBIT VALUE', value: money(totalDebit), desc: 'All supplier claims', icon: Coins, color: 'from-blue-500 to-blue-600', bg: 'bg-blue-50 dark:bg-blue-950/30', textColor: 'text-blue-600 dark:text-blue-400' },
-          { label: 'POSTED TO AP', value: postedCount, desc: 'Applied against vendor balances', icon: CheckCircle, color: 'from-teal-500 to-teal-600', bg: 'bg-teal-50 dark:bg-teal-950/30', textColor: 'text-teal-600 dark:text-teal-400' },
-          { label: 'DRAFT CLAIMS', value: draftCount, desc: 'Pending supplier approval', icon: FileMinus, color: 'from-violet-500 to-violet-600', bg: 'bg-violet-50 dark:bg-violet-950/30', textColor: 'text-violet-600 dark:text-violet-400' },
-        ].map((kpi) => (
-          <div key={kpi.label} className="relative overflow-hidden rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)] p-3 shadow-sm hover:shadow-md transition-shadow">
-            <div className="flex items-start justify-between">
-              <div>
-                <p className="text-xs font-semibold text-[var(--color-text-muted)] uppercase tracking-wider">{kpi.label}</p>
-                <p className={`text-lg font-semibold mt-1 ${kpi.textColor}`}>{kpi.value}</p>
-                <p className="text-xs text-[var(--color-text-muted)] mt-1">{kpi.desc}</p>
-              </div>
-              <div className={`w-9 h-9 rounded-lg bg-gradient-to-br ${kpi.color} flex items-center justify-center text-white shadow-lg`}>
-                <kpi.icon className="w-5 h-5" />
-              </div>
-            </div>
-            <div className={`absolute -bottom-4 -right-4 w-24 h-24 rounded-full ${kpi.bg} opacity-50`} />
-          </div>
-        ))}
-      </div>
+      <KpiGrid cols={3}>
+        <KpiCard icon={Coins} label="TOTAL DEBIT VALUE" value={money(totalDebit)} desc="All supplier claims" tone="blue" />
+        <KpiCard icon={CheckCircle} label="POSTED TO AP" value={postedCount} desc="Applied against vendor balances" tone="teal" />
+        <KpiCard icon={FileMinus} label="DRAFT CLAIMS" value={draftCount} desc="Pending supplier approval" tone="violet" />
+      </KpiGrid>
 
       {/* Table */}
       <div className="bg-[var(--color-surface)] border border-[var(--color-border)] rounded-xl overflow-hidden shadow-sm">
-        <div className="px-4 py-2.5 border-b border-[var(--color-border)] bg-[var(--color-surface-muted)] flex items-center justify-between">
-          <p className="text-xs font-semibold text-[var(--color-text-strong)]">Debit Notes Directory</p>
+        <div className="px-5 py-3.5 border-b border-[var(--color-border)] bg-[var(--color-surface-muted)] flex items-center justify-between">
+          <p className="text-xs font-bold uppercase tracking-wider text-[var(--color-text-strong)]">Debit Notes Directory</p>
           <span className="text-[11px] text-[var(--color-text-muted)]">
             Showing {filtered.length} of {notes.length} record{notes.length !== 1 ? 's' : ''}
           </span>
