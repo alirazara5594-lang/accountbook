@@ -77,6 +77,7 @@ export const EstimatesAndQuotes: React.FC<{ activeEntityId: string; entities?: a
   const [query, setQuery] = useState('')
   const [statusFilter, setStatusFilter] = useState<string>('all')
   const [editingEstimate, setEditingEstimate] = useState<any>(null)
+  const [pendingEstimateNumber, setPendingEstimateNumber] = useState<string>('')
 
   const [form, setForm] = useState({
     customerId: '',
@@ -120,7 +121,11 @@ export const EstimatesAndQuotes: React.FC<{ activeEntityId: string; entities?: a
   const openCreateModal = () => {
     setEditingEstimate(null)
     clearDraft()
-    const nextRef = computeNextEstimateNumber()
+    // Reuse pending number if exists, otherwise generate new one
+    const nextRef = pendingEstimateNumber || computeNextEstimateNumber()
+    if (!pendingEstimateNumber) {
+      setPendingEstimateNumber(nextRef)
+    }
     const today = new Date().toISOString().slice(0, 10)
     setForm({ customerId: customers[0]?.id || '', estimateDate: today, expiryDate: new Date(Date.now() + 30 * 86400000).toISOString().slice(0, 10), reference: nextRef, notes: 'Quotations valid for 30 days from date of issue.', terms: 'Standard trade terms apply.', currencyCode: 'PKR' })
     setLines([defaultLine()])
@@ -170,11 +175,25 @@ export const EstimatesAndQuotes: React.FC<{ activeEntityId: string; entities?: a
   const saveEstimate = async () => {
     if (!form.customerId) { notify('Please select a customer.'); return }
     const body = { ...form, estimateNumber: form.reference, companyId: activeEntityId || null, expiryDate: form.expiryDate || null, lines: lines.map(l => ({ productId: l.productId || null, productName: l.productName || l.description || '', description: l.description, quantity: parseFloat(l.quantity || '1'), unitPrice: parseFloat(l.unitPrice || '0'), discountType: l.discountType, discountValue: parseFloat(l.discountValue || '0'), taxCodeId: null, taxPercent: parseFloat(l.taxPercent || '0') })) }
-    try { await createEstimateStore(body); clearDraft(); notify(editingEstimate ? 'Quotation updated!' : 'Quotation saved as Draft!'); setShowForm(false); fetchData() } catch (e: any) { notify(e.message || 'Error saving') }
+    try { 
+      await createEstimateStore(body); 
+      clearDraft(); 
+      setPendingEstimateNumber(''); // Clear pending number after successful save
+      notify(editingEstimate ? 'Quotation updated!' : 'Quotation saved as Draft!'); 
+      setShowForm(false); 
+      fetchData() 
+    } catch (e: any) { notify(e.message || 'Error saving') }
   }
 
   const createInvoiceFromEstimate = async (payload: any) => {
-    try { await createInvoiceStore(payload); if (convertModal?.id) await updateEstimateStatusStore(convertModal.id, '5'); notify('Invoice created!'); setConvertModal(null); await fetchData() } catch (e: any) { notify(e.message || 'Invoice failed') }
+    try { 
+      await createInvoiceStore(payload); 
+      if (convertModal?.id) await updateEstimateStatusStore(convertModal.id, '5'); 
+      setPendingEstimateNumber(''); // Clear pending number after converting to invoice
+      notify('Invoice created!'); 
+      setConvertModal(null); 
+      await fetchData() 
+    } catch (e: any) { notify(e.message || 'Invoice failed') }
   }
 
   const filteredEstimates = useMemo(() => estimates.filter((est: any) => { const sn = getNumericStatus(est.status); const mq = !query.trim() ? true : `${est.estimateNumber || ''} ${est.customerName || ''} ${est.reference || ''}`.toLowerCase().includes(query.toLowerCase()); const ms = statusFilter === 'all' || String(sn) === statusFilter; return mq && ms }), [estimates, query, statusFilter])

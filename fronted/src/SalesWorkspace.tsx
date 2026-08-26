@@ -47,6 +47,7 @@ export const SalesWorkspace: React.FC<{ activeEntityId: string; entities?: any[]
   const [toast, setToast] = useState('')
   const [query, setQuery] = useState('')
   const [statusFilter, setStatusFilter] = useState<string>('all')
+  const [pendingInvoiceNumber, setPendingInvoiceNumber] = useState<string>('')
 
   // Form state
   const [form, setForm] = useState({
@@ -108,7 +109,11 @@ export const SalesWorkspace: React.FC<{ activeEntityId: string; entities?: any[]
   const openCreateModal = () => {
     setEditingInvoice(null)
     clearDraft()
-    const nextRef = computeNextInvoiceNumber()
+    // Reuse pending number if exists, otherwise generate new one
+    const nextRef = pendingInvoiceNumber || computeNextInvoiceNumber()
+    if (!pendingInvoiceNumber) {
+      setPendingInvoiceNumber(nextRef)
+    }
     setForm({
       customerId: customers[0]?.id || '',
       invoiceDate: new Date().toISOString().slice(0, 10),
@@ -285,6 +290,8 @@ export const SalesWorkspace: React.FC<{ activeEntityId: string; entities?: any[]
       } else {
         await createInvoiceStore(body)
         notify('✓ Sales invoice created as Draft')
+        // Clear pending number after successful save
+        setPendingInvoiceNumber('')
       }
       clearDraft()
       setShowForm(false)
