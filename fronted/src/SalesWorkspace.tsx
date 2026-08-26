@@ -97,13 +97,20 @@ export const SalesWorkspace: React.FC<{ activeEntityId: string; entities?: any[]
     let maxNum = 0
     for (const item of invoices) {
       const str = (item.invoiceNumber || item.reference || '') + ''
-      const match = str.match(/INV-(\d+)/)
+      const match = str.match(/INV-(\d+)/i)
       if (match) {
         const num = parseInt(match[1], 10)
-        if (!isNaN(num) && num < 100000 && num > maxNum) maxNum = num
+        if (!isNaN(num) && num > maxNum) maxNum = num
       }
     }
     return `INV-${(maxNum + 1).toString().padStart(5, '0')}`
+  }
+
+  const getFormattedInvoiceNumber = (rawNum: string, index: number) => {
+    if (!rawNum) return `INV-${(index + 1).toString().padStart(5, '0')}`
+    const match = rawNum.match(/INV-(\d+)/i)
+    if (match) return `INV-${parseInt(match[1], 10).toString().padStart(5, '0')}`
+    return rawNum
   }
 
   const openCreateModal = () => {
@@ -754,7 +761,7 @@ export const SalesWorkspace: React.FC<{ activeEntityId: string; entities?: any[]
                 </tr>
               </thead>
               <tbody className="divide-y divide-[var(--color-border)]">
-                {filteredInvoices.map((inv: any) => {
+                {filteredInvoices.map((inv: any, idx: number) => {
                   const statusKey = typeof inv.status === 'number'
                     ? ['Draft', 'Sent', 'Paid', 'Void', 'PartiallyPaid', 'Overdue'][inv.status] || 'Draft'
                     : String(inv.status || 'Draft')
@@ -796,7 +803,7 @@ export const SalesWorkspace: React.FC<{ activeEntityId: string; entities?: any[]
 
                   return (
                     <tr key={inv.id} className="hover:bg-[var(--color-surface-muted)]/30 transition-colors">
-                      <td className="px-5 py-3.5 font-mono text-xs font-bold text-sky-600">{inv.invoiceNumber}</td>
+                      <td className="px-5 py-3.5 font-mono text-xs font-bold text-sky-600">{getFormattedInvoiceNumber(inv.invoiceNumber || inv.reference, idx)}</td>
                       <td className="px-5 py-3.5 font-medium text-[var(--color-text-strong)]">{inv.customerName || '—'}</td>
                       <td className="px-5 py-3.5 text-[var(--color-text-muted)] text-xs">{inv.invoiceDate}</td>
                       <td className="px-5 py-3.5 text-[var(--color-text-muted)] text-xs">{inv.dueDate}</td>

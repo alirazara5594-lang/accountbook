@@ -738,7 +738,17 @@ export const EstimatesAndQuotes: React.FC<{ activeEntityId: string; entities?: a
 function ConvertToInvoiceModal({ estimate, products, onConfirm, onClose }: { estimate: any; customers: any[]; products: any[]; onConfirm: (p: any) => void; onClose: () => void }) {
   const [submitting, setSubmitting] = useState(false)
   const est = estimate
-  const [invForm, setInvForm] = useState({ customerId: est.customerId || '', invoiceDate: new Date().toISOString().slice(0, 10), dueDate: new Date(Date.now() + 30 * 86400000).toISOString().slice(0, 10), reference: '', notes: est.notes || '', currencyCode: est.currencyCode || 'PKR' })
+  const allInvoices = useSalesStore((s) => s.invoices)
+  const computeNextInvNum = () => {
+    let maxNum = 0
+    for (const item of allInvoices) {
+      const str = (item.invoiceNumber || item.reference || '') + ''
+      const match = str.match(/INV-(\d+)/i)
+      if (match) { const num = parseInt(match[1], 10); if (!isNaN(num) && num > maxNum) maxNum = num }
+    }
+    return `INV-${(maxNum + 1).toString().padStart(5, '0')}`
+  }
+  const [invForm, setInvForm] = useState({ customerId: est.customerId || '', invoiceDate: new Date().toISOString().slice(0, 10), dueDate: new Date(Date.now() + 30 * 86400000).toISOString().slice(0, 10), reference: computeNextInvNum(), notes: est.notes || '', currencyCode: est.currencyCode || 'PKR' })
   const [invLines, setInvLines] = useState<any[]>(est.lines && est.lines.length > 0 ? est.lines.map((l: any) => ({ productId: l.productId || '', description: l.description || '', quantity: String(l.quantity || 1), unitPrice: String(l.unitPrice || 0), discountAmount: String(l.discountAmount || l.discountValue || 0), taxAmount: String(l.taxAmount || 0) })) : [{ productId: '', description: est.customerName ? `${est.customerName} - Products & Services` : 'Products & Services', quantity: '1', unitPrice: String(est.totalAmount || est.subtotal || 0), discountAmount: String(est.discountTotal || 0), taxAmount: String(est.taxTotal || 0) }])
 
   const updateInvLine = (i: number, f: string, v: string) => { const u = [...invLines]; u[i] = { ...u[i], [f]: v }; if (f === 'productId' && v) { const p = products.find((pp: any) => pp.id === v); if (p) { u[i].description = u[i].description || p.name; u[i].unitPrice = String(p.unitPrice || p.salesPrice || 0) } } setInvLines(u) }
