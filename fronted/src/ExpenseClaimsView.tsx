@@ -139,7 +139,7 @@ export const ExpenseClaimsView: React.FC<{ activeEntityId: string; entities?: En
   return (
     <div className="space-y-6">
       {toast && (
-        <div className="px-3.5 py-2 bg-emerald-500/10 border border-emerald-500/20 text-emerald-600 rounded-xl text-xs font-semibold">
+        <div className="z-[9999] px-3.5 py-2 bg-emerald-500/10 border border-emerald-500/20 text-emerald-600 rounded-xl text-xs font-semibold">
           {toast}
         </div>
       )}
@@ -169,7 +169,6 @@ export const ExpenseClaimsView: React.FC<{ activeEntityId: string; entities?: En
           >
             <select
               className="h-9 px-3 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] text-xs text-[var(--color-text)] outline-none focus:border-[var(--color-primary)] transition-colors shadow-2xs box-border"
-              style={{ paddingTop: 0, paddingBottom: 0 }}
               value={statusFilter}
               onChange={e => setStatusFilter(e.target.value)}
             >
@@ -182,7 +181,7 @@ export const ExpenseClaimsView: React.FC<{ activeEntityId: string; entities?: En
           </DataToolbar>
           <button
             onClick={openCreateModal}
-            className="primary h-9 px-4 rounded-xl text-xs font-semibold whitespace-nowrap flex items-center justify-center gap-1.5 shadow-sm"
+            className="h-9 px-5 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 text-white text-xs font-bold shadow-lg shadow-blue-500/25 whitespace-nowrap flex items-center justify-center gap-1.5"
           >
             <span>＋</span> New Claim
           </button>
@@ -285,12 +284,12 @@ export const ExpenseClaimsView: React.FC<{ activeEntityId: string; entities?: En
 
       {/* Stepped / Tabbed Claim Modal */}
       {showForm && (
-        <div className="overlay animate-in fade-in duration-200">
-          <div className="w-full max-w-4xl bg-[var(--color-surface)] border border-[var(--color-border)] rounded-2xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh]">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
+          <div className="w-full max-w-5xl bg-[var(--color-surface)] border border-[var(--color-border)] rounded-2xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh]">
             {/* Modal Header */}
-            <div className="px-6 py-4.5 border-b border-[var(--color-border)] bg-[var(--color-surface-muted)]/50 flex items-center justify-between">
+            <div className="px-6 py-4 border-b border-[var(--color-border)] flex items-center justify-between">
               <div className="flex items-center gap-3.5">
-                <div className="w-9 h-9 rounded-lg bg-gradient-to-br from-emerald-500 to-teal-600 flex items-center justify-center text-white shadow-sm shrink-0">
+                <div className="w-9 h-9 rounded-lg bg-gradient-to-br from-blue-600 to-indigo-600 flex items-center justify-center text-white shadow-sm shrink-0">
                   <ReceiptText className="w-5 h-5" />
                 </div>
                 <div>
@@ -472,7 +471,6 @@ export const ExpenseClaimsView: React.FC<{ activeEntityId: string; entities?: En
                         value={form.amount}
                         onChange={e => setForm({ ...form, amount: e.target.value })}
                         className="w-full h-full border-0 outline-none bg-transparent font-mono text-xs text-[var(--color-text-strong)] placeholder:text-[var(--color-text-muted)]"
-                        style={{ border: 0, outline: 'none', padding: 0, background: 'transparent' }}
                       />
                     </div>
                   </div>
@@ -561,20 +559,20 @@ export const ExpenseClaimsView: React.FC<{ activeEntityId: string; entities?: En
             </div>
 
             {/* Modal Footer */}
-            <div className="px-6 py-3.5 border-t border-[var(--color-border)] bg-[var(--color-surface-muted)]/50 flex items-center justify-between gap-3">
+            <div className="px-6 py-4 border-t border-[var(--color-border)] flex items-center justify-between">
               <div className="text-[11px] text-[var(--color-text-muted)] flex items-center gap-1.5">
                 <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 inline-block" />
                 <span>{modalTab === 'preview' ? 'Ready for final verification & submission' : 'Auto-draft protection active'}</span>
               </div>
 
               <div className="flex items-center gap-2">
-                <button type="button" className="h-8.5 px-3.5 rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] text-xs font-medium text-[var(--color-text)] hover:bg-[var(--color-surface-muted)] transition-colors" onClick={() => setShowForm(false)}>Cancel</button>
+                <button type="button" className="h-9 px-4 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] text-xs font-medium hover:bg-[var(--color-surface-muted)] transition-colors" onClick={() => setShowForm(false)}>Cancel</button>
                 {modalTab !== 'preview' && (
-                  <button type="button" className="h-8.5 px-3.5 rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] text-xs font-medium text-[var(--color-text-muted)] hover:text-[var(--color-text-strong)] transition-colors" onClick={(e) => { e.preventDefault(); saveDraft(); notify('Claim draft saved locally.'); }}>Save Draft</button>
+                  <button type="button" className="h-9 px-4 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] text-xs font-medium hover:bg-[var(--color-surface-muted)] transition-colors" onClick={(e) => { e.preventDefault(); saveDraft(); notify('Claim draft saved locally.'); }}>Save Draft</button>
                 )}
 
                 {modalTab !== 'employee' && (
-                  <button type="button" onClick={() => { if (modalTab === 'preview') setModalTab('summary'); else if (modalTab === 'summary') setModalTab('expense'); else if (modalTab === 'expense') setModalTab('employee'); }} className="h-8.5 px-3 rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] text-xs font-medium text-[var(--color-text)] hover:bg-[var(--color-surface-muted)] transition-colors flex items-center gap-1">
+                  <button type="button" onClick={() => { if (modalTab === 'preview') setModalTab('summary'); else if (modalTab === 'summary') setModalTab('expense'); else if (modalTab === 'expense') setModalTab('employee'); }} className="h-9 px-4 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] text-xs font-medium hover:bg-[var(--color-surface-muted)] transition-colors flex items-center gap-1">
                     <ArrowLeft className="w-3 h-3" />
                     <span>{modalTab === 'preview' ? 'Back to Edit' : 'Back'}</span>
                   </button>
@@ -585,12 +583,12 @@ export const ExpenseClaimsView: React.FC<{ activeEntityId: string; entities?: En
                     if (modalTab === 'employee') { if (!form.employeeName) { notify('Please enter employee name.'); return } setModalTab('expense') }
                     else if (modalTab === 'expense') { if (!form.amount || parseFloat(form.amount) <= 0) { notify('Please enter a valid amount.'); return } setModalTab('summary') }
                     else if (modalTab === 'summary') { setModalTab('preview') }
-                  }} className="primary h-8.5 px-4 rounded-lg text-xs font-semibold shadow-xs flex items-center gap-1.5">
+                  }} className="h-8.5 px-4 rounded-lg bg-gradient-to-r from-blue-600 to-indigo-600 text-white text-xs font-bold shadow-lg shadow-blue-500/25 flex items-center gap-1.5">
                     <span>{modalTab === 'employee' ? 'Next: Category & Amount' : modalTab === 'expense' ? 'Next: Verification & Submit' : 'Preview & Review'}</span>
                     {modalTab === 'summary' ? <Eye className="w-3 h-3" /> : <ArrowRight className="w-3 h-3" />}
                   </button>
                 ) : (
-                  <button type="button" onClick={submitClaim} className="primary h-8.5 px-5 rounded-lg text-xs font-semibold shadow-xs flex items-center gap-1.5 bg-emerald-600 hover:bg-emerald-700 text-white">
+                  <button type="button" onClick={submitClaim} className="h-8.5 px-5 rounded-lg bg-gradient-to-r from-blue-600 to-indigo-600 text-white text-xs font-bold shadow-lg shadow-blue-500/25 flex items-center gap-1.5">
                     <Check className="w-3 h-3" />
                     <span>Confirm & Submit Claim</span>
                   </button>

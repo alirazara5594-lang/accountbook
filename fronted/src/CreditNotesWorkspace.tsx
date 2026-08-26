@@ -141,7 +141,7 @@ export function CreditNotesWorkspace({
   return (
     <div className="space-y-6">
       {toast && (
-        <div className="px-3.5 py-2 bg-emerald-500/10 border border-emerald-500/20 text-emerald-600 rounded-xl text-xs font-semibold">
+        <div className="z-[9999] px-3.5 py-2 bg-emerald-500/10 border border-emerald-500/20 text-emerald-600 rounded-xl text-xs font-semibold">
           {toast}
         </div>
       )}
@@ -171,7 +171,6 @@ export function CreditNotesWorkspace({
           >
             <select
               className="h-9 px-3 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] text-xs text-[var(--color-text)] outline-none focus:border-[var(--color-primary)] transition-colors shadow-2xs box-border"
-              style={undefined}
               value={statusFilter}
               onChange={e => setStatusFilter(e.target.value)}
             >
@@ -437,8 +436,7 @@ export function CreditNotesWorkspace({
                         placeholder="0.00"
                         value={form.amount}
                         onChange={e => setForm({ ...form, amount: e.target.value })}
-                        className="w-full h-full border-0 outline-none bg-transparent font-mono text-xs text-[var(--color-text-strong)] placeholder:text-[var(--color-text-muted)]"
-                        style={{ border: 0, outline: 'none', padding: 0, background: 'transparent' }}
+                        className="w-full h-10 px-3 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] text-xs outline-none font-mono text-[var(--color-text-strong)] placeholder:text-[var(--color-text-muted)]"
                       />
                     </div>
                   </div>
@@ -458,8 +456,7 @@ export function CreditNotesWorkspace({
                         placeholder="0.00"
                         value={form.tax}
                         onChange={e => setForm({ ...form, tax: e.target.value })}
-                        className="w-full h-full border-0 outline-none bg-transparent font-mono text-xs text-[var(--color-text-strong)] placeholder:text-[var(--color-text-muted)]"
-                        style={{ border: 0, outline: 'none', padding: 0, background: 'transparent' }}
+                        className="w-full h-10 px-3 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] text-xs outline-none font-mono text-[var(--color-text-strong)] placeholder:text-[var(--color-text-muted)]"
                       />
                     </div>
                   </div>
@@ -547,7 +544,7 @@ export function CreditNotesWorkspace({
             </div>
 
             {/* Modal Footer */}
-            <div className="px-6 py-3.5 border-t border-[var(--color-border)] bg-[var(--color-surface-muted)]/50 flex items-center justify-between gap-3">
+            <div className="px-6 py-4 border-t border-[var(--color-border)] flex items-center justify-between">
               <div className="text-[11px] text-[var(--color-text-muted)] flex items-center gap-1.5">
                 <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 inline-block" />
                 <span>{modalTab === 'preview' ? 'Ready for final verification & creation' : 'Auto-draft protection active'}</span>
@@ -556,7 +553,7 @@ export function CreditNotesWorkspace({
               <div className="flex items-center gap-2">
                 <button
                   type="button"
-                  className="h-8.5 px-3.5 rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] text-xs font-medium text-[var(--color-text)] hover:bg-[var(--color-surface-muted)] transition-colors"
+                  className="h-9 px-4 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] text-xs font-medium hover:bg-[var(--color-surface-muted)] transition-colors"
                   onClick={() => setShowCreate(false)}
                 >
                   Cancel
@@ -564,7 +561,7 @@ export function CreditNotesWorkspace({
                 {modalTab !== 'preview' && (
                   <button
                     type="button"
-                    className="h-8.5 px-3.5 rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] text-xs font-medium text-[var(--color-text-muted)] hover:text-[var(--color-text-strong)] transition-colors"
+                    className="h-9 px-4 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] text-xs font-medium hover:bg-[var(--color-surface-muted)] transition-colors"
                     onClick={(e) => { e.preventDefault(); saveDraft(); notify('Credit note draft saved locally.'); }}
                   >
                     Save Draft
@@ -579,7 +576,7 @@ export function CreditNotesWorkspace({
                       else if (modalTab === 'summary') setModalTab('items')
                       else if (modalTab === 'items') setModalTab('details')
                     }}
-                    className="h-8.5 px-3 rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] text-xs font-medium text-[var(--color-text)] hover:bg-[var(--color-surface-muted)] transition-colors flex items-center gap-1"
+                    className="h-9 px-4 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] text-xs font-medium hover:bg-[var(--color-surface-muted)] transition-colors flex items-center gap-1"
                   >
                     <ArrowLeft className="w-3 h-3" />
                     <span>{modalTab === 'preview' ? 'Back to Edit' : 'Back'}</span>
@@ -599,7 +596,7 @@ export function CreditNotesWorkspace({
                         setModalTab('preview')
                       }
                     }}
-                    className="primary h-8.5 px-4 rounded-lg text-xs font-semibold shadow-xs flex items-center gap-1.5"
+                    className="h-9 px-5 rounded-xl bg-gradient-to-r from-emerald-600 to-green-600 text-white text-xs font-bold shadow-lg shadow-emerald-500/25 flex items-center gap-1.5"
                   >
                     <span>{modalTab === 'details' ? 'Next: Amount & Tax' : modalTab === 'items' ? 'Next: Reason & Confirmation' : 'Preview & Review'}</span>
                     {modalTab === 'summary' ? <Eye className="w-3 h-3" /> : <ArrowRight className="w-3 h-3" />}
@@ -608,7 +605,7 @@ export function CreditNotesWorkspace({
                   <button
                     type="button"
                     onClick={handleCreate as any}
-                    className="primary h-8.5 px-5 rounded-lg text-xs font-semibold shadow-xs flex items-center gap-1.5 bg-rose-600 hover:bg-rose-700 text-white"
+                    className="h-9 px-5 rounded-xl bg-gradient-to-r from-emerald-600 to-green-600 text-white text-xs font-bold shadow-lg shadow-emerald-500/25 flex items-center gap-1.5"
                   >
                     <Check className="w-3 h-3" />
                     <span>Confirm & Issue Credit Note</span>

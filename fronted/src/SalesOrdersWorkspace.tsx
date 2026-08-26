@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo } from 'react'
 import {
-  Package, Plus, Check, X, ArrowRight, ArrowLeft,   Coins,
+  Plus, Check, X, ArrowRight, ArrowLeft, Coins,
   CheckCircle2, Hash, Users, Truck, Eye, XCircle,
   FileText, ArrowUpRight, TrendingUp
 } from 'lucide-react'
@@ -229,7 +229,7 @@ export const SalesOrdersWorkspace: React.FC<{ activeEntityId: string; entities?:
   return (
     <div className="space-y-6">
       {toast && (
-        <div className="px-3.5 py-2 bg-emerald-500/10 border border-emerald-500/20 text-emerald-600 rounded-xl text-xs font-semibold">
+        <div className="px-3.5 py-2 bg-emerald-500/10 border border-emerald-500/20 text-emerald-600 rounded-xl text-xs font-semibold z-[9999]">
           {toast}
         </div>
       )}
@@ -259,7 +259,6 @@ export const SalesOrdersWorkspace: React.FC<{ activeEntityId: string; entities?:
           >
             <select
               className="h-9 px-3 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] text-xs text-[var(--color-text)] outline-none focus:border-[var(--color-primary)] transition-colors shadow-2xs box-border"
-              style={{ paddingTop: 0, paddingBottom: 0 }}
               value={statusFilter}
               onChange={e => setStatusFilter(e.target.value)}
             >
@@ -272,7 +271,7 @@ export const SalesOrdersWorkspace: React.FC<{ activeEntityId: string; entities?:
           </DataToolbar>
           <button
             onClick={openCreateModal}
-            className="primary h-9 px-4 rounded-xl text-xs font-semibold whitespace-nowrap flex items-center justify-center gap-1.5 shadow-sm"
+            className="h-9 px-5 rounded-xl bg-gradient-to-r from-indigo-600 to-purple-600 text-white text-xs font-bold shadow-lg shadow-indigo-500/25 whitespace-nowrap flex items-center justify-center gap-1.5"
           >
             <span>＋</span> New Order
           </button>
@@ -508,8 +507,7 @@ export const SalesOrdersWorkspace: React.FC<{ activeEntityId: string; entities?:
                         placeholder="e.g. SO-0001"
                         value={form.reference}
                         onChange={e => setForm({ ...form, reference: e.target.value })}
-                        className="w-full h-full border-0 outline-none bg-transparent font-mono text-xs text-[var(--color-text-strong)] placeholder:text-[var(--color-text-muted)]"
-                        style={{ border: 0, outline: 'none', padding: 0, background: 'transparent' }}
+                        className="w-full h-10 px-3 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] text-xs outline-none"
                       />
                     </div>
                   </div>
@@ -815,7 +813,7 @@ export const SalesOrdersWorkspace: React.FC<{ activeEntityId: string; entities?:
               <div className="flex items-center gap-2">
                 <button
                   type="button"
-                  className="h-8.5 px-3.5 rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] text-xs font-medium text-[var(--color-text)] hover:bg-[var(--color-surface-muted)] transition-colors"
+                  className="h-9 px-4 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] text-xs font-medium hover:bg-[var(--color-surface-muted)] transition-colors"
                   onClick={() => setShowForm(false)}
                 >
                   Cancel
@@ -823,7 +821,7 @@ export const SalesOrdersWorkspace: React.FC<{ activeEntityId: string; entities?:
                 {modalTab !== 'preview' && (
                   <button
                     type="button"
-                    className="h-8.5 px-3.5 rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] text-xs font-medium text-[var(--color-text-muted)] hover:text-[var(--color-text-strong)] transition-colors"
+                    className="h-9 px-4 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] text-xs font-medium hover:bg-[var(--color-surface-muted)] transition-colors"
                     onClick={(e) => { e.preventDefault(); saveDraft(); notify('Order draft saved locally.'); }}
                   >
                     Save Draft
@@ -838,7 +836,7 @@ export const SalesOrdersWorkspace: React.FC<{ activeEntityId: string; entities?:
                       else if (modalTab === 'summary') setModalTab('lines')
                       else if (modalTab === 'lines') setModalTab('details')
                     }}
-                    className="h-8.5 px-3 rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] text-xs font-medium text-[var(--color-text)] hover:bg-[var(--color-surface-muted)] transition-colors flex items-center gap-1"
+                    className="h-9 px-4 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] text-xs font-medium hover:bg-[var(--color-surface-muted)] transition-colors flex items-center gap-1"
                   >
                     <ArrowLeft className="w-3 h-3" />
                     <span>{modalTab === 'preview' ? 'Back to Edit' : 'Back'}</span>
@@ -858,7 +856,7 @@ export const SalesOrdersWorkspace: React.FC<{ activeEntityId: string; entities?:
                         setModalTab('preview')
                       }
                     }}
-                    className="primary h-8.5 px-4 rounded-lg text-xs font-semibold shadow-xs flex items-center gap-1.5"
+                    className="h-9 px-5 rounded-xl bg-gradient-to-r from-indigo-600 to-purple-600 text-white text-xs font-bold shadow-lg shadow-indigo-500/25 flex items-center gap-1.5"
                   >
                     <span>{modalTab === 'details' ? 'Next: Order Lines' : modalTab === 'lines' ? 'Next: Terms & Confirmation' : 'Preview & Review'}</span>
                     {modalTab === 'summary' ? <Eye className="w-3 h-3" /> : <ArrowRight className="w-3 h-3" />}
@@ -867,7 +865,7 @@ export const SalesOrdersWorkspace: React.FC<{ activeEntityId: string; entities?:
                   <button
                     type="button"
                     onClick={handleSave}
-                    className="primary h-8.5 px-5 rounded-lg text-xs font-semibold shadow-xs flex items-center gap-1.5 bg-blue-600 hover:bg-blue-700 text-white"
+                    className="h-9 px-5 rounded-xl bg-gradient-to-r from-indigo-600 to-purple-600 text-white text-xs font-bold shadow-lg shadow-indigo-500/25 flex items-center gap-1.5"
                   >
                     <Check className="w-3 h-3" />
                     <span>Confirm & Create Sales Order</span>
@@ -881,7 +879,7 @@ export const SalesOrdersWorkspace: React.FC<{ activeEntityId: string; entities?:
 
       {/* View Order Details Slideover/Modal */}
       {activeOrderDetails && (
-        <div className="overlay animate-in fade-in duration-200">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm animate-in fade-in duration-200">
           <div className="w-full max-w-lg bg-[var(--color-surface)] border border-[var(--color-border)] rounded-2xl shadow-2xl p-6 space-y-4">
             <div className="flex items-center justify-between border-b border-[var(--color-border)] pb-3">
               <div>
@@ -890,7 +888,7 @@ export const SalesOrdersWorkspace: React.FC<{ activeEntityId: string; entities?:
               </div>
               <button
                 onClick={() => setActiveOrderDetails(null)}
-                className="w-8 h-8 rounded-lg flex items-center justify-center text-[var(--color-text-muted)] hover:bg-[var(--color-surface-muted)]"
+                className="w-8 h-8 rounded-lg flex items-center justify-center text-[var(--color-text-muted)] hover:bg-[var(--color-surface-muted)] transition-colors"
               >
                 <X className="w-4 h-4" />
               </button>
@@ -920,7 +918,7 @@ export const SalesOrdersWorkspace: React.FC<{ activeEntityId: string; entities?:
             <div className="pt-2">
               <button
                 onClick={() => setActiveOrderDetails(null)}
-                className="w-full h-8.5 rounded-lg border border-[var(--color-border)] text-xs font-semibold text-[var(--color-text)] hover:bg-[var(--color-surface-muted)] transition-colors"
+                className="w-full h-9 rounded-xl border border-[var(--color-border)] text-xs font-semibold text-[var(--color-text)] hover:bg-[var(--color-surface-muted)] transition-colors"
               >
                 Close
               </button>

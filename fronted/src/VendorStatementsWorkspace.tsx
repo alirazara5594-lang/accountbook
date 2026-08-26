@@ -1001,16 +1001,6 @@ export function VendorStatementsWorkspace({ activeEntityId }: Props) {
               value={query}
               onChange={(e) => setQuery(e.target.value)}
               placeholder="Search vendor, ID, phone..."
-              style={{
-                border: 'none',
-                outline: 'none',
-                background: 'transparent',
-                padding: '0 !important',
-                width: '100%',
-                fontSize: '12px',
-                color: 'var(--color-text)',
-                boxShadow: 'none',
-              }}
               className="!p-0 !border-0 !outline-none !bg-transparent w-full text-xs text-[var(--color-text)]"
             />
             {query && (
@@ -1040,7 +1030,7 @@ export function VendorStatementsWorkspace({ activeEntityId }: Props) {
           {/* Export All Summary Button */}
           <button
             onClick={exportAllSummaryExcel}
-            className="secondary h-8.5 px-3 rounded-lg text-xs font-semibold flex items-center gap-1.5 shadow-xs"
+            className="h-9 px-4 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] text-xs font-medium hover:bg-[var(--color-surface-muted)] transition-colors"
             title="Export all vendors summary to Excel"
           >
             <FileSpreadsheet className="w-3.5 h-3.5 text-emerald-600" /> Export Summary
@@ -1049,7 +1039,7 @@ export function VendorStatementsWorkspace({ activeEntityId }: Props) {
           {/* Refresh Data */}
           <button
             onClick={loadData}
-            className="secondary h-8.5 w-8.5 rounded-lg flex items-center justify-center text-xs text-[var(--color-text)]"
+            className="h-9 px-4 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] text-xs font-medium hover:bg-[var(--color-surface-muted)] transition-colors"
             title="Refresh"
           >
             <RefreshCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin' : ''}`} />

@@ -520,7 +520,7 @@ export function PayablesAgingWorkspace({ activeEntityId }: PayablesAgingProps) {
           <div className="flex items-center gap-1.5 shrink-0 flex-wrap">
             <button
               onClick={() => generateVendorAgingPDF(vendor.id)}
-              className="primary h-8.5 px-3 rounded-lg text-xs font-semibold flex items-center gap-1.5 shadow-xs"
+              className="h-9 px-5 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 text-white text-xs font-bold shadow-lg shadow-blue-500/25"
             >
               <Download className="w-3.5 h-3.5" /> Download PDF
             </button>
@@ -532,7 +532,7 @@ export function PayablesAgingWorkspace({ activeEntityId }: PayablesAgingProps) {
             </button>
             <button
               onClick={() => window.print()}
-              className="secondary h-8.5 px-2.5 rounded-lg text-xs font-semibold flex items-center gap-1"
+              className="h-9 px-4 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] text-xs font-medium hover:bg-[var(--color-surface-muted)] transition-colors"
             >
               <Printer className="w-3.5 h-3.5" />
             </button>
@@ -697,16 +697,6 @@ export function PayablesAgingWorkspace({ activeEntityId }: PayablesAgingProps) {
               value={query}
               onChange={(e) => setQuery(e.target.value)}
               placeholder="Search vendor or ID..."
-              style={{
-                border: 'none',
-                outline: 'none',
-                background: 'transparent',
-                padding: '0 !important',
-                width: '100%',
-                fontSize: '12px',
-                color: 'var(--color-text)',
-                boxShadow: 'none',
-              }}
               className="!p-0 !border-0 !outline-none !bg-transparent w-full text-xs text-[var(--color-text)]"
             />
             {query && (
@@ -742,7 +732,7 @@ export function PayablesAgingWorkspace({ activeEntityId }: PayablesAgingProps) {
           {/* Refresh */}
           <button
             onClick={loadData}
-            className="secondary h-8.5 w-8.5 rounded-lg flex items-center justify-center text-xs text-[var(--color-text)]"
+            className="h-9 px-4 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] text-xs font-medium hover:bg-[var(--color-surface-muted)] transition-colors"
             title="Refresh"
           >
             <RefreshCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin' : ''}`} />

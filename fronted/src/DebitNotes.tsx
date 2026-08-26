@@ -163,7 +163,7 @@ export const DebitNotes: React.FC<{ activeEntityId: string; entities?: any[] }> 
   return (
     <div className="space-y-6">
       {toast && (
-        <div className="px-3.5 py-2 bg-emerald-500/10 border border-emerald-500/20 text-emerald-600 rounded-xl text-xs font-semibold">
+        <div className="z-[9999] px-3.5 py-2 bg-emerald-500/10 border border-emerald-500/20 text-emerald-600 rounded-xl text-xs font-semibold">
           {toast}
         </div>
       )}
@@ -193,7 +193,6 @@ export const DebitNotes: React.FC<{ activeEntityId: string; entities?: any[] }> 
           >
             <select
               className="h-9 px-3 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] text-xs text-[var(--color-text)] outline-none focus:border-[var(--color-primary)] transition-colors shadow-2xs box-border"
-              style={{ paddingTop: 0, paddingBottom: 0 }}
               value={statusFilter}
               onChange={e => setStatusFilter(e.target.value)}
             >
@@ -205,7 +204,7 @@ export const DebitNotes: React.FC<{ activeEntityId: string; entities?: any[] }> 
           </DataToolbar>
           <button
             onClick={openCreateModal}
-            className="primary h-9 px-4 rounded-xl text-xs font-semibold whitespace-nowrap flex items-center justify-center gap-1.5 shadow-sm"
+            className="h-9 px-5 rounded-xl bg-gradient-to-r from-emerald-600 to-green-600 text-white text-xs font-bold shadow-lg shadow-emerald-500/25 whitespace-nowrap flex items-center justify-center gap-1.5"
           >
             <span>＋</span> New Debit Note
           </button>
@@ -313,10 +312,10 @@ export const DebitNotes: React.FC<{ activeEntityId: string; entities?: any[] }> 
 
       {/* Stepped / Tabbed Debit Note Creation Modal */}
       {showCreate && (
-        <div className="overlay animate-in fade-in duration-200">
-          <div className="w-full max-w-4xl bg-[var(--color-surface)] border border-[var(--color-border)] rounded-2xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh]">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
+          <div className="w-full max-w-5xl bg-[var(--color-surface)] border border-[var(--color-border)] rounded-2xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh]">
             {/* Modal Header */}
-            <div className="px-6 py-4.5 border-b border-[var(--color-border)] bg-[var(--color-surface-muted)]/50 flex items-center justify-between">
+            <div className="px-6 py-4 border-b border-[var(--color-border)] flex items-center justify-between">
               <div className="flex items-center gap-3.5">
                 <div className="w-9 h-9 rounded-lg bg-gradient-to-br from-amber-500 to-orange-600 flex items-center justify-center text-white shadow-sm shrink-0">
                   <FileText className="w-5 h-5" />
@@ -339,7 +338,7 @@ export const DebitNotes: React.FC<{ activeEntityId: string; entities?: any[] }> 
 
               <button
                 type="button"
-                className="w-8 h-8 rounded-lg flex items-center justify-center text-[var(--color-text-muted)] hover:text-[var(--color-text-strong)] hover:bg-[var(--color-surface-muted)] transition-colors"
+                className="w-8 h-8 rounded-lg flex items-center justify-center text-[var(--color-text-muted)] hover:bg-[var(--color-surface-muted)] transition-colors"
                 onClick={() => setShowCreate(false)}
               >
                 <X className="w-4 h-4" />
@@ -466,7 +465,6 @@ export const DebitNotes: React.FC<{ activeEntityId: string; entities?: any[] }> 
                         value={form.amount}
                         onChange={e => setForm({ ...form, amount: e.target.value })}
                         className="w-full h-full border-0 outline-none bg-transparent font-mono text-xs text-[var(--color-text-strong)] placeholder:text-[var(--color-text-muted)]"
-                        style={{ border: 0, outline: 'none', padding: 0, background: 'transparent' }}
                       />
                     </div>
                   </div>
@@ -487,7 +485,6 @@ export const DebitNotes: React.FC<{ activeEntityId: string; entities?: any[] }> 
                         value={form.taxAmount}
                         onChange={e => setForm({ ...form, taxAmount: e.target.value })}
                         className="w-full h-full border-0 outline-none bg-transparent font-mono text-xs text-[var(--color-text-strong)] placeholder:text-[var(--color-text-muted)]"
-                        style={{ border: 0, outline: 'none', padding: 0, background: 'transparent' }}
                       />
                     </div>
                   </div>
@@ -573,30 +570,30 @@ export const DebitNotes: React.FC<{ activeEntityId: string; entities?: any[] }> 
             </div>
 
             {/* Modal Footer */}
-            <div className="px-6 py-3.5 border-t border-[var(--color-border)] bg-[var(--color-surface-muted)]/50 flex items-center justify-between gap-3">
+            <div className="px-6 py-4 border-t border-[var(--color-border)] flex items-center justify-between">
               <div className="text-[11px] text-[var(--color-text-muted)] flex items-center gap-1.5">
                 <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 inline-block" />
                 <span>{modalTab === 'preview' ? 'Ready for final verification & creation' : 'Auto-draft protection active'}</span>
               </div>
 
               <div className="flex items-center gap-2">
-                <button type="button" className="h-8.5 px-3.5 rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] text-xs font-medium text-[var(--color-text)] hover:bg-[var(--color-surface-muted)] transition-colors" onClick={() => setShowCreate(false)}>Cancel</button>
+                <button type="button" className="h-9 px-4 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] text-xs font-medium hover:bg-[var(--color-surface-muted)] transition-colors" onClick={() => setShowCreate(false)}>Cancel</button>
                 {modalTab !== 'preview' && (
-                  <button type="button" className="h-8.5 px-3.5 rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] text-xs font-medium text-[var(--color-text-muted)] hover:text-[var(--color-text-strong)] transition-colors" onClick={(e) => { e.preventDefault(); saveDraft(); notify('Debit note draft saved locally.'); }}>Save Draft</button>
+                  <button type="button" className="h-9 px-4 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] text-xs font-medium hover:bg-[var(--color-surface-muted)] transition-colors" onClick={(e) => { e.preventDefault(); saveDraft(); notify('Debit note draft saved locally.'); }}>Save Draft</button>
                 )}
                 {modalTab !== 'details' && (
-                  <button type="button" onClick={() => { if (modalTab === 'preview') setModalTab('summary'); else if (modalTab === 'summary') setModalTab('items'); else if (modalTab === 'items') setModalTab('details'); }} className="h-8.5 px-3 rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] text-xs font-medium text-[var(--color-text)] hover:bg-[var(--color-surface-muted)] transition-colors flex items-center gap-1">
+                  <button type="button" onClick={() => { if (modalTab === 'preview') setModalTab('summary'); else if (modalTab === 'summary') setModalTab('items'); else if (modalTab === 'items') setModalTab('details'); }} className="h-9 px-4 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] text-xs font-medium hover:bg-[var(--color-surface-muted)] transition-colors flex items-center gap-1">
                     <ArrowLeft className="w-3 h-3" />
                     <span>{modalTab === 'preview' ? 'Back to Edit' : 'Back'}</span>
                   </button>
                 )}
                 {modalTab !== 'preview' ? (
-                  <button type="button" onClick={() => { if (modalTab === 'details') { if (!form.vendorId) { notify('Please select a vendor.'); return } setModalTab('items') } else if (modalTab === 'items') { setModalTab('summary') } else if (modalTab === 'summary') { setModalTab('preview') } }} className="primary h-8.5 px-4 rounded-lg text-xs font-semibold shadow-xs flex items-center gap-1.5">
+                  <button type="button" onClick={() => { if (modalTab === 'details') { if (!form.vendorId) { notify('Please select a vendor.'); return } setModalTab('items') } else if (modalTab === 'items') { setModalTab('summary') } else if (modalTab === 'summary') { setModalTab('preview') } }} className="h-9 px-5 rounded-xl bg-gradient-to-r from-emerald-600 to-green-600 text-white text-xs font-bold shadow-lg shadow-emerald-500/25 flex items-center gap-1.5">
                     <span>{modalTab === 'details' ? 'Next: Amount & Tax' : modalTab === 'items' ? 'Next: Reason & Summary' : 'Preview & Review'}</span>
                     {modalTab === 'summary' ? <Eye className="w-3 h-3" /> : <ArrowRight className="w-3 h-3" />}
                   </button>
                 ) : (
-                  <button type="button" onClick={handleCreate} className="primary h-8.5 px-5 rounded-lg text-xs font-semibold shadow-xs flex items-center gap-1.5 bg-amber-600 hover:bg-amber-700 text-white">
+                  <button type="button" onClick={handleCreate} className="h-9 px-5 rounded-xl bg-gradient-to-r from-amber-500 to-orange-600 text-white text-xs font-bold shadow-lg shadow-amber-500/25 flex items-center gap-1.5">
                     <Check className="w-3 h-3" />
                     <span>Confirm & Create Debit Note</span>
                   </button>

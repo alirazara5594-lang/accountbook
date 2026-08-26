@@ -313,7 +313,7 @@ export const PurchaseReportsView: React.FC<{ activeEntityId: string; entities: E
           />
           <button
             onClick={loadReport}
-            className="secondary h-8.5 w-8.5 rounded-lg flex items-center justify-center text-xs text-[var(--color-text)]"
+            className="h-9 px-4 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] text-xs font-medium hover:bg-[var(--color-surface-muted)] transition-colors h-8.5 w-8.5 flex items-center justify-center text-[var(--color-text)]"
           >
             <RefreshCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin' : ''}`} />
           </button>
@@ -378,16 +378,6 @@ export const PurchaseReportsView: React.FC<{ activeEntityId: string; entities: E
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             placeholder={activeTab === 'spend' ? 'Search suppliers...' : 'Search bills, vendor...'}
-            style={{
-              border: 'none',
-              outline: 'none',
-              background: 'transparent',
-              padding: '0 !important',
-              width: '100%',
-              fontSize: '12px',
-              color: 'var(--color-text)',
-              boxShadow: 'none',
-            }}
             className="!p-0 !border-0 !outline-none !bg-transparent w-full text-xs text-[var(--color-text)]"
           />
           {query && (

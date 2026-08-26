@@ -158,21 +158,26 @@ export const PurchaseRequests: React.FC<{activeEntityId: string, entities: any[]
       </div>
 
       {isModalOpen && (
-        <div className="fixed inset-0 bg-gray-900/40 backdrop-blur-sm z-50 flex items-center justify-center animate-fade-in pl-64">
-          <div className="bg-white rounded-2xl shadow-xl w-full max-w-3xl max-h-[90vh] overflow-hidden flex flex-col">
-            <div className="p-6 border-b border-gray-100 flex justify-between items-center bg-gray-50/50">
-              <h2 className="text-xl font-bold text-gray-900">New Purchase Request</h2>
-              <button onClick={() => setIsModalOpen(false)} className="p-2 hover:bg-gray-200 rounded-lg">✕</button>
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm pl-64">
+          <div className="w-full max-w-5xl bg-[var(--color-surface)] border border-[var(--color-border)] rounded-2xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh]">
+            <div className="px-6 py-4 border-b border-[var(--color-border)] flex items-center justify-between">
+              <div className="flex items-center gap-3.5">
+                <div className="w-9 h-9 rounded-lg bg-gradient-to-br from-emerald-500 to-green-600 flex items-center justify-center text-white shadow-sm shrink-0">
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
+                </div>
+                <h2 className="text-base font-bold text-[var(--color-text-strong)] tracking-tight">New Purchase Request</h2>
+              </div>
+              <button onClick={() => setIsModalOpen(false)} className="w-8 h-8 rounded-lg flex items-center justify-center text-[var(--color-text-muted)] hover:bg-[var(--color-surface-muted)] transition-colors">✕</button>
             </div>
             <div className="p-6 overflow-y-auto flex-1">
-              <div className="grid grid-cols-2 gap-6 mb-6">
+              <div className="grid grid-cols-2 gap-4 mb-6">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1.5">Requester Name</label>
-                  <input required value={requesterName} onChange={e => setRequesterName(e.target.value)} className="w-full px-4 py-2 border rounded-xl" />
+                  <label className="text-[10px] font-bold uppercase tracking-wider text-[var(--color-text-muted)] mb-1.5 block">Requester Name</label>
+                  <input required value={requesterName} onChange={e => setRequesterName(e.target.value)} className="w-full h-10 px-3 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] text-xs outline-none" />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1.5">Date</label>
-                  <input type="date" value={date} onChange={e => setDate(e.target.value)} className="w-full px-4 py-2 border rounded-xl" />
+                  <label className="text-[10px] font-bold uppercase tracking-wider text-[var(--color-text-muted)] mb-1.5 block">Date</label>
+                  <input type="date" value={date} onChange={e => setDate(e.target.value)} className="w-full h-10 px-3 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] text-xs outline-none" />
                 </div>
               </div>
               <div className="mb-4 flex justify-between items-center">
@@ -190,9 +195,12 @@ export const PurchaseRequests: React.FC<{activeEntityId: string, entities: any[]
                 </div>
               ))}
             </div>
-            <div className="p-6 border-t flex justify-end gap-3 bg-gray-50/50">
-              <button onClick={() => setIsModalOpen(false)} className="px-5 py-2.5 rounded-xl hover:bg-gray-200">Cancel</button>
-              <button onClick={submitPr} className="px-5 py-2.5 bg-blue-600 text-white rounded-xl hover:bg-blue-700">Submit Request</button>
+            <div className="px-6 py-4 border-t border-[var(--color-border)] flex items-center justify-between">
+              <div></div>
+              <div className="flex items-center gap-2">
+                <button onClick={() => setIsModalOpen(false)} className="h-9 px-4 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] text-xs font-medium hover:bg-[var(--color-surface-muted)] transition-colors">Cancel</button>
+                <button onClick={submitPr} className="h-9 px-5 rounded-xl bg-gradient-to-r from-emerald-600 to-green-600 text-white text-xs font-bold shadow-lg shadow-emerald-500/25">Submit Request</button>
+              </div>
             </div>
           </div>
         </div>
