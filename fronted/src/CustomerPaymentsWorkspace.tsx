@@ -11,9 +11,10 @@ import { StatusChip } from './components/ui/status-chip';
 import { EmptyState, TableSkeleton } from './components/ui/empty-state';
 import {
   Plus, X, DollarSign, Receipt,
-  Search, Download, FileSpreadsheet,
+  Search, Download,
   CheckCircle2, Users, RefreshCw, BarChart3
 } from 'lucide-react';
+import { ExportDropdown } from './components/ExportDropdown';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 
@@ -349,18 +350,21 @@ export function CustomerPaymentsWorkspace() {
       <div className="relative overflow-hidden rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)] shadow-sm">
         <div className="absolute inset-0 bg-gradient-to-r from-teal-500/10 via-teal-500/[0.03] to-transparent pointer-events-none" />
         <div className="absolute -right-10 -top-16 w-56 h-56 rounded-full bg-teal-500/10 blur-3xl pointer-events-none" />
-        <div className="relative flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 px-5 py-4">
-          <div className="flex items-center gap-4">
-            <div className="relative h-14 w-14 shrink-0">
-              <div className="absolute inset-[6px] rotate-45 rounded-[12px] shadow-xl bg-gradient-to-br from-teal-500 to-emerald-700" />
-              <div className="absolute inset-0 flex items-center justify-center"><DollarSign className="w-6 h-6 text-white" /></div>
+        <div className="relative flex flex-col xl:flex-row xl:items-center xl:justify-between gap-3 px-4 py-3">
+          <div className="flex items-center gap-3">
+            <div className="relative h-11 w-11 shrink-0">
+              <div className="absolute inset-[5px] rotate-45 rounded-[10px] shadow-lg bg-gradient-to-br from-teal-500 to-emerald-700" />
+              <div className="absolute inset-0 flex items-center justify-center"><DollarSign className="w-5 h-5 text-white" /></div>
             </div>
-            <div>
-              <div className="flex items-center gap-2.5">
-                <h1 className="text-2xl font-black tracking-tight text-[var(--color-text-strong)]">Customer Payments &amp; Receipts</h1>
-                <span className="hidden sm:inline-flex items-center gap-1.5 rounded-full border border-teal-500/25 bg-teal-500/10 px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider text-teal-600 dark:text-teal-400"><span className="h-1.5 w-1.5 rounded-full bg-teal-500 animate-pulse" /> Live Ledger</span>
+            <div className="flex flex-col leading-tight gap-1">
+              <div className="flex items-center gap-2">
+                <h1 className="text-xl font-black tracking-tight text-[var(--color-text-strong)]">Customer Payments &amp;</h1>
               </div>
-              <p className="text-xs text-[var(--color-text-muted)] mt-0.5">
+              <div className="flex items-center gap-2 flex-wrap">
+                <h1 className="text-xl font-black tracking-tight text-[var(--color-text-strong)]">Receipts</h1>
+                <span className="inline-flex items-center gap-1 rounded-full border border-teal-500/25 bg-teal-500/10 px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider text-teal-600 dark:text-teal-400 shrink-0"><span className="h-1.5 w-1.5 rounded-full bg-teal-500 animate-pulse" /> Live Ledger</span>
+              </div>
+              <p className="text-[11px] text-[var(--color-text-muted)]">
                 Record customer collections, apply remittances against invoices, and manage bank deposit reconciliations.
               </p>
             </div>
@@ -412,26 +416,14 @@ export function CustomerPaymentsWorkspace() {
               <option value="void">Void</option>
             </select>
 
-            <button
-              onClick={exportPaymentsExcel}
-              className="secondary h-8.5 px-3 rounded-lg text-xs font-semibold flex items-center gap-1.5 shadow-xs"
-              title="Export payments register to Excel"
-            >
-              <FileSpreadsheet className="w-3.5 h-3.5 text-emerald-600" /> Excel
-            </button>
-            <button
-              onClick={exportPaymentsCSV}
-              className="secondary h-8.5 px-2.5 rounded-lg text-xs font-semibold"
-            >
-              CSV
-            </button>
-
-            <button
-              onClick={loadData}
-              className="secondary h-8.5 w-8.5 rounded-lg flex items-center justify-center text-xs text-[var(--color-text)]"
-            >
-              <RefreshCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin' : ''}`} />
-            </button>
+            <ExportDropdown
+              onExcel={exportPaymentsExcel}
+              onCSV={exportPaymentsCSV}
+              variant="outline"
+              size="sm"
+              align="right"
+              label="Export"
+            />
 
             <button
               onClick={openModal}
@@ -469,15 +461,15 @@ export function CustomerPaymentsWorkspace() {
           <table className="w-full text-left text-xs">
             <thead className="bg-teal-500/[0.05] dark:bg-teal-400/[0.07] text-[var(--color-text-muted)] border-b border-[var(--color-border)] text-[10px] uppercase font-bold tracking-wider">
               <tr>
-                <th className="py-2.5 px-3.5">Receipt #</th>
-                <th className="py-2.5 px-3">Date</th>
-                <th className="py-2.5 px-3">Customer</th>
-                <th className="py-2.5 px-3">Invoice Applied</th>
-                <th className="py-2.5 px-3 text-right">Amount Received</th>
-                <th className="py-2.5 px-3">Method</th>
-                <th className="py-2.5 px-3">Deposit To Account</th>
-                <th className="py-2.5 px-3 text-center">Status</th>
-                <th className="py-2.5 px-3.5 text-right">Receipt Slip</th>
+                <th className="py-2 px-2.5">Receipt #</th>
+                <th className="py-2 px-2">Date</th>
+                <th className="py-2 px-2">Customer</th>
+                <th className="py-2 px-2">Invoice Applied</th>
+                <th className="py-2 px-2 text-right">Amount Received</th>
+                <th className="py-2 px-2">Method</th>
+                <th className="py-2 px-2">Deposit To Account</th>
+                <th className="py-2 px-2 text-center">Status</th>
+                <th className="py-2 px-2.5 text-right">Receipt Slip</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-[var(--color-border)]">
@@ -500,38 +492,38 @@ export function CustomerPaymentsWorkspace() {
               ) : (
                 filteredPayments.map((p: any) => (
                   <tr key={p.id} className="hover:bg-gray-50/50 dark:hover:bg-gray-900/30 transition-colors">
-                    <td className="py-2.5 px-3.5 font-mono font-bold text-blue-600 dark:text-blue-400">
+                    <td className="py-2 px-2.5 font-mono font-bold text-blue-600 dark:text-blue-400">
                       {p.receiptNumber}
                     </td>
-                    <td className="py-2.5 px-3 text-[var(--color-text)] whitespace-nowrap">{p.date}</td>
-                    <td className="py-2.5 px-3 font-semibold text-[var(--color-text-strong)]">
+                    <td className="py-2 px-2 text-[var(--color-text)] whitespace-nowrap">{p.date}</td>
+                    <td className="py-2 px-2 font-semibold text-[var(--color-text-strong)]">
                       {p.customerName || p.customerId}
                     </td>
-                    <td className="py-2.5 px-3 font-mono text-[var(--color-text)]">
+                    <td className="py-2 px-2 font-mono text-[var(--color-text)]">
                       {p.invoiceNumber || <span className="text-gray-400 italic">On-Account</span>}
                     </td>
-                    <td className="py-2.5 px-3 text-right font-extrabold text-emerald-600 dark:text-emerald-400 font-mono">
+                    <td className="py-2 px-2 text-right font-extrabold text-emerald-600 dark:text-emerald-400 font-mono">
                       {money(p.amount || 0)}
                     </td>
-                    <td className="py-2.5 px-3">
+                    <td className="py-2 px-2">
                       <span className="px-2 py-0.5 rounded-md bg-gray-100 dark:bg-gray-800 text-[var(--color-text)] font-semibold text-[10px]">
                         {p.paymentMethod}
                       </span>
                     </td>
-                    <td className="py-2.5 px-3 text-[var(--color-text-muted)]">
+                    <td className="py-2 px-2 text-[var(--color-text-muted)]">
                       {p.depositToAccountName || 'Bank Account'}
                     </td>
-                    <td className="py-2.5 px-3 text-center">
+                    <td className="py-2 px-2 text-center">
                       <StatusChip
                         status={String(p.status || 'posted').toLowerCase()}
                         label={p.status || 'Posted'}
                         hex={String(p.status || '').toLowerCase() === 'void' ? '#ef4444' : String(p.status || '').toLowerCase() === 'draft' ? '#94a3b8' : '#10b981'}
                       />
                     </td>
-                    <td className="py-2.5 px-3.5 text-right">
+                    <td className="py-2 px-2.5 text-right">
                       <button
                         onClick={() => generateReceiptPDF(p)}
-                        className="inline-flex items-center gap-1 px-2.5 py-1 bg-blue-50 dark:bg-blue-900/30 hover:bg-blue-100 dark:hover:bg-blue-900/50 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-800 rounded-lg text-[11px] font-semibold transition-all shadow-2xs"
+                        className="inline-flex items-center gap-1 px-2 py-1 bg-blue-50 dark:bg-blue-900/30 hover:bg-blue-100 dark:hover:bg-blue-900/50 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-800 rounded-lg text-[11px] font-semibold transition-all shadow-2xs"
                         title="Download Payment Receipt PDF"
                       >
                         <Download className="w-3 h-3" /> Receipt PDF
@@ -544,10 +536,10 @@ export function CustomerPaymentsWorkspace() {
             {filteredPayments.length > 0 && (
               <tfoot className="bg-gray-50 dark:bg-gray-900 border-t-2 border-[var(--color-border)] font-bold text-xs">
                 <tr>
-                  <td colSpan={4} className="py-3 px-3.5 uppercase tracking-wider text-[var(--color-text-muted)] text-right">
+                  <td colSpan={4} className="py-2.5 px-2.5 uppercase tracking-wider text-[var(--color-text-muted)] text-right">
                     Total Collections Received:
                   </td>
-                  <td className="py-3 px-3 text-right text-base text-emerald-600 dark:text-emerald-400 font-extrabold">
+                  <td className="py-2.5 px-2 text-right text-sm text-emerald-600 dark:text-emerald-400 font-extrabold">
                     {money(totalReceived)}
                   </td>
                   <td colSpan={4}></td>
