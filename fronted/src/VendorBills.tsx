@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useProcurementStore, useVendorsStore, useProductsStore, useCoaStore } from './stores';
 import { DataToolbar } from '@/components/ui/data-toolbar';
 import { KpiCard, KpiGrid } from '@/components/ui/kpi-card';
+import { EmptyState } from './components/ui/empty-state';
 import { money } from './lib/currency';
 import {
   FileText, Receipt, CheckCircle, Plus, X, Eye, ArrowRight,
@@ -193,16 +194,25 @@ export const VendorBills: React.FC<{ activeEntityId: string }> = ({ activeEntity
     <div className="space-y-5">
       {toast && <div className="fixed top-4 right-4 z-[9999] bg-[var(--color-surface)] border border-[var(--color-border)] rounded-xl shadow-lg px-4 py-3 text-sm font-medium text-[var(--color-text-strong)]">{toast}</div>}
 
-      {/* Page Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-bold text-[var(--color-text-strong)] flex items-center gap-3">
-            <span className="w-10 h-10 rounded-xl bg-gradient-to-br from-amber-500 to-orange-600 flex items-center justify-center text-white shadow-md"><CreditCard className="w-5 h-5" /></span>
-            Vendor Bills
-          </h1>
-          <p className="text-sm text-[var(--color-text-muted)] mt-1">Manage supplier invoices and procurement-linked bills</p>
-        </div>
-        <div className="flex items-center gap-2">
+      {/* Page Header — AMS Signature Hero Band */}
+      <div className="relative overflow-hidden rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)] shadow-sm">
+        <div className="absolute inset-0 bg-gradient-to-r from-amber-500/10 via-amber-500/[0.03] to-transparent pointer-events-none" />
+        <div className="absolute -right-10 -top-16 w-56 h-56 rounded-full bg-amber-500/10 blur-3xl pointer-events-none" />
+        <div className="relative flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 px-5 py-4">
+          <div className="flex items-center gap-4">
+            <div className="relative h-14 w-14 shrink-0">
+              <div className="absolute inset-[6px] rotate-45 rounded-[12px] shadow-xl bg-gradient-to-br from-amber-500 to-orange-700" />
+              <div className="absolute inset-0 flex items-center justify-center"><CreditCard className="w-6 h-6 text-white" /></div>
+            </div>
+            <div>
+              <div className="flex items-center gap-2.5">
+                <h1 className="text-2xl font-black tracking-tight text-[var(--color-text-strong)]">Vendor Bills</h1>
+                <span className="hidden sm:inline-flex items-center gap-1.5 rounded-full border border-amber-500/25 bg-amber-500/10 px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider text-amber-600 dark:text-amber-400"><span className="h-1.5 w-1.5 rounded-full bg-amber-500 animate-pulse" /> Live Ledger</span>
+              </div>
+              <p className="text-xs text-[var(--color-text-muted)] mt-0.5">Manage supplier invoices and procurement-linked bills</p>
+            </div>
+          </div>
+          <div className="flex items-center gap-2 shrink-0">
           <DataToolbar
             query={query} setQuery={setQuery}
             searchPlaceholder="Search bill #, vendor..."
@@ -218,6 +228,7 @@ export const VendorBills: React.FC<{ activeEntityId: string }> = ({ activeEntity
           <button onClick={openPOBill} className="h-10 px-5 rounded-xl bg-gradient-to-r from-amber-500 to-orange-600 text-white text-xs font-bold shadow-lg shadow-amber-500/25 flex items-center gap-2">
             <Truck className="w-4 h-4" /> PO Bill
           </button>
+          </div>
         </div>
       </div>
 
@@ -231,7 +242,7 @@ export const VendorBills: React.FC<{ activeEntityId: string }> = ({ activeEntity
       {/* Bills Table */}
       <div className="rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)] shadow-sm overflow-hidden">
         <div className="px-5 py-3.5 border-b border-[var(--color-border)] bg-[var(--color-surface-muted)] flex items-center justify-between">
-          <p className="text-xs font-bold uppercase tracking-wider text-[var(--color-text-strong)]">All Vendor Bills</p>
+          <p className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-[var(--color-text-strong)]"><span className="inline-block h-2 w-2 rotate-45 rounded-[2px] bg-gradient-to-br from-amber-500 to-orange-700" />All Vendor Bills</p>
           <span className="text-[11px] text-[var(--color-text-muted)]">{filteredBills.length} bills</span>
         </div>
         <table className="w-full text-left text-xs">
@@ -282,11 +293,8 @@ export const VendorBills: React.FC<{ activeEntityId: string }> = ({ activeEntity
               );
             })}
             {!loading && filteredBills.length === 0 && (
-              <tr><td colSpan={8} className="px-5 py-16 text-center">
-                <div className="flex flex-col items-center gap-3">
-                  <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-amber-500/20 to-orange-600/20 flex items-center justify-center"><Receipt className="w-7 h-7 text-amber-500" /></div>
-                  <div><p className="text-sm font-bold text-[var(--color-text-strong)]">No vendor bills yet</p><p className="text-xs text-[var(--color-text-muted)] mt-1">Click "Direct Bill" or "PO Bill" to create one</p></div>
-                </div>
+              <tr><td colSpan={8}>
+                <EmptyState icon={Receipt} title="No vendor bills yet" hint='Click "Direct Bill" or "PO Bill" to create one' />
               </td></tr>
             )}
           </tbody>

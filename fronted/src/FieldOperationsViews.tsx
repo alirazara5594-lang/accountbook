@@ -8,10 +8,9 @@ import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@
 import { FormField } from '@/components/ui/form-field';
 import { PageHeader } from '@/components/ui/page-header';
 import { KpiCard, KpiGrid } from '@/components/ui/kpi-card';
-
-import {
-  Plus, ClipboardList, CalendarCheck2, ShieldCheck, Wrench, ReceiptText, Save, CheckCircle2, AlertTriangle, TrendingUp, FileBarChart, Clock3, Wallet
-} from 'lucide-react';
+import { Plus, ClipboardList, CalendarCheck2, ShieldCheck, Wrench, ReceiptText, Save, CheckCircle2, AlertTriangle, TrendingUp, FileBarChart, Clock3, Wallet } from 'lucide-react';
+import { StatusChip } from './components/ui/status-chip';
+import { EmptyState } from './components/ui/empty-state';
 import { money } from './lib/currency';
 
 const today = () => new Date().toISOString().split('T')[0];
@@ -22,10 +21,10 @@ const INSPECTION_TYPES = ['Quality', 'Safety', 'Compliance', 'Inventory', 'Facil
 const WORK_TYPES = ['Repair', 'Installation', 'Maintenance', 'Inspection', 'Delivery'];
 const EXPENSE_CATEGORIES = ['Travel', 'Supplies', 'Meals', 'Fuel', 'Accommodation', 'Equipment'];
 
-const surveyBadge = (s: string) => (s === 'Active' ? 'default' : s === 'Closed' ? 'secondary' : 'outline');
-const visitBadge = (s: string) => (s === 'Completed' ? 'secondary' : s === 'Cancelled' ? 'destructive' : 'default');
-const inspectionBadge = (s: string) => (s === 'Passed' ? 'secondary' : s === 'Failed' ? 'destructive' : s === 'InProgress' ? 'default' : 'outline');
-const woBadge = (s: string) => (s === 'Completed' ? 'secondary' : s === 'Cancelled' ? 'destructive' : s === 'InProgress' || s === 'Assigned' ? 'default' : 'outline');
+const surveyStatusHex: Record<string, string> = { Active: '#10b981', Closed: '#94a3b8', Draft: '#94a3b8' };
+const visitStatusHex: Record<string, string> = { Scheduled: '#3b82f6', InProgress: '#f59e0b', Completed: '#10b981', Cancelled: '#ef4444' };
+const inspectionStatusHex: Record<string, string> = { Scheduled: '#3b82f6', InProgress: '#f59e0b', Passed: '#10b981', Failed: '#ef4444' };
+const woStatusHex: Record<string, string> = { Open: '#3b82f6', Assigned: '#3b82f6', InProgress: '#f59e0b', Completed: '#10b981', Cancelled: '#ef4444' };
 
 const EMPTY_SURVEY = { title: '', description: '', category: 'Customer Satisfaction', status: 'Draft', startDate: today(), endDate: '', region: '', assignedTo: '', targetResponses: '100' };
 const EMPTY_VISIT = { visitType: 'Site Visit', customerId: '', customerName: '', contactName: '', purpose: '', scheduledDate: today(), startTime: '10:00', durationHours: 2, status: 'Scheduled', location: '', assignedTo: '', findings: '' };
@@ -55,7 +54,28 @@ export function FieldOperationsSummaryView() {
 
   return (
     <div className="p-6 max-w-[1400px] mx-auto space-y-4">
-      <PageHeader title="Survey & Field Operations" description="Manage surveys, field visits, inspections, field work orders, and expenses" />
+      <div className="relative overflow-hidden rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)] shadow-sm">
+        <div className="absolute inset-0 bg-gradient-to-r from-lime-500/10 via-lime-500/[0.03] to-transparent pointer-events-none" />
+        <div className="absolute -right-10 -top-16 w-56 h-56 rounded-full bg-lime-500/10 blur-3xl pointer-events-none" />
+        <div className="relative flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 px-5 py-4">
+          <div className="flex items-center gap-4">
+            <div className="relative h-14 w-14 shrink-0">
+              <div className="absolute inset-[6px] rotate-45 rounded-[12px] shadow-xl bg-gradient-to-br from-lime-400 to-green-700" />
+              <div className="absolute inset-0 flex items-center justify-center"><Wrench className="w-6 h-6 text-white" /></div>
+            </div>
+            <div>
+              <div className="flex items-center gap-2.5">
+                <h1 className="text-2xl font-black tracking-tight text-[var(--color-text-strong)]">Survey & Field Operations</h1>
+                <span className="hidden sm:inline-flex items-center gap-1.5 rounded-full border border-lime-500/25 bg-lime-500/10 px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider text-lime-600 dark:text-lime-400">
+                  <span className="h-1.5 w-1.5 rounded-full bg-lime-500 animate-pulse" /> Live Ledger
+                </span>
+              </div>
+              <p className="text-xs text-[var(--color-text-muted)] mt-0.5">Manage surveys, field visits, inspections, field work orders, and expenses.</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
       <KpiGrid cols={4}>
         <KpiCard icon={ClipboardList} label="Active Surveys" value={dashboard?.activeSurveys ?? 0} desc="Currently running" tone="teal" />
         <KpiCard icon={CalendarCheck2} label="Upcoming Visits" value={dashboard?.upcomingVisits ?? 0} desc="Scheduled field visits" tone="blue" />
@@ -122,7 +142,31 @@ export function SurveysView({ activeEntityId }: { activeEntityId?: string }) {
 
   return (
     <div className="p-6 max-w-[1400px] mx-auto space-y-4">
-      <PageHeader title="Surveys" description="Launch and track customer and field surveys" actions={<Button onClick={() => setShowForm(v => !v)}><Plus className="mr-2 h-4 w-4" /> New Survey</Button>} />
+      <div className="relative overflow-hidden rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)] shadow-sm">
+        <div className="absolute inset-0 bg-gradient-to-r from-lime-500/10 via-lime-500/[0.03] to-transparent pointer-events-none" />
+        <div className="absolute -right-10 -top-16 w-56 h-56 rounded-full bg-lime-500/10 blur-3xl pointer-events-none" />
+        <div className="relative flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 px-5 py-4">
+          <div className="flex items-center gap-4">
+            <div className="relative h-14 w-14 shrink-0">
+              <div className="absolute inset-[6px] rotate-45 rounded-[12px] shadow-xl bg-gradient-to-br from-lime-400 to-green-700" />
+              <div className="absolute inset-0 flex items-center justify-center"><ClipboardList className="w-6 h-6 text-white" /></div>
+            </div>
+            <div>
+              <div className="flex items-center gap-2.5">
+                <h1 className="text-2xl font-black tracking-tight text-[var(--color-text-strong)]">Surveys</h1>
+                <span className="hidden sm:inline-flex items-center gap-1.5 rounded-full border border-lime-500/25 bg-lime-500/10 px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider text-lime-600 dark:text-lime-400">
+                  <span className="h-1.5 w-1.5 rounded-full bg-lime-500 animate-pulse" /> Live Ledger
+                </span>
+              </div>
+              <p className="text-xs text-[var(--color-text-muted)] mt-0.5">Launch and track customer and field surveys</p>
+            </div>
+          </div>
+          <div className="flex items-center gap-2 shrink-0">
+            <Button onClick={() => setShowForm(v => !v)}><Plus className="mr-2 h-4 w-4" /> New Survey</Button>
+          </div>
+        </div>
+      </div>
+
       <KpiGrid cols={4}>
         <KpiCard icon={ClipboardList} label="Total Surveys" value={surveys.length} desc="All time surveys" tone="teal" />
         <KpiCard icon={TrendingUp} label="Active" value={active} desc="Currently running" tone="blue" />
@@ -147,7 +191,7 @@ export function SurveysView({ activeEntityId }: { activeEntityId?: string }) {
       <Card className="overflow-hidden">
         <table className="w-full text-sm">
           <thead>
-            <tr className="border-b bg-muted/50">
+            <tr className="border-b bg-lime-500/[0.05] dark:bg-lime-400/[0.07]">
               <th className="text-left p-3 font-medium">Survey</th>
               <th className="text-left p-3 font-medium">Category</th>
               <th className="text-left p-3 font-medium">Region</th>
@@ -174,7 +218,7 @@ export function SurveysView({ activeEntityId }: { activeEntityId?: string }) {
                       <span className="text-xs text-muted-foreground">{pct}%</span>
                     </div>
                   </td>
-                  <td className="p-3 text-center"><Badge variant={surveyBadge(s.status) as any}>{s.status}</Badge></td>
+                  <td className="p-3 text-center"><StatusChip status={s.status} label={s.status} hex={surveyStatusHex[s.status] ?? '#94a3b8'} /></td>
                   <td className="p-3 text-right">
                     {s.status === 'Draft' && <Button size="sm" variant="ghost" onClick={() => setSurveyStatus(s.id, 'Active')}>Launch</Button>}
                     {s.status === 'Active' && <Button size="sm" variant="ghost" onClick={() => setSurveyStatus(s.id, 'Closed')}>Close</Button>}
@@ -182,7 +226,7 @@ export function SurveysView({ activeEntityId }: { activeEntityId?: string }) {
                 </tr>
               );
             })}
-            {surveys.length === 0 && <tr><td colSpan={8} className="p-8 text-center text-muted-foreground">No surveys found</td></tr>}
+            {surveys.length === 0 && <tr><td colSpan={8}><EmptyState icon={ClipboardList} title="No surveys found" hint="Launch a survey to start collecting field and customer responses." /></td></tr>}
           </tbody>
         </table>
       </Card>
@@ -209,7 +253,31 @@ export function FieldVisitsView({ activeEntityId }: { activeEntityId?: string })
 
   return (
     <div className="p-6 max-w-[1400px] mx-auto space-y-4">
-      <PageHeader title="Field Visits" description="Schedule and complete on-site field visits" actions={<Button onClick={() => setShowForm(v => !v)}><Plus className="mr-2 h-4 w-4" /> Schedule Visit</Button>} />
+      <div className="relative overflow-hidden rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)] shadow-sm">
+        <div className="absolute inset-0 bg-gradient-to-r from-lime-500/10 via-lime-500/[0.03] to-transparent pointer-events-none" />
+        <div className="absolute -right-10 -top-16 w-56 h-56 rounded-full bg-lime-500/10 blur-3xl pointer-events-none" />
+        <div className="relative flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 px-5 py-4">
+          <div className="flex items-center gap-4">
+            <div className="relative h-14 w-14 shrink-0">
+              <div className="absolute inset-[6px] rotate-45 rounded-[12px] shadow-xl bg-gradient-to-br from-lime-400 to-green-700" />
+              <div className="absolute inset-0 flex items-center justify-center"><CalendarCheck2 className="w-6 h-6 text-white" /></div>
+            </div>
+            <div>
+              <div className="flex items-center gap-2.5">
+                <h1 className="text-2xl font-black tracking-tight text-[var(--color-text-strong)]">Field Visits</h1>
+                <span className="hidden sm:inline-flex items-center gap-1.5 rounded-full border border-lime-500/25 bg-lime-500/10 px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider text-lime-600 dark:text-lime-400">
+                  <span className="h-1.5 w-1.5 rounded-full bg-lime-500 animate-pulse" /> Live Ledger
+                </span>
+              </div>
+              <p className="text-xs text-[var(--color-text-muted)] mt-0.5">Schedule and complete on-site field visits</p>
+            </div>
+          </div>
+          <div className="flex items-center gap-2 shrink-0">
+            <Button onClick={() => setShowForm(v => !v)}><Plus className="mr-2 h-4 w-4" /> Schedule Visit</Button>
+          </div>
+        </div>
+      </div>
+
       <KpiGrid cols={4}>
         <KpiCard icon={CalendarCheck2} label="Total Visits" value={visits.length} desc="All time visits" tone="teal" />
         <KpiCard icon={Clock3} label="Upcoming" value={visits.filter(v => v.status === 'Scheduled').length} desc="Scheduled visits" tone="blue" />
@@ -242,7 +310,7 @@ export function FieldVisitsView({ activeEntityId }: { activeEntityId?: string })
       <Card className="overflow-hidden">
         <table className="w-full text-sm">
           <thead>
-            <tr className="border-b bg-muted/50">
+            <tr className="border-b bg-lime-500/[0.05] dark:bg-lime-400/[0.07]">
               <th className="text-left p-3 font-medium">Visit</th>
               <th className="text-left p-3 font-medium">Customer</th>
               <th className="text-left p-3 font-medium">Purpose</th>
@@ -260,14 +328,14 @@ export function FieldVisitsView({ activeEntityId }: { activeEntityId?: string })
                 <td className="p-3 text-muted-foreground max-w-[240px] truncate">{v.purpose}</td>
                 <td className="p-3 text-right">{v.scheduledDate}</td>
                 <td className="p-3">{empName(employees, v.assignedTo)}</td>
-                <td className="p-3 text-center"><Badge variant={visitBadge(v.status) as any}>{v.status}</Badge></td>
+                <td className="p-3 text-center"><StatusChip status={v.status} label={v.status} hex={visitStatusHex[v.status] ?? '#94a3b8'} /></td>
                 <td className="p-3 text-right">
                   {v.status === 'Scheduled' && <Button size="sm" variant="ghost" onClick={() => setVisitStatus(v.id, 'InProgress')}>Start</Button>}
                   {v.status === 'InProgress' && <Button size="sm" variant="ghost" onClick={() => setVisitStatus(v.id, 'Completed')}>Complete</Button>}
                 </td>
               </tr>
             ))}
-            {visits.length === 0 && <tr><td colSpan={7} className="p-8 text-center text-muted-foreground">No field visits found</td></tr>}
+            {visits.length === 0 && <tr><td colSpan={7}><EmptyState icon={CalendarCheck2} title="No field visits found" hint="Schedule an on-site visit to dispatch field teams." /></td></tr>}
           </tbody>
         </table>
       </Card>
@@ -294,7 +362,31 @@ export function InspectionsView({ activeEntityId }: { activeEntityId?: string })
 
   return (
     <div className="p-6 max-w-[1400px] mx-auto space-y-4">
-      <PageHeader title="Inspections" description="Schedule and record field inspection results" actions={<Button onClick={() => setShowForm(v => !v)}><Plus className="mr-2 h-4 w-4" /> Schedule Inspection</Button>} />
+      <div className="relative overflow-hidden rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)] shadow-sm">
+        <div className="absolute inset-0 bg-gradient-to-r from-lime-500/10 via-lime-500/[0.03] to-transparent pointer-events-none" />
+        <div className="absolute -right-10 -top-16 w-56 h-56 rounded-full bg-lime-500/10 blur-3xl pointer-events-none" />
+        <div className="relative flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 px-5 py-4">
+          <div className="flex items-center gap-4">
+            <div className="relative h-14 w-14 shrink-0">
+              <div className="absolute inset-[6px] rotate-45 rounded-[12px] shadow-xl bg-gradient-to-br from-lime-400 to-green-700" />
+              <div className="absolute inset-0 flex items-center justify-center"><ShieldCheck className="w-6 h-6 text-white" /></div>
+            </div>
+            <div>
+              <div className="flex items-center gap-2.5">
+                <h1 className="text-2xl font-black tracking-tight text-[var(--color-text-strong)]">Inspections</h1>
+                <span className="hidden sm:inline-flex items-center gap-1.5 rounded-full border border-lime-500/25 bg-lime-500/10 px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider text-lime-600 dark:text-lime-400">
+                  <span className="h-1.5 w-1.5 rounded-full bg-lime-500 animate-pulse" /> Live Ledger
+                </span>
+              </div>
+              <p className="text-xs text-[var(--color-text-muted)] mt-0.5">Schedule and record field inspection results</p>
+            </div>
+          </div>
+          <div className="flex items-center gap-2 shrink-0">
+            <Button onClick={() => setShowForm(v => !v)}><Plus className="mr-2 h-4 w-4" /> Schedule Inspection</Button>
+          </div>
+        </div>
+      </div>
+
       <KpiGrid cols={4}>
         <KpiCard icon={ShieldCheck} label="Total Inspections" value={inspections.length} desc="All time inspections" tone="teal" />
         <KpiCard icon={Clock3} label="Scheduled" value={inspections.filter(i => i.status === 'Scheduled').length} desc="Awaiting inspection" tone="blue" />
@@ -322,7 +414,7 @@ export function InspectionsView({ activeEntityId }: { activeEntityId?: string })
       <Card className="overflow-hidden">
         <table className="w-full text-sm">
           <thead>
-            <tr className="border-b bg-muted/50">
+            <tr className="border-b bg-lime-500/[0.05] dark:bg-lime-400/[0.07]">
               <th className="text-left p-3 font-medium">Inspection</th>
               <th className="text-left p-3 font-medium">Type</th>
               <th className="text-left p-3 font-medium">Location</th>
@@ -342,7 +434,7 @@ export function InspectionsView({ activeEntityId }: { activeEntityId?: string })
                 <td className="p-3 text-right">{i.scheduledDate}</td>
                 <td className="p-3">{empName(employees, i.inspectorId)}</td>
                 <td className="p-3 text-right font-mono">{i.score || '—'}</td>
-                <td className="p-3 text-center"><Badge variant={inspectionBadge(i.status) as any}>{i.status}</Badge></td>
+                <td className="p-3 text-center"><StatusChip status={i.status} label={i.status} hex={inspectionStatusHex[i.status] ?? '#94a3b8'} /></td>
                 <td className="p-3 text-right">
                   {i.status === 'Scheduled' && <Button size="sm" variant="ghost" onClick={() => setInspectionStatus(i.id, 'InProgress')}>Start</Button>}
                   {i.status === 'InProgress' && <Button size="sm" variant="ghost" className="text-green-700" onClick={() => setInspectionStatus(i.id, 'Passed')}><CheckCircle2 className="mr-1 h-3.5 w-3.5" />Pass</Button>}
@@ -350,7 +442,7 @@ export function InspectionsView({ activeEntityId }: { activeEntityId?: string })
                 </td>
               </tr>
             ))}
-            {inspections.length === 0 && <tr><td colSpan={8} className="p-8 text-center text-muted-foreground">No inspections found</td></tr>}
+            {inspections.length === 0 && <tr><td colSpan={8}><EmptyState icon={ShieldCheck} title="No inspections found" hint="Schedule field inspections to track quality and compliance." /></td></tr>}
           </tbody>
         </table>
       </Card>
@@ -379,7 +471,31 @@ export function WorkOrdersView({ activeEntityId }: { activeEntityId?: string }) 
 
   return (
     <div className="p-6 max-w-[1400px] mx-auto space-y-4">
-      <PageHeader title="Work Orders" description="Create, assign, and complete field work orders" actions={<Button onClick={() => setShowForm(v => !v)}><Plus className="mr-2 h-4 w-4" /> New Work Order</Button>} />
+      <div className="relative overflow-hidden rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)] shadow-sm">
+        <div className="absolute inset-0 bg-gradient-to-r from-lime-500/10 via-lime-500/[0.03] to-transparent pointer-events-none" />
+        <div className="absolute -right-10 -top-16 w-56 h-56 rounded-full bg-lime-500/10 blur-3xl pointer-events-none" />
+        <div className="relative flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 px-5 py-4">
+          <div className="flex items-center gap-4">
+            <div className="relative h-14 w-14 shrink-0">
+              <div className="absolute inset-[6px] rotate-45 rounded-[12px] shadow-xl bg-gradient-to-br from-lime-400 to-green-700" />
+              <div className="absolute inset-0 flex items-center justify-center"><Wrench className="w-6 h-6 text-white" /></div>
+            </div>
+            <div>
+              <div className="flex items-center gap-2.5">
+                <h1 className="text-2xl font-black tracking-tight text-[var(--color-text-strong)]">Work Orders</h1>
+                <span className="hidden sm:inline-flex items-center gap-1.5 rounded-full border border-lime-500/25 bg-lime-500/10 px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider text-lime-600 dark:text-lime-400">
+                  <span className="h-1.5 w-1.5 rounded-full bg-lime-500 animate-pulse" /> Live Ledger
+                </span>
+              </div>
+              <p className="text-xs text-[var(--color-text-muted)] mt-0.5">Create, assign, and complete field work orders</p>
+            </div>
+          </div>
+          <div className="flex items-center gap-2 shrink-0">
+            <Button onClick={() => setShowForm(v => !v)}><Plus className="mr-2 h-4 w-4" /> New Work Order</Button>
+          </div>
+        </div>
+      </div>
+
       <KpiGrid cols={4}>
         <KpiCard icon={Wrench} label="Total Orders" value={workOrders.length} desc="All time orders" tone="teal" />
         <KpiCard icon={Clock3} label="Open" value={workOrders.filter(w => w.status === 'Open').length} desc="Awaiting assignment" tone="blue" />
@@ -414,7 +530,7 @@ export function WorkOrdersView({ activeEntityId }: { activeEntityId?: string }) 
       <Card className="overflow-hidden">
         <table className="w-full text-sm">
           <thead>
-            <tr className="border-b bg-muted/50">
+            <tr className="border-b bg-lime-500/[0.05] dark:bg-lime-400/[0.07]">
               <th className="text-left p-3 font-medium">Work Order</th>
               <th className="text-left p-3 font-medium">Customer</th>
               <th className="text-left p-3 font-medium">Description</th>
@@ -434,7 +550,7 @@ export function WorkOrdersView({ activeEntityId }: { activeEntityId?: string }) 
                 <td className="p-3 text-center"><Badge variant={w.priority === 'High' || w.priority === 'Critical' ? 'destructive' : 'outline'}>{w.priority}</Badge></td>
                 <td className="p-3 text-right font-mono">{money(w.totalCost)}</td>
                 <td className="p-3 text-right">{w.scheduledDate}</td>
-                <td className="p-3 text-center"><Badge variant={woBadge(w.status) as any}>{w.status}</Badge></td>
+                <td className="p-3 text-center"><StatusChip status={w.status} label={w.status} hex={woStatusHex[w.status] ?? '#94a3b8'} /></td>
                 <td className="p-3 text-right">
                   {w.status === 'Open' && <Button size="sm" variant="ghost" onClick={() => setWorkOrderStatus(w.id, 'Assigned')}>Assign</Button>}
                   {w.status === 'Assigned' && <Button size="sm" variant="ghost" onClick={() => setWorkOrderStatus(w.id, 'InProgress')}>Start</Button>}
@@ -442,7 +558,7 @@ export function WorkOrdersView({ activeEntityId }: { activeEntityId?: string }) 
                 </td>
               </tr>
             ))}
-            {workOrders.length === 0 && <tr><td colSpan={8} className="p-8 text-center text-muted-foreground">No work orders found</td></tr>}
+            {workOrders.length === 0 && <tr><td colSpan={8}><EmptyState icon={Wrench} title="No work orders found" hint="Create a field work order to assign and track jobs." /></td></tr>}
           </tbody>
         </table>
       </Card>
@@ -472,7 +588,31 @@ export function FieldExpensesView({ activeEntityId }: { activeEntityId?: string 
 
   return (
     <div className="p-6 max-w-[1400px] mx-auto space-y-4">
-      <PageHeader title="Field Expenses" description="Log and reimburse field operation expenses" actions={<Button onClick={() => setShowForm(v => !v)}><Plus className="mr-2 h-4 w-4" /> Log Expense</Button>} />
+      <div className="relative overflow-hidden rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)] shadow-sm">
+        <div className="absolute inset-0 bg-gradient-to-r from-lime-500/10 via-lime-500/[0.03] to-transparent pointer-events-none" />
+        <div className="absolute -right-10 -top-16 w-56 h-56 rounded-full bg-lime-500/10 blur-3xl pointer-events-none" />
+        <div className="relative flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 px-5 py-4">
+          <div className="flex items-center gap-4">
+            <div className="relative h-14 w-14 shrink-0">
+              <div className="absolute inset-[6px] rotate-45 rounded-[12px] shadow-xl bg-gradient-to-br from-lime-400 to-green-700" />
+              <div className="absolute inset-0 flex items-center justify-center"><ReceiptText className="w-6 h-6 text-white" /></div>
+            </div>
+            <div>
+              <div className="flex items-center gap-2.5">
+                <h1 className="text-2xl font-black tracking-tight text-[var(--color-text-strong)]">Field Expenses</h1>
+                <span className="hidden sm:inline-flex items-center gap-1.5 rounded-full border border-lime-500/25 bg-lime-500/10 px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider text-lime-600 dark:text-lime-400">
+                  <span className="h-1.5 w-1.5 rounded-full bg-lime-500 animate-pulse" /> Live Ledger
+                </span>
+              </div>
+              <p className="text-xs text-[var(--color-text-muted)] mt-0.5">Log and reimburse field operation expenses</p>
+            </div>
+          </div>
+          <div className="flex items-center gap-2 shrink-0">
+            <Button onClick={() => setShowForm(v => !v)}><Plus className="mr-2 h-4 w-4" /> Log Expense</Button>
+          </div>
+        </div>
+      </div>
+    </div>
       <KpiGrid cols={4}>
         <KpiCard icon={ReceiptText} label="Total Expenses" value={expenses.length} desc="All time expenses" tone="teal" />
         <KpiCard icon={Wallet} label="Total Amount" value={money(total)} desc="Combined expenses" tone="blue" />
@@ -500,7 +640,7 @@ export function FieldExpensesView({ activeEntityId }: { activeEntityId?: string 
       <Card className="overflow-hidden">
         <table className="w-full text-sm">
           <thead>
-            <tr className="border-b bg-muted/50">
+            <tr className="border-b bg-lime-500/[0.05] dark:bg-lime-400/[0.07]">
               <th className="text-left p-3 font-medium">Expense</th>
               <th className="text-left p-3 font-medium">Work Order</th>
               <th className="text-left p-3 font-medium">Category</th>
@@ -522,7 +662,7 @@ export function FieldExpensesView({ activeEntityId }: { activeEntityId?: string 
                 <td className="p-3 text-center">{e.reimbursed ? <Badge variant="secondary">Yes</Badge> : <Badge variant="outline">No</Badge>}</td>
               </tr>
             ))}
-            {expenses.length === 0 && <tr><td colSpan={7} className="p-8 text-center text-muted-foreground">No field expenses found</td></tr>}
+            {expenses.length === 0 && <tr><td colSpan={7}><EmptyState icon={ReceiptText} title="No field expenses found" hint="Log travel, supplies, and other reimbursable field costs." /></td></tr>}
           </tbody>
         </table>
       </Card>
@@ -539,7 +679,28 @@ export function FieldReportsView() {
 
   return (
     <div className="p-6 max-w-[1400px] mx-auto space-y-4">
-      <PageHeader title="Field Reports" description="Field operations performance and reporting" />
+      <div className="relative overflow-hidden rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)] shadow-sm">
+        <div className="absolute inset-0 bg-gradient-to-r from-lime-500/10 via-lime-500/[0.03] to-transparent pointer-events-none" />
+        <div className="absolute -right-10 -top-16 w-56 h-56 rounded-full bg-lime-500/10 blur-3xl pointer-events-none" />
+        <div className="relative flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 px-5 py-4">
+          <div className="flex items-center gap-4">
+            <div className="relative h-14 w-14 shrink-0">
+              <div className="absolute inset-[6px] rotate-45 rounded-[12px] shadow-xl bg-gradient-to-br from-lime-400 to-green-700" />
+              <div className="absolute inset-0 flex items-center justify-center"><FileBarChart className="w-6 h-6 text-white" /></div>
+            </div>
+            <div>
+              <div className="flex items-center gap-2.5">
+                <h1 className="text-2xl font-black tracking-tight text-[var(--color-text-strong)]">Field Reports</h1>
+                <span className="hidden sm:inline-flex items-center gap-1.5 rounded-full border border-lime-500/25 bg-lime-500/10 px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider text-lime-600 dark:text-lime-400">
+                  <span className="h-1.5 w-1.5 rounded-full bg-lime-500 animate-pulse" /> Live Ledger
+                </span>
+              </div>
+              <p className="text-xs text-[var(--color-text-muted)] mt-0.5">Field operations performance and reporting</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
       <KpiGrid cols={4}>
         <KpiCard icon={ClipboardList} label="Total Surveys" value={surveys.length} desc="All time surveys" tone="teal" />
         <KpiCard icon={CalendarCheck2} label="Total Visits" value={visits.length} desc="All time visits" tone="blue" />

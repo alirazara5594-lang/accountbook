@@ -5,6 +5,7 @@ import { Input } from '@/components/ui/input';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { RefreshCw, CheckCircle2, Scale } from 'lucide-react';
 import { DataToolbar } from '@/components/ui/data-toolbar';
+import { EmptyState } from '@/components/ui/empty-state';
 import type { Entity } from './EntitySettings';
 import { apiClient } from './api/client';
 
@@ -89,12 +90,24 @@ export const BankReconciliationView: React.FC<{ activeEntityId: string; entities
 
   return (
     <div className="space-y-4 font-sans text-slate-800 p-2 md:p-6">
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-3 bg-white p-3 rounded-xl border border-gray-200 shadow-sm">
-        <div>
-          <h1 className="text-base font-bold text-slate-900 tracking-tight flex items-center gap-2">
-            <RefreshCw className="w-4 h-4 text-emerald-600" /> Bank Reconciliation
-          </h1>
-          <p className="text-[10px] text-slate-500 mt-0.5">Match General Ledger balances against bank statement records for {currentEntity?.name || 'Active Entity'}.</p>
+      {/* Page Header — AMS Signature Hero Band */}
+      <div className="relative overflow-hidden rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)] shadow-sm">
+        <div className="absolute inset-0 bg-gradient-to-r from-blue-500/10 via-blue-500/[0.03] to-transparent pointer-events-none" />
+        <div className="absolute -right-10 -top-16 w-56 h-56 rounded-full bg-blue-500/10 blur-3xl pointer-events-none" />
+        <div className="relative flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 px-5 py-4">
+          <div className="flex items-center gap-4">
+            <div className="relative h-14 w-14 shrink-0">
+              <div className="absolute inset-[6px] rotate-45 rounded-[12px] shadow-xl bg-gradient-to-br from-blue-500 to-violet-700" />
+              <div className="absolute inset-0 flex items-center justify-center"><RefreshCw className="w-6 h-6 text-white" /></div>
+            </div>
+            <div>
+              <div className="flex items-center gap-2.5">
+                <h1 className="text-2xl font-black tracking-tight text-[var(--color-text-strong)]">Bank Reconciliation</h1>
+                <span className="hidden sm:inline-flex items-center gap-1.5 rounded-full border border-blue-500/25 bg-blue-500/10 px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider text-blue-600 dark:text-blue-400"><span className="h-1.5 w-1.5 rounded-full bg-blue-500 animate-pulse" /> Live Ledger</span>
+              </div>
+              <p className="text-xs text-[var(--color-text-muted)] mt-0.5">Match General Ledger balances against bank statement records for {currentEntity?.name || 'Active Entity'}.</p>
+            </div>
+          </div>
         </div>
       </div>
 
@@ -181,7 +194,7 @@ export const BankReconciliationView: React.FC<{ activeEntityId: string; entities
         </CardHeader>
         <CardContent className="p-0">
           <Table>
-            <TableHeader className="bg-slate-50 border-b border-slate-200">
+            <TableHeader className="bg-blue-500/[0.05] dark:bg-blue-400/[0.07] border-b border-slate-200">
               <TableRow>
                 <TableHead className="w-28 text-[11px] font-bold text-slate-500 uppercase tracking-wider pl-4">DATE</TableHead>
                 <TableHead className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">BANK ACCOUNT</TableHead>
@@ -194,8 +207,12 @@ export const BankReconciliationView: React.FC<{ activeEntityId: string; entities
             <TableBody className="divide-y divide-slate-100">
               {reconciliations.length === 0 && !loading && (
                 <TableRow>
-                  <TableCell colSpan={6} className="py-8 text-center text-xs text-slate-400">
-                    No reconciliations recorded yet. Select an account and enter the statement balance to run one.
+                  <TableCell colSpan={6} className="p-0">
+                    <EmptyState
+                      icon={Scale}
+                      title="No reconciliations recorded yet"
+                      hint="Select an account and enter the statement balance to run one."
+                    />
                   </TableCell>
                 </TableRow>
               )}

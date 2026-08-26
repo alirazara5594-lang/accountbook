@@ -82,24 +82,30 @@ export function AdministrationSummaryView({ setPage }: { setPage?: (p: string) =
 
   return (
     <div className="p-6 max-w-[1400px] mx-auto space-y-6">
-      {/* Header */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-[var(--color-border)] pb-4">
-        <div>
-          <h1 className="text-xl font-black tracking-tight text-[var(--color-text-strong)] flex items-center gap-2.5">
-            <div className="p-2 rounded-xl bg-teal-500/10 text-teal-600 border border-teal-500/20">
-              <ShieldCheck className="w-5 h-5" />
+      {/* Page Header — AMS Signature Hero Band */}
+      <div className="relative overflow-hidden rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)] shadow-sm">
+        <div className="absolute inset-0 bg-gradient-to-r from-violet-500/10 via-violet-500/[0.03] to-transparent pointer-events-none" />
+        <div className="absolute -right-10 -top-16 w-56 h-56 rounded-full bg-violet-500/10 blur-3xl pointer-events-none" />
+        <div className="relative flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 px-5 py-4">
+          <div className="flex items-center gap-4">
+            <div className="relative h-14 w-14 shrink-0">
+              <div className="absolute inset-[6px] rotate-45 rounded-[12px] shadow-xl bg-gradient-to-br from-violet-500 to-purple-700" />
+              <div className="absolute inset-0 flex items-center justify-center"><ShieldCheck className="w-6 h-6 text-white" /></div>
             </div>
-            Administration & System Governance
-          </h1>
-          <p className="text-xs text-[var(--color-text-muted)] mt-1">
-            Enterprise user management, role-based access control (RBAC), multi-entity hierarchy, and audit governance.
-          </p>
-        </div>
-        <div className="flex items-center gap-2">
-          <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800">
-            <CheckCircle2 className="w-3.5 h-3.5" />
-            Security Posture: Compliant
-          </span>
+            <div>
+              <div className="flex items-center gap-2.5">
+                <h1 className="text-2xl font-black tracking-tight text-[var(--color-text-strong)]">Administration &amp; System Governance</h1>
+                <span className="hidden sm:inline-flex items-center gap-1.5 rounded-full border border-violet-500/25 bg-violet-500/10 px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider text-violet-600 dark:text-violet-400"><span className="h-1.5 w-1.5 rounded-full bg-violet-500 animate-pulse" /> Live Ledger</span>
+              </div>
+              <p className="text-xs text-[var(--color-text-muted)] mt-0.5">Enterprise user management, role-based access control (RBAC), multi-entity hierarchy, and audit governance.</p>
+            </div>
+          </div>
+          <div className="flex items-center gap-2 shrink-0">
+            <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800">
+              <CheckCircle2 className="w-3.5 h-3.5" />
+              Security Posture: Compliant
+            </span>
+          </div>
         </div>
       </div>
 
@@ -477,21 +483,26 @@ export function UsersView({ activeEntityId, notify }: { activeEntityId?: string;
 
   return (
     <div className="p-6 max-w-[1500px] mx-auto space-y-6">
-      {/* Header */}
-      <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 border-b border-[var(--color-border)] pb-4">
-        <div className="min-w-0 flex-1">
-          <h1 className="text-xl font-black tracking-tight text-[var(--color-text-strong)] flex items-center gap-2.5">
-            <div className="p-2 rounded-xl bg-teal-500/10 text-teal-600 border border-teal-500/20 shrink-0">
-              <Users className="w-5 h-5" />
+      {/* Page Header — AMS Signature Hero Band */}
+      <div className="relative overflow-hidden rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)] shadow-sm">
+        <div className="absolute inset-0 bg-gradient-to-r from-violet-500/10 via-violet-500/[0.03] to-transparent pointer-events-none" />
+        <div className="absolute -right-10 -top-16 w-56 h-56 rounded-full bg-violet-500/10 blur-3xl pointer-events-none" />
+        <div className="relative flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 px-5 py-4">
+          <div className="flex items-center gap-4">
+            <div className="relative h-14 w-14 shrink-0">
+              <div className="absolute inset-[6px] rotate-45 rounded-[12px] shadow-xl bg-gradient-to-br from-violet-500 to-purple-700" />
+              <div className="absolute inset-0 flex items-center justify-center"><Users className="w-6 h-6 text-white" /></div>
             </div>
-            Users & Operator Management Suite
-          </h1>
-          <p className="text-xs text-[var(--color-text-muted)] mt-1">
-            Maintain operator identities, assign security profiles, govern multi-company permissions, and enforce authentication policies.
-          </p>
-        </div>
+            <div>
+              <div className="flex items-center gap-2.5">
+                <h1 className="text-2xl font-black tracking-tight text-[var(--color-text-strong)]">Users &amp; Operator Management Suite</h1>
+                <span className="hidden sm:inline-flex items-center gap-1.5 rounded-full border border-violet-500/25 bg-violet-500/10 px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider text-violet-600 dark:text-violet-400"><span className="h-1.5 w-1.5 rounded-full bg-violet-500 animate-pulse" /> Live Ledger</span>
+              </div>
+              <p className="text-xs text-[var(--color-text-muted)] mt-0.5">Maintain operator identities, assign security profiles, govern multi-company permissions, and enforce authentication policies.</p>
+            </div>
+          </div>
 
-        <div className="flex items-center gap-2 shrink-0 flex-nowrap overflow-x-auto">
+          <div className="flex items-center gap-2 shrink-0 flex-wrap">
           <button
             onClick={fetchUsers}
             title="Refresh Users Directory"
@@ -527,6 +538,7 @@ export function UsersView({ activeEntityId, notify }: { activeEntityId?: string;
           >
             <Plus className="w-4 h-4" /> Add System User
           </button>
+          </div>
         </div>
       </div>
 
@@ -1381,25 +1393,33 @@ export function RolesPermissionsView({ notify }: { activeEntityId?: string; noti
 
   return (
     <div className="p-6 max-w-[1400px] mx-auto space-y-6">
-      {/* Header */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-[var(--color-border)] pb-4">
-        <div>
-          <h1 className="text-xl font-black tracking-tight text-[var(--color-text-strong)] flex items-center gap-2.5">
-            <div className="p-2 rounded-xl bg-blue-500/10 text-blue-600 border border-blue-500/20">
-              <ShieldCheck className="w-5 h-5" />
+      {/* Page Header — AMS Signature Hero Band */}
+      <div className="relative overflow-hidden rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)] shadow-sm">
+        <div className="absolute inset-0 bg-gradient-to-r from-violet-500/10 via-violet-500/[0.03] to-transparent pointer-events-none" />
+        <div className="absolute -right-10 -top-16 w-56 h-56 rounded-full bg-violet-500/10 blur-3xl pointer-events-none" />
+        <div className="relative flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 px-5 py-4">
+          <div className="flex items-center gap-4">
+            <div className="relative h-14 w-14 shrink-0">
+              <div className="absolute inset-[6px] rotate-45 rounded-[12px] shadow-xl bg-gradient-to-br from-violet-500 to-purple-700" />
+              <div className="absolute inset-0 flex items-center justify-center"><ShieldCheck className="w-6 h-6 text-white" /></div>
             </div>
-            Roles & Security Permissions Matrix (RBAC)
-          </h1>
-          <p className="text-xs text-[var(--color-text-muted)] mt-1">
-            Configure access control policies across all 13 ERP functional modules.
-          </p>
+            <div>
+              <div className="flex items-center gap-2.5">
+                <h1 className="text-2xl font-black tracking-tight text-[var(--color-text-strong)]">Roles &amp; Security Permissions Matrix (RBAC)</h1>
+                <span className="hidden sm:inline-flex items-center gap-1.5 rounded-full border border-violet-500/25 bg-violet-500/10 px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider text-violet-600 dark:text-violet-400"><span className="h-1.5 w-1.5 rounded-full bg-violet-500 animate-pulse" /> Live Ledger</span>
+              </div>
+              <p className="text-xs text-[var(--color-text-muted)] mt-0.5">Configure access control policies across all 13 ERP functional modules.</p>
+            </div>
+          </div>
+          <div className="flex items-center gap-2 shrink-0">
+            <button
+              onClick={openCreate}
+              className="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold shadow-sm transition-all"
+            >
+              <Plus className="w-4 h-4" /> Create Custom Role
+            </button>
+          </div>
         </div>
-        <button
-          onClick={openCreate}
-          className="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold shadow-sm transition-all"
-        >
-          <Plus className="w-4 h-4" /> Create Custom Role
-        </button>
       </div>
 
       {/* 4-in-1 KPI Cards */}
@@ -1920,25 +1940,33 @@ export function CompaniesView({ activeEntityId, notify }: { activeEntityId?: str
 
   return (
     <div className="p-6 max-w-[1400px] mx-auto space-y-6">
-      {/* Header */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-[var(--color-border)] pb-4">
-        <div>
-          <h1 className="text-xl font-black tracking-tight text-[var(--color-text-strong)] flex items-center gap-2.5">
-            <div className="p-2 rounded-xl bg-emerald-500/10 text-emerald-600 border border-emerald-500/20">
-              <Building2 className="w-5 h-5" />
+      {/* Page Header — AMS Signature Hero Band */}
+      <div className="relative overflow-hidden rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)] shadow-sm">
+        <div className="absolute inset-0 bg-gradient-to-r from-violet-500/10 via-violet-500/[0.03] to-transparent pointer-events-none" />
+        <div className="absolute -right-10 -top-16 w-56 h-56 rounded-full bg-violet-500/10 blur-3xl pointer-events-none" />
+        <div className="relative flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 px-5 py-4">
+          <div className="flex items-center gap-4">
+            <div className="relative h-14 w-14 shrink-0">
+              <div className="absolute inset-[6px] rotate-45 rounded-[12px] shadow-xl bg-gradient-to-br from-violet-500 to-purple-700" />
+              <div className="absolute inset-0 flex items-center justify-center"><Building2 className="w-6 h-6 text-white" /></div>
             </div>
-            Companies & Multi-Entity Hierarchy
-          </h1>
-          <p className="text-xs text-[var(--color-text-muted)] mt-1">
-            Govern corporate entities, operating subsidiaries, national & provincial tax jurisdictions, and functional currencies.
-          </p>
+            <div>
+              <div className="flex items-center gap-2.5">
+                <h1 className="text-2xl font-black tracking-tight text-[var(--color-text-strong)]">Companies &amp; Multi-Entity Hierarchy</h1>
+                <span className="hidden sm:inline-flex items-center gap-1.5 rounded-full border border-violet-500/25 bg-violet-500/10 px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider text-violet-600 dark:text-violet-400"><span className="h-1.5 w-1.5 rounded-full bg-violet-500 animate-pulse" /> Live Ledger</span>
+              </div>
+              <p className="text-xs text-[var(--color-text-muted)] mt-0.5">Govern corporate entities, operating subsidiaries, national &amp; provincial tax jurisdictions, and functional currencies.</p>
+            </div>
+          </div>
+          <div className="flex items-center gap-2 shrink-0">
+            <button
+              onClick={openCreate}
+              className="inline-flex items-center gap-2 px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold shadow-sm transition-all"
+            >
+              <Plus className="w-4 h-4" /> Add Company / Entity
+            </button>
+          </div>
         </div>
-        <button
-          onClick={openCreate}
-          className="inline-flex items-center gap-2 px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold shadow-sm transition-all"
-        >
-          <Plus className="w-4 h-4" /> Add Company / Entity
-        </button>
       </div>
 
       {/* 4-in-1 KPI Cards */}
@@ -2635,25 +2663,33 @@ export function BranchesView({ activeEntityId, notify }: { activeEntityId?: stri
 
   return (
     <div className="p-6 max-w-[1400px] mx-auto space-y-6">
-      {/* Header */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-[var(--color-border)] pb-4">
-        <div>
-          <h1 className="text-xl font-black tracking-tight text-[var(--color-text-strong)] flex items-center gap-2.5">
-            <div className="p-2 rounded-xl bg-purple-500/10 text-purple-600 border border-purple-500/20">
-              <GitBranch className="w-5 h-5" />
+      {/* Page Header — AMS Signature Hero Band */}
+      <div className="relative overflow-hidden rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)] shadow-sm">
+        <div className="absolute inset-0 bg-gradient-to-r from-violet-500/10 via-violet-500/[0.03] to-transparent pointer-events-none" />
+        <div className="absolute -right-10 -top-16 w-56 h-56 rounded-full bg-violet-500/10 blur-3xl pointer-events-none" />
+        <div className="relative flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 px-5 py-4">
+          <div className="flex items-center gap-4">
+            <div className="relative h-14 w-14 shrink-0">
+              <div className="absolute inset-[6px] rotate-45 rounded-[12px] shadow-xl bg-gradient-to-br from-violet-500 to-purple-700" />
+              <div className="absolute inset-0 flex items-center justify-center"><GitBranch className="w-6 h-6 text-white" /></div>
             </div>
-            Branches & Regional Operating Units
-          </h1>
-          <p className="text-xs text-[var(--color-text-muted)] mt-1">
-            Define physical outlets, regional offices, and cost centers for segmented transaction tagging.
-          </p>
+            <div>
+              <div className="flex items-center gap-2.5">
+                <h1 className="text-2xl font-black tracking-tight text-[var(--color-text-strong)]">Branches &amp; Regional Operating Units</h1>
+                <span className="hidden sm:inline-flex items-center gap-1.5 rounded-full border border-violet-500/25 bg-violet-500/10 px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider text-violet-600 dark:text-violet-400"><span className="h-1.5 w-1.5 rounded-full bg-violet-500 animate-pulse" /> Live Ledger</span>
+              </div>
+              <p className="text-xs text-[var(--color-text-muted)] mt-0.5">Define physical outlets, regional offices, and cost centers for segmented transaction tagging.</p>
+            </div>
+          </div>
+          <div className="flex items-center gap-2 shrink-0">
+            <button
+              onClick={() => setModalOpen(true)}
+              className="inline-flex items-center gap-2 px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-xl text-xs font-bold shadow-sm transition-all"
+            >
+              <Plus className="w-4 h-4" /> Add Branch
+            </button>
+          </div>
         </div>
-        <button
-          onClick={() => setModalOpen(true)}
-          className="inline-flex items-center gap-2 px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-xl text-xs font-bold shadow-sm transition-all"
-        >
-          <Plus className="w-4 h-4" /> Add Branch
-        </button>
       </div>
 
       {/* 4-in-1 KPI Cards */}
@@ -2835,25 +2871,33 @@ export function ApprovalWorkflowsView({ activeEntityId, notify }: { activeEntity
 
   return (
     <div className="p-6 max-w-[1400px] mx-auto space-y-6">
-      {/* Header */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-[var(--color-border)] pb-4">
-        <div>
-          <h1 className="text-xl font-black tracking-tight text-[var(--color-text-strong)] flex items-center gap-2.5">
-            <div className="p-2 rounded-xl bg-amber-500/10 text-amber-600 border border-amber-500/20">
-              <CheckCircle2 className="w-5 h-5" />
+      {/* Page Header — AMS Signature Hero Band */}
+      <div className="relative overflow-hidden rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)] shadow-sm">
+        <div className="absolute inset-0 bg-gradient-to-r from-violet-500/10 via-violet-500/[0.03] to-transparent pointer-events-none" />
+        <div className="absolute -right-10 -top-16 w-56 h-56 rounded-full bg-violet-500/10 blur-3xl pointer-events-none" />
+        <div className="relative flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 px-5 py-4">
+          <div className="flex items-center gap-4">
+            <div className="relative h-14 w-14 shrink-0">
+              <div className="absolute inset-[6px] rotate-45 rounded-[12px] shadow-xl bg-gradient-to-br from-violet-500 to-purple-700" />
+              <div className="absolute inset-0 flex items-center justify-center"><CheckCircle2 className="w-6 h-6 text-white" /></div>
             </div>
-            Multi-Tiered Approval Workflows
-          </h1>
-          <p className="text-xs text-[var(--color-text-muted)] mt-1">
-            Enforce segregation of duties (SoD) and multi-step authorization rules before posting financial transactions.
-          </p>
+            <div>
+              <div className="flex items-center gap-2.5">
+                <h1 className="text-2xl font-black tracking-tight text-[var(--color-text-strong)]">Multi-Tiered Approval Workflows</h1>
+                <span className="hidden sm:inline-flex items-center gap-1.5 rounded-full border border-violet-500/25 bg-violet-500/10 px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider text-violet-600 dark:text-violet-400"><span className="h-1.5 w-1.5 rounded-full bg-violet-500 animate-pulse" /> Live Ledger</span>
+              </div>
+              <p className="text-xs text-[var(--color-text-muted)] mt-0.5">Enforce segregation of duties (SoD) and multi-step authorization rules before posting financial transactions.</p>
+            </div>
+          </div>
+          <div className="flex items-center gap-2 shrink-0">
+            <button
+              onClick={() => setModalOpen(true)}
+              className="inline-flex items-center gap-2 px-4 py-2 bg-amber-600 hover:bg-amber-700 text-white rounded-xl text-xs font-bold shadow-sm transition-all"
+            >
+              <Plus className="w-4 h-4" /> Create Workflow
+            </button>
+          </div>
         </div>
-        <button
-          onClick={() => setModalOpen(true)}
-          className="inline-flex items-center gap-2 px-4 py-2 bg-amber-600 hover:bg-amber-700 text-white rounded-xl text-xs font-bold shadow-sm transition-all"
-        >
-          <Plus className="w-4 h-4" /> Create Workflow
-        </button>
       </div>
 
       {/* 4-in-1 KPI Cards */}
@@ -3054,25 +3098,33 @@ export function NumberSeriesView({ activeEntityId, notify }: { activeEntityId?: 
 
   return (
     <div className="p-6 max-w-[1400px] mx-auto space-y-6">
-      {/* Header */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-[var(--color-border)] pb-4">
-        <div>
-          <h1 className="text-xl font-black tracking-tight text-[var(--color-text-strong)] flex items-center gap-2.5">
-            <div className="p-2 rounded-xl bg-indigo-500/10 text-indigo-600 border border-indigo-500/20">
-              <Hash className="w-5 h-5" />
+      {/* Page Header — AMS Signature Hero Band */}
+      <div className="relative overflow-hidden rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)] shadow-sm">
+        <div className="absolute inset-0 bg-gradient-to-r from-violet-500/10 via-violet-500/[0.03] to-transparent pointer-events-none" />
+        <div className="absolute -right-10 -top-16 w-56 h-56 rounded-full bg-violet-500/10 blur-3xl pointer-events-none" />
+        <div className="relative flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 px-5 py-4">
+          <div className="flex items-center gap-4">
+            <div className="relative h-14 w-14 shrink-0">
+              <div className="absolute inset-[6px] rotate-45 rounded-[12px] shadow-xl bg-gradient-to-br from-violet-500 to-purple-700" />
+              <div className="absolute inset-0 flex items-center justify-center"><Hash className="w-6 h-6 text-white" /></div>
             </div>
-            Document Number Series & Auto-Sequencing
-          </h1>
-          <p className="text-xs text-[var(--color-text-muted)] mt-1">
-            Automate document numbering, prefixes, and sequence padding for invoices, vouchers, and bills.
-          </p>
+            <div>
+              <div className="flex items-center gap-2.5">
+                <h1 className="text-2xl font-black tracking-tight text-[var(--color-text-strong)]">Document Number Series &amp; Auto-Sequencing</h1>
+                <span className="hidden sm:inline-flex items-center gap-1.5 rounded-full border border-violet-500/25 bg-violet-500/10 px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider text-violet-600 dark:text-violet-400"><span className="h-1.5 w-1.5 rounded-full bg-violet-500 animate-pulse" /> Live Ledger</span>
+              </div>
+              <p className="text-xs text-[var(--color-text-muted)] mt-0.5">Automate document numbering, prefixes, and sequence padding for invoices, vouchers, and bills.</p>
+            </div>
+          </div>
+          <div className="flex items-center gap-2 shrink-0">
+            <button
+              onClick={() => setModalOpen(true)}
+              className="inline-flex items-center gap-2 px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-bold shadow-sm transition-all"
+            >
+              <Plus className="w-4 h-4" /> Add Series
+            </button>
+          </div>
         </div>
-        <button
-          onClick={() => setModalOpen(true)}
-          className="inline-flex items-center gap-2 px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-bold shadow-sm transition-all"
-        >
-          <Plus className="w-4 h-4" /> Add Series
-        </button>
       </div>
 
       {/* 4-in-1 KPI Cards */}
@@ -3254,25 +3306,33 @@ export function CurrencyView({ activeEntityId, notify }: { activeEntityId?: stri
 
   return (
     <div className="p-6 max-w-[1400px] mx-auto space-y-6">
-      {/* Header */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-[var(--color-border)] pb-4">
-        <div>
-          <h1 className="text-xl font-black tracking-tight text-[var(--color-text-strong)] flex items-center gap-2.5">
-            <div className="p-2 rounded-xl bg-rose-500/10 text-rose-600 border border-rose-500/20">
-              <Coins className="w-5 h-5" />
+      {/* Page Header — AMS Signature Hero Band */}
+      <div className="relative overflow-hidden rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)] shadow-sm">
+        <div className="absolute inset-0 bg-gradient-to-r from-violet-500/10 via-violet-500/[0.03] to-transparent pointer-events-none" />
+        <div className="absolute -right-10 -top-16 w-56 h-56 rounded-full bg-violet-500/10 blur-3xl pointer-events-none" />
+        <div className="relative flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 px-5 py-4">
+          <div className="flex items-center gap-4">
+            <div className="relative h-14 w-14 shrink-0">
+              <div className="absolute inset-[6px] rotate-45 rounded-[12px] shadow-xl bg-gradient-to-br from-violet-500 to-purple-700" />
+              <div className="absolute inset-0 flex items-center justify-center"><Coins className="w-6 h-6 text-white" /></div>
             </div>
-            Multi-Currency & Exchange Rates Engine
-          </h1>
-          <p className="text-xs text-[var(--color-text-muted)] mt-1">
-            Manage ISO currencies, FX valuation rates, and base functional currency for IAS 21 compliance.
-          </p>
+            <div>
+              <div className="flex items-center gap-2.5">
+                <h1 className="text-2xl font-black tracking-tight text-[var(--color-text-strong)]">Multi-Currency &amp; Exchange Rates Engine</h1>
+                <span className="hidden sm:inline-flex items-center gap-1.5 rounded-full border border-violet-500/25 bg-violet-500/10 px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider text-violet-600 dark:text-violet-400"><span className="h-1.5 w-1.5 rounded-full bg-violet-500 animate-pulse" /> Live Ledger</span>
+              </div>
+              <p className="text-xs text-[var(--color-text-muted)] mt-0.5">Manage ISO currencies, FX valuation rates, and base functional currency for IAS 21 compliance.</p>
+            </div>
+          </div>
+          <div className="flex items-center gap-2 shrink-0">
+            <button
+              onClick={() => setModalOpen(true)}
+              className="inline-flex items-center gap-2 px-4 py-2 bg-rose-600 hover:bg-rose-700 text-white rounded-xl text-xs font-bold shadow-sm transition-all"
+            >
+              <Plus className="w-4 h-4" /> Add Foreign Currency
+            </button>
+          </div>
         </div>
-        <button
-          onClick={() => setModalOpen(true)}
-          className="inline-flex items-center gap-2 px-4 py-2 bg-rose-600 hover:bg-rose-700 text-white rounded-xl text-xs font-bold shadow-sm transition-all"
-        >
-          <Plus className="w-4 h-4" /> Add Foreign Currency
-        </button>
       </div>
 
       {/* 4-in-1 KPI Cards */}
@@ -3532,20 +3592,25 @@ export function AuditLogsView({ activeEntityId, notify }: { activeEntityId?: str
 
   return (
     <div className="p-6 max-w-[1400px] mx-auto space-y-6">
-      {/* Header */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-[var(--color-border)] pb-4">
-        <div>
-          <h1 className="text-xl font-black tracking-tight text-[var(--color-text-strong)] flex items-center gap-2.5">
-            <div className="p-2 rounded-xl bg-slate-500/10 text-slate-600 border border-slate-500/20">
-              <ScrollText className="w-5 h-5" />
+      {/* Page Header — AMS Signature Hero Band */}
+      <div className="relative overflow-hidden rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)] shadow-sm">
+        <div className="absolute inset-0 bg-gradient-to-r from-violet-500/10 via-violet-500/[0.03] to-transparent pointer-events-none" />
+        <div className="absolute -right-10 -top-16 w-56 h-56 rounded-full bg-violet-500/10 blur-3xl pointer-events-none" />
+        <div className="relative flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 px-5 py-4">
+          <div className="flex items-center gap-4">
+            <div className="relative h-14 w-14 shrink-0">
+              <div className="absolute inset-[6px] rotate-45 rounded-[12px] shadow-xl bg-gradient-to-br from-violet-500 to-purple-700" />
+              <div className="absolute inset-0 flex items-center justify-center"><ScrollText className="w-6 h-6 text-white" /></div>
             </div>
-            Immutable Audit Trail & Governance Log
-          </h1>
-          <p className="text-xs text-[var(--color-text-muted)] mt-1">
-            Forensic non-repudiation event stream tracking all journal postings, mutations, deletions, and logins.
-          </p>
-        </div>
-        <div className="flex items-center gap-2">
+            <div>
+              <div className="flex items-center gap-2.5">
+                <h1 className="text-2xl font-black tracking-tight text-[var(--color-text-strong)]">Immutable Audit Trail &amp; Governance Log</h1>
+                <span className="hidden sm:inline-flex items-center gap-1.5 rounded-full border border-violet-500/25 bg-violet-500/10 px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider text-violet-600 dark:text-violet-400"><span className="h-1.5 w-1.5 rounded-full bg-violet-500 animate-pulse" /> Live Ledger</span>
+              </div>
+              <p className="text-xs text-[var(--color-text-muted)] mt-0.5">Forensic non-repudiation event stream tracking all journal postings, mutations, deletions, and logins.</p>
+            </div>
+          </div>
+          <div className="flex items-center gap-2 shrink-0">
           <button
             onClick={exportPDF}
             className="px-3 py-1.5 border border-[var(--color-border)] hover:bg-[var(--color-surface-muted)] text-[var(--color-text-strong)] rounded-xl text-xs font-bold flex items-center gap-1.5 shadow-xs"
@@ -3573,6 +3638,7 @@ export function AuditLogsView({ activeEntityId, notify }: { activeEntityId?: str
           </button>
         </div>
       </div>
+    </div>
 
       {/* 4-in-1 KPI Cards */}
       <KpiGrid cols={4}>

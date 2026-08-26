@@ -1,6 +1,9 @@
 import React, { useState, useEffect } from 'react';
+import { FileText } from 'lucide-react';
 import { useProcurementStore, useProductsStore } from './stores';
 import { DataToolbar } from '@/components/ui/data-toolbar';
+import { EmptyState, TableSkeleton } from './components/ui/empty-state';
+import { StatusChip } from './components/ui/status-chip';
 
 interface PurchaseRequestLine {
   id?: string;
@@ -92,7 +95,7 @@ export const PurchaseRequests: React.FC<{activeEntityId: string, entities: any[]
     goToPo();
   };
 
-  if (loading) return <div className="p-8 text-center text-gray-500">Loading purchase requests...</div>;
+  if (loading) return <TableSkeleton rows={6} />;
 
   return (
     <div className="space-y-6">
@@ -116,7 +119,7 @@ export const PurchaseRequests: React.FC<{activeEntityId: string, entities: any[]
 
       <div className="bg-white border border-gray-200 rounded-2xl shadow-sm overflow-hidden">
         <table className="w-full text-left text-sm">
-          <thead className="bg-gray-50/50 text-gray-500 border-b border-gray-100">
+          <thead className="bg-emerald-500/[0.05] dark:bg-emerald-400/[0.07] text-gray-500 border-b border-gray-100">
             <tr>
               <th className="py-3 px-4 font-medium">Request No.</th>
               <th className="py-3 px-4 font-medium">Date</th>
@@ -132,9 +135,11 @@ export const PurchaseRequests: React.FC<{activeEntityId: string, entities: any[]
                 <td className="py-3 px-4 text-gray-500">{pr.date}</td>
                 <td className="py-3 px-4 text-gray-900">{pr.requesterName}</td>
                 <td className="py-3 px-4">
-                  <span className={`px-2 py-1 rounded text-xs font-medium ${pr.status === 2 ? 'bg-green-100 text-green-700' : pr.status === 4 ? 'bg-blue-100 text-blue-700' : 'bg-gray-100 text-gray-700'}`}>
-                    {['Draft', 'Submitted', 'Approved', 'Rejected', 'Ordered'][pr.status]}
-                  </span>
+                  <StatusChip
+                    status={['draft', 'submitted', 'approved', 'rejected', 'ordered'][pr.status]}
+                    label={['Draft', 'Submitted', 'Approved', 'Rejected', 'Ordered'][pr.status]}
+                    hex={['#94a3b8', '#f59e0b', '#3b82f6', '#ef4444', '#10b981'][pr.status]}
+                  />
                 </td>
                 <td className="py-3 px-4 text-right space-x-2">
                   {pr.status < 2 && (
@@ -152,7 +157,11 @@ export const PurchaseRequests: React.FC<{activeEntityId: string, entities: any[]
                 </td>
               </tr>
             ))}
-            {requests.length === 0 && <tr><td colSpan={5} className="py-8 text-center text-gray-400">No requests found.</td></tr>}
+            {requests.length === 0 && (
+              <tr><td colSpan={5}>
+                <EmptyState icon={FileText} title="No requests found" hint='Click "+ New Request" to raise an internal purchase requisition.' />
+              </td></tr>
+            )}
           </tbody>
         </table>
       </div>

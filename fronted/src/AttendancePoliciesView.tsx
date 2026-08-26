@@ -478,21 +478,26 @@ export default function AttendancePoliciesView() {
 
   return (
     <div className="p-6 max-w-[1500px] mx-auto space-y-6">
-      {/* Header */}
-      <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 border-b border-[var(--color-border)] pb-4">
-        <div className="min-w-0 flex-1">
-          <h1 className="text-xl font-black tracking-tight text-[var(--color-text-strong)] flex items-center gap-2.5">
-            <div className="p-2 rounded-xl bg-teal-500/10 text-teal-600 border border-teal-500/20 shrink-0">
-              <Scale className="w-5 h-5" />
+      {/* Page Header — AMS Signature Hero Band */}
+      <div className="relative overflow-hidden rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)] shadow-sm">
+        <div className="absolute inset-0 bg-gradient-to-r from-amber-500/10 via-amber-500/[0.03] to-transparent pointer-events-none" />
+        <div className="absolute -right-10 -top-16 w-56 h-56 rounded-full bg-amber-500/10 blur-3xl pointer-events-none" />
+        <div className="relative flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 px-5 py-4">
+          <div className="flex items-center gap-4">
+            <div className="relative h-14 w-14 shrink-0">
+              <div className="absolute inset-[6px] rotate-45 rounded-[12px] shadow-xl bg-gradient-to-br from-amber-500 to-orange-700" />
+              <div className="absolute inset-0 flex items-center justify-center"><Scale className="w-6 h-6 text-white" /></div>
             </div>
-            Comprehensive Attendance, Shift & Deduction Policies
-          </h1>
-          <p className="text-xs text-[var(--color-text-muted)] mt-1">
-            Configure custom attendance cutoff cycles (21st–20th, 26th–25th, or 1st–30th), shift hours, multi-tier late salary deductions, overtime multipliers, and hardware punch rules.
-          </p>
-        </div>
+            <div>
+              <div className="flex items-center gap-2.5">
+                <h1 className="text-2xl font-black tracking-tight text-[var(--color-text-strong)]">Comprehensive Attendance, Shift &amp; Deduction Policies</h1>
+                <span className="hidden sm:inline-flex items-center gap-1.5 rounded-full border border-amber-500/25 bg-amber-500/10 px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider text-amber-600 dark:text-amber-400"><span className="h-1.5 w-1.5 rounded-full bg-amber-500 animate-pulse" /> Live Ledger</span>
+              </div>
+              <p className="text-xs text-[var(--color-text-muted)] mt-0.5">Configure custom attendance cutoff cycles (21st–20th, 26th–25th, or 1st–30th), shift hours, multi-tier late salary deductions, overtime multipliers, and hardware punch rules.</p>
+            </div>
+          </div>
 
-        <div className="flex items-center gap-2 shrink-0">
+          <div className="flex items-center gap-2 shrink-0">
           <button
             onClick={handleResetToDefaults}
             title="Reset Policies to Defaults"
@@ -571,6 +576,7 @@ export default function AttendancePoliciesView() {
           >
             <Plus className="w-4 h-4" /> Create Detailed Policy
           </button>
+          </div>
         </div>
       </div>
 

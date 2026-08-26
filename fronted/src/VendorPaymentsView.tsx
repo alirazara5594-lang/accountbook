@@ -9,6 +9,8 @@ import {
 } from 'lucide-react'
 import { DataToolbar } from '@/components/ui/data-toolbar'
 import { KpiCard, KpiGrid } from '@/components/ui/kpi-card'
+import { EmptyState, TableSkeleton } from './components/ui/empty-state'
+import { StatusChip } from './components/ui/status-chip'
 import { money } from '@/lib/currency'
 import type { Entity } from './EntitySettings'
 import jsPDF from 'jspdf'
@@ -27,10 +29,10 @@ const MODE_METHOD: Record<string, string> = {
   'Online Banking': 'OnlineBanking',
 }
 
-const statusStyles: Record<string, { label: string; class: string }> = {
-  Completed: { label: 'Completed', class: 'bg-emerald-500/10 text-emerald-600 border border-emerald-500/20' },
-  Pending: { label: 'Pending', class: 'bg-amber-500/10 text-amber-600 border border-amber-500/20' },
-  Failed: { label: 'Failed', class: 'bg-rose-500/10 text-rose-600 border border-rose-500/20' }
+const statusStyles: Record<string, { label: string; hex: string }> = {
+  Completed: { label: 'Completed', hex: '#10b981' },
+  Pending: { label: 'Pending', hex: '#f59e0b' },
+  Failed: { label: 'Failed', hex: '#ef4444' }
 }
 
 interface VendorPaymentsViewProps {
@@ -312,17 +314,27 @@ export const VendorPaymentsView: React.FC<VendorPaymentsViewProps> = ({
         </div>
       )}
 
-      {/* Submodule Heading Banner (Row 1) */}
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-3 bg-[var(--color-surface)] p-3.5 rounded-xl border border-[var(--color-border)] shadow-sm">
-        <div>
-          <h1 className="text-base font-bold text-[var(--color-text-strong)] tracking-tight flex items-center gap-2">
-            <span className="text-lg">💳</span> Vendor Payments & Disbursements
-          </h1>
-          <p className="text-[var(--color-text-muted)] text-xs mt-0.5">
-            Disburse payments to suppliers, reconcile bank withdrawals, and extinguish Accounts Payable liabilities.
-          </p>
-        </div>
-        <div className="flex items-center gap-2 shrink-0 flex-wrap">
+      {/* Page Header — AMS Signature Hero Band */}
+      <div className="relative overflow-hidden rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)] shadow-sm">
+        <div className="absolute inset-0 bg-gradient-to-r from-teal-500/10 via-teal-500/[0.03] to-transparent pointer-events-none" />
+        <div className="absolute -right-10 -top-16 w-56 h-56 rounded-full bg-teal-500/10 blur-3xl pointer-events-none" />
+        <div className="relative flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 px-5 py-4">
+          <div className="flex items-center gap-4">
+            <div className="relative h-14 w-14 shrink-0">
+              <div className="absolute inset-[6px] rotate-45 rounded-[12px] shadow-xl bg-gradient-to-br from-teal-500 to-emerald-700" />
+              <div className="absolute inset-0 flex items-center justify-center"><CreditCard className="w-6 h-6 text-white" /></div>
+            </div>
+            <div>
+              <div className="flex items-center gap-2.5">
+                <h1 className="text-2xl font-black tracking-tight text-[var(--color-text-strong)]">Vendor Payments &amp; Disbursements</h1>
+                <span className="hidden sm:inline-flex items-center gap-1.5 rounded-full border border-teal-500/25 bg-teal-500/10 px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider text-teal-600 dark:text-teal-400"><span className="h-1.5 w-1.5 rounded-full bg-teal-500 animate-pulse" /> Live Ledger</span>
+              </div>
+              <p className="text-xs text-[var(--color-text-muted)] mt-0.5">
+                Disburse payments to suppliers, reconcile bank withdrawals, and extinguish Accounts Payable liabilities.
+              </p>
+            </div>
+          </div>
+          <div className="flex items-center gap-2 shrink-0 flex-wrap">
           <DataToolbar
             query={query}
             setQuery={setQuery}
@@ -354,6 +366,7 @@ export const VendorPaymentsView: React.FC<VendorPaymentsViewProps> = ({
           >
             <span>＋</span> Record Payment
           </button>
+          </div>
         </div>
       </div>
 
@@ -367,21 +380,21 @@ export const VendorPaymentsView: React.FC<VendorPaymentsViewProps> = ({
       {/* Payments Table */}
       <div className="bg-[var(--color-surface)] border border-[var(--color-border)] rounded-xl overflow-hidden shadow-sm">
         <div className="px-5 py-3.5 border-b border-[var(--color-border)] bg-[var(--color-surface-muted)] flex items-center justify-between">
-          <p className="text-xs font-bold uppercase tracking-wider text-[var(--color-text-strong)]">Disbursements Register</p>
+          <p className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-[var(--color-text-strong)]"><span className="inline-block h-2 w-2 rotate-45 rounded-[2px] bg-gradient-to-br from-teal-500 to-emerald-700" />Disbursements Register</p>
           <span className="text-[11px] text-[var(--color-text-muted)]">
             Showing {filtered.length} of {payments.length} record{payments.length !== 1 ? 's' : ''}
           </span>
         </div>
 
         {loading ? (
-          <div className="py-12 text-center text-xs text-[var(--color-text-muted)]">Loading payments...</div>
+          <TableSkeleton rows={6} />
         ) : filtered.length === 0 ? (
-          <div className="py-12 text-center text-xs text-[var(--color-text-muted)]">No payments found matching your criteria.</div>
+          <EmptyState icon={Coins} title="No payments found" hint="No payments found matching your criteria. Adjust your search or payment mode filter." />
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full text-xs">
               <thead>
-                <tr className="border-b border-[var(--color-border)] bg-[var(--color-surface-muted)]">
+                <tr className="border-b border-[var(--color-border)] bg-teal-500/[0.05] dark:bg-teal-400/[0.07]">
                   <th className="text-left px-3 py-2 font-semibold text-[var(--color-text-muted)]">Payment #</th>
                   <th className="text-left px-3 py-2 font-semibold text-[var(--color-text-muted)]">Date</th>
                   <th className="text-left px-3 py-2 font-semibold text-[var(--color-text-muted)]">Vendor</th>
@@ -406,9 +419,7 @@ export const VendorPaymentsView: React.FC<VendorPaymentsViewProps> = ({
                       <td className="px-3 py-2 text-[var(--color-text-muted)]">{p.paymentMethod}</td>
                       <td className="px-3 py-2 text-right font-bold text-emerald-600 dark:text-emerald-400 font-mono">{money(p.amount)}</td>
                       <td className="px-3 py-2 text-center">
-                        <span className={`inline-block px-2 py-0.5 rounded-full text-[10px] font-semibold ${badge.class}`}>
-                          {badge.label}
-                        </span>
+                        <StatusChip status={p.status} label={badge.label} hex={badge.hex} />
                       </td>
                       <td className="px-3 py-2 text-right">
                         <button

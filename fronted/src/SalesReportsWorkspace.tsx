@@ -14,6 +14,8 @@ import {
 import { money, moneyCompact } from './lib/currency';
 import { downloadExcel, downloadCSV } from './lib/exportUtils';
 import { KpiCard, KpiGrid } from './components/ui/kpi-card';
+import { StatusChip } from './components/ui/status-chip';
+import { EmptyState } from './components/ui/empty-state';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 
@@ -330,51 +332,62 @@ export function SalesReportsWorkspace({ activeEntityId }: Props) {
 
   return (
     <div className="space-y-4 max-w-7xl mx-auto pb-10">
-      {/* Header Banner */}
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-3 bg-[var(--color-surface)] p-3.5 rounded-xl border border-[var(--color-border)] shadow-xs">
-        <div>
-          <h1 className="text-base font-bold text-[var(--color-text-strong)] tracking-tight flex items-center gap-2">
-            <span className="text-lg">📊</span> Sales & Revenue Reports
-          </h1>
-          <p className="text-[var(--color-text-muted)] text-xs mt-0.5">
-            Real-time analytics on revenue velocity, customer collections, Accounts Receivable aging, and sales margins.
-          </p>
-        </div>
+      {/* Page Header — AMS Signature Hero Band */}
+      <div className="relative overflow-hidden rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)] shadow-sm">
+        <div className="absolute inset-0 bg-gradient-to-r from-blue-500/10 via-blue-500/[0.03] to-transparent pointer-events-none" />
+        <div className="absolute -right-10 -top-16 w-56 h-56 rounded-full bg-blue-500/10 blur-3xl pointer-events-none" />
+        <div className="relative flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 px-5 py-4">
+          <div className="flex items-center gap-4">
+            <div className="relative h-14 w-14 shrink-0">
+              <div className="absolute inset-[6px] rotate-45 rounded-[12px] shadow-xl bg-gradient-to-br from-blue-500 to-indigo-700" />
+              <div className="absolute inset-0 flex items-center justify-center"><BarChart3 className="w-6 h-6 text-white" /></div>
+            </div>
+            <div>
+              <div className="flex items-center gap-2.5">
+                <h1 className="text-2xl font-black tracking-tight text-[var(--color-text-strong)]">Sales &amp; Revenue Reports</h1>
+                <span className="hidden sm:inline-flex items-center gap-1.5 rounded-full border border-blue-500/25 bg-blue-500/10 px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider text-blue-600 dark:text-blue-400"><span className="h-1.5 w-1.5 rounded-full bg-blue-500 animate-pulse" /> Live Ledger</span>
+              </div>
+              <p className="text-xs text-[var(--color-text-muted)] mt-0.5">
+                Real-time analytics on revenue velocity, customer collections, Accounts Receivable aging, and sales margins.
+              </p>
+            </div>
+          </div>
 
-        {/* Global Action Buttons */}
-        <div className="flex items-center gap-2 shrink-0 flex-wrap">
-          <button
-            onClick={exportExcel}
-            className="h-9 px-4 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] text-xs font-medium hover:bg-[var(--color-surface-muted)] transition-colors flex items-center gap-1.5"
-            title="Export sales analytics to Excel"
-          >
-            <FileSpreadsheet className="w-3.5 h-3.5 text-emerald-600" /> Excel
-          </button>
-          <button
-            onClick={exportCSV}
-            className="h-9 px-4 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] text-xs font-medium hover:bg-[var(--color-surface-muted)] transition-colors"
-          >
-            CSV
-          </button>
-          <button
-            onClick={() => window.print()}
-            className="h-9 px-4 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] text-xs font-medium hover:bg-[var(--color-surface-muted)] transition-colors flex items-center gap-1"
-          >
-            <Printer className="w-3.5 h-3.5" /> Print
-          </button>
-          <button
-            onClick={loadData}
-            className="h-9 w-9 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] text-xs font-medium hover:bg-[var(--color-surface-muted)] transition-colors flex items-center justify-center text-[var(--color-text)]"
-            title="Refresh data"
-          >
-            <RefreshCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin' : ''}`} />
-          </button>
-          <button
-            onClick={generateSalesPDF}
-            className="h-9 px-5 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 text-white text-xs font-bold shadow-lg shadow-blue-500/25 flex items-center gap-1.5"
-          >
-            <Download className="w-3.5 h-3.5" /> Export PDF Report
-          </button>
+          {/* Global Action Buttons */}
+          <div className="flex items-center gap-2 shrink-0 flex-wrap">
+            <button
+              onClick={exportExcel}
+              className="h-9 px-4 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] text-xs font-medium hover:bg-[var(--color-surface-muted)] transition-colors flex items-center gap-1.5"
+              title="Export sales analytics to Excel"
+            >
+              <FileSpreadsheet className="w-3.5 h-3.5 text-emerald-600" /> Excel
+            </button>
+            <button
+              onClick={exportCSV}
+              className="h-9 px-4 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] text-xs font-medium hover:bg-[var(--color-surface-muted)] transition-colors"
+            >
+              CSV
+            </button>
+            <button
+              onClick={() => window.print()}
+              className="h-9 px-4 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] text-xs font-medium hover:bg-[var(--color-surface-muted)] transition-colors flex items-center gap-1"
+            >
+              <Printer className="w-3.5 h-3.5" /> Print
+            </button>
+            <button
+              onClick={loadData}
+              className="h-9 w-9 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] text-xs font-medium hover:bg-[var(--color-surface-muted)] transition-colors flex items-center justify-center text-[var(--color-text)]"
+              title="Refresh data"
+            >
+              <RefreshCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin' : ''}`} />
+            </button>
+            <button
+              onClick={generateSalesPDF}
+              className="h-9 px-5 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 text-white text-xs font-bold shadow-lg shadow-blue-500/25 flex items-center gap-1.5"
+            >
+              <Download className="w-3.5 h-3.5" /> Export PDF Report
+            </button>
+          </div>
         </div>
       </div>
 
@@ -506,7 +519,7 @@ export function SalesReportsWorkspace({ activeEntityId }: Props) {
         <div className="bg-[var(--color-surface)] border border-[var(--color-border)] rounded-xl shadow-xs overflow-hidden">
           <div className="overflow-x-auto">
             <table className="w-full text-left text-xs">
-              <thead className="bg-gray-50 dark:bg-gray-900/80 text-[var(--color-text-muted)] border-b border-[var(--color-border)] text-[10px] uppercase font-bold tracking-wider">
+              <thead className="bg-blue-500/[0.05] dark:bg-blue-400/[0.07] text-[var(--color-text-muted)] border-b border-[var(--color-border)] text-[10px] uppercase font-bold tracking-wider">
                 <tr>
                   <th className="py-2.5 px-3.5">Customer Name</th>
                   <th className="py-2.5 px-3 text-center">Invoices</th>
@@ -521,10 +534,11 @@ export function SalesReportsWorkspace({ activeEntityId }: Props) {
                 {filteredCustomerSales.length === 0 ? (
                   <tr>
                     <td colSpan={7} className="py-12 text-center text-[var(--color-text-muted)]">
-                      <div className="flex flex-col items-center gap-2">
-                        <Users className="w-8 h-8 text-gray-400" />
-                        <p className="font-semibold text-xs">No sales activity in this period.</p>
-                      </div>
+                      <EmptyState
+                        icon={Users}
+                        title="No sales activity found"
+                        hint="No invoices were billed in the selected period. Adjust the date range to broaden the analysis."
+                      />
                     </td>
                   </tr>
                 ) : (
@@ -604,7 +618,7 @@ export function SalesReportsWorkspace({ activeEntityId }: Props) {
         <div className="bg-[var(--color-surface)] border border-[var(--color-border)] rounded-xl shadow-xs overflow-hidden">
           <div className="overflow-x-auto">
             <table className="w-full text-left text-xs">
-              <thead className="bg-gray-50 dark:bg-gray-900/80 text-[var(--color-text-muted)] border-b border-[var(--color-border)] text-[10px] uppercase font-bold tracking-wider">
+              <thead className="bg-blue-500/[0.05] dark:bg-blue-400/[0.07] text-[var(--color-text-muted)] border-b border-[var(--color-border)] text-[10px] uppercase font-bold tracking-wider">
                 <tr>
                   <th className="py-2.5 px-3.5">Invoice #</th>
                   <th className="py-2.5 px-3">Date</th>
@@ -619,7 +633,11 @@ export function SalesReportsWorkspace({ activeEntityId }: Props) {
                 {dateFilteredInvoices.length === 0 ? (
                   <tr>
                     <td colSpan={7} className="py-12 text-center text-[var(--color-text-muted)]">
-                      <p className="font-semibold text-xs">No invoices found for this date range.</p>
+                      <EmptyState
+                        icon={FileText}
+                        title="No invoices found"
+                        hint="No invoices fall within this date range. Try widening the reporting period."
+                      />
                     </td>
                   </tr>
                 ) : (
@@ -648,15 +666,11 @@ export function SalesReportsWorkspace({ activeEntityId }: Props) {
                           {money(due)}
                         </td>
                         <td className="py-2.5 px-3 text-center">
-                          <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
-                            due === 0
-                              ? 'bg-emerald-50 dark:bg-emerald-900/30 text-emerald-700 border border-emerald-200'
-                              : isOverdue
-                                ? 'bg-rose-50 dark:bg-rose-900/30 text-rose-700 border border-rose-200'
-                                : 'bg-blue-50 dark:bg-blue-900/30 text-blue-700 border border-blue-200'
-                          }`}>
-                            {due === 0 ? 'Paid' : isOverdue ? 'Overdue' : 'Open'}
-                          </span>
+                          <StatusChip
+                            status={due === 0 ? 'paid' : isOverdue ? 'overdue' : 'open'}
+                            label={due === 0 ? 'Paid' : isOverdue ? 'Overdue' : 'Open'}
+                            hex={due === 0 ? '#10b981' : isOverdue ? '#f43f5e' : '#3b82f6'}
+                          />
                         </td>
                       </tr>
                     );

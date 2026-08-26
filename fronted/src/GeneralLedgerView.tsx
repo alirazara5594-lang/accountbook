@@ -10,6 +10,7 @@ import {
 import { money } from './lib/currency';
 import { downloadExcel, downloadCSV } from './lib/exportUtils';
 import { KpiCard, KpiGrid } from './components/ui/kpi-card';
+import { EmptyState, TableSkeleton } from './components/ui/empty-state';
 import type { Entity } from './EntitySettings';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
@@ -310,27 +311,30 @@ export const GeneralLedgerView: React.FC<GeneralLedgerViewProps> = ({ activeEnti
 
   return (
     <div className="p-6 max-w-[1400px] mx-auto space-y-6">
-      {/* ─── Top Control & Action Bar ─── */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-[var(--color-border)] pb-4">
-        <div className="flex items-center gap-3">
-          <div className="p-2.5 bg-emerald-500/10 text-emerald-600 rounded-xl border border-emerald-500/20 shrink-0">
-            <BookOpen className="w-5 h-5" />
+      {/* ─── Page Header — AMS Signature Hero Band ─── */}
+      <div className="relative overflow-hidden rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)] shadow-sm">
+        <div className="absolute inset-0 bg-gradient-to-r from-violet-500/10 via-violet-500/[0.03] to-transparent pointer-events-none" />
+        <div className="absolute -right-10 -top-16 w-56 h-56 rounded-full bg-violet-500/10 blur-3xl pointer-events-none" />
+        <div className="relative flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 px-5 py-4">
+          <div className="flex items-center gap-4">
+            <div className="relative h-14 w-14 shrink-0">
+              <div className="absolute inset-[6px] rotate-45 rounded-[12px] shadow-xl bg-gradient-to-br from-violet-500 to-indigo-700" />
+              <div className="absolute inset-0 flex items-center justify-center"><BookOpen className="w-6 h-6 text-white" /></div>
+            </div>
+            <div>
+              <div className="flex items-center gap-2.5 flex-wrap">
+                <h1 className="text-2xl font-black tracking-tight text-[var(--color-text-strong)]">General Ledger Register</h1>
+                <span className="hidden sm:inline-flex items-center gap-1.5 rounded-full border border-violet-500/25 bg-violet-500/10 px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider text-violet-600 dark:text-violet-400"><span className="h-1.5 w-1.5 rounded-full bg-violet-500 animate-pulse" /> Live Ledger</span>
+                <span className="text-[10px] px-2 py-0.5 rounded-full bg-blue-500/10 text-blue-600 font-semibold border border-blue-500/20">IAS 1 / IFRS Double-Entry</span>
+              </div>
+              <p className="text-xs text-[var(--color-text-muted)] mt-0.5">
+                Audit-trail ledger of all posted transactions, running balances, and T-account allocations for {currentEntity?.name || 'Active Entity'}.
+              </p>
+            </div>
           </div>
-          <div>
-            <h1 className="text-xl font-black tracking-tight text-[var(--color-text-strong)] flex items-center gap-2.5">
-              General Ledger Register
-              <span className="text-[10px] px-2 py-0.5 rounded-full bg-blue-500/10 text-blue-600 font-semibold border border-blue-500/20">
-                IAS 1 / IFRS Double-Entry
-              </span>
-            </h1>
-            <p className="text-xs text-[var(--color-text-muted)] mt-1">
-              Audit-trail ledger of all posted transactions, running balances, and T-account allocations for {currentEntity?.name || 'Active Entity'}.
-            </p>
-          </div>
-        </div>
 
-        {/* Action Buttons */}
-        <div className="flex items-center gap-2 flex-wrap">
+          {/* Action Buttons */}
+          <div className="flex flex-wrap items-center gap-2 shrink-0">
           <button
             onClick={load}
             disabled={loading}
@@ -357,6 +361,7 @@ export const GeneralLedgerView: React.FC<GeneralLedgerViewProps> = ({ activeEnti
           >
             <FileText className="w-3.5 h-3.5" /> CSV
           </button>
+          </div>
         </div>
       </div>
 
@@ -523,7 +528,7 @@ export const GeneralLedgerView: React.FC<GeneralLedgerViewProps> = ({ activeEnti
           <div className="overflow-x-auto">
             <table className="w-full text-left border-collapse text-xs">
               <thead>
-                <tr className="border-b border-[var(--color-border)] bg-[var(--color-surface-muted)] text-[var(--color-text-muted)] font-bold uppercase tracking-wider text-[11px]">
+                <tr className="border-b border-[var(--color-border)] bg-violet-500/[0.05] dark:bg-violet-400/[0.07] text-[var(--color-text-muted)] font-bold uppercase tracking-wider text-[11px]">
                   <th className="py-3 px-4 w-28">Date</th>
                   <th className="py-3 px-4 w-32">Reference #</th>
                   <th className="py-3 px-4 min-w-[200px]">GL Account</th>
@@ -536,21 +541,18 @@ export const GeneralLedgerView: React.FC<GeneralLedgerViewProps> = ({ activeEnti
               <tbody className="divide-y divide-[var(--color-border)] font-sans text-[var(--color-text)]">
                 {loading ? (
                   <tr>
-                    <td colSpan={7} className="py-12 text-center text-xs text-[var(--color-text-muted)]">
-                      <div className="flex flex-col items-center justify-center gap-2">
-                        <RefreshCw className="w-5 h-5 animate-spin text-emerald-600" />
-                        <span>Loading general ledger entries…</span>
-                      </div>
+                    <td colSpan={7} className="p-0">
+                      <TableSkeleton rows={6} />
                     </td>
                   </tr>
                 ) : filtered.length === 0 ? (
                   <tr>
-                    <td colSpan={7} className="py-12 text-center text-xs text-[var(--color-text-muted)]">
-                      <div className="flex flex-col items-center justify-center gap-1.5">
-                        <BookOpen className="w-6 h-6 text-gray-400 opacity-40 mb-1" />
-                        <span className="font-semibold text-sm text-[var(--color-text-strong)]">No general ledger entries found</span>
-                        <span className="text-[11px]">Post journals, sales invoices, or bills to generate ledger movements.</span>
-                      </div>
+                    <td colSpan={7}>
+                      <EmptyState
+                        icon={BookOpen}
+                        title="No general ledger entries found"
+                        hint="Post journals, sales invoices, or bills to generate ledger movements."
+                      />
                     </td>
                   </tr>
                 ) : (
@@ -615,8 +617,12 @@ export const GeneralLedgerView: React.FC<GeneralLedgerViewProps> = ({ activeEnti
       {viewMode === 'grouped' && (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
           {groupedByAccount.length === 0 ? (
-            <div className="col-span-2 p-12 text-center text-xs text-[var(--color-text-muted)] border border-[var(--color-border)] rounded-2xl bg-[var(--color-surface)]">
-              No T-Account ledgers available for the selected criteria.
+            <div className="col-span-2 border border-[var(--color-border)] rounded-2xl bg-[var(--color-surface)]">
+              <EmptyState
+                icon={Layers}
+                title="No T-Account ledgers available"
+                hint="Adjust the filters or switch the view mode to see grouped ledgers."
+              />
             </div>
           ) : (
             groupedByAccount.map((group) => (

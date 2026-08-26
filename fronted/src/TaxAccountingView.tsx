@@ -27,6 +27,8 @@ import {
   AlertTriangle,
 } from 'lucide-react';
 import { DataToolbar } from '@/components/ui/data-toolbar';
+import { StatusChip } from './components/ui/status-chip';
+import { EmptyState } from './components/ui/empty-state';
 import type { Entity } from './EntitySettings';
 import { money } from './lib/currency';
 
@@ -520,26 +522,34 @@ export const TaxAccountingView: React.FC<TaxAccountingViewProps> = ({ activeEnti
 
   return (
     <div className="space-y-6">
-      {/* Top Banner with Auto-Provisioning & Country Quick Switcher */}
-      <div className="bg-gradient-to-r from-indigo-900 via-indigo-800 to-slate-900 text-white rounded-2xl p-6 shadow-md">
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-          <div className="space-y-1.5">
-            <div className="flex items-center gap-2">
-              <span className="text-2xl">{current?.flag || '🌐'}</span>
-              <h1 className="text-xl font-bold tracking-tight">
-                {current?.name || 'Global'} Tax & Compliance Hub
-              </h1>
-              <Badge className="bg-indigo-500/30 text-indigo-200 border-indigo-400/30 text-xs font-semibold px-2.5 py-0.5">
-                {current?.regime || 'VAT / Sales Tax'}
-              </Badge>
+      {/* Top Banner with Auto-Provisioning — AMS Signature Hero Band */}
+      <div className="relative overflow-hidden rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)] shadow-sm">
+        <div className="absolute inset-0 bg-gradient-to-r from-rose-500/10 via-rose-500/[0.03] to-transparent pointer-events-none" />
+        <div className="absolute -right-10 -top-16 w-56 h-56 rounded-full bg-rose-500/10 blur-3xl pointer-events-none" />
+        <div className="relative flex flex-col md:flex-row md:items-center sm:justify-between gap-4 px-5 py-4">
+          <div className="flex items-center gap-4">
+            <div className="relative h-14 w-14 shrink-0">
+              <div className="absolute inset-[6px] rotate-45 rounded-[12px] shadow-xl bg-gradient-to-br from-rose-500 to-orange-700" />
+              <div className="absolute inset-0 flex items-center justify-center text-xl">{current?.flag || '🌐'}</div>
             </div>
-            <p className="text-xs text-indigo-200/80 max-w-2xl">
-              Active Entity: <strong className="text-white">{currentEntity?.name || 'Main Company'}</strong> ({currentEntity?.country || 'Default Country'}).
-              Automatic country presets configure official tax authorities, rates, IFRS dual-entry GL mappings, and tax return forms.
-            </p>
+            <div>
+              <div className="flex items-center gap-2.5 flex-wrap">
+                <h1 className="text-2xl font-black tracking-tight text-[var(--color-text-strong)]">
+                  {current?.name || 'Global'} Tax &amp; Compliance Hub
+                </h1>
+                <span className="hidden sm:inline-flex items-center gap-1.5 rounded-full border border-rose-500/25 bg-rose-500/10 px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider text-rose-600 dark:text-rose-400"><span className="h-1.5 w-1.5 rounded-full bg-rose-500 animate-pulse" /> Live Ledger</span>
+                <Badge className="bg-rose-500/10 text-rose-600 dark:text-rose-400 border border-rose-500/25 text-[9px] font-bold uppercase tracking-wider px-2 py-0.5">
+                  {current?.regime || 'VAT / Sales Tax'}
+                </Badge>
+              </div>
+              <p className="text-xs text-[var(--color-text-muted)] mt-0.5 max-w-2xl">
+                Active Entity: <strong className="text-[var(--color-text-strong)]">{currentEntity?.name || 'Main Company'}</strong> ({currentEntity?.country || 'Default Country'}).
+                Automatic country presets configure official tax authorities, rates, IFRS dual-entry GL mappings, and tax return forms.
+              </p>
+            </div>
           </div>
 
-          <div className="flex items-center gap-2 flex-wrap">
+          <div className="flex items-center gap-2 shrink-0 flex-wrap">
             <Button
               onClick={() => handleProvisionPreset()}
               disabled={seeding}
@@ -552,8 +562,8 @@ export const TaxAccountingView: React.FC<TaxAccountingViewProps> = ({ activeEnti
         </div>
 
         {/* Quick Country Switcher Bar */}
-        <div className="mt-5 pt-4 border-t border-indigo-700/40 flex items-center gap-2 overflow-x-auto pb-1">
-          <span className="text-[11px] font-bold text-indigo-300 uppercase tracking-wider whitespace-nowrap mr-1">
+        <div className="relative border-t border-[var(--color-border)] px-5 py-3 flex items-center gap-2 overflow-x-auto">
+          <span className="text-[11px] font-bold text-[var(--color-text-muted)] uppercase tracking-wider whitespace-nowrap mr-1">
             Country Presets:
           </span>
           {jurisdictions.map(j => (
@@ -562,8 +572,8 @@ export const TaxAccountingView: React.FC<TaxAccountingViewProps> = ({ activeEnti
               onClick={() => setSelectedJurisdiction(j.id)}
               className={`px-3 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1.5 whitespace-nowrap transition-all ${
                 selectedJurisdiction === j.id
-                  ? 'bg-white text-indigo-900 shadow-sm font-bold'
-                  : 'bg-indigo-800/60 hover:bg-indigo-700/80 text-indigo-100'
+                  ? 'bg-white dark:bg-slate-900 text-rose-700 dark:text-rose-300 shadow-sm font-bold border border-rose-300 dark:border-rose-700'
+                  : 'bg-[var(--color-surface-muted)] hover:bg-rose-500/10 text-[var(--color-text-muted)]'
               }`}
             >
               <span>{j.flag}</span>
@@ -709,7 +719,7 @@ export const TaxAccountingView: React.FC<TaxAccountingViewProps> = ({ activeEnti
 
           <div className="bg-[var(--color-surface)] border border-[var(--color-border)] rounded-2xl overflow-hidden shadow-xs">
             <Table>
-              <TableHeader className="bg-[var(--color-surface-muted)] border-b border-[var(--color-border)]">
+              <TableHeader className="bg-rose-500/[0.05] dark:bg-rose-400/[0.07] border-b border-[var(--color-border)]">
                 <TableRow>
                   <TableHead className="w-32 text-[11px] font-bold text-[var(--color-text-muted)] uppercase tracking-wider pl-4">CODE</TableHead>
                   <TableHead className="text-[11px] font-bold text-[var(--color-text-muted)] uppercase tracking-wider">NAME & DESCRIPTION</TableHead>
@@ -724,18 +734,22 @@ export const TaxAccountingView: React.FC<TaxAccountingViewProps> = ({ activeEnti
               <TableBody className="divide-y divide-[var(--color-border)]">
                 {filteredCodes.length === 0 && !loading && (
                   <TableRow>
-                    <TableCell colSpan={8} className="py-12 text-center text-xs text-slate-400">
-                      <div className="flex flex-col items-center justify-center space-y-3">
-                        <span>No tax codes found for {current?.name}.</span>
-                        <Button
-                          size="sm"
-                          onClick={() => handleProvisionPreset()}
-                          disabled={seeding}
-                          className="bg-indigo-600 hover:bg-indigo-700 text-white font-semibold text-xs px-4 py-2 rounded-lg flex items-center gap-1.5"
-                        >
-                          <Sparkles className="w-3.5 h-3.5" /> Provision Standard {current?.name} Tax Pack
-                        </Button>
-                      </div>
+                    <TableCell colSpan={8} className="p-0">
+                      <EmptyState
+                        icon={Percent}
+                        title={`No Tax Codes Found`}
+                        hint={`No tax codes found for ${current?.name}. Provision the standard country tax pack to get started.`}
+                        action={
+                          <Button
+                            size="sm"
+                            onClick={() => handleProvisionPreset()}
+                            disabled={seeding}
+                            className="bg-indigo-600 hover:bg-indigo-700 text-white font-semibold text-xs px-4 py-2 rounded-lg flex items-center gap-1.5"
+                          >
+                            <Sparkles className="w-3.5 h-3.5" /> Provision Standard {current?.name} Tax Pack
+                          </Button>
+                        }
+                      />
                     </TableCell>
                   </TableRow>
                 )}
@@ -926,7 +940,7 @@ export const TaxAccountingView: React.FC<TaxAccountingViewProps> = ({ activeEnti
 
           <div className="bg-[var(--color-surface)] border border-[var(--color-border)] rounded-2xl overflow-hidden shadow-xs">
             <Table>
-              <TableHeader className="bg-[var(--color-surface-muted)] border-b border-[var(--color-border)]">
+              <TableHeader className="bg-rose-500/[0.05] dark:bg-rose-400/[0.07] border-b border-[var(--color-border)]">
                 <TableRow>
                   <TableHead className="w-36 text-[11px] font-bold text-[var(--color-text-muted)] uppercase tracking-wider pl-4">CERTIFICATE #</TableHead>
                   <TableHead className="text-[11px] font-bold text-[var(--color-text-muted)] uppercase tracking-wider">COUNTERPARTY</TableHead>
@@ -940,8 +954,8 @@ export const TaxAccountingView: React.FC<TaxAccountingViewProps> = ({ activeEnti
               <TableBody className="divide-y divide-[var(--color-border)]">
                 {exemptions.length === 0 && !loading && (
                   <TableRow>
-                    <TableCell colSpan={7} className="py-12 text-center text-xs text-slate-400">
-                      No exemption certificates registered. Click "Register Certificate" to add one.
+                    <TableCell colSpan={7} className="p-0">
+                      <EmptyState icon={ShieldCheck} title="No Exemption Certificates" hint='No exemption certificates registered. Click "Register Certificate" to add one.' />
                     </TableCell>
                   </TableRow>
                 )}
@@ -968,9 +982,7 @@ export const TaxAccountingView: React.FC<TaxAccountingViewProps> = ({ activeEnti
                       {ex.validFrom} {ex.validTo ? `→ ${ex.validTo}` : ''}
                     </TableCell>
                     <TableCell className="text-center">
-                      <Badge className="bg-emerald-100 text-emerald-800 text-[10px] font-bold">
-                        {String(ex.status)}
-                      </Badge>
+                      <StatusChip status={String(ex.status)} label={String(ex.status)} hex="#10b981" />
                     </TableCell>
                     <TableCell className="text-right pr-4">
                       <Button
@@ -1054,7 +1066,7 @@ export const TaxAccountingView: React.FC<TaxAccountingViewProps> = ({ activeEnti
             </div>
 
             <Table>
-              <TableHeader className="bg-[var(--color-surface-muted)] border-b border-[var(--color-border)]">
+              <TableHeader className="bg-rose-500/[0.05] dark:bg-rose-400/[0.07] border-b border-[var(--color-border)]">
                 <TableRow>
                   <TableHead className="w-40 text-[11px] font-bold text-[var(--color-text-muted)] uppercase tracking-wider pl-4">FORM BOX / ROW</TableHead>
                   <TableHead className="text-[11px] font-bold text-[var(--color-text-muted)] uppercase tracking-wider">DESCRIPTION</TableHead>

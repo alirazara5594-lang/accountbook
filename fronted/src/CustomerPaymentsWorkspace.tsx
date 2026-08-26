@@ -7,6 +7,8 @@ import { useCompanyStore } from './stores';
 import { money } from './lib/currency';
 import { downloadExcel, downloadCSV } from './lib/exportUtils';
 import { KpiCard, KpiGrid } from './components/ui/kpi-card';
+import { StatusChip } from './components/ui/status-chip';
+import { EmptyState, TableSkeleton } from './components/ui/empty-state';
 import {
   Plus, X, DollarSign, Receipt,
   Search, Download, FileSpreadsheet,
@@ -343,89 +345,101 @@ export function CustomerPaymentsWorkspace() {
 
   return (
     <div className="space-y-4 max-w-7xl mx-auto pb-10">
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-3 bg-[var(--color-surface)] p-3.5 rounded-xl border border-[var(--color-border)] shadow-xs">
-        <div>
-          <h1 className="text-base font-bold text-[var(--color-text-strong)] tracking-tight flex items-center gap-2">
-            <span className="text-lg">💰</span> Customer Payments & Receipts
-          </h1>
-          <p className="text-[var(--color-text-muted)] text-xs mt-0.5">
-            Record customer collections, apply remittances against invoices, and manage bank deposit reconciliations.
-          </p>
-        </div>
-
-        <div className="flex items-center gap-2 shrink-0 flex-wrap">
-          <div className="flex items-center h-8.5 w-60 px-2.5 bg-[var(--color-surface)] border border-[var(--color-border)] rounded-lg text-xs focus-within:border-blue-500 focus-within:ring-1 focus-within:ring-blue-200 transition-all shadow-2xs">
-            <Search className="w-3.5 h-3.5 text-gray-400 mr-2 shrink-0 pointer-events-none" />
-            <input
-              type="text"
-              value={query}
-              onChange={(e) => setQuery(e.target.value)}
-              placeholder="Search receipt, customer, ref..."
-              className="!p-0 !border-0 !outline-none !bg-transparent w-full text-xs text-[var(--color-text)]"
-            />
-            {query && (
-              <button
-                type="button"
-                onClick={() => setQuery('')}
-                className="text-gray-400 hover:text-gray-600 text-sm px-1 leading-none font-bold"
-              >
-                ×
-              </button>
-            )}
+      {/* Page Header — AMS Signature Hero Band */}
+      <div className="relative overflow-hidden rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)] shadow-sm">
+        <div className="absolute inset-0 bg-gradient-to-r from-teal-500/10 via-teal-500/[0.03] to-transparent pointer-events-none" />
+        <div className="absolute -right-10 -top-16 w-56 h-56 rounded-full bg-teal-500/10 blur-3xl pointer-events-none" />
+        <div className="relative flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 px-5 py-4">
+          <div className="flex items-center gap-4">
+            <div className="relative h-14 w-14 shrink-0">
+              <div className="absolute inset-[6px] rotate-45 rounded-[12px] shadow-xl bg-gradient-to-br from-teal-500 to-emerald-700" />
+              <div className="absolute inset-0 flex items-center justify-center"><DollarSign className="w-6 h-6 text-white" /></div>
+            </div>
+            <div>
+              <div className="flex items-center gap-2.5">
+                <h1 className="text-2xl font-black tracking-tight text-[var(--color-text-strong)]">Customer Payments &amp; Receipts</h1>
+                <span className="hidden sm:inline-flex items-center gap-1.5 rounded-full border border-teal-500/25 bg-teal-500/10 px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider text-teal-600 dark:text-teal-400"><span className="h-1.5 w-1.5 rounded-full bg-teal-500 animate-pulse" /> Live Ledger</span>
+              </div>
+              <p className="text-xs text-[var(--color-text-muted)] mt-0.5">
+                Record customer collections, apply remittances against invoices, and manage bank deposit reconciliations.
+              </p>
+            </div>
           </div>
 
-          <select
-            value={methodFilter}
-            onChange={(e) => setMethodFilter(e.target.value)}
-            className="h-8.5 px-2.5 rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] text-xs text-[var(--color-text)] outline-none focus:border-blue-500 transition-colors"
-          >
-            <option value="all">⚡ All Methods</option>
-            <option value="BankTransfer">🏦 Bank Transfer</option>
-            <option value="Cash">💵 Cash</option>
-            <option value="Cheque">📜 Cheque</option>
-            <option value="CreditCard">💳 Credit Card</option>
-            <option value="WireTransfer">🌐 Wire Transfer</option>
-            <option value="MobilePayment">📱 Mobile Payment</option>
-          </select>
+          <div className="flex items-center gap-2 shrink-0 flex-wrap">
+            <div className="flex items-center h-8.5 w-60 px-2.5 bg-[var(--color-surface)] border border-[var(--color-border)] rounded-lg text-xs focus-within:border-blue-500 focus-within:ring-1 focus-within:ring-blue-200 transition-all shadow-2xs">
+              <Search className="w-3.5 h-3.5 text-gray-400 mr-2 shrink-0 pointer-events-none" />
+              <input
+                type="text"
+                value={query}
+                onChange={(e) => setQuery(e.target.value)}
+                placeholder="Search receipt, customer, ref..."
+                className="!p-0 !border-0 !outline-none !bg-transparent w-full text-xs text-[var(--color-text)]"
+              />
+              {query && (
+                <button
+                  type="button"
+                  onClick={() => setQuery('')}
+                  className="text-gray-400 hover:text-gray-600 text-sm px-1 leading-none font-bold"
+                >
+                  ×
+                </button>
+              )}
+            </div>
 
-          <select
-            value={statusFilter}
-            onChange={(e) => setStatusFilter(e.target.value)}
-            className="h-8.5 px-2.5 rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] text-xs text-[var(--color-text)] outline-none focus:border-blue-500 transition-colors"
-          >
-            <option value="all">📋 All Statuses</option>
-            <option value="posted">Posted</option>
-            <option value="draft">Draft</option>
-            <option value="void">Void</option>
-          </select>
+            <select
+              value={methodFilter}
+              onChange={(e) => setMethodFilter(e.target.value)}
+              className="h-8.5 px-2.5 rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] text-xs text-[var(--color-text)] outline-none focus:border-blue-500 transition-colors"
+            >
+              <option value="all">⚡ All Methods</option>
+              <option value="BankTransfer">🏦 Bank Transfer</option>
+              <option value="Cash">💵 Cash</option>
+              <option value="Cheque">📜 Cheque</option>
+              <option value="CreditCard">💳 Credit Card</option>
+              <option value="WireTransfer">🌐 Wire Transfer</option>
+              <option value="MobilePayment">📱 Mobile Payment</option>
+            </select>
 
-          <button
-            onClick={exportPaymentsExcel}
-            className="secondary h-8.5 px-3 rounded-lg text-xs font-semibold flex items-center gap-1.5 shadow-xs"
-            title="Export payments register to Excel"
-          >
-            <FileSpreadsheet className="w-3.5 h-3.5 text-emerald-600" /> Excel
-          </button>
-          <button
-            onClick={exportPaymentsCSV}
-            className="secondary h-8.5 px-2.5 rounded-lg text-xs font-semibold"
-          >
-            CSV
-          </button>
+            <select
+              value={statusFilter}
+              onChange={(e) => setStatusFilter(e.target.value)}
+              className="h-8.5 px-2.5 rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] text-xs text-[var(--color-text)] outline-none focus:border-blue-500 transition-colors"
+            >
+              <option value="all">📋 All Statuses</option>
+              <option value="posted">Posted</option>
+              <option value="draft">Draft</option>
+              <option value="void">Void</option>
+            </select>
 
-          <button
-            onClick={loadData}
-            className="secondary h-8.5 w-8.5 rounded-lg flex items-center justify-center text-xs text-[var(--color-text)]"
-          >
-            <RefreshCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin' : ''}`} />
-          </button>
+            <button
+              onClick={exportPaymentsExcel}
+              className="secondary h-8.5 px-3 rounded-lg text-xs font-semibold flex items-center gap-1.5 shadow-xs"
+              title="Export payments register to Excel"
+            >
+              <FileSpreadsheet className="w-3.5 h-3.5 text-emerald-600" /> Excel
+            </button>
+            <button
+              onClick={exportPaymentsCSV}
+              className="secondary h-8.5 px-2.5 rounded-lg text-xs font-semibold"
+            >
+              CSV
+            </button>
 
-          <button
-            onClick={openModal}
-            className="primary h-8.5 px-3 rounded-lg text-xs font-semibold flex items-center gap-1.5 shadow-xs"
-          >
-            <Plus className="w-3.5 h-3.5" /> Receive Payment
-          </button>
+            <button
+              onClick={loadData}
+              className="secondary h-8.5 w-8.5 rounded-lg flex items-center justify-center text-xs text-[var(--color-text)]"
+            >
+              <RefreshCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin' : ''}`} />
+            </button>
+
+            <button
+              onClick={openModal}
+              className="primary h-8.5 px-3 rounded-lg text-xs font-semibold flex items-center gap-1.5 shadow-xs"
+            >
+              <Plus className="w-3.5 h-3.5" /> Receive Payment
+            </button>
+          </div>
         </div>
       </div>
 
@@ -442,7 +456,10 @@ export function CustomerPaymentsWorkspace() {
 
       <div className="bg-[var(--color-surface)] border border-[var(--color-border)] rounded-xl shadow-xs overflow-hidden">
         <div className="px-5 py-3.5 border-b border-[var(--color-border)] bg-[var(--color-surface-muted)] flex items-center justify-between">
-          <p className="text-xs font-bold uppercase tracking-wider text-[var(--color-text-strong)]">Collections & Receipts Register</p>
+          <p className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-[var(--color-text-strong)]">
+            <span className="inline-block h-2 w-2 rotate-45 rounded-[2px] bg-gradient-to-br from-teal-500 to-emerald-700" />
+            Collections &amp; Receipts Register
+          </p>
           <span className="text-[11px] text-[var(--color-text-muted)]">
             {filteredPayments.length} receipts · Click <strong>Receipt PDF</strong> on any row to download an official payment receipt slip.
           </span>
@@ -450,7 +467,7 @@ export function CustomerPaymentsWorkspace() {
 
         <div className="overflow-x-auto">
           <table className="w-full text-left text-xs">
-            <thead className="bg-gray-50 dark:bg-gray-900/80 text-[var(--color-text-muted)] border-b border-[var(--color-border)] text-[10px] uppercase font-bold tracking-wider">
+            <thead className="bg-teal-500/[0.05] dark:bg-teal-400/[0.07] text-[var(--color-text-muted)] border-b border-[var(--color-border)] text-[10px] uppercase font-bold tracking-wider">
               <tr>
                 <th className="py-2.5 px-3.5">Receipt #</th>
                 <th className="py-2.5 px-3">Date</th>
@@ -466,20 +483,18 @@ export function CustomerPaymentsWorkspace() {
             <tbody className="divide-y divide-[var(--color-border)]">
               {loading ? (
                 <tr>
-                  <td colSpan={9} className="py-12 text-center text-[var(--color-text-muted)]">
-                    <div className="flex flex-col items-center gap-2">
-                      <RefreshCw className="w-6 h-6 animate-spin text-blue-600" />
-                      <p className="font-semibold text-xs">Loading customer payments...</p>
-                    </div>
+                  <td colSpan={9}>
+                    <TableSkeleton rows={6} />
                   </td>
                 </tr>
               ) : filteredPayments.length === 0 ? (
                 <tr>
                   <td colSpan={9} className="py-12 text-center text-[var(--color-text-muted)]">
-                    <div className="flex flex-col items-center gap-2">
-                      <CheckCircle2 className="w-8 h-8 text-gray-400" />
-                      <p className="font-semibold text-xs">No customer payment records found.</p>
-                    </div>
+                    <EmptyState
+                      icon={CheckCircle2}
+                      title="No customer payments found"
+                      hint="Record your first customer receipt or adjust the search and filters."
+                    />
                   </td>
                 </tr>
               ) : (
@@ -507,9 +522,11 @@ export function CustomerPaymentsWorkspace() {
                       {p.depositToAccountName || 'Bank Account'}
                     </td>
                     <td className="py-2.5 px-3 text-center">
-                      <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-50 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800">
-                        {p.status || 'Posted'}
-                      </span>
+                      <StatusChip
+                        status={String(p.status || 'posted').toLowerCase()}
+                        label={p.status || 'Posted'}
+                        hex={String(p.status || '').toLowerCase() === 'void' ? '#ef4444' : String(p.status || '').toLowerCase() === 'draft' ? '#94a3b8' : '#10b981'}
+                      />
                     </td>
                     <td className="py-2.5 px-3.5 text-right">
                       <button

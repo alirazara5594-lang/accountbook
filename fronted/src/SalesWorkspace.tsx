@@ -10,15 +10,17 @@ import { useSalesStore, useCustomersStore, useProductsStore, useCoaStore } from 
 import { useFormDraft } from './hooks/useFormDraft'
 import { DataToolbar } from '@/components/ui/data-toolbar'
 import { KpiCard, KpiGrid } from './components/ui/kpi-card'
+import { StatusChip } from './components/ui/status-chip'
+import { EmptyState, TableSkeleton } from './components/ui/empty-state'
 import { money } from './lib/currency'
 
-const statusStyles: Record<string, { label: string; class: string }> = {
-  Draft: { label: 'Draft', class: 'bg-slate-500/10 text-slate-600 border border-slate-500/20' },
-  Sent: { label: 'Approved', class: 'bg-sky-500/10 text-sky-600 border border-sky-500/20' },
-  Paid: { label: 'Paid', class: 'bg-emerald-500/10 text-emerald-600 border border-emerald-500/20' },
-  PartiallyPaid: { label: 'Partially Paid', class: 'bg-amber-500/10 text-amber-600 border border-amber-500/20' },
-  Overdue: { label: 'Overdue', class: 'bg-rose-500/10 text-rose-600 border border-rose-500/20' },
-  Void: { label: 'Cancelled / Void', class: 'bg-rose-500/10 text-rose-400 border border-rose-500/20' }
+const statusStyles: Record<string, { label: string; hex: string }> = {
+  Draft: { label: 'Draft', hex: '#94a3b8' },
+  Sent: { label: 'Approved', hex: '#0ea5e9' },
+  Paid: { label: 'Paid', hex: '#10b981' },
+  PartiallyPaid: { label: 'Partially Paid', hex: '#f59e0b' },
+  Overdue: { label: 'Overdue', hex: '#f43f5e' },
+  Void: { label: 'Cancelled / Void', hex: '#ef4444' }
 }
 
 export const SalesWorkspace: React.FC<{ activeEntityId: string; entities?: any[] }> = ({
@@ -665,15 +667,26 @@ export const SalesWorkspace: React.FC<{ activeEntityId: string; entities?: any[]
     <div className="space-y-6">
       {toast && <div className="fixed top-4 right-4 z-[9999] bg-[var(--color-surface)] border border-[var(--color-border)] rounded-xl shadow-lg px-4 py-3 text-sm font-medium text-[var(--color-text-strong)]">{toast}</div>}
 
-      {/* Page Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-bold text-[var(--color-text-strong)] flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-sky-500 to-blue-600 flex items-center justify-center text-white"><Receipt className="w-5 h-5" /></div>
-            Sales Invoices & Billing
-          </h1>
-          <p className="text-sm text-[var(--color-text-muted)] mt-1 ml-13">Manage customer sales invoices, automated GAAP general ledger posting, and accounts receivable.</p>
-        </div>
+      {/* Page Header — AMS Signature Hero Band */}
+      <div className="relative overflow-hidden rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)] shadow-sm">
+        <div className="absolute inset-0 bg-gradient-to-r from-sky-500/10 via-sky-500/[0.03] to-transparent pointer-events-none" />
+        <div className="absolute -right-10 -top-16 w-56 h-56 rounded-full bg-sky-500/10 blur-3xl pointer-events-none" />
+        <div className="relative flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 px-5 py-4">
+          <div className="flex items-center gap-4">
+            <div className="relative h-14 w-14 shrink-0">
+              <div className="absolute inset-[6px] rotate-45 rounded-[12px] shadow-xl bg-gradient-to-br from-sky-400 to-blue-700" />
+              <div className="absolute inset-0 flex items-center justify-center"><Receipt className="w-6 h-6 text-white" /></div>
+            </div>
+            <div>
+              <div className="flex items-center gap-2.5">
+                <h1 className="text-2xl font-black tracking-tight text-[var(--color-text-strong)]">Sales Invoices &amp; Billing</h1>
+                <span className="hidden sm:inline-flex items-center gap-1.5 rounded-full border border-sky-500/25 bg-sky-500/10 px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider text-sky-600 dark:text-sky-400">
+                  <span className="h-1.5 w-1.5 rounded-full bg-sky-500 animate-pulse" /> Live Ledger
+                </span>
+              </div>
+              <p className="text-xs text-[var(--color-text-muted)] mt-0.5">Manage customer sales invoices, automated GAAP general ledger posting, and accounts receivable.</p>
+            </div>
+          </div>
         <div className="flex items-center gap-2 shrink-0">
           <DataToolbar
             query={query}
@@ -700,9 +713,10 @@ export const SalesWorkspace: React.FC<{ activeEntityId: string; entities?: any[]
               <option value="overdue">Overdue</option>
             </select>
           </DataToolbar>
-          <button onClick={openCreateModal} className="inline-flex items-center gap-2 px-5 py-2.5 bg-gradient-to-r from-sky-600 to-blue-600 hover:from-sky-700 hover:to-blue-700 text-white text-sm font-semibold rounded-xl shadow-lg shadow-sky-500/25 transition-all hover:shadow-xl hover:shadow-sky-500/30">
+          <button onClick={openCreateModal} className="inline-flex items-center gap-2 px-5 py-2.5 bg-gradient-to-r from-sky-600 to-blue-600 hover:from-sky-700 hover:to-blue-700 text-white text-sm font-bold rounded-xl shadow-lg shadow-sky-500/25 transition-all hover:shadow-xl hover:shadow-sky-500/30 hover:-translate-y-0.5">
             <Plus className="w-4 h-4" /> Create Invoice
           </button>
+          </div>
         </div>
       </div>
 
@@ -721,32 +735,44 @@ export const SalesWorkspace: React.FC<{ activeEntityId: string; entities?: any[]
       {/* Invoices Table */}
       <div className="rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)] shadow-sm overflow-hidden">
         <div className="px-5 py-3.5 border-b border-[var(--color-border)] bg-[var(--color-surface-muted)] flex items-center justify-between">
-          <p className="text-xs font-bold uppercase tracking-wider text-[var(--color-text-strong)]">Invoice Register</p>
+          <p className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-[var(--color-text-strong)]">
+            <span className="inline-block h-2 w-2 rotate-45 rounded-[2px] bg-gradient-to-br from-sky-500 to-blue-600" />
+            Invoice Register
+          </p>
           <span className="text-[11px] text-[var(--color-text-muted)]">
             Showing {filteredInvoices.length} of {invoices.length} record{invoices.length !== 1 ? 's' : ''}
           </span>
         </div>
 
         {loading ? (
-          <div className="py-12 text-center text-xs text-[var(--color-text-muted)]">Loading invoices...</div>
+          <TableSkeleton rows={6} />
         ) : filteredInvoices.length === 0 ? (
-          <div className="py-12 text-center text-xs text-[var(--color-text-muted)]">No sales invoices found matching your criteria.</div>
+          <EmptyState
+            icon={Receipt}
+            title="No sales invoices found"
+            hint="Create your first invoice or adjust the search and status filters."
+            action={
+              <button onClick={openCreateModal} className="inline-flex items-center gap-2 h-9 px-4 rounded-xl bg-gradient-to-r from-sky-600 to-blue-600 text-white text-xs font-bold shadow-lg shadow-sky-500/25">
+                <Plus className="w-4 h-4" /> Create Invoice
+              </button>
+            }
+          />
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full text-xs">
               <thead>
-                <tr className="bg-[var(--color-surface-muted)] border-b border-[var(--color-border)]">
-                  <th className="px-5 py-3.5 text-left text-xs font-semibold text-[var(--color-text-muted)] uppercase tracking-wider">Invoice #</th>
-                  <th className="px-5 py-3.5 text-left text-xs font-semibold text-[var(--color-text-muted)] uppercase tracking-wider">Customer</th>
-                  <th className="px-5 py-3.5 text-left text-xs font-semibold text-[var(--color-text-muted)] uppercase tracking-wider">Date</th>
-                  <th className="px-5 py-3.5 text-left text-xs font-semibold text-[var(--color-text-muted)] uppercase tracking-wider">Due Date</th>
-                  <th className="px-5 py-3.5 text-right text-xs font-semibold text-[var(--color-text-muted)] uppercase tracking-wider">Subtotal</th>
-                  <th className="px-5 py-3.5 text-right text-xs font-semibold text-[var(--color-text-muted)] uppercase tracking-wider">Discount</th>
-                  <th className="px-5 py-3.5 text-right text-xs font-semibold text-[var(--color-text-muted)] uppercase tracking-wider">Tax</th>
-                  <th className="px-5 py-3.5 text-right text-xs font-semibold text-[var(--color-text-muted)] uppercase tracking-wider">Net Total</th>
-                  <th className="px-5 py-3.5 text-right text-xs font-semibold text-[var(--color-text-muted)] uppercase tracking-wider">Due</th>
-                  <th className="px-5 py-3.5 text-center text-xs font-semibold text-[var(--color-text-muted)] uppercase tracking-wider">Status</th>
-                  <th className="px-5 py-3.5 text-center text-xs font-semibold text-[var(--color-text-muted)] uppercase tracking-wider">Actions</th>
+                <tr className="bg-sky-500/[0.05] dark:bg-sky-400/[0.07] border-b border-[var(--color-border)]">
+                  <th className="px-5 py-3 text-left text-[10px] font-bold text-[var(--color-text-muted)] uppercase tracking-wider">Invoice #</th>
+                  <th className="px-5 py-3 text-left text-[10px] font-bold text-[var(--color-text-muted)] uppercase tracking-wider">Customer</th>
+                  <th className="px-5 py-3 text-left text-[10px] font-bold text-[var(--color-text-muted)] uppercase tracking-wider">Date</th>
+                  <th className="px-5 py-3 text-left text-[10px] font-bold text-[var(--color-text-muted)] uppercase tracking-wider">Due Date</th>
+                  <th className="px-5 py-3 text-right text-[10px] font-bold text-[var(--color-text-muted)] uppercase tracking-wider">Subtotal</th>
+                  <th className="px-5 py-3 text-right text-[10px] font-bold text-[var(--color-text-muted)] uppercase tracking-wider">Discount</th>
+                  <th className="px-5 py-3 text-right text-[10px] font-bold text-[var(--color-text-muted)] uppercase tracking-wider">Tax</th>
+                  <th className="px-5 py-3 text-right text-[10px] font-bold text-[var(--color-text-muted)] uppercase tracking-wider">Net Total</th>
+                  <th className="px-5 py-3 text-right text-[10px] font-bold text-[var(--color-text-muted)] uppercase tracking-wider">Due</th>
+                  <th className="px-5 py-3 text-center text-[10px] font-bold text-[var(--color-text-muted)] uppercase tracking-wider">Status</th>
+                  <th className="px-5 py-3 text-center text-[10px] font-bold text-[var(--color-text-muted)] uppercase tracking-wider">Actions</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-[var(--color-border)]">
@@ -801,7 +827,7 @@ export const SalesWorkspace: React.FC<{ activeEntityId: string; entities?: any[]
                       <td className="px-5 py-3.5 text-right font-mono text-xs text-amber-600">{taxAmount > 0 ? `+${money(taxAmount)}` : '—'}</td>
                       <td className="px-5 py-3.5 text-right font-mono text-xs font-bold text-[var(--color-text-strong)]">{money(netTotal)}</td>
                       <td className="px-5 py-3.5 text-right font-mono text-xs font-semibold text-rose-600">{money(amountDue)}</td>
-                      <td className="px-5 py-3.5 text-center"><span className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-semibold ${badge.class}`}><span className="w-1.5 h-1.5 rounded-full bg-current" />{badge.label}</span></td>
+                      <td className="px-5 py-3 text-center"><StatusChip status={statusKey} label={badge.label} hex={badge.hex} /></td>
                       <td className="px-5 py-3.5">
                         <div className="flex items-center justify-center gap-1.5">
                           <button onClick={() => downloadInvoicePdf(inv)} title="Download PDF" className="w-8 h-8 rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] hover:bg-sky-500/10 hover:border-sky-500/30 flex items-center justify-center transition-all"><Download className="w-3.5 h-3.5 text-sky-500" /></button>

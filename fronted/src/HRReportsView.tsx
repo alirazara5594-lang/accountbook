@@ -3,7 +3,8 @@ import { usePayrollStore } from './stores';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { PageHeader } from '@/components/ui/page-header';
+import { StatusChip } from './components/ui/status-chip';
+import { EmptyState } from './components/ui/empty-state';
 
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Users, CalendarCheck2, HeartPulse, Banknote, Wallet, TrendingUp, Globe2, Building2, AlertTriangle, UserCheck } from 'lucide-react';
@@ -94,10 +95,26 @@ export default function HRReportsView() {
 
   return (
     <div className="mx-auto max-w-[1400px] space-y-5 p-6">
-      <PageHeader
-        title="HR Reports"
-        description="Headcount, attendance, leave, payroll cost, and loan analytics across your workforce"
-      />
+      {/* Page Header — AMS Signature Hero Band */}
+      <div className="relative overflow-hidden rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)] shadow-sm">
+        <div className="absolute inset-0 bg-gradient-to-r from-orange-500/10 via-orange-500/[0.03] to-transparent pointer-events-none" />
+        <div className="absolute -right-10 -top-16 w-56 h-56 rounded-full bg-orange-500/10 blur-3xl pointer-events-none" />
+        <div className="relative flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 px-5 py-4">
+          <div className="flex items-center gap-4">
+            <div className="relative h-14 w-14 shrink-0">
+              <div className="absolute inset-[6px] rotate-45 rounded-[12px] shadow-xl bg-gradient-to-br from-orange-500 to-amber-700" />
+              <div className="absolute inset-0 flex items-center justify-center"><Users className="w-6 h-6 text-white" /></div>
+            </div>
+            <div>
+              <div className="flex items-center gap-2.5">
+                <h1 className="text-2xl font-black tracking-tight text-[var(--color-text-strong)]">HR Reports</h1>
+                <span className="hidden sm:inline-flex items-center gap-1.5 rounded-full border border-orange-500/25 bg-orange-500/10 px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider text-orange-600 dark:text-orange-400"><span className="h-1.5 w-1.5 rounded-full bg-orange-500 animate-pulse" /> Live Ledger</span>
+              </div>
+              <p className="text-xs text-[var(--color-text-muted)] mt-0.5">Headcount, attendance, leave, payroll cost, and loan analytics across your workforce</p>
+            </div>
+          </div>
+        </div>
+      </div>
 
       <div className="grid grid-cols-2 lg:grid-cols-5 gap-4">
         {[
@@ -139,7 +156,7 @@ export default function HRReportsView() {
                 <h3 className="flex items-center gap-2 text-sm font-semibold text-foreground"><Building2 className="h-4 w-4 text-primary" /> Headcount by Department</h3>
               </div>
               <div className="p-5">
-                {perCapitaTable.length === 0 && <p className="py-8 text-center text-sm text-muted-foreground">No employee data available</p>}
+                {perCapitaTable.length === 0 && <EmptyState icon={Building2} title="No Employee Data" hint="Employee records will populate this headcount breakdown." />}
                 {perCapitaTable.map(d => {
                   const pct = employees.length ? (d.headcount / employees.length) * 100 : 0;
                   return (
@@ -161,7 +178,7 @@ export default function HRReportsView() {
                 <h3 className="flex items-center gap-2 text-sm font-semibold text-foreground"><Globe2 className="h-4 w-4 text-primary" /> Headcount by Country</h3>
               </div>
               <div className="p-5">
-                {countryBreakdown.length === 0 && <p className="py-8 text-center text-sm text-muted-foreground">No employee data available</p>}
+                {countryBreakdown.length === 0 && <EmptyState icon={Globe2} title="No Employee Data" hint="Employee records will populate this country breakdown." />}
                 {countryBreakdown.map(c => {
                   const pct = employees.length ? (c.count / employees.length) * 100 : 0;
                   return (
@@ -202,7 +219,7 @@ export default function HRReportsView() {
                     <TableCell className="text-right font-mono">{money(d.salaryCost)}</TableCell>
                   </TableRow>
                 ))}
-                {perCapitaTable.length === 0 && <TableRow><TableCell colSpan={4} className="py-8 text-center text-muted-foreground">No data</TableCell></TableRow>}
+                {perCapitaTable.length === 0 && <TableRow><TableCell colSpan={4} className="p-0"><EmptyState icon={Building2} title="No Data" hint="Department headcount will appear once employees are registered." /></TableCell></TableRow>}
               </TableBody>
             </Table>
           </Card>
@@ -260,7 +277,7 @@ export default function HRReportsView() {
                     </TableRow>
                   );
                 })}
-                {attendanceRecords.length === 0 && <TableRow><TableCell colSpan={4} className="py-8 text-center text-muted-foreground">No attendance data yet</TableCell></TableRow>}
+                {attendanceRecords.length === 0 && <TableRow><TableCell colSpan={4} className="p-0"><EmptyState icon={CalendarCheck2} title="No Attendance Data" hint="Attendance data will appear once biometric punches are recorded." /></TableCell></TableRow>}
               </TableBody>
             </Table>
           </Card>
@@ -313,7 +330,7 @@ export default function HRReportsView() {
                     <TableCell className="text-right"><Badge variant="secondary">{l.pending}</Badge></TableCell>
                   </TableRow>
                 ))}
-                {leaveStats.length === 0 && <TableRow><TableCell colSpan={5} className="py-8 text-center text-muted-foreground">No leave data yet</TableCell></TableRow>}
+                {leaveStats.length === 0 && <TableRow><TableCell colSpan={5} className="p-0"><EmptyState icon={HeartPulse} title="No Leave Data" hint="Leave requests will populate this type-wise summary." /></TableCell></TableRow>}
               </TableBody>
             </Table>
           </Card>
@@ -368,7 +385,7 @@ export default function HRReportsView() {
                     <TableCell className="text-right font-mono font-semibold">{slip.currency} {slip.netPay.toLocaleString()}</TableCell>
                   </TableRow>
                 ))}
-                {salarySlips.length === 0 && <TableRow><TableCell colSpan={5} className="py-8 text-center text-muted-foreground">No salary slips yet — run a payroll to see data</TableCell></TableRow>}
+                {salarySlips.length === 0 && <TableRow><TableCell colSpan={5} className="p-0"><EmptyState icon={Banknote} title="No Salary Slips Yet" hint="Run a payroll to see issued salary slips here." /></TableCell></TableRow>}
               </TableBody>
             </Table>
           </Card>
@@ -416,10 +433,10 @@ export default function HRReportsView() {
                     <TableCell className="text-right font-mono">{l.principalAmount.toLocaleString()}</TableCell>
                     <TableCell className="text-right font-mono font-semibold">{l.balanceAmount.toLocaleString()}</TableCell>
                     <TableCell className="text-right">{l.paidInstallments}/{l.totalInstallments}</TableCell>
-                    <TableCell className="text-right"><Badge variant={l.status === 'Active' ? 'default' : l.status === 'Completed' ? 'secondary' : 'destructive'}>{l.status}</Badge></TableCell>
+                    <TableCell className="text-right"><StatusChip status={l.status} label={l.status} hex={l.status === 'Active' ? '#10b981' : l.status === 'Completed' ? '#10b981' : '#f43f5e'} /></TableCell>
                   </TableRow>
                 ))}
-                {loans.length === 0 && <TableRow><TableCell colSpan={6} className="py-8 text-center text-muted-foreground">No loans yet</TableCell></TableRow>}
+                {loans.length === 0 && <TableRow><TableCell colSpan={6} className="p-0"><EmptyState icon={Wallet} title="No Loans Yet" hint="Employee loans and advances will appear here." /></TableCell></TableRow>}
               </TableBody>
             </Table>
           </Card>

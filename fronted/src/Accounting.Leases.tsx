@@ -1,7 +1,9 @@
 import { useEffect, useState } from 'react';
 import { leasesApi, type LeaseAgreement, type LeaseScheduleResponse } from './api/modules/leases.api';
 import { Button } from '@/components/ui/button';
-import { Plus } from 'lucide-react';
+import { Plus, FileSignature } from 'lucide-react';
+import { StatusChip } from '@/components/ui/status-chip';
+import { EmptyState, TableSkeleton } from '@/components/ui/empty-state';
 import { money } from '@/lib/currency';
 
 interface LeaseProps {
@@ -117,14 +119,31 @@ export const LeaseAccounting: React.FC<LeaseProps> = ({ activeEntityId }) => {
 
   return (
     <div className="p-4 space-y-4">
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-3 bg-white p-3 rounded-xl border border-gray-200 shadow-sm">
-        <h1 className="text-base font-bold text-gray-900 flex items-center gap-2">
-          <span className="text-lg">📋</span> Lease Accounting
-        </h1>
-        <button onClick={() => setShowForm(true)}
-          className="h-8 px-2.5 bg-blue-600 hover:bg-blue-700 text-white text-[11px] font-semibold rounded-lg shrink-0 whitespace-nowrap flex items-center gap-1">
-          <Plus className="h-3.5 w-3.5" /> New Lease
-        </button>
+      {/* Page Header — AMS Signature Hero Band */}
+      <div className="relative overflow-hidden rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)] shadow-sm">
+        <div className="absolute inset-0 bg-gradient-to-r from-teal-500/10 via-teal-500/[0.03] to-transparent pointer-events-none" />
+        <div className="absolute -right-10 -top-16 w-56 h-56 rounded-full bg-teal-500/10 blur-3xl pointer-events-none" />
+        <div className="relative flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 px-5 py-4">
+          <div className="flex items-center gap-4">
+            <div className="relative h-14 w-14 shrink-0">
+              <div className="absolute inset-[6px] rotate-45 rounded-[12px] shadow-xl bg-gradient-to-br from-teal-500 to-blue-700" />
+              <div className="absolute inset-0 flex items-center justify-center"><FileSignature className="w-6 h-6 text-white" /></div>
+            </div>
+            <div>
+              <div className="flex items-center gap-2.5">
+                <h1 className="text-2xl font-black tracking-tight text-[var(--color-text-strong)]">Lease Accounting</h1>
+                <span className="hidden sm:inline-flex items-center gap-1.5 rounded-full border border-teal-500/25 bg-teal-500/10 px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider text-teal-600 dark:text-teal-400"><span className="h-1.5 w-1.5 rounded-full bg-teal-500 animate-pulse" /> Live Ledger</span>
+              </div>
+              <p className="text-xs text-[var(--color-text-muted)] mt-0.5">Finance &amp; operating lease liabilities, ROU assets, and accrual posting under IFRS 16 / ASC 842.</p>
+            </div>
+          </div>
+          <div className="flex items-center gap-2 shrink-0">
+            <button onClick={() => setShowForm(true)}
+              className="h-8 px-2.5 bg-blue-600 hover:bg-blue-700 text-white text-[11px] font-semibold rounded-lg shrink-0 whitespace-nowrap flex items-center gap-1">
+              <Plus className="h-3.5 w-3.5" /> New Lease
+            </button>
+          </div>
+        </div>
       </div>
 
       {error && (
@@ -165,15 +184,15 @@ export const LeaseAccounting: React.FC<LeaseProps> = ({ activeEntityId }) => {
           <h2 className="text-lg font-semibold">Lease Agreements</h2>
           <p className="text-sm text-gray-500">{leases.length} active lease agreements</p>
         </div>
-        {loading && <p className="p-4">Loading leases...</p>}
+        {loading && <TableSkeleton rows={6} />}
         {!loading && leases.length === 0 && (
-          <p className="p-4 text-center text-gray-500">No lease agreements found. Create one to get started.</p>
+          <EmptyState icon={FileSignature} title="No lease agreements found" hint="Create a lease agreement to schedule payments and post monthly accruals." />
         )}
         {!loading && leases.length > 0 && (
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
-                <tr className="border-b text-left font-medium">
+                <tr className="border-b text-left font-medium bg-teal-500/[0.05] dark:bg-teal-400/[0.07]">
                   <th className="pb-3">Lease #</th>
                   <th className="pb-3">Counterparty</th>
                   <th className="pb-3">Type</th>
@@ -206,11 +225,7 @@ export const LeaseAccounting: React.FC<LeaseProps> = ({ activeEntityId }) => {
                     <td className="py-3 text-right">{fmt(lease.balanceSheetLiability)}</td>
                     <td className="py-3 text-right">{fmt(lease.rightOfUseAssetValue - lease.accumulatedDepreciation)}</td>
                     <td className="py-3">
-                      <span className={`px-2 py-1 rounded-full text-xs font-medium ${
-                        lease.isActive ? 'bg-emerald-50 text-emerald-700' : 'bg-gray-50 text-gray-600'
-                      }`}>
-                        {lease.isActive ? 'Active' : 'Inactive'}
-                      </span>
+                      <StatusChip status={lease.isActive ? 'Active' : 'Inactive'} />
                     </td>
                     <td className="py-3 text-right space-x-1">
                       <Button

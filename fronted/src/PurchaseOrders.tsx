@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { useProcurementStore, useVendorsStore, useProductsStore, useTaxStore } from './stores';
 import { DataToolbar } from '@/components/ui/data-toolbar';
+import { EmptyState, TableSkeleton } from './components/ui/empty-state';
+import { StatusChip } from './components/ui/status-chip';
 import { Package, Info, X, ShoppingCart, FileText } from 'lucide-react';
 
 interface TaxRate {
@@ -266,7 +268,7 @@ export const PurchaseOrders: React.FC<{activeEntityId?: string, entities?: any[]
   const getStatusString = (s: number) => ['Draft', 'Issued', 'Partially Rcvd', 'Fulfilled'][s];
   const getDestString = (d: number) => ['Inventory', 'Fixed Asset', 'Expense'][d];
 
-  if (loading) return <div className="p-8 text-center text-gray-500">Loading procurement dashboard...</div>;
+  if (loading) return <TableSkeleton rows={6} />;
 
   return (
     <div className="animate-fade-in space-y-4">
@@ -329,14 +331,20 @@ export const PurchaseOrders: React.FC<{activeEntityId?: string, entities?: any[]
                         <td className="py-4 text-gray-700">{vendor?.name || 'Unknown'}</td>
                         <td className="py-4 text-gray-900 font-medium text-right">${total.toFixed(2)}</td>
                         <td className="py-4 text-center">
-                          <span className={`px-2.5 py-1 rounded-full text-xs font-medium ${po.status === 3 ? 'bg-green-100 text-green-700' : po.status === 1 ? 'bg-blue-100 text-blue-700' : 'bg-orange-100 text-orange-700'}`}>
-                            {getStatusString(po.status)}
-                          </span>
+                          <StatusChip
+                            status={['draft', 'open', 'partial', 'posted'][po.status]}
+                            label={getStatusString(po.status)}
+                            hex={['#94a3b8', '#3b82f6', '#f59e0b', '#10b981'][po.status]}
+                          />
                         </td>
                       </tr>
                     );
                   })}
-                  {pos.length === 0 && <tr><td colSpan={5} className="py-8 text-center text-gray-400">No purchase orders found</td></tr>}
+                  {pos.length === 0 && (
+                    <tr><td colSpan={5}>
+                      <EmptyState icon={Package} title="No purchase orders found" hint='Award a vendor quote or click "+ New PO" to raise a purchase order.' />
+                    </td></tr>
+                  )}
                 </tbody>
               </table>
             </div>
@@ -364,14 +372,20 @@ export const PurchaseOrders: React.FC<{activeEntityId?: string, entities?: any[]
                         <td className="py-4 text-blue-600">{po?.poNumber || 'Unknown'}</td>
                         <td className="py-4 text-gray-900 text-center">{grn.lines.length} lines</td>
                         <td className="py-4 text-center">
-                          <span className={`px-2.5 py-1 rounded-full text-xs font-medium ${grn.isProcessed ? 'bg-green-100 text-green-700' : 'bg-yellow-100 text-yellow-700'}`}>
-                            {grn.isProcessed ? 'Processed to Inventory/Asset' : 'Pending'}
-                          </span>
+                          <StatusChip
+                            status={grn.isProcessed ? 'posted' : 'pending'}
+                            label={grn.isProcessed ? 'Processed to Inventory/Asset' : 'Pending'}
+                            hex={grn.isProcessed ? '#10b981' : '#f59e0b'}
+                          />
                         </td>
                       </tr>
                     );
                   })}
-                  {grns.length === 0 && <tr><td colSpan={5} className="py-8 text-center text-gray-400">No goods receipts found</td></tr>}
+                  {grns.length === 0 && (
+                    <tr><td colSpan={5}>
+                      <EmptyState icon={FileText} title="No goods receipts found" hint='Click "+ GRN" to receive items against an issued purchase order.' />
+                    </td></tr>
+                  )}
                 </tbody>
               </table>
             </div>

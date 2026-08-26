@@ -7,6 +7,8 @@ import {
 } from 'lucide-react';
 import { downloadCSV, downloadExcel } from './lib/exportUtils';
 import { KpiCard, KpiGrid } from './components/ui/kpi-card';
+import { StatusChip } from './components/ui/status-chip';
+import { EmptyState } from './components/ui/empty-state';
 import type { AttendancePolicy } from './AttendancePoliciesView';
 import { DEFAULT_POLICIES } from './AttendancePoliciesView';
 
@@ -187,22 +189,27 @@ export default function AttendanceTracker() {
 
   return (
     <div className="p-6 max-w-[1500px] mx-auto space-y-6">
-      {/* Header */}
-      <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 border-b border-[var(--color-border)] pb-4">
-        <div className="min-w-0 flex-1">
-          <h1 className="text-xl font-black tracking-tight text-[var(--color-text-strong)] flex items-center gap-2.5">
-            <div className="p-2 rounded-xl bg-teal-500/10 text-teal-600 border border-teal-500/20 shrink-0">
-              <Clock className="w-5 h-5" />
+      {/* Page Header — AMS Signature Hero Band */}
+      <div className="relative overflow-hidden rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)] shadow-sm">
+        <div className="absolute inset-0 bg-gradient-to-r from-amber-500/10 via-amber-500/[0.03] to-transparent pointer-events-none" />
+        <div className="absolute -right-10 -top-16 w-56 h-56 rounded-full bg-amber-500/10 blur-3xl pointer-events-none" />
+        <div className="relative flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 px-5 py-4">
+          <div className="flex items-center gap-4">
+            <div className="relative h-14 w-14 shrink-0">
+              <div className="absolute inset-[6px] rotate-45 rounded-[12px] shadow-xl bg-gradient-to-br from-amber-500 to-orange-700" />
+              <div className="absolute inset-0 flex items-center justify-center"><Clock className="w-6 h-6 text-white" /></div>
             </div>
-            Daily Biometric Attendance Register (Multi-Facility)
-          </h1>
-          <p className="text-xs text-[var(--color-text-muted)] mt-1">
-            Real-time biometric punch logs from **Head Office** and **Factory / Plant** terminals, overtime calculations, and shift verification.
-          </p>
-        </div>
+            <div>
+              <div className="flex items-center gap-2.5">
+                <h1 className="text-2xl font-black tracking-tight text-[var(--color-text-strong)]">Daily Biometric Attendance Register (Multi-Facility)</h1>
+                <span className="hidden sm:inline-flex items-center gap-1.5 rounded-full border border-amber-500/25 bg-amber-500/10 px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider text-amber-600 dark:text-amber-400"><span className="h-1.5 w-1.5 rounded-full bg-amber-500 animate-pulse" /> Live Ledger</span>
+              </div>
+              <p className="text-xs text-[var(--color-text-muted)] mt-0.5">Real-time biometric punch logs from Head Office and Factory / Plant terminals, overtime calculations, and shift verification.</p>
+            </div>
+          </div>
 
-        {/* Global Toolbar */}
-        <div className="flex items-center gap-2 shrink-0 flex-nowrap overflow-x-auto">
+          {/* Global Toolbar */}
+          <div className="flex items-center gap-2 shrink-0 flex-nowrap overflow-x-auto">
           <button
             onClick={() => { fetchAttendance(); fetchEmployees(); }}
             title="Refresh Attendance"
@@ -231,6 +238,7 @@ export default function AttendanceTracker() {
           >
             <Upload className="w-4 h-4" /> Import Biometric Logs
           </button>
+          </div>
         </div>
       </div>
 
@@ -306,7 +314,7 @@ export default function AttendanceTracker() {
         <div className="overflow-x-auto">
           <table className="w-full text-left text-xs border-collapse">
             <thead>
-              <tr className="bg-[var(--color-surface-muted)] border-b border-[var(--color-border)] text-[var(--color-text-muted)] font-semibold uppercase tracking-wider text-[10px]">
+              <tr className="bg-amber-500/[0.05] dark:bg-amber-400/[0.07] border-b border-[var(--color-border)] text-[var(--color-text-muted)] font-semibold uppercase tracking-wider text-[10px]">
                 <th className="p-3.5 pl-5">Employee & Code</th>
                 <th className="p-3.5">Facility / Location</th>
                 <th className="p-3.5">Date</th>
@@ -358,14 +366,11 @@ export default function AttendanceTracker() {
                     </td>
 
                     <td className="p-3.5 text-center">
-                      <span className={`px-2.5 py-1 rounded-full text-[10px] font-bold border ${
-                        r.status === 'Present' ? 'bg-emerald-50 text-emerald-700 border-emerald-200' :
-                        r.status === 'Late' ? 'bg-amber-50 text-amber-700 border-amber-200' :
-                        r.status === 'Absent' ? 'bg-rose-50 text-rose-700 border-rose-200' :
-                        'bg-slate-100 text-slate-700 border-slate-200'
-                      }`}>
-                        {r.status}
-                      </span>
+                      <StatusChip status={r.status} label={r.status} hex={
+                        r.status === 'Present' ? '#10b981' :
+                        r.status === 'Late' ? '#f59e0b' :
+                        r.status === 'Absent' ? '#f43f5e' : '#94a3b8'
+                      } />
                     </td>
 
                     <td className="p-3.5 pr-5 text-[11px] text-[var(--color-text-muted)] font-mono">
@@ -376,8 +381,8 @@ export default function AttendanceTracker() {
               })}
               {filtered.length === 0 && (
                 <tr>
-                  <td colSpan={9} className="p-8 text-center text-xs text-[var(--color-text-muted)]">
-                    No attendance punch records found for this date and location filter.
+                  <td colSpan={9} className="p-0">
+                    <EmptyState icon={Clock} title="No Attendance Records" hint="No attendance punch records found for this date and location filter." />
                   </td>
                 </tr>
               )}

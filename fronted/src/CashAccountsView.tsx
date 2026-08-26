@@ -9,6 +9,7 @@ import { apiClient } from './api/client';
 import { money } from './lib/currency';
 import { downloadExcel, downloadCSV } from './lib/exportUtils';
 import { KpiCard, KpiGrid } from './components/ui/kpi-card';
+import { EmptyState, TableSkeleton } from './components/ui/empty-state';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 
@@ -361,51 +362,62 @@ export const CashAccountsView: React.FC<CashAccountsViewProps> = ({ activeEntity
 
   return (
     <div className="space-y-4 max-w-7xl mx-auto pb-10">
-      {/* Header Banner */}
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-3 bg-[var(--color-surface)] p-3.5 rounded-xl border border-[var(--color-border)] shadow-xs">
-        <div>
-          <h1 className="text-base font-bold text-[var(--color-text-strong)] tracking-tight flex items-center gap-2">
-            <Wallet className="w-4 h-4 text-emerald-600" /> Cash Accounts & Vaults
-          </h1>
-          <p className="text-[var(--color-text-muted)] text-xs mt-0.5">
-            Physical cash registers, petty cash funds, custodian assignments, and vault reserves for {currentEntity?.name || 'Active Company'}.
-          </p>
-        </div>
+      {/* Page Header — AMS Signature Hero Band */}
+      <div className="relative overflow-hidden rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)] shadow-sm">
+        <div className="absolute inset-0 bg-gradient-to-r from-teal-500/10 via-teal-500/[0.03] to-transparent pointer-events-none" />
+        <div className="absolute -right-10 -top-16 w-56 h-56 rounded-full bg-teal-500/10 blur-3xl pointer-events-none" />
+        <div className="relative flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 px-5 py-4">
+          <div className="flex items-center gap-4">
+            <div className="relative h-14 w-14 shrink-0">
+              <div className="absolute inset-[6px] rotate-45 rounded-[12px] shadow-xl bg-gradient-to-br from-teal-500 to-emerald-700" />
+              <div className="absolute inset-0 flex items-center justify-center"><Wallet className="w-6 h-6 text-white" /></div>
+            </div>
+            <div>
+              <div className="flex items-center gap-2.5">
+                <h1 className="text-2xl font-black tracking-tight text-[var(--color-text-strong)]">Cash Accounts &amp; Vaults</h1>
+                <span className="hidden sm:inline-flex items-center gap-1.5 rounded-full border border-teal-500/25 bg-teal-500/10 px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider text-teal-600 dark:text-teal-400"><span className="h-1.5 w-1.5 rounded-full bg-teal-500 animate-pulse" /> Live Ledger</span>
+              </div>
+              <p className="text-xs text-[var(--color-text-muted)] mt-0.5">
+                Physical cash registers, petty cash funds, custodian assignments, and vault reserves for {currentEntity?.name || 'Active Company'}.
+              </p>
+            </div>
+          </div>
 
-        {/* Global Action Buttons */}
-        <div className="flex items-center gap-2 shrink-0 flex-wrap">
-          <button
-            onClick={exportAccountsExcel}
-            className="secondary h-8.5 px-3 rounded-lg text-xs font-semibold flex items-center gap-1.5 shadow-xs"
-            title="Export cash accounts to Excel"
-          >
-            <FileSpreadsheet className="w-3.5 h-3.5 text-emerald-600" /> Excel
-          </button>
-          <button
-            onClick={exportAccountsCSV}
-            className="secondary h-8.5 px-2.5 rounded-lg text-xs font-semibold"
-          >
-            CSV
-          </button>
-          <button
-            onClick={() => window.print()}
-            className="secondary h-8.5 px-2.5 rounded-lg text-xs font-semibold flex items-center gap-1"
-          >
-            <Printer className="w-3.5 h-3.5" /> Print
-          </button>
-          <button
-            onClick={loadCashAccounts}
-            className="secondary h-8.5 w-8.5 rounded-lg flex items-center justify-center text-xs text-[var(--color-text)]"
-            title="Refresh accounts"
-          >
-            <RefreshCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin' : ''}`} />
-          </button>
-          <button
-            onClick={openAddModal}
-            className="primary h-8.5 px-3.5 rounded-lg text-xs font-semibold flex items-center gap-1.5 shadow-xs"
-          >
-            <Plus className="w-3.5 h-3.5" /> Add Cash Register / Till
-          </button>
+          {/* Global Action Buttons */}
+          <div className="flex flex-wrap items-center gap-2 shrink-0">
+            <button
+              onClick={exportAccountsExcel}
+              className="secondary h-8.5 px-3 rounded-lg text-xs font-semibold flex items-center gap-1.5 shadow-xs"
+              title="Export cash accounts to Excel"
+            >
+              <FileSpreadsheet className="w-3.5 h-3.5 text-emerald-600" /> Excel
+            </button>
+            <button
+              onClick={exportAccountsCSV}
+              className="secondary h-8.5 px-2.5 rounded-lg text-xs font-semibold"
+            >
+              CSV
+            </button>
+            <button
+              onClick={() => window.print()}
+              className="secondary h-8.5 px-2.5 rounded-lg text-xs font-semibold flex items-center gap-1"
+            >
+              <Printer className="w-3.5 h-3.5" /> Print
+            </button>
+            <button
+              onClick={loadCashAccounts}
+              className="secondary h-8.5 w-8.5 rounded-lg flex items-center justify-center text-xs text-[var(--color-text)]"
+              title="Refresh accounts"
+            >
+              <RefreshCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin' : ''}`} />
+            </button>
+            <button
+              onClick={openAddModal}
+              className="primary h-8.5 px-3.5 rounded-lg text-xs font-semibold flex items-center gap-1.5 shadow-xs"
+            >
+              <Plus className="w-3.5 h-3.5" /> Add Cash Register / Till
+            </button>
+          </div>
         </div>
       </div>
 
@@ -481,8 +493,9 @@ export const CashAccountsView: React.FC<CashAccountsViewProps> = ({ activeEntity
       {/* Cash Accounts Table */}
       <div className="bg-[var(--color-surface)] border border-[var(--color-border)] rounded-xl shadow-xs overflow-hidden">
         <div className="px-5 py-3.5 border-b border-[var(--color-border)] bg-[var(--color-surface-muted)] flex items-center justify-between">
-          <p className="text-xs font-bold uppercase tracking-wider text-[var(--color-text-strong)]">
-            <Coins className="w-3.5 h-3.5 text-emerald-600 inline mr-1.5 -mt-0.5" /> Cash Registers & Vaults Directory
+          <p className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-[var(--color-text-strong)]">
+            <span className="inline-block h-2 w-2 rotate-45 rounded-[2px] bg-gradient-to-br from-teal-500 to-emerald-700" />
+            Cash Registers &amp; Vaults Directory
           </p>
           <span className="text-[11px] text-[var(--color-text-muted)]">
             {filtered.length} registers · Click <strong>Certificate PDF</strong> to download an official till balance certificate.
@@ -491,7 +504,7 @@ export const CashAccountsView: React.FC<CashAccountsViewProps> = ({ activeEntity
 
         <div className="overflow-x-auto">
           <table className="w-full text-left text-xs">
-            <thead className="bg-gray-50 dark:bg-gray-900/80 text-[var(--color-text-muted)] border-b border-[var(--color-border)] text-[10px] uppercase font-bold tracking-wider">
+            <thead className="bg-teal-500/[0.05] dark:bg-teal-400/[0.07] text-[var(--color-text-muted)] border-b border-[var(--color-border)] text-[10px] uppercase font-bold tracking-wider">
               <tr>
                 <th className="py-2.5 px-3.5">GL Code</th>
                 <th className="py-2.5 px-3">Cash Register / Till Name</th>
@@ -506,20 +519,18 @@ export const CashAccountsView: React.FC<CashAccountsViewProps> = ({ activeEntity
             <tbody className="divide-y divide-[var(--color-border)]">
               {loading ? (
                 <tr>
-                  <td colSpan={8} className="py-12 text-center text-[var(--color-text-muted)]">
-                    <div className="flex flex-col items-center gap-2">
-                      <RefreshCw className="w-6 h-6 animate-spin text-emerald-600" />
-                      <p className="font-semibold text-xs">Loading cash accounts...</p>
-                    </div>
+                  <td colSpan={8} className="p-0">
+                    <TableSkeleton rows={6} />
                   </td>
                 </tr>
               ) : filtered.length === 0 ? (
                 <tr>
-                  <td colSpan={8} className="py-12 text-center text-[var(--color-text-muted)]">
-                    <div className="flex flex-col items-center gap-2">
-                      <CheckCircle2 className="w-8 h-8 text-gray-400" />
-                      <p className="font-semibold text-xs">No cash accounts match your search.</p>
-                    </div>
+                  <td colSpan={8}>
+                    <EmptyState
+                      icon={Wallet}
+                      title="No cash accounts found"
+                      hint="Add a cash register or till, or adjust your search and filters."
+                    />
                   </td>
                 </tr>
               ) : (

@@ -8,12 +8,14 @@ import { useSalesOrdersStore, useCustomersStore, useProductsStore } from './stor
 import { useFormDraft } from './hooks/useFormDraft'
 import { DataToolbar } from '@/components/ui/data-toolbar'
 import { money } from './lib/currency'
+import { StatusChip } from './components/ui/status-chip'
+import { EmptyState, TableSkeleton } from './components/ui/empty-state'
 
-const statusStyles: Record<string, { label: string; class: string }> = {
-  Draft: { label: 'Draft', class: 'bg-slate-500/10 text-slate-600 border border-slate-500/20' },
-  Confirmed: { label: 'Confirmed', class: 'bg-sky-500/10 text-sky-600 border border-sky-500/20' },
-  Invoiced: { label: 'Invoiced', class: 'bg-emerald-500/10 text-emerald-600 border border-emerald-500/20' },
-  Cancelled: { label: 'Cancelled', class: 'bg-rose-500/10 text-rose-600 border border-rose-500/20' }
+const statusStyles: Record<string, { label: string; hex: string }> = {
+  Draft: { label: 'Draft', hex: '#94a3b8' },
+  Confirmed: { label: 'Confirmed', hex: '#0ea5e9' },
+  Invoiced: { label: 'Invoiced', hex: '#10b981' },
+  Cancelled: { label: 'Cancelled', hex: '#ef4444' }
 }
 
 export const SalesOrdersWorkspace: React.FC<{ activeEntityId: string; entities?: any[] }> = ({
@@ -234,47 +236,60 @@ export const SalesOrdersWorkspace: React.FC<{ activeEntityId: string; entities?:
         </div>
       )}
 
-      {/* Submodule Heading Banner (Row 1) */}
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-3 bg-[var(--color-surface)] p-3.5 rounded-xl border border-[var(--color-border)] shadow-sm">
-        <div>
-          <h1 className="text-base font-bold text-[var(--color-text-strong)] tracking-tight flex items-center gap-2">
-            <span className="text-lg">📦</span> Sales Orders Management
-          </h1>
-          <p className="text-[var(--color-text-muted)] text-xs mt-0.5">
-            Manage sales order confirmations, warehouse fulfillment schedules, and seamless invoice conversion.
-          </p>
-        </div>
-        <div className="flex items-center gap-2 shrink-0 flex-wrap">
-          <DataToolbar
-            query={query}
-            setQuery={setQuery}
-            searchPlaceholder="Search order #, customer..."
-            exportFileName="sales-orders"
-            exportSheetName="Sales Orders"
-            exportTitle="Sales Orders Register"
-            exportSubtitle="Sales orders, confirmations, and fulfillment tracking."
-            exportHeaders={exportHeaders}
-            exportRows={exportRows}
-            exportTotals={[{ label: 'Active Value', value: metrics.totalVal }]}
-          >
-            <select
-              className="h-9 px-3 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] text-xs text-[var(--color-text)] outline-none focus:border-[var(--color-primary)] transition-colors shadow-2xs box-border"
-              value={statusFilter}
-              onChange={e => setStatusFilter(e.target.value)}
+      {/* Page Header — AMS Signature Hero Band */}
+      <div className="relative overflow-hidden rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)] shadow-sm">
+        <div className="absolute inset-0 bg-gradient-to-r from-sky-500/10 via-sky-500/[0.03] to-transparent pointer-events-none" />
+        <div className="absolute -right-10 -top-16 w-56 h-56 rounded-full bg-sky-500/10 blur-3xl pointer-events-none" />
+        <div className="relative flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 px-5 py-4">
+          <div className="flex items-center gap-4">
+            <div className="relative h-14 w-14 shrink-0">
+              <div className="absolute inset-[6px] rotate-45 rounded-[12px] shadow-xl bg-gradient-to-br from-sky-500 to-blue-700" />
+              <div className="absolute inset-0 flex items-center justify-center"><FileText className="w-6 h-6 text-white" /></div>
+            </div>
+            <div>
+              <div className="flex items-center gap-2.5">
+                <h1 className="text-2xl font-black tracking-tight text-[var(--color-text-strong)]">Sales Orders Management</h1>
+                <span className="hidden sm:inline-flex items-center gap-1.5 rounded-full border border-sky-500/25 bg-sky-500/10 px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider text-sky-600 dark:text-sky-400">
+                  <span className="h-1.5 w-1.5 rounded-full bg-sky-500 animate-pulse" /> Live Ledger
+                </span>
+              </div>
+              <p className="text-xs text-[var(--color-text-muted)] mt-0.5">
+                Manage sales order confirmations, warehouse fulfillment schedules, and seamless invoice conversion.
+              </p>
+            </div>
+          </div>
+          <div className="flex items-center gap-2 shrink-0 flex-wrap">
+            <DataToolbar
+              query={query}
+              setQuery={setQuery}
+              searchPlaceholder="Search order #, customer..."
+              exportFileName="sales-orders"
+              exportSheetName="Sales Orders"
+              exportTitle="Sales Orders Register"
+              exportSubtitle="Sales orders, confirmations, and fulfillment tracking."
+              exportHeaders={exportHeaders}
+              exportRows={exportRows}
+              exportTotals={[{ label: 'Active Value', value: metrics.totalVal }]}
             >
-              <option value="all">⚡ All Statuses</option>
-              <option value="draft">⚪ Draft</option>
-              <option value="confirmed">🔵 Confirmed</option>
-              <option value="invoiced">🟢 Invoiced</option>
-              <option value="cancelled">🔴 Cancelled</option>
-            </select>
-          </DataToolbar>
-          <button
-            onClick={openCreateModal}
-            className="h-9 px-5 rounded-xl bg-gradient-to-r from-indigo-600 to-purple-600 text-white text-xs font-bold shadow-lg shadow-indigo-500/25 whitespace-nowrap flex items-center justify-center gap-1.5"
-          >
-            <span>＋</span> New Order
-          </button>
+              <select
+                className="h-9 px-3 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] text-xs text-[var(--color-text)] outline-none focus:border-[var(--color-primary)] transition-colors shadow-2xs box-border"
+                value={statusFilter}
+                onChange={e => setStatusFilter(e.target.value)}
+              >
+                <option value="all">⚡ All Statuses</option>
+                <option value="draft">⚪ Draft</option>
+                <option value="confirmed">🔵 Confirmed</option>
+                <option value="invoiced">🟢 Invoiced</option>
+                <option value="cancelled">🔴 Cancelled</option>
+              </select>
+            </DataToolbar>
+            <button
+              onClick={openCreateModal}
+              className="h-9 px-5 rounded-xl bg-gradient-to-r from-indigo-600 to-purple-600 text-white text-xs font-bold shadow-lg shadow-indigo-500/25 whitespace-nowrap flex items-center justify-center gap-1.5"
+            >
+              <span>＋</span> New Order
+            </button>
+          </div>
         </div>
       </div>
 
@@ -304,29 +319,36 @@ export const SalesOrdersWorkspace: React.FC<{ activeEntityId: string; entities?:
       {/* Orders Table */}
       <div className="bg-[var(--color-surface)] border border-[var(--color-border)] rounded-xl overflow-hidden shadow-sm">
         <div className="px-4 py-2.5 border-b border-[var(--color-border)] bg-[var(--color-surface-muted)] flex items-center justify-between">
-          <p className="text-xs font-semibold text-[var(--color-text-strong)]">Sales Orders Directory</p>
+          <p className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-[var(--color-text-strong)]">
+            <span className="inline-block h-2 w-2 rotate-45 rounded-[2px] bg-gradient-to-br from-sky-500 to-blue-700" />
+            Sales Orders Directory
+          </p>
           <span className="text-[11px] text-[var(--color-text-muted)]">
             Showing {filteredOrders.length} of {orders.length} order{orders.length !== 1 ? 's' : ''}
           </span>
         </div>
 
         {loading ? (
-          <div className="py-12 text-center text-xs text-[var(--color-text-muted)]">Loading sales orders...</div>
+          <TableSkeleton rows={6} />
         ) : filteredOrders.length === 0 ? (
-          <div className="py-12 text-center text-xs text-[var(--color-text-muted)]">No sales orders found matching your criteria.</div>
+          <EmptyState
+            icon={FileText}
+            title="No sales orders found"
+            hint="Adjust the search or status filters to see more results."
+          />
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full text-xs">
               <thead>
-                <tr className="border-b border-[var(--color-border)] bg-[var(--color-surface-muted)]">
-                  <th className="text-left px-3 py-2 font-semibold text-[var(--color-text-muted)]">Order #</th>
-                  <th className="text-left px-3 py-2 font-semibold text-[var(--color-text-muted)]">Customer</th>
-                  <th className="text-left px-3 py-2 font-semibold text-[var(--color-text-muted)]">Date</th>
-                  <th className="text-left px-3 py-2 font-semibold text-[var(--color-text-muted)]">Expected Delivery</th>
-                  <th className="text-left px-3 py-2 font-semibold text-[var(--color-text-muted)]">Reference</th>
-                  <th className="text-right px-3 py-2 font-semibold text-[var(--color-text-muted)]">Total</th>
-                  <th className="text-center px-3 py-2 font-semibold text-[var(--color-text-muted)]">Status</th>
-                  <th className="text-right px-3 py-2 font-semibold text-[var(--color-text-muted)]">Actions</th>
+                <tr className="border-b border-[var(--color-border)] bg-sky-500/[0.05] dark:bg-sky-400/[0.07]">
+                  <th className="text-left px-3 py-3 text-[10px] font-bold uppercase tracking-wider text-[var(--color-text-muted)]">Order #</th>
+                  <th className="text-left px-3 py-3 text-[10px] font-bold uppercase tracking-wider text-[var(--color-text-muted)]">Customer</th>
+                  <th className="text-left px-3 py-3 text-[10px] font-bold uppercase tracking-wider text-[var(--color-text-muted)]">Date</th>
+                  <th className="text-left px-3 py-3 text-[10px] font-bold uppercase tracking-wider text-[var(--color-text-muted)]">Expected Delivery</th>
+                  <th className="text-left px-3 py-3 text-[10px] font-bold uppercase tracking-wider text-[var(--color-text-muted)]">Reference</th>
+                  <th className="text-right px-3 py-3 text-[10px] font-bold uppercase tracking-wider text-[var(--color-text-muted)]">Total</th>
+                  <th className="text-center px-3 py-3 text-[10px] font-bold uppercase tracking-wider text-[var(--color-text-muted)]">Status</th>
+                  <th className="text-right px-3 py-3 text-[10px] font-bold uppercase tracking-wider text-[var(--color-text-muted)]">Actions</th>
                 </tr>
               </thead>
               <tbody>
@@ -343,9 +365,7 @@ export const SalesOrdersWorkspace: React.FC<{ activeEntityId: string; entities?:
                       <td className="px-3 py-2 text-[var(--color-text-muted)] font-mono">{o.reference || '—'}</td>
                       <td className="px-3 py-2 text-right font-bold text-sky-600 font-mono">{money(o.totalAmount)}</td>
                       <td className="px-3 py-2 text-center">
-                        <span className={`inline-block px-2 py-0.5 rounded-full text-[10px] font-semibold ${badge.class}`}>
-                          {badge.label}
-                        </span>
+                        <StatusChip status={o.status} label={badge.label} hex={badge.hex} />
                       </td>
                       <td className="px-3 py-2 text-right">
                         <div className="flex items-center justify-end gap-1">
@@ -909,9 +929,11 @@ export const SalesOrdersWorkspace: React.FC<{ activeEntityId: string; entities?:
               </div>
               <div className="flex justify-between py-1 border-b border-[var(--color-border)]">
                 <span className="text-[var(--color-text-muted)]">Status:</span>
-                <span className={`px-2 py-0.5 rounded-full text-[10px] font-semibold ${statusStyles[activeOrderDetails.status]?.class}`}>
-                  {activeOrderDetails.status}
-                </span>
+                <StatusChip
+                  status={activeOrderDetails.status}
+                  label={statusStyles[activeOrderDetails.status]?.label ?? activeOrderDetails.status}
+                  hex={statusStyles[activeOrderDetails.status]?.hex}
+                />
               </div>
             </div>
 

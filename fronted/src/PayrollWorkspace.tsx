@@ -1,5 +1,8 @@
 import { useEffect, useState } from 'react';
+import { Users } from 'lucide-react';
 import { usePayrollStore } from './stores';
+import { StatusChip } from './components/ui/status-chip';
+import { TableSkeleton } from './components/ui/empty-state';
 import type { Employee, Department, Position, PayComponent, SalaryTaxSlab, LeaveRequest, Payrun, SalarySlip, AttendanceRecord, LoanAdvance } from './api/modules/payroll.api';
 
 const countryLabels: Record<string, string> = {
@@ -8,10 +11,10 @@ const countryLabels: Record<string, string> = {
   PK: 'Pakistan', SA: 'Saudi Arabia', AE: 'UAE',
 };
 
-const statusColors: Record<string, string> = {
-  Active: '#16a34a', OnLeave: '#d97706', Terminated: '#dc2626', Probation: '#7c3aed',
-  Draft: '#6b7280', Calculated: '#2563eb', Approved: '#16a34a', Posted: '#059669',
-  Cancelled: '#dc2626', Pending: '#d97706', Rejected: '#dc2626',
+const statusColors: Record<string, { label: string; hex: string }> = {
+  Active: { label: 'Active', hex: '#10b981' }, OnLeave: { label: 'On Leave', hex: '#f59e0b' }, Terminated: { label: 'Terminated', hex: '#ef4444' }, Probation: { label: 'Probation', hex: '#8b5cf6' },
+  Draft: { label: 'Draft', hex: '#94a3b8' }, Calculated: { label: 'Calculated', hex: '#3b82f6' }, Approved: { label: 'Approved', hex: '#10b981' }, Posted: { label: 'Posted', hex: '#10b981' },
+  Cancelled: { label: 'Cancelled', hex: '#ef4444' }, Pending: { label: 'Pending', hex: '#f59e0b' }, Rejected: { label: 'Rejected', hex: '#ef4444' },
 };
 
 export default function PayrollWorkspace() {
@@ -41,19 +44,33 @@ export default function PayrollWorkspace() {
 
   return (
     <div className="workspace">
-      <div className="workspace-header">
-        <div>
-          <h1>Payroll & HR</h1>
-          <p className="subtitle">Manage employees, payroll, leave, and statutory compliance</p>
-        </div>
-        <div className="header-actions">
-          {activeTab === 'employees' && <button className="btn btn-primary" onClick={() => openCreate('employee')}>+ Add Employee</button>}
-          {activeTab === 'departments' && <button className="btn btn-primary" onClick={() => openCreate('department')}>+ Add Department</button>}
-          {activeTab === 'pay-components' && <button className="btn btn-primary" onClick={() => openCreate('payComponent')}>+ Add Component</button>}
-          {activeTab === 'leave' && <button className="btn btn-primary" onClick={() => openCreate('leaveRequest')}>+ New Leave Request</button>}
-          {activeTab === 'tax-slabs' && <button className="btn btn-primary" onClick={() => openCreate('taxSlab')}>+ Add Tax Slab</button>}
-          {activeTab === 'loans' && <button className="btn btn-primary" onClick={() => openCreate('loan')}>+ New Loan</button>}
-          {activeTab === 'payruns' && <button className="btn btn-primary" onClick={() => openCreate('payrun')}>+ New Payrun</button>}
+      {/* Page Header — AMS Signature Hero Band */}
+      <div className="relative overflow-hidden rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)] shadow-sm">
+        <div className="absolute inset-0 bg-gradient-to-r from-amber-500/10 via-amber-500/[0.03] to-transparent pointer-events-none" />
+        <div className="absolute -right-10 -top-16 w-56 h-56 rounded-full bg-amber-500/10 blur-3xl pointer-events-none" />
+        <div className="relative flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 px-5 py-4">
+          <div className="flex items-center gap-4">
+            <div className="relative h-14 w-14 shrink-0">
+              <div className="absolute inset-[6px] rotate-45 rounded-[12px] shadow-xl bg-gradient-to-br from-amber-500 to-orange-700" />
+              <div className="absolute inset-0 flex items-center justify-center"><Users className="w-6 h-6 text-white" /></div>
+            </div>
+            <div>
+              <div className="flex items-center gap-2.5">
+                <h1 className="text-2xl font-black tracking-tight text-[var(--color-text-strong)]">Payroll &amp; HR</h1>
+                <span className="hidden sm:inline-flex items-center gap-1.5 rounded-full border border-amber-500/25 bg-amber-500/10 px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider text-amber-600 dark:text-amber-400"><span className="h-1.5 w-1.5 rounded-full bg-amber-500 animate-pulse" /> Live Ledger</span>
+              </div>
+              <p className="text-xs text-[var(--color-text-muted)] mt-0.5">Manage employees, payroll, leave, and statutory compliance</p>
+            </div>
+          </div>
+          <div className="header-actions flex items-center gap-2 shrink-0 flex-wrap">
+            {activeTab === 'employees' && <button className="btn btn-primary" onClick={() => openCreate('employee')}>+ Add Employee</button>}
+            {activeTab === 'departments' && <button className="btn btn-primary" onClick={() => openCreate('department')}>+ Add Department</button>}
+            {activeTab === 'pay-components' && <button className="btn btn-primary" onClick={() => openCreate('payComponent')}>+ Add Component</button>}
+            {activeTab === 'leave' && <button className="btn btn-primary" onClick={() => openCreate('leaveRequest')}>+ New Leave Request</button>}
+            {activeTab === 'tax-slabs' && <button className="btn btn-primary" onClick={() => openCreate('taxSlab')}>+ Add Tax Slab</button>}
+            {activeTab === 'loans' && <button className="btn btn-primary" onClick={() => openCreate('loan')}>+ New Loan</button>}
+            {activeTab === 'payruns' && <button className="btn btn-primary" onClick={() => openCreate('payrun')}>+ New Payrun</button>}
+          </div>
         </div>
       </div>
 
@@ -67,7 +84,7 @@ export default function PayrollWorkspace() {
       </div>
 
       <div className="workspace-content">
-        {store.loading && <div className="loading">Loading...</div>}
+        {store.loading && <TableSkeleton rows={6} />}
 
         {activeTab === 'employees' && !store.loading && (
           <EmployeeList employees={store.employees} departments={store.departments} positions={store.positions}
@@ -151,7 +168,7 @@ function EmployeeList({ employees, departments, positions, onEdit, onStatusChang
                 <td>{departments.find(d => d.id === emp.departmentId)?.name || '-'}</td>
                 <td>{positions.find(p => p.id === emp.positionId)?.name || '-'}</td>
                 <td className="num">{emp.currency} {emp.basicSalary.toLocaleString()}</td>
-                <td><span className="badge" style={{ background: statusColors[emp.status] || '#6b7280' }}>{emp.status}</span></td>
+                <td><StatusChip status={emp.status} label={statusColors[emp.status]?.label || emp.status} hex={statusColors[emp.status]?.hex || '#94a3b8'} /></td>
                 <td>
                   <div className="cell-actions">
                     <button className="btn btn-sm" onClick={() => onEdit(emp)}>Edit</button>
@@ -292,7 +309,7 @@ function LeaveList({ requests, employees, onAction }: {
                 <td>{lr.endDate}</td>
                 <td className="num">{lr.totalDays}</td>
                 <td>{lr.reason}</td>
-                <td><span className="badge" style={{ background: statusColors[lr.status] || '#6b7280' }}>{lr.status}</span></td>
+                <td><StatusChip status={lr.status} label={statusColors[lr.status]?.label || lr.status} hex={statusColors[lr.status]?.hex || '#94a3b8'} /></td>
                 <td>
                   {lr.status === 'Pending' && (
                     <div className="cell-actions">
@@ -326,7 +343,7 @@ function AttendanceList({ records, employees }: { records: AttendanceRecord[]; e
                 <td>{r.date}</td>
                 <td>{r.clockIn || '-'}</td>
                 <td>{r.clockOut || '-'}</td>
-                <td><span className="badge" style={{ background: r.status === 'Present' ? '#16a34a' : r.status === 'Absent' ? '#dc2626' : '#d97706' }}>{r.status}</span></td>
+                <td><StatusChip status={r.status} label={r.status} hex={r.status === 'Present' ? '#10b981' : r.status === 'Absent' ? '#f43f5e' : '#f59e0b'} /></td>
                 <td>{r.notes || '-'}</td>
               </tr>
             ))}
@@ -351,7 +368,7 @@ function PayrunsList({ payruns }: { payruns: Payrun[] }) {
                 <td>{p.frequency}</td>
                 <td>{p.periodStart} to {p.periodEnd}</td>
                 <td>{p.payDate}</td>
-                <td><span className="badge" style={{ background: statusColors[p.status] || '#6b7280' }}>{p.status}</span></td>
+                <td><StatusChip status={p.status} label={statusColors[p.status]?.label || p.status} hex={statusColors[p.status]?.hex || '#94a3b8'} /></td>
                 <td>{new Date(p.createdAt).toLocaleDateString()}</td>
               </tr>
             ))}
@@ -513,7 +530,7 @@ function TaxSlabsList({ slabs, onEdit, onDelete }: {
                 <td><strong>{s.name}</strong></td>
                 <td className="num">{s.brackets.length}</td>
                 <td className="num">{s.currency} {s.standardDeduction.toLocaleString()}</td>
-                <td><span className="badge" style={{ background: s.isActive ? '#16a34a' : '#6b7280' }}>{s.isActive ? 'Active' : 'Inactive'}</span></td>
+                <td><StatusChip status={s.isActive ? 'Active' : 'Inactive'} label={s.isActive ? 'Active' : 'Inactive'} hex={s.isActive ? '#10b981' : '#ef4444'} /></td>
                 <td>
                   <div className="cell-actions">
                     <button className="btn btn-sm" onClick={() => onEdit(s)}>Edit</button>
@@ -550,7 +567,7 @@ function LoansList({ loans, employees, onRepay }: {
                 <td className="num">{l.installmentAmount.toLocaleString()}</td>
                 <td className="num">{l.paidInstallments}/{l.totalInstallments}</td>
                 <td className="num">{l.balanceAmount.toLocaleString()}</td>
-                <td><span className="badge" style={{ background: l.status === 'Active' ? '#16a34a' : l.status === 'Completed' ? '#059669' : '#dc2626' }}>{l.status}</span></td>
+                <td><StatusChip status={l.status} label={l.status} hex={l.status === 'Active' ? '#10b981' : l.status === 'Completed' ? '#10b981' : '#f43f5e'} /></td>
                 <td>
                   {l.status === 'Active' && <button className="btn btn-sm btn-primary" onClick={() => onRepay(l.id)}>Record Payment</button>}
                 </td>

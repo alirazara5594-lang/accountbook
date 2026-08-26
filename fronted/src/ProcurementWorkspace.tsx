@@ -10,6 +10,8 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { DataToolbar } from '@/components/ui/data-toolbar';
+import { EmptyState } from './components/ui/empty-state';
+import { FileText, Mail, Scale, ShoppingCart, Package, Receipt, ArrowLeftRight } from 'lucide-react';
 import { money } from './lib/currency';
 
 type Tab = 'pr' | 'rfq' | 'compare' | 'po' | 'grn' | 'bills' | 'matching' | 'transfers';
@@ -307,14 +309,25 @@ export const ProcurementWorkspace: React.FC<{ activeEntityId: string; entities?:
     <div className="space-y-6">
       {toast && <div className="fixed top-6 right-6 z-50 px-5 py-3 bg-emerald-600 text-white rounded-2xl shadow-lg text-sm font-medium">{toast}</div>}
 
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-3 bg-[var(--color-surface)] p-3.5 rounded-xl border border-[var(--color-border)] shadow-sm">
-        <div>
-          <h1 className="text-base font-bold text-[var(--color-text-strong)] tracking-tight flex items-center gap-2">
-            <span className="text-lg">🛒</span> Procurement Workspace
-          </h1>
-          <p className="text-[var(--color-text-muted)] text-xs mt-0.5">Full 8-step procurement lifecycle: PR, RFQ, quotes, PO, GRN, bills, 3-way match, and transfers.</p>
-        </div>
-        <div className="flex items-center gap-1.5 shrink-0">
+      {/* Page Header — AMS Signature Hero Band */}
+      <div className="relative overflow-hidden rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)] shadow-sm">
+        <div className="absolute inset-0 bg-gradient-to-r from-emerald-500/10 via-emerald-500/[0.03] to-transparent pointer-events-none" />
+        <div className="absolute -right-10 -top-16 w-56 h-56 rounded-full bg-emerald-500/10 blur-3xl pointer-events-none" />
+        <div className="relative flex flex-col md:flex-row justify-between items-start md:items-center gap-4 px-5 py-4">
+          <div className="flex items-center gap-4">
+            <div className="relative h-14 w-14 shrink-0">
+              <div className="absolute inset-[6px] rotate-45 rounded-[12px] shadow-xl bg-gradient-to-br from-emerald-500 to-green-700" />
+              <div className="absolute inset-0 flex items-center justify-center"><ShoppingCart className="w-6 h-6 text-white" /></div>
+            </div>
+            <div>
+              <div className="flex items-center gap-2.5">
+                <h1 className="text-2xl font-black tracking-tight text-[var(--color-text-strong)]">Procurement Workspace</h1>
+                <span className="hidden sm:inline-flex items-center gap-1.5 rounded-full border border-emerald-500/25 bg-emerald-500/10 px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider text-emerald-600 dark:text-emerald-400"><span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" /> Live Ledger</span>
+              </div>
+              <p className="text-xs text-[var(--color-text-muted)] mt-0.5">Full 8-step procurement lifecycle: PR, RFQ, quotes, PO, GRN, bills, 3-way match, and transfers.</p>
+            </div>
+          </div>
+          <div className="flex items-center gap-1.5 shrink-0">
           <DataToolbar
             exportFileName="procurement-lifecycle"
             exportSheetName="Procurement Lifecycle"
@@ -344,6 +357,7 @@ export const ProcurementWorkspace: React.FC<{ activeEntityId: string; entities?:
           />
           <button onClick={() => setShowPrModal(true)} className="secondary h-9 px-3 rounded-xl text-xs font-semibold shrink-0 whitespace-nowrap">＋ Purchase Request</button>
           <button onClick={() => setShowTransferModal(true)} className="primary h-9 px-3 rounded-xl text-xs font-semibold shrink-0 whitespace-nowrap">＋ Warehouse Transfer</button>
+          </div>
         </div>
       </div>
 
@@ -368,7 +382,7 @@ export const ProcurementWorkspace: React.FC<{ activeEntityId: string; entities?:
       {activeTab === 'pr' && (
         <div className="bg-white border border-gray-200 rounded-2xl shadow-sm overflow-hidden">
           <table className="w-full text-left text-sm">
-            <thead className="bg-gray-50 text-gray-500 border-b border-gray-100 text-xs uppercase tracking-wider">
+            <thead className="bg-emerald-500/[0.05] dark:bg-emerald-400/[0.07] text-gray-500 border-b border-gray-100 text-xs uppercase tracking-wider">
               <tr><th className="py-3 px-4">PR Number</th><th className="py-3 px-4">Requestor</th><th className="py-3 px-4">Dept</th><th className="py-3 px-4 text-right">Est. Amount</th><th className="py-3 px-4">Items Count</th><th className="py-3 px-4 text-center">Status</th></tr>
             </thead>
             <tbody className="divide-y divide-gray-50">
@@ -383,7 +397,9 @@ export const ProcurementWorkspace: React.FC<{ activeEntityId: string; entities?:
                 </tr>
               ))}
               {!loading && requests.length === 0 && (
-                <tr><td colSpan={6} className="py-12 text-center text-gray-400">No Purchase Requests found. Click "+ New Purchase Request" to begin.</td></tr>
+                <tr><td colSpan={6}>
+                  <EmptyState icon={FileText} title="No Purchase Requests found" hint='Click "+ New Purchase Request" to begin.' />
+                </td></tr>
               )}
             </tbody>
           </table>
@@ -420,8 +436,8 @@ export const ProcurementWorkspace: React.FC<{ activeEntityId: string; entities?:
               </Card>
             ))}
             {!loading && rfqs.length === 0 && (
-              <div className="col-span-full text-center py-12 text-gray-400 bg-white rounded-2xl border border-gray-200">
-                No Request for Quotations (RFQs) created yet.
+              <div className="col-span-full">
+                <EmptyState icon={Mail} title="No Request for Quotations (RFQs) created yet" hint="Issue an RFQ from an approved purchase request to collect vendor quotes." />
               </div>
             )}
           </div>
@@ -437,7 +453,7 @@ export const ProcurementWorkspace: React.FC<{ activeEntityId: string; entities?:
             
             <div className="overflow-x-auto">
               <table className="w-full text-left text-sm border-collapse">
-                <thead className="bg-gray-50 text-gray-500 text-xs uppercase border-b">
+                <thead className="bg-emerald-500/[0.05] dark:bg-emerald-400/[0.07] text-gray-500 text-xs uppercase border-b">
                   <tr>
                     <th className="py-3 px-4">Quote No.</th>
                     <th className="py-3 px-4">Vendor</th>
@@ -471,7 +487,9 @@ export const ProcurementWorkspace: React.FC<{ activeEntityId: string; entities?:
                     </tr>
                   ))}
                   {!loading && vendorQuotes.length === 0 && (
-                    <tr><td colSpan={6} className="py-8 text-center text-gray-400">No vendor quotes submitted for comparison.</td></tr>
+                    <tr><td colSpan={6}>
+                      <EmptyState icon={Scale} title="No vendor quotes submitted for comparison" hint="Submit vendor quotes against open RFQs to compare and award." />
+                    </td></tr>
                   )}
                 </tbody>
               </table>
@@ -484,7 +502,7 @@ export const ProcurementWorkspace: React.FC<{ activeEntityId: string; entities?:
       {activeTab === 'po' && (
         <div className="bg-white border border-gray-200 rounded-2xl shadow-sm overflow-hidden">
           <table className="w-full text-left text-sm">
-            <thead className="bg-gray-50 text-gray-500 border-b border-gray-100 text-xs uppercase tracking-wider">
+            <thead className="bg-emerald-500/[0.05] dark:bg-emerald-400/[0.07] text-gray-500 border-b border-gray-100 text-xs uppercase tracking-wider">
               <tr><th className="py-3 px-4">PO Number</th><th className="py-3 px-4">Vendor</th><th className="py-3 px-4">Order Date</th><th className="py-3 px-4 text-right">Total Amount</th><th className="py-3 px-4 text-center">Status</th><th className="py-3 px-4 text-right">Actions</th></tr>
             </thead>
             <tbody className="divide-y divide-gray-50">
@@ -509,7 +527,9 @@ export const ProcurementWorkspace: React.FC<{ activeEntityId: string; entities?:
                 </tr>
               ))}
               {!loading && orders.length === 0 && (
-                <tr><td colSpan={6} className="py-12 text-center text-gray-400">No Purchase Orders found. Award a Vendor Quote to generate a PO.</td></tr>
+                <tr><td colSpan={6}>
+                  <EmptyState icon={ShoppingCart} title="No Purchase Orders found" hint="Award a Vendor Quote to generate a PO." />
+                </td></tr>
               )}
             </tbody>
           </table>
@@ -524,7 +544,7 @@ export const ProcurementWorkspace: React.FC<{ activeEntityId: string; entities?:
               Goods Receipt Notes (GRN) & Destination Routing History
             </div>
             <table className="w-full text-left text-sm">
-              <thead className="bg-gray-50 text-gray-500 text-xs uppercase">
+              <thead className="bg-emerald-500/[0.05] dark:bg-emerald-400/[0.07] text-gray-500 text-xs uppercase">
                 <tr><th className="py-3 px-4">GRN Number</th><th className="py-3 px-4">PO Ref</th><th className="py-3 px-4">Vendor</th><th className="py-3 px-4">Challan No.</th><th className="py-3 px-4">Received Date</th><th className="py-3 px-4">Line Destinations</th></tr>
               </thead>
               <tbody className="divide-y divide-gray-50">
@@ -546,7 +566,9 @@ export const ProcurementWorkspace: React.FC<{ activeEntityId: string; entities?:
                   </tr>
                 ))}
                 {!loading && grns.length === 0 && (
-                  <tr><td colSpan={6} className="py-12 text-center text-gray-400">No Goods Receipt Notes recorded. Receive items on a Purchase Order to populate GRN.</td></tr>
+                  <tr><td colSpan={6}>
+                    <EmptyState icon={Package} title="No Goods Receipt Notes recorded" hint="Receive items on a Purchase Order to populate GRN." />
+                  </td></tr>
                 )}
               </tbody>
             </table>
@@ -562,7 +584,7 @@ export const ProcurementWorkspace: React.FC<{ activeEntityId: string; entities?:
             <Button size="sm" className="bg-emerald-600 hover:bg-emerald-700 text-white" onClick={() => handleOpenBillModal(orders[0] || {})}>+ Create Vendor Bill</Button>
           </div>
           <table className="w-full text-left text-sm">
-            <thead className="bg-gray-50 text-gray-500 text-xs uppercase">
+            <thead className="bg-emerald-500/[0.05] dark:bg-emerald-400/[0.07] text-gray-500 text-xs uppercase">
               <tr><th className="py-3 px-4">Bill Number</th><th className="py-3 px-4">Supplier Invoice #</th><th className="py-3 px-4">Vendor</th><th className="py-3 px-4">Bill Date</th><th className="py-3 px-4">Due Date</th><th className="py-3 px-4 text-right">Total Amount</th><th className="py-3 px-4 text-center">3-Way Match</th></tr>
             </thead>
             <tbody className="divide-y divide-gray-50">
@@ -582,7 +604,9 @@ export const ProcurementWorkspace: React.FC<{ activeEntityId: string; entities?:
                 </tr>
               ))}
               {!loading && bills.length === 0 && (
-                <tr><td colSpan={7} className="py-12 text-center text-gray-400">No Vendor Bills created. Click "+ Create Vendor Bill" to post supplier invoice.</td></tr>
+                <tr><td colSpan={7}>
+                  <EmptyState icon={Receipt} title="No Vendor Bills created" hint='Click "+ Create Vendor Bill" to post supplier invoice.' />
+                </td></tr>
               )}
             </tbody>
           </table>
@@ -641,7 +665,7 @@ export const ProcurementWorkspace: React.FC<{ activeEntityId: string; entities?:
             Inter-Warehouse Stock Transfer History
           </div>
           <table className="w-full text-left text-sm">
-            <thead className="bg-gray-50 text-gray-500 text-xs uppercase">
+            <thead className="bg-emerald-500/[0.05] dark:bg-emerald-400/[0.07] text-gray-500 text-xs uppercase">
               <tr><th className="py-3 px-4">Transfer No.</th><th className="py-3 px-4">Date</th><th className="py-3 px-4">Product</th><th className="py-3 px-4">Source Warehouse</th><th className="py-3 px-4">Destination Warehouse</th><th className="py-3 px-4 text-right">Quantity</th><th className="py-3 px-4">Reason</th></tr>
             </thead>
             <tbody className="divide-y divide-gray-50">
@@ -657,7 +681,9 @@ export const ProcurementWorkspace: React.FC<{ activeEntityId: string; entities?:
                 </tr>
               ))}
               {!loading && transfers.length === 0 && (
-                <tr><td colSpan={7} className="py-12 text-center text-gray-400">No warehouse stock transfers recorded.</td></tr>
+                <tr><td colSpan={7}>
+                  <EmptyState icon={ArrowLeftRight} title="No warehouse stock transfers recorded" />
+                </td></tr>
               )}
             </tbody>
           </table>

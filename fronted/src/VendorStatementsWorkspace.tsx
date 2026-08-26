@@ -12,6 +12,8 @@ import { money } from './lib/currency';
 import { downloadExcel, downloadCSV } from './lib/exportUtils';
 import ExportDropdown from './components/ExportDropdown';
 import { KpiCard, KpiGrid } from './components/ui/kpi-card';
+import { EmptyState, TableSkeleton } from './components/ui/empty-state';
+import { StatusChip } from './components/ui/status-chip';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 
@@ -781,7 +783,7 @@ export function VendorStatementsWorkspace({ activeEntityId }: Props) {
         <div className="bg-[var(--color-surface)] border border-[var(--color-border)] rounded-xl shadow-xs overflow-hidden">
           <div className="px-5 py-3.5 border-b border-[var(--color-border)] bg-[var(--color-surface-muted)] flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2">
             <div className="flex items-center gap-2">
-              <p className="text-xs font-bold uppercase tracking-wider text-[var(--color-text-strong)]">Statement Ledger</p>
+              <p className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-[var(--color-text-strong)]"><span className="inline-block h-2 w-2 rotate-45 rounded-[2px] bg-gradient-to-br from-blue-500 to-indigo-700" />Statement Ledger</p>
               <span className="text-[11px] text-[var(--color-text-muted)]">{displayedStatementLines.length} Entries</span>
             </div>
 
@@ -805,7 +807,7 @@ export function VendorStatementsWorkspace({ activeEntityId }: Props) {
 
           <div className="overflow-x-auto">
             <table className="w-full text-left text-xs">
-              <thead className="bg-gray-50 dark:bg-gray-900/80 text-[var(--color-text-muted)] border-b border-[var(--color-border)] text-[10px] uppercase font-bold tracking-wider">
+              <thead className="bg-blue-500/[0.05] dark:bg-blue-400/[0.07] text-[var(--color-text-muted)] border-b border-[var(--color-border)] text-[10px] uppercase font-bold tracking-wider">
                 <tr>
                   <th className="py-2.5 px-3.5">Date</th>
                   <th className="py-2.5 px-3">Type</th>
@@ -842,11 +844,8 @@ export function VendorStatementsWorkspace({ activeEntityId }: Props) {
 
                 {displayedStatementLines.length === 0 ? (
                   <tr>
-                    <td colSpan={9} className="py-12 text-center text-[var(--color-text-muted)]">
-                      <div className="flex flex-col items-center gap-2">
-                        <FileCheck className="w-8 h-8 text-gray-400" />
-                        <p className="font-semibold text-xs">No transactions recorded for this selected period.</p>
-                      </div>
+                    <td colSpan={9}>
+                      <EmptyState icon={FileCheck} title="No transactions recorded" hint="No transactions recorded for this selected period." />
                     </td>
                   </tr>
                 ) : (
@@ -883,9 +882,7 @@ export function VendorStatementsWorkspace({ activeEntityId }: Props) {
                         {fmt(line.balance)}
                       </td>
                       <td className="py-2.5 px-3 text-center">
-                        <span className="text-[10px] px-2 py-0.5 rounded-full bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300">
-                          {line.status}
-                        </span>
+                        <StatusChip status={line.status} label={line.status} />
                       </td>
                     </tr>
                   ))
@@ -961,19 +958,29 @@ export function VendorStatementsWorkspace({ activeEntityId }: Props) {
   // ════════════════════════════════════════════════════════════════════════════
   return (
     <div className="space-y-4 max-w-7xl mx-auto pb-10">
-      {/* Header Banner */}
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-3 bg-[var(--color-surface)] p-3.5 rounded-xl border border-[var(--color-border)] shadow-xs">
-        <div>
-          <h1 className="text-base font-bold text-[var(--color-text-strong)] tracking-tight flex items-center gap-2">
-            <span className="text-lg">📊</span> Vendor Statements & Ledger
-          </h1>
-          <p className="text-[var(--color-text-muted)] text-xs mt-0.5">
-            Generate and download individual supplier account statements with complete Accounts Payable ledgers.
-          </p>
-        </div>
+      {/* Page Header — AMS Signature Hero Band */}
+      <div className="relative overflow-hidden rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)] shadow-sm">
+        <div className="absolute inset-0 bg-gradient-to-r from-blue-500/10 via-blue-500/[0.03] to-transparent pointer-events-none" />
+        <div className="absolute -right-10 -top-16 w-56 h-56 rounded-full bg-blue-500/10 blur-3xl pointer-events-none" />
+        <div className="relative flex flex-col md:flex-row justify-between items-start md:items-center gap-4 px-5 py-4">
+          <div className="flex items-center gap-4">
+            <div className="relative h-14 w-14 shrink-0">
+              <div className="absolute inset-[6px] rotate-45 rounded-[12px] shadow-xl bg-gradient-to-br from-blue-500 to-indigo-700" />
+              <div className="absolute inset-0 flex items-center justify-center"><Users className="w-6 h-6 text-white" /></div>
+            </div>
+            <div>
+              <div className="flex items-center gap-2.5">
+                <h1 className="text-2xl font-black tracking-tight text-[var(--color-text-strong)]">Vendor Statements &amp; Ledger</h1>
+                <span className="hidden sm:inline-flex items-center gap-1.5 rounded-full border border-blue-500/25 bg-blue-500/10 px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider text-blue-600 dark:text-blue-400"><span className="h-1.5 w-1.5 rounded-full bg-blue-500 animate-pulse" /> Live Ledger</span>
+              </div>
+              <p className="text-xs text-[var(--color-text-muted)] mt-0.5">
+                Generate and download individual supplier account statements with complete Accounts Payable ledgers.
+              </p>
+            </div>
+          </div>
 
-        {/* Search, Filter & Global Export Actions */}
-        <div className="flex items-center gap-2 shrink-0 flex-wrap">
+          {/* Search, Filter & Global Export Actions */}
+          <div className="flex items-center gap-2 shrink-0 flex-wrap">
           {/* Robust Search Box - Icon and Input in normal flow */}
           <div className="flex items-center h-8.5 w-64 px-2.5 bg-[var(--color-surface)] border border-[var(--color-border)] rounded-lg text-xs focus-within:border-blue-500 focus-within:ring-1 focus-within:ring-blue-200 transition-all shadow-2xs">
             <Search className="w-3.5 h-3.5 text-gray-400 mr-2 shrink-0 pointer-events-none" />
@@ -1025,6 +1032,7 @@ export function VendorStatementsWorkspace({ activeEntityId }: Props) {
           >
             <RefreshCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin' : ''}`} />
           </button>
+          </div>
         </div>
       </div>
 
@@ -1039,7 +1047,7 @@ export function VendorStatementsWorkspace({ activeEntityId }: Props) {
       {/* Vendors List Table with Individual Download Buttons */}
       <div className="bg-[var(--color-surface)] border border-[var(--color-border)] rounded-xl shadow-xs overflow-hidden">
         <div className="px-5 py-3.5 border-b border-[var(--color-border)] bg-[var(--color-surface-muted)] flex items-center justify-between">
-          <p className="text-xs font-bold uppercase tracking-wider text-[var(--color-text-strong)]">Supplier Directory</p>
+          <p className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-[var(--color-text-strong)]"><span className="inline-block h-2 w-2 rotate-45 rounded-[2px] bg-gradient-to-br from-blue-500 to-indigo-700" />Supplier Directory</p>
           <span className="text-[11px] text-[var(--color-text-muted)]">
             {filteredVendors.length} vendors • Click <strong>Download PDF</strong> on any vendor to export their individual statement instantly.
           </span>
@@ -1047,7 +1055,7 @@ export function VendorStatementsWorkspace({ activeEntityId }: Props) {
 
         <div className="overflow-x-auto">
           <table className="w-full text-left text-xs">
-            <thead className="bg-gray-50 dark:bg-gray-900/80 text-[var(--color-text-muted)] border-b border-[var(--color-border)] text-[10px] uppercase font-bold tracking-wider">
+            <thead className="bg-blue-500/[0.05] dark:bg-blue-400/[0.07] text-[var(--color-text-muted)] border-b border-[var(--color-border)] text-[10px] uppercase font-bold tracking-wider">
               <tr>
                 <th className="py-2.5 px-3.5">Vendor & ID</th>
                 <th className="py-2.5 px-3">Contact Details</th>
@@ -1061,20 +1069,14 @@ export function VendorStatementsWorkspace({ activeEntityId }: Props) {
             <tbody className="divide-y divide-[var(--color-border)]">
               {loading ? (
                 <tr>
-                  <td colSpan={7} className="py-12 text-center text-[var(--color-text-muted)]">
-                    <div className="flex flex-col items-center gap-2">
-                      <RefreshCw className="w-6 h-6 animate-spin text-blue-600" />
-                      <p className="font-semibold text-xs">Loading supplier statements & AP ledger...</p>
-                    </div>
+                  <td colSpan={7}>
+                    <TableSkeleton rows={6} />
                   </td>
                 </tr>
               ) : filteredVendors.length === 0 ? (
                 <tr>
-                  <td colSpan={7} className="py-12 text-center text-[var(--color-text-muted)]">
-                    <div className="flex flex-col items-center gap-2">
-                      <Users className="w-8 h-8 text-gray-400" />
-                      <p className="font-semibold text-xs">No vendor accounts matched your search criteria.</p>
-                    </div>
+                  <td colSpan={7}>
+                    <EmptyState icon={Users} title="No vendor accounts matched your search criteria" />
                   </td>
                 </tr>
               ) : (
@@ -1144,17 +1146,11 @@ export function VendorStatementsWorkspace({ activeEntityId }: Props) {
 
                       {/* Status Badge */}
                       <td className="py-3 px-3 text-center">
-                        <span
-                          className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
-                            isOverdue
-                              ? 'bg-rose-50 dark:bg-rose-900/30 text-rose-700 dark:text-rose-300 border border-rose-200 dark:border-rose-800'
-                              : isOutstanding
-                              ? 'bg-amber-50 dark:bg-amber-900/30 text-amber-700 dark:text-amber-300 border border-amber-200 dark:border-amber-800'
-                              : 'bg-emerald-50 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800'
-                          }`}
-                        >
-                          {isOverdue ? 'Overdue' : isOutstanding ? 'Payable Due' : 'Settled'}
-                        </span>
+                        <StatusChip
+                          status={isOverdue ? 'overdue' : isOutstanding ? 'pending' : 'paid'}
+                          label={isOverdue ? 'Overdue' : isOutstanding ? 'Payable Due' : 'Settled'}
+                          hex={isOverdue ? '#f43f5e' : isOutstanding ? '#f59e0b' : '#10b981'}
+                        />
                       </td>
 
                       {/* INDIVIDUAL ACTION & DOWNLOAD BUTTONS */}

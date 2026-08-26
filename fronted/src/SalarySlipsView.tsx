@@ -6,6 +6,7 @@ import {
   Banknote, FileCheck, RefreshCw, X
 } from 'lucide-react';
 import { calculateEmployeePayrollDetails } from './PayrollProcessing';
+import { EmptyState } from './components/ui/empty-state';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 
@@ -299,21 +300,26 @@ export default function SalarySlipsView() {
 
   return (
     <div className="p-6 max-w-[1500px] mx-auto space-y-6">
-      {/* Header */}
-      <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 border-b border-[var(--color-border)] pb-4">
-        <div className="min-w-0 flex-1">
-          <h1 className="text-xl font-black tracking-tight text-[var(--color-text-strong)] flex items-center gap-2.5">
-            <div className="p-2 rounded-xl bg-teal-500/10 text-teal-600 border border-teal-500/20 shrink-0">
-              <Banknote className="w-5 h-5" />
+      {/* Page Header — AMS Signature Hero Band */}
+      <div className="relative overflow-hidden rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)] shadow-sm">
+        <div className="absolute inset-0 bg-gradient-to-r from-amber-500/10 via-amber-500/[0.03] to-transparent pointer-events-none" />
+        <div className="absolute -right-10 -top-16 w-56 h-56 rounded-full bg-amber-500/10 blur-3xl pointer-events-none" />
+        <div className="relative flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 px-5 py-4">
+          <div className="flex items-center gap-4">
+            <div className="relative h-14 w-14 shrink-0">
+              <div className="absolute inset-[6px] rotate-45 rounded-[12px] shadow-xl bg-gradient-to-br from-amber-500 to-yellow-700" />
+              <div className="absolute inset-0 flex items-center justify-center"><Banknote className="w-6 h-6 text-white" /></div>
             </div>
-            Salary Slips & Official Multi-Country Payslip Generator
-          </h1>
-          <p className="text-xs text-[var(--color-text-muted)] mt-1">
-            Universal executive payslip format with itemized additions, statutory deductions, YTD summaries, and 1-click official PDF downloads.
-          </p>
-        </div>
+            <div>
+              <div className="flex items-center gap-2.5">
+                <h1 className="text-2xl font-black tracking-tight text-[var(--color-text-strong)]">Salary Slips &amp; Official Multi-Country Payslip Generator</h1>
+                <span className="hidden sm:inline-flex items-center gap-1.5 rounded-full border border-amber-500/25 bg-amber-500/10 px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider text-amber-600 dark:text-amber-400"><span className="h-1.5 w-1.5 rounded-full bg-amber-500 animate-pulse" /> Live Ledger</span>
+              </div>
+              <p className="text-xs text-[var(--color-text-muted)] mt-0.5">Universal executive payslip format with itemized additions, statutory deductions, YTD summaries, and 1-click official PDF downloads.</p>
+            </div>
+          </div>
 
-        <div className="flex items-center gap-2 shrink-0 flex-nowrap">
+          <div className="flex items-center gap-2 shrink-0 flex-nowrap">
           <button
             onClick={() => { fetchSalarySlips(); fetchEmployees(); }}
             title="Refresh Slips"
@@ -321,6 +327,7 @@ export default function SalarySlipsView() {
           >
             <RefreshCw className="w-4 h-4 text-teal-600" />
           </button>
+          </div>
         </div>
       </div>
 
@@ -347,7 +354,7 @@ export default function SalarySlipsView() {
         <div className="overflow-x-auto">
           <table className="w-full text-left text-xs border-collapse">
             <thead>
-              <tr className="bg-[var(--color-surface-muted)] border-b border-[var(--color-border)] text-[var(--color-text-muted)] font-semibold uppercase tracking-wider text-[10px]">
+              <tr className="bg-amber-500/[0.05] dark:bg-amber-400/[0.07] border-b border-[var(--color-border)] text-[var(--color-text-muted)] font-semibold uppercase tracking-wider text-[10px]">
                 <th className="p-3.5 pl-5">Slip Number</th>
                 <th className="p-3.5">Employee Name & Code</th>
                 <th className="p-3.5">Pay Period</th>
@@ -396,8 +403,8 @@ export default function SalarySlipsView() {
               ))}
               {filteredSlips.length === 0 && (
                 <tr>
-                  <td colSpan={7} className="p-8 text-center text-xs text-[var(--color-text-muted)]">
-                    No salary slips found matching your search.
+                  <td colSpan={7} className="p-0">
+                    <EmptyState icon={FileCheck} title="No Salary Slips Found" hint="No salary slips found matching your search." />
                   </td>
                 </tr>
               )}

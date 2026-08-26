@@ -1,6 +1,7 @@
 import { useEffect } from 'react';
 import { useManufacturingStore } from './stores';
 import { ManufacturingWorkspace } from './ManufacturingWorkspace';
+import { KpiCard, KpiGrid } from './components/ui/kpi-card';
 import { ClipboardList, Factory, AlertTriangle, Wallet, Layers, Hammer, CheckCircle2 } from 'lucide-react';
 import { money } from './lib/currency';
 
@@ -18,37 +19,36 @@ export function ManufacturingSummaryView({ activeEntityId: _activeEntityId }: { 
   const wipValue = workOrders.filter(w => String(w.status) === 'InProgress' || String(w.status) === '2').reduce((s, w) => s + (w.totalMaterialCost || 0), 0);
   const totalMaterial = workOrders.reduce((s, w) => s + (w.totalMaterialCost || 0), 0);
 
-  const kpiList = [
-    { label: 'BOM Recipes', value: boms.length, desc: 'Bill of materials defined', icon: ClipboardList, color: 'from-teal-500 to-emerald-500', bg: 'bg-teal-50 dark:bg-teal-950/30', textColor: 'text-teal-600 dark:text-teal-400' },
-    { label: 'Work Orders', value: workOrders.length, desc: 'Total production orders', icon: Factory, color: 'from-blue-500 to-indigo-500', bg: 'bg-blue-50 dark:bg-blue-950/30', textColor: 'text-blue-600 dark:text-blue-400' },
-    { label: 'In Progress', value: inProgress, desc: 'Active WIP orders', icon: Hammer, color: 'from-amber-500 to-orange-500', bg: 'bg-amber-50 dark:bg-amber-950/30', textColor: 'text-amber-600 dark:text-amber-400' },
-    { label: 'Completed Runs', value: completed, desc: 'Finished production runs', icon: CheckCircle2, color: 'from-green-500 to-emerald-500', bg: 'bg-green-50 dark:bg-green-950/30', textColor: 'text-green-600 dark:text-green-400' },
-  ];
-
   return (
     <div className="space-y-6">
-      <div>
-        <h2 className="text-2xl font-semibold">Manufacturing & Production</h2>
-        <p className="text-sm text-muted-foreground mt-1">BOM recipes, work orders, WIP material issues, and IAS 2 job costing</p>
+      <div className="relative overflow-hidden rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)] shadow-sm">
+        <div className="absolute inset-0 bg-gradient-to-r from-orange-500/10 via-orange-500/[0.03] to-transparent pointer-events-none" />
+        <div className="absolute -right-10 -top-16 w-56 h-56 rounded-full bg-orange-500/10 blur-3xl pointer-events-none" />
+        <div className="relative flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 px-5 py-4">
+          <div className="flex items-center gap-4">
+            <div className="relative h-14 w-14 shrink-0">
+              <div className="absolute inset-[6px] rotate-45 rounded-[12px] shadow-xl bg-gradient-to-br from-orange-400 to-red-700" />
+              <div className="absolute inset-0 flex items-center justify-center"><Factory className="w-6 h-6 text-white" /></div>
+            </div>
+            <div>
+              <div className="flex items-center gap-2.5">
+                <h1 className="text-2xl font-black tracking-tight text-[var(--color-text-strong)]">Manufacturing & Production</h1>
+                <span className="hidden sm:inline-flex items-center gap-1.5 rounded-full border border-orange-500/25 bg-orange-500/10 px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider text-orange-600 dark:text-orange-400">
+                  <span className="h-1.5 w-1.5 rounded-full bg-orange-500 animate-pulse" /> Live Ledger
+                </span>
+              </div>
+              <p className="text-xs text-[var(--color-text-muted)] mt-0.5">BOM recipes, work orders, WIP material issues, and IAS 2 job costing</p>
+            </div>
+          </div>
+        </div>
       </div>
 
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        {kpiList.map((kpi) => (
-          <div key={kpi.label} className="relative overflow-hidden rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)] p-3 shadow-sm hover:shadow-md transition-shadow">
-            <div className="flex items-start justify-between">
-              <div>
-                <p className="text-xs font-semibold text-[var(--color-text-muted)] uppercase tracking-wider">{kpi.label}</p>
-                <p className={`text-lg font-semibold mt-1 ${kpi.textColor}`}>{kpi.value}</p>
-                <p className="text-xs text-[var(--color-text-muted)] mt-1">{kpi.desc}</p>
-              </div>
-              <div className={`w-9 h-9 rounded-lg bg-gradient-to-br ${kpi.color} flex items-center justify-center text-white shadow-lg`}>
-                <kpi.icon className="w-4.5 h-4.5" />
-              </div>
-            </div>
-            <div className={`absolute -bottom-4 -right-4 w-24 h-24 rounded-full ${kpi.bg} opacity-50`} />
-          </div>
-        ))}
-      </div>
+      <KpiGrid cols={4}>
+        <KpiCard icon={ClipboardList} label="BOM Recipes" value={boms.length} desc="Bill of materials defined" tone="teal" />
+        <KpiCard icon={Factory} label="Work Orders" value={workOrders.length} desc="Total production orders" tone="blue" />
+        <KpiCard icon={Hammer} label="In Progress" value={inProgress} desc="Active WIP orders" tone="amber" />
+        <KpiCard icon={CheckCircle2} label="Completed Runs" value={completed} desc="Finished production runs" tone="emerald" />
+      </KpiGrid>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         <div className="rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)] p-5 shadow-sm">

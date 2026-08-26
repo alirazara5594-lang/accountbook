@@ -9,16 +9,18 @@ import {
 import { useSalesStore, useCustomersStore, useProductsStore, useCompanyStore } from './stores'
 import { useFormDraft } from './hooks/useFormDraft'
 import { KpiCard, KpiGrid } from './components/ui/kpi-card'
+import { StatusChip } from './components/ui/status-chip'
+import { EmptyState, TableSkeleton } from './components/ui/empty-state'
 
 import { money } from './lib/currency'
 
-const statusStyles: Record<number, { label: string; class: string }> = {
-  0: { label: 'Draft', class: 'bg-slate-500/10 text-slate-600 border border-slate-500/20' },
-  1: { label: 'Sent', class: 'bg-sky-500/10 text-sky-600 border border-sky-500/20' },
-  2: { label: 'Finalized', class: 'bg-emerald-500/10 text-emerald-600 border border-emerald-500/20' },
-  3: { label: 'Cancelled', class: 'bg-rose-500/10 text-rose-600 border border-rose-500/20' },
-  4: { label: 'Expired', class: 'bg-amber-500/10 text-amber-600 border border-amber-500/20' },
-  5: { label: 'Invoiced', class: 'bg-purple-500/10 text-purple-600 border border-purple-500/20' },
+const statusStyles: Record<number, { label: string; hex: string }> = {
+  0: { label: 'Draft', hex: '#94a3b8' },
+  1: { label: 'Sent', hex: '#0ea5e9' },
+  2: { label: 'Finalized', hex: '#10b981' },
+  3: { label: 'Cancelled', hex: '#ef4444' },
+  4: { label: 'Expired', hex: '#f59e0b' },
+  5: { label: 'Invoiced', hex: '#8b5cf6' },
 }
 
 export const getNumericStatus = (status: any): number => {
@@ -337,18 +339,30 @@ export const EstimatesAndQuotes: React.FC<{ activeEntityId: string; entities?: a
     <div className="space-y-6">
       {toast && <div className="fixed top-4 right-4 z-[9999] bg-[var(--color-surface)] border border-[var(--color-border)] rounded-xl shadow-lg px-4 py-3 text-sm font-medium text-[var(--color-text-strong)]">{toast}</div>}
 
-      {/* Page Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-bold text-[var(--color-text-strong)] flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-white"><FileText className="w-5 h-5" /></div>
-            Estimates & Quotations
-          </h1>
-          <p className="text-sm text-[var(--color-text-muted)] mt-1 ml-13">Create, manage, and convert commercial quotations into invoices.</p>
+      {/* Page Header — AMS Signature Hero Band */}
+      <div className="relative overflow-hidden rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)] shadow-sm">
+        <div className="absolute inset-0 bg-gradient-to-r from-indigo-500/10 via-indigo-500/[0.03] to-transparent pointer-events-none" />
+        <div className="absolute -right-10 -top-16 w-56 h-56 rounded-full bg-indigo-500/10 blur-3xl pointer-events-none" />
+        <div className="relative flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 px-5 py-4">
+          <div className="flex items-center gap-4">
+            <div className="relative h-14 w-14 shrink-0">
+              <div className="absolute inset-[6px] rotate-45 rounded-[12px] shadow-xl bg-gradient-to-br from-indigo-500 to-violet-700" />
+              <div className="absolute inset-0 flex items-center justify-center"><FileText className="w-6 h-6 text-white" /></div>
+            </div>
+            <div>
+              <div className="flex items-center gap-2.5">
+                <h1 className="text-2xl font-black tracking-tight text-[var(--color-text-strong)]">Estimates &amp; Quotations</h1>
+                <span className="hidden sm:inline-flex items-center gap-1.5 rounded-full border border-indigo-500/25 bg-indigo-500/10 px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider text-indigo-600 dark:text-indigo-400"><span className="h-1.5 w-1.5 rounded-full bg-indigo-500 animate-pulse" /> Live Ledger</span>
+              </div>
+              <p className="text-xs text-[var(--color-text-muted)] mt-0.5">Create, manage, and convert commercial quotations into invoices.</p>
+            </div>
+          </div>
+          <div className="flex items-center gap-2 shrink-0">
+            <button onClick={openCreateModal} className="inline-flex items-center gap-2 px-5 py-2.5 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white text-sm font-semibold rounded-xl shadow-lg shadow-indigo-500/25 transition-all hover:shadow-xl hover:shadow-indigo-500/30">
+              <Plus className="w-4 h-4" /> New Quote
+            </button>
+          </div>
         </div>
-        <button onClick={openCreateModal} className="inline-flex items-center gap-2 px-5 py-2.5 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white text-sm font-semibold rounded-xl shadow-lg shadow-indigo-500/25 transition-all hover:shadow-xl hover:shadow-indigo-500/30">
-          <Plus className="w-4 h-4" /> New Quote
-        </button>
       </div>
 
       {/* KPI Cards */}
@@ -384,26 +398,31 @@ export const EstimatesAndQuotes: React.FC<{ activeEntityId: string; entities?: a
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
-              <tr className="bg-[var(--color-surface-muted)] border-b border-[var(--color-border)]">
-                <th className="px-5 py-3.5 text-left text-xs font-semibold text-[var(--color-text-muted)] uppercase tracking-wider">Quote #</th>
-                <th className="px-5 py-3.5 text-left text-xs font-semibold text-[var(--color-text-muted)] uppercase tracking-wider">Customer</th>
-                <th className="px-5 py-3.5 text-left text-xs font-semibold text-[var(--color-text-muted)] uppercase tracking-wider">Date</th>
-                <th className="px-5 py-3.5 text-left text-xs font-semibold text-[var(--color-text-muted)] uppercase tracking-wider">Expiry</th>
-                <th className="px-5 py-3.5 text-right text-xs font-semibold text-[var(--color-text-muted)] uppercase tracking-wider">Subtotal</th>
-                <th className="px-5 py-3.5 text-right text-xs font-semibold text-[var(--color-text-muted)] uppercase tracking-wider">Discount</th>
-                <th className="px-5 py-3.5 text-right text-xs font-semibold text-[var(--color-text-muted)] uppercase tracking-wider">Tax %</th>
-                <th className="px-5 py-3.5 text-right text-xs font-semibold text-[var(--color-text-muted)] uppercase tracking-wider">Net Total</th>
-                <th className="px-5 py-3.5 text-center text-xs font-semibold text-[var(--color-text-muted)] uppercase tracking-wider">Status</th>
-                <th className="px-5 py-3.5 text-center text-xs font-semibold text-[var(--color-text-muted)] uppercase tracking-wider">Actions</th>
+              <tr className="bg-indigo-500/[0.05] dark:bg-indigo-400/[0.07] border-b border-[var(--color-border)]">
+                <th className="px-5 py-3 text-left text-[10px] font-bold text-[var(--color-text-muted)] uppercase tracking-wider">Quote #</th>
+                <th className="px-5 py-3 text-left text-[10px] font-bold text-[var(--color-text-muted)] uppercase tracking-wider">Customer</th>
+                <th className="px-5 py-3 text-left text-[10px] font-bold text-[var(--color-text-muted)] uppercase tracking-wider">Date</th>
+                <th className="px-5 py-3 text-left text-[10px] font-bold text-[var(--color-text-muted)] uppercase tracking-wider">Expiry</th>
+                <th className="px-5 py-3 text-right text-[10px] font-bold text-[var(--color-text-muted)] uppercase tracking-wider">Subtotal</th>
+                <th className="px-5 py-3 text-right text-[10px] font-bold text-[var(--color-text-muted)] uppercase tracking-wider">Discount</th>
+                <th className="px-5 py-3 text-right text-[10px] font-bold text-[var(--color-text-muted)] uppercase tracking-wider">Tax %</th>
+                <th className="px-5 py-3 text-right text-[10px] font-bold text-[var(--color-text-muted)] uppercase tracking-wider">Net Total</th>
+                <th className="px-5 py-3 text-center text-[10px] font-bold text-[var(--color-text-muted)] uppercase tracking-wider">Status</th>
+                <th className="px-5 py-3 text-center text-[10px] font-bold text-[var(--color-text-muted)] uppercase tracking-wider">Actions</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-[var(--color-border)]">
               {filteredEstimates.length === 0 ? (
                 <tr><td colSpan={10} className="px-5 py-16 text-center">
-                  <div className="flex flex-col items-center gap-3">
-                    <div className="w-16 h-16 rounded-2xl bg-[var(--color-surface-muted)] flex items-center justify-center"><FileText className="w-8 h-8 text-[var(--color-text-muted)]" /></div>
-                    <div><p className="font-semibold text-[var(--color-text-strong)]">{loading ? 'Loading...' : 'No quotations found'}</p><p className="text-xs text-[var(--color-text-muted)] mt-1">{loading ? 'Fetching data...' : 'Click "New Quote" to create your first quotation.'}</p></div>
-                  </div>
+                  {loading ? (
+                    <TableSkeleton rows={6} />
+                  ) : (
+                    <EmptyState
+                      icon={FileText}
+                      title="No quotations found"
+                      hint='Click "New Quote" to create your first quotation.'
+                    />
+                  )}
                 </td></tr>
               ) : filteredEstimates.map((est: any, idx: number) => {
                 const sn = getNumericStatus(est.status); const st = statusStyles[sn]; const customer = customers.find((c: any) => c.id === est.customerId)
@@ -447,7 +466,7 @@ export const EstimatesAndQuotes: React.FC<{ activeEntityId: string; entities?: a
                     <td className="px-5 py-3.5 text-right font-mono text-xs text-rose-500">{estDiscount > 0 ? `-${money(estDiscount)}` : '—'}</td>
                     <td className="px-5 py-3.5 text-right font-mono text-xs text-amber-600">{estTax > 0 ? `+${money(estTax)}` : '—'}</td>
                     <td className="px-5 py-3.5 text-right font-mono text-xs font-bold text-[var(--color-text-strong)]">{money(est.totalAmount || est.netTotal || 0)}</td>
-                    <td className="px-5 py-3.5 text-center"><span className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-semibold ${st?.class || ''}`}><span className="w-1.5 h-1.5 rounded-full bg-current" />{st?.label || 'Draft'}</span></td>
+                    <td className="px-5 py-3.5 text-center"><StatusChip status={String(sn)} label={st?.label || 'Draft'} hex={st?.hex} /></td>
                     <td className="px-5 py-3.5">
                       <div className="flex items-center justify-center gap-1.5">
                         <button onClick={() => openEditModal(est)} title="Edit" className="w-8 h-8 rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] hover:bg-blue-500/10 hover:border-blue-500/30 flex items-center justify-center transition-all"><Pencil className="w-3.5 h-3.5 text-blue-500" /></button>

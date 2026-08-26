@@ -13,6 +13,7 @@ import { money, getActiveCurrency } from '@/lib/currency';
 import { downloadCSV, downloadExcel, downloadPDF } from '@/lib/exportUtils';
 import ExportDropdown from '@/components/ExportDropdown';
 import { KpiCard, KpiGrid } from '@/components/ui/kpi-card';
+import { EmptyState } from '@/components/ui/empty-state';
 
 import { type Account } from './api/modules/coa.api';
 type AccountType = string;
@@ -764,15 +765,25 @@ export const ChartOfAccounts: React.FC<ChartOfAccountsProps> = ({
 
   return (
     <div className="space-y-6 max-w-7xl mx-auto font-sans pb-12 animate-fade-in">
-      {/* 1. Header with Page Title & Subtitle + Buttons */}
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-3 bg-[var(--color-surface)] p-3.5 rounded-xl border border-[var(--color-border)] shadow-sm">
-        <div>
-          <h1 className="text-base font-bold text-[var(--color-text-strong)] tracking-tight flex items-center gap-2">
-            <span className="text-lg">📚</span> Chart of Accounts
-          </h1>
-          <p className="text-[var(--color-text-muted)] text-xs mt-0.5">IAS / GAAP compliant multi-level ledgers with secured accounts protection and real-time drill-down.</p>
-        </div>
-        <div className="flex flex-wrap items-center gap-2 shrink-0">
+      {/* 1. Page Header — AMS Signature Hero Band */}
+      <div className="relative overflow-hidden rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)] shadow-sm">
+        <div className="absolute inset-0 bg-gradient-to-r from-violet-500/10 via-violet-500/[0.03] to-transparent pointer-events-none" />
+        <div className="absolute -right-10 -top-16 w-56 h-56 rounded-full bg-violet-500/10 blur-3xl pointer-events-none" />
+        <div className="relative flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 px-5 py-4">
+          <div className="flex items-center gap-4">
+            <div className="relative h-14 w-14 shrink-0">
+              <div className="absolute inset-[6px] rotate-45 rounded-[12px] shadow-xl bg-gradient-to-br from-violet-500 to-purple-700" />
+              <div className="absolute inset-0 flex items-center justify-center"><FileText className="w-6 h-6 text-white" /></div>
+            </div>
+            <div>
+              <div className="flex items-center gap-2.5">
+                <h1 className="text-2xl font-black tracking-tight text-[var(--color-text-strong)]">Chart of Accounts</h1>
+                <span className="hidden sm:inline-flex items-center gap-1.5 rounded-full border border-violet-500/25 bg-violet-500/10 px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider text-violet-600 dark:text-violet-400"><span className="h-1.5 w-1.5 rounded-full bg-violet-500 animate-pulse" /> Live Ledger</span>
+              </div>
+              <p className="text-xs text-[var(--color-text-muted)] mt-0.5">IAS / GAAP compliant multi-level ledgers with secured accounts protection and real-time drill-down.</p>
+            </div>
+          </div>
+          <div className="flex flex-wrap items-center gap-2 shrink-0">
           <ExportDropdown
             label="Export COA"
             onPDF={handleExportPDF}
@@ -807,6 +818,7 @@ export const ChartOfAccounts: React.FC<ChartOfAccountsProps> = ({
           >
             <Plus className="w-4 h-4" /> New Account
           </button>
+          </div>
         </div>
       </div>
 
@@ -978,7 +990,7 @@ export const ChartOfAccounts: React.FC<ChartOfAccountsProps> = ({
       {/* 4. Main Accounts Table Layout */}
       <div className="bg-white border border-slate-200 rounded-2xl overflow-hidden shadow-xs">
         <Table>
-          <TableHeader className="bg-slate-50 border-b border-slate-200">
+          <TableHeader className="bg-violet-500/[0.05] dark:bg-violet-400/[0.07] border-b border-slate-200">
             <TableRow className="hover:bg-transparent">
               <TableHead className="w-52 text-[10px] font-extrabold text-slate-400 uppercase tracking-wider pl-4">Account Code</TableHead>
               <TableHead className="text-[10px] font-extrabold text-slate-400 uppercase tracking-wider">Account Name</TableHead>
@@ -995,19 +1007,22 @@ export const ChartOfAccounts: React.FC<ChartOfAccountsProps> = ({
 
             {paginatedItems.length === 0 && (
               <TableRow>
-                <TableCell colSpan={8} className="py-20 text-center text-slate-400">
-                  <div className="max-w-xs mx-auto space-y-3">
-                    <span className="text-4xl">📂</span>
-                    <p className="text-xs font-bold text-slate-600">No matching accounts found</p>
-                    <Button
-                      size="sm"
-                      onClick={() => { setParentIdForNew(''); openCreate(); }}
-                      className="mt-2 h-9 text-xs bg-[#143e2b] text-white hover:bg-[#0b291c] rounded-xl"
-                    >
-                      <Plus className="w-3.5 h-3.5 mr-1" />
-                      Add Account
-                    </Button>
-                  </div>
+                <TableCell colSpan={8}>
+                  <EmptyState
+                    icon={Folder}
+                    title="No matching accounts found"
+                    hint="Adjust the filters or import accounts via CSV."
+                    action={
+                      <Button
+                        size="sm"
+                        onClick={() => { setParentIdForNew(''); openCreate(); }}
+                        className="mt-2 h-9 text-xs bg-[#143e2b] text-white hover:bg-[#0b291c] rounded-xl"
+                      >
+                        <Plus className="w-3.5 h-3.5 mr-1" />
+                        Add Account
+                      </Button>
+                    }
+                  />
                 </TableCell>
               </TableRow>
             )}
@@ -1133,7 +1148,7 @@ export const ChartOfAccounts: React.FC<ChartOfAccountsProps> = ({
         {/* Drill-down grid or table */}
         <div className="border border-slate-200 rounded-xl overflow-hidden">
           <Table>
-            <TableHeader className="bg-slate-50">
+            <TableHeader className="bg-violet-500/[0.05] dark:bg-violet-400/[0.07]">
               <TableRow>
                 <TableHead className="text-[10px] font-bold uppercase tracking-wider pl-4">
                   {selectedSubHead ? 'ACCOUNT CODE & NAME' : selectedMainHead ? 'REPORTING SUB-HEAD' : 'MAJOR HEAD'}

@@ -7,6 +7,8 @@ import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@
 import { FormSection } from '@/components/ui/form-section';
 import { FormField } from '@/components/ui/form-field';
 import { PageHeader } from '@/components/ui/page-header';
+import { StatusChip } from './components/ui/status-chip';
+import { EmptyState } from './components/ui/empty-state';
 import { Plus, Pencil, UserX, Building2, Briefcase, Shield, CreditCard, GraduationCap, ArrowLeft, ArrowRight, Save, Users, Check, Landmark, PiggyBank, Globe, Calculator } from 'lucide-react';
 
 const COUNTRY_OPTIONS = [
@@ -1042,15 +1044,31 @@ export default function EmployeeDirectory() {
 
   return (
     <div className="p-6 max-w-[1400px] mx-auto space-y-4">
-      <PageHeader
-        title="Employee Directory & Gross Packages"
-        description="Manage employee records, agreed Gross Packages, percentage breakdowns (Basic 60%, HRA 25%, Medical 10%, Travel 5%), and global statutory schemes."
-        actions={
-          <Button onClick={openCreate} className="bg-teal-600 hover:bg-teal-700 text-white font-bold">
-            <Plus className="mr-1.5 h-4 w-4" /> Add Employee
-          </Button>
-        }
-      />
+      {/* Page Header — AMS Signature Hero Band */}
+      <div className="relative overflow-hidden rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)] shadow-sm">
+        <div className="absolute inset-0 bg-gradient-to-r from-amber-500/10 via-amber-500/[0.03] to-transparent pointer-events-none" />
+        <div className="absolute -right-10 -top-16 w-56 h-56 rounded-full bg-amber-500/10 blur-3xl pointer-events-none" />
+        <div className="relative flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 px-5 py-4">
+          <div className="flex items-center gap-4">
+            <div className="relative h-14 w-14 shrink-0">
+              <div className="absolute inset-[6px] rotate-45 rounded-[12px] shadow-xl bg-gradient-to-br from-amber-500 to-orange-700" />
+              <div className="absolute inset-0 flex items-center justify-center"><Users className="w-6 h-6 text-white" /></div>
+            </div>
+            <div>
+              <div className="flex items-center gap-2.5">
+                <h1 className="text-2xl font-black tracking-tight text-[var(--color-text-strong)]">Employee Directory &amp; Gross Packages</h1>
+                <span className="hidden sm:inline-flex items-center gap-1.5 rounded-full border border-amber-500/25 bg-amber-500/10 px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider text-amber-600 dark:text-amber-400"><span className="h-1.5 w-1.5 rounded-full bg-amber-500 animate-pulse" /> Live Ledger</span>
+              </div>
+              <p className="text-xs text-[var(--color-text-muted)] mt-0.5">Manage employee records, agreed Gross Packages, percentage breakdowns (Basic 60%, HRA 25%, Medical 10%, Travel 5%), and global statutory schemes.</p>
+            </div>
+          </div>
+          <div className="flex items-center gap-2 shrink-0">
+            <Button onClick={openCreate} className="bg-teal-600 hover:bg-teal-700 text-white font-bold">
+              <Plus className="mr-1.5 h-4 w-4" /> Add Employee
+            </Button>
+          </div>
+        </div>
+      </div>
 
       <div className="flex items-center gap-3">
         <Input
@@ -1155,13 +1173,7 @@ export default function EmployeeDirectory() {
                       )}
                     </td>
                     <td className="p-3.5 text-center">
-                      <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold border ${
-                        emp.status === 'Active' ? 'bg-emerald-50 text-emerald-700 border-emerald-200' :
-                        emp.status === 'Probation' ? 'bg-blue-50 text-blue-700 border-blue-200' :
-                        'bg-rose-50 text-rose-700 border-rose-200'
-                      }`}>
-                        {emp.status}
-                      </span>
+                      <StatusChip status={emp.status} label={emp.status} hex={emp.status === 'Active' ? '#10b981' : emp.status === 'Probation' ? '#f59e0b' : '#f43f5e'} />
                     </td>
                     <td className="p-3.5 pr-5 text-right">
                       <div className="flex items-center justify-end gap-1.5">
@@ -1184,8 +1196,8 @@ export default function EmployeeDirectory() {
               })}
               {filtered.length === 0 && (
                 <tr>
-                  <td colSpan={9} className="p-8 text-center text-xs text-muted-foreground">
-                    No employees found matching the filters. Click <strong>"Add Employee"</strong> to register new staff.
+                  <td colSpan={9} className="p-0">
+                    <EmptyState icon={Users} title="No Employees Found" hint="No employees found matching the filters. Click Add Employee to register new staff." />
                   </td>
                 </tr>
               )}

@@ -3,6 +3,7 @@ import { Calendar, Building2, TrendingDown, Download } from 'lucide-react'
 import { useAssetsInventoryStore } from './stores'
 
 import { money } from './lib/currency';
+import { EmptyState } from './components/ui/empty-state';
 
 export default function DepreciationSchedule({ activeEntityId }: { activeEntityId: string }) {
   const assets = useAssetsInventoryStore((s) => s.fixedAssets as any[])
@@ -60,16 +61,30 @@ export default function DepreciationSchedule({ activeEntityId }: { activeEntityI
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-xl font-bold text-gray-900 flex items-center gap-2">
-            <Calendar className="w-5 h-5 text-blue-600" /> Depreciation Schedule
-          </h1>
-          <p className="text-xs text-gray-500 mt-0.5">12-month straight-line depreciation forecast for all active assets</p>
+      {/* Page Header — AMS Signature Hero Band */}
+      <div className="relative overflow-hidden rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)] shadow-sm">
+        <div className="absolute inset-0 bg-gradient-to-r from-teal-500/10 via-teal-500/[0.03] to-transparent pointer-events-none" />
+        <div className="absolute -right-10 -top-16 w-56 h-56 rounded-full bg-teal-500/10 blur-3xl pointer-events-none" />
+        <div className="relative flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 px-5 py-4">
+          <div className="flex items-center gap-4">
+            <div className="relative h-14 w-14 shrink-0">
+              <div className="absolute inset-[6px] rotate-45 rounded-[12px] shadow-xl bg-gradient-to-br from-teal-500 to-emerald-700" />
+              <div className="absolute inset-0 flex items-center justify-center"><Calendar className="w-6 h-6 text-white" /></div>
+            </div>
+            <div>
+              <div className="flex items-center gap-2.5">
+                <h1 className="text-2xl font-black tracking-tight text-[var(--color-text-strong)]">Depreciation Schedule</h1>
+                <span className="hidden sm:inline-flex items-center gap-1.5 rounded-full border border-teal-500/25 bg-teal-500/10 px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider text-teal-600 dark:text-teal-400"><span className="h-1.5 w-1.5 rounded-full bg-teal-500 animate-pulse" /> Live Ledger</span>
+              </div>
+              <p className="text-xs text-[var(--color-text-muted)] mt-0.5">12-month straight-line depreciation forecast for all active assets</p>
+            </div>
+          </div>
+          <div className="flex items-center gap-2 shrink-0">
+            <button onClick={handleExport} className="flex items-center gap-2 px-3 py-1.5 border border-gray-200 rounded-lg text-xs font-semibold text-gray-600 hover:bg-gray-50">
+              <Download className="w-3.5 h-3.5" /> Export CSV
+            </button>
+          </div>
         </div>
-        <button onClick={handleExport} className="flex items-center gap-2 px-3 py-1.5 border border-gray-200 rounded-lg text-xs font-semibold text-gray-600 hover:bg-gray-50">
-          <Download className="w-3.5 h-3.5" /> Export CSV
-        </button>
       </div>
 
       {/* Summary */}
@@ -100,9 +115,9 @@ export default function DepreciationSchedule({ activeEntityId }: { activeEntityI
       {/* Schedule Table */}
       <div className="bg-white border border-gray-200 rounded-xl overflow-x-auto">
         <table className="w-full text-left text-sm">
-          <thead className="bg-gray-50 text-gray-500 border-b border-gray-100 text-xs uppercase tracking-wider">
+          <thead className="bg-teal-500/[0.05] dark:bg-teal-400/[0.07] text-gray-500 border-b border-gray-100 text-xs uppercase tracking-wider">
             <tr>
-              <th className="py-3 px-4 sticky left-0 bg-gray-50 z-10">Asset</th>
+              <th className="py-3 px-4 sticky left-0 bg-teal-50 dark:bg-teal-950/40 z-10">Asset</th>
               <th className="py-3 px-4 text-right">Cost</th>
               <th className="py-3 px-4 text-right">Accum. Depr.</th>
               <th className="py-3 px-4 text-right">NBV</th>
@@ -141,7 +156,7 @@ export default function DepreciationSchedule({ activeEntityId }: { activeEntityI
               )
             })}
             {!loading && activeAssets.length === 0 && (
-              <tr><td colSpan={17} className="py-8 text-center text-gray-400">No active assets to schedule.</td></tr>
+              <tr><td colSpan={17}><EmptyState icon={Building2} title="No active assets to schedule" hint="Capitalize fixed assets to build the 12-month depreciation forecast." /></td></tr>
             )}
           </tbody>
           {activeAssets.length > 0 && (
