@@ -297,71 +297,84 @@ export default function ProductsAndServices({
 
   return (
     <div className="space-y-6">
-      {/* Submodule Heading Banner (Row 1) */}
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-3 bg-[var(--color-surface)] p-3.5 rounded-xl border border-[var(--color-border)] shadow-sm">
-        <div>
-          <h1 className="text-base font-bold text-[var(--color-text-strong)] tracking-tight flex items-center gap-2">
-            <span className="text-lg">📦</span> Products & Services Catalog
-          </h1>
-          <p className="text-[var(--color-text-muted)] text-xs mt-0.5">Manage physical inventory goods, billable services, kits, and GAAP GL mappings.</p>
-        </div>
-        <div className="flex items-center gap-2 shrink-0 flex-wrap">
-          <DataToolbar
-            query={search}
-            setQuery={setSearch}
-            searchPlaceholder="Search item name, SKU..."
-            exportFileName="products-and-services"
-            exportSheetName="Products & Services"
-            exportTitle="Product & Service Catalog"
-            exportSubtitle={`Master catalog (${filteredProducts.length} items).`}
-            exportHeaders={exportHeaders}
-            exportRows={exportRows}
-          >
-            <select
-              className="h-9 px-3 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] text-xs text-[var(--color-text)] outline-none focus:border-[var(--color-primary)] transition-colors shadow-2xs box-border"
-              style={{ paddingTop: 0, paddingBottom: 0 }}
-              value={typeFilter}
-              onChange={e => setTypeFilter(e.target.value)}
+      {/* AMS Signature Hero Band */}
+      <div className="relative overflow-hidden rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)] shadow-sm">
+        <div className="absolute inset-0 bg-gradient-to-r from-amber-500/10 via-amber-500/[0.03] to-transparent pointer-events-none" />
+        <div className="absolute -right-10 -top-16 w-56 h-56 rounded-full bg-amber-500/10 blur-3xl pointer-events-none" />
+        <div className="relative flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 px-5 py-4">
+          <div className="flex items-center gap-4">
+            <div className="relative h-14 w-14 shrink-0">
+              <div className="absolute inset-[6px] rotate-45 rounded-[12px] shadow-xl bg-gradient-to-br from-amber-500 to-orange-700" />
+              <div className="absolute inset-0 flex items-center justify-center"><Package className="w-6 h-6 text-white" /></div>
+            </div>
+            <div>
+              <div className="flex items-center gap-2.5">
+                <h1 className="text-2xl font-black tracking-tight text-[var(--color-text-strong)]">Products &amp; Services Catalog</h1>
+                <span className="hidden sm:inline-flex items-center gap-1.5 rounded-full border border-amber-500/25 bg-amber-500/10 px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider text-amber-600 dark:text-amber-400"><span className="h-1.5 w-1.5 rounded-full bg-amber-500 animate-pulse" /> Live Ledger</span>
+              </div>
+              <p className="text-xs text-[var(--color-text-muted)] mt-0.5">
+                Manage physical inventory goods, billable services, kits, and GAAP GL mappings.
+              </p>
+            </div>
+          </div>
+          <div className="flex items-center gap-2 shrink-0 flex-wrap">
+            <DataToolbar
+              query={search}
+              setQuery={setSearch}
+              searchPlaceholder="Search item name, SKU..."
+              exportFileName="products-and-services"
+              exportSheetName="Products & Services"
+              exportTitle="Product & Service Catalog"
+              exportSubtitle={`Master catalog (${filteredProducts.length} items).`}
+              exportHeaders={exportHeaders}
+              exportRows={exportRows}
             >
-              <option value="all">⚡ All Item Types</option>
-              <option value="Physical">📦 Physical Goods</option>
-              <option value="Service">🛠️ Services</option>
-              <option value="NonInventory">📑 Non-Inventory Supplies</option>
-              <option value="Bundle">🎁 Bundles / Kits</option>
-            </select>
-          </DataToolbar>
-          <div className="flex items-center border border-[var(--color-border)] rounded-xl overflow-hidden bg-[var(--color-surface)] p-0.5">
-            <button
-              type="button"
-              onClick={() => setViewMode('table')}
-              className={`p-1.5 rounded-lg text-xs font-medium transition-colors flex items-center gap-1 ${
-                viewMode === 'table'
-                  ? 'bg-[var(--color-primary)] text-white shadow-2xs'
-                  : 'text-[var(--color-text-muted)] hover:text-[var(--color-text-strong)]'
-              }`}
-              title="Table Rows View"
-            >
-              <List className="w-3.5 h-3.5" />
-              <span className="hidden sm:inline">Rows</span>
-            </button>
-            <button
-              type="button"
-              onClick={() => setViewMode('grid')}
-              className={`p-1.5 rounded-lg text-xs font-medium transition-colors flex items-center gap-1 ${
-                viewMode === 'grid'
-                  ? 'bg-[var(--color-primary)] text-white shadow-2xs'
-                  : 'text-[var(--color-text-muted)] hover:text-[var(--color-text-strong)]'
-              }`}
-              title="Grid Cards View"
-            >
-              <LayoutGrid className="w-3.5 h-3.5" />
-              <span className="hidden sm:inline">Grid</span>
+              <select
+                className="h-9 px-3 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] text-xs text-[var(--color-text)] outline-none focus:border-[var(--color-primary)] transition-colors shadow-2xs box-border"
+                style={{ paddingTop: 0, paddingBottom: 0 }}
+                value={typeFilter}
+                onChange={e => setTypeFilter(e.target.value)}
+              >
+                <option value="all">⚡ All Item Types</option>
+                <option value="Physical">📦 Physical Goods</option>
+                <option value="Service">🛠️ Services</option>
+                <option value="NonInventory">📑 Non-Inventory Supplies</option>
+                <option value="Bundle">🎁 Bundles / Kits</option>
+              </select>
+            </DataToolbar>
+            <div className="flex items-center border border-[var(--color-border)] rounded-xl overflow-hidden bg-[var(--color-surface)] p-0.5">
+              <button
+                type="button"
+                onClick={() => setViewMode('table')}
+                className={`p-1.5 rounded-lg text-xs font-medium transition-colors flex items-center gap-1 ${
+                  viewMode === 'table'
+                    ? 'bg-[var(--color-primary)] text-white shadow-2xs'
+                    : 'text-[var(--color-text-muted)] hover:text-[var(--color-text-strong)]'
+                }`}
+                title="Table Rows View"
+              >
+                <List className="w-3.5 h-3.5" />
+                <span className="hidden sm:inline">Rows</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setViewMode('grid')}
+                className={`p-1.5 rounded-lg text-xs font-medium transition-colors flex items-center gap-1 ${
+                  viewMode === 'grid'
+                    ? 'bg-[var(--color-primary)] text-white shadow-2xs'
+                    : 'text-[var(--color-text-muted)] hover:text-[var(--color-text-strong)]'
+                }`}
+                title="Grid Cards View"
+              >
+                <LayoutGrid className="w-3.5 h-3.5" />
+                <span className="hidden sm:inline">Grid</span>
+              </button>
+            </div>
+
+            <button onClick={openCreateModal} className="primary h-9 px-4 rounded-xl text-xs font-semibold whitespace-nowrap flex items-center justify-center gap-1.5 shadow-sm">
+              <span>＋</span> Add Item
             </button>
           </div>
-
-          <button onClick={openCreateModal} className="primary h-9 px-4 rounded-xl text-xs font-semibold whitespace-nowrap flex items-center justify-center gap-1.5 shadow-sm">
-            <span>＋</span> Add Item
-          </button>
         </div>
       </div>
 

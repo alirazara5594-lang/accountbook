@@ -3,7 +3,7 @@ import { useCoaStore, useJournalsStore, useSalesStore, useExpenseClaimsStore, us
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@/components/ui/select';
-import { PageHeader } from '@/components/ui/page-header';
+import { KpiCard, KpiGrid } from '@/components/ui/kpi-card';
 
 import {
   Sparkles, TrendingUp, TrendingDown, BarChart3, PieChart, Activity, AlertTriangle, Wallet, ShoppingBag, ArrowDownRight, ArrowUpRight, Lightbulb, Target, Boxes, Scale, FileCheck, Clock3, Landmark, LineChart, Info
@@ -150,29 +150,35 @@ export function AnalyticsDashboardView() {
 
   return (
     <div className="p-6 max-w-[1400px] mx-auto space-y-4">
-      <PageHeader title="AI & Analytics" description="Business intelligence across financial, sales, expense, cash flow, inventory, and forecasting" />
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        {[
-          { label: 'Total Revenue', value: money(d.totalRevenue), desc: 'Sum of all invoices', icon: Wallet, color: 'from-teal-400 to-teal-600', bg: 'bg-teal-50 dark:bg-teal-950/30', textColor: 'text-teal-600 dark:text-teal-400' },
-          { label: 'Total Expenses', value: money(d.totalExpenses), desc: 'All claims and field costs', icon: TrendingDown, color: 'from-red-400 to-red-600', bg: 'bg-red-50 dark:bg-red-950/30', textColor: 'text-red-600 dark:text-red-400' },
-          { label: 'Net Profit', value: money(d.totalProfit), desc: 'Revenue minus expenses', icon: TrendingUp, color: 'from-green-400 to-green-600', bg: 'bg-green-50 dark:bg-green-950/30', textColor: 'text-green-600 dark:text-green-400' },
-          { label: 'AI Health Score', value: `${aiScore}/100`, desc: 'Overall business health', icon: Activity, color: 'from-violet-400 to-violet-600', bg: 'bg-violet-50 dark:bg-violet-950/30', textColor: 'text-violet-600 dark:text-violet-400' },
-        ].map((kpi) => (
-          <div key={kpi.label} className="relative overflow-hidden rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)] p-3 shadow-sm hover:shadow-md transition-shadow">
-            <div className="flex items-start justify-between">
-              <div>
-                <p className="text-xs font-semibold text-[var(--color-text-muted)] uppercase tracking-wider">{kpi.label}</p>
-                <p className={`text-lg font-semibold mt-1 ${kpi.textColor}`}>{kpi.value}</p>
-                <p className="text-xs text-[var(--color-text-muted)] mt-1">{kpi.desc}</p>
-              </div>
-              <div className={`w-9 h-9 rounded-lg bg-gradient-to-br ${kpi.color} flex items-center justify-center text-white shadow-lg`}>
-                <kpi.icon className="w-4.5 h-4.5" />
-              </div>
+      {/* AMS Signature Hero Band */}
+      <div className="relative overflow-hidden rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)] shadow-sm">
+        <div className="absolute inset-0 bg-gradient-to-r from-violet-500/10 via-violet-500/[0.03] to-transparent pointer-events-none" />
+        <div className="absolute -right-10 -top-16 w-56 h-56 rounded-full bg-violet-500/10 blur-3xl pointer-events-none" />
+        <div className="relative flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 px-5 py-4">
+          <div className="flex items-center gap-4">
+            <div className="relative h-14 w-14 shrink-0">
+              <div className="absolute inset-[6px] rotate-45 rounded-[12px] shadow-xl bg-gradient-to-br from-violet-500 to-indigo-700" />
+              <div className="absolute inset-0 flex items-center justify-center"><BarChart3 className="w-6 h-6 text-white" /></div>
             </div>
-            <div className={`absolute -bottom-4 -right-4 w-24 h-24 rounded-full ${kpi.bg} opacity-50`} />
+            <div>
+              <div className="flex items-center gap-2.5">
+                <h1 className="text-2xl font-black tracking-tight text-[var(--color-text-strong)]">AI & Analytics</h1>
+                <span className="hidden sm:inline-flex items-center gap-1.5 rounded-full border border-violet-500/25 bg-violet-500/10 px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider text-violet-600 dark:text-violet-400">
+                  <span className="h-1.5 w-1.5 rounded-full bg-violet-500 animate-pulse" /> Live Ledger
+                </span>
+              </div>
+              <p className="text-xs text-[var(--color-text-muted)] mt-0.5">Business intelligence across financial, sales, expense, cash flow, inventory, and forecasting</p>
+            </div>
           </div>
-        ))}
+        </div>
       </div>
+
+      <KpiGrid cols={4}>
+        <KpiCard icon={Wallet} label="Total Revenue" value={money(d.totalRevenue)} desc="Sum of all invoices" tone="teal" />
+        <KpiCard icon={TrendingDown} label="Total Expenses" value={money(d.totalExpenses)} desc="All claims and field costs" tone="rose" />
+        <KpiCard icon={TrendingUp} label="Net Profit" value={money(d.totalProfit)} desc="Revenue minus expenses" tone="emerald" />
+        <KpiCard icon={Activity} label="AI Health Score" value={`${aiScore}/100`} desc="Overall business health" tone="purple" />
+      </KpiGrid>
       <Card className="p-4 space-y-3">
         <p className="text-sm font-medium flex items-center gap-2"><BarChart3 className="h-4 w-4" /> Revenue vs Expenses (6 months)</p>
         <ResponsiveContainer width="100%" height={220}>
@@ -208,29 +214,35 @@ export function FinancialAnalyticsView() {
 
   return (
     <div className="p-6 max-w-[1400px] mx-auto space-y-4">
-      <PageHeader title="Financial Analytics" description="Revenue, expense, and profitability trends across the business" />
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        {[
-          { label: 'Total Revenue', value: money(d.totalRevenue), desc: 'Sum of all invoices', icon: Wallet, color: 'from-teal-400 to-teal-600', bg: 'bg-teal-50 dark:bg-teal-950/30', textColor: 'text-teal-600 dark:text-teal-400' },
-          { label: 'Total Expenses', value: money(d.totalExpenses), desc: 'All claims and field costs', icon: TrendingDown, color: 'from-red-400 to-red-600', bg: 'bg-red-50 dark:bg-red-950/30', textColor: 'text-red-600 dark:text-red-400' },
-          { label: 'Net Profit', value: money(d.totalProfit), desc: 'Revenue minus expenses', icon: TrendingUp, color: 'from-green-400 to-green-600', bg: 'bg-green-50 dark:bg-green-950/30', textColor: 'text-green-600 dark:text-green-400' },
-          { label: 'Profit Margin', value: `${profitMargin.toFixed(1)}%`, desc: 'Net profit / revenue', icon: Scale, color: 'from-violet-400 to-violet-600', bg: 'bg-violet-50 dark:bg-violet-950/30', textColor: 'text-violet-600 dark:text-violet-400' },
-        ].map((kpi) => (
-          <div key={kpi.label} className="relative overflow-hidden rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)] p-3 shadow-sm hover:shadow-md transition-shadow">
-            <div className="flex items-start justify-between">
-              <div>
-                <p className="text-xs font-semibold text-[var(--color-text-muted)] uppercase tracking-wider">{kpi.label}</p>
-                <p className={`text-lg font-semibold mt-1 ${kpi.textColor}`}>{kpi.value}</p>
-                <p className="text-xs text-[var(--color-text-muted)] mt-1">{kpi.desc}</p>
-              </div>
-              <div className={`w-9 h-9 rounded-lg bg-gradient-to-br ${kpi.color} flex items-center justify-center text-white shadow-lg`}>
-                <kpi.icon className="w-4.5 h-4.5" />
-              </div>
+      {/* AMS Signature Hero Band */}
+      <div className="relative overflow-hidden rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)] shadow-sm">
+        <div className="absolute inset-0 bg-gradient-to-r from-emerald-500/10 via-emerald-500/[0.03] to-transparent pointer-events-none" />
+        <div className="absolute -right-10 -top-16 w-56 h-56 rounded-full bg-emerald-500/10 blur-3xl pointer-events-none" />
+        <div className="relative flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 px-5 py-4">
+          <div className="flex items-center gap-4">
+            <div className="relative h-14 w-14 shrink-0">
+              <div className="absolute inset-[6px] rotate-45 rounded-[12px] shadow-xl bg-gradient-to-br from-emerald-500 to-teal-700" />
+              <div className="absolute inset-0 flex items-center justify-center"><TrendingUp className="w-6 h-6 text-white" /></div>
             </div>
-            <div className={`absolute -bottom-4 -right-4 w-24 h-24 rounded-full ${kpi.bg} opacity-50`} />
+            <div>
+              <div className="flex items-center gap-2.5">
+                <h1 className="text-2xl font-black tracking-tight text-[var(--color-text-strong)]">Financial Analytics</h1>
+                <span className="hidden sm:inline-flex items-center gap-1.5 rounded-full border border-emerald-500/25 bg-emerald-500/10 px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider text-emerald-600 dark:text-emerald-400">
+                  <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" /> Live Ledger
+                </span>
+              </div>
+              <p className="text-xs text-[var(--color-text-muted)] mt-0.5">Revenue, expense, and profitability trends across the business</p>
+            </div>
           </div>
-        ))}
+        </div>
       </div>
+
+      <KpiGrid cols={4}>
+        <KpiCard icon={Wallet} label="Total Revenue" value={money(d.totalRevenue)} desc="Sum of all invoices" tone="teal" />
+        <KpiCard icon={TrendingDown} label="Total Expenses" value={money(d.totalExpenses)} desc="All claims and field costs" tone="rose" />
+        <KpiCard icon={TrendingUp} label="Net Profit" value={money(d.totalProfit)} desc="Revenue minus expenses" tone="emerald" />
+        <KpiCard icon={Scale} label="Profit Margin" value={`${profitMargin.toFixed(1)}%`} desc="Net profit / revenue" tone="purple" />
+      </KpiGrid>
       <div className="grid grid-cols-5 gap-4">
         <Card className="p-4 col-span-3 space-y-3">
           <p className="text-sm font-medium flex items-center gap-2"><BarChart3 className="h-4 w-4" /> Monthly Revenue & Profit</p>
@@ -269,29 +281,35 @@ export function SalesAnalyticsView() {
 
   return (
     <div className="p-6 max-w-[1400px] mx-auto space-y-4">
-      <PageHeader title="Sales Analytics" description="Revenue, collections, and customer concentration analysis" />
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        {[
-          { label: 'Total Sales', value: money(d.totalRevenue), desc: 'Sum of all invoices', icon: ShoppingBag, color: 'from-teal-400 to-teal-600', bg: 'bg-teal-50 dark:bg-teal-950/30', textColor: 'text-teal-600 dark:text-teal-400' },
-          { label: 'Collected', value: money(collected), desc: 'Receipts received', icon: ArrowUpRight, color: 'from-green-400 to-green-600', bg: 'bg-green-50 dark:bg-green-950/30', textColor: 'text-green-600 dark:text-green-400' },
-          { label: 'Outstanding', value: money(outstanding), desc: 'Amount due on invoices', icon: ArrowDownRight, color: 'from-amber-400 to-amber-600', bg: 'bg-amber-50 dark:bg-amber-950/30', textColor: 'text-amber-600 dark:text-amber-400' },
-          { label: 'Invoices', value: d.invoices.length, desc: 'Total invoices issued', icon: PieChart, color: 'from-blue-400 to-blue-600', bg: 'bg-blue-50 dark:bg-blue-950/30', textColor: 'text-blue-600 dark:text-blue-400' },
-        ].map((kpi) => (
-          <div key={kpi.label} className="relative overflow-hidden rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)] p-3 shadow-sm hover:shadow-md transition-shadow">
-            <div className="flex items-start justify-between">
-              <div>
-                <p className="text-xs font-semibold text-[var(--color-text-muted)] uppercase tracking-wider">{kpi.label}</p>
-                <p className={`text-lg font-semibold mt-1 ${kpi.textColor}`}>{kpi.value}</p>
-                <p className="text-xs text-[var(--color-text-muted)] mt-1">{kpi.desc}</p>
-              </div>
-              <div className={`w-9 h-9 rounded-lg bg-gradient-to-br ${kpi.color} flex items-center justify-center text-white shadow-lg`}>
-                <kpi.icon className="w-4.5 h-4.5" />
-              </div>
+      {/* AMS Signature Hero Band */}
+      <div className="relative overflow-hidden rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)] shadow-sm">
+        <div className="absolute inset-0 bg-gradient-to-r from-blue-500/10 via-blue-500/[0.03] to-transparent pointer-events-none" />
+        <div className="absolute -right-10 -top-16 w-56 h-56 rounded-full bg-blue-500/10 blur-3xl pointer-events-none" />
+        <div className="relative flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 px-5 py-4">
+          <div className="flex items-center gap-4">
+            <div className="relative h-14 w-14 shrink-0">
+              <div className="absolute inset-[6px] rotate-45 rounded-[12px] shadow-xl bg-gradient-to-br from-blue-500 to-indigo-700" />
+              <div className="absolute inset-0 flex items-center justify-center"><ShoppingBag className="w-6 h-6 text-white" /></div>
             </div>
-            <div className={`absolute -bottom-4 -right-4 w-24 h-24 rounded-full ${kpi.bg} opacity-50`} />
+            <div>
+              <div className="flex items-center gap-2.5">
+                <h1 className="text-2xl font-black tracking-tight text-[var(--color-text-strong)]">Sales Analytics</h1>
+                <span className="hidden sm:inline-flex items-center gap-1.5 rounded-full border border-blue-500/25 bg-blue-500/10 px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider text-blue-600 dark:text-blue-400">
+                  <span className="h-1.5 w-1.5 rounded-full bg-blue-500 animate-pulse" /> Live Ledger
+                </span>
+              </div>
+              <p className="text-xs text-[var(--color-text-muted)] mt-0.5">Revenue, collections, and customer concentration analysis</p>
+            </div>
           </div>
-        ))}
+        </div>
       </div>
+
+      <KpiGrid cols={4}>
+        <KpiCard icon={ShoppingBag} label="Total Sales" value={money(d.totalRevenue)} desc="Sum of all invoices" tone="teal" />
+        <KpiCard icon={ArrowUpRight} label="Collected" value={money(collected)} desc="Receipts received" tone="emerald" />
+        <KpiCard icon={ArrowDownRight} label="Outstanding" value={money(outstanding)} desc="Amount due on invoices" tone="rose" />
+        <KpiCard icon={PieChart} label="Invoices" value={d.invoices.length} desc="Total invoices issued" tone="blue" />
+      </KpiGrid>
       <div className="grid grid-cols-5 gap-4">
         <Card className="p-4 col-span-3 space-y-3">
           <p className="text-sm font-medium flex items-center gap-2"><BarChart3 className="h-4 w-4" /> Monthly Sales Revenue</p>
@@ -348,29 +366,35 @@ export function ExpenseAnalyticsView() {
 
   return (
     <div className="p-6 max-w-[1400px] mx-auto space-y-4">
-      <PageHeader title="Expense Analytics" description="Spend analysis by category and department" />
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        {[
-          { label: 'Total Expenses', value: money(d.totalExpenses), desc: 'All claims and field costs', icon: TrendingDown, color: 'from-red-400 to-red-600', bg: 'bg-red-50 dark:bg-red-950/30', textColor: 'text-red-600 dark:text-red-400' },
-          { label: 'Paid Claims', value: paidClaims, desc: 'Claims approved and paid', icon: FileCheck, color: 'from-teal-400 to-teal-600', bg: 'bg-teal-50 dark:bg-teal-950/30', textColor: 'text-teal-600 dark:text-teal-400' },
-          { label: 'Pending Claims', value: pendingClaims, desc: 'Awaiting review or approval', icon: Clock3, color: 'from-amber-400 to-amber-600', bg: 'bg-amber-50 dark:bg-amber-950/30', textColor: 'text-amber-600 dark:text-amber-400' },
-          { label: 'Avg Claim Size', value: money(d.claims.length ? (d.claims.reduce((s, c) => s + (c.totalAmount || 0), 0) / d.claims.length) : 0), desc: 'Mean claim amount', icon: Wallet, color: 'from-blue-400 to-blue-600', bg: 'bg-blue-50 dark:bg-blue-950/30', textColor: 'text-blue-600 dark:text-blue-400' },
-        ].map((kpi) => (
-          <div key={kpi.label} className="relative overflow-hidden rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)] p-3 shadow-sm hover:shadow-md transition-shadow">
-            <div className="flex items-start justify-between">
-              <div>
-                <p className="text-xs font-semibold text-[var(--color-text-muted)] uppercase tracking-wider">{kpi.label}</p>
-                <p className={`text-lg font-semibold mt-1 ${kpi.textColor}`}>{kpi.value}</p>
-                <p className="text-xs text-[var(--color-text-muted)] mt-1">{kpi.desc}</p>
-              </div>
-              <div className={`w-9 h-9 rounded-lg bg-gradient-to-br ${kpi.color} flex items-center justify-center text-white shadow-lg`}>
-                <kpi.icon className="w-4.5 h-4.5" />
-              </div>
+      {/* AMS Signature Hero Band */}
+      <div className="relative overflow-hidden rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)] shadow-sm">
+        <div className="absolute inset-0 bg-gradient-to-r from-red-500/10 via-red-500/[0.03] to-transparent pointer-events-none" />
+        <div className="absolute -right-10 -top-16 w-56 h-56 rounded-full bg-red-500/10 blur-3xl pointer-events-none" />
+        <div className="relative flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 px-5 py-4">
+          <div className="flex items-center gap-4">
+            <div className="relative h-14 w-14 shrink-0">
+              <div className="absolute inset-[6px] rotate-45 rounded-[12px] shadow-xl bg-gradient-to-br from-red-500 to-rose-700" />
+              <div className="absolute inset-0 flex items-center justify-center"><TrendingDown className="w-6 h-6 text-white" /></div>
             </div>
-            <div className={`absolute -bottom-4 -right-4 w-24 h-24 rounded-full ${kpi.bg} opacity-50`} />
+            <div>
+              <div className="flex items-center gap-2.5">
+                <h1 className="text-2xl font-black tracking-tight text-[var(--color-text-strong)]">Expense Analytics</h1>
+                <span className="hidden sm:inline-flex items-center gap-1.5 rounded-full border border-red-500/25 bg-red-500/10 px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider text-red-600 dark:text-red-400">
+                  <span className="h-1.5 w-1.5 rounded-full bg-red-500 animate-pulse" /> Live Ledger
+                </span>
+              </div>
+              <p className="text-xs text-[var(--color-text-muted)] mt-0.5">Spend analysis by category and department</p>
+            </div>
           </div>
-        ))}
+        </div>
       </div>
+
+      <KpiGrid cols={4}>
+        <KpiCard icon={TrendingDown} label="Total Expenses" value={money(d.totalExpenses)} desc="All claims and field costs" tone="rose" />
+        <KpiCard icon={FileCheck} label="Paid Claims" value={paidClaims} desc="Claims approved and paid" tone="emerald" />
+        <KpiCard icon={Clock3} label="Pending Claims" value={pendingClaims} desc="Awaiting review or approval" tone="amber" />
+        <KpiCard icon={Wallet} label="Avg Claim Size" value={money(d.claims.length ? (d.claims.reduce((s, c) => s + (c.totalAmount || 0), 0) / d.claims.length) : 0)} desc="Mean claim amount" tone="blue" />
+      </KpiGrid>
       <div className="grid grid-cols-5 gap-4">
         <Card className="p-4 col-span-2 space-y-3">
           <p className="text-sm font-medium flex items-center gap-2"><PieChart className="h-4 w-4" /> Spend by Category</p>
@@ -409,29 +433,35 @@ export function CashFlowAnalyticsView() {
 
   return (
     <div className="p-6 max-w-[1400px] mx-auto space-y-4">
-      <PageHeader title="Cash Flow Analytics" description="Cash movements across bank and cash accounts" />
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        {[
-          { label: 'Cash & Equivalents', value: money(d.cashBalances), desc: 'Bank and cash balances', icon: Wallet, color: 'from-teal-400 to-teal-600', bg: 'bg-teal-50 dark:bg-teal-950/30', textColor: 'text-teal-600 dark:text-teal-400' },
-          { label: 'Inflows', value: money(inflow), desc: 'Total cash received', icon: ArrowUpRight, color: 'from-green-400 to-green-600', bg: 'bg-green-50 dark:bg-green-950/30', textColor: 'text-green-600 dark:text-green-400' },
-          { label: 'Outflows', value: money(outflow), desc: 'Total cash spent', icon: ArrowDownRight, color: 'from-red-400 to-red-600', bg: 'bg-red-50 dark:bg-red-950/30', textColor: 'text-red-600 dark:text-red-400' },
-          { label: 'Net Movement', value: money(inflow - outflow), desc: 'Inflow minus outflow', icon: Activity, color: 'from-blue-400 to-blue-600', bg: 'bg-blue-50 dark:bg-blue-950/30', textColor: 'text-blue-600 dark:text-blue-400' },
-        ].map((kpi) => (
-          <div key={kpi.label} className="relative overflow-hidden rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)] p-3 shadow-sm hover:shadow-md transition-shadow">
-            <div className="flex items-start justify-between">
-              <div>
-                <p className="text-xs font-semibold text-[var(--color-text-muted)] uppercase tracking-wider">{kpi.label}</p>
-                <p className={`text-lg font-semibold mt-1 ${kpi.textColor}`}>{kpi.value}</p>
-                <p className="text-xs text-[var(--color-text-muted)] mt-1">{kpi.desc}</p>
-              </div>
-              <div className={`w-9 h-9 rounded-lg bg-gradient-to-br ${kpi.color} flex items-center justify-center text-white shadow-lg`}>
-                <kpi.icon className="w-4.5 h-4.5" />
-              </div>
+      {/* AMS Signature Hero Band */}
+      <div className="relative overflow-hidden rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)] shadow-sm">
+        <div className="absolute inset-0 bg-gradient-to-r from-blue-500/10 via-blue-500/[0.03] to-transparent pointer-events-none" />
+        <div className="absolute -right-10 -top-16 w-56 h-56 rounded-full bg-blue-500/10 blur-3xl pointer-events-none" />
+        <div className="relative flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 px-5 py-4">
+          <div className="flex items-center gap-4">
+            <div className="relative h-14 w-14 shrink-0">
+              <div className="absolute inset-[6px] rotate-45 rounded-[12px] shadow-xl bg-gradient-to-br from-blue-500 to-indigo-700" />
+              <div className="absolute inset-0 flex items-center justify-center"><Wallet className="w-6 h-6 text-white" /></div>
             </div>
-            <div className={`absolute -bottom-4 -right-4 w-24 h-24 rounded-full ${kpi.bg} opacity-50`} />
+            <div>
+              <div className="flex items-center gap-2.5">
+                <h1 className="text-2xl font-black tracking-tight text-[var(--color-text-strong)]">Cash Flow Analytics</h1>
+                <span className="hidden sm:inline-flex items-center gap-1.5 rounded-full border border-blue-500/25 bg-blue-500/10 px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider text-blue-600 dark:text-blue-400">
+                  <span className="h-1.5 w-1.5 rounded-full bg-blue-500 animate-pulse" /> Live Ledger
+                </span>
+              </div>
+              <p className="text-xs text-[var(--color-text-muted)] mt-0.5">Cash movements across bank and cash accounts</p>
+            </div>
           </div>
-        ))}
+        </div>
       </div>
+
+      <KpiGrid cols={4}>
+        <KpiCard icon={Wallet} label="Cash & Equivalents" value={money(d.cashBalances)} desc="Bank and cash balances" tone="blue" />
+        <KpiCard icon={ArrowUpRight} label="Inflows" value={money(inflow)} desc="Total cash received" tone="emerald" />
+        <KpiCard icon={ArrowDownRight} label="Outflows" value={money(outflow)} desc="Total cash spent" tone="rose" />
+        <KpiCard icon={Activity} label="Net Movement" value={money(inflow - outflow)} desc="Inflow minus outflow" tone="purple" />
+      </KpiGrid>
       <div className="grid grid-cols-5 gap-4">
         <Card className="p-4 col-span-3 space-y-3">
           <p className="text-sm font-medium flex items-center gap-2"><LineChart className="h-4 w-4" /> Monthly Cash Flow</p>
@@ -473,29 +503,35 @@ export function InventoryAnalyticsView() {
 
   return (
     <div className="p-6 max-w-[1400px] mx-auto space-y-4">
-      <PageHeader title="Inventory Analytics" description="Stock valuation, availability, and fixed asset position" />
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        {[
-          { label: 'Inventory Value', value: money(d.inventoryValue), desc: 'On-hand stock value', icon: Boxes, color: 'from-teal-400 to-teal-600', bg: 'bg-teal-50 dark:bg-teal-950/30', textColor: 'text-teal-600 dark:text-teal-400' },
-          { label: 'Units on Hand', value: totalUnits, desc: 'Total stock quantity', icon: Target, color: 'from-blue-400 to-blue-600', bg: 'bg-blue-50 dark:bg-blue-950/30', textColor: 'text-blue-600 dark:text-blue-400' },
-          { label: 'Low Stock Items', value: d.lowStock, desc: 'Below reorder point', icon: AlertTriangle, color: 'from-amber-400 to-amber-600', bg: 'bg-amber-50 dark:bg-amber-950/30', textColor: 'text-amber-600 dark:text-amber-400' },
-          { label: 'Fixed Assets (NBV)', value: money(assetValue), desc: 'Net book value of assets', icon: Scale, color: 'from-violet-400 to-violet-600', bg: 'bg-violet-50 dark:bg-violet-950/30', textColor: 'text-violet-600 dark:text-violet-400' },
-        ].map((kpi) => (
-          <div key={kpi.label} className="relative overflow-hidden rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)] p-3 shadow-sm hover:shadow-md transition-shadow">
-            <div className="flex items-start justify-between">
-              <div>
-                <p className="text-xs font-semibold text-[var(--color-text-muted)] uppercase tracking-wider">{kpi.label}</p>
-                <p className={`text-lg font-semibold mt-1 ${kpi.textColor}`}>{kpi.value}</p>
-                <p className="text-xs text-[var(--color-text-muted)] mt-1">{kpi.desc}</p>
-              </div>
-              <div className={`w-9 h-9 rounded-lg bg-gradient-to-br ${kpi.color} flex items-center justify-center text-white shadow-lg`}>
-                <kpi.icon className="w-4.5 h-4.5" />
-              </div>
+      {/* AMS Signature Hero Band */}
+      <div className="relative overflow-hidden rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)] shadow-sm">
+        <div className="absolute inset-0 bg-gradient-to-r from-teal-500/10 via-teal-500/[0.03] to-transparent pointer-events-none" />
+        <div className="absolute -right-10 -top-16 w-56 h-56 rounded-full bg-teal-500/10 blur-3xl pointer-events-none" />
+        <div className="relative flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 px-5 py-4">
+          <div className="flex items-center gap-4">
+            <div className="relative h-14 w-14 shrink-0">
+              <div className="absolute inset-[6px] rotate-45 rounded-[12px] shadow-xl bg-gradient-to-br from-teal-500 to-emerald-700" />
+              <div className="absolute inset-0 flex items-center justify-center"><Boxes className="w-6 h-6 text-white" /></div>
             </div>
-            <div className={`absolute -bottom-4 -right-4 w-24 h-24 rounded-full ${kpi.bg} opacity-50`} />
+            <div>
+              <div className="flex items-center gap-2.5">
+                <h1 className="text-2xl font-black tracking-tight text-[var(--color-text-strong)]">Inventory Analytics</h1>
+                <span className="hidden sm:inline-flex items-center gap-1.5 rounded-full border border-teal-500/25 bg-teal-500/10 px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider text-teal-600 dark:text-teal-400">
+                  <span className="h-1.5 w-1.5 rounded-full bg-teal-500 animate-pulse" /> Live Ledger
+                </span>
+              </div>
+              <p className="text-xs text-[var(--color-text-muted)] mt-0.5">Stock valuation, availability, and fixed asset position</p>
+            </div>
           </div>
-        ))}
+        </div>
       </div>
+
+      <KpiGrid cols={4}>
+        <KpiCard icon={Boxes} label="Inventory Value" value={money(d.inventoryValue)} desc="On-hand stock value" tone="teal" />
+        <KpiCard icon={Target} label="Units on Hand" value={totalUnits} desc="Total stock quantity" tone="blue" />
+        <KpiCard icon={AlertTriangle} label="Low Stock Items" value={d.lowStock} desc="Below reorder point" tone="amber" />
+        <KpiCard icon={Scale} label="Fixed Assets (NBV)" value={money(assetValue)} desc="Net book value of assets" tone="purple" />
+      </KpiGrid>
       <div className="grid grid-cols-5 gap-4">
         <Card className="p-4 col-span-3 space-y-3">
           <p className="text-sm font-medium flex items-center gap-2"><Boxes className="h-4 w-4" /> Stock Level & Reorder Points</p>
@@ -546,7 +582,8 @@ export function ForecastingView() {
     const sumY = series.reduce((s, y) => s + y, 0);
     const sumXY = series.reduce((s, y, i) => s + i * y, 0);
     const sumX2 = series.reduce((s, _, i) => s + i * i, 0);
-    const slope = (n * sumXY - sumX * sumY) / (n * sumX2 - sumX * sumX);
+    const denominator = n * sumX2 - sumX * sumX;
+    const slope = denominator !== 0 ? (n * sumXY - sumX * sumY) / denominator : 0;
     const intercept = (sumY - slope * sumX) / n;
     const last = d.monthly[d.monthly.length - 1];
     const [y0, m0] = last.month.split(' ');
@@ -565,42 +602,45 @@ export function ForecastingView() {
 
   return (
     <div className="p-6 max-w-[1400px] mx-auto space-y-4">
-      <PageHeader
-        title="Forecasting"
-        description="Linear trend projection of revenue and expenses"
-        actions={
-          <Select value={horizon} onValueChange={v => setHorizon(v || '3')}>
-            <SelectTrigger className="w-[140px]"><SelectValue placeholder="Horizon" /></SelectTrigger>
-            <SelectContent>
-              <SelectItem value="3">3 months</SelectItem>
-              <SelectItem value="6">6 months</SelectItem>
-              <SelectItem value="12">12 months</SelectItem>
-            </SelectContent>
-          </Select>
-        }
-      />
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        {[
-          { label: 'Forecast Horizon', value: `${horizon} mo`, desc: 'Projection period', icon: Target, color: 'from-teal-400 to-teal-600', bg: 'bg-teal-50 dark:bg-teal-950/30', textColor: 'text-teal-600 dark:text-teal-400' },
-          { label: 'Projected Revenue', value: money(projectedRevenue), desc: 'Trend-based forecast', icon: TrendingUp, color: 'from-green-400 to-green-600', bg: 'bg-green-50 dark:bg-green-950/30', textColor: 'text-green-600 dark:text-green-400' },
-          { label: 'Projected Expenses', value: money(forecast.filter(f => (f as any).forecast).reduce((s, f) => s + f.expenses, 0)), desc: 'Trend-based forecast', icon: TrendingDown, color: 'from-red-400 to-red-600', bg: 'bg-red-50 dark:bg-red-950/30', textColor: 'text-red-600 dark:text-red-400' },
-          { label: 'Data Points', value: d.monthly.length, desc: 'Months of data available', icon: Lightbulb, color: 'from-blue-400 to-blue-600', bg: 'bg-blue-50 dark:bg-blue-950/30', textColor: 'text-blue-600 dark:text-blue-400' },
-        ].map((kpi) => (
-          <div key={kpi.label} className="relative overflow-hidden rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)] p-3 shadow-sm hover:shadow-md transition-shadow">
-            <div className="flex items-start justify-between">
-              <div>
-                <p className="text-xs font-semibold text-[var(--color-text-muted)] uppercase tracking-wider">{kpi.label}</p>
-                <p className={`text-lg font-semibold mt-1 ${kpi.textColor}`}>{kpi.value}</p>
-                <p className="text-xs text-[var(--color-text-muted)] mt-1">{kpi.desc}</p>
-              </div>
-              <div className={`w-9 h-9 rounded-lg bg-gradient-to-br ${kpi.color} flex items-center justify-center text-white shadow-lg`}>
-                <kpi.icon className="w-4.5 h-4.5" />
-              </div>
+      {/* AMS Signature Hero Band */}
+      <div className="relative overflow-hidden rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)] shadow-sm">
+        <div className="absolute inset-0 bg-gradient-to-r from-blue-500/10 via-blue-500/[0.03] to-transparent pointer-events-none" />
+        <div className="absolute -right-10 -top-16 w-56 h-56 rounded-full bg-blue-500/10 blur-3xl pointer-events-none" />
+        <div className="relative flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 px-5 py-4">
+          <div className="flex items-center gap-4">
+            <div className="relative h-14 w-14 shrink-0">
+              <div className="absolute inset-[6px] rotate-45 rounded-[12px] shadow-xl bg-gradient-to-br from-blue-400 to-indigo-700" />
+              <div className="absolute inset-0 flex items-center justify-center"><LineChart className="w-6 h-6 text-white" /></div>
             </div>
-            <div className={`absolute -bottom-4 -right-4 w-24 h-24 rounded-full ${kpi.bg} opacity-50`} />
+            <div>
+              <div className="flex items-center gap-2.5">
+                <h1 className="text-2xl font-black tracking-tight text-[var(--color-text-strong)]">Forecasting</h1>
+                <span className="hidden sm:inline-flex items-center gap-1.5 rounded-full border border-blue-500/25 bg-blue-500/10 px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider text-blue-600 dark:text-blue-400">
+                  <span className="h-1.5 w-1.5 rounded-full bg-blue-500 animate-pulse" /> Live Ledger
+                </span>
+              </div>
+              <p className="text-xs text-[var(--color-text-muted)] mt-0.5">Linear trend projection of revenue and expenses</p>
+            </div>
           </div>
-        ))}
+          <div className="flex items-center gap-2 shrink-0">
+            <Select value={horizon} onValueChange={v => setHorizon(v || '3')}>
+              <SelectTrigger className="w-[140px]"><SelectValue placeholder="Horizon" /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="3">3 months</SelectItem>
+                <SelectItem value="6">6 months</SelectItem>
+                <SelectItem value="12">12 months</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+        </div>
       </div>
+
+      <KpiGrid cols={4}>
+        <KpiCard icon={Target} label="Forecast Horizon" value={`${horizon} mo`} desc="Projection period" tone="teal" />
+        <KpiCard icon={TrendingUp} label="Projected Revenue" value={money(projectedRevenue)} desc="Trend-based forecast" tone="emerald" />
+        <KpiCard icon={TrendingDown} label="Projected Expenses" value={money(forecast.filter(f => (f as any).forecast).reduce((s, f) => s + f.expenses, 0))} desc="Trend-based forecast" tone="rose" />
+        <KpiCard icon={Lightbulb} label="Data Points" value={d.monthly.length} desc="Months of data available" tone="blue" />
+      </KpiGrid>
       <Card className="p-4 space-y-3">
         <p className="text-sm font-medium flex items-center gap-2"><LineChart className="h-4 w-4" /> Revenue Forecast (Linear Trend)</p>
         <ResponsiveContainer width="100%" height={300}>
@@ -661,7 +701,28 @@ export function AIInsightsView() {
 
   return (
     <div className="p-6 max-w-[1400px] mx-auto space-y-4">
-      <PageHeader title="AI Insights" description="Automated, rule-based business intelligence generated from live data" />
+      <div className="relative overflow-hidden rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)] shadow-sm">
+        <div className="absolute inset-0 bg-gradient-to-r from-violet-500/10 via-violet-500/[0.03] to-transparent pointer-events-none" />
+        <div className="absolute -right-10 -top-16 w-56 h-56 rounded-full bg-violet-500/10 blur-3xl pointer-events-none" />
+        <div className="relative flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 px-5 py-4">
+          <div className="flex items-center gap-4">
+            <div className="relative h-14 w-14 shrink-0">
+              <div className="absolute inset-[6px] rotate-45 rounded-[12px] shadow-xl bg-gradient-to-br from-violet-400 to-indigo-700" />
+              <div className="absolute inset-0 flex items-center justify-center"><Sparkles className="w-6 h-6 text-white" /></div>
+            </div>
+            <div>
+              <div className="flex items-center gap-2.5">
+                <h1 className="text-2xl font-black tracking-tight text-[var(--color-text-strong)]">AI Insights</h1>
+                <span className="hidden sm:inline-flex items-center gap-1.5 rounded-full border border-violet-500/25 bg-violet-500/10 px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider text-violet-600 dark:text-violet-400">
+                  <span className="h-1.5 w-1.5 rounded-full bg-violet-500 animate-pulse" /> Live Ledger
+                </span>
+              </div>
+              <p className="text-xs text-[var(--color-text-muted)] mt-0.5">Automated, rule-based business intelligence generated from live data</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         {[
           { label: 'Insights Generated', value: insights.length, desc: 'Total AI findings', icon: Sparkles, color: 'from-violet-400 to-violet-600', bg: 'bg-violet-50 dark:bg-violet-950/30', textColor: 'text-violet-600 dark:text-violet-400' },

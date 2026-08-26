@@ -6,7 +6,7 @@ import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@/components/ui/select';
 import { FormField } from '@/components/ui/form-field';
-import { PageHeader } from '@/components/ui/page-header';
+
 import { KpiCard, KpiGrid } from '@/components/ui/kpi-card';
 import { Plus, ClipboardList, CalendarCheck2, ShieldCheck, Wrench, ReceiptText, Save, CheckCircle2, AlertTriangle, TrendingUp, FileBarChart, Clock3, Wallet } from 'lucide-react';
 import { StatusChip } from './components/ui/status-chip';
@@ -612,7 +612,7 @@ export function FieldExpensesView({ activeEntityId }: { activeEntityId?: string 
           </div>
         </div>
       </div>
-    </div>
+
       <KpiGrid cols={4}>
         <KpiCard icon={ReceiptText} label="Total Expenses" value={expenses.length} desc="All time expenses" tone="teal" />
         <KpiCard icon={Wallet} label="Total Amount" value={money(total)} desc="Combined expenses" tone="blue" />
@@ -700,7 +700,7 @@ export function FieldReportsView() {
           </div>
         </div>
       </div>
-    </div>
+
       <KpiGrid cols={4}>
         <KpiCard icon={ClipboardList} label="Total Surveys" value={surveys.length} desc="All time surveys" tone="teal" />
         <KpiCard icon={CalendarCheck2} label="Total Visits" value={visits.length} desc="All time visits" tone="blue" />
