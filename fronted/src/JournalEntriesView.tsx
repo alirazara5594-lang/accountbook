@@ -87,9 +87,32 @@ export const JournalEntriesView: React.FC<JournalEntriesViewProps> = ({ accounts
     }
   };
 
-  // Open Creation Modal
+  const [draftRestored, setDraftRestored] = useState(false);
+
+  // Auto-Save Draft to LocalStorage
+  useEffect(() => {
+    if (isModalOpen && form.lines.some(l => l.accountId || l.debit || l.credit || l.memo || form.description)) {
+      localStorage.setItem('ams_journal_draft', JSON.stringify(form));
+    }
+  }, [form, isModalOpen]);
+
+  // Open Creation Modal (Restores saved draft if available)
   const openNewEntryModal = () => {
     setError('');
+    setDraftRestored(false);
+    try {
+      const savedDraft = localStorage.getItem('ams_journal_draft');
+      if (savedDraft) {
+        const parsed = JSON.parse(savedDraft);
+        if (parsed && Array.isArray(parsed.lines) && parsed.lines.length >= 2) {
+          setForm(parsed);
+          setDraftRestored(true);
+          setIsModalOpen(true);
+          return;
+        }
+      }
+    } catch {}
+
     setForm({
       date: new Date().toISOString().slice(0, 10),
       reference: `JE-${new Date().getFullYear()}-${String(Math.floor(1000 + Math.random() * 9000))}`,
@@ -101,6 +124,21 @@ export const JournalEntriesView: React.FC<JournalEntriesViewProps> = ({ accounts
       ],
     });
     setIsModalOpen(true);
+  };
+
+  const handleDiscardDraft = () => {
+    localStorage.removeItem('ams_journal_draft');
+    setDraftRestored(false);
+    setForm({
+      date: new Date().toISOString().slice(0, 10),
+      reference: `JE-${new Date().getFullYear()}-${String(Math.floor(1000 + Math.random() * 9000))}`,
+      description: '',
+      currency: 'PKR',
+      lines: [
+        { accountId: accounts[0]?.id || '', memo: '', debit: '', credit: '' },
+        { accountId: accounts[1]?.id || '', memo: '', debit: '', credit: '' },
+      ],
+    });
   };
 
   // Calculate live debit/credit totals
@@ -219,6 +257,7 @@ export const JournalEntriesView: React.FC<JournalEntriesViewProps> = ({ accounts
         await journalsApi.post(created.id, 'Posted directly to General Ledger');
       }
 
+      localStorage.removeItem('ams_journal_draft');
       setIsModalOpen(false);
       await refresh();
     } catch (err: any) {
@@ -703,6 +742,22 @@ export const JournalEntriesView: React.FC<JournalEntriesViewProps> = ({ accounts
 
             {/* Modal Body */}
             <form onSubmit={(e) => handleSaveEntry(e, 'post')} className="flex-1 overflow-y-auto p-6 space-y-5">
+              {draftRestored && (
+                <div className="p-3 bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800 rounded-xl text-amber-800 dark:text-amber-300 text-xs flex items-center justify-between animate-in fade-in">
+                  <div className="flex items-center gap-2">
+                    <Sparkles className="w-4 h-4 text-amber-600 shrink-0" />
+                    <span><b>Unsaved Draft Restored:</b> Resumed your previously typed journal entry.</span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={handleDiscardDraft}
+                    className="px-2.5 py-1 text-[11px] font-bold bg-amber-200/60 dark:bg-amber-900/60 hover:bg-amber-300 rounded-lg transition-colors cursor-pointer text-amber-900 dark:text-amber-200"
+                  >
+                    Discard Draft
+                  </button>
+                </div>
+              )}
+
               {error && (
                 <div className="p-3.5 bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-800 rounded-xl text-rose-700 dark:text-rose-300 text-xs font-semibold flex items-center justify-between">
                   <span>{error}</span>

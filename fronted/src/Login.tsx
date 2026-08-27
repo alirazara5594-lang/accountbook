@@ -4,6 +4,7 @@ import {
   ShieldCheck, Globe, Layers, Sparkles, CheckCircle2
 } from 'lucide-react';
 import AmsLogo from './components/AmsLogo';
+import { getLicenseInfo } from './licenseManager';
 import './Login.css';
 
 export interface UserData {
@@ -236,7 +237,13 @@ export function Login({ onLogin }: LoginProps) {
 
           <div className="brand-footer">
             <span className="live-indicator" />
-            <span>Operational · 90-Day Trial Active</span>
+            <span>
+              {(() => {
+                const lic = getLicenseInfo();
+                if (!lic.isTrial) return 'Operational · Enterprise Commercial Licensed';
+                return `Operational · ${lic.daysRemaining} Days Left in ${lic.title}`;
+              })()}
+            </span>
           </div>
         </div>
 

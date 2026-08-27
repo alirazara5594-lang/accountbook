@@ -7,6 +7,7 @@ import OnboardingWizard from './components/OnboardingWizard'
 import { AiAssistantDrawer } from './components/AiAssistantDrawer'
 import { LicenseModal } from './components/LicenseModal'
 import { FeedbackModal } from './components/FeedbackModal'
+import { ShortcutsModal } from './components/ShortcutsModal'
 import { ShieldAlert } from 'lucide-react'
 import { authApi } from './api/modules/auth.api'
 import Intercompany from './Intercompany'
@@ -133,6 +134,47 @@ export default function App() {
 
   const [licenseModalOpen, setLicenseModalOpen] = useState(false);
   const [feedbackModalOpen, setFeedbackModalOpen] = useState(false);
+  const [shortcutsModalOpen, setShortcutsModalOpen] = useState(false);
+
+  // Global Keyboard Shortcuts Listener
+  useEffect(() => {
+    const handleGlobalKeys = (e: KeyboardEvent) => {
+      // Don't trigger if user is actively typing in an input or textarea
+      const target = e.target as HTMLElement;
+      if (target && (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable)) {
+        if (e.key === 'Escape') {
+          target.blur();
+        }
+        return;
+      }
+
+      if ((e.metaKey || e.ctrlKey) && e.key === '/') {
+        e.preventDefault();
+        setShortcutsModalOpen(prev => !prev);
+      } else if (e.key === '?' && !e.metaKey && !e.ctrlKey) {
+        e.preventDefault();
+        setShortcutsModalOpen(prev => !prev);
+      } else if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'd') {
+        e.preventDefault();
+        setPage('Overview.Overview');
+      } else if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'j') {
+        e.preventDefault();
+        setPage('Accounting.Journal Entries');
+      } else if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'i') {
+        e.preventDefault();
+        setPage('Sales & Customers.Sales Invoices');
+      } else if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'b') {
+        e.preventDefault();
+        setPage('Procurement.Bills');
+      } else if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'l') {
+        e.preventDefault();
+        setLicenseModalOpen(true);
+      }
+    };
+
+    window.addEventListener('keydown', handleGlobalKeys);
+    return () => window.removeEventListener('keydown', handleGlobalKeys);
+  }, []);
 
   const [currentUser, setCurrentUser] = useState<UserData | null>(() => {
     try {
@@ -638,6 +680,7 @@ export default function App() {
       <AiAssistantDrawer activePage={page} onNavigate={setPage} onOpenFeedback={() => setFeedbackModalOpen(true)} />
       <LicenseModal isOpen={licenseModalOpen} onClose={() => setLicenseModalOpen(false)} notify={notify} />
       <FeedbackModal isOpen={feedbackModalOpen} onClose={() => setFeedbackModalOpen(false)} activePage={page} notify={notify} />
+      <ShortcutsModal isOpen={shortcutsModalOpen} onClose={() => setShortcutsModalOpen(false)} onNavigate={setPage} />
     </div>
   );
 }
