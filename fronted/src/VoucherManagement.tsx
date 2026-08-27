@@ -833,7 +833,7 @@ export const VoucherManagement: React.FC<VoucherManagementProps> = ({ activeEnti
       {isModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs p-3 md:p-6 overflow-y-auto" onClick={() => setIsModalOpen(false)}>
           <div
-            className="bg-[var(--color-surface)] border border-[var(--color-border)] rounded-2xl shadow-2xl w-full max-w-4xl overflow-hidden flex flex-col my-auto max-h-[92vh] transition-all animate-in fade-in zoom-in-95 duration-200"
+            className="bg-[var(--color-surface)] border border-[var(--color-border)] rounded-2xl shadow-2xl w-full max-w-5xl overflow-hidden flex flex-col my-auto max-h-[92vh] transition-all animate-in fade-in zoom-in-95 duration-200"
             onClick={(e) => e.stopPropagation()}
           >
             {/* Modal Header */}

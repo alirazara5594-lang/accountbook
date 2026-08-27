@@ -587,8 +587,8 @@ export const SalesOrdersWorkspace: React.FC<{ activeEntityId: string; entities?:
                           <th className="p-2.5 text-left">Description</th>
                           <th className="p-2.5 text-right w-16">Qty</th>
                           <th className="p-2.5 text-right w-24">Price (Rs)</th>
-                          <th className="p-2.5 text-right w-20">Disc (Rs)</th>
-                          <th className="p-2.5 text-right w-20">Tax (Rs)</th>
+                          <th className="p-2.5 text-right w-28">Disc (Rs)</th>
+                          <th className="p-2.5 text-right w-28">Tax (Rs)</th>
                           <th className="p-2.5 text-right w-24">Total</th>
                           <th className="p-2.5 w-8"></th>
                         </tr>

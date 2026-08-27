@@ -849,7 +849,7 @@ export const SalesWorkspace: React.FC<{ activeEntityId: string; entities?: any[]
       {/* Tabbed / Stepped Invoice Creation Modal */}
       {showForm && (
         <div className="overlay animate-in fade-in duration-200">
-          <div className="w-full max-w-4xl bg-[var(--color-surface)] border border-[var(--color-border)] rounded-2xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh]">
+          <div className="w-full max-w-5xl bg-[var(--color-surface)] border border-[var(--color-border)] rounded-2xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh]">
             {/* Modal Header */}
             <div className="px-6 py-4 border-b border-[var(--color-border)] flex items-center justify-between">
               <div className="flex items-center gap-3">
@@ -1006,7 +1006,7 @@ export const SalesWorkspace: React.FC<{ activeEntityId: string; entities?: any[]
                           <th className="p-2.5 text-left">Description</th>
                           <th className="p-2.5 text-right w-16">Qty</th>
                           <th className="p-2.5 text-right w-24">Price</th>
-                          <th className="p-2.5 text-center w-28">Discount</th>
+                          <th className="p-2.5 text-center w-36">Discount</th>
                           <th className="p-2.5 text-right w-16">Tax %</th>
                           <th className="p-2.5 text-right w-24">Total</th>
                           <th className="p-2.5 w-8"></th>

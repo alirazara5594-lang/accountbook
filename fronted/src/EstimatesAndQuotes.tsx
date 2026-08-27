@@ -558,7 +558,7 @@ export const EstimatesAndQuotes: React.FC<{ activeEntityId: string; entities?: a
                           <th className="p-2.5 text-left">Description</th>
                           <th className="p-2.5 text-right w-16">Qty</th>
                           <th className="p-2.5 text-right w-24">Price</th>
-                          <th className="p-2.5 text-center w-28">Discount</th>
+                          <th className="p-2.5 text-center w-36">Discount</th>
                           <th className="p-2.5 text-right w-16">Tax %</th>
                           <th className="p-2.5 text-right w-28">Total</th>
                           <th className="p-2.5 w-8"></th>
@@ -690,7 +690,7 @@ export const EstimatesAndQuotes: React.FC<{ activeEntityId: string; entities?: a
         const net = sub - disc + tax; const fmt = (n: number) => `${est.currencyCode || 'PKR'} ${n.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
         return (
           <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm" onClick={() => setViewingEstimate(null)}>
-            <div className="w-full max-w-4xl bg-[var(--color-surface)] border border-[var(--color-border)] rounded-2xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh]" onClick={e => e.stopPropagation()}>
+            <div className="w-full max-w-5xl bg-[var(--color-surface)] border border-[var(--color-border)] rounded-2xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh]" onClick={e => e.stopPropagation()}>
               <div className="px-6 py-4 border-b border-[var(--color-border)] flex items-center justify-between">
                 <div className="flex items-center gap-3">
                   <div className="w-11 h-11 rounded-xl bg-gradient-to-br from-sky-500 to-indigo-600 flex items-center justify-center text-white"><Eye className="w-5 h-5" /></div>
@@ -770,7 +770,7 @@ function ConvertToInvoiceModal({ estimate, products, onConfirm, onClose }: { est
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm" onClick={onClose}>
-      <div className="w-full max-w-4xl bg-[var(--color-surface)] border border-[var(--color-border)] rounded-2xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh]" onClick={e => e.stopPropagation()}>
+      <div className="w-full max-w-5xl bg-[var(--color-surface)] border border-[var(--color-border)] rounded-2xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh]" onClick={e => e.stopPropagation()}>
         <div className="px-6 py-4 border-b border-[var(--color-border)] flex items-center justify-between">
           <div className="flex items-center gap-3">
             <div className="w-11 h-11 rounded-xl bg-gradient-to-br from-emerald-500 to-teal-600 flex items-center justify-center text-white"><ArrowRight className="w-5 h-5" /></div>
@@ -786,7 +786,7 @@ function ConvertToInvoiceModal({ estimate, products, onConfirm, onClose }: { est
           <div className="rounded-xl border border-[var(--color-border)] overflow-hidden">
             <table className="w-full text-xs">
               <thead className="bg-[var(--color-surface-muted)] border-b border-[var(--color-border)]"><tr>
-                <th className="p-2.5 text-left">Description</th><th className="p-2.5 text-right w-16">Qty</th><th className="p-2.5 text-right w-24">Price</th><th className="p-2.5 text-right w-24">Discount</th><th className="p-2.5 text-right w-24">Tax</th><th className="p-2.5 text-right w-28">Total</th><th className="p-2.5 w-8"></th>
+                <th className="p-2.5 text-left">Description</th><th className="p-2.5 text-right w-16">Qty</th><th className="p-2.5 text-right w-24">Price</th><th className="p-2.5 text-right w-32">Discount</th><th className="p-2.5 text-right w-24">Tax</th><th className="p-2.5 text-right w-28">Total</th><th className="p-2.5 w-8"></th>
               </tr></thead>
               <tbody className="divide-y divide-[var(--color-border)]">
                 {invLines.map((l: any, i: number) => (
