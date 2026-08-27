@@ -117,7 +117,7 @@ export default function SalarySlipsView() {
   }, [dynamicSlips, query]);
 
   const activeEntity = entities[0] || {
-    name: 'AccountBook Enterprise Global Corp',
+    name: 'AMS Global Enterprise Corp',
     taxId: 'TAX-GLOBAL-99882',
     address: '100 Financial District Boulevard',
     city: 'London / New York / Dubai',
@@ -144,7 +144,7 @@ export default function SalarySlipsView() {
     doc.setTextColor(255, 255, 255);
     doc.setFontSize(14);
     doc.setFont('helvetica', 'bold');
-    doc.text(String(activeEntity.name || 'ACCOUNTBOOK ENTERPRISE CORP').toUpperCase(), 14, 12);
+    doc.text(String(activeEntity.name || 'AMS ENTERPRISE CORP').toUpperCase(), 14, 12);
 
     doc.setFontSize(8);
     doc.setFont('helvetica', 'normal');
@@ -460,11 +460,11 @@ export default function SalarySlipsView() {
               <div className="flex flex-col sm:flex-row justify-between items-start pb-6 border-b-2 border-teal-600 gap-4">
                 <div>
                   <div className="flex items-center gap-2">
-                    <div className="w-9 h-9 rounded-xl bg-teal-600 text-white flex items-center justify-center font-black text-sm">
-                      AB
+                    <div className="w-9 h-9 rounded-xl bg-teal-600 text-white flex items-center justify-center font-black text-xs">
+                      AMS
                     </div>
                     <div>
-                      <h2 className="text-base font-black tracking-tight text-slate-900 dark:text-white uppercase">{activeEntity.name || 'AccountBook Enterprise Global Corp'}</h2>
+                      <h2 className="text-base font-black tracking-tight text-slate-900 dark:text-white uppercase">{activeEntity.name || 'AMS Global Enterprise Corp'}</h2>
                       <p className="text-[11px] text-slate-500 dark:text-slate-400">{(activeEntity as any).address || '100 Financial District Boulevard'} · Tax ID: {(activeEntity as any).taxId || 'TAX-GL-8829'}</p>
                     </div>
                   </div>

@@ -419,7 +419,7 @@ export const VoucherManagement: React.FC<VoucherManagementProps> = ({ activeEnti
     const pageHeight = doc.internal.pageSize.getHeight();
     doc.setTextColor(...grayColor);
     doc.setFontSize(7);
-    doc.text('Official Financial Voucher. Generated from AccountBook General Ledger & Voucher Module.', margin, pageHeight - 8);
+    doc.text('Official Financial Voucher. Generated from AMS General Ledger & Voucher Module.', margin, pageHeight - 8);
 
     const safeNum = (v.voucherNumber || 'Voucher').replace(/[^a-zA-Z0-9_-]/g, '_');
     doc.save(`Voucher_${v.voucherType}_${safeNum}.pdf`);

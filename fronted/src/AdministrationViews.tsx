@@ -453,7 +453,7 @@ export function UsersView({ activeEntityId, notify }: { activeEntityId?: string;
   const handleExportPDF = () => {
     const doc = new jsPDF('landscape');
     doc.setFontSize(14);
-    doc.text('AccountBook ERP — System Users & Operator Directory', 14, 15);
+    doc.text('AMS ERP — System Users & Operator Directory', 14, 15);
     doc.setFontSize(9);
     doc.setTextColor(100);
     doc.text(`Generated on: ${new Date().toLocaleString()} | Filter: ${roleFilter} Role, ${statusFilter} Status`, 14, 21);

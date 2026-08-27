@@ -405,7 +405,7 @@ export function ProjectsListView({ activeEntityId }: { activeEntityId?: string }
   const handleExportPDF = () => {
     const doc = new jsPDF('landscape');
     doc.setFontSize(14);
-    doc.text('AccountBook ERP — Master Project Portfolio Directory', 14, 15);
+    doc.text('AMS ERP — Master Project Portfolio Directory', 14, 15);
     doc.setFontSize(9);
     doc.setTextColor(100);
     doc.text(`Generated on: ${new Date().toLocaleString()} | Filter: ${statusFilter} Status`, 14, 21);
@@ -2327,7 +2327,7 @@ export function ProjectsReportsView({ activeEntityId: _activeEntityId }: { activ
   const handleDownloadPortfolioStatement = () => {
     const doc = new jsPDF('landscape');
     doc.setFontSize(14);
-    doc.text('AccountBook ERP — Executive Project Portfolio & Performance Audit Statement', 14, 15);
+    doc.text('AMS ERP — Executive Project Portfolio & Performance Audit Statement', 14, 15);
     doc.setFontSize(9);
     doc.setTextColor(100);
     doc.text(`Generated: ${new Date().toLocaleString()} | IFRS 15 & EVM Compliant`, 14, 21);

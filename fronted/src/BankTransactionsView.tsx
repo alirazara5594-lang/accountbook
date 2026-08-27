@@ -314,7 +314,7 @@ export const BankTransactionsView = ({
 
     const pageHeight = doc.internal.pageSize.getHeight();
     doc.setFontSize(7);
-    doc.text('Official Banking Transaction Voucher. Generated from AccountBook General Ledger Module.', margin, pageHeight - 8);
+    doc.text('Official Banking Transaction Voucher. Generated from AMS General Ledger Module.', margin, pageHeight - 8);
 
     const cleanRef = (t.ref || 'Voucher').replace(/[^a-zA-Z0-9_-]/g, '_');
     doc.save(`Bank_Voucher_${cleanRef}.pdf`);

@@ -327,7 +327,7 @@ export const BankAccountsView: React.FC<BankAccountsViewProps> = ({ activeEntity
     const pageHeight = doc.internal.pageSize.getHeight();
     doc.setTextColor(...grayColor);
     doc.setFontSize(7);
-    doc.text('Official Account Profile Verification. Generated from AccountBook Banking & Payments Module.', margin, pageHeight - 8);
+    doc.text('Official Account Profile Verification. Generated from AMS Banking & Payments Module.', margin, pageHeight - 8);
 
     const safeName = (b.name || 'Bank').replace(/[^a-zA-Z0-9_-]/g, '_');
     doc.save(`Bank_Account_${b.code}_${safeName}.pdf`);

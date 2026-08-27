@@ -73,7 +73,7 @@ export const SystemSettingsView: React.FC<SystemSettingsProps> = ({ setPage, not
       if (saved) return JSON.parse(saved);
     } catch {}
     return {
-      systemTitle: 'AccountBook Enterprise ERP',
+      systemTitle: 'AMS Enterprise ERP',
       timezone: 'Asia/Karachi (UTC+05:00)',
       dateFormat: 'DD/MM/YYYY',
       numberFormat: 'en-US (1,234,567.89)',

@@ -494,26 +494,6 @@ export default function App() {
               )}
             </div>
           </header>
-          <nav className="module-tabs">
-            <button
-              className={'tab' + (module === 'Summary' || module === 'Dashboard' ? ' active' : '')}
-              onClick={() => setPage(`${group}.Summary`)}
-            >
-              Dashboard
-            </button>
-            {activeGroupItems.map((item: string) => {
-              const key = `${group}.${item}`;
-              return (
-                <button
-                  key={item}
-                  className={'tab' + (page === key ? ' active' : '')}
-                  onClick={() => setPage(key)}
-                >
-                  {item}
-                </button>
-              );
-            })}
-          </nav>
         </div>
         <main>
           {readOnly && (
