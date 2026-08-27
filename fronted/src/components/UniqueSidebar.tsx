@@ -9,6 +9,7 @@ import {
   ExternalLink,
   X,
 } from 'lucide-react';
+import AmsLogo from './AmsLogo';
 import './UniqueSidebar.css';
 
 interface Props {
@@ -202,18 +203,14 @@ export default function UniqueSidebar({
     <>
       {/* ══ Primary Column (Main Modules Sidebar) ══ */}
       <aside className="unique-sidebar expanded">
-        {/* Brand Header */}
+        {/* Brand Header with Custom AMS Logo */}
         <div className="unique-brand-header">
-          <div className="unique-brand-logo" onClick={() => onNavigate('Overview.Overview')}>
-            <div className="unique-logo-badge">
-              <span className="logo-icon">🧾</span>
-            </div>
-            <div className="unique-brand-text-wrap">
-              <div className="unique-brand-name">
-                AMS <span className="brand-dot">·</span> <span className="brand-badge">ERP</span>
-              </div>
-              <div className="unique-brand-sub">Accounting Management System</div>
-            </div>
+          <div
+            className="unique-brand-logo"
+            onClick={() => onNavigate('Overview.Overview')}
+            title="AMS Accounting Management Solutions"
+          >
+            <AmsLogo variant="sidebar" height={36} />
           </div>
         </div>
 

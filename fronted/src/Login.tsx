@@ -3,6 +3,7 @@ import {
   Mail, Lock, AlertCircle, LogIn, UserPlus, User as UserIcon, ArrowLeft,
   ShieldCheck, Globe, Layers, Sparkles, CheckCircle2
 } from 'lucide-react';
+import AmsLogo from './components/AmsLogo';
 import './Login.css';
 
 export interface UserData {
@@ -204,8 +205,8 @@ export function Login({ onLogin }: LoginProps) {
               <Sparkles className="w-3.5 h-3.5" />
               <span>Enterprise ERP</span>
             </div>
-            <div className="brand-logo-text">
-              <b>AM</b><span>S</span>
+            <div style={{ margin: '14px 0 16px' }}>
+              <AmsLogo variant="full" height={44} />
             </div>
             <p className="brand-desc">
               Accounting Management System & Multi-Sector Enterprise Resource Platform.
