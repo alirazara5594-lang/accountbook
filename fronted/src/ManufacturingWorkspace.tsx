@@ -35,8 +35,15 @@ const FACTORY_WORK_CENTERS = [
   'Quality Testing & Inspection Lab',
 ];
 
-export const ManufacturingWorkspace: React.FC<{ activeEntityId: string; entities?: any[]; initialTab?: any }> = ({ activeEntityId }) => {
-  const [activeTab, setActiveTab] = useState<'shopfloor' | 'orders' | 'boms' | 'qc' | 'costing'>('shopfloor');
+export const ManufacturingWorkspace: React.FC<{ activeEntityId: string; entities?: any[]; initialTab?: 'shopfloor' | 'orders' | 'boms' | 'qc' | 'costing' }> = ({ activeEntityId, initialTab = 'shopfloor' }) => {
+  const [activeTab, setActiveTab] = useState<'shopfloor' | 'orders' | 'boms' | 'qc' | 'costing'>(initialTab);
+
+  useEffect(() => {
+    if (initialTab) {
+      setActiveTab(initialTab);
+    }
+  }, [initialTab]);
+
   const [toast, setToast] = useState('');
   const [machines, setMachines] = useState<FixedAsset[]>([]);
   const [query, setQuery] = useState('');

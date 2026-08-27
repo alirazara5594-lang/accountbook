@@ -1296,14 +1296,107 @@ public IReadOnlyList<EmployeeCompensation> EmployeeCompensations => _employeeCom
         }
     }
 
+    public bool UpdateBom(string id, BillOfMaterials updated, out string? error)
+    {
+        error = null;
+        lock (_lock)
+        {
+            var bom = _boms.FirstOrDefault(b => b.Id == id);
+            if (bom == null) { error = "BOM not found."; return false; }
+
+            bom.FinishedProductId = updated.FinishedProductId;
+            bom.FinishedProductName = updated.FinishedProductName;
+            bom.Version = string.IsNullOrWhiteSpace(updated.Version) ? bom.Version : updated.Version;
+            bom.Status = updated.Status;
+            bom.Category = updated.Category;
+            bom.QuantityProduced = updated.QuantityProduced;
+            bom.BatchSize = updated.BatchSize;
+            bom.YieldPercentage = updated.YieldPercentage;
+            bom.EstimatedLaborHours = updated.EstimatedLaborHours;
+            bom.EstimatedMachineHours = updated.EstimatedMachineHours;
+            bom.StandardLaborRate = updated.StandardLaborRate;
+            bom.StandardMachineRate = updated.StandardMachineRate;
+            bom.ExpectedUnitCost = updated.ExpectedUnitCost;
+            bom.Notes = updated.Notes;
+            bom.Lines = updated.Lines ?? new();
+            bom.Operations = updated.Operations ?? new();
+            bom.UpdatedAt = DateTime.UtcNow;
+
+            Persist();
+            return true;
+        }
+    }
+
+    public bool DeleteBom(string id, out string? error)
+    {
+        error = null;
+        lock (_lock)
+        {
+            var bom = _boms.FirstOrDefault(b => b.Id == id);
+            if (bom == null) { error = "BOM not found."; return false; }
+            if (_workOrders.Any(w => w.BomId == id && w.Status == WorkOrderStatus.InProgress))
+            {
+                error = "Cannot delete BOM while associated Work Orders are In Progress.";
+                return false;
+            }
+
+            _boms.Remove(bom);
+            Persist();
+            return true;
+        }
+    }
+
     public WorkOrder CreateWorkOrder(WorkOrder order)
     {
         lock (_lock)
         {
             if (string.IsNullOrWhiteSpace(order.WorkOrderNumber)) order.WorkOrderNumber = NextWorkOrderNumber();
+            if (string.IsNullOrWhiteSpace(order.BatchNumber))
+            {
+                order.BatchNumber = $"LOT-{DateTime.UtcNow:yyyyMMdd}-{order.WorkOrderNumber.Replace("WO-", "")}";
+            }
+
+            // Calculate standard target costs
+            var bom = _boms.FirstOrDefault(b => b.Id == order.BomId);
+            if (bom != null)
+            {
+                var factor = bom.QuantityProduced > 0 ? (order.QuantityToProduce / bom.QuantityProduced) : 1;
+                order.StandardMaterialCost = bom.Lines.Sum(l => l.QuantityRequired * factor * (l.StandardUnitCost > 0 ? l.StandardUnitCost : 10m));
+                order.StandardLaborCost = bom.EstimatedLaborHours * factor * (bom.StandardLaborRate > 0 ? bom.StandardLaborRate : order.LaborHourlyRate);
+                order.StandardOverheadCost = bom.EstimatedMachineHours * factor * (bom.StandardMachineRate > 0 ? bom.StandardMachineRate : order.MachineHourlyRate);
+                order.StandardTotalCost = order.StandardMaterialCost + order.StandardLaborCost + order.StandardOverheadCost;
+            }
+
             _workOrders.Add(order);
             Persist();
             return order;
+        }
+    }
+
+    public bool CancelWorkOrder(string id, out string? error)
+    {
+        error = null;
+        lock (_lock)
+        {
+            var wo = _workOrders.FirstOrDefault(x => x.Id == id);
+            if (wo == null) { error = "Work Order not found."; return false; }
+            if (wo.Status == WorkOrderStatus.Completed) { error = "Cannot cancel a completed Work Order."; return false; }
+
+            // If machine was engaged, reset health
+            if (wo.MachineAssetId.HasValue)
+            {
+                var machine = _fixedAssets.FirstOrDefault(a => a.Id == wo.MachineAssetId.Value);
+                if (machine != null && machine.MachineHealth == MachineStatus.InProduction)
+                {
+                    machine.MachineHealth = MachineStatus.Operating;
+                    machine.UpdatedAt = DateTime.UtcNow;
+                }
+            }
+
+            wo.Status = WorkOrderStatus.Cancelled;
+            wo.UpdatedAt = DateTime.UtcNow;
+            Persist();
+            return true;
         }
     }
 
@@ -1473,6 +1566,7 @@ public IReadOnlyList<EmployeeCompensation> EmployeeCompensations => _employeeCom
 
             wo.TotalCost = wo.TotalMaterialCost + wo.DirectLaborCost + wo.OverheadCost;
             wo.UnitCost = produceQty > 0 ? Math.Round(wo.TotalCost / produceQty, 2) : 0;
+            wo.CostVariance = wo.TotalCost - wo.StandardTotalCost;
             wo.QuantityProduced = produceQty;
 
             Guid.TryParse(wo.FinishedProductId, out var finishedProdId);
