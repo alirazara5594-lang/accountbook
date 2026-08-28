@@ -3,12 +3,14 @@ import type { ReactNode } from 'react';
 import {
   Search, Bell, Plus, ChevronDown, LogOut, X, FileText, Receipt,
   Building2, Users, Wallet, CalendarDays, Boxes, ClipboardList, Landmark,
-  Globe, BarChart3, Check, Sun, Moon, Key, ShieldCheck, Sparkles, AlertTriangle
+  Globe, BarChart3, Check, Sun, Moon, Key, ShieldCheck, Sparkles, AlertTriangle,
+  Palette
 } from 'lucide-react';
 import { NAVIGATION } from '../navigation';
 import type { UserData } from '../Login';
 import { useSalesStore, useProcurementStore } from '../stores';
 import { getLicenseInfo, type LicenseInfo } from '../licenseManager';
+import { THEME_FAMILIES, getThemeFamily, isDarkTheme } from '../themes';
 
 interface Props {
   currentUser: UserData;
@@ -33,11 +35,13 @@ const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', '
 export default function TopHeader(props: Props) {
   const { currentUser, entities, activeEntityId, onSelectEntity, page, setPage, accounts, notify, onLogout, theme, onThemeChange, onOpenLicense } = props;
 
-  const isDark = theme ? theme.endsWith('-dark') : false;
+  const currentThemeId = theme || 'sapphire-light';
+  const isDark = isDarkTheme(currentThemeId);
+  const activeFamily = getThemeFamily(currentThemeId);
 
   const toggleDisplayMode = () => {
     if (!onThemeChange) return;
-    const nextTheme = isDark ? 'nd-light' : 'nd-dark';
+    const nextTheme = isDark ? activeFamily.lightId : activeFamily.darkId;
     onThemeChange(nextTheme);
   };
 
@@ -66,6 +70,7 @@ export default function TopHeader(props: Props) {
   const [searchOpen, setSearchOpen] = useState(false);
   const [notifOpen, setNotifOpen] = useState(false);
   const [actionsOpen, setActionsOpen] = useState(false);
+  const [themeOpen, setThemeOpen] = useState(false);
   const [entityOpen, setEntityOpen] = useState(false);
   const [period, setPeriod] = useState<{ m: number; y: number }>(() => {
     try {
@@ -79,6 +84,7 @@ export default function TopHeader(props: Props) {
   const searchRef = useRef<HTMLDivElement>(null);
   const notifRef = useRef<HTMLDivElement>(null);
   const actionsRef = useRef<HTMLDivElement>(null);
+  const themeRef = useRef<HTMLDivElement>(null);
   const entityRef = useRef<HTMLDivElement>(null);
   const searchInputRef = useRef<HTMLInputElement>(null);
 
@@ -91,6 +97,7 @@ export default function TopHeader(props: Props) {
       if (searchRef.current && !searchRef.current.contains(e.target as Node)) setSearchOpen(false);
       if (notifRef.current && !notifRef.current.contains(e.target as Node)) setNotifOpen(false);
       if (actionsRef.current && !actionsRef.current.contains(e.target as Node)) setActionsOpen(false);
+      if (themeRef.current && !themeRef.current.contains(e.target as Node)) setThemeOpen(false);
       if (entityRef.current && !entityRef.current.contains(e.target as Node)) setEntityOpen(false);
     };
     document.addEventListener('mousedown', onDown);
@@ -108,6 +115,7 @@ export default function TopHeader(props: Props) {
         setSearchOpen(false);
         setNotifOpen(false);
         setActionsOpen(false);
+        setThemeOpen(false);
         setEntityOpen(false);
       }
     };
@@ -392,39 +400,193 @@ export default function TopHeader(props: Props) {
             )}
           </div>
 
-          {/* Display mode toggle (Light / Dark) */}
-          <button
-            onClick={toggleDisplayMode}
-            title={isDark ? 'Switch to Light mode' : 'Switch to Dark mode'}
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              background: 'var(--color-surface-muted)',
-              border: '1px solid var(--color-border)',
-              borderRadius: 8,
-              width: 32,
-              height: 32,
-              cursor: 'pointer',
-              color: 'var(--color-text)',
-              flexShrink: 0,
-              transition: 'all 0.2s ease',
-            }}
-            onMouseEnter={e => {
-              e.currentTarget.style.borderColor = 'var(--color-primary)';
-              e.currentTarget.style.transform = 'scale(1.05)';
-            }}
-            onMouseLeave={e => {
-              e.currentTarget.style.borderColor = 'var(--color-border)';
-              e.currentTarget.style.transform = 'scale(1)';
-            }}
-          >
-            {isDark ? (
-              <Sun size={15} style={{ color: '#f59e0b' }} />
-            ) : (
-              <Moon size={15} style={{ color: 'var(--color-primary)' }} />
+          {/* Theme & Display Mode Dropdown */}
+          <div ref={themeRef} style={{ position: 'relative', flexShrink: 0 }}>
+            <button
+              onClick={() => setThemeOpen(o => !o)}
+              title="Theme & Display Mode"
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: 5,
+                background: 'var(--color-surface-muted)',
+                border: '1px solid var(--color-border)',
+                borderRadius: 8,
+                padding: '0 10px',
+                height: 32,
+                cursor: 'pointer',
+                fontSize: 12,
+                fontWeight: 600,
+                color: 'var(--color-text)',
+                transition: 'all 0.15s ease',
+              }}
+              onMouseEnter={e => {
+                e.currentTarget.style.borderColor = 'var(--color-primary)';
+                e.currentTarget.style.background = 'var(--color-surface)';
+              }}
+              onMouseLeave={e => {
+                e.currentTarget.style.borderColor = 'var(--color-border)';
+                e.currentTarget.style.background = 'var(--color-surface-muted)';
+              }}
+            >
+              <Palette size={13} style={{ color: 'var(--color-primary)' }} />
+              <span>Theme</span>
+              <span
+                style={{
+                  width: 8,
+                  height: 8,
+                  borderRadius: '50%',
+                  background: activeFamily.primaryColor,
+                  display: 'inline-block',
+                  marginLeft: 1,
+                  boxShadow: '0 0 4px rgba(0,0,0,0.2)'
+                }}
+              />
+            </button>
+            {themeOpen && (
+              <div
+                style={{
+                  ...dropdownBase,
+                  right: 0,
+                  left: 'auto',
+                  width: 310,
+                  padding: 10,
+                  boxShadow: '0 16px 36px rgba(0,0,0,0.35)',
+                  border: '1px solid var(--color-border)',
+                  borderRadius: 14,
+                }}
+              >
+                {/* Mode Selector */}
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8, paddingBottom: 6, borderBottom: '1px solid var(--color-border-subtle)' }}>
+                  <span style={{ fontSize: 10, fontWeight: 800, letterSpacing: 0.8, color: 'var(--color-text-muted)', textTransform: 'uppercase' }}>
+                    Display Mode
+                  </span>
+                  <span style={{ fontSize: 10, color: 'var(--color-text-muted)' }}>
+                    {isDark ? '🌙 Dark Active' : '☀️ Light Active'}
+                  </span>
+                </div>
+
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 6, marginBottom: 12 }}>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (onThemeChange) onThemeChange(activeFamily.lightId);
+                    }}
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      gap: 6,
+                      padding: '8px 10px',
+                      borderRadius: 8,
+                      border: !isDark ? '2px solid var(--color-primary)' : '1px solid var(--color-border)',
+                      background: !isDark ? 'var(--color-primary-light, rgba(0,106,167,0.12))' : 'var(--color-surface-muted)',
+                      color: !isDark ? 'var(--color-primary)' : 'var(--color-text)',
+                      fontWeight: !isDark ? 700 : 500,
+                      fontSize: 12,
+                      cursor: 'pointer',
+                      transition: 'all 0.15s ease'
+                    }}
+                  >
+                    <Sun size={14} style={{ color: '#f59e0b' }} />
+                    <span>Light Mode</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (onThemeChange) onThemeChange(activeFamily.darkId);
+                    }}
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      gap: 6,
+                      padding: '8px 10px',
+                      borderRadius: 8,
+                      border: isDark ? '2px solid var(--color-primary)' : '1px solid var(--color-border)',
+                      background: isDark ? 'var(--color-primary-light, rgba(139,92,246,0.15))' : 'var(--color-surface-muted)',
+                      color: isDark ? 'var(--color-primary)' : 'var(--color-text)',
+                      fontWeight: isDark ? 700 : 500,
+                      fontSize: 12,
+                      cursor: 'pointer',
+                      transition: 'all 0.15s ease'
+                    }}
+                  >
+                    <Moon size={14} style={{ color: '#a855f7' }} />
+                    <span>Dark Mode</span>
+                  </button>
+                </div>
+
+                {/* Professional Themes Section */}
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6, paddingBottom: 4, borderBottom: '1px solid var(--color-border-subtle)' }}>
+                  <span style={{ fontSize: 10, fontWeight: 800, letterSpacing: 0.8, color: 'var(--color-text-muted)', textTransform: 'uppercase' }}>
+                    ERP Accounting Themes
+                  </span>
+                  <span style={{ fontSize: 9.5, color: 'var(--color-text-muted)' }}>
+                    6 Palettes
+                  </span>
+                </div>
+
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 4, maxHeight: 270, overflowY: 'auto' }}>
+                  {THEME_FAMILIES.map((fam) => {
+                    const isSelected = activeFamily.id === fam.id;
+                    const targetThemeId = isDark ? fam.darkId : fam.lightId;
+
+                    return (
+                      <button
+                        key={fam.id}
+                        type="button"
+                        onClick={() => {
+                          if (onThemeChange) onThemeChange(targetThemeId);
+                        }}
+                        style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: 9,
+                          padding: '7px 9px',
+                          borderRadius: 8,
+                          border: isSelected ? '1.5px solid var(--color-primary)' : '1px solid var(--color-border-subtle)',
+                          background: isSelected ? 'var(--color-surface-muted)' : 'transparent',
+                          cursor: 'pointer',
+                          textAlign: 'left',
+                          width: '100%',
+                          transition: 'all 0.15s ease'
+                        }}
+                        onMouseEnter={e => {
+                          if (!isSelected) e.currentTarget.style.background = 'var(--color-surface-muted)';
+                        }}
+                        onMouseLeave={e => {
+                          if (!isSelected) e.currentTarget.style.background = 'transparent';
+                        }}
+                      >
+                        {/* Dual Color Swatch */}
+                        <div style={{ display: 'flex', alignItems: 'center', flexShrink: 0, width: 22, height: 22, borderRadius: 6, overflow: 'hidden', border: '1px solid rgba(0,0,0,0.1)' }}>
+                          <span style={{ width: '50%', height: '100%', background: fam.primaryColor }} />
+                          <span style={{ width: '50%', height: '100%', background: fam.accentColor }} />
+                        </div>
+
+                        {/* Theme Info */}
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                            <span style={{ fontSize: 11.5, fontWeight: isSelected ? 700 : 600, color: 'var(--color-text)' }}>
+                              {fam.name}
+                            </span>
+                            {isSelected && (
+                              <Check size={13} style={{ color: 'var(--color-primary)', strokeWidth: 2.5 }} />
+                            )}
+                          </div>
+                          <span style={{ display: 'block', fontSize: 9.5, color: 'var(--color-text-muted)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                            {fam.category}
+                          </span>
+                        </div>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
             )}
-          </button>
+          </div>
 
           {/* Notifications */}
           <div ref={notifRef} style={{ position: 'relative', flexShrink: 0 }}>
@@ -451,29 +613,6 @@ export default function TopHeader(props: Props) {
               </div>
             )}
           </div>
-
-          {/* User profile with Muhammad Ali */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: 7, flexShrink: 0 }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 7 }}>
-              <div className="avatar small" style={{ width: 28, height: 28, fontSize: 11, background: 'linear-gradient(135deg, #1d72d6, #0284c7)', color: '#fff', fontWeight: 800, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                {currentUser?.avatar || 'MA'}
-              </div>
-              <div style={{ lineHeight: 1.15 }}>
-                <strong style={{ display: 'block', fontSize: 12, color: 'var(--color-text)', whiteSpace: 'nowrap', fontWeight: 700 }}>
-                  {currentUser?.fullName || 'Muhammad Ali'}
-                </strong>
-                <small style={{ display: 'block', fontSize: 10, color: 'var(--color-text-muted)', whiteSpace: 'nowrap' }}>
-                  {currentUser?.role || 'Finance admin'}
-                </small>
-              </div>
-            </div>
-            <ChevronDown size={12} style={{ color: 'var(--color-text-muted)' }} />
-          </div>
-
-          {/* Logout */}
-          <button onClick={onLogout} title="Sign out" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'transparent', border: 0, borderRadius: 7, width: 28, height: 28, cursor: 'pointer', color: 'var(--color-text-muted)', flexShrink: 0 }} onMouseEnter={e => (e.currentTarget.style.color = '#f43f5e')} onMouseLeave={e => (e.currentTarget.style.color = 'var(--color-text-muted)')}>
-            <LogOut size={15} />
-          </button>
         </div>
       </div>
     </header>

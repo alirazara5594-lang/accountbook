@@ -986,38 +986,6 @@ export function FieldExpensesView({ activeEntityId }: { activeEntityId?: string 
     </div>
   );
 }
-      <Card className="overflow-hidden">
-        <table className="w-full text-sm">
-          <thead>
-            <tr className="border-b bg-lime-500/[0.05] dark:bg-lime-400/[0.07]">
-              <th className="text-left p-3 font-medium">Expense</th>
-              <th className="text-left p-3 font-medium">Work Order</th>
-              <th className="text-left p-3 font-medium">Category</th>
-              <th className="text-left p-3 font-medium">Description</th>
-              <th className="text-right p-3 font-medium">Date</th>
-              <th className="text-right p-3 font-medium">Amount</th>
-              <th className="text-center p-3 font-medium">Reimbursed</th>
-            </tr>
-          </thead>
-          <tbody>
-            {expenses.map(e => (
-              <tr key={e.id} className="border-b hover:bg-muted/30 transition-colors">
-                <td className="p-3 font-mono font-medium">{e.expenseNumber}</td>
-                <td className="p-3">{getWo(e.workOrderId) ? `${getWo(e.workOrderId)!.workOrderNumber} · ${getWo(e.workOrderId)!.workType}` : '—'}</td>
-                <td className="p-3"><Badge variant="outline">{e.category}</Badge></td>
-                <td className="p-3 text-muted-foreground max-w-[240px] truncate">{e.description}</td>
-                <td className="p-3 text-right">{e.expenseDate}</td>
-                <td className="p-3 text-right font-mono font-medium">{money(e.amount)}</td>
-                <td className="p-3 text-center">{e.reimbursed ? <Badge variant="secondary">Yes</Badge> : <Badge variant="outline">No</Badge>}</td>
-              </tr>
-            ))}
-            {expenses.length === 0 && <tr><td colSpan={7}><EmptyState icon={ReceiptText} title="No field expenses found" hint="Log travel, supplies, and other reimbursable field costs." /></td></tr>}
-          </tbody>
-        </table>
-      </Card>
-    </div>
-  );
-}
 
 // ── Field Reports ─────────────────────────────────────────────────────────────
 export function FieldReportsView() {
