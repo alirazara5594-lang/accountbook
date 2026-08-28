@@ -10,6 +10,7 @@ import { DataToolbar } from '@/components/ui/data-toolbar'
 import { money } from './lib/currency'
 import { StatusChip } from './components/ui/status-chip'
 import { EmptyState, TableSkeleton } from './components/ui/empty-state'
+import { getActiveTaxCodes } from './lib/taxLocalization'
 
 const statusStyles: Record<string, { label: string; hex: string }> = {
   Draft: { label: 'Draft', hex: '#94a3b8' },
@@ -22,6 +23,7 @@ export const SalesOrdersWorkspace: React.FC<{ activeEntityId: string; entities?:
   activeEntityId,
   entities = []
 }) => {
+  const applicableTaxCodes = useMemo(() => getActiveTaxCodes(), [activeEntityId])
   const orders = useSalesOrdersStore(s => s.orders)
   const fetchOrders = useSalesOrdersStore(s => s.fetchOrders)
   const createOrder = useSalesOrdersStore(s => s.createOrder)
@@ -645,13 +647,27 @@ export const SalesOrdersWorkspace: React.FC<{ activeEntityId: string; entities?:
                               />
                             </td>
                             <td className="p-2">
-                              <input
-                                type="number"
-                                step="0.01"
-                                value={l.taxAmount}
-                                onChange={e => updateLine(i, 'taxAmount', e.target.value)}
-                                className="w-full h-8 px-2 rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] text-xs text-right font-mono text-[var(--color-text-strong)] outline-none"
-                              />
+                              <select
+                                value={l.taxCode || (applicableTaxCodes[0]?.code ?? '')}
+                                onChange={e => {
+                                  const selectedCode = e.target.value;
+                                  const match = applicableTaxCodes.find(tc => tc.code === selectedCode);
+                                  const rate = match ? match.rate : 0;
+                                  const taxable = Math.max(0, (parseFloat(l.quantity || '0') * parseFloat(l.unitPrice || '0')) - parseFloat(l.discountAmount || '0'));
+                                  const taxVal = (taxable * rate) / 100;
+                                  const u = [...lines];
+                                  u[i].taxCode = selectedCode;
+                                  u[i].taxAmount = String(taxVal);
+                                  setLines(u);
+                                }}
+                                className="w-full h-8 px-1.5 rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] text-xs font-semibold text-[var(--color-text-strong)] outline-none"
+                              >
+                                {applicableTaxCodes.map(tc => (
+                                  <option key={tc.code} value={tc.code}>
+                                    {tc.label} ({tc.rate}%)
+                                  </option>
+                                ))}
+                              </select>
                             </td>
                             <td className="p-2 text-right font-mono font-semibold text-[var(--color-text-strong)]">
                               {money(

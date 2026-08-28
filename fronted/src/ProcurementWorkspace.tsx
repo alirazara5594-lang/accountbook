@@ -13,6 +13,7 @@ import { DataToolbar } from '@/components/ui/data-toolbar';
 import { EmptyState } from './components/ui/empty-state';
 import { FileText, Mail, Scale, ShoppingCart, Package, Receipt, ArrowLeftRight } from 'lucide-react';
 import { money } from './lib/currency';
+import { getActiveTaxCodes } from './lib/taxLocalization';
 
 type Tab = 'pr' | 'rfq' | 'compare' | 'po' | 'grn' | 'bills' | 'matching' | 'transfers';
 
@@ -26,6 +27,8 @@ const destinationBadge: Record<string, { label: string; color: string }> = {
 export const ProcurementWorkspace: React.FC<{ activeEntityId: string; entities?: any[] }> = ({ activeEntityId }) => {
   const [activeTab, setActiveTab] = useState<Tab>('pr');
   const [toast, setToast] = useState('');
+
+  const applicableTaxCodes = React.useMemo(() => getActiveTaxCodes(), [activeEntityId]);
 
   const requests = useProcurementStore((s) => s.requests);
   const rfqs = useProcurementStore((s) => s.rfqs);
@@ -921,7 +924,7 @@ export const ProcurementWorkspace: React.FC<{ activeEntityId: string; entities?:
                   <span style={{ flex: 1, fontSize: 11, fontWeight: 700, textTransform: 'uppercase' as const, color: '#94a3b8', letterSpacing: '0.05em' }}>Description</span>
                   <span style={{ width: 80, fontSize: 11, fontWeight: 700, textTransform: 'uppercase' as const, color: '#94a3b8', letterSpacing: '0.05em', textAlign: 'center' as const }}>Qty</span>
                   <span style={{ width: 110, fontSize: 11, fontWeight: 700, textTransform: 'uppercase' as const, color: '#94a3b8', letterSpacing: '0.05em', textAlign: 'center' as const }}>Unit Price</span>
-                  <span style={{ width: 90, fontSize: 11, fontWeight: 700, textTransform: 'uppercase' as const, color: '#94a3b8', letterSpacing: '0.05em', textAlign: 'center' as const }}>Tax</span>
+                  <span style={{ width: 130, fontSize: 11, fontWeight: 700, textTransform: 'uppercase' as const, color: '#94a3b8', letterSpacing: '0.05em', textAlign: 'center' as const }}>Input Tax</span>
                   <span style={{ width: 100, fontSize: 11, fontWeight: 700, textTransform: 'uppercase' as const, color: '#94a3b8', letterSpacing: '0.05em', textAlign: 'right' as const }}>Amount</span>
                   <span style={{ width: 24 }}></span>
                 </div>
@@ -936,7 +939,26 @@ export const ProcurementWorkspace: React.FC<{ activeEntityId: string; entities?:
                         <input style={{ flex: 1 }} placeholder="Item description" value={l.description} onChange={e => { const u = [...billLines]; u[i].description = e.target.value; setBillLines(u); }} />
                         <input style={{ width: 80, textAlign: 'center' }} type="number" placeholder="Qty" value={l.quantity} onChange={e => { const u = [...billLines]; u[i].quantity = e.target.value; setBillLines(u); }} />
                         <input style={{ width: 110, textAlign: 'center' }} type="number" placeholder="Billed Unit Price" value={l.unitPrice} onChange={e => { const u = [...billLines]; u[i].unitPrice = e.target.value; setBillLines(u); }} />
-                        <input style={{ width: 90, textAlign: 'center' }} type="number" step="0.01" placeholder="Tax Amt" value={l.taxAmount || 0} onChange={e => { const u = [...billLines]; u[i].taxAmount = e.target.value; setBillLines(u); }} />
+                        <select
+                          style={{ width: 130, fontSize: 11, fontWeight: 600, padding: '4px 6px', borderRadius: 6, border: '1px solid #cbd5e1', background: '#ffffff', outline: 'none' }}
+                          value={l.taxCode || (applicableTaxCodes[0]?.code ?? '')}
+                          onChange={e => {
+                            const selectedCode = e.target.value;
+                            const match = applicableTaxCodes.find(tc => tc.code === selectedCode);
+                            const rate = match ? match.rate : 0;
+                            const taxVal = (lineSubtotal * rate) / 100;
+                            const u = [...billLines];
+                            u[i].taxCode = selectedCode;
+                            u[i].taxAmount = taxVal;
+                            setBillLines(u);
+                          }}
+                        >
+                          {applicableTaxCodes.map(tc => (
+                            <option key={tc.code} value={tc.code}>
+                              {tc.label} ({tc.rate}%)
+                            </option>
+                          ))}
+                        </select>
                         <span style={{ width: 100, textAlign: 'right', fontWeight: 700, fontSize: 13, color: '#0f172a', fontFamily: 'monospace' }}>
                           {money(lineTotal)}
                         </span>
@@ -949,7 +971,10 @@ export const ProcurementWorkspace: React.FC<{ activeEntityId: string; entities?:
                 </div>
 
                 <div style={{ display: 'flex', justifyContent: 'flex-start', marginTop: 10 }}>
-                  <button type="button" className="btn-secondary" style={{ fontSize: 12, padding: '4px 10px' }} onClick={() => setBillLines([...billLines, { description: '', quantity: 1, unitPrice: 0, taxAmount: 0, destination: 'Expense' }])}>
+                  <button type="button" className="btn-secondary" style={{ fontSize: 12, padding: '4px 10px' }} onClick={() => {
+                    const defaultRate = applicableTaxCodes[0]?.rate ?? 0;
+                    setBillLines([...billLines, { description: '', quantity: 1, unitPrice: 0, taxCode: applicableTaxCodes[0]?.code, taxAmount: 0, destination: 'Expense' }]);
+                  }}>
                     + Add Line Item
                   </button>
                 </div>
