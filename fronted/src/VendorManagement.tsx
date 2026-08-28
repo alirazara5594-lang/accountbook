@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import type { FormEvent } from 'react'
 import {
-  Building2, Pencil, Trash2, Users, Wallet, ShieldAlert, UserCheck,
+  Building2, Clock, Pencil, Trash2, Users, Wallet, ShieldAlert, UserCheck,
   MapPin, Receipt, Globe, Check, Sparkles, X, Mail, Phone, Hash,
   Calendar, ShieldCheck, ArrowRight, ArrowLeft, User, Eye
 } from 'lucide-react'
@@ -318,95 +318,99 @@ export default function VendorManagement({
 
   return (
     <div className="space-y-6">
-      {/* Submodule Heading Banner (Row 1) */}
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-3 bg-[var(--color-surface)] p-3.5 rounded-xl border border-[var(--color-border)] shadow-sm">
-        <div>
-          <h1 className="text-base font-bold text-[var(--color-text-strong)] tracking-tight flex items-center gap-2">
-            <span className="text-lg">🏢</span> Vendor & Supplier Management
-          </h1>
-          <p className="text-[var(--color-text-muted)] text-xs mt-0.5">Manage supplier directory, vendor payment terms, default expense accounts, and trade payables.</p>
-        </div>
-        <div className="flex items-center gap-2 shrink-0 flex-wrap">
-          <DataToolbar
-            query={search}
-            setQuery={setSearch}
-            searchPlaceholder="Search vendor #, name..."
-            exportFileName="vendor-directory"
-            exportSheetName="Vendors"
-            exportTitle="Vendor Directory"
-            exportSubtitle="Supplier accounts, payment terms, and GL account mappings."
-            exportHeaders={exportHeaders}
-            exportRows={exportRows}
-            onRefresh={() => fetchVendors(activeEntityId)}
-          >
-            <select
-              className="h-9 px-3 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] text-xs text-[var(--color-text)] outline-none focus:border-[var(--color-primary)] transition-colors shadow-2xs box-border"
-              style={{ paddingTop: 0, paddingBottom: 0 }}
-              value={statusFilter}
-              onChange={e => setStatusFilter(e.target.value)}
+      {/* Page Header — AMS Signature Hero Band */}
+      <div className="relative overflow-hidden rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)] shadow-sm">
+        <div className="absolute inset-0 bg-gradient-to-r from-teal-500/10 via-teal-500/[0.03] to-transparent pointer-events-none" />
+        <div className="absolute -right-10 -top-16 w-56 h-56 rounded-full bg-teal-500/10 blur-3xl pointer-events-none" />
+        <div className="relative flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 px-5 py-4">
+          <div className="flex items-center gap-4">
+            <div className="relative h-14 w-14 shrink-0">
+              <div className="absolute inset-[6px] rotate-45 rounded-[12px] shadow-xl bg-gradient-to-br from-teal-500 to-emerald-700" />
+              <div className="absolute inset-0 flex items-center justify-center">
+                <Building2 className="w-6 h-6 text-white" />
+              </div>
+            </div>
+            <div>
+              <div className="flex items-center gap-2.5">
+                <h1 className="text-2xl font-black tracking-tight text-[var(--color-text-strong)]">Vendor & Supplier Management</h1>
+                <span className="hidden sm:inline-flex items-center gap-1.5 rounded-full border border-teal-500/25 bg-teal-500/10 px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider text-teal-600 dark:text-teal-400">
+                  <span className="h-1.5 w-1.5 rounded-full bg-teal-500 animate-pulse" /> Live Payables
+                </span>
+              </div>
+              <p className="text-xs text-[var(--color-text-muted)] mt-0.5">Manage supplier directory, vendor payment terms, default expense accounts, and trade payables.</p>
+            </div>
+          </div>
+          <div className="flex items-center gap-2 shrink-0 flex-wrap">
+            <DataToolbar
+              query={search}
+              setQuery={setSearch}
+              searchPlaceholder="Search vendor #, name..."
+              exportFileName="vendor-directory"
+              exportSheetName="Vendors"
+              exportTitle="Vendor Directory"
+              exportSubtitle="Supplier accounts, payment terms, and GL account mappings."
+              exportHeaders={exportHeaders}
+              exportRows={exportRows}
+              onRefresh={() => fetchVendors(activeEntityId)}
             >
-              <option value="all">⚡ All Statuses</option>
-              <option value="Active">🟢 Active</option>
-              <option value="Inactive">⚪ Inactive</option>
-              <option value="Blocked">🔴 Blocked</option>
-            </select>
-
-            {entities && entities.length > 1 && (
               <select
                 className="h-9 px-3 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] text-xs text-[var(--color-text)] outline-none focus:border-[var(--color-primary)] transition-colors shadow-2xs box-border"
                 style={{ paddingTop: 0, paddingBottom: 0 }}
-                value={companyFilter}
-                onChange={e => setCompanyFilter(e.target.value)}
+                value={statusFilter}
+                onChange={e => setStatusFilter(e.target.value)}
               >
-                <option value="all">🏢 All Companies</option>
-                <option value="unassigned">🌐 Global</option>
-                {entities.map(e => (
-                  <option key={e.id} value={e.id}>
-                    🏢 {e.name} {e.code ? `(${e.code})` : ''}
-                  </option>
-                ))}
+                <option value="all">⚡ All Statuses</option>
+                <option value="Active">🟢 Active</option>
+                <option value="Inactive">⚪ Inactive</option>
+                <option value="Blocked">🔴 Blocked</option>
               </select>
-            )}
-          </DataToolbar>
-          <button onClick={openCreateModal} className="primary h-9 px-4 rounded-xl text-xs font-semibold whitespace-nowrap flex items-center justify-center gap-1.5 shadow-sm">
-            <span>＋</span> Add Vendor
-          </button>
+
+              {entities && entities.length > 1 && (
+                <select
+                  className="h-9 px-3 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] text-xs text-[var(--color-text)] outline-none focus:border-[var(--color-primary)] transition-colors shadow-2xs box-border"
+                  style={{ paddingTop: 0, paddingBottom: 0 }}
+                  value={companyFilter}
+                  onChange={e => setCompanyFilter(e.target.value)}
+                >
+                  <option value="all">🏢 All Companies</option>
+                  <option value="unassigned">🌐 Global</option>
+                  {entities.map(e => (
+                    <option key={e.id} value={e.id}>
+                      🏢 {e.name} {e.code ? `(${e.code})` : ''}
+                    </option>
+                  ))}
+                </select>
+              )}
+            </DataToolbar>
+            <button onClick={openCreateModal} className="primary h-9 px-4 rounded-xl text-xs font-semibold whitespace-nowrap flex items-center justify-center gap-1.5 shadow-sm">
+              <span>＋</span> Add Vendor
+            </button>
+          </div>
         </div>
       </div>
 
       {/* Header Stats (Row 2) */}
-      <section className="stats">
-        <article>
-          <span className="stat-icon blue">
-            <Building2 className="w-4 h-4" />
-          </span>
-          <div>
-            <small>TOTAL VENDORS</small>
-            <h2>{stats.total}</h2>
-            <p>Registered supplier partners</p>
+      <div className="grid grid-cols-2 lg:grid-cols-3 gap-4">
+        {[
+          { label: 'TOTAL VENDORS', value: stats.total, desc: 'Registered supplier partners', icon: Building2, color: 'from-blue-500 to-indigo-600', bg: 'bg-blue-50 dark:bg-blue-950/30', textColor: 'text-blue-600 dark:text-blue-400' },
+          { label: 'ACTIVE SUPPLIERS', value: stats.active, desc: 'Approved for purchase orders', icon: Users, color: 'from-emerald-500 to-teal-600', bg: 'bg-emerald-50 dark:bg-emerald-950/30', textColor: 'text-emerald-600 dark:text-emerald-400' },
+          { label: 'AVG PAYMENT TERMS', value: `${stats.avgTerms} Days`, desc: 'Standard credit period', icon: Clock, color: 'from-violet-500 to-purple-600', bg: 'bg-violet-50 dark:bg-violet-950/30', textColor: 'text-violet-600 dark:text-violet-400' },
+        ].map((kpi) => (
+          <div key={kpi.label} className="relative overflow-hidden rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)] p-3 shadow-sm hover:shadow-md transition-shadow">
+            <div className="flex items-start justify-between">
+              <div>
+                <p className="text-xs font-semibold text-[var(--color-text-muted)] uppercase tracking-wider">{kpi.label}</p>
+                <p className={`text-lg font-semibold mt-1 ${kpi.textColor}`}>{kpi.value}</p>
+                <p className="text-xs text-[var(--color-text-muted)] mt-1">{kpi.desc}</p>
+              </div>
+              <div className={`w-9 h-9 rounded-lg bg-gradient-to-br ${kpi.color} flex items-center justify-center text-white shadow-lg`}>
+                <kpi.icon className="w-5 h-5" />
+              </div>
+            </div>
+            <div className={`absolute -bottom-4 -right-4 w-24 h-24 rounded-full ${kpi.bg} opacity-50`} />
           </div>
-        </article>
-        <article>
-          <span className="stat-icon teal">
-            <Users className="w-4 h-4" />
-          </span>
-          <div>
-            <small>ACTIVE SUPPLIERS</small>
-            <h2>{stats.active}</h2>
-            <p>Approved for purchase orders</p>
-          </div>
-        </article>
-        <article>
-          <span className="stat-icon violet">
-            <Wallet className="w-4 h-4" />
-          </span>
-          <div>
-            <small>AVG PAYMENT TERMS</small>
-            <h2>{stats.avgTerms} Days</h2>
-            <p>Standard credit period</p>
-          </div>
-        </article>
-      </section>
+        ))}
+      </div>
 
       {/* Vendor Table */}
       <div className="bg-[var(--color-surface)] border border-[var(--color-border)] rounded-xl overflow-hidden shadow-sm">
@@ -497,7 +501,7 @@ export default function VendorManagement({
             {/* Modal Header */}
             <div className="px-6 py-4.5 border-b border-[var(--color-border)] bg-[var(--color-surface-muted)]/50 flex items-center justify-between">
               <div className="flex items-center gap-3.5">
-                <div className="w-11 h-11 rounded-xl bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-white shadow-sm shrink-0">
+                <div className="w-9 h-9 rounded-lg bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-white shadow-sm shrink-0">
                   <Building2 className="w-5 h-5" />
                 </div>
                 <div>

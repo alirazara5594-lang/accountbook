@@ -3,7 +3,8 @@ import type { FormEvent } from 'react'
 import { useCompanyStore, useIntercompanyStore } from './stores'
 import { DataToolbar } from '@/components/ui/data-toolbar'
 import { intercompanyApi } from './api/modules/intercompany.api'
-import { Trash2 } from 'lucide-react'
+import { Trash2, ArrowLeftRight } from 'lucide-react'
+import { EmptyState } from './components/ui/empty-state'
 import { money } from './lib/currency'
 
 type Company = { id: string; name: string; code?: string }
@@ -201,7 +202,7 @@ export default function Intercompany({ allocations, reload, notify }: { allocati
                 : <button onClick={() => updateStatus(a.id, 'Active')} className="btn-sm btn-secondary">Activate</button>}
             </div>
           </div>
-        )) : <div className="empty">No allocations yet.</div>}
+        )) : <EmptyState icon={ArrowLeftRight} title="No allocations yet" hint="Create a shared-cost allocation to begin intercompany recharge billing." />}
       </section>
     </div>
   )

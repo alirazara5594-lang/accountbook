@@ -10,6 +10,9 @@ import {
 } from 'lucide-react';
 import { money } from './lib/currency';
 import { downloadExcel, downloadCSV } from './lib/exportUtils';
+import { KpiCard, KpiGrid } from './components/ui/kpi-card';
+import { StatusChip } from './components/ui/status-chip';
+import { EmptyState } from './components/ui/empty-state';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 
@@ -33,6 +36,13 @@ const TEMPLATE_PRESETS = [
   { name: 'Utility & Vendor Accruals', desc: 'Accrual of electricity, internet, and operational bills' },
   { name: 'Tax & Audit Adjustments', desc: 'Year-end tax provisions and audit adjustments' },
 ];
+
+const statusStyles: Record<string, { label: string; hex: string }> = {
+  Draft: { label: 'Draft', hex: '#94a3b8' },
+  Submitted: { label: 'Submitted', hex: '#f59e0b' },
+  Approved: { label: 'Approved', hex: '#3b82f6' },
+  Posted: { label: 'Posted', hex: '#10b981' }
+};
 
 export const JournalEntriesView: React.FC<JournalEntriesViewProps> = ({ accounts, initialEntries, onEntriesChange }) => {
   const [entries, setEntries] = useState<JournalEntry[]>(initialEntries);
@@ -77,9 +87,32 @@ export const JournalEntriesView: React.FC<JournalEntriesViewProps> = ({ accounts
     }
   };
 
-  // Open Creation Modal
+  const [draftRestored, setDraftRestored] = useState(false);
+
+  // Auto-Save Draft to LocalStorage
+  useEffect(() => {
+    if (isModalOpen && form.lines.some(l => l.accountId || l.debit || l.credit || l.memo || form.description)) {
+      localStorage.setItem('ams_journal_draft', JSON.stringify(form));
+    }
+  }, [form, isModalOpen]);
+
+  // Open Creation Modal (Restores saved draft if available)
   const openNewEntryModal = () => {
     setError('');
+    setDraftRestored(false);
+    try {
+      const savedDraft = localStorage.getItem('ams_journal_draft');
+      if (savedDraft) {
+        const parsed = JSON.parse(savedDraft);
+        if (parsed && Array.isArray(parsed.lines) && parsed.lines.length >= 2) {
+          setForm(parsed);
+          setDraftRestored(true);
+          setIsModalOpen(true);
+          return;
+        }
+      }
+    } catch {}
+
     setForm({
       date: new Date().toISOString().slice(0, 10),
       reference: `JE-${new Date().getFullYear()}-${String(Math.floor(1000 + Math.random() * 9000))}`,
@@ -91,6 +124,21 @@ export const JournalEntriesView: React.FC<JournalEntriesViewProps> = ({ accounts
       ],
     });
     setIsModalOpen(true);
+  };
+
+  const handleDiscardDraft = () => {
+    localStorage.removeItem('ams_journal_draft');
+    setDraftRestored(false);
+    setForm({
+      date: new Date().toISOString().slice(0, 10),
+      reference: `JE-${new Date().getFullYear()}-${String(Math.floor(1000 + Math.random() * 9000))}`,
+      description: '',
+      currency: 'PKR',
+      lines: [
+        { accountId: accounts[0]?.id || '', memo: '', debit: '', credit: '' },
+        { accountId: accounts[1]?.id || '', memo: '', debit: '', credit: '' },
+      ],
+    });
   };
 
   // Calculate live debit/credit totals
@@ -209,6 +257,7 @@ export const JournalEntriesView: React.FC<JournalEntriesViewProps> = ({ accounts
         await journalsApi.post(created.id, 'Posted directly to General Ledger');
       }
 
+      localStorage.removeItem('ams_journal_draft');
       setIsModalOpen(false);
       await refresh();
     } catch (err: any) {
@@ -268,19 +317,6 @@ export const JournalEntriesView: React.FC<JournalEntriesViewProps> = ({ accounts
       return true;
     });
   }, [entries, statusFilter, query, accounts]);
-
-  const getStatusBadge = (status?: string) => {
-    switch (status) {
-      case 'Posted':
-        return 'bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800';
-      case 'Approved':
-        return 'bg-blue-50 dark:bg-blue-950/40 text-blue-700 dark:text-blue-300 border-blue-200 dark:border-blue-800';
-      case 'Submitted':
-        return 'bg-amber-50 dark:bg-amber-950/40 text-amber-700 dark:text-amber-300 border-amber-200 dark:border-amber-800';
-      default:
-        return 'bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 border-gray-300 dark:border-gray-700';
-    }
-  };
 
   // ─── Branded Official IAS 1 Journal Voucher PDF Generator ───────────────────
   const generateJournalPDF = (entry: JournalEntry) => {
@@ -415,23 +451,29 @@ export const JournalEntriesView: React.FC<JournalEntriesViewProps> = ({ accounts
 
   return (
     <div className="space-y-4 font-sans text-slate-800 p-2 md:p-6 min-h-screen">
-      {/* ─── Top Control & Action Bar ─── */}
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 bg-[var(--color-surface)] p-4 rounded-2xl border border-[var(--color-border)] shadow-xs">
-        <div className="flex items-center gap-3">
-          <div className="p-2.5 bg-emerald-50 dark:bg-emerald-950/40 text-emerald-600 rounded-xl border border-emerald-200 dark:border-emerald-800 shrink-0">
-            <BookOpen className="w-5 h-5" />
+      {/* ─── Page Header — AMS Signature Hero Band ─── */}
+      <div className="relative overflow-hidden rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)] shadow-sm">
+        <div className="absolute inset-0 bg-gradient-to-r from-violet-500/10 via-violet-500/[0.03] to-transparent pointer-events-none" />
+        <div className="absolute -right-10 -top-16 w-56 h-56 rounded-full bg-violet-500/10 blur-3xl pointer-events-none" />
+        <div className="relative flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 px-5 py-4">
+          <div className="flex items-center gap-4">
+            <div className="relative h-14 w-14 shrink-0">
+              <div className="absolute inset-[6px] rotate-45 rounded-[12px] shadow-xl bg-gradient-to-br from-violet-500 to-purple-700" />
+              <div className="absolute inset-0 flex items-center justify-center"><BookOpen className="w-6 h-6 text-white" /></div>
+            </div>
+            <div>
+              <div className="flex items-center gap-2.5 flex-wrap">
+                <h1 className="text-2xl font-black tracking-tight text-[var(--color-text-strong)]">General Journal Entries</h1>
+                <span className="hidden sm:inline-flex items-center gap-1.5 rounded-full border border-violet-500/25 bg-violet-500/10 px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider text-violet-600 dark:text-violet-400"><span className="h-1.5 w-1.5 rounded-full bg-violet-500 animate-pulse" /> Live Ledger</span>
+                <span className="text-[10px] px-2 py-0.5 rounded-full bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 font-semibold border border-blue-200 dark:border-blue-800">IAS 1 / IAS 8 / GAAP</span>
+              </div>
+              <p className="text-xs text-[var(--color-text-muted)] mt-0.5">
+                Record multi-line double-entry general journal vouchers with full debit-credit balancing and audit verification.
+              </p>
+            </div>
           </div>
-          <div>
-            <h1 className="text-base font-bold text-[var(--color-text-strong)] flex items-center gap-2">
-              General Journal Entries <span className="text-[10px] px-2 py-0.5 rounded-full bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 font-semibold border border-blue-200 dark:border-blue-800">IAS 1 / IAS 8 / GAAP</span>
-            </h1>
-            <p className="text-xs text-[var(--color-text-muted)] mt-0.5">
-              Record multi-line double-entry general journal vouchers with full debit-credit balancing and audit verification.
-            </p>
-          </div>
-        </div>
 
-        <div className="flex items-center gap-1.5 shrink-0">
+          <div className="flex flex-wrap items-center gap-2 shrink-0">
           <button
             onClick={openNewEntryModal}
             className="inline-flex items-center gap-1.5 h-9 px-4 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold transition-all shadow-xs"
@@ -460,83 +502,48 @@ export const JournalEntriesView: React.FC<JournalEntriesViewProps> = ({ accounts
           >
             <RefreshCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin' : ''}`} />
           </button>
+          </div>
         </div>
       </div>
 
       {/* ─── 4-in-1 Top Financial KPI Cards ─── */}
-      <div className="grid gap-3" style={{ gridTemplateColumns: 'repeat(4, minmax(0, 1fr))' }}>
+      <KpiGrid cols={4}>
         {/* Total Posted */}
-        <div className="bg-[var(--color-surface)] border border-[var(--color-border)] rounded-2xl p-4 shadow-xs flex flex-col justify-between hover:border-emerald-500/30 transition-all">
-          <div className="flex items-center justify-between">
-            <span className="text-[10px] font-extrabold uppercase tracking-wider text-[var(--color-text-muted)]">
-              POSTED GENERAL JOURNALS
-            </span>
-            <div className="p-1.5 rounded-lg bg-emerald-50 dark:bg-emerald-950/40 text-emerald-600">
-              <CheckCircle2 className="w-4 h-4" />
-            </div>
-          </div>
-          <div className="mt-2">
-            <div className="text-xl font-mono font-extrabold text-emerald-600 dark:text-emerald-400">
-              {totalPostedCount} Entries
-            </div>
-            <p className="text-[10px] text-[var(--color-text-muted)] mt-0.5">Active & verified in General Ledger</p>
-          </div>
-        </div>
+        <KpiCard
+          icon={CheckCircle2}
+          label="POSTED GENERAL JOURNALS"
+          value={`${totalPostedCount}`}
+          desc="Entries · Active & verified in General Ledger"
+          tone="emerald"
+        />
 
         {/* Pending Approval */}
-        <div className="bg-[var(--color-surface)] border border-[var(--color-border)] rounded-2xl p-4 shadow-xs flex flex-col justify-between hover:border-blue-500/30 transition-all">
-          <div className="flex items-center justify-between">
-            <span className="text-[10px] font-extrabold uppercase tracking-wider text-[var(--color-text-muted)]">
-              PENDING APPROVAL & WORKFLOW
-            </span>
-            <div className="p-1.5 rounded-lg bg-blue-50 dark:bg-blue-950/40 text-blue-600">
-              <Clock className="w-4 h-4" />
-            </div>
-          </div>
-          <div className="mt-2">
-            <div className="text-xl font-mono font-extrabold text-blue-600 dark:text-blue-400">
-              {totalPendingCount} Entries
-            </div>
-            <p className="text-[10px] text-[var(--color-text-muted)] mt-0.5">Submitted & awaiting final review</p>
-          </div>
-        </div>
+        <KpiCard
+          icon={Clock}
+          label="PENDING APPROVAL & WORKFLOW"
+          value={`${totalPendingCount}`}
+          desc="Entries · Submitted & awaiting final review"
+          tone="blue"
+        />
 
         {/* Draft Workpapers */}
-        <div className="bg-[var(--color-surface)] border border-[var(--color-border)] rounded-2xl p-4 shadow-xs flex flex-col justify-between hover:border-purple-500/30 transition-all">
-          <div className="flex items-center justify-between">
-            <span className="text-[10px] font-extrabold uppercase tracking-wider text-[var(--color-text-muted)]">
-              DRAFT WORKPAPERS
-            </span>
-            <div className="p-1.5 rounded-lg bg-purple-50 dark:bg-purple-950/40 text-purple-600">
-              <Layers className="w-4 h-4" />
-            </div>
-          </div>
-          <div className="mt-2">
-            <div className="text-xl font-mono font-extrabold text-purple-600 dark:text-purple-400">
-              {totalDraftCount} Drafts
-            </div>
-            <p className="text-[10px] text-[var(--color-text-muted)] mt-0.5">Unposted preparation adjustments</p>
-          </div>
-        </div>
+        <KpiCard
+          icon={Layers}
+          label="DRAFT WORKPAPERS"
+          value={`${totalDraftCount}`}
+          desc="Drafts · Unposted preparation adjustments"
+          tone="purple"
+        />
 
         {/* Journal Turnover */}
-        <div className="bg-[var(--color-surface)] border border-[var(--color-border)] rounded-2xl p-4 shadow-xs flex flex-col justify-between hover:border-emerald-500/30 transition-all">
-          <div className="flex items-center justify-between">
-            <span className="text-[10px] font-extrabold uppercase tracking-wider text-[var(--color-text-muted)]">
-              JOURNAL TRANSACTION VOLUME
-            </span>
-            <div className="p-1.5 rounded-lg bg-emerald-50 dark:bg-emerald-950/40 text-emerald-600">
-              <Landmark className="w-4 h-4" />
-            </div>
-          </div>
-          <div className="mt-2">
-            <div className="text-xl font-mono font-extrabold text-[var(--color-text-strong)]">
-              {money(totalJournalTurnover)}
-            </div>
-            <p className="text-[10px] text-[var(--color-text-muted)] mt-0.5">Cumulative double-entry volume</p>
-          </div>
-        </div>
-      </div>
+        <KpiCard
+          icon={Landmark}
+          label="JOURNAL TRANSACTION VOLUME"
+          value={money(totalJournalTurnover)}
+          desc="Cumulative double-entry volume"
+          tone="teal"
+        />
+      </KpiGrid>
 
       {/* ─── Search & Status Filter Toolbar (Zero Overlap Guaranteed) ─── */}
       <div className="bg-[var(--color-surface)] p-3 rounded-2xl border border-[var(--color-border)] shadow-xs flex flex-wrap items-center justify-between gap-3">
@@ -594,7 +601,7 @@ export const JournalEntriesView: React.FC<JournalEntriesViewProps> = ({ accounts
         <div className="overflow-x-auto">
           <table className="w-full text-xs text-left border-collapse">
             <thead>
-              <tr className="border-b border-[var(--color-border)] bg-gray-50/50 dark:bg-gray-900/50 text-[10px] uppercase tracking-wider text-[var(--color-text-muted)] font-extrabold">
+              <tr className="border-b border-[var(--color-border)] bg-violet-500/[0.05] dark:bg-violet-400/[0.07] text-[10px] uppercase tracking-wider text-[var(--color-text-muted)] font-extrabold">
                 <th className="py-3.5 px-4">EFFECTIVE DATE</th>
                 <th className="py-3.5 px-4">REFERENCE ID</th>
                 <th className="py-3.5 px-4">DESCRIPTION / MEMO</th>
@@ -607,12 +614,12 @@ export const JournalEntriesView: React.FC<JournalEntriesViewProps> = ({ accounts
             <tbody className="divide-y divide-[var(--color-border)]">
               {filteredEntries.length === 0 ? (
                 <tr>
-                  <td colSpan={7} className="py-12 text-center text-[var(--color-text-muted)]">
-                    <div className="max-w-xs mx-auto space-y-2">
-                      <BookOpen className="w-8 h-8 text-gray-300 dark:text-gray-700 mx-auto" />
-                      <p className="font-semibold text-xs text-[var(--color-text-strong)]">No journal entries found</p>
-                      <p className="text-[11px]">Click "Post New Entry" to create a balanced general journal voucher.</p>
-                    </div>
+                  <td colSpan={7}>
+                    <EmptyState
+                      icon={BookOpen}
+                      title="No journal entries found"
+                      hint='Click "Post New Entry" to create a balanced general journal voucher.'
+                    />
                   </td>
                 </tr>
               ) : (
@@ -640,9 +647,7 @@ export const JournalEntriesView: React.FC<JournalEntriesViewProps> = ({ accounts
                         {money(debitTotal)}
                       </td>
                       <td className="py-3 px-4 text-center">
-                        <span className={`inline-flex px-2.5 py-0.5 rounded-full text-[10px] font-bold border ${getStatusBadge(status)}`}>
-                          {status}
-                        </span>
+                        <StatusChip status={status} label={statusStyles[status]?.label ?? status} hex={statusStyles[status]?.hex ?? '#94a3b8'} />
                       </td>
                       <td className="py-3 px-4 text-right pr-6">
                         <div className="flex items-center justify-end gap-1.5">
@@ -737,6 +742,22 @@ export const JournalEntriesView: React.FC<JournalEntriesViewProps> = ({ accounts
 
             {/* Modal Body */}
             <form onSubmit={(e) => handleSaveEntry(e, 'post')} className="flex-1 overflow-y-auto p-6 space-y-5">
+              {draftRestored && (
+                <div className="p-3 bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800 rounded-xl text-amber-800 dark:text-amber-300 text-xs flex items-center justify-between animate-in fade-in">
+                  <div className="flex items-center gap-2">
+                    <Sparkles className="w-4 h-4 text-amber-600 shrink-0" />
+                    <span><b>Unsaved Draft Restored:</b> Resumed your previously typed journal entry.</span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={handleDiscardDraft}
+                    className="px-2.5 py-1 text-[11px] font-bold bg-amber-200/60 dark:bg-amber-900/60 hover:bg-amber-300 rounded-lg transition-colors cursor-pointer text-amber-900 dark:text-amber-200"
+                  >
+                    Discard Draft
+                  </button>
+                </div>
+              )}
+
               {error && (
                 <div className="p-3.5 bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-800 rounded-xl text-rose-700 dark:text-rose-300 text-xs font-semibold flex items-center justify-between">
                   <span>{error}</span>
@@ -1011,9 +1032,7 @@ export const JournalEntriesView: React.FC<JournalEntriesViewProps> = ({ accounts
                     <h2 className="text-base font-bold text-[var(--color-text-strong)]">
                       Journal Voucher #{selectedDetailEntry.reference}
                     </h2>
-                    <span className={`text-[10px] px-2.5 py-0.5 rounded-full font-bold uppercase tracking-wider border ${getStatusBadge(selectedDetailEntry.status)}`}>
-                      {selectedDetailEntry.status || 'Draft'}
-                    </span>
+                    <StatusChip status={selectedDetailEntry.status || 'Draft'} label={statusStyles[selectedDetailEntry.status || 'Draft']?.label} hex={statusStyles[selectedDetailEntry.status || 'Draft']?.hex ?? '#94a3b8'} />
                   </div>
                   <p className="text-xs text-[var(--color-text-muted)] mt-0.5">
                     Effective Date: <strong>{selectedDetailEntry.date?.slice(0, 10)}</strong> | IAS 1 Verified

@@ -3,6 +3,8 @@ import {
   Mail, Lock, AlertCircle, LogIn, UserPlus, User as UserIcon, ArrowLeft,
   ShieldCheck, Globe, Layers, Sparkles, CheckCircle2
 } from 'lucide-react';
+import AmsLogo from './components/AmsLogo';
+import { getLicenseInfo } from './licenseManager';
 import './Login.css';
 
 export interface UserData {
@@ -204,8 +206,8 @@ export function Login({ onLogin }: LoginProps) {
               <Sparkles className="w-3.5 h-3.5" />
               <span>Enterprise ERP</span>
             </div>
-            <div className="brand-logo-text">
-              <b>AM</b><span>S</span>
+            <div style={{ margin: '14px 0 16px' }}>
+              <AmsLogo variant="full" height={44} />
             </div>
             <p className="brand-desc">
               Accounting Management System & Multi-Sector Enterprise Resource Platform.
@@ -235,7 +237,13 @@ export function Login({ onLogin }: LoginProps) {
 
           <div className="brand-footer">
             <span className="live-indicator" />
-            <span>Operational · 90-Day Trial Active</span>
+            <span>
+              {(() => {
+                const lic = getLicenseInfo();
+                if (!lic.isTrial) return 'Operational · Enterprise Commercial Licensed';
+                return `Operational · ${lic.daysRemaining} Days Left in ${lic.title}`;
+              })()}
+            </span>
           </div>
         </div>
 

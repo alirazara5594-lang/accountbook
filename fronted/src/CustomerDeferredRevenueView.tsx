@@ -4,6 +4,9 @@ import {
   Play, RefreshCw, X, Trash2, Sparkles, UserCheck
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { KpiCard, KpiGrid } from './components/ui/kpi-card';
+import { StatusChip } from './components/ui/status-chip';
+import { EmptyState } from './components/ui/empty-state';
 
 const formatCurrency = (val: number, currency: string = 'USD') => {
   return new Intl.NumberFormat('en-US', {
@@ -237,42 +240,52 @@ export default function CustomerDeferredRevenueView({ activeEntityId, accounts =
 
   return (
     <div className="p-6 space-y-6 max-w-7xl mx-auto">
-      {/* Top Header Card */}
-      <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-5 shadow-xs flex flex-col lg:flex-row lg:items-center justify-between gap-4">
-        <div className="min-w-0 flex-1">
-          <div className="flex items-center gap-2 mb-1.5 flex-wrap">
-            <span className="px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-teal-50 dark:bg-teal-950/60 text-teal-700 dark:text-teal-300 border border-teal-200 dark:border-teal-800 whitespace-nowrap">
-              Sales & Recurring Revenue
-            </span>
-            <span className="text-xs text-slate-500 dark:text-slate-400 font-medium whitespace-nowrap">IFRS 15 & ASC 606 Compliance</span>
+      {/* Page Header — AMS Signature Hero Band */}
+      <div className="relative overflow-hidden rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)] shadow-sm">
+        <div className="absolute inset-0 bg-gradient-to-r from-violet-500/10 via-violet-500/[0.03] to-transparent pointer-events-none" />
+        <div className="absolute -right-10 -top-16 w-56 h-56 rounded-full bg-violet-500/10 blur-3xl pointer-events-none" />
+        <div className="relative flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 px-5 py-4">
+          <div className="flex items-center gap-4">
+            <div className="relative h-14 w-14 shrink-0">
+              <div className="absolute inset-[6px] rotate-45 rounded-[12px] shadow-xl bg-gradient-to-br from-violet-500 to-purple-700" />
+              <div className="absolute inset-0 flex items-center justify-center"><Sparkles className="w-6 h-6 text-white" /></div>
+            </div>
+            <div>
+              <div className="flex items-center gap-2.5">
+                <h1 className="text-2xl font-black tracking-tight text-[var(--color-text-strong)]">Customer Advances &amp; Deferred Revenue</h1>
+                <span className="hidden sm:inline-flex items-center gap-1.5 rounded-full border border-violet-500/25 bg-violet-500/10 px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider text-violet-600 dark:text-violet-400"><span className="h-1.5 w-1.5 rounded-full bg-violet-500 animate-pulse" /> Live Ledger</span>
+              </div>
+              <p className="text-xs text-[var(--color-text-muted)] mt-0.5">
+                Track customer upfront retainers, annual subscription billing, and service contracts with automated monthly revenue recognition journal postings.
+              </p>
+              <div className="flex items-center gap-2 mt-1.5 flex-wrap">
+                <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-violet-500/10 text-violet-600 dark:text-violet-300 border border-violet-500/25 whitespace-nowrap">
+                  Sales &amp; Recurring Revenue
+                </span>
+                <span className="text-[10px] font-bold uppercase tracking-wider text-[var(--color-text-muted)] whitespace-nowrap">IFRS 15 &amp; ASC 606 Compliance</span>
+              </div>
+            </div>
           </div>
-          <h1 className="text-xl font-bold text-slate-900 dark:text-white flex items-center gap-2 m-0 p-0">
-            <Sparkles className="w-5 h-5 text-teal-600 dark:text-teal-400 shrink-0" />
-            <span>Customer Advances & Deferred Revenue</span>
-          </h1>
-          <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 max-w-2xl leading-relaxed">
-            Track customer upfront retainers, annual subscription billing, and service contracts with automated monthly revenue recognition journal postings.
-          </p>
-        </div>
 
-        <div className="flex flex-row items-center gap-2 flex-nowrap shrink-0">
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => setShowBatchModal(true)}
-            className="border-slate-300 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800 text-xs font-semibold"
-          >
-            <Play className="w-3.5 h-3.5 text-teal-600 fill-teal-600 mr-1" />
-            <span>Recognize Revenue (Batch Run)</span>
-          </Button>
-          <Button
-            size="sm"
-            onClick={() => setShowCreateModal(true)}
-            className="bg-teal-600 hover:bg-teal-700 text-white text-xs font-semibold"
-          >
-            <Plus className="w-3.5 h-3.5 mr-1" />
-            <span>New Deferred Revenue Contract</span>
-          </Button>
+          <div className="flex flex-row items-center gap-2 flex-nowrap shrink-0">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setShowBatchModal(true)}
+              className="border-slate-300 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800 text-xs font-semibold"
+            >
+              <Play className="w-3.5 h-3.5 text-teal-600 fill-teal-600 mr-1" />
+              <span>Recognize Revenue (Batch Run)</span>
+            </Button>
+            <Button
+              size="sm"
+              onClick={() => setShowCreateModal(true)}
+              className="bg-teal-600 hover:bg-teal-700 text-white text-xs font-semibold"
+            >
+              <Plus className="w-3.5 h-3.5 mr-1" />
+              <span>New Deferred Revenue Contract</span>
+            </Button>
+          </div>
         </div>
       </div>
 
@@ -291,61 +304,24 @@ export default function CustomerDeferredRevenueView({ activeEntityId, accounts =
       )}
 
       {/* KPI Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        <div className="p-4 rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-xs">
-          <div className="flex items-center justify-between text-slate-500 dark:text-slate-400 text-xs">
-            <span>Total Contract Value</span>
-            <DollarSign className="w-4 h-4 text-teal-600" />
-          </div>
-          <div className="text-xl font-black text-slate-900 dark:text-white mt-1">
-            {formatCurrency(totalDeferred)}
-          </div>
-          <div className="text-[11px] text-slate-400 mt-0.5">{schedules.length} customer contracts</div>
-        </div>
-
-        <div className="p-4 rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-xs">
-          <div className="flex items-center justify-between text-slate-500 dark:text-slate-400 text-xs">
-            <span>Recognized Revenue (Earned)</span>
-            <CheckCircle2 className="w-4 h-4 text-emerald-600" />
-          </div>
-          <div className="text-xl font-black text-emerald-600 dark:text-emerald-400 mt-1">
-            {formatCurrency(totalRecognized)}
-          </div>
-          <div className="text-[11px] text-emerald-600 mt-0.5 font-semibold">
-            {totalDeferred > 0 ? Math.round((totalRecognized / totalDeferred) * 100) : 0}% recognized
-          </div>
-        </div>
-
-        <div className="p-4 rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-xs">
-          <div className="flex items-center justify-between text-slate-500 dark:text-slate-400 text-xs">
-            <span>Deferred Revenue Liability</span>
-            <Clock className="w-4 h-4 text-indigo-600" />
-          </div>
-          <div className="text-xl font-black text-indigo-600 dark:text-indigo-400 mt-1">
-            {formatCurrency(totalPending)}
-          </div>
-          <div className="text-[11px] text-slate-400 mt-0.5">Current Liability (23000)</div>
-        </div>
-
-        <div className="p-4 rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-xs">
-          <div className="flex items-center justify-between text-slate-500 dark:text-slate-400 text-xs">
-            <span>Active Subscriptions</span>
-            <UserCheck className="w-4 h-4 text-teal-600" />
-          </div>
-          <div className="text-xl font-black text-teal-600 dark:text-teal-400 mt-1">
-            {activeCount}
-          </div>
-          <div className="text-[11px] text-slate-400 mt-0.5">Ongoing amortization</div>
-        </div>
-      </div>
+      <KpiGrid cols={4}>
+        {[
+          { label: 'Total Contract Value', value: formatCurrency(totalDeferred), desc: `${schedules.length} customer contracts`, icon: DollarSign, tone: 'teal' },
+          { label: 'Recognized Revenue (Earned)', value: formatCurrency(totalRecognized), desc: `${totalDeferred > 0 ? Math.round((totalRecognized / totalDeferred) * 100) : 0}% recognized`, icon: CheckCircle2, tone: 'emerald' },
+          { label: 'Deferred Revenue Liability', value: formatCurrency(totalPending), desc: 'Current Liability (23000)', icon: Clock, tone: 'indigo' },
+          { label: 'Active Subscriptions', value: activeCount, desc: 'Ongoing amortization', icon: UserCheck, tone: 'teal' },
+        ].map((kpi) => (
+          <KpiCard key={kpi.label} {...kpi} />
+        ))}
+      </KpiGrid>
 
       {/* Schedules Table */}
       <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl overflow-hidden shadow-xs">
-        <div className="p-4 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between flex-wrap gap-2">
-          <div>
-            <h3 className="font-bold text-sm text-slate-900 dark:text-white">Customer Deferred Revenue Contracts</h3>
-            <p className="text-xs text-slate-500">IFRS 15 Performance obligations & monthly recognition schedules.</p>
-          </div>
+        <div className="px-5 py-3.5 border-b border-slate-200 dark:border-slate-800 bg-[var(--color-surface-muted)] flex items-center justify-between flex-wrap gap-2">
+          <p className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-[var(--color-text-strong)]">
+            <span className="inline-block h-2 w-2 rotate-45 rounded-[2px] bg-gradient-to-br from-violet-500 to-purple-700" />
+            Customer Deferred Revenue Contracts
+          </p>
           <button
             onClick={loadSchedules}
             className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-slate-300 dark:border-slate-700 text-xs font-semibold text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 cursor-pointer"
@@ -357,7 +333,7 @@ export default function CustomerDeferredRevenueView({ activeEntityId, accounts =
 
         <div className="overflow-x-auto">
           <table className="w-full text-left text-xs text-slate-700 dark:text-slate-300">
-            <thead className="bg-slate-50 dark:bg-slate-800/60 text-slate-500 dark:text-slate-400 border-b border-slate-200 dark:border-slate-800 font-bold uppercase text-[10px] tracking-wider">
+            <thead className="bg-violet-500/[0.05] dark:bg-violet-400/[0.07] text-slate-500 dark:text-slate-400 border-b border-slate-200 dark:border-slate-800 font-bold uppercase text-[10px] tracking-wider">
               <tr>
                 <th className="py-3 px-4">Contract #</th>
                 <th className="py-3 px-4">Service Description</th>
@@ -373,8 +349,12 @@ export default function CustomerDeferredRevenueView({ activeEntityId, accounts =
             <tbody className="divide-y divide-slate-200 dark:divide-slate-800 font-medium">
               {schedules.length === 0 ? (
                 <tr>
-                  <td colSpan={9} className="py-12 text-center text-slate-400">
-                    No deferred revenue contracts found. Click <b>New Deferred Revenue Contract</b> to create one.
+                  <td colSpan={9} className="py-12">
+                    <EmptyState
+                      icon={Sparkles}
+                      title="No deferred revenue contracts found"
+                      hint="Click New Deferred Revenue Contract to create your first IFRS 15 schedule."
+                    />
                   </td>
                 </tr>
               ) : (
@@ -413,13 +393,11 @@ export default function CustomerDeferredRevenueView({ activeEntityId, accounts =
                         {sched.startDate} → {sched.endDate}
                       </td>
                       <td className="py-3.5 px-4">
-                        <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
-                          sched.status === 'Completed'
-                            ? 'bg-emerald-100 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300'
-                            : 'bg-teal-100 dark:bg-teal-950/60 text-teal-700 dark:text-teal-300'
-                        }`}>
-                          {sched.status}
-                        </span>
+                        <StatusChip
+                          status={sched.status}
+                          label={sched.status}
+                          hex={sched.status === 'Completed' ? '#10b981' : sched.status === 'Cancelled' ? '#ef4444' : '#0ea5e9'}
+                        />
                       </td>
                       <td className="py-3.5 px-4 text-right">
                         <div className="flex items-center justify-end gap-1.5">

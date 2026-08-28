@@ -81,6 +81,7 @@ export const coaApi = {
   resetDatabase: async (): Promise<void> => {
     return apiClient('/system/reset', {
       method: 'POST',
+      body: {},
     });
   },
 };

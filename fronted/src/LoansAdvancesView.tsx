@@ -8,7 +8,8 @@ import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@
 import { FormSection } from '@/components/ui/form-section';
 import { FormField } from '@/components/ui/form-field';
 import { PageHeader } from '@/components/ui/page-header';
-import { StatCard } from '@/components/ui/stat-card';
+import { StatusChip } from './components/ui/status-chip';
+import { EmptyState } from './components/ui/empty-state';
 import { Plus, Banknote, TrendingUp, CheckCircle2, ArrowLeft, Save, User, Wallet } from 'lucide-react';
 
 const EMPTY_FORM = { employeeId: '', loanNumber: '', loanType: 'SalaryAdvance', principalAmount: 0, interestRate: 0, totalInstallments: 1, installmentAmount: 0, startDate: new Date().toISOString().split('T')[0] };
@@ -106,16 +107,50 @@ export default function LoansAdvancesView() {
 
   return (
     <div className="p-6 max-w-[1400px] mx-auto space-y-4">
-      <PageHeader
-        title="Loans & Advances"
-        description="Manage salary advances, personal loans, and repayment tracking"
-        actions={<Button onClick={() => setView('form')}><Plus className="mr-2 h-4 w-4" /> New Loan</Button>}
-      />
+      {/* Page Header — AMS Signature Hero Band */}
+      <div className="relative overflow-hidden rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)] shadow-sm">
+        <div className="absolute inset-0 bg-gradient-to-r from-amber-500/10 via-amber-500/[0.03] to-transparent pointer-events-none" />
+        <div className="absolute -right-10 -top-16 w-56 h-56 rounded-full bg-amber-500/10 blur-3xl pointer-events-none" />
+        <div className="relative flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 px-5 py-4">
+          <div className="flex items-center gap-4">
+            <div className="relative h-14 w-14 shrink-0">
+              <div className="absolute inset-[6px] rotate-45 rounded-[12px] shadow-xl bg-gradient-to-br from-amber-500 to-orange-700" />
+              <div className="absolute inset-0 flex items-center justify-center"><Banknote className="w-6 h-6 text-white" /></div>
+            </div>
+            <div>
+              <div className="flex items-center gap-2.5">
+                <h1 className="text-2xl font-black tracking-tight text-[var(--color-text-strong)]">Loans &amp; Advances</h1>
+                <span className="hidden sm:inline-flex items-center gap-1.5 rounded-full border border-amber-500/25 bg-amber-500/10 px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider text-amber-600 dark:text-amber-400"><span className="h-1.5 w-1.5 rounded-full bg-amber-500 animate-pulse" /> Live Ledger</span>
+              </div>
+              <p className="text-xs text-[var(--color-text-muted)] mt-0.5">Manage salary advances, personal loans, and repayment tracking</p>
+            </div>
+          </div>
+          <div className="flex items-center gap-2 shrink-0">
+            <Button onClick={() => setView('form')}><Plus className="mr-2 h-4 w-4" /> New Loan</Button>
+          </div>
+        </div>
+      </div>
 
-      <div className="grid grid-cols-3 gap-4">
-        <StatCard icon={Banknote} label="Active Loans" value={activeLoans} tone="teal" />
-        <StatCard icon={TrendingUp} label="Outstanding Balance" value={totalOutstanding.toLocaleString()} tone="amber" />
-        <StatCard icon={CheckCircle2} label="Completed" value={completedLoans} tone="green" />
+      <div className="grid grid-cols-2 lg:grid-cols-3 gap-4">
+        {[
+          { label: 'Active Loans', value: activeLoans, desc: 'Currently active', icon: Banknote, color: 'from-teal-500 to-teal-600', bg: 'bg-teal-50 dark:bg-teal-950/30', textColor: 'text-teal-600 dark:text-teal-400' },
+          { label: 'Outstanding Balance', value: totalOutstanding.toLocaleString(), desc: 'Total remaining', icon: TrendingUp, color: 'from-amber-500 to-orange-500', bg: 'bg-amber-50 dark:bg-amber-950/30', textColor: 'text-amber-600 dark:text-amber-400' },
+          { label: 'Completed', value: completedLoans, desc: 'Fully repaid loans', icon: CheckCircle2, color: 'from-emerald-500 to-green-500', bg: 'bg-green-50 dark:bg-green-950/30', textColor: 'text-green-600 dark:text-green-400' },
+        ].map((kpi) => (
+          <div key={kpi.label} className="relative overflow-hidden rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)] p-3 shadow-sm hover:shadow-md transition-shadow">
+            <div className="flex items-start justify-between">
+              <div>
+                <p className="text-xs font-semibold text-[var(--color-text-muted)] uppercase tracking-wider">{kpi.label}</p>
+                <p className={`text-lg font-semibold mt-1 ${kpi.textColor}`}>{kpi.value}</p>
+                <p className="text-xs text-[var(--color-text-muted)] mt-1">{kpi.desc}</p>
+              </div>
+              <div className={`w-9 h-9 rounded-lg bg-gradient-to-br ${kpi.color} flex items-center justify-center text-white shadow-lg`}>
+                <kpi.icon className="w-4.5 h-4.5" />
+              </div>
+            </div>
+            <div className={`absolute -bottom-4 -right-4 w-24 h-24 rounded-full ${kpi.bg} opacity-50`} />
+          </div>
+        ))}
       </div>
 
       <div className="flex gap-3 items-center">
@@ -163,14 +198,20 @@ export default function LoansAdvancesView() {
                 </td>
                 <td className="p-3 text-right font-mono font-semibold">{l.balanceAmount.toLocaleString()}</td>
                 <td className="p-3 text-center">
-                  <Badge variant={l.status === 'Active' ? 'default' : l.status === 'Completed' ? 'secondary' : 'destructive'}>{l.status}</Badge>
+                  <StatusChip status={l.status} label={l.status} hex={l.status === 'Active' ? '#10b981' : l.status === 'Completed' ? '#10b981' : '#f43f5e'} />
                 </td>
                 <td className="p-3 text-right">
                   {l.status === 'Active' && <Button size="sm" variant="ghost" onClick={() => recordLoanRepayment(l.id)}><Banknote className="h-4 w-4 mr-1" />Repay</Button>}
                 </td>
               </tr>
             ))}
-            {filtered.length === 0 && <tr><td colSpan={9} className="p-8 text-center text-muted-foreground">No loans found</td></tr>}
+            {filtered.length === 0 && (
+              <tr>
+                <td colSpan={9} className="p-0">
+                  <EmptyState icon={Banknote} title="No Loans Found" hint="Salary advances and employee loans you create will appear here." />
+                </td>
+              </tr>
+            )}
           </tbody>
         </table>
       </Card>

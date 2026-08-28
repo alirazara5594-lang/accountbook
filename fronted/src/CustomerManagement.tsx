@@ -3,7 +3,8 @@ import type { FormEvent } from 'react'
 import {
   ShieldAlert, UserCheck, Users, User, CreditCard, Pencil, Trash2,
   Building2, MapPin, Receipt, Globe, Check, Sparkles, X, Mail,
-  Phone, Hash, Calendar, ShieldCheck, ArrowRight, ArrowLeft, Eye
+  Phone, Hash, Calendar, ShieldCheck, ArrowRight, ArrowLeft, Eye,
+  DollarSign, Clock
 } from 'lucide-react'
 
 import { Button } from '@/components/ui/button'
@@ -11,6 +12,9 @@ import { DataToolbar } from '@/components/ui/data-toolbar'
 import type { Entity } from './EntitySettings'
 import { useCustomersStore } from './stores'
 import { useFormDraft } from './hooks/useFormDraft'
+import { KpiCard, KpiGrid } from './components/ui/kpi-card'
+import { StatusChip } from './components/ui/status-chip'
+import { EmptyState, TableSkeleton } from './components/ui/empty-state'
 import { money } from './lib/currency'
 
 export type CustomerStatus = 'Active' | 'Inactive' | 'Blocked'
@@ -293,121 +297,118 @@ export default function CustomerManagement({
 
   return (
     <div className="space-y-6">
-      {/* Submodule Heading Banner (Row 1) */}
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-3 bg-[var(--color-surface)] p-3.5 rounded-xl border border-[var(--color-border)] shadow-sm">
-        <div>
-          <h1 className="text-base font-bold text-[var(--color-text-strong)] tracking-tight flex items-center gap-2">
-            <span className="text-lg">👥</span> Customer Management
-          </h1>
-          <p className="text-[var(--color-text-muted)] text-xs mt-0.5">Manage customer records, credit terms, contact directories, and trade receivables.</p>
-        </div>
-        <div className="flex items-center gap-2 shrink-0 flex-wrap">
-          <DataToolbar
-            query={search}
-            setQuery={setSearch}
-            searchPlaceholder="Search customer #, name..."
-            exportFileName="customer-directory"
-            exportSheetName="Customers"
-            exportTitle="Customer Directory"
-            exportSubtitle="Customer accounts, credit limits, and contact records."
-            exportHeaders={exportHeaders}
-            exportRows={exportRows}
-          >
-            <select
-              className="h-9 px-3 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] text-xs text-[var(--color-text)] outline-none focus:border-[var(--color-primary)] transition-colors shadow-2xs box-border"
-              style={{ paddingTop: 0, paddingBottom: 0 }}
-              value={statusFilter}
-              onChange={e => setStatusFilter(e.target.value)}
+      {/* Page Header — AMS Signature Hero Band */}
+      <div className="relative overflow-hidden rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)] shadow-sm">
+        <div className="absolute inset-0 bg-gradient-to-r from-indigo-500/10 via-indigo-500/[0.03] to-transparent pointer-events-none" />
+        <div className="absolute -right-10 -top-16 w-56 h-56 rounded-full bg-indigo-500/10 blur-3xl pointer-events-none" />
+        <div className="relative flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 px-5 py-4">
+          <div className="flex items-center gap-4">
+            <div className="relative h-14 w-14 shrink-0">
+              <div className="absolute inset-[6px] rotate-45 rounded-[12px] shadow-xl bg-gradient-to-br from-indigo-500 to-blue-700" />
+              <div className="absolute inset-0 flex items-center justify-center"><Users className="w-6 h-6 text-white" /></div>
+            </div>
+            <div>
+              <div className="flex items-center gap-2.5">
+                <h1 className="text-2xl font-black tracking-tight text-[var(--color-text-strong)]">Customer Management</h1>
+                <span className="hidden sm:inline-flex items-center gap-1.5 rounded-full border border-indigo-500/25 bg-indigo-500/10 px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider text-indigo-600 dark:text-indigo-400"><span className="h-1.5 w-1.5 rounded-full bg-indigo-500 animate-pulse" /> Live Ledger</span>
+              </div>
+              <p className="text-xs text-[var(--color-text-muted)] mt-0.5">Manage customer records, credit terms, contact directories, and trade receivables.</p>
+            </div>
+          </div>
+          <div className="flex items-center gap-2 shrink-0 flex-wrap">
+            <DataToolbar
+              query={search}
+              setQuery={setSearch}
+              searchPlaceholder="Search customer #, name..."
+              exportFileName="customer-directory"
+              exportSheetName="Customers"
+              exportTitle="Customer Directory"
+              exportSubtitle="Customer accounts, credit limits, and contact records."
+              exportHeaders={exportHeaders}
+              exportRows={exportRows}
             >
-              <option value="all">⚡ All Statuses</option>
-              <option value="Active">🟢 Active</option>
-              <option value="Inactive">⚪ Inactive</option>
-              <option value="Blocked">🔴 Blocked</option>
-            </select>
-
-            {entities && entities.length > 1 && (
               <select
                 className="h-9 px-3 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] text-xs text-[var(--color-text)] outline-none focus:border-[var(--color-primary)] transition-colors shadow-2xs box-border"
                 style={{ paddingTop: 0, paddingBottom: 0 }}
-                value={companyFilter}
-                onChange={e => setCompanyFilter(e.target.value)}
+                value={statusFilter}
+                onChange={e => setStatusFilter(e.target.value)}
               >
-                <option value="all">🏢 All Companies</option>
-                <option value="unassigned">🌐 Global</option>
-                {entities.map(e => (
-                  <option key={e.id} value={e.id}>
-                    🏢 {e.name} {e.code ? `(${e.code})` : ''}
-                  </option>
-                ))}
+                <option value="all">⚡ All Statuses</option>
+                <option value="Active">🟢 Active</option>
+                <option value="Inactive">⚪ Inactive</option>
+                <option value="Blocked">🔴 Blocked</option>
               </select>
-            )}
-          </DataToolbar>
-          <button onClick={openCreateModal} className="primary h-9 px-4 rounded-xl text-xs font-semibold whitespace-nowrap flex items-center justify-center gap-1.5 shadow-sm">
-            <span>＋</span> Add Customer
-          </button>
+
+              {entities && entities.length > 1 && (
+                <select
+                  className="h-9 px-3 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] text-xs text-[var(--color-text)] outline-none focus:border-[var(--color-primary)] transition-colors shadow-2xs box-border"
+                  style={{ paddingTop: 0, paddingBottom: 0 }}
+                  value={companyFilter}
+                  onChange={e => setCompanyFilter(e.target.value)}
+                >
+                  <option value="all">🏢 All Companies</option>
+                  <option value="unassigned">🌐 Global</option>
+                  {entities.map(e => (
+                    <option key={e.id} value={e.id}>
+                      🏢 {e.name} {e.code ? `(${e.code})` : ''}
+                    </option>
+                  ))}
+                </select>
+              )}
+            </DataToolbar>
+            <button onClick={openCreateModal} className="primary h-9 px-4 rounded-xl text-xs font-semibold whitespace-nowrap flex items-center justify-center gap-1.5 shadow-sm">
+              <span>＋</span> Add Customer
+            </button>
+          </div>
         </div>
       </div>
 
       {/* Header Stats (Row 2) */}
-      <section className="stats">
-        <article>
-          <span className="stat-icon blue">
-            <Users className="w-4 h-4" />
-          </span>
-          <div>
-            <small>TOTAL CUSTOMERS</small>
-            <h2>{stats.total}</h2>
-            <p>{stats.activeCount} active in group</p>
-          </div>
-        </article>
-        <article>
-          <span className="stat-icon teal">
-            <CreditCard className="w-4 h-4" />
-          </span>
-          <div>
-            <small>TOTAL CREDIT LIMIT</small>
-            <h2>{money(stats.totalCreditLimit)}</h2>
-            <p>Allocated credit exposure</p>
-          </div>
-        </article>
-        <article>
-          <span className="stat-icon violet">
-            <UserCheck className="w-4 h-4" />
-          </span>
-          <div>
-            <small>AVG PAYMENT TERMS</small>
-            <h2>{stats.avgTerms} Days</h2>
-            <p>Net payment period</p>
-          </div>
-        </article>
-      </section>
+      <div className="px-5">
+        <KpiGrid cols={3}>
+          {[
+            { label: 'Total Customers', value: stats.total, desc: `${stats.activeCount} active in group`, icon: Users, tone: 'blue' },
+            { label: 'Total Credit Limit', value: money(stats.totalCreditLimit), desc: 'Allocated credit exposure', icon: DollarSign, tone: 'teal' },
+            { label: 'Avg Payment Terms', value: `${stats.avgTerms} Days`, desc: 'Net payment period', icon: Clock, tone: 'purple' },
+          ].map((kpi) => (
+            <KpiCard key={kpi.label} {...kpi} />
+          ))}
+        </KpiGrid>
+      </div>
 
       {/* Customer Table */}
       <div className="bg-[var(--color-surface)] border border-[var(--color-border)] rounded-xl overflow-hidden shadow-sm">
-        <div className="px-4 py-2.5 border-b border-[var(--color-border)] bg-[var(--color-surface-muted)] flex items-center justify-between">
-          <p className="text-xs font-semibold text-[var(--color-text-strong)]">Customer Directory & Receivables</p>
+        <div className="px-5 py-3.5 border-b border-[var(--color-border)] bg-[var(--color-surface-muted)] flex items-center justify-between">
+          <p className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-[var(--color-text-strong)]">
+            <span className="inline-block h-2 w-2 rotate-45 rounded-[2px] bg-gradient-to-br from-indigo-500 to-blue-700" />
+            Customer Directory &amp; Receivables
+          </p>
           <span className="text-[11px] text-[var(--color-text-muted)]">Showing {filteredCustomers.length} of {customers.length} customer{customers.length !== 1 ? 's' : ''}</span>
         </div>
 
         {loading ? (
-          <div className="py-12 text-center text-xs text-[var(--color-text-muted)]">Loading customers...</div>
+          <TableSkeleton rows={6} />
         ) : filteredCustomers.length === 0 ? (
-          <div className="py-12 text-center text-xs text-[var(--color-text-muted)]">No customers found matching your criteria.</div>
+          <EmptyState
+            icon={Users}
+            title="No customers found"
+            hint="Adjust the search, company, or status filters to see more results."
+          />
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full text-xs">
               <thead>
-                <tr className="border-b border-[var(--color-border)] bg-[var(--color-surface-muted)]">
-                  <th className="text-left px-3 py-2 font-semibold text-[var(--color-text-muted)]">Number</th>
-                  <th className="text-left px-3 py-2 font-semibold text-[var(--color-text-muted)]">Name</th>
-                  <th className="text-left px-3 py-2 font-semibold text-[var(--color-text-muted)]">Company</th>
-                  <th className="text-left px-3 py-2 font-semibold text-[var(--color-text-muted)]">Email</th>
-                  <th className="text-left px-3 py-2 font-semibold text-[var(--color-text-muted)]">Phone</th>
-                  <th className="text-left px-3 py-2 font-semibold text-[var(--color-text-muted)]">Location</th>
-                  <th className="text-right px-3 py-2 font-semibold text-[var(--color-text-muted)]">Credit Limit</th>
-                  <th className="text-center px-3 py-2 font-semibold text-[var(--color-text-muted)]">Terms</th>
-                  <th className="text-center px-3 py-2 font-semibold text-[var(--color-text-muted)]">Status</th>
-                  <th className="text-right px-3 py-2 font-semibold text-[var(--color-text-muted)]">Actions</th>
+                <tr className="border-b border-[var(--color-border)] bg-indigo-500/[0.05] dark:bg-indigo-400/[0.07]">
+                  <th className="text-left px-3 py-3 text-[10px] font-bold uppercase tracking-wider text-[var(--color-text-muted)]">Number</th>
+                  <th className="text-left px-3 py-3 text-[10px] font-bold uppercase tracking-wider text-[var(--color-text-muted)]">Name</th>
+                  <th className="text-left px-3 py-3 text-[10px] font-bold uppercase tracking-wider text-[var(--color-text-muted)]">Company</th>
+                  <th className="text-left px-3 py-3 text-[10px] font-bold uppercase tracking-wider text-[var(--color-text-muted)]">Email</th>
+                  <th className="text-left px-3 py-3 text-[10px] font-bold uppercase tracking-wider text-[var(--color-text-muted)]">Phone</th>
+                  <th className="text-left px-3 py-3 text-[10px] font-bold uppercase tracking-wider text-[var(--color-text-muted)]">Location</th>
+                  <th className="text-right px-3 py-3 text-[10px] font-bold uppercase tracking-wider text-[var(--color-text-muted)]">Credit Limit</th>
+                  <th className="text-center px-3 py-3 text-[10px] font-bold uppercase tracking-wider text-[var(--color-text-muted)]">Terms</th>
+                  <th className="text-center px-3 py-3 text-[10px] font-bold uppercase tracking-wider text-[var(--color-text-muted)]">Status</th>
+                  <th className="text-right px-3 py-3 text-[10px] font-bold uppercase tracking-wider text-[var(--color-text-muted)]">Actions</th>
                 </tr>
               </thead>
               <tbody>
@@ -424,11 +425,11 @@ export default function CustomerManagement({
                       <td className="px-3 py-2 text-right font-mono font-semibold text-[var(--color-text-strong)]">{money(customer.creditLimit, customer.currencyCode)}</td>
                       <td className="px-3 py-2 text-center text-[var(--color-text-muted)]">Net {customer.paymentTermsDays}d</td>
                       <td className="px-3 py-2 text-center">
-                        <span className={`inline-block px-2 py-0.5 rounded-full text-[10px] font-semibold ${
-                          customer.status === 'Active' ? 'bg-emerald-500/10 text-emerald-500 border border-emerald-500/20' :
-                          customer.status === 'Blocked' ? 'bg-rose-500/10 text-rose-500 border border-rose-500/20' :
-                          'bg-amber-500/10 text-amber-500 border border-amber-500/20'
-                        }`}>{customer.status}</span>
+                        <StatusChip
+                          status={customer.status}
+                          label={customer.status}
+                          hex={customer.status === 'Active' ? '#10b981' : customer.status === 'Blocked' ? '#ef4444' : '#f59e0b'}
+                        />
                       </td>
                       <td className="px-3 py-2 text-right">
                         <div className="flex items-center justify-end gap-0.5">
@@ -469,7 +470,7 @@ export default function CustomerManagement({
             {/* Modal Header */}
             <div className="px-6 py-4.5 border-b border-[var(--color-border)] bg-[var(--color-surface-muted)]/50 flex items-center justify-between">
               <div className="flex items-center gap-3.5">
-                <div className="w-11 h-11 rounded-xl bg-gradient-to-br from-sky-500 to-blue-600 flex items-center justify-center text-white shadow-sm shrink-0">
+                <div className="w-9 h-9 rounded-lg bg-gradient-to-br from-sky-500 to-blue-600 flex items-center justify-center text-white shadow-sm shrink-0">
                   <Building2 className="w-5 h-5" />
                 </div>
                 <div>

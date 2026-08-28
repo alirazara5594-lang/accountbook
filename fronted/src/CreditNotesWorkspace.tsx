@@ -2,18 +2,21 @@ import { useState, useEffect, useMemo } from 'react'
 import type { FormEvent } from 'react'
 import {
   FileText, Check, X, ArrowRight, ArrowLeft, Coins,
-  CheckCircle2, Users, Trash2, Send, ShieldCheck, Eye
+  CheckCircle2, Users, Trash2, Send, ShieldCheck, Eye, CreditCard
 } from 'lucide-react'
 import { useCreditNotesStore } from './stores/useCreditNotesStore'
 import { useCustomersStore, useCompanyStore } from './stores'
 import { useFormDraft } from './hooks/useFormDraft'
 import { DataToolbar } from '@/components/ui/data-toolbar'
+import { KpiCard, KpiGrid } from './components/ui/kpi-card'
+import { StatusChip } from './components/ui/status-chip'
+import { EmptyState } from './components/ui/empty-state'
 import { money } from '@/lib/currency'
 
-const statusStyles: Record<string, { label: string; class: string }> = {
-  Draft: { label: 'Draft', class: 'bg-slate-500/10 text-slate-600 border border-slate-500/20' },
-  Posted: { label: 'Posted', class: 'bg-emerald-500/10 text-emerald-600 border border-emerald-500/20' },
-  Void: { label: 'Void', class: 'bg-rose-500/10 text-rose-600 border border-rose-500/20' }
+const statusStyles: Record<string, { label: string; hex: string }> = {
+  Draft: { label: 'Draft', hex: '#94a3b8' },
+  Posted: { label: 'Posted', hex: '#10b981' },
+  Void: { label: 'Void', hex: '#ef4444' }
 }
 
 export function CreditNotesWorkspace({
@@ -141,111 +144,105 @@ export function CreditNotesWorkspace({
   return (
     <div className="space-y-6">
       {toast && (
-        <div className="px-3.5 py-2 bg-emerald-500/10 border border-emerald-500/20 text-emerald-600 rounded-xl text-xs font-semibold">
+        <div className="z-[9999] px-3.5 py-2 bg-emerald-500/10 border border-emerald-500/20 text-emerald-600 rounded-xl text-xs font-semibold">
           {toast}
         </div>
       )}
 
-      {/* Submodule Heading Banner (Row 1) */}
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-3 bg-[var(--color-surface)] p-3.5 rounded-xl border border-[var(--color-border)] shadow-sm">
-        <div>
-          <h1 className="text-base font-bold text-[var(--color-text-strong)] tracking-tight flex items-center gap-2">
-            <span className="text-lg">📝</span> Credit Notes & Returns
-          </h1>
-          <p className="text-[var(--color-text-muted)] text-xs mt-0.5">
-            Issue sales credit memos, return adjustments, and customer refund vouchers with automated AR posting.
-          </p>
-        </div>
-        <div className="flex items-center gap-2 shrink-0 flex-wrap">
-          <DataToolbar
-            query={query}
-            setQuery={setQuery}
-            searchPlaceholder="Search customer, note..."
-            exportFileName="credit-notes"
-            exportSheetName="Credit Notes"
-            exportTitle="Credit Notes Register"
-            exportSubtitle="Customer credit memos and returns."
-            exportHeaders={exportHeaders}
-            exportRows={exportRows}
-            exportTotals={[{ label: 'Total Credit Value', value: totalCredit }]}
-          >
-            <select
-              className="h-9 px-3 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] text-xs text-[var(--color-text)] outline-none focus:border-[var(--color-primary)] transition-colors shadow-2xs box-border"
-              style={{ paddingTop: 0, paddingBottom: 0 }}
-              value={statusFilter}
-              onChange={e => setStatusFilter(e.target.value)}
+      {/* Page Header — AMS Signature Hero Band */}
+      <div className="relative overflow-hidden rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)] shadow-sm">
+        <div className="absolute inset-0 bg-gradient-to-r from-emerald-500/10 via-emerald-500/[0.03] to-transparent pointer-events-none" />
+        <div className="absolute -right-10 -top-16 w-56 h-56 rounded-full bg-emerald-500/10 blur-3xl pointer-events-none" />
+        <div className="relative flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 px-5 py-4">
+          <div className="flex items-center gap-4">
+            <div className="relative h-14 w-14 shrink-0">
+              <div className="absolute inset-[6px] rotate-45 rounded-[12px] shadow-xl bg-gradient-to-br from-emerald-500 to-green-700" />
+              <div className="absolute inset-0 flex items-center justify-center"><FileText className="w-6 h-6 text-white" /></div>
+            </div>
+            <div>
+              <div className="flex items-center gap-2.5">
+                <h1 className="text-2xl font-black tracking-tight text-[var(--color-text-strong)]">Credit Notes &amp; Returns</h1>
+                <span className="hidden sm:inline-flex items-center gap-1.5 rounded-full border border-emerald-500/25 bg-emerald-500/10 px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider text-emerald-600 dark:text-emerald-400"><span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" /> Live Ledger</span>
+              </div>
+              <p className="text-xs text-[var(--color-text-muted)] mt-0.5">
+                Issue sales credit memos, return adjustments, and customer refund vouchers with automated AR posting.
+              </p>
+            </div>
+          </div>
+          <div className="flex items-center gap-2 shrink-0 flex-wrap">
+            <DataToolbar
+              query={query}
+              setQuery={setQuery}
+              searchPlaceholder="Search customer, note..."
+              exportFileName="credit-notes"
+              exportSheetName="Credit Notes"
+              exportTitle="Credit Notes Register"
+              exportSubtitle="Customer credit memos and returns."
+              exportHeaders={exportHeaders}
+              exportRows={exportRows}
+              exportTotals={[{ label: 'Total Credit Value', value: totalCredit }]}
             >
-              <option value="all">⚡ All Statuses</option>
-              <option value="draft">⚪ Draft</option>
-              <option value="posted">🟢 Posted</option>
-              <option value="void">🔴 Void</option>
-            </select>
-          </DataToolbar>
-          <button
-            onClick={openCreateModal}
-            className="primary h-9 px-4 rounded-xl text-xs font-semibold whitespace-nowrap flex items-center justify-center gap-1.5 shadow-sm"
-          >
-            <span>＋</span> Create Credit Note
-          </button>
+              <select
+                className="h-9 px-3 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] text-xs text-[var(--color-text)] outline-none focus:border-[var(--color-primary)] transition-colors shadow-2xs box-border"
+                value={statusFilter}
+                onChange={e => setStatusFilter(e.target.value)}
+              >
+                <option value="all">⚡ All Statuses</option>
+                <option value="draft">⚪ Draft</option>
+                <option value="posted">🟢 Posted</option>
+                <option value="void">🔴 Void</option>
+              </select>
+            </DataToolbar>
+            <button
+              onClick={openCreateModal}
+              className="h-9 px-5 rounded-xl bg-gradient-to-r from-emerald-600 to-green-600 text-white text-xs font-bold shadow-lg shadow-emerald-500/25"
+            >
+              <span>＋</span> Create Credit Note
+            </button>
+          </div>
         </div>
       </div>
 
       {/* Stats Cards (Row 2) */}
-      <section className="stats">
-        <article>
-          <span className="stat-icon blue">
-            <Coins className="w-4 h-4" />
-          </span>
-          <div>
-            <small>TOTAL CREDIT VALUE</small>
-            <h2>{money(totalCredit)}</h2>
-            <p>Issued customer credits</p>
-          </div>
-        </article>
-        <article>
-          <span className="stat-icon teal">
-            <CheckCircle2 className="w-4 h-4" />
-          </span>
-          <div>
-            <small>POSTED TO LEDGER</small>
-            <h2>{postedCount}</h2>
-            <p>Applied to customer AR</p>
-          </div>
-        </article>
-        <article>
-          <span className="stat-icon violet">
-            <FileText className="w-4 h-4" />
-          </span>
-          <div>
-            <small>DRAFT CREDIT NOTES</small>
-            <h2>{draftCount}</h2>
-            <p>Pending manager approval</p>
-          </div>
-        </article>
-      </section>
+      <KpiGrid cols={3}>
+        {[
+          { label: 'Total Credit Value', value: money(totalCredit), desc: 'Issued customer credits', icon: CreditCard, tone: 'blue' },
+          { label: 'Posted to Ledger', value: postedCount, desc: 'Applied to customer AR', icon: CheckCircle2, tone: 'emerald' },
+          { label: 'Draft Credit Notes', value: draftCount, desc: 'Pending manager approval', icon: FileText, tone: 'violet' },
+        ].map((kpi) => (
+          <KpiCard key={kpi.label} {...kpi} />
+        ))}
+      </KpiGrid>
 
       {/* Table */}
       <div className="bg-[var(--color-surface)] border border-[var(--color-border)] rounded-xl overflow-hidden shadow-sm">
-        <div className="px-4 py-2.5 border-b border-[var(--color-border)] bg-[var(--color-surface-muted)] flex items-center justify-between">
-          <p className="text-xs font-semibold text-[var(--color-text-strong)]">Credit Notes Directory</p>
+        <div className="px-5 py-3.5 border-b border-[var(--color-border)] bg-[var(--color-surface-muted)] flex items-center justify-between">
+          <p className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-[var(--color-text-strong)]">
+            <span className="inline-block h-2 w-2 rotate-45 rounded-[2px] bg-gradient-to-br from-emerald-500 to-green-700" />
+            Credit Notes Directory
+          </p>
           <span className="text-[11px] text-[var(--color-text-muted)]">
             Showing {filtered.length} of {creditNotes.length} record{creditNotes.length !== 1 ? 's' : ''}
           </span>
         </div>
 
         {filtered.length === 0 ? (
-          <div className="py-12 text-center text-xs text-[var(--color-text-muted)]">No credit notes found matching your criteria.</div>
+          <EmptyState
+            icon={FileText}
+            title="No credit notes found"
+            hint="Adjust the search or status filters to see more results."
+          />
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full text-xs">
               <thead>
-                <tr className="border-b border-[var(--color-border)] bg-[var(--color-surface-muted)]">
-                  <th className="text-left px-3 py-2 font-semibold text-[var(--color-text-muted)]">Date</th>
-                  <th className="text-left px-3 py-2 font-semibold text-[var(--color-text-muted)]">Customer</th>
-                  <th className="text-left px-3 py-2 font-semibold text-[var(--color-text-muted)]">Reason / Note</th>
-                  <th className="text-right px-3 py-2 font-semibold text-[var(--color-text-muted)]">Credit Amount</th>
-                  <th className="text-center px-3 py-2 font-semibold text-[var(--color-text-muted)]">Status</th>
-                  <th className="text-right px-3 py-2 font-semibold text-[var(--color-text-muted)]">Actions</th>
+                <tr className="border-b border-[var(--color-border)] bg-emerald-500/[0.05] dark:bg-emerald-400/[0.07]">
+                  <th className="text-left px-3 py-3 text-[10px] font-bold uppercase tracking-wider text-[var(--color-text-muted)]">Date</th>
+                  <th className="text-left px-3 py-3 text-[10px] font-bold uppercase tracking-wider text-[var(--color-text-muted)]">Customer</th>
+                  <th className="text-left px-3 py-3 text-[10px] font-bold uppercase tracking-wider text-[var(--color-text-muted)]">Reason / Note</th>
+                  <th className="text-right px-3 py-3 text-[10px] font-bold uppercase tracking-wider text-[var(--color-text-muted)]">Credit Amount</th>
+                  <th className="text-center px-3 py-3 text-[10px] font-bold uppercase tracking-wider text-[var(--color-text-muted)]">Status</th>
+                  <th className="text-right px-3 py-3 text-[10px] font-bold uppercase tracking-wider text-[var(--color-text-muted)]">Actions</th>
                 </tr>
               </thead>
               <tbody>
@@ -260,9 +257,7 @@ export function CreditNotesWorkspace({
                       <td className="px-3 py-2 text-[var(--color-text-muted)]">{cn.notes || '—'}</td>
                       <td className="px-3 py-2 text-right font-bold text-sky-600 font-mono">{money(cn.totalAmount)}</td>
                       <td className="px-3 py-2 text-center">
-                        <span className={`inline-block px-2 py-0.5 rounded-full text-[10px] font-semibold ${badge.class}`}>
-                          {badge.label}
-                        </span>
+                        <StatusChip status={cn.status} label={badge.label} hex={badge.hex} />
                       </td>
                       <td className="px-3 py-2 text-right">
                         <div className="flex items-center justify-end gap-1">
@@ -296,12 +291,12 @@ export function CreditNotesWorkspace({
 
       {/* Stepped / Tabbed Credit Note Modal */}
       {showCreate && (
-        <div className="overlay animate-in fade-in duration-200">
-          <div className="w-full max-w-4xl bg-[var(--color-surface)] border border-[var(--color-border)] rounded-2xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh]">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm animate-in fade-in duration-200">
+          <div className="w-full max-w-5xl bg-[var(--color-surface)] border border-[var(--color-border)] rounded-2xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh]">
             {/* Modal Header */}
-            <div className="px-6 py-4.5 border-b border-[var(--color-border)] bg-[var(--color-surface-muted)]/50 flex items-center justify-between">
+            <div className="px-6 py-4 border-b border-[var(--color-border)] flex items-center justify-between">
               <div className="flex items-center gap-3.5">
-                <div className="w-11 h-11 rounded-xl bg-gradient-to-br from-rose-500 to-pink-600 flex items-center justify-center text-white shadow-sm shrink-0">
+                <div className="w-9 h-9 rounded-lg bg-gradient-to-br from-emerald-500 to-green-600 flex items-center justify-center text-white shadow-sm shrink-0">
                   <FileText className="w-5 h-5" />
                 </div>
                 <div>
@@ -322,7 +317,7 @@ export function CreditNotesWorkspace({
 
               <button
                 type="button"
-                className="w-8 h-8 rounded-lg flex items-center justify-center text-[var(--color-text-muted)] hover:text-[var(--color-text-strong)] hover:bg-[var(--color-surface-muted)] transition-colors"
+                className="w-8 h-8 rounded-lg flex items-center justify-center text-[var(--color-text-muted)] hover:bg-[var(--color-surface-muted)] transition-colors"
                 onClick={() => setShowCreate(false)}
               >
                 <X className="w-4 h-4" />
@@ -448,8 +443,7 @@ export function CreditNotesWorkspace({
                         placeholder="0.00"
                         value={form.amount}
                         onChange={e => setForm({ ...form, amount: e.target.value })}
-                        className="w-full h-full border-0 outline-none bg-transparent font-mono text-xs text-[var(--color-text-strong)] placeholder:text-[var(--color-text-muted)]"
-                        style={{ border: 0, outline: 'none', padding: 0, background: 'transparent' }}
+                        className="w-full h-10 px-3 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] text-xs outline-none font-mono text-[var(--color-text-strong)] placeholder:text-[var(--color-text-muted)]"
                       />
                     </div>
                   </div>
@@ -469,8 +463,7 @@ export function CreditNotesWorkspace({
                         placeholder="0.00"
                         value={form.tax}
                         onChange={e => setForm({ ...form, tax: e.target.value })}
-                        className="w-full h-full border-0 outline-none bg-transparent font-mono text-xs text-[var(--color-text-strong)] placeholder:text-[var(--color-text-muted)]"
-                        style={{ border: 0, outline: 'none', padding: 0, background: 'transparent' }}
+                        className="w-full h-10 px-3 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] text-xs outline-none font-mono text-[var(--color-text-strong)] placeholder:text-[var(--color-text-muted)]"
                       />
                     </div>
                   </div>
@@ -558,7 +551,7 @@ export function CreditNotesWorkspace({
             </div>
 
             {/* Modal Footer */}
-            <div className="px-6 py-3.5 border-t border-[var(--color-border)] bg-[var(--color-surface-muted)]/50 flex items-center justify-between gap-3">
+            <div className="px-6 py-4 border-t border-[var(--color-border)] flex items-center justify-between">
               <div className="text-[11px] text-[var(--color-text-muted)] flex items-center gap-1.5">
                 <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 inline-block" />
                 <span>{modalTab === 'preview' ? 'Ready for final verification & creation' : 'Auto-draft protection active'}</span>
@@ -567,7 +560,7 @@ export function CreditNotesWorkspace({
               <div className="flex items-center gap-2">
                 <button
                   type="button"
-                  className="h-8.5 px-3.5 rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] text-xs font-medium text-[var(--color-text)] hover:bg-[var(--color-surface-muted)] transition-colors"
+                  className="h-9 px-4 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] text-xs font-medium hover:bg-[var(--color-surface-muted)] transition-colors"
                   onClick={() => setShowCreate(false)}
                 >
                   Cancel
@@ -575,7 +568,7 @@ export function CreditNotesWorkspace({
                 {modalTab !== 'preview' && (
                   <button
                     type="button"
-                    className="h-8.5 px-3.5 rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] text-xs font-medium text-[var(--color-text-muted)] hover:text-[var(--color-text-strong)] transition-colors"
+                    className="h-9 px-4 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] text-xs font-medium hover:bg-[var(--color-surface-muted)] transition-colors"
                     onClick={(e) => { e.preventDefault(); saveDraft(); notify('Credit note draft saved locally.'); }}
                   >
                     Save Draft
@@ -590,7 +583,7 @@ export function CreditNotesWorkspace({
                       else if (modalTab === 'summary') setModalTab('items')
                       else if (modalTab === 'items') setModalTab('details')
                     }}
-                    className="h-8.5 px-3 rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] text-xs font-medium text-[var(--color-text)] hover:bg-[var(--color-surface-muted)] transition-colors flex items-center gap-1"
+                    className="h-9 px-4 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] text-xs font-medium hover:bg-[var(--color-surface-muted)] transition-colors flex items-center gap-1"
                   >
                     <ArrowLeft className="w-3 h-3" />
                     <span>{modalTab === 'preview' ? 'Back to Edit' : 'Back'}</span>
@@ -610,7 +603,7 @@ export function CreditNotesWorkspace({
                         setModalTab('preview')
                       }
                     }}
-                    className="primary h-8.5 px-4 rounded-lg text-xs font-semibold shadow-xs flex items-center gap-1.5"
+                    className="h-9 px-5 rounded-xl bg-gradient-to-r from-emerald-600 to-green-600 text-white text-xs font-bold shadow-lg shadow-emerald-500/25 flex items-center gap-1.5"
                   >
                     <span>{modalTab === 'details' ? 'Next: Amount & Tax' : modalTab === 'items' ? 'Next: Reason & Confirmation' : 'Preview & Review'}</span>
                     {modalTab === 'summary' ? <Eye className="w-3 h-3" /> : <ArrowRight className="w-3 h-3" />}
@@ -619,7 +612,7 @@ export function CreditNotesWorkspace({
                   <button
                     type="button"
                     onClick={handleCreate as any}
-                    className="primary h-8.5 px-5 rounded-lg text-xs font-semibold shadow-xs flex items-center gap-1.5 bg-rose-600 hover:bg-rose-700 text-white"
+                    className="h-9 px-5 rounded-xl bg-gradient-to-r from-emerald-600 to-green-600 text-white text-xs font-bold shadow-lg shadow-emerald-500/25 flex items-center gap-1.5"
                   >
                     <Check className="w-3 h-3" />
                     <span>Confirm & Issue Credit Note</span>

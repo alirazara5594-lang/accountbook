@@ -1,6 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { useAssetsInventoryStore, useCoaStore, useProductsStore } from './stores';
 import { DataToolbar } from '@/components/ui/data-toolbar';
+import { Warehouse, Boxes } from 'lucide-react';
+import { StatusChip } from './components/ui/status-chip';
+import { EmptyState } from './components/ui/empty-state';
 import { money } from './lib/currency';
 
 // ─── Shared Select ───────────────────────────────────────────────────────────
@@ -70,9 +73,12 @@ const AssetRegister: React.FC<{ activeEntityId: string; accounts: any[] }> = ({ 
   return (
     <div className="space-y-4">
       {toast && <div className="px-4 py-2 bg-green-50 border border-green-200 text-green-800 rounded-xl text-sm">{toast}</div>}
-      <div className="flex flex-wrap justify-between items-center">
-        <h2 className="text-xl font-bold text-gray-900">Fixed Asset Register</h2>
-        <div className="flex flex-wrap items-center gap-2">
+      <div className="bg-white border border-gray-200 rounded-2xl shadow-sm overflow-hidden">
+        <div className="px-5 py-3.5 border-b border-[var(--color-border)] bg-[var(--color-surface-muted)] flex items-center justify-between">
+          <p className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-[var(--color-text-strong)]"><span className="inline-block h-2 w-2 rotate-45 rounded-[2px] bg-gradient-to-br from-teal-500 to-emerald-700" />Fixed Asset Register</p>
+          <span className="text-[11px] text-[var(--color-text-muted)]">{filteredAssets.length} assets · Total Net Book Value {money(totalNBV)}</span>
+        </div>
+        <div className="flex flex-wrap justify-end items-center px-4 py-2">
           <DataToolbar
             query={searchTerm}
             setQuery={setSearchTerm}
@@ -87,11 +93,8 @@ const AssetRegister: React.FC<{ activeEntityId: string; accounts: any[] }> = ({ 
             onRefresh={() => fetchFixedAssets(activeEntityId)}
           />
         </div>
-        <div className="text-right"><p className="text-xs text-gray-500 uppercase tracking-wide">Total Net Book Value</p><p className="text-2xl font-bold text-emerald-600">{money(totalNBV)}</p></div>
-      </div>
-      <div className="bg-white border border-gray-200 rounded-2xl shadow-sm overflow-hidden">
         <table className="w-full text-left text-sm">
-          <thead className="bg-gray-50 text-gray-500 border-b border-gray-100 text-xs uppercase tracking-wider">
+          <thead className="bg-teal-500/[0.05] dark:bg-teal-400/[0.07] text-gray-500 border-b border-gray-100 text-xs uppercase tracking-wider">
             <tr>
               <th className="py-3 px-4">Tag</th><th className="py-3 px-4">Name</th><th className="py-3 px-4">Purchase Date</th>
               <th className="py-3 px-4 text-right">Cost</th><th className="py-3 px-4 text-right">Accum. Depr.</th><th className="py-3 px-4 text-right">NBV</th>
@@ -108,9 +111,7 @@ const AssetRegister: React.FC<{ activeEntityId: string; accounts: any[] }> = ({ 
                 <td className="py-3 px-4 text-right text-orange-600">{money(a.accumulatedDepreciation ?? 0)}</td>
                 <td className="py-3 px-4 text-right font-semibold text-emerald-700">{money(a.purchasePrice - (a.accumulatedDepreciation ?? 0))}</td>
                 <td className="py-3 px-4">
-                  <span className={`px-2 py-1 rounded-full text-xs font-medium ${a.status === 0 ? 'bg-green-100 text-green-700' : a.status === 1 ? 'bg-red-100 text-red-700' : 'bg-gray-100 text-gray-600'}`}>
-                    {['Active','Disposed','Fully Depreciated'][a.status]}
-                  </span>
+                  <StatusChip status={String(['Active','Disposed','Fully Depreciated'][a.status])} />
                 </td>
                 <td className="py-3 px-4 space-x-3">
                   {a.status === 0 && <><button onClick={() => { setDeprModal(a); setDeprForm({ expenseAccId:'', accumAccId:'', usefulLifeYears: deprModal?.usefulLifeYears || a.usefulLifeYears || 3, salvageValue: deprModal?.salvageValue || a.salvageValue || 0 }); }} className="text-blue-600 hover:text-blue-800 text-xs font-medium">Run Depr.</button>
@@ -119,7 +120,7 @@ const AssetRegister: React.FC<{ activeEntityId: string; accounts: any[] }> = ({ 
               </tr>
             ))}
             {(searchTerm && filteredAssets.length === 0) || (!searchTerm && assets.length === 0) && (
-              <tr><td colSpan={8} className="py-10 text-center text-gray-400">No assets matching "{searchTerm}". Process a GRN with "Fixed Asset" destination to auto-create assets.</td></tr>
+              <tr><td colSpan={8}><EmptyState icon={Warehouse} title="No assets found" hint={`No assets matching "${searchTerm}". Process a GRN with "Fixed Asset" destination to auto-create assets.`} /></td></tr>
             )}
           </tbody>
         </table>
@@ -225,10 +226,6 @@ const Warehouses: React.FC<{ activeEntityId: string }> = ({ activeEntityId }) =>
 
   return (
     <div className="space-y-4">
-      <div className="flex justify-between items-center">
-        <h2 className="text-xl font-bold text-gray-900">Warehouses</h2>
-        <button onClick={() => setShowForm(true)} className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-xl">+ New Warehouse</button>
-      </div>
       {showForm && (
         <div className="overlay">
           <div className="modal" style={{ maxWidth: '600px', width: '95%' }}>
@@ -258,11 +255,15 @@ const Warehouses: React.FC<{ activeEntityId: string }> = ({ activeEntityId }) =>
         </div>
       )}
       <div className="bg-white border border-gray-200 rounded-2xl shadow-sm overflow-hidden">
+        <div className="px-5 py-3.5 border-b border-[var(--color-border)] bg-[var(--color-surface-muted)] flex items-center justify-between">
+          <p className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-[var(--color-text-strong)]"><span className="inline-block h-2 w-2 rotate-45 rounded-[2px] bg-gradient-to-br from-teal-500 to-emerald-700" />Warehouses</p>
+          <button onClick={() => setShowForm(true)} className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-xl">+ New Warehouse</button>
+        </div>
         <table className="w-full text-left text-sm">
-          <thead className="bg-gray-50 text-gray-500 border-b border-gray-100 text-xs uppercase tracking-wider"><tr><th className="py-3 px-4">Name</th><th className="py-3 px-4">Location</th></tr></thead>
+          <thead className="bg-teal-500/[0.05] dark:bg-teal-400/[0.07] text-gray-500 border-b border-gray-100 text-xs uppercase tracking-wider"><tr><th className="py-3 px-4">Name</th><th className="py-3 px-4">Location</th></tr></thead>
           <tbody className="divide-y divide-gray-50">
             {warehouses.map(w => (<tr key={w.id} className="hover:bg-gray-50/60"><td className="py-3 px-4 font-medium text-gray-900">{w.name}</td><td className="py-3 px-4 text-gray-500">{w.location || '—'}</td></tr>))}
-            {!loading && warehouses.length === 0 && <tr><td colSpan={2} className="py-8 text-center text-gray-400">No warehouses configured.</td></tr>}
+            {!loading && warehouses.length === 0 && <tr><td colSpan={2}><EmptyState icon={Warehouse} title="No warehouses configured" hint="Add a warehouse to start receiving and issuing stock." /></td></tr>}
           </tbody>
         </table>
       </div>
@@ -282,13 +283,13 @@ const StockLevels: React.FC<{ activeEntityId: string }> = ({ activeEntityId }) =
 
   return (
     <div className="space-y-4">
-      <div className="flex justify-between items-center">
-        <h2 className="text-xl font-bold text-gray-900">Stock Levels</h2>
-        <div className="text-right"><p className="text-xs text-gray-500 uppercase tracking-wide">Total Inventory Value</p><p className="text-2xl font-bold text-blue-600">{money(totalValue)}</p></div>
-      </div>
       <div className="bg-white border border-gray-200 rounded-2xl shadow-sm overflow-hidden">
+        <div className="px-5 py-3.5 border-b border-[var(--color-border)] bg-[var(--color-surface-muted)] flex items-center justify-between">
+          <p className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-[var(--color-text-strong)]"><span className="inline-block h-2 w-2 rotate-45 rounded-[2px] bg-gradient-to-br from-teal-500 to-emerald-700" />Stock Levels</p>
+          <span className="text-[11px] text-[var(--color-text-muted)]">Total Inventory Value: {money(totalValue)}</span>
+        </div>
         <table className="w-full text-left text-sm">
-          <thead className="bg-gray-50 text-gray-500 border-b border-gray-100 text-xs uppercase tracking-wider">
+          <thead className="bg-teal-500/[0.05] dark:bg-teal-400/[0.07] text-gray-500 border-b border-gray-100 text-xs uppercase tracking-wider">
             <tr><th className="py-3 px-4">Product</th><th className="py-3 px-4">Code</th><th className="py-3 px-4">Warehouse</th><th className="py-3 px-4 text-right">Qty on Hand</th><th className="py-3 px-4 text-right">Avg. Cost</th><th className="py-3 px-4 text-right">Total Value</th></tr>
           </thead>
           <tbody className="divide-y divide-gray-50">
@@ -300,7 +301,7 @@ const StockLevels: React.FC<{ activeEntityId: string }> = ({ activeEntityId }) =
               <td className="py-3 px-4 text-right text-gray-500">{money(l.movingAverageCost)}</td>
               <td className="py-3 px-4 text-right font-semibold text-blue-700">{money(l.totalValue)}</td>
             </tr>))}
-            {!loading && levels.length === 0 && <tr><td colSpan={6} className="py-8 text-center text-gray-400">No stock. Process a GRN with "Inventory" destination to populate stock levels.</td></tr>}
+            {!loading && levels.length === 0 && <tr><td colSpan={6}><EmptyState icon={Boxes} title="No stock on hand" hint='Process a GRN with "Inventory" destination to populate stock levels.' /></td></tr>}
           </tbody>
         </table>
       </div>
@@ -335,8 +336,7 @@ const StockTransactionsView: React.FC<{ activeEntityId: string; warehouses: any[
   return (
     <div className="space-y-4">
       {toast && <div className="px-4 py-2 bg-green-50 border border-green-200 text-green-800 rounded-xl text-sm">{toast}</div>}
-      <div className="flex justify-between items-center">
-        <h2 className="text-xl font-bold text-gray-900">Stock Transactions</h2>
+      <div className="flex justify-end">
         <button onClick={() => setShowForm(true)} className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-xl">+ Manual Adjustment</button>
       </div>
       {showForm && (
@@ -400,8 +400,12 @@ const StockTransactionsView: React.FC<{ activeEntityId: string; warehouses: any[
         </div>
       )}
       <div className="bg-white border border-gray-200 rounded-2xl shadow-sm overflow-hidden">
+        <div className="px-5 py-3.5 border-b border-[var(--color-border)] bg-[var(--color-surface-muted)] flex items-center justify-between">
+          <p className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-[var(--color-text-strong)]"><span className="inline-block h-2 w-2 rotate-45 rounded-[2px] bg-gradient-to-br from-teal-500 to-emerald-700" />Stock Transactions</p>
+          <span className="text-[11px] text-[var(--color-text-muted)]">{txns.length} movements</span>
+        </div>
         <table className="w-full text-left text-sm">
-          <thead className="bg-gray-50 text-gray-500 border-b border-gray-100 text-xs uppercase tracking-wider">
+          <thead className="bg-teal-500/[0.05] dark:bg-teal-400/[0.07] text-gray-500 border-b border-gray-100 text-xs uppercase tracking-wider">
             <tr><th className="py-3 px-4">Date</th><th className="py-3 px-4">Type</th><th className="py-3 px-4">Product</th><th className="py-3 px-4">Warehouse</th><th className="py-3 px-4 text-right">Qty</th><th className="py-3 px-4 text-right">Unit Cost</th><th className="py-3 px-4 text-right">Total</th><th className="py-3 px-4">Reference</th></tr>
           </thead>
           <tbody className="divide-y divide-gray-50">
@@ -415,7 +419,7 @@ const StockTransactionsView: React.FC<{ activeEntityId: string; warehouses: any[
               <td className="py-3 px-4 text-right font-semibold">{money(t.totalValue || (t.quantity * (t.unitCost || 0)))}</td>
               <td className="py-3 px-4 text-gray-400 text-xs">{t.reference || '—'}</td>
             </tr>))}
-            {!loading && txns.length === 0 && <tr><td colSpan={8} className="py-8 text-center text-gray-400">No stock movements yet.</td></tr>}
+            {!loading && txns.length === 0 && <tr><td colSpan={8}><EmptyState icon={Boxes} title="No stock movements yet" hint="Record a manual adjustment or process receipts to build movement history." /></td></tr>}
           </tbody>
         </table>
       </div>
@@ -452,20 +456,32 @@ export const AssetsInventoryWorkspace: React.FC<{ activeEntityId: string; entiti
 
   return (
     <div className="p-4 max-w-7xl mx-auto space-y-4">
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-3 bg-white p-3 rounded-xl border border-gray-200 shadow-sm">
-        <div>
-          <h1 className="text-base font-bold text-gray-900 tracking-tight flex items-center gap-2">
-            <span className="text-lg">🏭</span> Assets & Inventory
-          </h1>
-          <p className="text-gray-500 text-[10px] mt-0.5">Manage fixed assets, warehouses, stock levels, depreciation, and valuation.</p>
-        </div>
-        <div className="flex flex-wrap gap-1 bg-gray-100/50 p-1 rounded-lg w-fit border border-gray-200/50">
+      {/* Page Header — AMS Signature Hero Band */}
+      <div className="relative overflow-hidden rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)] shadow-sm">
+        <div className="absolute inset-0 bg-gradient-to-r from-teal-500/10 via-teal-500/[0.03] to-transparent pointer-events-none" />
+        <div className="absolute -right-10 -top-16 w-56 h-56 rounded-full bg-teal-500/10 blur-3xl pointer-events-none" />
+        <div className="relative flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 px-5 py-4">
+          <div className="flex items-center gap-4">
+            <div className="relative h-14 w-14 shrink-0">
+              <div className="absolute inset-[6px] rotate-45 rounded-[12px] shadow-xl bg-gradient-to-br from-teal-500 to-emerald-700" />
+              <div className="absolute inset-0 flex items-center justify-center"><Warehouse className="w-6 h-6 text-white" /></div>
+            </div>
+            <div>
+              <div className="flex items-center gap-2.5">
+                <h1 className="text-2xl font-black tracking-tight text-[var(--color-text-strong)]">Assets &amp; Inventory</h1>
+                <span className="hidden sm:inline-flex items-center gap-1.5 rounded-full border border-teal-500/25 bg-teal-500/10 px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider text-teal-600 dark:text-teal-400"><span className="h-1.5 w-1.5 rounded-full bg-teal-500 animate-pulse" /> Live Ledger</span>
+              </div>
+              <p className="text-xs text-[var(--color-text-muted)] mt-0.5">Manage fixed assets, warehouses, stock levels, depreciation, and valuation.</p>
+            </div>
+          </div>
+          <div className="flex flex-wrap items-center gap-1 shrink-0 bg-gray-100/50 p-1 rounded-xl w-fit border border-gray-200/50">
           {tabs.map(t => (
             <button key={t.id} onClick={() => setActiveTab(t.id)}
               className={`px-2 py-1 rounded-lg text-[11px] font-medium transition-all flex items-center gap-1 ${activeTab === t.id ? 'bg-white text-blue-600 shadow-sm border border-gray-200' : 'text-gray-500 hover:text-gray-900 hover:bg-gray-200/50'}`}>
               <span className="text-sm">{t.icon}</span> {t.label}
             </button>
           ))}
+          </div>
         </div>
       </div>
       <div>

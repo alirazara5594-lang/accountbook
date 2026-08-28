@@ -25,11 +25,19 @@ export interface Invoice {
   customerId: string;
   customerName?: string;
   date: string;
+  invoiceDate?: string;
   dueDate: string;
   totalAmount: number;
   paidAmount: number;
   amountDue: number;
   status: string;
+  reference?: string;
+  notes?: string;
+  currencyCode?: string;
+  subTotal?: number;
+  discountTotal?: number;
+  taxTotal?: number;
+  lines?: any[];
 }
 
 export interface CustomerReceipt {
@@ -74,6 +82,14 @@ export const salesApi = {
 
   createInvoice: async (data: any): Promise<Invoice> => {
     return apiClient<Invoice>('/sales-invoices', { method: 'POST', body: data });
+  },
+
+  updateInvoice: async (id: string, data: any): Promise<Invoice> => {
+    return apiClient<Invoice>(`/sales-invoices/${id}`, { method: 'PUT', body: data });
+  },
+
+  updateInvoiceStatus: async (id: string, status: number | string): Promise<void> => {
+    return apiClient(`/sales-invoices/${id}/status`, { method: 'PATCH', body: { status: Number(status) } });
   },
 
   getCustomerReceipts: async (companyId?: string): Promise<CustomerReceipt[]> => {

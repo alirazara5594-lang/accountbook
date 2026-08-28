@@ -39,6 +39,14 @@ public class SalesInvoicesController : ControllerBase
         return Created($"/api/v1/sales-invoices/{invoice!.Id}", invoice);
     }
 
+    [HttpPut("{id:guid}")]
+    public IActionResult Update(Guid id, [FromBody] SalesInvoiceRequest request)
+    {
+        if (!_store.UpdateSalesInvoice(id, request, out var invoice, out var error))
+            return BadRequest(new { error });
+        return Ok(invoice);
+    }
+
     [HttpPost("{id}/post")]
     public IActionResult Post(Guid id, [FromBody] PostInvoiceRequest request)
     {

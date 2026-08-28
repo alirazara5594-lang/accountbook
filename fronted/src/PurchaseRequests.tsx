@@ -1,6 +1,9 @@
 import React, { useState, useEffect } from 'react';
+import { FileText } from 'lucide-react';
 import { useProcurementStore, useProductsStore } from './stores';
 import { DataToolbar } from '@/components/ui/data-toolbar';
+import { EmptyState, TableSkeleton } from './components/ui/empty-state';
+import { StatusChip } from './components/ui/status-chip';
 
 interface PurchaseRequestLine {
   id?: string;
@@ -92,7 +95,7 @@ export const PurchaseRequests: React.FC<{activeEntityId: string, entities: any[]
     goToPo();
   };
 
-  if (loading) return <div className="p-8 text-center text-gray-500">Loading purchase requests...</div>;
+  if (loading) return <TableSkeleton rows={6} />;
 
   return (
     <div className="space-y-6">
@@ -108,7 +111,7 @@ export const PurchaseRequests: React.FC<{activeEntityId: string, entities: any[]
             exportRows={requests.map((pr: any) => [pr.requestNumber, pr.date, pr.requesterName, ['Draft', 'Submitted', 'Approved', 'Rejected', 'Ordered'][pr.status]])}
             onRefresh={fetchData}
           />
-          <button onClick={() => setIsModalOpen(true)} className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-xl shadow-sm transition-all">
+          <button onClick={() => setIsModalOpen(true)} className="h-9 px-5 rounded-xl bg-gradient-to-r from-emerald-600 to-green-600 text-white text-xs font-bold shadow-lg shadow-emerald-500/25">
             + New Request
           </button>
         </div>
@@ -116,7 +119,7 @@ export const PurchaseRequests: React.FC<{activeEntityId: string, entities: any[]
 
       <div className="bg-white border border-gray-200 rounded-2xl shadow-sm overflow-hidden">
         <table className="w-full text-left text-sm">
-          <thead className="bg-gray-50/50 text-gray-500 border-b border-gray-100">
+          <thead className="bg-emerald-500/[0.05] dark:bg-emerald-400/[0.07] text-gray-500 border-b border-gray-100">
             <tr>
               <th className="py-3 px-4 font-medium">Request No.</th>
               <th className="py-3 px-4 font-medium">Date</th>
@@ -132,9 +135,11 @@ export const PurchaseRequests: React.FC<{activeEntityId: string, entities: any[]
                 <td className="py-3 px-4 text-gray-500">{pr.date}</td>
                 <td className="py-3 px-4 text-gray-900">{pr.requesterName}</td>
                 <td className="py-3 px-4">
-                  <span className={`px-2 py-1 rounded text-xs font-medium ${pr.status === 2 ? 'bg-green-100 text-green-700' : pr.status === 4 ? 'bg-blue-100 text-blue-700' : 'bg-gray-100 text-gray-700'}`}>
-                    {['Draft', 'Submitted', 'Approved', 'Rejected', 'Ordered'][pr.status]}
-                  </span>
+                  <StatusChip
+                    status={['draft', 'submitted', 'approved', 'rejected', 'ordered'][pr.status]}
+                    label={['Draft', 'Submitted', 'Approved', 'Rejected', 'Ordered'][pr.status]}
+                    hex={['#94a3b8', '#f59e0b', '#3b82f6', '#ef4444', '#10b981'][pr.status]}
+                  />
                 </td>
                 <td className="py-3 px-4 text-right space-x-2">
                   {pr.status < 2 && (
@@ -152,27 +157,36 @@ export const PurchaseRequests: React.FC<{activeEntityId: string, entities: any[]
                 </td>
               </tr>
             ))}
-            {requests.length === 0 && <tr><td colSpan={5} className="py-8 text-center text-gray-400">No requests found.</td></tr>}
+            {requests.length === 0 && (
+              <tr><td colSpan={5}>
+                <EmptyState icon={FileText} title="No requests found" hint='Click "+ New Request" to raise an internal purchase requisition.' />
+              </td></tr>
+            )}
           </tbody>
         </table>
       </div>
 
       {isModalOpen && (
-        <div className="fixed inset-0 bg-gray-900/40 backdrop-blur-sm z-50 flex items-center justify-center animate-fade-in pl-64">
-          <div className="bg-white rounded-2xl shadow-xl w-full max-w-3xl max-h-[90vh] overflow-hidden flex flex-col">
-            <div className="p-6 border-b border-gray-100 flex justify-between items-center bg-gray-50/50">
-              <h2 className="text-xl font-bold text-gray-900">New Purchase Request</h2>
-              <button onClick={() => setIsModalOpen(false)} className="p-2 hover:bg-gray-200 rounded-lg">✕</button>
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm pl-64">
+          <div className="w-full max-w-5xl bg-[var(--color-surface)] border border-[var(--color-border)] rounded-2xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh]">
+            <div className="px-6 py-4 border-b border-[var(--color-border)] flex items-center justify-between">
+              <div className="flex items-center gap-3.5">
+                <div className="w-9 h-9 rounded-lg bg-gradient-to-br from-emerald-500 to-green-600 flex items-center justify-center text-white shadow-sm shrink-0">
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
+                </div>
+                <h2 className="text-base font-bold text-[var(--color-text-strong)] tracking-tight">New Purchase Request</h2>
+              </div>
+              <button onClick={() => setIsModalOpen(false)} className="w-8 h-8 rounded-lg flex items-center justify-center text-[var(--color-text-muted)] hover:bg-[var(--color-surface-muted)] transition-colors">✕</button>
             </div>
             <div className="p-6 overflow-y-auto flex-1">
-              <div className="grid grid-cols-2 gap-6 mb-6">
+              <div className="grid grid-cols-2 gap-4 mb-6">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1.5">Requester Name</label>
-                  <input required value={requesterName} onChange={e => setRequesterName(e.target.value)} className="w-full px-4 py-2 border rounded-xl" />
+                  <label className="text-[10px] font-bold uppercase tracking-wider text-[var(--color-text-muted)] mb-1.5 block">Requester Name</label>
+                  <input required value={requesterName} onChange={e => setRequesterName(e.target.value)} className="w-full h-10 px-3 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] text-xs outline-none" />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1.5">Date</label>
-                  <input type="date" value={date} onChange={e => setDate(e.target.value)} className="w-full px-4 py-2 border rounded-xl" />
+                  <label className="text-[10px] font-bold uppercase tracking-wider text-[var(--color-text-muted)] mb-1.5 block">Date</label>
+                  <input type="date" value={date} onChange={e => setDate(e.target.value)} className="w-full h-10 px-3 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] text-xs outline-none" />
                 </div>
               </div>
               <div className="mb-4 flex justify-between items-center">
@@ -190,9 +204,12 @@ export const PurchaseRequests: React.FC<{activeEntityId: string, entities: any[]
                 </div>
               ))}
             </div>
-            <div className="p-6 border-t flex justify-end gap-3 bg-gray-50/50">
-              <button onClick={() => setIsModalOpen(false)} className="px-5 py-2.5 rounded-xl hover:bg-gray-200">Cancel</button>
-              <button onClick={submitPr} className="px-5 py-2.5 bg-blue-600 text-white rounded-xl hover:bg-blue-700">Submit Request</button>
+            <div className="px-6 py-4 border-t border-[var(--color-border)] flex items-center justify-between">
+              <div></div>
+              <div className="flex items-center gap-2">
+                <button onClick={() => setIsModalOpen(false)} className="h-9 px-4 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] text-xs font-medium hover:bg-[var(--color-surface-muted)] transition-colors">Cancel</button>
+                <button onClick={submitPr} className="h-9 px-5 rounded-xl bg-gradient-to-r from-emerald-600 to-green-600 text-white text-xs font-bold shadow-lg shadow-emerald-500/25">Submit Request</button>
+              </div>
             </div>
           </div>
         </div>

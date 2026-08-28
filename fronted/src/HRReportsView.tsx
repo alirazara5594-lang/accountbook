@@ -3,8 +3,9 @@ import { usePayrollStore } from './stores';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { PageHeader } from '@/components/ui/page-header';
-import { StatCard } from '@/components/ui/stat-card';
+import { StatusChip } from './components/ui/status-chip';
+import { EmptyState } from './components/ui/empty-state';
+
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Users, CalendarCheck2, HeartPulse, Banknote, Wallet, TrendingUp, Globe2, Building2, AlertTriangle, UserCheck } from 'lucide-react';
 import { money } from './lib/currency';
@@ -94,17 +95,49 @@ export default function HRReportsView() {
 
   return (
     <div className="mx-auto max-w-[1400px] space-y-5 p-6">
-      <PageHeader
-        title="HR Reports"
-        description="Headcount, attendance, leave, payroll cost, and loan analytics across your workforce"
-      />
+      {/* Page Header — AMS Signature Hero Band */}
+      <div className="relative overflow-hidden rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)] shadow-sm">
+        <div className="absolute inset-0 bg-gradient-to-r from-orange-500/10 via-orange-500/[0.03] to-transparent pointer-events-none" />
+        <div className="absolute -right-10 -top-16 w-56 h-56 rounded-full bg-orange-500/10 blur-3xl pointer-events-none" />
+        <div className="relative flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 px-5 py-4">
+          <div className="flex items-center gap-4">
+            <div className="relative h-14 w-14 shrink-0">
+              <div className="absolute inset-[6px] rotate-45 rounded-[12px] shadow-xl bg-gradient-to-br from-orange-500 to-amber-700" />
+              <div className="absolute inset-0 flex items-center justify-center"><Users className="w-6 h-6 text-white" /></div>
+            </div>
+            <div>
+              <div className="flex items-center gap-2.5">
+                <h1 className="text-2xl font-black tracking-tight text-[var(--color-text-strong)]">HR Reports</h1>
+                <span className="hidden sm:inline-flex items-center gap-1.5 rounded-full border border-orange-500/25 bg-orange-500/10 px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider text-orange-600 dark:text-orange-400"><span className="h-1.5 w-1.5 rounded-full bg-orange-500 animate-pulse" /> Live Ledger</span>
+              </div>
+              <p className="text-xs text-[var(--color-text-muted)] mt-0.5">Headcount, attendance, leave, payroll cost, and loan analytics across your workforce</p>
+            </div>
+          </div>
+        </div>
+      </div>
 
-      <div className="grid grid-cols-2 gap-4 lg:grid-cols-5">
-        <StatCard icon={Users} label="Total Headcount" value={employees.length} tone="teal" />
-        <StatCard icon={UserCheck} label="Active Employees" value={active.length} tone="green" />
-        <StatCard icon={HeartPulse} label="On Leave" value={onLeave.length} tone="amber" />
-        <StatCard icon={AlertTriangle} label="Terminated" value={terminated.length} tone="red" />
-        <StatCard icon={Banknote} label="Avg. Basic Salary" value={money(avgSalary)} tone="blue" />
+      <div className="grid grid-cols-2 lg:grid-cols-5 gap-4">
+        {[
+          { label: 'Total Headcount', value: employees.length, desc: 'All employees', icon: Users, color: 'from-teal-400 to-teal-600', bg: 'bg-teal-50 dark:bg-teal-950/30', textColor: 'text-teal-600 dark:text-teal-400' },
+          { label: 'Active Employees', value: active.length, desc: 'Currently working', icon: UserCheck, color: 'from-green-400 to-green-600', bg: 'bg-green-50 dark:bg-green-950/30', textColor: 'text-green-600 dark:text-green-400' },
+          { label: 'On Leave', value: onLeave.length, desc: 'Currently away', icon: HeartPulse, color: 'from-amber-400 to-amber-600', bg: 'bg-amber-50 dark:bg-amber-950/30', textColor: 'text-amber-600 dark:text-amber-400' },
+          { label: 'Terminated', value: terminated.length, desc: 'No longer active', icon: AlertTriangle, color: 'from-red-400 to-red-600', bg: 'bg-red-50 dark:bg-red-950/30', textColor: 'text-red-600 dark:text-red-400' },
+          { label: 'Avg. Basic Salary', value: money(avgSalary), desc: 'Per active employee', icon: Banknote, color: 'from-blue-400 to-blue-600', bg: 'bg-blue-50 dark:bg-blue-950/30', textColor: 'text-blue-600 dark:text-blue-400' },
+        ].map((kpi) => (
+          <div key={kpi.label} className="relative overflow-hidden rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)] p-3 shadow-sm hover:shadow-md transition-shadow">
+            <div className="flex items-start justify-between">
+              <div>
+                <p className="text-xs font-semibold text-[var(--color-text-muted)] uppercase tracking-wider">{kpi.label}</p>
+                <p className={`text-lg font-semibold mt-1 ${kpi.textColor}`}>{kpi.value}</p>
+                <p className="text-xs text-[var(--color-text-muted)] mt-1">{kpi.desc}</p>
+              </div>
+              <div className={`w-9 h-9 rounded-lg bg-gradient-to-br ${kpi.color} flex items-center justify-center text-white shadow-lg`}>
+                <kpi.icon className="w-4.5 h-4.5" />
+              </div>
+            </div>
+            <div className={`absolute -bottom-4 -right-4 w-24 h-24 rounded-full ${kpi.bg} opacity-50`} />
+          </div>
+        ))}
       </div>
 
       <Tabs defaultValue="headcount">
@@ -123,7 +156,7 @@ export default function HRReportsView() {
                 <h3 className="flex items-center gap-2 text-sm font-semibold text-foreground"><Building2 className="h-4 w-4 text-primary" /> Headcount by Department</h3>
               </div>
               <div className="p-5">
-                {perCapitaTable.length === 0 && <p className="py-8 text-center text-sm text-muted-foreground">No employee data available</p>}
+                {perCapitaTable.length === 0 && <EmptyState icon={Building2} title="No Employee Data" hint="Employee records will populate this headcount breakdown." />}
                 {perCapitaTable.map(d => {
                   const pct = employees.length ? (d.headcount / employees.length) * 100 : 0;
                   return (
@@ -145,7 +178,7 @@ export default function HRReportsView() {
                 <h3 className="flex items-center gap-2 text-sm font-semibold text-foreground"><Globe2 className="h-4 w-4 text-primary" /> Headcount by Country</h3>
               </div>
               <div className="p-5">
-                {countryBreakdown.length === 0 && <p className="py-8 text-center text-sm text-muted-foreground">No employee data available</p>}
+                {countryBreakdown.length === 0 && <EmptyState icon={Globe2} title="No Employee Data" hint="Employee records will populate this country breakdown." />}
                 {countryBreakdown.map(c => {
                   const pct = employees.length ? (c.count / employees.length) * 100 : 0;
                   return (
@@ -186,18 +219,34 @@ export default function HRReportsView() {
                     <TableCell className="text-right font-mono">{money(d.salaryCost)}</TableCell>
                   </TableRow>
                 ))}
-                {perCapitaTable.length === 0 && <TableRow><TableCell colSpan={4} className="py-8 text-center text-muted-foreground">No data</TableCell></TableRow>}
+                {perCapitaTable.length === 0 && <TableRow><TableCell colSpan={4} className="p-0"><EmptyState icon={Building2} title="No Data" hint="Department headcount will appear once employees are registered." /></TableCell></TableRow>}
               </TableBody>
             </Table>
           </Card>
         </TabsContent>
 
         <TabsContent value="attendance" className="space-y-4">
-          <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
-            <StatCard icon={CalendarCheck2} label="Records Tracked" value={attendanceStats.total} tone="teal" />
-            <StatCard icon={UserCheck} label="Present" value={attendanceStats.present} tone="green" />
-            <StatCard icon={AlertTriangle} label="Late Arrivals" value={attendanceStats.late} tone="amber" />
-            <StatCard icon={TrendingUp} label="Avg Hours / Day" value={attendanceStats.avgHours} tone="blue" />
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+            {[
+              { label: 'Records Tracked', value: attendanceStats.total, desc: 'Total attendance entries', icon: CalendarCheck2, color: 'from-teal-400 to-teal-600', bg: 'bg-teal-50 dark:bg-teal-950/30', textColor: 'text-teal-600 dark:text-teal-400' },
+              { label: 'Present', value: attendanceStats.present, desc: 'Days present', icon: UserCheck, color: 'from-green-400 to-green-600', bg: 'bg-green-50 dark:bg-green-950/30', textColor: 'text-green-600 dark:text-green-400' },
+              { label: 'Late Arrivals', value: attendanceStats.late, desc: 'Late check-ins', icon: AlertTriangle, color: 'from-amber-400 to-amber-600', bg: 'bg-amber-50 dark:bg-amber-950/30', textColor: 'text-amber-600 dark:text-amber-400' },
+              { label: 'Avg Hours / Day', value: attendanceStats.avgHours, desc: 'Average daily hours', icon: TrendingUp, color: 'from-blue-400 to-blue-600', bg: 'bg-blue-50 dark:bg-blue-950/30', textColor: 'text-blue-600 dark:text-blue-400' },
+            ].map((kpi) => (
+              <div key={kpi.label} className="relative overflow-hidden rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)] p-3 shadow-sm hover:shadow-md transition-shadow">
+                <div className="flex items-start justify-between">
+                  <div>
+                    <p className="text-xs font-semibold text-[var(--color-text-muted)] uppercase tracking-wider">{kpi.label}</p>
+                    <p className={`text-lg font-semibold mt-1 ${kpi.textColor}`}>{kpi.value}</p>
+                    <p className="text-xs text-[var(--color-text-muted)] mt-1">{kpi.desc}</p>
+                  </div>
+                  <div className={`w-9 h-9 rounded-lg bg-gradient-to-br ${kpi.color} flex items-center justify-center text-white shadow-lg`}>
+                    <kpi.icon className="w-4.5 h-4.5" />
+                  </div>
+                </div>
+                <div className={`absolute -bottom-4 -right-4 w-24 h-24 rounded-full ${kpi.bg} opacity-50`} />
+              </div>
+            ))}
           </div>
           <Card className="overflow-hidden">
             <Table>
@@ -228,18 +277,34 @@ export default function HRReportsView() {
                     </TableRow>
                   );
                 })}
-                {attendanceRecords.length === 0 && <TableRow><TableCell colSpan={4} className="py-8 text-center text-muted-foreground">No attendance data yet</TableCell></TableRow>}
+                {attendanceRecords.length === 0 && <TableRow><TableCell colSpan={4} className="p-0"><EmptyState icon={CalendarCheck2} title="No Attendance Data" hint="Attendance data will appear once biometric punches are recorded." /></TableCell></TableRow>}
               </TableBody>
             </Table>
           </Card>
         </TabsContent>
 
         <TabsContent value="leave" className="space-y-4">
-          <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
-            <StatCard icon={HeartPulse} label="Leave Requests" value={leaveRequests.length} tone="teal" />
-            <StatCard icon={UserCheck} label="Approved" value={leaveRequests.filter(r => r.status === 'Approved').length} tone="green" />
-            <StatCard icon={AlertTriangle} label="Pending" value={leaveRequests.filter(r => r.status === 'Pending').length} tone="amber" />
-            <StatCard icon={CalendarCheck2} label="Total Days Taken" value={leaveRequests.filter(r => r.status === 'Approved').reduce((s, r) => s + (r.totalDays || 0), 0)} tone="blue" />
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+            {[
+              { label: 'Leave Requests', value: leaveRequests.length, desc: 'All requests submitted', icon: HeartPulse, color: 'from-teal-400 to-teal-600', bg: 'bg-teal-50 dark:bg-teal-950/30', textColor: 'text-teal-600 dark:text-teal-400' },
+              { label: 'Approved', value: leaveRequests.filter(r => r.status === 'Approved').length, desc: 'Successfully approved', icon: UserCheck, color: 'from-green-400 to-green-600', bg: 'bg-green-50 dark:bg-green-950/30', textColor: 'text-green-600 dark:text-green-400' },
+              { label: 'Pending', value: leaveRequests.filter(r => r.status === 'Pending').length, desc: 'Awaiting approval', icon: AlertTriangle, color: 'from-amber-400 to-amber-600', bg: 'bg-amber-50 dark:bg-amber-950/30', textColor: 'text-amber-600 dark:text-amber-400' },
+              { label: 'Total Days Taken', value: leaveRequests.filter(r => r.status === 'Approved').reduce((s, r) => s + (r.totalDays || 0), 0), desc: 'Approved leave days', icon: CalendarCheck2, color: 'from-blue-400 to-blue-600', bg: 'bg-blue-50 dark:bg-blue-950/30', textColor: 'text-blue-600 dark:text-blue-400' },
+            ].map((kpi) => (
+              <div key={kpi.label} className="relative overflow-hidden rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)] p-3 shadow-sm hover:shadow-md transition-shadow">
+                <div className="flex items-start justify-between">
+                  <div>
+                    <p className="text-xs font-semibold text-[var(--color-text-muted)] uppercase tracking-wider">{kpi.label}</p>
+                    <p className={`text-lg font-semibold mt-1 ${kpi.textColor}`}>{kpi.value}</p>
+                    <p className="text-xs text-[var(--color-text-muted)] mt-1">{kpi.desc}</p>
+                  </div>
+                  <div className={`w-9 h-9 rounded-lg bg-gradient-to-br ${kpi.color} flex items-center justify-center text-white shadow-lg`}>
+                    <kpi.icon className="w-4.5 h-4.5" />
+                  </div>
+                </div>
+                <div className={`absolute -bottom-4 -right-4 w-24 h-24 rounded-full ${kpi.bg} opacity-50`} />
+              </div>
+            ))}
           </div>
           <Card className="overflow-hidden">
             <div className="border-b px-5 py-4">
@@ -265,18 +330,34 @@ export default function HRReportsView() {
                     <TableCell className="text-right"><Badge variant="secondary">{l.pending}</Badge></TableCell>
                   </TableRow>
                 ))}
-                {leaveStats.length === 0 && <TableRow><TableCell colSpan={5} className="py-8 text-center text-muted-foreground">No leave data yet</TableCell></TableRow>}
+                {leaveStats.length === 0 && <TableRow><TableCell colSpan={5} className="p-0"><EmptyState icon={HeartPulse} title="No Leave Data" hint="Leave requests will populate this type-wise summary." /></TableCell></TableRow>}
               </TableBody>
             </Table>
           </Card>
         </TabsContent>
 
         <TabsContent value="payroll" className="space-y-4">
-          <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
-            <StatCard icon={Banknote} label="Posted Payruns" value={payrollSummary.runs} tone="teal" />
-            <StatCard icon={TrendingUp} label="Gross Payroll" value={money(payrollSummary.totalGross)} tone="green" />
-            <StatCard icon={Wallet} label="Total Deductions" value={money(payrollSummary.totalDeductions)} tone="amber" />
-            <StatCard icon={UserCheck} label="Net Pay Issued" value={money(payrollSummary.totalNet)} tone="blue" />
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+            {[
+              { label: 'Posted Payruns', value: payrollSummary.runs, desc: 'Payruns completed', icon: Banknote, color: 'from-teal-400 to-teal-600', bg: 'bg-teal-50 dark:bg-teal-950/30', textColor: 'text-teal-600 dark:text-teal-400' },
+              { label: 'Gross Payroll', value: money(payrollSummary.totalGross), desc: 'Total gross pay', icon: TrendingUp, color: 'from-green-400 to-green-600', bg: 'bg-green-50 dark:bg-green-950/30', textColor: 'text-green-600 dark:text-green-400' },
+              { label: 'Total Deductions', value: money(payrollSummary.totalDeductions), desc: 'All deductions', icon: Wallet, color: 'from-amber-400 to-amber-600', bg: 'bg-amber-50 dark:bg-amber-950/30', textColor: 'text-amber-600 dark:text-amber-400' },
+              { label: 'Net Pay Issued', value: money(payrollSummary.totalNet), desc: 'Net pay disbursed', icon: UserCheck, color: 'from-blue-400 to-blue-600', bg: 'bg-blue-50 dark:bg-blue-950/30', textColor: 'text-blue-600 dark:text-blue-400' },
+            ].map((kpi) => (
+              <div key={kpi.label} className="relative overflow-hidden rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)] p-3 shadow-sm hover:shadow-md transition-shadow">
+                <div className="flex items-start justify-between">
+                  <div>
+                    <p className="text-xs font-semibold text-[var(--color-text-muted)] uppercase tracking-wider">{kpi.label}</p>
+                    <p className={`text-lg font-semibold mt-1 ${kpi.textColor}`}>{kpi.value}</p>
+                    <p className="text-xs text-[var(--color-text-muted)] mt-1">{kpi.desc}</p>
+                  </div>
+                  <div className={`w-9 h-9 rounded-lg bg-gradient-to-br ${kpi.color} flex items-center justify-center text-white shadow-lg`}>
+                    <kpi.icon className="w-4.5 h-4.5" />
+                  </div>
+                </div>
+                <div className={`absolute -bottom-4 -right-4 w-24 h-24 rounded-full ${kpi.bg} opacity-50`} />
+              </div>
+            ))}
           </div>
           <Card className="overflow-hidden">
             <div className="border-b px-5 py-4">
@@ -304,17 +385,33 @@ export default function HRReportsView() {
                     <TableCell className="text-right font-mono font-semibold">{slip.currency} {slip.netPay.toLocaleString()}</TableCell>
                   </TableRow>
                 ))}
-                {salarySlips.length === 0 && <TableRow><TableCell colSpan={5} className="py-8 text-center text-muted-foreground">No salary slips yet — run a payroll to see data</TableCell></TableRow>}
+                {salarySlips.length === 0 && <TableRow><TableCell colSpan={5} className="p-0"><EmptyState icon={Banknote} title="No Salary Slips Yet" hint="Run a payroll to see issued salary slips here." /></TableCell></TableRow>}
               </TableBody>
             </Table>
           </Card>
         </TabsContent>
 
         <TabsContent value="loans" className="space-y-4">
-          <div className="grid grid-cols-2 gap-4 lg:grid-cols-3">
-            <StatCard icon={Wallet} label="Total Disbursed" value={money(loanSummary.disbursed)} tone="teal" />
-            <StatCard icon={Banknote} label="Outstanding Balance" value={money(loanSummary.outstanding)} tone="amber" />
-            <StatCard icon={UserCheck} label="Active Loans" value={loanSummary.active} tone="green" />
+          <div className="grid grid-cols-2 lg:grid-cols-3 gap-4">
+            {[
+              { label: 'Total Disbursed', value: money(loanSummary.disbursed), desc: 'Total loan amount', icon: Wallet, color: 'from-teal-400 to-teal-600', bg: 'bg-teal-50 dark:bg-teal-950/30', textColor: 'text-teal-600 dark:text-teal-400' },
+              { label: 'Outstanding Balance', value: money(loanSummary.outstanding), desc: 'Remaining balance', icon: Banknote, color: 'from-amber-400 to-amber-600', bg: 'bg-amber-50 dark:bg-amber-950/30', textColor: 'text-amber-600 dark:text-amber-400' },
+              { label: 'Active Loans', value: loanSummary.active, desc: 'Currently active', icon: UserCheck, color: 'from-green-400 to-green-600', bg: 'bg-green-50 dark:bg-green-950/30', textColor: 'text-green-600 dark:text-green-400' },
+            ].map((kpi) => (
+              <div key={kpi.label} className="relative overflow-hidden rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)] p-3 shadow-sm hover:shadow-md transition-shadow">
+                <div className="flex items-start justify-between">
+                  <div>
+                    <p className="text-xs font-semibold text-[var(--color-text-muted)] uppercase tracking-wider">{kpi.label}</p>
+                    <p className={`text-lg font-semibold mt-1 ${kpi.textColor}`}>{kpi.value}</p>
+                    <p className="text-xs text-[var(--color-text-muted)] mt-1">{kpi.desc}</p>
+                  </div>
+                  <div className={`w-9 h-9 rounded-lg bg-gradient-to-br ${kpi.color} flex items-center justify-center text-white shadow-lg`}>
+                    <kpi.icon className="w-4.5 h-4.5" />
+                  </div>
+                </div>
+                <div className={`absolute -bottom-4 -right-4 w-24 h-24 rounded-full ${kpi.bg} opacity-50`} />
+              </div>
+            ))}
           </div>
           <Card className="overflow-hidden">
             <Table>
@@ -336,10 +433,10 @@ export default function HRReportsView() {
                     <TableCell className="text-right font-mono">{l.principalAmount.toLocaleString()}</TableCell>
                     <TableCell className="text-right font-mono font-semibold">{l.balanceAmount.toLocaleString()}</TableCell>
                     <TableCell className="text-right">{l.paidInstallments}/{l.totalInstallments}</TableCell>
-                    <TableCell className="text-right"><Badge variant={l.status === 'Active' ? 'default' : l.status === 'Completed' ? 'secondary' : 'destructive'}>{l.status}</Badge></TableCell>
+                    <TableCell className="text-right"><StatusChip status={l.status} label={l.status} hex={l.status === 'Active' ? '#10b981' : l.status === 'Completed' ? '#10b981' : '#f43f5e'} /></TableCell>
                   </TableRow>
                 ))}
-                {loans.length === 0 && <TableRow><TableCell colSpan={6} className="py-8 text-center text-muted-foreground">No loans yet</TableCell></TableRow>}
+                {loans.length === 0 && <TableRow><TableCell colSpan={6} className="p-0"><EmptyState icon={Wallet} title="No Loans Yet" hint="Employee loans and advances will appear here." /></TableCell></TableRow>}
               </TableBody>
             </Table>
           </Card>

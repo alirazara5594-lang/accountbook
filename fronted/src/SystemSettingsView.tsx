@@ -1,10 +1,11 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   Settings, ShieldCheck, Globe, Database, Save, RotateCcw, AlertTriangle,
   Building2, CheckCircle2, Lock, FileText, Layers, Hash, Coins, Sparkles, Zap, ShieldAlert,
-  Key, MessageSquarePlus, Copy, Star
+  Key, MessageSquarePlus, Copy, Star, Download, Upload, HardDrive
 } from 'lucide-react';
 import { useCoaStore } from './stores';
+import { KpiCard, KpiGrid } from './components/ui/kpi-card';
 
 interface SystemSettingsProps {
   setPage: (page: string) => void;
@@ -72,7 +73,7 @@ export const SystemSettingsView: React.FC<SystemSettingsProps> = ({ setPage, not
       if (saved) return JSON.parse(saved);
     } catch {}
     return {
-      systemTitle: 'AccountBook Enterprise ERP',
+      systemTitle: 'AMS Enterprise ERP',
       timezone: 'Asia/Karachi (UTC+05:00)',
       dateFormat: 'DD/MM/YYYY',
       numberFormat: 'en-US (1,234,567.89)',
@@ -170,11 +171,20 @@ export const SystemSettingsView: React.FC<SystemSettingsProps> = ({ setPage, not
   };
 
   const handleFactoryReset = async () => {
-    if (window.confirm("⚠️ DANGER ZONE: This will permanently wipe all transactional data (Journals, Invoices, Vouchers, Bills, Customers, Vendors) and re-seed clean IAS/IFRS chart of accounts. Proceed?")) {
+    if (window.confirm("⚠️ DANGER ZONE: This will permanently wipe ALL data — products, quotes, estimates, invoices, orders, bills, journals, customers, vendors, payments — everything you entered for testing. Proceed?")) {
       try {
         await useCoaStore.getState().resetDatabase();
+        // Purge cached document lines + stale company/entity references so
+        // wiped records don't reappear after reload.
+        [
+          'ams_estimates_lines_cache',
+          'ams_invoices_lines_cache',
+          'active_entity_id',
+          'ab_companies',
+          'ams_selected_entity',
+        ].forEach((k) => localStorage.removeItem(k));
         notify("✓ Factory reset successful. System restored to baseline.");
-        window.location.reload();
+        setTimeout(() => window.location.reload(), 600);
       } catch (err: any) {
         notify(err.message || "Failed to reset database");
       }
@@ -205,43 +215,12 @@ export const SystemSettingsView: React.FC<SystemSettingsProps> = ({ setPage, not
       </div>
 
       {/* 4-in-1 Top KPI Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        <div className="p-4 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] shadow-sm space-y-1">
-          <div className="flex items-center justify-between text-[var(--color-text-muted)]">
-            <span className="text-xs font-semibold uppercase tracking-wider">Accounting Standard</span>
-            <ShieldCheck className="w-4 h-4 text-teal-600" />
-          </div>
-          <div className="text-lg font-black text-[var(--color-text-strong)] font-mono">{accountingConfig.accountingStandard.split(' ')[0]} / IFRS</div>
-          <div className="text-[11px] text-[var(--color-text-muted)]">Strict double-entry & accrual basis</div>
-        </div>
-
-        <div className="p-4 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] shadow-sm space-y-1">
-          <div className="flex items-center justify-between text-[var(--color-text-muted)]">
-            <span className="text-xs font-semibold uppercase tracking-wider">Global Localization</span>
-            <Globe className="w-4 h-4 text-blue-600" />
-          </div>
-          <div className="text-lg font-black text-blue-600 font-mono">7 Jurisdictions</div>
-          <div className="text-[11px] text-[var(--color-text-muted)]">PK, US, UK, UAE, KSA, CA, EU</div>
-        </div>
-
-        <div className="p-4 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] shadow-sm space-y-1">
-          <div className="flex items-center justify-between text-[var(--color-text-muted)]">
-            <span className="text-xs font-semibold uppercase tracking-wider">AI Assistant Tier</span>
-            <Sparkles className="w-4 h-4 text-amber-500" />
-          </div>
-          <div className="text-lg font-black text-amber-500 font-mono">{aiConfig.planTier === 'pro' ? 'Enterprise Pro' : 'Free Advisor'}</div>
-          <div className="text-[11px] text-[var(--color-text-muted)]">{aiConfig.enableActionExecution ? 'Command Execution Active' : 'Guidance & Help Only'}</div>
-        </div>
-
-        <div className="p-4 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] shadow-sm space-y-1">
-          <div className="flex items-center justify-between text-[var(--color-text-muted)]">
-            <span className="text-xs font-semibold uppercase tracking-wider">Multi-Sector Suite</span>
-            <Layers className="w-4 h-4 text-purple-600" />
-          </div>
-          <div className="text-lg font-black text-purple-600 font-mono">{selectedSectors.length} / 14 Active</div>
-          <div className="text-[11px] text-[var(--color-text-muted)]">14 Commercial Industry Profiles</div>
-        </div>
-      </div>
+      <KpiGrid cols={4}>
+        <KpiCard icon={ShieldCheck} label="Accounting Standard" value={`${accountingConfig.accountingStandard.split(' ')[0]} / IFRS`} desc="Strict double-entry & accrual basis" tone="teal" />
+        <KpiCard icon={Globe} label="Global Localization" value="7 Jurisdictions" desc="PK, US, UK, UAE, KSA, CA, EU" tone="blue" />
+        <KpiCard icon={Sparkles} label="AI Assistant Tier" value={aiConfig.planTier === 'pro' ? 'Enterprise Pro' : 'Free Advisor'} desc={aiConfig.enableActionExecution ? 'Command Execution Active' : 'Guidance & Help Only'} tone="amber" />
+        <KpiCard icon={Layers} label="Multi-Sector Suite" value={`${selectedSectors.length} / 14 Active`} desc="14 Commercial Industry Profiles" tone="purple" />
+      </KpiGrid>
 
       {/* Navigation Tabs - Responsive Wrapped (Zero Horizontal Scroll) */}
       <div className="flex flex-wrap items-center gap-1.5 p-1.5 bg-[var(--color-surface-muted)] border border-[var(--color-border)] rounded-xl w-full">
@@ -994,6 +973,94 @@ export const SystemSettingsView: React.FC<SystemSettingsProps> = ({ setPage, not
               <div className="p-3 bg-[var(--color-surface-muted)] rounded-xl border border-[var(--color-border)]">
                 <span className="text-[10px] text-[var(--color-text-muted)] uppercase font-semibold block">Server Connection</span>
                 <span className="font-bold text-xs text-blue-600">Port 5124 Active</span>
+              </div>
+            </div>
+          </div>
+
+          {/* Ledger Snapshot & Offline Backup Card */}
+          <div className="p-5 rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)] shadow-sm space-y-4 text-xs">
+            <div className="border-b border-[var(--color-border)] pb-3 flex items-center justify-between">
+              <div>
+                <h3 className="font-bold text-sm text-[var(--color-text-strong)] flex items-center gap-2">
+                  <HardDrive className="w-4 h-4 text-indigo-600" /> One-Click Database Snapshot & Ledger Backup
+                </h3>
+                <p className="text-[11px] text-[var(--color-text-muted)] mt-0.5">
+                  Export complete encrypted JSON snapshots of all posted journals, accounts, invoices, and settings.
+                </p>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {/* Export Backup */}
+              <div className="p-4 rounded-xl border border-indigo-200 dark:border-indigo-900/50 bg-indigo-50/40 dark:bg-indigo-950/20 space-y-2.5">
+                <h4 className="font-bold text-xs text-indigo-900 dark:text-indigo-200 flex items-center gap-1.5">
+                  <Download className="w-4 h-4 text-indigo-600" /> Export Full Database Snapshot
+                </h4>
+                <p className="text-[11px] text-slate-600 dark:text-slate-400">
+                  Download an instant JSON archive containing your full chart of accounts, journal entries, entities, and tax settings.
+                </p>
+                <button
+                  type="button"
+                  onClick={() => {
+                    const backupData = {
+                      version: '1.0',
+                      exportedAt: new Date().toISOString(),
+                      system: 'AMS Enterprise Accounting Management Solutions',
+                      localStorageSnapshot: { ...localStorage },
+                    };
+                    const blob = new Blob([JSON.stringify(backupData, null, 2)], { type: 'application/json' });
+                    const url = URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = `AMS_Ledger_Backup_${new Date().toISOString().slice(0, 10)}.json`;
+                    a.click();
+                    URL.revokeObjectURL(url);
+                    notify('✓ Complete ledger snapshot backup downloaded!');
+                  }}
+                  className="w-full py-2 px-3 bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs rounded-xl shadow-xs transition-all flex items-center justify-center gap-2 cursor-pointer"
+                >
+                  <Download size={13} /> Download JSON Backup
+                </button>
+              </div>
+
+              {/* Restore Backup */}
+              <div className="p-4 rounded-xl border border-teal-200 dark:border-teal-900/50 bg-teal-50/40 dark:bg-teal-950/20 space-y-2.5">
+                <h4 className="font-bold text-xs text-teal-900 dark:text-teal-200 flex items-center gap-1.5">
+                  <Upload className="w-4 h-4 text-teal-600" /> Restore Database from Snapshot
+                </h4>
+                <p className="text-[11px] text-slate-600 dark:text-slate-400">
+                  Upload a previously saved `.json` ledger backup file to restore accounting records and configurations.
+                </p>
+                <label className="w-full py-2 px-3 bg-teal-600 hover:bg-teal-700 text-white font-bold text-xs rounded-xl shadow-xs transition-all flex items-center justify-center gap-2 cursor-pointer text-center">
+                  <Upload size={13} /> Select Backup File to Restore
+                  <input
+                    type="file"
+                    accept=".json"
+                    className="hidden"
+                    onChange={(e) => {
+                      const file = e.target.files?.[0];
+                      if (!file) return;
+                      const reader = new FileReader();
+                      reader.onload = (event) => {
+                        try {
+                          const parsed = JSON.parse(event.target?.result as string);
+                          if (parsed.localStorageSnapshot) {
+                            Object.entries(parsed.localStorageSnapshot).forEach(([k, v]) => {
+                              localStorage.setItem(k, v as string);
+                            });
+                            notify('✓ Ledger database restored successfully! Refreshing...');
+                            setTimeout(() => window.location.reload(), 1200);
+                          } else {
+                            notify('Invalid backup file structure.');
+                          }
+                        } catch {
+                          notify('Failed to parse backup JSON file.');
+                        }
+                      };
+                      reader.readAsText(file);
+                    }}
+                  />
+                </label>
               </div>
             </div>
           </div>

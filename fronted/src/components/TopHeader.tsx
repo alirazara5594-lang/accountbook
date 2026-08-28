@@ -3,11 +3,12 @@ import type { ReactNode } from 'react';
 import {
   Search, Bell, Plus, ChevronDown, LogOut, X, FileText, Receipt,
   Building2, Users, Wallet, CalendarDays, Boxes, ClipboardList, Landmark,
-  Globe, BarChart3, Check, Sun, Moon, Key
+  Globe, BarChart3, Check, Sun, Moon, Key, ShieldCheck, Sparkles, AlertTriangle
 } from 'lucide-react';
 import { NAVIGATION } from '../navigation';
 import type { UserData } from '../Login';
 import { useSalesStore, useProcurementStore } from '../stores';
+import { getLicenseInfo, type LicenseInfo } from '../licenseManager';
 
 interface Props {
   currentUser: UserData;
@@ -39,6 +40,16 @@ export default function TopHeader(props: Props) {
     const nextTheme = isDark ? 'nd-light' : 'nd-dark';
     onThemeChange(nextTheme);
   };
+
+  const [licenseInfo, setLicenseInfo] = useState<LicenseInfo>(() => getLicenseInfo());
+
+  useEffect(() => {
+    const handleLicenseUpdate = (e: any) => {
+      setLicenseInfo(e.detail || getLicenseInfo());
+    };
+    window.addEventListener('ams-license-changed', handleLicenseUpdate);
+    return () => window.removeEventListener('ams-license-changed', handleLicenseUpdate);
+  }, []);
 
   const [query, setQuery] = useState('');
   const [searchOpen, setSearchOpen] = useState(false);
@@ -288,29 +299,58 @@ export default function TopHeader(props: Props) {
         {/* Action icons row — strictly in 1 line */}
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
           
-          {/* Trial / License Status Pill */}
+          {/* Dynamic Live Trial / License Status Pill */}
           <button
             type="button"
             onClick={onOpenLicense}
-            title="View 90-Day Trial Status & License Details"
+            title={`${licenseInfo.title} · ${licenseInfo.daysRemaining} days remaining (Click to manage license)`}
             style={{
               display: 'flex',
               alignItems: 'center',
               gap: 5,
               fontSize: 11,
               fontWeight: 700,
-              color: '#b45309',
-              background: '#fef3c7',
-              border: '1px solid #fde68a',
+              color: licenseInfo.mode === 'licensed'
+                ? '#047857'
+                : licenseInfo.daysRemaining <= 15
+                ? '#b91c1c'
+                : licenseInfo.mode === 'beta-365'
+                ? '#7c3aed'
+                : '#b45309',
+              background: licenseInfo.mode === 'licensed'
+                ? '#ecfdf5'
+                : licenseInfo.daysRemaining <= 15
+                ? '#fee2e2'
+                : licenseInfo.mode === 'beta-365'
+                ? '#f5f3ff'
+                : '#fef3c7',
+              border: `1px solid ${
+                licenseInfo.mode === 'licensed'
+                  ? '#a7f3d0'
+                  : licenseInfo.daysRemaining <= 15
+                  ? '#fca5a5'
+                  : licenseInfo.mode === 'beta-365'
+                  ? '#ddd6fe'
+                  : '#fde68a'
+              }`,
               borderRadius: 8,
               padding: '4px 9px',
               height: 32,
               flexShrink: 0,
-              cursor: 'pointer'
+              cursor: 'pointer',
+              transition: 'all 0.15s ease'
             }}
           >
-            <Key size={12} />
-            <span>90-Day Trial</span>
+            {licenseInfo.mode === 'licensed' ? (
+              <ShieldCheck size={13} className="text-emerald-600" />
+            ) : licenseInfo.mode === 'beta-365' ? (
+              <Sparkles size={13} className="text-violet-600" />
+            ) : licenseInfo.daysRemaining <= 15 ? (
+              <AlertTriangle size={13} className="text-rose-600 animate-pulse" />
+            ) : (
+              <Key size={12} className="text-amber-600" />
+            )}
+            <span>{licenseInfo.badgeLabel}</span>
           </button>
 
           {/* Fiscal period */}

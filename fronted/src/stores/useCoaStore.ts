@@ -123,16 +123,13 @@ export const useCoaStore = create<CoaState>((set, get) => ({
   resetDatabase: async () => {
     set({ loading: true, error: null });
     try {
-      if (isDemoMode()) {
-        // In demo mode the backend may be unreachable; reset local state only.
-        set({ accounts: [], mappings: [], loading: false });
-        return;
-      }
+      // Always attempt a real backend wipe — never skip it in demo mode,
+      // otherwise server-side records (products, quotes, invoices...) survive.
       await coaApi.resetDatabase();
       await get().fetchAccounts();
       set({ loading: false });
     } catch (err: any) {
-      // Even if the backend call fails, allow the demo flow to proceed.
+      // Fall back to client-side-only reset when the backend is unreachable (demo mode).
       if (isDemoMode()) {
         set({ accounts: [], mappings: [], loading: false });
         return;

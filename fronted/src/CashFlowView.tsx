@@ -8,6 +8,7 @@ import type { Entity } from './EntitySettings';
 import { apiClient } from './api/client';
 import { money } from './lib/currency';
 import { downloadExcel, downloadCSV } from './lib/exportUtils';
+import { KpiCard, KpiGrid } from './components/ui/kpi-card';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 
@@ -385,81 +386,43 @@ export const CashFlowView: React.FC<{ activeEntityId: string; entities: Entity[]
       </div>
 
       {/* ─── 4-in-1 Top Financial KPI Cards ─── */}
-      <div className="grid gap-3" style={{ gridTemplateColumns: 'repeat(4, minmax(0, 1fr))' }}>
+      <KpiGrid cols={4}>
         {/* Operating Cash Flow */}
-        <div className="bg-[var(--color-surface)] border border-[var(--color-border)] rounded-2xl p-4 shadow-xs flex flex-col justify-between hover:border-emerald-500/30 transition-all">
-          <div className="flex items-center justify-between">
-            <span className="text-[10px] font-extrabold uppercase tracking-wider text-[var(--color-text-muted)]">
-              OPERATING CASH FLOW (OCF)
-            </span>
-            <div className={`p-1.5 rounded-lg ${summary.operatingCashFlow >= 0 ? 'bg-emerald-50 dark:bg-emerald-950/40 text-emerald-600' : 'bg-rose-50 dark:bg-rose-950/40 text-rose-600'}`}>
-              {summary.operatingCashFlow >= 0 ? <ArrowUpRight className="w-4 h-4" /> : <ArrowDownRight className="w-4 h-4" />}
-            </div>
-          </div>
-          <div className="mt-2">
-            <div className={`text-xl font-mono font-extrabold ${summary.operatingCashFlow >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-600 dark:text-rose-400'}`}>
-              {money(summary.operatingCashFlow, currentEntity?.currencyCode)}
-            </div>
-            <p className="text-[10px] text-[var(--color-text-muted)] mt-0.5">Collections less vendor & payroll outflows</p>
-          </div>
-        </div>
+        <KpiCard
+          icon={summary.operatingCashFlow >= 0 ? ArrowUpRight : ArrowDownRight}
+          label="OPERATING CASH FLOW (OCF)"
+          value={money(summary.operatingCashFlow, currentEntity?.currencyCode)}
+          desc="Collections less vendor & payroll outflows"
+          tone={summary.operatingCashFlow >= 0 ? 'emerald' : 'rose'}
+        />
 
         {/* Investing Cash Flow */}
-        <div className="bg-[var(--color-surface)] border border-[var(--color-border)] rounded-2xl p-4 shadow-xs flex flex-col justify-between hover:border-blue-500/30 transition-all">
-          <div className="flex items-center justify-between">
-            <span className="text-[10px] font-extrabold uppercase tracking-wider text-[var(--color-text-muted)]">
-              INVESTING CASH FLOW (ICF)
-            </span>
-            <div className="p-1.5 rounded-lg bg-blue-50 dark:bg-blue-950/40 text-blue-600">
-              <Layers className="w-4 h-4" />
-            </div>
-          </div>
-          <div className="mt-2">
-            <div className={`text-xl font-mono font-extrabold ${summary.investingCashFlow >= 0 ? 'text-blue-600 dark:text-blue-400' : 'text-slate-700 dark:text-slate-300'}`}>
-              {money(summary.investingCashFlow, currentEntity?.currencyCode)}
-            </div>
-            <p className="text-[10px] text-[var(--color-text-muted)] mt-0.5">CapEx & physical equipment purchases</p>
-          </div>
-        </div>
+        <KpiCard
+          icon={Layers}
+          label="INVESTING CASH FLOW (ICF)"
+          value={money(summary.investingCashFlow, currentEntity?.currencyCode)}
+          desc="CapEx & physical equipment purchases"
+          tone="blue"
+        />
 
         {/* Financing Cash Flow */}
-        <div className="bg-[var(--color-surface)] border border-[var(--color-border)] rounded-2xl p-4 shadow-xs flex flex-col justify-between hover:border-purple-500/30 transition-all">
-          <div className="flex items-center justify-between">
-            <span className="text-[10px] font-extrabold uppercase tracking-wider text-[var(--color-text-muted)]">
-              FINANCING CASH FLOW (FCF)
-            </span>
-            <div className="p-1.5 rounded-lg bg-purple-50 dark:bg-purple-950/40 text-purple-600">
-              <Landmark className="w-4 h-4" />
-            </div>
-          </div>
-          <div className="mt-2">
-            <div className={`text-xl font-mono font-extrabold ${summary.financingCashFlow >= 0 ? 'text-purple-600 dark:text-purple-400' : 'text-slate-700 dark:text-slate-300'}`}>
-              {money(summary.financingCashFlow, currentEntity?.currencyCode)}
-            </div>
-            <p className="text-[10px] text-[var(--color-text-muted)] mt-0.5">Capital, borrowings & drawings</p>
-          </div>
-        </div>
+        <KpiCard
+          icon={Landmark}
+          label="FINANCING CASH FLOW (FCF)"
+          value={money(summary.financingCashFlow, currentEntity?.currencyCode)}
+          desc="Capital, borrowings & drawings"
+          tone="purple"
+        />
 
         {/* Closing Cash Liquidity */}
-        <div className="bg-[var(--color-surface)] border border-[var(--color-border)] rounded-2xl p-4 shadow-xs flex flex-col justify-between hover:border-emerald-500/30 transition-all">
-          <div className="flex items-center justify-between">
-            <span className="text-[10px] font-extrabold uppercase tracking-wider text-[var(--color-text-muted)]">
-              CLOSING CASH & BANK POSITION
-            </span>
-            <div className="p-1.5 rounded-lg bg-emerald-50 dark:bg-emerald-950/40 text-emerald-600">
-              <Wallet className="w-4 h-4" />
-            </div>
-          </div>
-          <div className="mt-2">
-            <div className="text-xl font-mono font-extrabold text-emerald-600 dark:text-emerald-400">
-              {money(summary.closingCash, currentEntity?.currencyCode)}
-            </div>
-            <p className="text-[10px] text-[var(--color-text-muted)] mt-0.5">
-              Across {summary.totalBankAccounts} banks & {summary.totalCashRegisters} registers
-            </p>
-          </div>
-        </div>
-      </div>
+        <KpiCard
+          icon={Wallet}
+          label="CLOSING CASH & BANK POSITION"
+          value={money(summary.closingCash, currentEntity?.currencyCode)}
+          desc={`Across ${summary.totalBankAccounts} banks & ${summary.totalCashRegisters} registers`}
+          tone="emerald"
+        />
+      </KpiGrid>
 
       {/* ─── Search & Period Filter Toolbar (Zero Overlap Guaranteed) ─── */}
       <div className="bg-[var(--color-surface)] p-3 rounded-2xl border border-[var(--color-border)] shadow-xs flex flex-wrap items-center justify-between gap-3">

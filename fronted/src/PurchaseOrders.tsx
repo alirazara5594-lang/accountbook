@@ -1,7 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { useProcurementStore, useVendorsStore, useProductsStore, useTaxStore } from './stores';
 import { DataToolbar } from '@/components/ui/data-toolbar';
-import './App.css';
+import { EmptyState, TableSkeleton } from './components/ui/empty-state';
+import { StatusChip } from './components/ui/status-chip';
+import { Package, Info, X, ShoppingCart, FileText } from 'lucide-react';
 
 interface TaxRate {
   percentage: number;
@@ -266,13 +268,13 @@ export const PurchaseOrders: React.FC<{activeEntityId?: string, entities?: any[]
   const getStatusString = (s: number) => ['Draft', 'Issued', 'Partially Rcvd', 'Fulfilled'][s];
   const getDestString = (d: number) => ['Inventory', 'Fixed Asset', 'Expense'][d];
 
-  if (loading) return <div className="p-8 text-center text-gray-500">Loading procurement dashboard...</div>;
+  if (loading) return <TableSkeleton rows={6} />;
 
   return (
     <div className="animate-fade-in space-y-4">
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-3 bg-white p-3 rounded-xl border border-gray-200 shadow-sm">
         <h2 className="text-base font-bold text-gray-900 flex items-center gap-2">
-          <span className="text-lg">📦</span> Purchase Orders & GRN
+          <Package className="w-5 h-5 text-blue-600" /> Purchase Orders & GRN
         </h2>
         <div className="flex items-center gap-1.5 shrink-0">
           <DataToolbar
@@ -329,14 +331,20 @@ export const PurchaseOrders: React.FC<{activeEntityId?: string, entities?: any[]
                         <td className="py-4 text-gray-700">{vendor?.name || 'Unknown'}</td>
                         <td className="py-4 text-gray-900 font-medium text-right">${total.toFixed(2)}</td>
                         <td className="py-4 text-center">
-                          <span className={`px-2.5 py-1 rounded-full text-xs font-medium ${po.status === 3 ? 'bg-green-100 text-green-700' : po.status === 1 ? 'bg-blue-100 text-blue-700' : 'bg-orange-100 text-orange-700'}`}>
-                            {getStatusString(po.status)}
-                          </span>
+                          <StatusChip
+                            status={['draft', 'open', 'partial', 'posted'][po.status]}
+                            label={getStatusString(po.status)}
+                            hex={['#94a3b8', '#3b82f6', '#f59e0b', '#10b981'][po.status]}
+                          />
                         </td>
                       </tr>
                     );
                   })}
-                  {pos.length === 0 && <tr><td colSpan={5} className="py-8 text-center text-gray-400">No purchase orders found</td></tr>}
+                  {pos.length === 0 && (
+                    <tr><td colSpan={5}>
+                      <EmptyState icon={Package} title="No purchase orders found" hint='Award a vendor quote or click "+ New PO" to raise a purchase order.' />
+                    </td></tr>
+                  )}
                 </tbody>
               </table>
             </div>
@@ -364,14 +372,20 @@ export const PurchaseOrders: React.FC<{activeEntityId?: string, entities?: any[]
                         <td className="py-4 text-blue-600">{po?.poNumber || 'Unknown'}</td>
                         <td className="py-4 text-gray-900 text-center">{grn.lines.length} lines</td>
                         <td className="py-4 text-center">
-                          <span className={`px-2.5 py-1 rounded-full text-xs font-medium ${grn.isProcessed ? 'bg-green-100 text-green-700' : 'bg-yellow-100 text-yellow-700'}`}>
-                            {grn.isProcessed ? 'Processed to Inventory/Asset' : 'Pending'}
-                          </span>
+                          <StatusChip
+                            status={grn.isProcessed ? 'posted' : 'pending'}
+                            label={grn.isProcessed ? 'Processed to Inventory/Asset' : 'Pending'}
+                            hex={grn.isProcessed ? '#10b981' : '#f59e0b'}
+                          />
                         </td>
                       </tr>
                     );
                   })}
-                  {grns.length === 0 && <tr><td colSpan={5} className="py-8 text-center text-gray-400">No goods receipts found</td></tr>}
+                  {grns.length === 0 && (
+                    <tr><td colSpan={5}>
+                      <EmptyState icon={FileText} title="No goods receipts found" hint='Click "+ GRN" to receive items against an issued purchase order.' />
+                    </td></tr>
+                  )}
                 </tbody>
               </table>
             </div>
@@ -380,30 +394,35 @@ export const PurchaseOrders: React.FC<{activeEntityId?: string, entities?: any[]
       </div>
 
       {isPoModalOpen && (
-        <div className="fixed inset-0 bg-gray-900/40 backdrop-blur-sm z-50 flex items-center justify-center animate-fade-in pl-64">
-          <div className="bg-white rounded-2xl shadow-xl w-full max-w-5xl max-h-[90vh] overflow-hidden flex flex-col">
-            <div className="p-6 border-b border-gray-100 flex justify-between items-center bg-gray-50/50">
-              <h2 className="text-xl font-bold text-gray-900">Create Purchase Order</h2>
-              <button onClick={() => setIsPoModalOpen(false)} className="p-2 hover:bg-gray-200 rounded-lg transition-colors">✕</button>
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
+          <div className="w-full max-w-5xl bg-[var(--color-surface)] border border-[var(--color-border)] rounded-2xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh]">
+            <div className="px-6 py-4 border-b border-[var(--color-border)] flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-blue-500 to-indigo-500 flex items-center justify-center text-white">
+                  <ShoppingCart className="w-4 h-4" />
+                </div>
+                <h2 className="text-xl font-bold text-[var(--color-text)]">Create Purchase Order</h2>
+              </div>
+              <button onClick={() => setIsPoModalOpen(false)} className="w-8 h-8 rounded-lg flex items-center justify-center text-[var(--color-text-muted)] hover:bg-[var(--color-surface-muted)] transition-colors"><X className="w-4 h-4" /></button>
             </div>
             <div className="p-6 overflow-y-auto flex-1">
               <div className="grid grid-cols-2 gap-6 mb-8">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1.5">Vendor</label>
+                  <label className="text-[10px] font-bold uppercase tracking-wider text-[var(--color-text-muted)] mb-1.5 block">Vendor</label>
                   <select value={poVendorId} onChange={e => setPoVendorId(e.target.value)} className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl focus:bg-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all outline-none">
                     <option value="">Select Vendor...</option>
                     {vendors.map(v => <option key={v.id} value={v.id}>{v.name} ({v.vendorNumber})</option>)}
                   </select>
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1.5">PO Date</label>
+                  <label className="text-[10px] font-bold uppercase tracking-wider text-[var(--color-text-muted)] mb-1.5 block">PO Date</label>
                   <input type="date" value={poDate} onChange={e => setPoDate(e.target.value)} className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl focus:bg-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all outline-none" />
                 </div>
               </div>
 
               <div className="mb-4 flex justify-between items-center">
                 <h3 className="text-lg font-semibold text-gray-900">Line Items</h3>
-                <button onClick={addPoLine} className="px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 text-sm font-medium rounded-lg transition-colors">
+                <button onClick={addPoLine} className="h-9 px-5 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 text-white text-xs font-bold shadow-lg shadow-blue-500/25">
                   + Add Line
                 </button>
               </div>
@@ -461,7 +480,7 @@ export const PurchaseOrders: React.FC<{activeEntityId?: string, entities?: any[]
                         ${((line.quantity * line.unitPrice) + line.taxAmount).toFixed(2)}
                       </td>
                       <td className="py-2 text-right">
-                        <button type="button" onClick={() => setPoLines(poLines.filter((_, idx) => idx !== i))} className="text-red-500 hover:bg-red-50 p-1.5 rounded-lg transition-colors">✕</button>
+                        <button type="button" onClick={() => setPoLines(poLines.filter((_, idx) => idx !== i))} className="text-red-500 hover:bg-red-50 p-1.5 rounded-lg transition-colors"><X className="w-3.5 h-3.5" /></button>
                       </td>
                     </tr>
                   ))}
@@ -474,19 +493,19 @@ export const PurchaseOrders: React.FC<{activeEntityId?: string, entities?: any[]
                   const taxTotal = poLines.reduce((sum, l) => sum + (l.taxAmount || 0), 0);
                   const grandTotal = subtotal + taxTotal;
                   return (
-                    <div style={{ marginTop: 16, padding: '12px 16px', background: '#f1f5f9', borderRadius: 10, border: '1px solid #e2e8f0' }}>
-                      <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 40 }}>
-                        <div style={{ textAlign: 'right' as const }}>
-                          <span style={{ fontSize: 11, textTransform: 'uppercase' as const, color: '#64748b', fontWeight: 600, letterSpacing: '0.05em' }}>Subtotal</span>
-                          <p style={{ fontSize: 14, fontWeight: 700, color: '#334155', fontFamily: 'monospace', margin: '2px 0 0' }}>${subtotal.toFixed(2)}</p>
+                    <div className="mt-4 px-4 py-3 bg-[var(--color-surface-muted)] rounded-xl border border-[var(--color-border)]">
+                      <div className="flex justify-end gap-10">
+                        <div className="text-right">
+                          <span className="text-[10px] font-bold uppercase tracking-wider text-[var(--color-text-muted)]">Subtotal</span>
+                          <p className="text-sm font-bold text-[var(--color-text)] font-mono mt-0.5">${subtotal.toFixed(2)}</p>
                         </div>
-                        <div style={{ textAlign: 'right' as const }}>
-                          <span style={{ fontSize: 11, textTransform: 'uppercase' as const, color: '#dc2626', fontWeight: 600, letterSpacing: '0.05em' }}>Tax (VAT/GST/Sales Tax)</span>
-                          <p style={{ fontSize: 14, fontWeight: 700, color: '#dc2626', fontFamily: 'monospace', margin: '2px 0 0' }}>${taxTotal.toFixed(2)}</p>
+                        <div className="text-right">
+                          <span className="text-[10px] font-bold uppercase tracking-wider text-red-500">Tax (VAT/GST/Sales Tax)</span>
+                          <p className="text-sm font-bold text-red-500 font-mono mt-0.5">${taxTotal.toFixed(2)}</p>
                         </div>
-                        <div style={{ textAlign: 'right' as const, borderLeft: '2px solid #cbd5e1', paddingLeft: 20 }}>
-                          <span style={{ fontSize: 11, textTransform: 'uppercase' as const, color: '#047857', fontWeight: 700, letterSpacing: '0.05em' }}>Grand Total</span>
-                          <p style={{ fontSize: 18, fontWeight: 800, color: '#047857', fontFamily: 'monospace', margin: '2px 0 0' }}>${grandTotal.toFixed(2)}</p>
+                        <div className="text-right border-l-2 border-[var(--color-border)] pl-5">
+                          <span className="text-[10px] font-bold uppercase tracking-wider text-emerald-600">Grand Total</span>
+                          <p className="text-lg font-extrabold text-emerald-600 font-mono mt-0.5">${grandTotal.toFixed(2)}</p>
                         </div>
                       </div>
                     </div>
@@ -494,36 +513,41 @@ export const PurchaseOrders: React.FC<{activeEntityId?: string, entities?: any[]
                 })()}
 
             </div>
-            <div className="p-6 border-t border-gray-100 bg-gray-50/50 flex justify-end gap-3">
-              <button onClick={() => setIsPoModalOpen(false)} className="px-5 py-2.5 text-gray-600 font-medium hover:bg-gray-100 rounded-xl transition-colors">Cancel</button>
-              <button onClick={submitPo} className="px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-xl shadow-sm shadow-blue-600/20 transition-all">Issue Purchase Order</button>
+            <div className="px-6 py-4 border-t border-[var(--color-border)] flex items-center justify-between">
+              <button onClick={() => setIsPoModalOpen(false)} className="h-9 px-4 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] text-xs font-medium hover:bg-[var(--color-surface-muted)] transition-colors">Cancel</button>
+              <button onClick={submitPo} className="h-9 px-5 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 text-white text-xs font-bold shadow-lg shadow-blue-500/25">Issue Purchase Order</button>
             </div>
           </div>
         </div>
       )}
 
       {isGrnModalOpen && (
-        <div className="fixed inset-0 bg-gray-900/40 backdrop-blur-sm z-50 flex items-center justify-center animate-fade-in pl-64">
-          <div className="bg-white rounded-2xl shadow-xl w-full max-w-3xl max-h-[90vh] overflow-hidden flex flex-col">
-            <div className="p-6 border-b border-gray-100 flex justify-between items-center bg-gray-50/50">
-              <h2 className="text-xl font-bold text-gray-900">Receive Goods (GRN)</h2>
-              <button onClick={() => setIsGrnModalOpen(false)} className="p-2 hover:bg-gray-200 rounded-lg transition-colors">✕</button>
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
+          <div className="w-full max-w-3xl bg-[var(--color-surface)] border border-[var(--color-border)] rounded-2xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh]">
+            <div className="px-6 py-4 border-b border-[var(--color-border)] flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-green-500 to-emerald-500 flex items-center justify-center text-white">
+                  <FileText className="w-4 h-4" />
+                </div>
+                <h2 className="text-xl font-bold text-[var(--color-text)]">Receive Goods (GRN)</h2>
+              </div>
+              <button onClick={() => setIsGrnModalOpen(false)} className="w-8 h-8 rounded-lg flex items-center justify-center text-[var(--color-text-muted)] hover:bg-[var(--color-surface-muted)] transition-colors"><X className="w-4 h-4" /></button>
             </div>
             <div className="p-6 overflow-y-auto flex-1">
               <div className="bg-blue-50/50 p-4 rounded-xl border border-blue-100 mb-6 flex gap-3 text-sm text-blue-800">
-                <span className="text-blue-500">ℹ️</span>
+                <Info className="w-4 h-4 mt-0.5 text-blue-500 shrink-0" />
                 <p>Processing a GRN will automatically increase Inventory quantities or create Fixed Assets in the Asset Register, depending on the destination selected during PO creation.</p>
               </div>
               <div className="grid grid-cols-2 gap-6 mb-8">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1.5">Purchase Order</label>
+                  <label className="text-[10px] font-bold uppercase tracking-wider text-[var(--color-text-muted)] mb-1.5 block">Purchase Order</label>
                   <select value={grnPoId} onChange={e => handleGrnPoChange(e.target.value)} className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl focus:bg-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all outline-none">
                     <option value="">Select PO...</option>
                     {pos.filter(p => p.status === 1 || p.status === 2).map(p => <option key={p.id} value={p.id}>{p.poNumber} ({vendors.find(v => v.id === p.vendorId)?.name})</option>)}
                   </select>
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1.5">Date Received</label>
+                  <label className="text-[10px] font-bold uppercase tracking-wider text-[var(--color-text-muted)] mb-1.5 block">Date Received</label>
                   <input type="date" value={grnDate} onChange={e => setGrnDate(e.target.value)} className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl focus:bg-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all outline-none" />
                 </div>
               </div>
@@ -570,9 +594,9 @@ export const PurchaseOrders: React.FC<{activeEntityId?: string, entities?: any[]
                 </>
               )}
             </div>
-            <div className="p-6 border-t border-gray-100 bg-gray-50/50 flex justify-end gap-3">
-              <button onClick={() => setIsGrnModalOpen(false)} className="px-5 py-2.5 text-gray-600 font-medium hover:bg-gray-100 rounded-xl transition-colors">Cancel</button>
-              <button onClick={submitGrn} disabled={!grnPoId} className="px-5 py-2.5 bg-green-600 hover:bg-green-700 disabled:opacity-50 text-white font-medium rounded-xl shadow-sm shadow-green-600/20 transition-all">Process Goods Receipt</button>
+            <div className="px-6 py-4 border-t border-[var(--color-border)] flex items-center justify-between">
+              <button onClick={() => setIsGrnModalOpen(false)} className="h-9 px-4 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] text-xs font-medium hover:bg-[var(--color-surface-muted)] transition-colors">Cancel</button>
+              <button onClick={submitGrn} disabled={!grnPoId} className="h-9 px-5 rounded-xl bg-gradient-to-r from-green-600 to-emerald-600 text-white text-xs font-bold shadow-lg shadow-green-500/25 disabled:opacity-50">Process Goods Receipt</button>
             </div>
           </div>
         </div>

@@ -9,6 +9,9 @@ import {
   Table as TableIcon, ArrowRight, ShieldCheck, Receipt
 } from 'lucide-react';
 import { money } from './lib/currency';
+import { KpiCard, KpiGrid } from './components/ui/kpi-card';
+import { StatusChip } from './components/ui/status-chip';
+import { EmptyState } from './components/ui/empty-state';
 import { downloadExcel, downloadCSV } from './lib/exportUtils';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
@@ -20,20 +23,13 @@ const TASK_STATUS_OPTIONS: ProjectTaskStatus[] = ['NotStarted', 'InProgress', 'B
 const PRIORITY_OPTIONS: TaskPriority[] = ['Low', 'Medium', 'High', 'Critical'];
 
 // ── Status Badges & Styles ──────────────────────────────────────────────────
-const projectStatusBadge = (s: string) => {
-  switch (s) {
-    case 'Active':
-      return 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800';
-    case 'Completed':
-      return 'bg-blue-50 text-blue-700 dark:bg-blue-950/40 dark:text-blue-300 border-blue-200 dark:border-blue-800';
-    case 'OnHold':
-      return 'bg-amber-50 text-amber-700 dark:bg-amber-950/40 dark:text-amber-300 border-amber-200 dark:border-amber-800';
-    case 'Cancelled':
-      return 'bg-rose-50 text-rose-700 dark:bg-rose-950/40 dark:text-rose-300 border-rose-200 dark:border-rose-800';
-    default:
-      return 'bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300 border-slate-200 dark:border-slate-700';
-  }
+const projectStatusHex: Record<string, string> = {
+  Active: '#10b981',
+  Completed: '#10b981',
+  OnHold: '#f59e0b',
+  Cancelled: '#ef4444',
 };
+const projectStatusColor = (s: string) => projectStatusHex[s] ?? '#94a3b8';
 
 const taskStatusBadge = (s: string) => {
   switch (s) {
@@ -48,18 +44,12 @@ const taskStatusBadge = (s: string) => {
   }
 };
 
-const priorityBadge = (p: string) => {
-  switch (p) {
-    case 'Critical':
-      return 'bg-rose-50 text-rose-700 border-rose-300 font-bold';
-    case 'High':
-      return 'bg-amber-50 text-amber-700 border-amber-300 font-semibold';
-    case 'Medium':
-      return 'bg-blue-50 text-blue-700 border-blue-200';
-    default:
-      return 'bg-slate-100 text-slate-600 border-slate-200';
-  }
+const priorityHex: Record<string, string> = {
+  Critical: '#ef4444',
+  High: '#f59e0b',
+  Medium: '#3b82f6',
 };
+const priorityColor = (p: string) => priorityHex[p] ?? '#94a3b8';
 
 function useProjectData() {
   const store = useProjectsStore();
@@ -111,24 +101,32 @@ export function ProjectsSummaryView() {
 
   return (
     <div className="p-6 max-w-[1500px] mx-auto space-y-6">
-      {/* Header */}
-      <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 border-b border-[var(--color-border)] pb-4">
-        <div className="min-w-0 flex-1">
-          <h1 className="text-xl font-black tracking-tight text-[var(--color-text-strong)] flex items-center gap-2.5">
-            <div className="p-2 rounded-xl bg-teal-500/10 text-teal-600 border border-teal-500/20 shrink-0">
-              <FolderKanban className="w-5 h-5" />
+      {/* Page Header — AMS Signature Hero Band */}
+      <div className="relative overflow-hidden rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)] shadow-sm">
+        <div className="absolute inset-0 bg-gradient-to-r from-cyan-500/10 via-cyan-500/[0.03] to-transparent pointer-events-none" />
+        <div className="absolute -right-10 -top-16 w-56 h-56 rounded-full bg-cyan-500/10 blur-3xl pointer-events-none" />
+        <div className="relative flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 px-5 py-4">
+          <div className="flex items-center gap-4 min-w-0">
+            <div className="relative h-14 w-14 shrink-0">
+              <div className="absolute inset-[6px] rotate-45 rounded-[12px] shadow-xl bg-gradient-to-br from-cyan-500 to-blue-700" />
+              <div className="absolute inset-0 flex items-center justify-center"><FolderKanban className="w-6 h-6 text-white" /></div>
             </div>
-            Executive Project Portfolio & Governance
-          </h1>
-          <p className="text-xs text-[var(--color-text-muted)] mt-1">
-            IAS/IFRS 15 & GAAP compliant contract accounting, Earned Value Analysis (EVM), and lifecycle control.
-          </p>
-        </div>
+            <div className="min-w-0">
+              <div className="flex items-center gap-2.5">
+                <h1 className="text-2xl font-black tracking-tight text-[var(--color-text-strong)]">Executive Project Portfolio &amp; Governance</h1>
+                <span className="hidden sm:inline-flex items-center gap-1.5 rounded-full border border-cyan-500/25 bg-cyan-500/10 px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider text-cyan-600 dark:text-cyan-400"><span className="h-1.5 w-1.5 rounded-full bg-cyan-500 animate-pulse" /> Live Ledger</span>
+              </div>
+              <p className="text-xs text-[var(--color-text-muted)] mt-0.5">
+                IAS/IFRS 15 &amp; GAAP compliant contract accounting, Earned Value Analysis (EVM), and lifecycle control.
+              </p>
+            </div>
+          </div>
 
-        <div className="flex items-center gap-2 shrink-0 flex-nowrap">
+          <div className="flex items-center gap-2 shrink-0 flex-nowrap">
           <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-emerald-500/10 text-emerald-600 border border-emerald-500/20 text-xs font-bold">
             <ShieldCheck className="w-4 h-4" /> IFRS 15 PoC Active
           </span>
+          </div>
         </div>
       </div>
 
@@ -241,9 +239,7 @@ export function ProjectsSummaryView() {
                     <h3 className="font-bold text-xs text-[var(--color-text-strong)] mt-1.5">{p.name}</h3>
                     <p className="text-[11px] text-[var(--color-text-muted)]">{p.customerName || 'General Client'}</p>
                   </div>
-                  <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${projectStatusBadge(p.status)}`}>
-                    {p.status}
-                  </span>
+                  <StatusChip status={p.status} label={p.status} hex={projectStatusColor(p.status)} />
                 </div>
 
                 <div className="space-y-1">
@@ -409,7 +405,7 @@ export function ProjectsListView({ activeEntityId }: { activeEntityId?: string }
   const handleExportPDF = () => {
     const doc = new jsPDF('landscape');
     doc.setFontSize(14);
-    doc.text('AccountBook ERP — Master Project Portfolio Directory', 14, 15);
+    doc.text('AMS ERP — Master Project Portfolio Directory', 14, 15);
     doc.setFontSize(9);
     doc.setTextColor(100);
     doc.text(`Generated on: ${new Date().toLocaleString()} | Filter: ${statusFilter} Status`, 14, 21);
@@ -439,21 +435,28 @@ export function ProjectsListView({ activeEntityId }: { activeEntityId?: string }
 
   return (
     <div className="p-6 max-w-[1500px] mx-auto space-y-6">
-      {/* Header */}
-      <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 border-b border-[var(--color-border)] pb-4">
-        <div className="min-w-0 flex-1">
-          <h1 className="text-xl font-black tracking-tight text-[var(--color-text-strong)] flex items-center gap-2.5">
-            <div className="p-2 rounded-xl bg-teal-500/10 text-teal-600 border border-teal-500/20 shrink-0">
-              <FolderKanban className="w-5 h-5" />
+      {/* Page Header — AMS Signature Hero Band */}
+      <div className="relative overflow-hidden rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)] shadow-sm">
+        <div className="absolute inset-0 bg-gradient-to-r from-cyan-500/10 via-cyan-500/[0.03] to-transparent pointer-events-none" />
+        <div className="absolute -right-10 -top-16 w-56 h-56 rounded-full bg-cyan-500/10 blur-3xl pointer-events-none" />
+        <div className="relative flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 px-5 py-4">
+          <div className="flex items-center gap-4 min-w-0">
+            <div className="relative h-14 w-14 shrink-0">
+              <div className="absolute inset-[6px] rotate-45 rounded-[12px] shadow-xl bg-gradient-to-br from-cyan-500 to-blue-700" />
+              <div className="absolute inset-0 flex items-center justify-center"><FolderKanban className="w-6 h-6 text-white" /></div>
             </div>
-            Project Master Portfolio & Control Register
-          </h1>
-          <p className="text-xs text-[var(--color-text-muted)] mt-1">
-            Comprehensive lifecycle governance: Inception, WBS Milestones, Direct Labor, Job Costing, Progress Billing, and Forensic Variance Comparison.
-          </p>
-        </div>
+            <div className="min-w-0">
+              <div className="flex items-center gap-2.5">
+                <h1 className="text-2xl font-black tracking-tight text-[var(--color-text-strong)]">Project Master Portfolio &amp; Control Register</h1>
+                <span className="hidden sm:inline-flex items-center gap-1.5 rounded-full border border-cyan-500/25 bg-cyan-500/10 px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider text-cyan-600 dark:text-cyan-400"><span className="h-1.5 w-1.5 rounded-full bg-cyan-500 animate-pulse" /> Live Ledger</span>
+              </div>
+              <p className="text-xs text-[var(--color-text-muted)] mt-0.5">
+                Comprehensive lifecycle governance: Inception, WBS Milestones, Direct Labor, Job Costing, Progress Billing, and Forensic Variance Comparison.
+              </p>
+            </div>
+          </div>
 
-        <div className="flex items-center gap-2 shrink-0 flex-nowrap overflow-x-auto">
+          <div className="flex items-center gap-2 shrink-0 flex-nowrap overflow-x-auto">
           <button
             onClick={fetchAll}
             title="Refresh Projects Register"
@@ -489,6 +492,7 @@ export function ProjectsListView({ activeEntityId }: { activeEntityId?: string }
           >
             <Plus className="w-4 h-4" /> Create Project
           </button>
+          </div>
         </div>
       </div>
 
@@ -576,7 +580,7 @@ export function ProjectsListView({ activeEntityId }: { activeEntityId?: string }
           <div className="overflow-x-auto">
             <table className="w-full text-left text-xs border-collapse">
               <thead>
-                <tr className="bg-[var(--color-surface-muted)] border-b border-[var(--color-border)] text-[var(--color-text-muted)] font-semibold uppercase tracking-wider text-[10px]">
+                <tr className="bg-cyan-500/[0.05] dark:bg-cyan-400/[0.07] border-b border-[var(--color-border)] text-[var(--color-text-muted)] font-semibold uppercase tracking-wider text-[10px]">
                   <th className="p-3.5 pl-5">Project Code & Name</th>
                   <th className="p-3.5">Client & Sector</th>
                   <th className="p-3.5">Status</th>
@@ -612,10 +616,7 @@ export function ProjectsListView({ activeEntityId }: { activeEntityId?: string }
                     </td>
 
                     <td className="p-3.5">
-                      <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10.5px] font-bold border ${projectStatusBadge(p.status)}`}>
-                        <span className="w-1.5 h-1.5 rounded-full bg-current" />
-                        {p.status}
-                      </span>
+                      <StatusChip status={p.status} label={p.status} hex={projectStatusColor(p.status)} />
                     </td>
 
                     <td className="p-3.5">
@@ -675,8 +676,8 @@ export function ProjectsListView({ activeEntityId }: { activeEntityId?: string }
                 ))}
                 {filteredProjects.length === 0 && (
                   <tr>
-                    <td colSpan={8} className="p-8 text-center text-xs text-[var(--color-text-muted)]">
-                      No matching projects found.
+                    <td colSpan={8}>
+                      <EmptyState icon={FolderKanban} title="No matching projects found" hint="Adjust the search or status filter, or create a new project charter." />
                     </td>
                   </tr>
                 )}
@@ -696,9 +697,7 @@ export function ProjectsListView({ activeEntityId }: { activeEntityId?: string }
                   <h3 className="font-bold text-sm text-[var(--color-text-strong)] mt-2">{p.name}</h3>
                   <p className="text-xs text-[var(--color-text-muted)]">{p.customerName || 'General Client'}</p>
                 </div>
-                <span className={`text-[10.5px] font-bold px-2.5 py-1 rounded-full border ${projectStatusBadge(p.status)}`}>
-                  {p.status}
-                </span>
+                <StatusChip status={p.status} label={p.status} hex={projectStatusColor(p.status)} />
               </div>
 
               <p className="text-xs text-[var(--color-text-muted)] line-clamp-2">
@@ -1006,7 +1005,7 @@ export function ProjectsListView({ activeEntityId }: { activeEntityId?: string }
                 </div>
                 <div className="flex justify-between">
                   <span className="text-[var(--color-text-muted)]">Status</span>
-                  <span className={`font-bold px-2 py-0.5 rounded-full border ${projectStatusBadge(inspectorProject.status)}`}>{inspectorProject.status}</span>
+                  <StatusChip status={inspectorProject.status} label={inspectorProject.status} hex={projectStatusColor(inspectorProject.status)} />
                 </div>
                 <div className="flex justify-between">
                   <span className="text-[var(--color-text-muted)]">Contract Baseline Budget</span>
@@ -1070,20 +1069,28 @@ export function ProjectPlanningView({ activeEntityId: _activeEntityId }: { activ
 
   return (
     <div className="p-6 max-w-[1500px] mx-auto space-y-6">
-      <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 border-b border-[var(--color-border)] pb-4">
-        <div className="min-w-0 flex-1">
-          <h1 className="text-xl font-black tracking-tight text-[var(--color-text-strong)] flex items-center gap-2.5">
-            <div className="p-2 rounded-xl bg-indigo-500/10 text-indigo-600 border border-indigo-500/20 shrink-0">
-              <Layers className="w-5 h-5" />
+      {/* Page Header — AMS Signature Hero Band */}
+      <div className="relative overflow-hidden rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)] shadow-sm">
+        <div className="absolute inset-0 bg-gradient-to-r from-cyan-500/10 via-cyan-500/[0.03] to-transparent pointer-events-none" />
+        <div className="absolute -right-10 -top-16 w-56 h-56 rounded-full bg-cyan-500/10 blur-3xl pointer-events-none" />
+        <div className="relative flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 px-5 py-4">
+          <div className="flex items-center gap-4 min-w-0">
+            <div className="relative h-14 w-14 shrink-0">
+              <div className="absolute inset-[6px] rotate-45 rounded-[12px] shadow-xl bg-gradient-to-br from-cyan-500 to-blue-700" />
+              <div className="absolute inset-0 flex items-center justify-center"><Layers className="w-6 h-6 text-white" /></div>
             </div>
-            Work Breakdown Structure (WBS) & Phase Planning
-          </h1>
-          <p className="text-xs text-[var(--color-text-muted)] mt-1">
-            Deconstruct project scope into structured phases, milestones, deliverables, and execution sequences.
-          </p>
-        </div>
+            <div className="min-w-0">
+              <div className="flex items-center gap-2.5">
+                <h1 className="text-2xl font-black tracking-tight text-[var(--color-text-strong)]">Work Breakdown Structure (WBS) &amp; Phase Planning</h1>
+                <span className="hidden sm:inline-flex items-center gap-1.5 rounded-full border border-cyan-500/25 bg-cyan-500/10 px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider text-cyan-600 dark:text-cyan-400"><span className="h-1.5 w-1.5 rounded-full bg-cyan-500 animate-pulse" /> Live Ledger</span>
+              </div>
+              <p className="text-xs text-[var(--color-text-muted)] mt-0.5">
+                Deconstruct project scope into structured phases, milestones, deliverables, and execution sequences.
+              </p>
+            </div>
+          </div>
 
-        <div className="flex items-center gap-2 shrink-0 flex-nowrap">
+          <div className="flex items-center gap-2 shrink-0 flex-nowrap">
           <select
             value={selectedProjectId}
             onChange={e => setSelectedProjectId(e.target.value)}
@@ -1098,6 +1105,7 @@ export function ProjectPlanningView({ activeEntityId: _activeEntityId }: { activ
           >
             <Plus className="w-4 h-4" /> Add WBS Phase
           </button>
+          </div>
         </div>
       </div>
 
@@ -1138,17 +1146,19 @@ export function ProjectPlanningView({ activeEntityId: _activeEntityId }: { activ
         })}
 
         {currentPhases.length === 0 && (
-          <div className="p-12 text-center border-2 border-dashed border-[var(--color-border)] rounded-2xl space-y-2">
-            <Layers className="w-8 h-8 text-[var(--color-text-muted)] mx-auto opacity-50" />
-            <h3 className="font-bold text-xs text-[var(--color-text-strong)]">No WBS Phases Defined</h3>
-            <p className="text-xs text-[var(--color-text-muted)]">Deconstruct your project into manageable phases to begin task assignments.</p>
-            <button
-              onClick={() => setPhaseModalOpen(true)}
-              className="mt-2 inline-flex items-center gap-1.5 px-4 py-2 bg-indigo-600 text-white rounded-xl text-xs font-bold"
-            >
-              <Plus className="w-4 h-4" /> Create Phase 1
-            </button>
-          </div>
+          <EmptyState
+            icon={Layers}
+            title="No WBS Phases Defined"
+            hint="Deconstruct your project into manageable phases to begin task assignments."
+            action={
+              <button
+                onClick={() => setPhaseModalOpen(true)}
+                className="inline-flex items-center gap-1.5 px-4 py-2 bg-indigo-600 text-white rounded-xl text-xs font-bold"
+              >
+                <Plus className="w-4 h-4" /> Create Phase 1
+              </button>
+            }
+          />
         )}
       </div>
 
@@ -1259,20 +1269,28 @@ export function ProjectsTasksView({ activeEntityId: _activeEntityId }: { activeE
 
   return (
     <div className="p-6 max-w-[1500px] mx-auto space-y-6">
-      <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 border-b border-[var(--color-border)] pb-4">
-        <div className="min-w-0 flex-1">
-          <h1 className="text-xl font-black tracking-tight text-[var(--color-text-strong)] flex items-center gap-2.5">
-            <div className="p-2 rounded-xl bg-teal-500/10 text-teal-600 border border-teal-500/20 shrink-0">
-              <ListChecks className="w-5 h-5" />
+      {/* Page Header — AMS Signature Hero Band */}
+      <div className="relative overflow-hidden rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)] shadow-sm">
+        <div className="absolute inset-0 bg-gradient-to-r from-cyan-500/10 via-cyan-500/[0.03] to-transparent pointer-events-none" />
+        <div className="absolute -right-10 -top-16 w-56 h-56 rounded-full bg-cyan-500/10 blur-3xl pointer-events-none" />
+        <div className="relative flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 px-5 py-4">
+          <div className="flex items-center gap-4 min-w-0">
+            <div className="relative h-14 w-14 shrink-0">
+              <div className="absolute inset-[6px] rotate-45 rounded-[12px] shadow-xl bg-gradient-to-br from-cyan-500 to-blue-700" />
+              <div className="absolute inset-0 flex items-center justify-center"><ListChecks className="w-6 h-6 text-white" /></div>
             </div>
-            Task Execution & Resource Governance
-          </h1>
-          <p className="text-xs text-[var(--color-text-muted)] mt-1">
-            Assign work packages, monitor task dependencies, record estimated vs actual hours, and manage workflow status.
-          </p>
-        </div>
+            <div className="min-w-0">
+              <div className="flex items-center gap-2.5">
+                <h1 className="text-2xl font-black tracking-tight text-[var(--color-text-strong)]">Task Execution &amp; Resource Governance</h1>
+                <span className="hidden sm:inline-flex items-center gap-1.5 rounded-full border border-cyan-500/25 bg-cyan-500/10 px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider text-cyan-600 dark:text-cyan-400"><span className="h-1.5 w-1.5 rounded-full bg-cyan-500 animate-pulse" /> Live Ledger</span>
+              </div>
+              <p className="text-xs text-[var(--color-text-muted)] mt-0.5">
+                Assign work packages, monitor task dependencies, record estimated vs actual hours, and manage workflow status.
+              </p>
+            </div>
+          </div>
 
-        <div className="flex items-center gap-2 shrink-0 flex-nowrap">
+          <div className="flex items-center gap-2 shrink-0 flex-nowrap">
           <select
             value={selectedProjectId}
             onChange={e => setSelectedProjectId(e.target.value)}
@@ -1288,6 +1306,7 @@ export function ProjectsTasksView({ activeEntityId: _activeEntityId }: { activeE
           >
             <Plus className="w-4 h-4" /> Add Task
           </button>
+          </div>
         </div>
       </div>
 
@@ -1309,7 +1328,7 @@ export function ProjectsTasksView({ activeEntityId: _activeEntityId }: { activeE
         <div className="overflow-x-auto">
           <table className="w-full text-left text-xs border-collapse">
             <thead>
-              <tr className="bg-[var(--color-surface-muted)] border-b border-[var(--color-border)] text-[var(--color-text-muted)] font-semibold uppercase tracking-wider text-[10px]">
+              <tr className="bg-cyan-500/[0.05] dark:bg-cyan-400/[0.07] border-b border-[var(--color-border)] text-[var(--color-text-muted)] font-semibold uppercase tracking-wider text-[10px]">
                 <th className="p-3.5 pl-5">Task Title</th>
                 <th className="p-3.5">Priority</th>
                 <th className="p-3.5">Assignee</th>
@@ -1325,9 +1344,7 @@ export function ProjectsTasksView({ activeEntityId: _activeEntityId }: { activeE
                 <tr key={t.id} className="hover:bg-[var(--color-surface-muted)]/50 transition-colors">
                   <td className="p-3.5 pl-5 font-bold text-[var(--color-text-strong)]">{t.title}</td>
                   <td className="p-3.5">
-                    <span className={`px-2 py-0.5 rounded-md text-[10px] border ${priorityBadge(t.priority)}`}>
-                      {t.priority}
-                    </span>
+                    <StatusChip status={t.priority} label={t.priority} hex={priorityColor(t.priority)} />
                   </td>
                   <td className="p-3.5 text-[var(--color-text-muted)]">{empName(employees, t.assigneeId)}</td>
                   <td className="p-3.5">
@@ -1356,9 +1373,9 @@ export function ProjectsTasksView({ activeEntityId: _activeEntityId }: { activeE
                 </tr>
               ))}
               {currentTasks.length === 0 && (
-                <tr>
-                  <td colSpan={8} className="p-8 text-center text-xs text-[var(--color-text-muted)]">No tasks registered for this project.</td>
-                </tr>
+                  <tr>
+                    <td colSpan={8}><EmptyState icon={ListChecks} title="No tasks registered for this project" hint="Add a work package task to begin execution tracking." /></td>
+                  </tr>
               )}
             </tbody>
           </table>
@@ -1486,20 +1503,28 @@ export function ProjectCostingView({ activeEntityId: _activeEntityId }: { active
 
   return (
     <div className="p-6 max-w-[1500px] mx-auto space-y-6">
-      <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 border-b border-[var(--color-border)] pb-4">
-        <div className="min-w-0 flex-1">
-          <h1 className="text-xl font-black tracking-tight text-[var(--color-text-strong)] flex items-center gap-2.5">
-            <div className="p-2 rounded-xl bg-purple-500/10 text-purple-600 border border-purple-500/20 shrink-0">
-              <ReceiptText className="w-5 h-5" />
+      {/* Page Header — AMS Signature Hero Band */}
+      <div className="relative overflow-hidden rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)] shadow-sm">
+        <div className="absolute inset-0 bg-gradient-to-r from-cyan-500/10 via-cyan-500/[0.03] to-transparent pointer-events-none" />
+        <div className="absolute -right-10 -top-16 w-56 h-56 rounded-full bg-cyan-500/10 blur-3xl pointer-events-none" />
+        <div className="relative flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 px-5 py-4">
+          <div className="flex items-center gap-4 min-w-0">
+            <div className="relative h-14 w-14 shrink-0">
+              <div className="absolute inset-[6px] rotate-45 rounded-[12px] shadow-xl bg-gradient-to-br from-cyan-500 to-blue-700" />
+              <div className="absolute inset-0 flex items-center justify-center"><ReceiptText className="w-6 h-6 text-white" /></div>
             </div>
-            Direct Job Costing & Cost Breakdown Structure (CBS)
-          </h1>
-          <p className="text-xs text-[var(--color-text-muted)] mt-1">
-            Forensic cost allocation across Direct Labor, Materials, Subcontractors, Plant Equipment, and Overheads.
-          </p>
-        </div>
+            <div className="min-w-0">
+              <div className="flex items-center gap-2.5">
+                <h1 className="text-2xl font-black tracking-tight text-[var(--color-text-strong)]">Direct Job Costing &amp; Cost Breakdown Structure (CBS)</h1>
+                <span className="hidden sm:inline-flex items-center gap-1.5 rounded-full border border-cyan-500/25 bg-cyan-500/10 px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider text-cyan-600 dark:text-cyan-400"><span className="h-1.5 w-1.5 rounded-full bg-cyan-500 animate-pulse" /> Live Ledger</span>
+              </div>
+              <p className="text-xs text-[var(--color-text-muted)] mt-0.5">
+                Forensic cost allocation across Direct Labor, Materials, Subcontractors, Plant Equipment, and Overheads.
+              </p>
+            </div>
+          </div>
 
-        <div className="flex items-center gap-2 shrink-0 flex-nowrap">
+          <div className="flex items-center gap-2 shrink-0 flex-nowrap">
           <select
             value={selectedProjectId}
             onChange={e => setSelectedProjectId(e.target.value)}
@@ -1507,6 +1532,7 @@ export function ProjectCostingView({ activeEntityId: _activeEntityId }: { active
           >
             {projects.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
           </select>
+          </div>
         </div>
       </div>
 
@@ -1548,7 +1574,7 @@ export function ProjectCostingView({ activeEntityId: _activeEntityId }: { active
         <div className="overflow-x-auto">
           <table className="w-full text-left text-xs border-collapse">
             <thead>
-              <tr className="bg-[var(--color-surface-muted)] border-b border-[var(--color-border)] text-[var(--color-text-muted)] font-semibold uppercase tracking-wider text-[10px]">
+              <tr className="bg-cyan-500/[0.05] dark:bg-cyan-400/[0.07] border-b border-[var(--color-border)] text-[var(--color-text-muted)] font-semibold uppercase tracking-wider text-[10px]">
                 <th className="p-3 pl-4">Cost Category</th>
                 <th className="p-3">Reference / Description</th>
                 <th className="p-3">Date</th>
@@ -1574,7 +1600,7 @@ export function ProjectCostingView({ activeEntityId: _activeEntityId }: { active
               ))}
               {pTimesheets.length === 0 && pExpenses.length === 0 && (
                 <tr>
-                  <td colSpan={4} className="p-8 text-center text-xs text-[var(--color-text-muted)]">No direct job costs posted for this project yet.</td>
+                  <td colSpan={4}><EmptyState icon={ReceiptText} title="No direct job costs posted" hint="Logged timesheets and expense vouchers for this project will appear here." /></td>
                 </tr>
               )}
             </tbody>
@@ -1612,26 +1638,35 @@ export function ProjectsTimesheetsView({ activeEntityId: _activeEntityId }: { ac
 
   return (
     <div className="p-6 max-w-[1500px] mx-auto space-y-6">
-      <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 border-b border-[var(--color-border)] pb-4">
-        <div className="min-w-0 flex-1">
-          <h1 className="text-xl font-black tracking-tight text-[var(--color-text-strong)] flex items-center gap-2.5">
-            <div className="p-2 rounded-xl bg-teal-500/10 text-teal-600 border border-teal-500/20 shrink-0">
-              <Timer className="w-5 h-5" />
+      {/* Page Header — AMS Signature Hero Band */}
+      <div className="relative overflow-hidden rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)] shadow-sm">
+        <div className="absolute inset-0 bg-gradient-to-r from-cyan-500/10 via-cyan-500/[0.03] to-transparent pointer-events-none" />
+        <div className="absolute -right-10 -top-16 w-56 h-56 rounded-full bg-cyan-500/10 blur-3xl pointer-events-none" />
+        <div className="relative flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 px-5 py-4">
+          <div className="flex items-center gap-4 min-w-0">
+            <div className="relative h-14 w-14 shrink-0">
+              <div className="absolute inset-[6px] rotate-45 rounded-[12px] shadow-xl bg-gradient-to-br from-cyan-500 to-blue-700" />
+              <div className="absolute inset-0 flex items-center justify-center"><Timer className="w-6 h-6 text-white" /></div>
             </div>
-            Direct Labor & Timesheet Logging
-          </h1>
-          <p className="text-xs text-[var(--color-text-muted)] mt-1">
-            Record employee operational hours, compute direct labor burden, and maintain supervisory audit approvals.
-          </p>
-        </div>
+            <div className="min-w-0">
+              <div className="flex items-center gap-2.5">
+                <h1 className="text-2xl font-black tracking-tight text-[var(--color-text-strong)]">Direct Labor &amp; Timesheet Logging</h1>
+                <span className="hidden sm:inline-flex items-center gap-1.5 rounded-full border border-cyan-500/25 bg-cyan-500/10 px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider text-cyan-600 dark:text-cyan-400"><span className="h-1.5 w-1.5 rounded-full bg-cyan-500 animate-pulse" /> Live Ledger</span>
+              </div>
+              <p className="text-xs text-[var(--color-text-muted)] mt-0.5">
+                Record employee operational hours, compute direct labor burden, and maintain supervisory audit approvals.
+              </p>
+            </div>
+          </div>
 
-        <div className="flex items-center gap-2 shrink-0 flex-nowrap">
+          <div className="flex items-center gap-2 shrink-0 flex-nowrap">
           <button
             onClick={() => setModalOpen(true)}
             className="inline-flex items-center gap-1.5 px-4 py-2 bg-teal-600 hover:bg-teal-700 text-white rounded-xl text-xs font-bold shadow-sm transition-all"
           >
             <Plus className="w-4 h-4" /> Log Timesheet
           </button>
+          </div>
         </div>
       </div>
 
@@ -1640,7 +1675,7 @@ export function ProjectsTimesheetsView({ activeEntityId: _activeEntityId }: { ac
         <div className="overflow-x-auto">
           <table className="w-full text-left text-xs border-collapse">
             <thead>
-              <tr className="bg-[var(--color-surface-muted)] border-b border-[var(--color-border)] text-[var(--color-text-muted)] font-semibold uppercase tracking-wider text-[10px]">
+              <tr className="bg-cyan-500/[0.05] dark:bg-cyan-400/[0.07] border-b border-[var(--color-border)] text-[var(--color-text-muted)] font-semibold uppercase tracking-wider text-[10px]">
                 <th className="p-3.5 pl-5">Date</th>
                 <th className="p-3.5">Employee</th>
                 <th className="p-3.5">Project</th>
@@ -1679,7 +1714,7 @@ export function ProjectsTimesheetsView({ activeEntityId: _activeEntityId }: { ac
               ))}
               {timesheets.length === 0 && (
                 <tr>
-                  <td colSpan={9} className="p-8 text-center text-xs text-[var(--color-text-muted)]">No timesheet entries recorded yet.</td>
+                  <td colSpan={9}><EmptyState icon={Timer} title="No timesheet entries recorded yet" hint="Log operational hours to build the direct labor ledger." /></td>
                 </tr>
               )}
             </tbody>
@@ -1806,20 +1841,28 @@ export function ProjectBillingView({ activeEntityId: _activeEntityId }: { active
 
   return (
     <div className="p-6 max-w-[1500px] mx-auto space-y-6">
-      <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 border-b border-[var(--color-border)] pb-4">
-        <div className="min-w-0 flex-1">
-          <h1 className="text-xl font-black tracking-tight text-[var(--color-text-strong)] flex items-center gap-2.5">
-            <div className="p-2 rounded-xl bg-amber-500/10 text-amber-600 border border-amber-500/20 shrink-0">
-              <Banknote className="w-5 h-5" />
+      {/* Page Header — AMS Signature Hero Band */}
+      <div className="relative overflow-hidden rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)] shadow-sm">
+        <div className="absolute inset-0 bg-gradient-to-r from-cyan-500/10 via-cyan-500/[0.03] to-transparent pointer-events-none" />
+        <div className="absolute -right-10 -top-16 w-56 h-56 rounded-full bg-cyan-500/10 blur-3xl pointer-events-none" />
+        <div className="relative flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 px-5 py-4">
+          <div className="flex items-center gap-4 min-w-0">
+            <div className="relative h-14 w-14 shrink-0">
+              <div className="absolute inset-[6px] rotate-45 rounded-[12px] shadow-xl bg-gradient-to-br from-cyan-500 to-blue-700" />
+              <div className="absolute inset-0 flex items-center justify-center"><Banknote className="w-6 h-6 text-white" /></div>
             </div>
-            Progress Billing & IFRS 15 Contract Accounting
-          </h1>
-          <p className="text-xs text-[var(--color-text-muted)] mt-1">
-            Application for Payment (AIA G702/G703 style), Work-in-Progress (WIP), and Retention Money ledger.
-          </p>
-        </div>
+            <div className="min-w-0">
+              <div className="flex items-center gap-2.5">
+                <h1 className="text-2xl font-black tracking-tight text-[var(--color-text-strong)]">Progress Billing &amp; IFRS 15 Contract Accounting</h1>
+                <span className="hidden sm:inline-flex items-center gap-1.5 rounded-full border border-cyan-500/25 bg-cyan-500/10 px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider text-cyan-600 dark:text-cyan-400"><span className="h-1.5 w-1.5 rounded-full bg-cyan-500 animate-pulse" /> Live Ledger</span>
+              </div>
+              <p className="text-xs text-[var(--color-text-muted)] mt-0.5">
+                Application for Payment (AIA G702/G703 style), Work-in-Progress (WIP), and Retention Money ledger.
+              </p>
+            </div>
+          </div>
 
-        <div className="flex items-center gap-2 shrink-0 flex-nowrap">
+          <div className="flex items-center gap-2 shrink-0 flex-nowrap">
           <select
             value={selectedProjectId}
             onChange={e => setSelectedProjectId(e.target.value)}
@@ -1827,6 +1870,7 @@ export function ProjectBillingView({ activeEntityId: _activeEntityId }: { active
           >
             {projects.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
           </select>
+          </div>
         </div>
       </div>
 
@@ -1875,7 +1919,7 @@ export function ProjectBillingView({ activeEntityId: _activeEntityId }: { active
         <div className="overflow-x-auto">
           <table className="w-full text-left text-xs border-collapse">
             <thead>
-              <tr className="bg-[var(--color-surface-muted)] border-b border-[var(--color-border)] text-[var(--color-text-muted)] font-semibold uppercase tracking-wider text-[10px]">
+              <tr className="bg-cyan-500/[0.05] dark:bg-cyan-400/[0.07] border-b border-[var(--color-border)] text-[var(--color-text-muted)] font-semibold uppercase tracking-wider text-[10px]">
                 <th className="p-3 pl-4">App #</th>
                 <th className="p-3">Billing Period</th>
                 <th className="p-3 text-right">Scheduled Value</th>
@@ -1939,26 +1983,35 @@ export function ProjectsExpensesView({ activeEntityId: _activeEntityId }: { acti
 
   return (
     <div className="p-6 max-w-[1500px] mx-auto space-y-6">
-      <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 border-b border-[var(--color-border)] pb-4">
-        <div className="min-w-0 flex-1">
-          <h1 className="text-xl font-black tracking-tight text-[var(--color-text-strong)] flex items-center gap-2.5">
-            <div className="p-2 rounded-xl bg-purple-500/10 text-purple-600 border border-purple-500/20 shrink-0">
-              <Receipt className="w-5 h-5" />
+      {/* Page Header — AMS Signature Hero Band */}
+      <div className="relative overflow-hidden rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)] shadow-sm">
+        <div className="absolute inset-0 bg-gradient-to-r from-cyan-500/10 via-cyan-500/[0.03] to-transparent pointer-events-none" />
+        <div className="absolute -right-10 -top-16 w-56 h-56 rounded-full bg-cyan-500/10 blur-3xl pointer-events-none" />
+        <div className="relative flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 px-5 py-4">
+          <div className="flex items-center gap-4 min-w-0">
+            <div className="relative h-14 w-14 shrink-0">
+              <div className="absolute inset-[6px] rotate-45 rounded-[12px] shadow-xl bg-gradient-to-br from-cyan-500 to-blue-700" />
+              <div className="absolute inset-0 flex items-center justify-center"><Receipt className="w-6 h-6 text-white" /></div>
             </div>
-            Project Direct Expenses & Disbursements
-          </h1>
-          <p className="text-xs text-[var(--color-text-muted)] mt-1">
-            Track material purchases, subcontractor billings, plant & equipment rentals, and reimbursables.
-          </p>
-        </div>
+            <div className="min-w-0">
+              <div className="flex items-center gap-2.5">
+                <h1 className="text-2xl font-black tracking-tight text-[var(--color-text-strong)]">Project Direct Expenses &amp; Disbursements</h1>
+                <span className="hidden sm:inline-flex items-center gap-1.5 rounded-full border border-cyan-500/25 bg-cyan-500/10 px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider text-cyan-600 dark:text-cyan-400"><span className="h-1.5 w-1.5 rounded-full bg-cyan-500 animate-pulse" /> Live Ledger</span>
+              </div>
+              <p className="text-xs text-[var(--color-text-muted)] mt-0.5">
+                Track material purchases, subcontractor billings, plant &amp; equipment rentals, and reimbursables.
+              </p>
+            </div>
+          </div>
 
-        <div className="flex items-center gap-2 shrink-0 flex-nowrap">
+          <div className="flex items-center gap-2 shrink-0 flex-nowrap">
           <button
             onClick={() => setModalOpen(true)}
             className="inline-flex items-center gap-1.5 px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-xl text-xs font-bold shadow-sm transition-all"
           >
             <Plus className="w-4 h-4" /> Add Direct Expense
           </button>
+          </div>
         </div>
       </div>
 
@@ -1966,7 +2019,7 @@ export function ProjectsExpensesView({ activeEntityId: _activeEntityId }: { acti
         <div className="overflow-x-auto">
           <table className="w-full text-left text-xs border-collapse">
             <thead>
-              <tr className="bg-[var(--color-surface-muted)] border-b border-[var(--color-border)] text-[var(--color-text-muted)] font-semibold uppercase tracking-wider text-[10px]">
+              <tr className="bg-cyan-500/[0.05] dark:bg-cyan-400/[0.07] border-b border-[var(--color-border)] text-[var(--color-text-muted)] font-semibold uppercase tracking-wider text-[10px]">
                 <th className="p-3.5 pl-5">Date</th>
                 <th className="p-3.5">Category</th>
                 <th className="p-3.5">Project</th>
@@ -2000,7 +2053,7 @@ export function ProjectsExpensesView({ activeEntityId: _activeEntityId }: { acti
               ))}
               {expenses.length === 0 && (
                 <tr>
-                  <td colSpan={8} className="p-8 text-center text-xs text-[var(--color-text-muted)]">No project direct expenses recorded yet.</td>
+                  <td colSpan={8}><EmptyState icon={Receipt} title="No project direct expenses recorded yet" hint="Post a direct expense voucher for materials, subcontractors, or plant hire." /></td>
                 </tr>
               )}
             </tbody>
@@ -2142,20 +2195,28 @@ export function ProjectProfitabilityView({ activeEntityId: _activeEntityId }: { 
 
   return (
     <div className="p-6 max-w-[1500px] mx-auto space-y-6">
-      <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 border-b border-[var(--color-border)] pb-4">
-        <div className="min-w-0 flex-1">
-          <h1 className="text-xl font-black tracking-tight text-[var(--color-text-strong)] flex items-center gap-2.5">
-            <div className="p-2 rounded-xl bg-emerald-500/10 text-emerald-600 border border-emerald-500/20 shrink-0">
-              <Scale className="w-5 h-5" />
+      {/* Page Header — AMS Signature Hero Band */}
+      <div className="relative overflow-hidden rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)] shadow-sm">
+        <div className="absolute inset-0 bg-gradient-to-r from-cyan-500/10 via-cyan-500/[0.03] to-transparent pointer-events-none" />
+        <div className="absolute -right-10 -top-16 w-56 h-56 rounded-full bg-cyan-500/10 blur-3xl pointer-events-none" />
+        <div className="relative flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 px-5 py-4">
+          <div className="flex items-center gap-4 min-w-0">
+            <div className="relative h-14 w-14 shrink-0">
+              <div className="absolute inset-[6px] rotate-45 rounded-[12px] shadow-xl bg-gradient-to-br from-cyan-500 to-blue-700" />
+              <div className="absolute inset-0 flex items-center justify-center"><Scale className="w-6 h-6 text-white" /></div>
             </div>
-            End-of-Project Comparison & Forensic Variance Audit
-          </h1>
-          <p className="text-xs text-[var(--color-text-muted)] mt-1">
-            Audit-ready comparison between initial baseline contract budgets versus finalized actual expenditures with full EVM analysis.
-          </p>
-        </div>
+            <div className="min-w-0">
+              <div className="flex items-center gap-2.5">
+                <h1 className="text-2xl font-black tracking-tight text-[var(--color-text-strong)]">End-of-Project Comparison &amp; Forensic Variance Audit</h1>
+                <span className="hidden sm:inline-flex items-center gap-1.5 rounded-full border border-cyan-500/25 bg-cyan-500/10 px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider text-cyan-600 dark:text-cyan-400"><span className="h-1.5 w-1.5 rounded-full bg-cyan-500 animate-pulse" /> Live Ledger</span>
+              </div>
+              <p className="text-xs text-[var(--color-text-muted)] mt-0.5">
+                Audit-ready comparison between initial baseline contract budgets versus finalized actual expenditures with full EVM analysis.
+              </p>
+            </div>
+          </div>
 
-        <div className="flex items-center gap-2 shrink-0 flex-nowrap">
+          <div className="flex items-center gap-2 shrink-0 flex-nowrap">
           <select
             value={selectedProjectId}
             onChange={e => setSelectedProjectId(e.target.value)}
@@ -2163,43 +2224,18 @@ export function ProjectProfitabilityView({ activeEntityId: _activeEntityId }: { 
           >
             {projects.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
           </select>
+          </div>
         </div>
       </div>
 
       {/* EVM Performance KPI Dashboard */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
-        <div className="p-4 rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)] shadow-xs space-y-1">
-          <span className="text-[10px] font-bold text-[var(--color-text-muted)] uppercase">Budget At Completion (BAC)</span>
-          <div className="text-lg font-black text-blue-600 font-mono">{money(budget)}</div>
-          <div className="text-[10px] text-[var(--color-text-muted)]">Initial Baseline Contract</div>
-        </div>
-
-        <div className="p-4 rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)] shadow-xs space-y-1">
-          <span className="text-[10px] font-bold text-[var(--color-text-muted)] uppercase">Earned Value (EV)</span>
-          <div className="text-lg font-black text-teal-600 font-mono">{money(earnedValue)}</div>
-          <div className="text-[10px] text-[var(--color-text-muted)]">PoC: {progress}% Complete</div>
-        </div>
-
-        <div className="p-4 rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)] shadow-xs space-y-1">
-          <span className="text-[10px] font-bold text-[var(--color-text-muted)] uppercase">Actual Cost (AC)</span>
-          <div className="text-lg font-black text-purple-600 font-mono">{money(actualCost)}</div>
-          <div className="text-[10px] text-[var(--color-text-muted)]">Total Incurred Outflow</div>
-        </div>
-
-        <div className="p-4 rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)] shadow-xs space-y-1">
-          <span className="text-[10px] font-bold text-[var(--color-text-muted)] uppercase">Cost Variance (CV = EV - AC)</span>
-          <div className={`text-lg font-black font-mono ${costVariance >= 0 ? 'text-emerald-600' : 'text-rose-600'}`}>
-            {costVariance >= 0 ? `+${money(costVariance)}` : `-${money(Math.abs(costVariance))}`}
-          </div>
-          <div className="text-[10px] text-[var(--color-text-muted)]">{costVariance >= 0 ? 'Favorable profit' : 'Unfavorable variance'}</div>
-        </div>
-
-        <div className="p-4 rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)] shadow-xs space-y-1">
-          <span className="text-[10px] font-bold text-[var(--color-text-muted)] uppercase">Estimate At Completion (EAC)</span>
-          <div className="text-lg font-black text-indigo-600 font-mono">{money(eac)}</div>
-          <div className="text-[10px] text-[var(--color-text-muted)]">VAC: {money(vac)}</div>
-        </div>
-      </div>
+      <KpiGrid cols={5}>
+        <KpiCard icon={Banknote} label="Budget At Completion (BAC)" value={money(budget)} desc="Initial Baseline Contract" tone="blue" />
+        <KpiCard icon={Activity} label="Earned Value (EV)" value={money(earnedValue)} desc={`PoC: ${progress}% Complete`} tone="teal" />
+        <KpiCard icon={ReceiptText} label="Actual Cost (AC)" value={money(actualCost)} desc="Total Incurred Outflow" tone="purple" />
+        <KpiCard icon={costVariance >= 0 ? CheckCircle2 : AlertTriangle} label="Cost Variance (CV = EV - AC)" value={costVariance >= 0 ? `+${money(costVariance)}` : `-${money(Math.abs(costVariance))}`} desc={costVariance >= 0 ? 'Favorable profit' : 'Unfavorable variance'} tone={costVariance >= 0 ? 'emerald' : 'rose'} />
+        <KpiCard icon={Scale} label="Estimate At Completion (EAC)" value={money(eac)} desc={`VAC: ${money(vac)}`} tone="indigo" />
+      </KpiGrid>
 
       {/* Forensic Comparison Matrix Table */}
       <div className="p-5 rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)] shadow-xs space-y-4">
@@ -2215,7 +2251,7 @@ export function ProjectProfitabilityView({ activeEntityId: _activeEntityId }: { 
         <div className="overflow-x-auto">
           <table className="w-full text-left text-xs border-collapse">
             <thead>
-              <tr className="bg-[var(--color-surface-muted)] border-b border-[var(--color-border)] text-[var(--color-text-muted)] font-semibold uppercase tracking-wider text-[10px]">
+              <tr className="bg-cyan-500/[0.05] dark:bg-cyan-400/[0.07] border-b border-[var(--color-border)] text-[var(--color-text-muted)] font-semibold uppercase tracking-wider text-[10px]">
                 <th className="p-3.5 pl-4">Cost Breakdown Structure (CBS) Element</th>
                 <th className="p-3.5 text-right">Inception Baseline Budget</th>
                 <th className="p-3.5 text-right">Final Incurred Actuals</th>
@@ -2291,7 +2327,7 @@ export function ProjectsReportsView({ activeEntityId: _activeEntityId }: { activ
   const handleDownloadPortfolioStatement = () => {
     const doc = new jsPDF('landscape');
     doc.setFontSize(14);
-    doc.text('AccountBook ERP — Executive Project Portfolio & Performance Audit Statement', 14, 15);
+    doc.text('AMS ERP — Executive Project Portfolio & Performance Audit Statement', 14, 15);
     doc.setFontSize(9);
     doc.setTextColor(100);
     doc.text(`Generated: ${new Date().toLocaleString()} | IFRS 15 & EVM Compliant`, 14, 21);
@@ -2329,26 +2365,35 @@ export function ProjectsReportsView({ activeEntityId: _activeEntityId }: { activ
 
   return (
     <div className="p-6 max-w-[1500px] mx-auto space-y-6">
-      <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 border-b border-[var(--color-border)] pb-4">
-        <div className="min-w-0 flex-1">
-          <h1 className="text-xl font-black tracking-tight text-[var(--color-text-strong)] flex items-center gap-2.5">
-            <div className="p-2 rounded-xl bg-blue-500/10 text-blue-600 border border-blue-500/20 shrink-0">
-              <FileCheck2 className="w-5 h-5" />
+      {/* Page Header — AMS Signature Hero Band */}
+      <div className="relative overflow-hidden rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)] shadow-sm">
+        <div className="absolute inset-0 bg-gradient-to-r from-cyan-500/10 via-cyan-500/[0.03] to-transparent pointer-events-none" />
+        <div className="absolute -right-10 -top-16 w-56 h-56 rounded-full bg-cyan-500/10 blur-3xl pointer-events-none" />
+        <div className="relative flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 px-5 py-4">
+          <div className="flex items-center gap-4 min-w-0">
+            <div className="relative h-14 w-14 shrink-0">
+              <div className="absolute inset-[6px] rotate-45 rounded-[12px] shadow-xl bg-gradient-to-br from-cyan-500 to-blue-700" />
+              <div className="absolute inset-0 flex items-center justify-center"><FileCheck2 className="w-6 h-6 text-white" /></div>
             </div>
-            Executive Project Audit & Compliance Reporting Suite
-          </h1>
-          <p className="text-xs text-[var(--color-text-muted)] mt-1">
-            Export formal audit packages, EVM performance statements, and forensic budget vs actual comparison certifications.
-          </p>
-        </div>
+            <div className="min-w-0">
+              <div className="flex items-center gap-2.5">
+                <h1 className="text-2xl font-black tracking-tight text-[var(--color-text-strong)]">Executive Project Audit &amp; Compliance Reporting Suite</h1>
+                <span className="hidden sm:inline-flex items-center gap-1.5 rounded-full border border-cyan-500/25 bg-cyan-500/10 px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider text-cyan-600 dark:text-cyan-400"><span className="h-1.5 w-1.5 rounded-full bg-cyan-500 animate-pulse" /> Live Ledger</span>
+              </div>
+              <p className="text-xs text-[var(--color-text-muted)] mt-0.5">
+                Export formal audit packages, EVM performance statements, and forensic budget vs actual comparison certifications.
+              </p>
+            </div>
+          </div>
 
-        <div className="flex items-center gap-2 shrink-0 flex-nowrap">
+          <div className="flex items-center gap-2 shrink-0 flex-nowrap">
           <button
             onClick={handleDownloadPortfolioStatement}
             className="inline-flex items-center gap-1.5 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold shadow-sm transition-all"
           >
             <Download className="w-4 h-4" /> Download PDF Portfolio Audit
           </button>
+          </div>
         </div>
       </div>
 

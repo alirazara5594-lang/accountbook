@@ -82,7 +82,7 @@ export const FinancialReports: React.FC<FinancialReportsProps> = ({
   const accounts = storeAccounts.length > 0 ? storeAccounts : propAccounts;
   const entries = storeEntries.length > 0 ? storeEntries : propEntries;
   const activeCompanyId = selectedEntityFilter !== 'all' ? selectedEntityFilter : (storeActiveEntityId || propActiveEntityId);
-  const activeCompany = entities.find(e => e.id === activeCompanyId) || { name: 'AccountBook Enterprise Corp' };
+  const activeCompany = entities.find(e => e.id === activeCompanyId) || { name: 'AMS Enterprise Corp' };
 
   const activeCurrency = getActiveCurrency();
   const formatCur = (val: number | null | undefined) => {

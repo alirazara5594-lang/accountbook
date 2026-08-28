@@ -108,15 +108,40 @@ public class Company
     public string? LegalName { get; set; }
     public EntityType Type { get; set; } = EntityType.Subsidiary;
     public Guid? ParentId { get; set; }
-    public string Country { get; set; } = "United States";
-    public string CurrencyCode { get; set; } = "USD";
+    public string Country { get; set; } = "Pakistan";
+    public string? State { get; set; }
+    public string CurrencyCode { get; set; } = "PKR";
+    public string? TaxRegistrationNumber { get; set; }
+    public string? Address { get; set; }
+    public string? City { get; set; }
+    public string? Phone { get; set; }
+    public string? Email { get; set; }
+    public string? Website { get; set; }
+    public int FiscalYearStartMonth { get; set; } = 1;
     public Guid? TaxAuthorityId { get; set; }
     public bool Active { get; set; } = true;
     public DateTime CreatedAt { get; init; } = DateTime.UtcNow;
     public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
 }
 public enum EntityType { Parent, Subsidiary, Branch, JointVenture, Associate }
-public record CompanyRequest(string Name, string? Code, string? LegalName, EntityType? Type, Guid? ParentId, string? Country, string? CurrencyCode, string? FunctionalCurrency, Guid? TaxAuthorityId);
+public record CompanyRequest(
+    string Name,
+    string? Code = null,
+    string? LegalName = null,
+    EntityType? Type = null,
+    Guid? ParentId = null,
+    string? Country = null,
+    string? State = null,
+    string? CurrencyCode = null,
+    string? FunctionalCurrency = null,
+    string? TaxRegistrationNumber = null,
+    string? Address = null,
+    string? City = null,
+    string? Phone = null,
+    string? Email = null,
+    string? Website = null,
+    int? FiscalYearStartMonth = null,
+    Guid? TaxAuthorityId = null);
 public record CompanyStatusRequest(bool Active);
 
 public enum IntercompanyChargeFrequency { OneTime, Hourly, Weekly, Monthly, Quarterly, Yearly }
@@ -761,25 +786,43 @@ public class StockTransaction
     public DateTime CreatedAt { get; init; } = DateTime.UtcNow;
 }
 
+public enum TaxScope { Both, Sales, Purchases }
+public enum TaxType { Standard, Reduced, ZeroRated, Exempt, ReverseCharge, Withholding, Compound, ServiceTax }
+
 public class TaxAuthority
 {
     public Guid Id { get; init; } = Guid.NewGuid();
-    public required string Name { get; set; } // e.g. HMRC, IRS, ZATCA
+    public required string Name { get; set; } // e.g. HMRC, IRS, ZATCA, FBR, PRA
+    public string? Code { get; set; }
     public string? Country { get; set; }
     public string? State { get; set; }
     public string? RegistrationNumber { get; set; }
-    public Guid? LiabilityAccountId { get; set; }
+    public Guid? LiabilityAccountId { get; set; } // Output Tax / Tax Payable (Cr)
+    public Guid? InputTaxAccountId { get; set; } // Input Tax Recoverable (Dr)
+    public Guid? NonRecoverableAccountId { get; set; } // Expense / Non-recoverable (Dr)
+    public Guid? WithholdingAccountId { get; set; } // Withholding Tax Payable
+    public Guid? SettlementAccountId { get; set; } // Tax Clearing / Settlement
+    public string? FilingFrequency { get; set; } = "Quarterly";
+    public int RemittanceDueDay { get; set; } = 20;
+    public string? Website { get; set; }
+    public Guid? CompanyId { get; set; }
 }
 
 public class TaxCode
 {
     public Guid Id { get; init; } = Guid.NewGuid();
-    public required string Code { get; set; } // e.g. VAT-20, SR, Z
+    public required string Code { get; set; } // e.g. VAT-20, SALES-PK-18, SR, Z
     public required string Name { get; set; } // e.g. Standard Rate 20%
     public string? Description { get; set; }
+    public TaxType TaxType { get; set; } = TaxType.Standard;
+    public TaxScope Scope { get; set; } = TaxScope.Both;
     public Guid TaxAuthorityId { get; set; }
+    public string? JurisdictionId { get; set; } // e.g. UK, PK, SA, US-CA
+    public decimal DeductibilityPercentage { get; set; } = 100m;
+    public bool IsCompound { get; set; } = false;
     public List<TaxRate> Rates { get; set; } = []; // Allows rate history (e.g. rate changes from 15% to 20%)
     public bool IsActive { get; set; } = true;
+    public Guid? CompanyId { get; set; }
 }
 
 public class TaxRate
@@ -791,9 +834,47 @@ public class TaxRate
     public DateOnly? EffectiveTo { get; set; }
 }
 
-public record TaxAuthorityRequest(string Name, string? Country, string? State, string? RegistrationNumber, Guid? LiabilityAccountId);
+public enum ExemptionType { Resale, NonProfit, Government, Diplomatic, Export, Manufacturing, RawMaterial, Other }
+public enum ExemptionStatus { Active, Expired, Revoked, PendingVerification }
+
+public class TaxExemption
+{
+    public Guid Id { get; init; } = Guid.NewGuid();
+    public string CertificateNumber { get; set; } = string.Empty;
+    public ExemptionType Type { get; set; } = ExemptionType.Resale;
+    public string CounterpartyName { get; set; } = string.Empty;
+    public Guid? CustomerId { get; set; }
+    public Guid? VendorId { get; set; }
+    public string? TaxId { get; set; }
+    public string? IssuingAuthority { get; set; }
+    public string? JurisdictionId { get; set; } = "UK";
+    public DateOnly ValidFrom { get; set; } = DateOnly.FromDateTime(DateTime.Today);
+    public DateOnly? ValidTo { get; set; }
+    public ExemptionStatus Status { get; set; } = ExemptionStatus.Active;
+    public string? AttachmentUrl { get; set; }
+    public string? Notes { get; set; }
+    public Guid? CompanyId { get; set; }
+    public DateTime CreatedAt { get; init; } = DateTime.UtcNow;
+}
+
+public record TaxAuthorityRequest(
+    string Name, string? Code, string? Country, string? State, string? RegistrationNumber,
+    Guid? LiabilityAccountId, Guid? InputTaxAccountId, Guid? NonRecoverableAccountId,
+    Guid? WithholdingAccountId, Guid? SettlementAccountId, string? FilingFrequency, int? RemittanceDueDay,
+    string? Website, Guid? CompanyId);
+
 public record TaxRateRequest(decimal Percentage, DateOnly EffectiveFrom, DateOnly? EffectiveTo);
-public record TaxCodeRequest(string Code, string Name, string? Description, Guid TaxAuthorityId, List<TaxRateRequest> Rates, bool IsActive);
+
+public record TaxCodeRequest(
+    string Code, string Name, string? Description, TaxType? TaxType, TaxScope? Scope,
+    Guid TaxAuthorityId, string? JurisdictionId, decimal? DeductibilityPercentage,
+    bool? IsCompound, List<TaxRateRequest> Rates, bool IsActive, Guid? CompanyId = null);
+
+public record TaxExemptionRequest(
+    string CertificateNumber, ExemptionType Type, string CounterpartyName, Guid? CustomerId,
+    Guid? VendorId, string? TaxId, string? IssuingAuthority, string? JurisdictionId,
+    DateOnly ValidFrom, DateOnly? ValidTo, ExemptionStatus Status, string? AttachmentUrl,
+    string? Notes, Guid? CompanyId);
 
 // ─── Sales Invoice ────────────────────────────────────────────────────────────
 public enum SalesInvoiceStatus { Draft, Sent, Paid, Void, PartiallyPaid, Overdue }

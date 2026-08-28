@@ -17,6 +17,7 @@ namespace Zenabook.Api.Controllers
 
         // ─── BOM Endpoints ──────────────────────────────────────────────────────────
         [HttpGet("bom")]
+        [HttpGet("boms")]
         public IActionResult GetBoms([FromQuery] string? companyId)
         {
             var boms = _store.BillOfMaterials;
@@ -27,7 +28,17 @@ namespace Zenabook.Api.Controllers
             return Ok(boms);
         }
 
+        [HttpGet("bom/{id}")]
+        [HttpGet("boms/{id}")]
+        public IActionResult GetBomById(string id)
+        {
+            var bom = _store.BillOfMaterials.FirstOrDefault(b => b.Id == id);
+            if (bom == null) return NotFound(new { error = "BOM not found." });
+            return Ok(bom);
+        }
+
         [HttpPost("bom")]
+        [HttpPost("boms")]
         public IActionResult CreateBom([FromBody] BillOfMaterials request)
         {
             if (string.IsNullOrWhiteSpace(request.FinishedProductId))
@@ -37,6 +48,28 @@ namespace Zenabook.Api.Controllers
 
             var created = _store.CreateBom(request);
             return Ok(created);
+        }
+
+        [HttpPut("bom/{id}")]
+        [HttpPut("boms/{id}")]
+        public IActionResult UpdateBom(string id, [FromBody] BillOfMaterials request)
+        {
+            if (!_store.UpdateBom(id, request, out var error))
+            {
+                return BadRequest(new { error });
+            }
+            return Ok(new { message = "BOM recipe updated successfully." });
+        }
+
+        [HttpDelete("bom/{id}")]
+        [HttpDelete("boms/{id}")]
+        public IActionResult DeleteBom(string id)
+        {
+            if (!_store.DeleteBom(id, out var error))
+            {
+                return BadRequest(new { error });
+            }
+            return Ok(new { message = "BOM recipe deleted." });
         }
 
         // ─── Work Order Endpoints ───────────────────────────────────────────────────
@@ -51,6 +84,14 @@ namespace Zenabook.Api.Controllers
             return Ok(orders.OrderByDescending(o => o.CreatedAt));
         }
 
+        [HttpGet("work-orders/{id}")]
+        public IActionResult GetWorkOrder(string id)
+        {
+            var order = _store.WorkOrders.FirstOrDefault(o => o.Id == id);
+            if (order == null) return NotFound(new { error = "Work Order not found." });
+            return Ok(order);
+        }
+
         [HttpPost("work-orders")]
         public IActionResult CreateWorkOrder([FromBody] WorkOrder request)
         {
@@ -61,6 +102,16 @@ namespace Zenabook.Api.Controllers
 
             var created = _store.CreateWorkOrder(request);
             return Ok(created);
+        }
+
+        [HttpPost("work-orders/{id}/cancel")]
+        public IActionResult CancelWorkOrder(string id)
+        {
+            if (!_store.CancelWorkOrder(id, out var error))
+            {
+                return BadRequest(new { error });
+            }
+            return Ok(new { message = "Work Order cancelled." });
         }
 
         [HttpPost("work-orders/{id}/start")]

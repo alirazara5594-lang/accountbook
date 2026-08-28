@@ -4,11 +4,14 @@ import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContaine
 import {
   Users, DollarSign, AlertTriangle, Clock, FileSpreadsheet,
   ArrowLeft, Search, Download, RefreshCw,
-  ChevronRight, CheckCircle2, ShieldAlert
+  ChevronRight, CheckCircle2, Skull
 } from 'lucide-react';
 import { downloadExcel } from './lib/exportUtils';
 import ExportDropdown from './components/ExportDropdown';
 import { money, moneyCompact } from './lib/currency';
+import { KpiCard, KpiGrid } from './components/ui/kpi-card';
+import { StatusChip } from './components/ui/status-chip';
+import { EmptyState, TableSkeleton } from './components/ui/empty-state';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 
@@ -481,18 +484,19 @@ export function CustomerAgingWorkspace({ activeEntityId }: Props) {
 
         {/* Customer Open Invoices Table */}
         <div className="bg-[var(--color-surface)] border border-[var(--color-border)] rounded-xl shadow-xs overflow-hidden">
-          <div className="p-3 border-b border-[var(--color-border)] flex items-center justify-between bg-gray-50/50 dark:bg-gray-900/50">
-            <h3 className="text-xs font-bold text-[var(--color-text-strong)] flex items-center gap-2">
-              <Clock className="w-3.5 h-3.5 text-blue-600" /> Open Unpaid Invoices ({selectedCustomerInvoices.length})
-            </h3>
+          <div className="px-5 py-3.5 border-b border-[var(--color-border)] bg-[var(--color-surface-muted)] flex items-center justify-between">
+            <p className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-[var(--color-text-strong)]">
+              <span className="inline-block h-2 w-2 rotate-45 rounded-[2px] bg-gradient-to-br from-rose-500 to-red-700" />
+              Open Unpaid Invoices
+            </p>
             <span className="text-[11px] text-[var(--color-text-muted)]">
-              Ranked by days overdue
+              {selectedCustomerInvoices.length} invoices · Ranked by days overdue
             </span>
           </div>
 
           <div className="overflow-x-auto">
             <table className="w-full text-left text-xs">
-              <thead className="bg-gray-50 dark:bg-gray-900/80 text-[var(--color-text-muted)] border-b border-[var(--color-border)] text-[10px] uppercase font-bold tracking-wider">
+              <thead className="bg-rose-500/[0.05] dark:bg-rose-400/[0.07] text-[var(--color-text-muted)] border-b border-[var(--color-border)] text-[10px] uppercase font-bold tracking-wider">
                 <tr>
                   <th className="py-2.5 px-3.5">Invoice #</th>
                   <th className="py-2.5 px-3">Date</th>
@@ -508,10 +512,11 @@ export function CustomerAgingWorkspace({ activeEntityId }: Props) {
                 {selectedCustomerInvoices.length === 0 ? (
                   <tr>
                     <td colSpan={8} className="py-12 text-center text-[var(--color-text-muted)]">
-                      <div className="flex flex-col items-center gap-2">
-                        <CheckCircle2 className="w-8 h-8 text-emerald-500" />
-                        <p className="font-semibold text-xs">All invoices settled! No open balances for this customer.</p>
-                      </div>
+                      <EmptyState
+                        icon={CheckCircle2}
+                        title="No open invoices found"
+                        hint="All invoices are settled — no open balances remain for this customer."
+                      />
                     </td>
                   </tr>
                 ) : (
@@ -528,19 +533,11 @@ export function CustomerAgingWorkspace({ activeEntityId }: Props) {
                         )}
                       </td>
                       <td className="py-2.5 px-3 text-center">
-                        <span
-                          className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
-                            inv.bucket === 'Current'
-                              ? 'bg-emerald-50 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800'
-                              : inv.bucket === '1-30'
-                              ? 'bg-amber-50 dark:bg-amber-900/30 text-amber-700 dark:text-amber-300 border border-amber-200 dark:border-amber-800'
-                              : inv.bucket === '31-60'
-                              ? 'bg-orange-50 dark:bg-orange-900/30 text-orange-700 dark:text-orange-300 border border-orange-200 dark:border-orange-800'
-                              : 'bg-rose-50 dark:bg-rose-900/30 text-rose-700 dark:text-rose-300 border border-rose-200 dark:border-rose-800'
-                          }`}
-                        >
-                          {inv.bucket === 'Current' ? 'Current' : `${inv.bucket} Days`}
-                        </span>
+                        <StatusChip
+                          status={inv.bucket}
+                          label={inv.bucket === 'Current' ? 'Current' : `${inv.bucket} Days`}
+                          hex={BUCKET_COLORS[inv.bucket as keyof typeof BUCKET_COLORS]}
+                        />
                       </td>
                       <td className="py-2.5 px-3 text-right text-[var(--color-text)]">{fmt(inv.totalAmount)}</td>
                       <td className="py-2.5 px-3 text-right text-emerald-600 dark:text-emerald-400">{fmt(inv.paidAmount || inv.amountPaid || 0)}</td>
@@ -561,19 +558,29 @@ export function CustomerAgingWorkspace({ activeEntityId }: Props) {
   // ════════════════════════════════════════════════════════════════════════════
   return (
     <div className="space-y-4 max-w-7xl mx-auto pb-10">
-      {/* Header Banner */}
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-3 bg-[var(--color-surface)] p-3.5 rounded-xl border border-[var(--color-border)] shadow-xs">
-        <div>
-          <h1 className="text-base font-bold text-[var(--color-text-strong)] tracking-tight flex items-center gap-2">
-            <span className="text-lg">📊</span> Receivables Aging Schedule
-          </h1>
-          <p className="text-[var(--color-text-muted)] text-xs mt-0.5">
-            Monitor receivables by maturity, overdue risk buckets, and download customer aging schedules.
-          </p>
-        </div>
+      {/* Page Header — AMS Signature Hero Band */}
+      <div className="relative overflow-hidden rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)] shadow-sm">
+        <div className="absolute inset-0 bg-gradient-to-r from-rose-500/10 via-rose-500/[0.03] to-transparent pointer-events-none" />
+        <div className="absolute -right-10 -top-16 w-56 h-56 rounded-full bg-rose-500/10 blur-3xl pointer-events-none" />
+        <div className="relative flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 px-5 py-4">
+          <div className="flex items-center gap-4">
+            <div className="relative h-14 w-14 shrink-0">
+              <div className="absolute inset-[6px] rotate-45 rounded-[12px] shadow-xl bg-gradient-to-br from-rose-500 to-red-700" />
+              <div className="absolute inset-0 flex items-center justify-center"><Clock className="w-6 h-6 text-white" /></div>
+            </div>
+            <div>
+              <div className="flex items-center gap-2.5">
+                <h1 className="text-2xl font-black tracking-tight text-[var(--color-text-strong)]">Receivables Aging Schedule</h1>
+                <span className="hidden sm:inline-flex items-center gap-1.5 rounded-full border border-rose-500/25 bg-rose-500/10 px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider text-rose-600 dark:text-rose-400"><span className="h-1.5 w-1.5 rounded-full bg-rose-500 animate-pulse" /> Live Ledger</span>
+              </div>
+              <p className="text-xs text-[var(--color-text-muted)] mt-0.5">
+                Monitor receivables by maturity, overdue risk buckets, and download customer aging schedules.
+              </p>
+            </div>
+          </div>
 
-        {/* Search, As-Of Date & Global Export Actions */}
-        <div className="flex items-center gap-2 shrink-0 flex-wrap">
+          {/* Search, As-Of Date & Global Export Actions */}
+          <div className="flex items-center gap-2 shrink-0 flex-wrap">
           {/* Robust Search Box - Icon and Input in normal flow */}
           <div className="flex items-center h-8.5 w-60 px-2.5 bg-[var(--color-surface)] border border-[var(--color-border)] rounded-lg text-xs focus-within:border-blue-500 focus-within:ring-1 focus-within:ring-blue-200 transition-all shadow-2xs">
             <Search className="w-3.5 h-3.5 text-gray-400 mr-2 shrink-0 pointer-events-none" />
@@ -634,44 +641,21 @@ export function CustomerAgingWorkspace({ activeEntityId }: Props) {
           >
             <RefreshCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin' : ''}`} />
           </button>
+          </div>
         </div>
       </div>
 
-      {/* KPI Stats - 4 in one row */}
-      <section className="stats" style={{ gridTemplateColumns: 'repeat(4, minmax(0, 1fr))' }}>
-        <article>
-          <span className="stat-icon blue"><DollarSign className="w-4 h-4" /></span>
-          <div>
-            <small>TOTAL RECEIVABLES</small>
-            <h2>{fmt(totalOutstanding)}</h2>
-            <p>Outstanding customer balances</p>
-          </div>
-        </article>
-        <article>
-          <span className="stat-icon teal"><Users className="w-4 h-4" /></span>
-          <div>
-            <small>CUSTOMERS WITH BALANCE</small>
-            <h2>{customerAgingList.length}</h2>
-            <p>Active debtors</p>
-          </div>
-        </article>
-        <article>
-          <span className="stat-icon violet"><AlertTriangle className="w-4 h-4 text-amber-500" /></span>
-          <div>
-            <small>TOTAL OVERDUE</small>
-            <h2 className="text-amber-600 dark:text-amber-400">{fmt(overdueAmount)}</h2>
-            <p>Past invoice due dates</p>
-          </div>
-        </article>
-        <article>
-          <span className="stat-icon blue"><ShieldAlert className="w-4 h-4 text-rose-500" /></span>
-          <div>
-            <small>CRITICAL (90+ DAYS)</small>
-            <h2 className="text-rose-600 dark:text-rose-400">{criticalCount}</h2>
-            <p>High delinquency accounts</p>
-          </div>
-        </article>
-      </section>
+      {/* KPI Stats - Modern Cards */}
+      <KpiGrid cols={4}>
+        {[
+          { label: 'Total Receivables', value: fmt(totalOutstanding), desc: 'Outstanding customer balances', icon: DollarSign, tone: 'blue' },
+          { label: 'Customers with Balance', value: customerAgingList.length, desc: 'Active debtors', icon: Users, tone: 'teal' },
+          { label: 'Total Overdue', value: fmt(overdueAmount), desc: 'Past invoice due dates', icon: AlertTriangle, tone: 'amber' },
+          { label: 'Critical (90+ Days)', value: criticalCount, desc: 'High delinquency accounts', icon: Skull, tone: 'rose' },
+        ].map((kpi) => (
+          <KpiCard key={kpi.label} {...kpi} />
+        ))}
+      </KpiGrid>
 
       {/* Aging Distribution Chart & Bucket Chips */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-3">
@@ -751,20 +735,21 @@ export function CustomerAgingWorkspace({ activeEntityId }: Props) {
 
       {/* Customer Aging Schedule Table */}
       <div className="bg-[var(--color-surface)] border border-[var(--color-border)] rounded-xl shadow-xs overflow-hidden">
-        <div className="p-3 border-b border-[var(--color-border)] flex justify-between items-center bg-gray-50/50 dark:bg-gray-900/50">
-          <span className="text-xs font-bold text-[var(--color-text-strong)] flex items-center gap-2">
-            <Users className="w-3.5 h-3.5 text-blue-600" /> Customer Aging Schedule ({filteredCustomerAging.length})
-          </span>
+        <div className="px-5 py-3.5 border-b border-[var(--color-border)] bg-[var(--color-surface-muted)] flex items-center justify-between">
+          <p className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-[var(--color-text-strong)]">
+            <span className="inline-block h-2 w-2 rotate-45 rounded-[2px] bg-gradient-to-br from-rose-500 to-red-700" />
+            Customer Aging Schedule
+          </p>
           <span className="text-[11px] text-[var(--color-text-muted)]">
-            Click any row or export action to download an individual customer aging report.
+            {filteredCustomerAging.length} customers · Click any row or export action to download an individual customer aging report.
           </span>
         </div>
 
         <div className="overflow-x-auto">
           <table className="w-full text-left text-xs">
-            <thead className="bg-gray-50 dark:bg-gray-900/80 text-[var(--color-text-muted)] border-b border-[var(--color-border)] text-[10px] uppercase font-bold tracking-wider">
+            <thead className="bg-rose-500/[0.05] dark:bg-rose-400/[0.07] text-[var(--color-text-muted)] border-b border-[var(--color-border)] text-[10px] uppercase font-bold tracking-wider">
               <tr>
-                <th className="py-2.5 px-3.5">Customer & ID</th>
+                <th className="py-2.5 px-3.5">Customer &amp; ID</th>
                 <th className="py-2.5 px-3 text-right">Total Outstanding</th>
                 <th className="py-2.5 px-3 text-right">Current</th>
                 <th className="py-2.5 px-3 text-right">1-30 Days</th>
@@ -778,20 +763,18 @@ export function CustomerAgingWorkspace({ activeEntityId }: Props) {
             <tbody className="divide-y divide-[var(--color-border)]">
               {loading ? (
                 <tr>
-                  <td colSpan={9} className="py-12 text-center text-[var(--color-text-muted)]">
-                    <div className="flex flex-col items-center gap-2">
-                      <RefreshCw className="w-6 h-6 animate-spin text-blue-600" />
-                      <p className="font-semibold text-xs">Calculating receivables aging schedules...</p>
-                    </div>
+                  <td colSpan={9}>
+                    <TableSkeleton rows={6} />
                   </td>
                 </tr>
               ) : filteredCustomerAging.length === 0 ? (
                 <tr>
                   <td colSpan={9} className="py-12 text-center text-[var(--color-text-muted)]">
-                    <div className="flex flex-col items-center gap-2">
-                      <Users className="w-8 h-8 text-gray-400" />
-                      <p className="font-semibold text-xs">No outstanding receivables matching your filters.</p>
-                    </div>
+                    <EmptyState
+                      icon={Users}
+                      title="No outstanding receivables found"
+                      hint="No customer balances match the current filters and as-of date."
+                    />
                   </td>
                 </tr>
               ) : (
@@ -850,27 +833,21 @@ export function CustomerAgingWorkspace({ activeEntityId }: Props) {
 
                     {/* Risk Badge */}
                     <td className="py-3 px-3 text-center">
-                      <span
-                        className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
+                      <StatusChip
+                        status={c.worstBucket}
+                        label={
                           c.worstBucket === 'Current'
-                            ? 'bg-emerald-50 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800'
+                            ? 'Current'
                             : c.worstBucket === '1-30'
-                            ? 'bg-amber-50 dark:bg-amber-900/30 text-amber-700 dark:text-amber-300 border border-amber-200 dark:border-amber-800'
+                            ? 'Overdue'
                             : c.worstBucket === '31-60'
-                            ? 'bg-orange-50 dark:bg-orange-900/30 text-orange-700 dark:text-orange-300 border border-orange-200 dark:border-orange-800'
-                            : 'bg-rose-100 dark:bg-rose-900/40 text-rose-800 dark:text-rose-200 border border-rose-300 dark:border-rose-700'
-                        }`}
-                      >
-                        {c.worstBucket === 'Current'
-                          ? 'Current'
-                          : c.worstBucket === '1-30'
-                          ? 'Overdue'
-                          : c.worstBucket === '31-60'
-                          ? 'Delinquent'
-                          : c.worstBucket === '61-90'
-                          ? 'Severe'
-                          : 'Critical'}
-                      </span>
+                            ? 'Delinquent'
+                            : c.worstBucket === '61-90'
+                            ? 'Severe'
+                            : 'Critical'
+                        }
+                        hex={BUCKET_COLORS[c.worstBucket]}
+                      />
                     </td>
 
                     {/* Individual Download Buttons */}

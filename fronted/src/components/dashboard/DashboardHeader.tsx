@@ -210,20 +210,45 @@ export function DashboardHeader({
 
   const initials = getModuleInitials(title);
 
+  // AMS Module DNA — each domain owns a signature hue.
+  const MODULE_DNA: { match: string[]; hex: string }[] = [
+    { match: ['SALES'], hex: '#6366f1' },
+    { match: ['PROCUREMENT', 'PURCHAS'], hex: '#10b981' },
+    { match: ['BANKING', 'PAYMENT'], hex: '#3b82f6' },
+    { match: ['ASSET'], hex: '#14b8a6' },
+    { match: ['MANUFACTURING', 'PRODUCTION'], hex: '#f97316' },
+    { match: ['PAYROLL', 'HR'], hex: '#f59e0b' },
+    { match: ['FIELD', 'SURVEY'], hex: '#84cc16' },
+    { match: ['GOVERNMENT', 'COMPLIANCE', 'TAX'], hex: '#f43f5e' },
+    { match: ['PROJECT'], hex: '#06b6d4' },
+    { match: ['ADMIN'], hex: '#8b5cf6' },
+    { match: ['ANALYTICS', 'AI'], hex: '#a855f7' },
+    { match: ['ACCOUNTING', 'FINANCE'], hex: '#8b5cf6' },
+  ];
+  const tUpper = title.toUpperCase();
+  const dnaHex = MODULE_DNA.find((m) => m.match.some((k) => tUpper.includes(k)))?.hex ?? '#6366f1';
+
   return (
     <div className={`col-span-12 bg-[var(--color-surface)] border border-[var(--color-border)] rounded-2xl px-6 py-4 shadow-sm flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 ${className}`}>
-      {/* Left — Logo badge, title and subtitle */}
+      {/* Left — AMS Signature diamond monogram, title and subtitle */}
       <div className="flex items-center gap-4">
-        <div className="w-11 h-11 rounded-xl flex items-center justify-center shrink-0 shadow-sm" style={{ background: 'color-mix(in srgb, var(--color-primary) 15%, transparent)', border: '1px solid color-mix(in srgb, var(--color-primary) 30%, transparent)' }}>
-          <span className="text-sm font-black tracking-tight text-[var(--color-primary)]">{initials}</span>
+        <div className="relative h-11 w-11 shrink-0">
+          <div
+            className="absolute inset-[5px] rotate-45 rounded-[10px] shadow-lg"
+            style={{ background: `linear-gradient(135deg, ${dnaHex}, color-mix(in srgb, ${dnaHex} 60%, #1e1b4b))` }}
+          />
+          <div className="absolute inset-0 flex items-center justify-center">
+            <span className="text-[11px] font-black tracking-tight text-white">{initials}</span>
+          </div>
         </div>
         <div>
-          <div className="flex items-center gap-2">
-            <h1 className="text-base font-black tracking-tight text-[var(--color-text-strong)] uppercase">
+          <div className="flex items-center gap-2.5">
+            <h1 className="text-xl font-black tracking-tight text-[var(--color-text-strong)]">
               {title}
             </h1>
             {badge && (
-              <span className="text-[9px] font-bold px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-500 border border-emerald-500/20">
+              <span className="flex items-center gap-1.5 text-[9px] font-bold px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-500 border border-emerald-500/20">
+                <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" />
                 {badge}
               </span>
             )}

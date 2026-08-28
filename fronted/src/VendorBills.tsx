@@ -1,7 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { useProcurementStore, useVendorsStore, useProductsStore, useCoaStore } from './stores';
 import { DataToolbar } from '@/components/ui/data-toolbar';
+import { KpiCard, KpiGrid } from '@/components/ui/kpi-card';
+import { EmptyState } from './components/ui/empty-state';
 import { money } from './lib/currency';
+import {
+  FileText, Receipt, CheckCircle, Plus, X, Eye, ArrowRight,
+  CreditCard, Truck, Trash2
+} from 'lucide-react';
 
 export const VendorBills: React.FC<{ activeEntityId: string }> = ({ activeEntityId }) => {
   const bills = useProcurementStore((s) => s.bills);
@@ -23,8 +29,8 @@ export const VendorBills: React.FC<{ activeEntityId: string }> = ({ activeEntity
   const [query, setQuery] = useState('');
   const [showBillModal, setShowBillModal] = useState(false);
   const [entryMode, setEntryMode] = useState<'direct' | 'procurement'>('direct');
-  const [forcedMode, setForcedMode] = useState<'direct' | 'procurement' | null>(null);
-  
+  const [modalTab, setModalTab] = useState<'details' | 'lines' | 'preview'>('details');
+
   const [billForm, setBillForm] = useState({
     purchaseOrderId: '',
     vendorId: '',
@@ -51,16 +57,23 @@ export const VendorBills: React.FC<{ activeEntityId: string }> = ({ activeEntity
 
   const notify = (msg: string) => { setToast(msg); setTimeout(() => setToast(''), 3500); };
 
-  const handleOpenModal = (po?: any, mode: 'direct' | 'procurement' = 'direct') => {
-    const resolvedMode = po ? 'procurement' : mode;
-    setEntryMode(resolvedMode);
-    setForcedMode(resolvedMode);
-    const vId = po?.vendorId || vendors[0]?.id || '';
+  const computeNextBillNumber = () => {
+    let maxNum = 0;
+    for (const item of bills) {
+      const str = (item.billNumber || '') + '';
+      const match = str.match(/BILL-(\d+)/i);
+      if (match) { const num = parseInt(match[1], 10); if (!isNaN(num) && num > maxNum) maxNum = num; }
+    }
+    return `BILL-${(maxNum + 1).toString().padStart(5, '0')}`;
+  };
+
+  const openDirectBill = () => {
+    setEntryMode('direct');
     setBillForm({
-      purchaseOrderId: po?.id || '',
-      vendorId: vId,
-      billNumber: `BILL-${Math.floor(1000 + Math.random() * 9000)}`,
-      vendorInvoiceNumber: `INV-SUPP-${Math.floor(10000 + Math.random() * 90000)}`,
+      purchaseOrderId: '',
+      vendorId: vendors[0]?.id || '',
+      billNumber: computeNextBillNumber(),
+      vendorInvoiceNumber: '',
       date: new Date().toISOString().split('T')[0],
       dueDate: new Date(Date.now() + 30 * 86400000).toISOString().split('T')[0],
       paymentTermsDays: '30',
@@ -68,22 +81,52 @@ export const VendorBills: React.FC<{ activeEntityId: string }> = ({ activeEntity
       notes: '',
       taxAmount: '0'
     });
-    setBillLines((po?.lines || [{ description: '', quantity: 1, unitPrice: 0, accountId: '', destination: 'Expense' }]).map((l: any) => ({
-      description: l.description || '',
-      productId: l.productId || null,
-      quantity: l.quantity || 1,
-      unitPrice: l.unitPrice || 0,
-      accountId: l.expenseAccountId || accounts[0]?.id || '',
-      destination: l.destination || 'Expense',
-      taxAmount: l.taxAmount || 0
-    })));
+    setBillLines([{ description: '', quantity: 1, unitPrice: 0, accountId: '', destination: 'Expense', taxAmount: 0 }]);
+    setModalTab('details');
     setShowBillModal(true);
+  };
+
+  const openPOBill = () => {
+    setEntryMode('procurement');
+    setBillForm({
+      purchaseOrderId: '',
+      vendorId: vendors[0]?.id || '',
+      billNumber: computeNextBillNumber(),
+      vendorInvoiceNumber: '',
+      date: new Date().toISOString().split('T')[0],
+      dueDate: new Date(Date.now() + 30 * 86400000).toISOString().split('T')[0],
+      paymentTermsDays: '30',
+      currencyCode: 'PKR',
+      notes: '',
+      taxAmount: '0'
+    });
+    setBillLines([{ description: '', quantity: 1, unitPrice: 0, accountId: '', destination: 'Expense', taxAmount: 0 }]);
+    setModalTab('details');
+    setShowBillModal(true);
+  };
+
+  const handlePOSelect = (poId: string) => {
+    const po = orders.find((o: any) => o.id === poId);
+    if (po) {
+      setBillForm(prev => ({ ...prev, purchaseOrderId: poId, vendorId: po.vendorId || prev.vendorId }));
+      if (po.lines && po.lines.length > 0) {
+        setBillLines(po.lines.map((l: any) => ({
+          description: l.description || '',
+          productId: l.productId || null,
+          quantity: l.quantity || 1,
+          unitPrice: l.unitPrice || 0,
+          accountId: l.expenseAccountId || accounts[0]?.id || '',
+          destination: l.destination || 'Expense',
+          taxAmount: l.taxAmount || 0
+        })));
+      }
+    }
   };
 
   const saveBill = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!billForm.vendorId) return alert('Please select Vendor.');
-    if (!billForm.vendorInvoiceNumber) return alert('Please enter Supplier Invoice Number.');
+    if (!billForm.vendorId) { notify('Please select a vendor.'); return; }
+    if (!billForm.vendorInvoiceNumber) { notify('Please enter supplier invoice number.'); return; }
     const body = {
       purchaseOrderId: entryMode === 'procurement' ? (billForm.purchaseOrderId || null) : null,
       vendorId: billForm.vendorId,
@@ -98,29 +141,31 @@ export const VendorBills: React.FC<{ activeEntityId: string }> = ({ activeEntity
       lines: billLines.map(l => ({
         description: l.description,
         productId: l.productId || null,
-        quantity: parseFloat(l.quantity),
-        unitPrice: parseFloat(l.unitPrice),
-        taxAmount: parseFloat(l.taxAmount || '0'),
+        quantity: parseFloat(String(l.quantity) || '1'),
+        unitPrice: parseFloat(String(l.unitPrice) || '0'),
+        taxAmount: parseFloat(String(l.taxAmount) || '0'),
         destination: l.destination || 'Expense',
         accountId: l.accountId || null
       }))
     };
     try {
       await createVendorBillStore(body, activeEntityId);
-      notify(entryMode === 'direct' ? '✓ Direct Vendor Bill & Accounts Payable Liability posted!' : '✓ Procurement Vendor Bill saved & 3-Way Match updated!');
+      notify(entryMode === 'direct' ? '✓ Direct bill posted to Accounts Payable!' : '✓ PO bill saved & 3-way match updated!');
       setShowBillModal(false);
     } catch (err: any) {
-      notify(err.message || 'Error saving Vendor Bill');
+      notify(err.message || 'Error saving bill');
     }
   };
 
   const inspectMatch = async (poId: string) => {
-    if (!poId) return alert('Direct Bill has no PO reference.');
+    if (!poId) { notify('Direct bill has no PO reference.'); return; }
     const res = await validateThreeWayMatchStore(poId);
     setMatchModal(res);
   };
 
-  const totalOutstanding = bills.reduce((sum, b: any) => sum + (b.lines?.reduce((s: number, l: any) => s + ((l.quantity || 1) * (l.unitPrice || 0)), 0) || 0), 0);
+  const totalOutstanding = bills.reduce((sum: number, b: any) => sum + (b.lines?.reduce((s: number, l: any) => s + ((l.quantity || 1) * (l.unitPrice || 0)), 0) || 0), 0);
+  const directCount = bills.filter((b: any) => !b.purchaseOrderId).length;
+  const poCount = bills.filter((b: any) => b.purchaseOrderId).length;
 
   const filteredBills = (bills as any[]).filter((bill: any) => {
     if (!query.trim()) return true;
@@ -138,494 +183,398 @@ export const VendorBills: React.FC<{ activeEntityId: string }> = ({ activeEntity
   const exportRows = filteredBills.map((bill: any) => {
     const vendor = vendors.find(v => v.id === bill.vendorId);
     const total = bill.lines?.reduce((acc: number, l: any) => acc + ((l.quantity || 1) * (l.unitPrice || 0)), 0) || 0;
-    return [
-      bill.billNumber,
-      bill.vendorInvoiceNumber || bill.vendorBillNumber || '',
-      bill.purchaseOrderId ? 'Procurement PO' : 'Direct Bill',
-      vendor?.name || bill.vendorName || 'Vendor',
-      bill.date, bill.dueDate, total,
-    ];
+    return [bill.billNumber, bill.vendorInvoiceNumber || bill.vendorBillNumber || '', bill.purchaseOrderId ? 'PO Bill' : 'Direct Bill', vendor?.name || bill.vendorName || 'Vendor', bill.date, bill.dueDate, total];
   });
 
-  return (
-    <div className="space-y-6">
-      {toast && <div className="fixed top-6 right-6 z-50 px-5 py-3 bg-emerald-600 text-white rounded-2xl shadow-lg text-sm font-medium">{toast}</div>}
+  const billSubtotal = billLines.reduce((sum: number, l: any) => sum + ((parseFloat(String(l.quantity) || '0') || 0) * (parseFloat(String(l.unitPrice) || '0') || 0)), 0);
+  const billTax = billLines.reduce((sum: number, l: any) => sum + (parseFloat(String(l.taxAmount) || '0') || 0), 0);
+  const billTotal = billSubtotal + billTax;
 
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-3 bg-[var(--color-surface)] p-3.5 rounded-xl border border-[var(--color-border)] shadow-sm">
-        <div>
-          <h1 className="text-base font-bold text-[var(--color-text-strong)] tracking-tight flex items-center gap-2">
-            <span className="text-lg">💳</span> Vendor Bills & Supplier Invoices
-          </h1>
-          <p className="text-[var(--color-text-muted)] text-xs mt-0.5">Direct supplier liability creation or procurement-linked 3-way match invoices.</p>
-        </div>
-        <div className="flex items-center gap-1.5 shrink-0">
+  return (
+    <div className="space-y-5">
+      {toast && <div className="fixed top-4 right-4 z-[9999] bg-[var(--color-surface)] border border-[var(--color-border)] rounded-xl shadow-lg px-4 py-3 text-sm font-medium text-[var(--color-text-strong)]">{toast}</div>}
+
+      {/* Page Header — AMS Signature Hero Band */}
+      <div className="relative overflow-hidden rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)] shadow-sm">
+        <div className="absolute inset-0 bg-gradient-to-r from-amber-500/10 via-amber-500/[0.03] to-transparent pointer-events-none" />
+        <div className="absolute -right-10 -top-16 w-56 h-56 rounded-full bg-amber-500/10 blur-3xl pointer-events-none" />
+        <div className="relative flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 px-5 py-4">
+          <div className="flex items-center gap-4">
+            <div className="relative h-14 w-14 shrink-0">
+              <div className="absolute inset-[6px] rotate-45 rounded-[12px] shadow-xl bg-gradient-to-br from-amber-500 to-orange-700" />
+              <div className="absolute inset-0 flex items-center justify-center"><CreditCard className="w-6 h-6 text-white" /></div>
+            </div>
+            <div>
+              <div className="flex items-center gap-2.5">
+                <h1 className="text-2xl font-black tracking-tight text-[var(--color-text-strong)]">Vendor Bills</h1>
+                <span className="hidden sm:inline-flex items-center gap-1.5 rounded-full border border-amber-500/25 bg-amber-500/10 px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider text-amber-600 dark:text-amber-400"><span className="h-1.5 w-1.5 rounded-full bg-amber-500 animate-pulse" /> Live Ledger</span>
+              </div>
+              <p className="text-xs text-[var(--color-text-muted)] mt-0.5">Manage supplier invoices and procurement-linked bills</p>
+            </div>
+          </div>
+          <div className="flex items-center gap-2 shrink-0">
           <DataToolbar
-            query={query}
-            setQuery={setQuery}
-            searchPlaceholder="Search bill #, invoice #, vendor..."
-            exportFileName="vendor-bills"
-            exportSheetName="Vendor Bills"
-            exportTitle="Vendor Bills & Supplier Invoices"
-            exportSubtitle="Supplier liabilities with direct entry and procurement-linked 3-way match."
-            exportHeaders={exportHeaders}
-            exportRows={exportRows}
+            query={query} setQuery={setQuery}
+            searchPlaceholder="Search bill #, vendor..."
+            exportFileName="vendor-bills" exportSheetName="Vendor Bills"
+            exportTitle="Vendor Bills" exportSubtitle="Supplier invoices and bills."
+            exportHeaders={exportHeaders} exportRows={exportRows}
             exportTotals={[{ label: 'Total Outstanding', value: totalOutstanding }]}
             onRefresh={() => { fetchBills(activeEntityId); fetchOrders(activeEntityId); }}
           />
-          <button onClick={() => handleOpenModal(null, 'direct')}
-            className="secondary h-9 px-3 text-xs font-semibold rounded-xl">
-            ⚡ Direct Bill
+          <button onClick={openDirectBill} className="h-10 px-4 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] text-xs font-semibold text-[var(--color-text-strong)] hover:bg-[var(--color-surface-muted)] transition-colors flex items-center gap-2">
+            <CreditCard className="w-4 h-4 text-blue-500" /> Direct Bill
           </button>
-          <button onClick={() => handleOpenModal(null, 'procurement')}
-            className="primary h-9 px-3 text-xs font-semibold rounded-xl">
-            📜 PO Bill
+          <button onClick={openPOBill} className="h-10 px-5 rounded-xl bg-gradient-to-r from-amber-500 to-orange-600 text-white text-xs font-bold shadow-lg shadow-amber-500/25 flex items-center gap-2">
+            <Truck className="w-4 h-4" /> PO Bill
           </button>
+          </div>
         </div>
       </div>
 
-      {/* Summary KPI Cards */}
-      <section className="stats">
-        <article>
-          <span className="stat-icon blue"><span className="text-sm">💰</span></span>
-          <div>
-            <small>TOTAL OUTSTANDING BILLS</small>
-            <h2>{money(totalOutstanding)}</h2>
-            <p>Amount due to suppliers</p>
-          </div>
-        </article>
-        <article>
-          <span className="stat-icon teal"><span className="text-sm">📄</span></span>
-          <div>
-            <small>SUPPLIER INVOICES</small>
-            <h2>{bills.length}</h2>
-            <p>Vendor bills recorded</p>
-          </div>
-        </article>
-        <article>
-          <span className="stat-icon violet"><span className="text-sm">✅</span></span>
-          <div>
-            <small>3-WAY MATCH</small>
-            <h2>Active</h2>
-            <p>Audit engine running</p>
-          </div>
-        </article>
-      </section>
+      {/* KPI Cards */}
+      <KpiGrid cols={3}>
+        <KpiCard icon={FileText} label="Total Outstanding" value={money(totalOutstanding)} desc={`${bills.length} bills recorded`} tone="amber" />
+        <KpiCard icon={CreditCard} label="Direct Bills" value={String(directCount)} desc="Posted to AP directly" tone="blue" />
+        <KpiCard icon={Truck} label="PO Linked Bills" value={String(poCount)} desc="3-way match active" tone="emerald" />
+      </KpiGrid>
 
-      {/* Table */}
-      <div className="bg-white border border-gray-200 rounded-2xl shadow-sm overflow-hidden">
-        <table className="w-full text-left text-sm">
-          <thead className="bg-gray-50 text-gray-500 border-b border-gray-100 text-xs uppercase tracking-wider">
+      {/* Bills Table */}
+      <div className="rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)] shadow-sm overflow-hidden">
+        <div className="px-5 py-3.5 border-b border-[var(--color-border)] bg-[var(--color-surface-muted)] flex items-center justify-between">
+          <p className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-[var(--color-text-strong)]"><span className="inline-block h-2 w-2 rotate-45 rounded-[2px] bg-gradient-to-br from-amber-500 to-orange-700" />All Vendor Bills</p>
+          <span className="text-[11px] text-[var(--color-text-muted)]">{filteredBills.length} bills</span>
+        </div>
+        <table className="w-full text-left text-xs">
+          <thead className="border-b border-[var(--color-border)]">
             <tr>
-              <th className="py-3 px-4">Bill Number</th>
-              <th className="py-3 px-4">Supplier Invoice #</th>
-              <th className="py-3 px-4">Entry Type</th>
-              <th className="py-3 px-4">Vendor Name</th>
-              <th className="py-3 px-4">Bill Date</th>
-              <th className="py-3 px-4">Due Date</th>
-              <th className="py-3 px-4 text-right">Total Amount</th>
-              <th className="py-3 px-4 text-center">3-Way Match</th>
+              <th className="px-5 py-3 text-[10px] font-bold uppercase tracking-wider text-[var(--color-text-muted)]">Bill #</th>
+              <th className="px-5 py-3 text-[10px] font-bold uppercase tracking-wider text-[var(--color-text-muted)]">Supplier Invoice</th>
+              <th className="px-5 py-3 text-[10px] font-bold uppercase tracking-wider text-[var(--color-text-muted)]">Type</th>
+              <th className="px-5 py-3 text-[10px] font-bold uppercase tracking-wider text-[var(--color-text-muted)]">Vendor</th>
+              <th className="px-5 py-3 text-[10px] font-bold uppercase tracking-wider text-[var(--color-text-muted)]">Date</th>
+              <th className="px-5 py-3 text-[10px] font-bold uppercase tracking-wider text-[var(--color-text-muted)]">Due Date</th>
+              <th className="px-5 py-3 text-[10px] font-bold uppercase tracking-wider text-[var(--color-text-muted)] text-right">Amount</th>
+              <th className="px-5 py-3 text-[10px] font-bold uppercase tracking-wider text-[var(--color-text-muted)] text-center">Action</th>
             </tr>
           </thead>
-          <tbody className="divide-y divide-gray-50">
+          <tbody className="divide-y divide-[var(--color-border)]">
             {filteredBills.map((bill: any) => {
               const vendor = vendors.find(v => v.id === bill.vendorId);
               const total = bill.lines?.reduce((acc: number, l: any) => acc + ((l.quantity || 1) * (l.unitPrice || 0)), 0) || 0;
               const isDirect = !bill.purchaseOrderId;
               return (
-                <tr key={bill.id} className="hover:bg-gray-50/60 transition-colors">
-                  <td className="py-3 px-4 font-mono font-bold text-gray-900">{bill.billNumber}</td>
-                  <td className="py-3 px-4 font-mono text-xs text-purple-700 bg-purple-50 px-2.5 py-1 rounded w-fit font-bold">{bill.vendorInvoiceNumber || bill.vendorBillNumber}</td>
-                  <td className="py-3 px-4">
+                <tr key={bill.id} className="hover:bg-[var(--color-surface-muted)]/50 transition-colors">
+                  <td className="px-5 py-3 font-mono font-bold text-[var(--color-text-strong)]">{bill.billNumber}</td>
+                  <td className="px-5 py-3"><span className="px-2 py-0.5 rounded-md bg-purple-500/10 text-purple-600 dark:text-purple-400 font-mono text-[10px] font-bold">{bill.vendorInvoiceNumber || bill.vendorBillNumber}</span></td>
+                  <td className="px-5 py-3">
                     {isDirect ? (
-                      <span className="px-2 py-0.5 bg-blue-100 text-blue-800 text-[10px] font-bold rounded-full border border-blue-200">⚡ Direct Bill</span>
+                      <span className="px-2 py-0.5 rounded-full bg-blue-500/10 text-blue-600 dark:text-blue-400 text-[10px] font-bold border border-blue-500/20">Direct</span>
                     ) : (
-                      <span className="px-2 py-0.5 bg-emerald-100 text-emerald-800 text-[10px] font-bold rounded-full border border-emerald-200">📜 Procurement PO</span>
+                      <span className="px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 text-[10px] font-bold border border-emerald-500/20">PO Bill</span>
                     )}
                   </td>
-                  <td className="py-3 px-4 font-medium text-gray-900">{vendor?.name || bill.vendorName || 'Vendor'}</td>
-                  <td className="py-3 px-4 text-gray-500">{bill.date}</td>
-                  <td className="py-3 px-4 text-gray-500">{bill.dueDate}</td>
-                  <td className="py-3 px-4 text-right font-bold text-emerald-700 text-base">{money(total, bill.currencyCode || 'USD')}</td>
-                  <td className="py-3 px-4 text-center">
-                    {bill.purchaseOrderId ? (
-                      <button className="h-7 px-2 text-[11px] font-semibold text-blue-600 border border-blue-200 hover:bg-blue-50 rounded-lg" onClick={() => inspectMatch(bill.purchaseOrderId)}>
-                        Inspect Match
-                      </button>
-                    ) : (
-                      <span className="text-xs text-gray-400">Direct AP Posted</span>
-                    )}
+                  <td className="px-5 py-3 font-medium text-[var(--color-text-strong)]">{vendor?.name || bill.vendorName || 'Vendor'}</td>
+                  <td className="px-5 py-3 text-[var(--color-text-muted)]">{bill.date}</td>
+                  <td className="px-5 py-3 text-[var(--color-text-muted)]">{bill.dueDate}</td>
+                  <td className="px-5 py-3 text-right font-mono font-bold text-[var(--color-text-strong)]">{money(total, bill.currencyCode || 'PKR')}</td>
+                  <td className="px-5 py-3">
+                    <div className="flex items-center justify-center gap-1.5">
+                      {bill.purchaseOrderId ? (
+                        <button onClick={() => inspectMatch(bill.purchaseOrderId)} className="h-7 px-2.5 rounded-lg border border-[var(--color-border)] text-[10px] font-semibold text-blue-500 hover:bg-blue-500/10 transition-colors flex items-center gap-1">
+                          <Eye className="w-3 h-3" /> Match
+                        </button>
+                      ) : (
+                        <span className="text-[10px] text-[var(--color-text-muted)] font-medium">Direct AP</span>
+                      )}
+                    </div>
                   </td>
                 </tr>
               );
             })}
-{!loading && filteredBills.length === 0 && (
-              <tr><td colSpan={8} className="py-12 text-center text-gray-400">No Vendor Bills found. Click "Direct Bill Entry" to create one.</td></tr>
+            {!loading && filteredBills.length === 0 && (
+              <tr><td colSpan={8}>
+                <EmptyState icon={Receipt} title="No vendor bills yet" hint='Click "Direct Bill" or "PO Bill" to create one' />
+              </td></tr>
             )}
           </tbody>
         </table>
       </div>
 
-      {/* Modal: Dual Workflow Vendor Bill Creation Form */}
+      {/* CREATE / EDIT MODAL */}
       {showBillModal && (
-        <div className="overlay">
-          <form className="modal" onSubmit={saveBill}>
-            <div className="modal-head">
-              <div>
-                <p className="eyebrow">PROCUREMENT & PAYABLES</p>
-                <h2>{entryMode === 'direct' ? '⚡ Enter Direct Vendor Bill (Direct AP Liability)' : '📜 Enter Procurement Vendor Bill (PO & GRN Linked)'}</h2>
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm" onClick={() => setShowBillModal(false)}>
+          <div className="w-full max-w-5xl bg-[var(--color-surface)] border border-[var(--color-border)] rounded-2xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh]" onClick={e => e.stopPropagation()}>
+            {/* Modal Header */}
+            <div className="px-6 py-4 border-b border-[var(--color-border)] flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className={`w-11 h-11 rounded-xl bg-gradient-to-br ${entryMode === 'direct' ? 'from-blue-500 to-indigo-600' : 'from-amber-500 to-orange-600'} flex items-center justify-center text-white shadow-sm`}>
+                  {entryMode === 'direct' ? <CreditCard className="w-5 h-5" /> : <Truck className="w-5 h-5" />}
+                </div>
+                <div>
+                  <h2 className="text-base font-bold text-[var(--color-text-strong)]">{entryMode === 'direct' ? 'Direct Vendor Bill' : 'Procurement Vendor Bill'}</h2>
+                  <p className="text-xs text-[var(--color-text-muted)] mt-0.5">Ref: <span className="font-mono font-bold text-[var(--color-text-strong)]">{billForm.billNumber}</span></p>
+                </div>
               </div>
-              <button type="button" className="close" onClick={() => setShowBillModal(false)}>
-                ×
-              </button>
+              <button onClick={() => setShowBillModal(false)} className="w-8 h-8 rounded-lg flex items-center justify-center text-[var(--color-text-muted)] hover:text-[var(--color-text-strong)] hover:bg-[var(--color-surface-muted)] transition-colors"><X className="w-4 h-4" /></button>
             </div>
 
-            {/* Entry Mode Toggle Selector — only shown when not forced to a specific mode */}
-            {!forcedMode && (
-              <div style={{ display: 'flex', gap: 10, marginBottom: 20, background: '#f1f5f9', padding: 4, borderRadius: 10 }}>
-                <button
-                  type="button"
-                  style={{
-                    flex: 1,
-                    padding: '8px 12px',
-                    borderRadius: 8,
-                    fontSize: 13,
-                    fontWeight: 700,
-                    border: 'none',
-                    cursor: 'pointer',
-                    background: entryMode === 'direct' ? '#fff' : 'transparent',
-                    color: entryMode === 'direct' ? '#1d4ed8' : '#64748b',
-                    boxShadow: entryMode === 'direct' ? '0 1px 3px rgba(0,0,0,0.1)' : 'none'
-                  }}
-                  onClick={() => setEntryMode('direct')}
-                >
-                  ⚡ Direct Vendor Bill (Direct GL Liability)
+            {/* Tabs */}
+            <div className="flex items-center gap-1 px-4 pt-3 border-b border-[var(--color-border)]">
+              {(['details', 'lines', 'preview'] as const).map(tab => (
+                <button key={tab} onClick={() => setModalTab(tab)} className={`flex items-center gap-1.5 px-3 py-2 text-[11px] font-semibold rounded-t-lg border-b-2 transition-all ${modalTab === tab ? (tab === 'preview' ? 'border-emerald-600 text-emerald-600 bg-emerald-500/10' : 'border-amber-600 text-amber-600 bg-amber-500/10') : 'border-transparent text-[var(--color-text-muted)] hover:text-[var(--color-text-strong)]'}`}>
+                  {tab === 'details' && <><FileText className="w-3 h-3" /> 1. Vendor & Dates</>}
+                  {tab === 'lines' && <><Receipt className="w-3 h-3" /> 2. Line Items ({billLines.length})</>}
+                  {tab === 'preview' && <><Eye className="w-3 h-3" /> Preview & Submit</>}
                 </button>
-                <button
-                  type="button"
-                  style={{
-                    flex: 1,
-                    padding: '8px 12px',
-                    borderRadius: 8,
-                    fontSize: 13,
-                    fontWeight: 700,
-                    border: 'none',
-                    cursor: 'pointer',
-                    background: entryMode === 'procurement' ? '#fff' : 'transparent',
-                    color: entryMode === 'procurement' ? '#047857' : '#64748b',
-                    boxShadow: entryMode === 'procurement' ? '0 1px 3px rgba(0,0,0,0.1)' : 'none'
-                  }}
-                  onClick={() => setEntryMode('procurement')}
-                >
-                  📜 Procurement Procedure Bill (PO & GRN Linked)
-                </button>
-              </div>
-            )}
+              ))}
+            </div>
 
-            <div className="form-grid">
-              <div>
-                <label className="block text-xs font-semibold text-[var(--color-text-strong)] mb-1.5">
-                  <span className="text-rose-500 font-bold mr-1">*</span> Vendor / Supplier Name
-                </label>
-                <select required value={billForm.vendorId} onChange={e => setBillForm({ ...billForm, vendorId: e.target.value })} className="w-full">
-                  <option value="">-- Select Vendor --</option>
-                  {vendors.map(v => (
-                    <option key={v.id} value={v.id}>
-                      {v.name}
-                    </option>
-                  ))}
-                </select>
-              </div>
+            {/* Body */}
+            <div className="p-6 md:p-8 overflow-y-auto flex-1">
+              {/* TAB: Details */}
+              {modalTab === 'details' && (
+                <div className="space-y-5">
+                  {entryMode === 'procurement' && (
+                    <div className="p-4 rounded-xl bg-amber-500/5 border border-amber-500/20">
+                      <label className="block text-xs font-bold text-[var(--color-text-strong)] mb-1.5">Linked Purchase Order</label>
+                      <select value={billForm.purchaseOrderId} onChange={e => handlePOSelect(e.target.value)} className="w-full h-10 px-3 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] text-xs outline-none">
+                        <option value="">-- Select Purchase Order --</option>
+                        {orders.map((p: any) => (
+                          <option key={p.id} value={p.id}>{p.orderNumber || p.poNumber}</option>
+                        ))}
+                      </select>
+                    </div>
+                  )}
 
-              <div>
-                <label className="block text-xs font-semibold text-[var(--color-text-strong)] mb-1.5">
-                  <span className="text-rose-500 font-bold mr-1">*</span> Supplier Invoice Number
-                </label>
-                <input
-                  required
-                  placeholder="e.g. INV-SUPP-9982"
-                  value={billForm.vendorInvoiceNumber}
-                  onChange={e => setBillForm({ ...billForm, vendorInvoiceNumber: e.target.value })}
-                  className="w-full"
-                />
-              </div>
+                  {entryMode === 'direct' && (
+                    <div className="p-4 rounded-xl bg-blue-500/5 border border-blue-500/20">
+                      <p className="text-xs font-bold text-blue-600 dark:text-blue-400">Direct AP Liability</p>
+                      <p className="text-[10px] text-[var(--color-text-muted)] mt-1">This bill posts directly to Accounts Payable without a Purchase Order.</p>
+                    </div>
+                  )}
 
-              <div>
-                <label className="block text-xs font-semibold text-[var(--color-text-strong)] mb-1.5">
-                  System Bill Number
-                </label>
-                <input
-                  placeholder="Auto-generated e.g. BILL-0001"
-                  value={billForm.billNumber}
-                  onChange={e => setBillForm({ ...billForm, billNumber: e.target.value })}
-                  className="w-full"
-                />
-              </div>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-xs font-bold text-[var(--color-text-strong)] mb-1.5">Vendor / Supplier <span className="text-rose-500">*</span></label>
+                      <select required value={billForm.vendorId} onChange={e => setBillForm({ ...billForm, vendorId: e.target.value })} className="w-full h-10 px-3 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] text-xs outline-none">
+                        <option value="">-- Select Vendor --</option>
+                        {vendors.map(v => <option key={v.id} value={v.id}>{v.name}</option>)}
+                      </select>
+                    </div>
+                    <div>
+                      <label className="block text-xs font-bold text-[var(--color-text-strong)] mb-1.5">Supplier Invoice # <span className="text-rose-500">*</span></label>
+                      <input required placeholder="e.g. INV-SUP-9982" value={billForm.vendorInvoiceNumber} onChange={e => setBillForm({ ...billForm, vendorInvoiceNumber: e.target.value })} className="w-full h-10 px-3 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] text-xs outline-none" />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-bold text-[var(--color-text-strong)] mb-1.5">System Bill Number</label>
+                      <input value={billForm.billNumber} onChange={e => setBillForm({ ...billForm, billNumber: e.target.value })} className="w-full h-10 px-3 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface-muted)] text-xs font-mono font-bold text-[var(--color-text-strong)] outline-none" readOnly />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-bold text-[var(--color-text-strong)] mb-1.5">Transaction Currency</label>
+                      <select value={billForm.currencyCode} onChange={e => setBillForm({ ...billForm, currencyCode: e.target.value })} className="w-full h-10 px-3 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] text-xs outline-none">
+                        {['PKR', 'USD', 'EUR', 'GBP', 'AED', 'SAR', 'CAD', 'AUD'].map(c => <option key={c} value={c}>{c}</option>)}
+                      </select>
+                    </div>
+                    <div>
+                      <label className="block text-xs font-bold text-[var(--color-text-strong)] mb-1.5">Invoice / Bill Date <span className="text-rose-500">*</span></label>
+                      <input type="date" required value={billForm.date} onChange={e => setBillForm({ ...billForm, date: e.target.value })} className="w-full h-10 px-3 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] text-xs outline-none" />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-bold text-[var(--color-text-strong)] mb-1.5">Due Date <span className="text-rose-500">*</span></label>
+                      <input type="date" required value={billForm.dueDate} onChange={e => setBillForm({ ...billForm, dueDate: e.target.value })} className="w-full h-10 px-3 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] text-xs outline-none" />
+                    </div>
+                  </div>
 
-              {entryMode === 'procurement' ? (
-                <div>
-                  <label className="block text-xs font-semibold text-[var(--color-text-strong)] mb-1.5">
-                    <span className="text-rose-500 font-bold mr-1">*</span> Linked Purchase Order
-                  </label>
-                  <select value={billForm.purchaseOrderId} onChange={e => setBillForm({ ...billForm, purchaseOrderId: e.target.value })} className="w-full">
-                    <option value="">-- Select Purchase Order --</option>
-                    {orders.map(p => (
-                      <option key={p.id} value={p.id}>
-                        {p.orderNumber || p.poNumber}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-              ) : (
-                <div>
-                  <label className="block text-xs font-semibold text-[var(--color-text-strong)] mb-1.5">
-                    Direct AP Ledger Posting
-                  </label>
-                  <input disabled value="Direct Accounts Payable Liability (Posting to GL)" style={{ background: '#f8fafc', color: '#0284c7', fontWeight: 'bold' }} className="w-full" />
+                  <div>
+                    <label className="block text-xs font-bold text-[var(--color-text-strong)] mb-1.5">Payment Notes</label>
+                    <input placeholder="Payment instructions, bank wire info, or reference tags" value={billForm.notes} onChange={e => setBillForm({ ...billForm, notes: e.target.value })} className="w-full h-10 px-3 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] text-xs outline-none" />
+                  </div>
                 </div>
               )}
 
-              <div>
-                <label className="block text-xs font-semibold text-[var(--color-text-strong)] mb-1.5">
-                  <span className="text-rose-500 font-bold mr-1">*</span> Invoice / Bill Date
-                </label>
-                <input
-                  type="date"
-                  required
-                  value={billForm.date}
-                  onChange={e => setBillForm({ ...billForm, date: e.target.value })}
-                  className="w-full"
-                />
-              </div>
+              {/* TAB: Line Items */}
+              {modalTab === 'lines' && (
+                <div className="space-y-4">
+                  <div className="flex items-center justify-between">
+                    <h3 className="text-xs font-bold text-[var(--color-text-strong)] uppercase tracking-wider">Line Items & GL Distributions</h3>
+                    <button type="button" onClick={() => setBillLines([...billLines, { description: '', quantity: 1, unitPrice: 0, accountId: '', destination: 'Expense', taxAmount: 0 }])} className="h-8 px-3 rounded-lg border border-amber-500 text-amber-600 text-xs font-semibold hover:bg-amber-500/10 flex items-center gap-1">
+                      <Plus className="w-3 h-3" /> Add Line
+                    </button>
+                  </div>
 
-              <div>
-                <label className="block text-xs font-semibold text-[var(--color-text-strong)] mb-1.5">
-                  <span className="text-rose-500 font-bold mr-1">*</span> Due Date
-                </label>
-                <input
-                  type="date"
-                  required
-                  value={billForm.dueDate}
-                  onChange={e => setBillForm({ ...billForm, dueDate: e.target.value })}
-                  className="w-full"
-                />
-              </div>
+                  <div className="rounded-xl border border-[var(--color-border)] overflow-hidden">
+                    <table className="w-full text-xs">
+                      <thead className="bg-[var(--color-surface-muted)] border-b border-[var(--color-border)]">
+                        <tr>
+                          <th className="p-2.5 text-left text-[10px] font-bold uppercase tracking-wider text-[var(--color-text-muted)]">Description</th>
+                          {entryMode === 'direct' && <th className="p-2.5 text-left text-[10px] font-bold uppercase tracking-wider text-[var(--color-text-muted)]">GL Account</th>}
+                          <th className="p-2.5 text-center text-[10px] font-bold uppercase tracking-wider text-[var(--color-text-muted)] w-16">Qty</th>
+                          <th className="p-2.5 text-center text-[10px] font-bold uppercase tracking-wider text-[var(--color-text-muted)] w-24">Unit Price</th>
+                          <th className="p-2.5 text-center text-[10px] font-bold uppercase tracking-wider text-[var(--color-text-muted)] w-24">Tax</th>
+                          <th className="p-2.5 text-right text-[10px] font-bold uppercase tracking-wider text-[var(--color-text-muted)] w-28">Amount</th>
+                          <th className="p-2.5 w-8"></th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-[var(--color-border)]">
+                        {billLines.map((l: any, i: number) => {
+                          const qty = parseFloat(String(l.quantity) || '0') || 0;
+                          const price = parseFloat(String(l.unitPrice) || '0') || 0;
+                          const tax = parseFloat(String(l.taxAmount) || '0') || 0;
+                          const lineTotal = qty * price + tax;
+                          return (
+                            <tr key={i} className="hover:bg-[var(--color-surface-muted)]/30">
+                              <td className="p-2"><input value={l.description} onChange={e => { const u = [...billLines]; u[i].description = e.target.value; setBillLines(u); }} placeholder="Item description" className="w-full px-2 py-1.5 rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] text-xs outline-none" /></td>
+                              {entryMode === 'direct' && (
+                                <td className="p-2">
+                                  <select value={l.accountId} onChange={e => { const u = [...billLines]; u[i].accountId = e.target.value; setBillLines(u); }} className="w-full px-2 py-1.5 rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] text-[10px] outline-none">
+                                    <option value="">Select GL</option>
+                                    {accounts.map(a => <option key={a.id} value={a.id}>{a.code} - {a.name}</option>)}
+                                  </select>
+                                </td>
+                              )}
+                              <td className="p-2"><input type="number" value={l.quantity} onChange={e => { const u = [...billLines]; u[i].quantity = e.target.value; setBillLines(u); }} className="w-full px-2 py-1.5 rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] text-xs text-center font-mono outline-none" /></td>
+                              <td className="p-2"><input type="number" step="0.01" value={l.unitPrice} onChange={e => { const u = [...billLines]; u[i].unitPrice = e.target.value; setBillLines(u); }} className="w-full px-2 py-1.5 rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] text-xs text-center font-mono outline-none" /></td>
+                              <td className="p-2"><input type="number" step="0.01" value={l.taxAmount} onChange={e => { const u = [...billLines]; u[i].taxAmount = e.target.value; setBillLines(u); }} className="w-full px-2 py-1.5 rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] text-xs text-center font-mono outline-none" /></td>
+                              <td className="p-2 text-right font-mono font-bold text-[var(--color-text-strong)]">{money(lineTotal, billForm.currencyCode)}</td>
+                              <td className="p-2 text-center">{billLines.length > 1 && <button type="button" onClick={() => setBillLines(billLines.filter((_, j) => j !== i))} className="text-rose-500 hover:text-rose-700"><Trash2 className="w-3 h-3" /></button>}</td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
 
-              <div>
-                <label className="block text-xs font-semibold text-[var(--color-text-strong)] mb-1.5">
-                  Payment Terms (Days)
-                </label>
-                <input
-                  type="number"
-                  placeholder="30"
-                  value={billForm.paymentTermsDays}
-                  onChange={e => setBillForm({ ...billForm, paymentTermsDays: e.target.value })}
-                  className="w-full"
-                />
-              </div>
-
-              <div>
-                <label className="block text-xs font-semibold text-[var(--color-text-strong)] mb-1.5">
-                  Transaction Currency
-                </label>
-                <select value={billForm.currencyCode} onChange={e => setBillForm({ ...billForm, currencyCode: e.target.value })} className="w-full">
-                  {['PKR', 'USD', 'EUR', 'GBP', 'AED', 'SAR', 'CAD', 'AUD'].map(curr => (
-                    <option key={curr} value={curr}>
-                      {curr}
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              <div style={{ gridColumn: '1 / -1' }}>
-                <label className="block text-xs font-semibold text-[var(--color-text-strong)] mb-1.5">
-                  Payment Notes / Internal References
-                </label>
-                <input
-                  placeholder="Payment instructions, bank wire info, or reference tags"
-                  value={billForm.notes}
-                  onChange={e => setBillForm({ ...billForm, notes: e.target.value })}
-                  className="w-full"
-                />
-              </div>
-
-              {/* Line Items Section */}
-              <div style={{ gridColumn: '1 / -1', marginTop: 15 }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
-                  <strong style={{ fontSize: 13, textTransform: 'uppercase', color: '#475569', letterSpacing: '0.05em' }}>Billed Line Items & GL Account Distributions</strong>
-                </div>
-
-                {/* Column Headers */}
-                <div style={{ display: 'flex', gap: 8, alignItems: 'center', padding: '6px 10px', marginBottom: 4 }}>
-                  <span style={{ flex: 1, fontSize: 11, fontWeight: 700, textTransform: 'uppercase', color: '#94a3b8', letterSpacing: '0.05em' }}>Description</span>
-                  {entryMode === 'direct' && (
-                    <span style={{ flex: 1, fontSize: 11, fontWeight: 700, textTransform: 'uppercase', color: '#94a3b8', letterSpacing: '0.05em' }}>GL Account</span>
-                  )}
-                  <span style={{ width: 70, fontSize: 11, fontWeight: 700, textTransform: 'uppercase', color: '#94a3b8', letterSpacing: '0.05em', textAlign: 'center' }}>Qty</span>
-                  <span style={{ width: 100, fontSize: 11, fontWeight: 700, textTransform: 'uppercase', color: '#94a3b8', letterSpacing: '0.05em', textAlign: 'center' }}>Unit Price</span>
-                  <span style={{ width: 90, fontSize: 11, fontWeight: 700, textTransform: 'uppercase', color: '#94a3b8', letterSpacing: '0.05em', textAlign: 'center' }}>Tax</span>
-                  <span style={{ width: 100, fontSize: 11, fontWeight: 700, textTransform: 'uppercase', color: '#94a3b8', letterSpacing: '0.05em', textAlign: 'right' }}>Amount</span>
-                  <span style={{ width: 24 }}></span>
-                </div>
-
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                  {billLines.map((l, i) => {
-                    const lineSubtotal = (parseFloat(l.quantity) || 0) * (parseFloat(l.unitPrice) || 0);
-                    const lineTax = parseFloat(l.taxAmount) || 0;
-                    const lineTotal = lineSubtotal + lineTax;
-                    return (
-                      <div key={i} style={{ display: 'flex', gap: 8, alignItems: 'center', background: '#f8fafc', padding: 8, borderRadius: 8, border: '1px solid #e2e8f0' }}>
-                        <input
-                          style={{ flex: 1 }}
-                          placeholder="Item description"
-                          value={l.description}
-                          onChange={e => {
-                            const u = [...billLines];
-                            u[i].description = e.target.value;
-                            setBillLines(u);
-                          }}
-                        />
-                        {entryMode === 'direct' && (
-                          <select
-                            style={{ flex: 1 }}
-                            value={l.accountId}
-                            onChange={e => {
-                              const u = [...billLines];
-                              u[i].accountId = e.target.value;
-                              setBillLines(u);
-                            }}
-                          >
-                            <option value="">-- Select GL Account --</option>
-                            {accounts.map(a => (
-                              <option key={a.id} value={a.id}>
-                                {a.code} - {a.name} ({a.type})
-                              </option>
-                            ))}
-                          </select>
-                        )}
-                        <input
-                          style={{ width: 70, textAlign: 'center' }}
-                          type="number"
-                          placeholder="Qty"
-                          value={l.quantity}
-                          onChange={e => {
-                            const u = [...billLines];
-                            u[i].quantity = e.target.value;
-                            setBillLines(u);
-                          }}
-                        />
-                        <input
-                          style={{ width: 100, textAlign: 'center' }}
-                          type="number"
-                          placeholder="Unit Price"
-                          value={l.unitPrice}
-                          onChange={e => {
-                            const u = [...billLines];
-                            u[i].unitPrice = e.target.value;
-                            setBillLines(u);
-                          }}
-                        />
-                        <input
-                          style={{ width: 90, textAlign: 'center' }}
-                          type="number"
-                          step="0.01"
-                          placeholder="Tax Amt"
-                          value={l.taxAmount}
-                          onChange={e => {
-                            const u = [...billLines];
-                            u[i].taxAmount = e.target.value;
-                            setBillLines(u);
-                          }}
-                        />
-                        <span style={{ width: 100, textAlign: 'right', fontWeight: 700, fontSize: 13, color: '#0f172a', fontFamily: 'monospace' }}>
-                          {money(lineTotal, billForm.currencyCode)}
-                        </span>
-                        <button
-                          type="button"
-                          style={{ color: 'var(--color-danger)', background: 'none', border: 'none', cursor: 'pointer', fontWeight: 'bold', fontSize: 16, width: 24 }}
-                          onClick={() => setBillLines(billLines.filter((_, idx) => idx !== i))}
-                        >
-                          ×
-                        </button>
-                      </div>
-                    );
-                  })}
-                </div>
-
-                <div style={{ display: 'flex', justifyContent: 'flex-start', marginTop: 10 }}>
-                  <button type="button" className="btn-secondary" style={{ fontSize: 12, padding: '4px 10px' }} onClick={() => setBillLines([...billLines, { description: '', quantity: 1, unitPrice: 0, accountId: '', destination: 'Expense', taxAmount: 0 }])}>
-                    + Add Line Item
-                  </button>
-                </div>
-
-                {/* Bill Totals Summary */}
-                {billLines.length > 0 && (() => {
-                  const subtotal = billLines.reduce((sum, l) => sum + ((parseFloat(l.quantity) || 0) * (parseFloat(l.unitPrice) || 0)), 0);
-                  const taxTotal = billLines.reduce((sum, l) => sum + (parseFloat(l.taxAmount) || 0), 0);
-                  const grandTotal = subtotal + taxTotal;
-                  return (
-                    <div style={{ marginTop: 12, padding: '12px 16px', background: '#f1f5f9', borderRadius: 10, border: '1px solid #e2e8f0' }}>
-                      <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 40 }}>
-                        <div style={{ textAlign: 'right' }}>
-                          <span style={{ fontSize: 11, textTransform: 'uppercase', color: '#64748b', fontWeight: 600, letterSpacing: '0.05em' }}>Subtotal</span>
-                          <p style={{ fontSize: 14, fontWeight: 700, color: '#334155', fontFamily: 'monospace', margin: '2px 0 0' }}>{money(subtotal, billForm.currencyCode)}</p>
-                        </div>
-                        <div style={{ textAlign: 'right' }}>
-                          <span style={{ fontSize: 11, textTransform: 'uppercase', color: '#dc2626', fontWeight: 600, letterSpacing: '0.05em' }}>Tax (VAT/GST/Sales Tax)</span>
-                          <p style={{ fontSize: 14, fontWeight: 700, color: '#dc2626', fontFamily: 'monospace', margin: '2px 0 0' }}>{money(taxTotal, billForm.currencyCode)}</p>
-                        </div>
-                        <div style={{ textAlign: 'right', borderLeft: '2px solid #cbd5e1', paddingLeft: 20 }}>
-                          <span style={{ fontSize: 11, textTransform: 'uppercase', color: '#047857', fontWeight: 700, letterSpacing: '0.05em' }}>Grand Total</span>
-                          <p style={{ fontSize: 18, fontWeight: 800, color: '#047857', fontFamily: 'monospace', margin: '2px 0 0' }}>{money(grandTotal, billForm.currencyCode)}</p>
-                        </div>
-                      </div>
+                  {/* Totals */}
+                  {billLines.length > 0 && (
+                    <div className="p-4 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface-muted)]/50 space-y-2">
+                      <div className="flex justify-between text-xs"><span className="text-[var(--color-text-muted)]">Subtotal</span><span className="font-mono font-bold text-[var(--color-text-strong)]">{money(billSubtotal, billForm.currencyCode)}</span></div>
+                      <div className="flex justify-between text-xs"><span className="text-rose-500 font-semibold">Tax</span><span className="font-mono font-bold text-rose-600">{money(billTax, billForm.currencyCode)}</span></div>
+                      <div className="flex justify-between text-sm pt-2 border-t border-[var(--color-border)]"><span className="font-bold text-[var(--color-text-strong)]">Grand Total</span><span className="font-mono font-bold text-emerald-600 dark:text-emerald-400 text-lg">{money(billTotal, billForm.currencyCode)}</span></div>
                     </div>
-                  );
-                })()}
-              </div>
+                  )}
+                </div>
+              )}
+
+              {/* TAB: Preview */}
+              {modalTab === 'preview' && (
+                <div className="space-y-5">
+                  <div className={`p-5 rounded-xl border ${entryMode === 'direct' ? 'bg-blue-500/5 border-blue-500/20' : 'bg-amber-500/5 border-amber-500/20'}`}>
+                    <div className="flex items-center justify-between mb-3">
+                      <div>
+                        <p className="text-[10px] font-bold uppercase tracking-wider text-[var(--color-text-muted)]">{entryMode === 'direct' ? 'Direct Bill' : 'PO Linked Bill'}</p>
+                        <p className="text-lg font-bold font-mono text-[var(--color-text-strong)] mt-1">{billForm.billNumber}</p>
+                      </div>
+                      <span className={`w-12 h-12 rounded-xl bg-gradient-to-br ${entryMode === 'direct' ? 'from-blue-500 to-indigo-600' : 'from-amber-500 to-orange-600'} flex items-center justify-center text-white shadow-lg`}>
+                        {entryMode === 'direct' ? <CreditCard className="w-6 h-6" /> : <Truck className="w-6 h-6" />}
+                      </span>
+                    </div>
+                    <div className="grid grid-cols-2 gap-3 text-xs">
+                      <div><span className="text-[var(--color-text-muted)]">Vendor</span><p className="font-bold text-[var(--color-text-strong)]">{vendors.find(v => v.id === billForm.vendorId)?.name || 'Not selected'}</p></div>
+                      <div><span className="text-[var(--color-text-muted)]">Supplier Invoice</span><p className="font-bold font-mono text-[var(--color-text-strong)]">{billForm.vendorInvoiceNumber || 'Not entered'}</p></div>
+                      <div><span className="text-[var(--color-text-muted)]">Bill Date</span><p className="font-bold text-[var(--color-text-strong)]">{billForm.date}</p></div>
+                      <div><span className="text-[var(--color-text-muted)]">Due Date</span><p className="font-bold text-[var(--color-text-strong)]">{billForm.dueDate}</p></div>
+                    </div>
+                  </div>
+
+                  <div className="rounded-xl border border-[var(--color-border)] overflow-hidden">
+                    <table className="w-full text-xs">
+                      <thead className="bg-[var(--color-surface-muted)] border-b border-[var(--color-border)]">
+                        <tr>
+                          <th className="p-2.5 text-left">#</th>
+                          <th className="p-2.5 text-left">Description</th>
+                          <th className="p-2.5 text-center">Qty</th>
+                          <th className="p-2.5 text-center">Price</th>
+                          <th className="p-2.5 text-center">Tax</th>
+                          <th className="p-2.5 text-right">Total</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-[var(--color-border)]">
+                        {billLines.map((l: any, i: number) => {
+                          const qty = parseFloat(String(l.quantity) || '0') || 0;
+                          const price = parseFloat(String(l.unitPrice) || '0') || 0;
+                          const tax = parseFloat(String(l.taxAmount) || '0') || 0;
+                          return (
+                            <tr key={i}>
+                              <td className="p-2.5 text-[var(--color-text-muted)]">{i + 1}</td>
+                              <td className="p-2.5 font-medium text-[var(--color-text-strong)]">{l.description || '-'}</td>
+                              <td className="p-2.5 text-center font-mono">{qty}</td>
+                              <td className="p-2.5 text-center font-mono">{money(price, billForm.currencyCode)}</td>
+                              <td className="p-2.5 text-center font-mono">{money(tax, billForm.currencyCode)}</td>
+                              <td className="p-2.5 text-right font-mono font-bold">{money(qty * price + tax, billForm.currencyCode)}</td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
+
+                  <div className="p-4 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface-muted)]/50 space-y-2">
+                    <div className="flex justify-between text-xs"><span className="text-[var(--color-text-muted)]">Subtotal</span><span className="font-mono font-bold">{money(billSubtotal, billForm.currencyCode)}</span></div>
+                    <div className="flex justify-between text-xs"><span className="text-rose-500 font-semibold">Tax</span><span className="font-mono font-bold text-rose-600">{money(billTax, billForm.currencyCode)}</span></div>
+                    <div className="flex justify-between text-sm pt-2 border-t border-[var(--color-border)]"><span className="font-bold">Grand Total</span><span className="font-mono font-bold text-emerald-600 text-lg">{money(billTotal, billForm.currencyCode)}</span></div>
+                  </div>
+
+                  <div className="p-4 rounded-xl bg-[var(--color-surface-muted)]/30 border border-[var(--color-border)]">
+                    <p className="text-xs font-bold text-[var(--color-text-strong)] mb-1">Notes</p>
+                    <p className="text-xs text-[var(--color-text-muted)]">{billForm.notes || 'No notes added.'}</p>
+                  </div>
+                </div>
+              )}
             </div>
 
-            <div className="modal-footer">
-              <button type="button" className="secondary btn-cancel" onClick={() => setShowBillModal(false)}>
-                Cancel
-              </button>
-              <button type="button" className="secondary btn-draft" onClick={(e) => { e.preventDefault(); alert("��� Draft saved locally"); }}>Save Draft</button>
-              <button type="submit" className="primary btn-finalize">
-                {entryMode === 'direct' ? 'Post Direct Accounts Payable Liability' : 'Save Vendor Bill & Validate Match'}
-              </button>
+            {/* Footer */}
+            <div className="px-6 py-4 border-t border-[var(--color-border)] flex items-center justify-between">
+              <div className="text-[11px] text-[var(--color-text-muted)] flex items-center gap-1.5"><span className="w-1.5 h-1.5 rounded-full bg-amber-500" />{modalTab === 'preview' ? 'Ready to post' : 'Draft auto-saved'}</div>
+              <div className="flex items-center gap-2">
+                <button type="button" onClick={() => setShowBillModal(false)} className="h-9 px-4 rounded-xl border border-[var(--color-border)] text-xs font-medium hover:bg-[var(--color-surface-muted)] transition-colors">Cancel</button>
+                {modalTab !== 'preview' && (
+                  <button type="button" onClick={() => { if (modalTab === 'details') { if (!billForm.vendorId) { notify('Select vendor.'); return; } setModalTab('lines'); } else { setModalTab('preview'); } }} className="h-9 px-5 rounded-xl bg-gradient-to-r from-amber-500 to-orange-600 text-white text-xs font-semibold shadow-lg shadow-amber-500/25 flex items-center gap-1.5">
+                    {modalTab === 'details' ? 'Next: Line Items' : 'Preview'} <ArrowRight className="w-3 h-3" />
+                  </button>
+                )}
+                {modalTab === 'preview' && (
+                  <button type="button" onClick={saveBill} className="h-9 px-6 rounded-xl bg-gradient-to-r from-emerald-600 to-green-600 text-white text-xs font-bold shadow-lg shadow-emerald-500/25 flex items-center gap-1.5">
+                    <CheckCircle className="w-3.5 h-3.5" /> {entryMode === 'direct' ? 'Post Direct AP Liability' : 'Save & Validate Match'}
+                  </button>
+                )}
+              </div>
             </div>
-          </form>
+          </div>
         </div>
       )}
 
-      {/* Modal: Inspect 3-Way Match */}
+      {/* 3-Way Match Modal */}
       {matchModal && (
-        <div className="overlay">
-          <div className="modal" style={{ maxWidth: 500 }}>
-            <div className="modal-head">
-              <div>
-                <p className="eyebrow">AUDIT & COMPLIANCE</p>
-                <h2>3-Way Match Audit Inspection</h2>
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm" onClick={() => setMatchModal(null)}>
+          <div className="w-full max-w-md bg-[var(--color-surface)] border border-[var(--color-border)] rounded-2xl shadow-2xl overflow-hidden" onClick={e => e.stopPropagation()}>
+            <div className="px-6 py-4 border-b border-[var(--color-border)] flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className={`w-10 h-10 rounded-xl bg-gradient-to-br ${matchModal.isMatched ? 'from-emerald-500 to-green-600' : 'from-rose-500 to-red-600'} flex items-center justify-center text-white shadow-sm`}>
+                  {matchModal.isMatched ? <CheckCircle className="w-5 h-5" /> : <X className="w-5 h-5" />}
+                </div>
+                <div>
+                  <h2 className="text-sm font-bold text-[var(--color-text-strong)]">3-Way Match Audit</h2>
+                  <p className="text-xs text-[var(--color-text-muted)]">PO #{matchModal.purchaseOrderNumber}</p>
+                </div>
               </div>
-              <button type="button" className="close" onClick={() => setMatchModal(null)}>
-                ×
-              </button>
+              <button onClick={() => setMatchModal(null)} className="w-8 h-8 rounded-lg flex items-center justify-center text-[var(--color-text-muted)] hover:bg-[var(--color-surface-muted)] transition-colors"><X className="w-4 h-4" /></button>
             </div>
-            <div className={`p-4 rounded-xl border ${matchModal.isMatched ? 'bg-emerald-50 border-emerald-200' : 'bg-red-50 border-red-200'}`}>
-              <div className="flex justify-between items-center mb-2">
-                <span className="font-bold text-sm">PO #{matchModal.purchaseOrderNumber}</span>
-                <span className={`px-3 py-1 rounded-full text-xs font-bold ${matchModal.isMatched ? 'bg-emerald-600 text-white' : 'bg-red-600 text-white'}`}>{matchModal.status}</span>
-              </div>
-              <p className="text-xs font-medium text-gray-700">{matchModal.details}</p>
-              <div className="grid grid-cols-3 gap-2 mt-3 pt-3 border-t text-xs">
-                <div><span className="text-gray-500">Ordered:</span> <p className="font-bold">{money(matchModal.orderedAmount)}</p></div>
-                <div><span className="text-gray-500">Received:</span> <p className="font-bold">{money(matchModal.receivedAmount)}</p></div>
-                <div><span className="text-gray-500">Billed:</span> <p className="font-bold">{money(matchModal.billedAmount)}</p></div>
+            <div className="p-6">
+              <div className={`p-4 rounded-xl border ${matchModal.isMatched ? 'bg-emerald-500/5 border-emerald-500/20' : 'bg-rose-500/5 border-rose-500/20'}`}>
+                <div className="flex items-center justify-between mb-2">
+                  <span className="text-sm font-bold text-[var(--color-text-strong)]">{matchModal.status}</span>
+                </div>
+                <p className="text-xs text-[var(--color-text-muted)]">{matchModal.details}</p>
+                <div className="grid grid-cols-3 gap-3 mt-4 pt-3 border-t border-[var(--color-border)] text-xs">
+                  <div><span className="text-[var(--color-text-muted)]">Ordered</span><p className="font-bold font-mono text-[var(--color-text-strong)]">{money(matchModal.orderedAmount)}</p></div>
+                  <div><span className="text-[var(--color-text-muted)]">Received</span><p className="font-bold font-mono text-[var(--color-text-strong)]">{money(matchModal.receivedAmount)}</p></div>
+                  <div><span className="text-[var(--color-text-muted)]">Billed</span><p className="font-bold font-mono text-[var(--color-text-strong)]">{money(matchModal.billedAmount)}</p></div>
+                </div>
               </div>
             </div>
-            <div className="modal-footer">
-              <button type="button" className="secondary" onClick={() => setMatchModal(null)}>
-                Close
-              </button>
+            <div className="px-6 py-4 border-t border-[var(--color-border)] flex justify-end">
+              <button onClick={() => setMatchModal(null)} className="h-9 px-4 rounded-xl border border-[var(--color-border)] text-xs font-medium hover:bg-[var(--color-surface-muted)] transition-colors">Close</button>
             </div>
           </div>
         </div>

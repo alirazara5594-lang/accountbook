@@ -21,6 +21,7 @@ import {
   Clock
 } from 'lucide-react';
 import { DataToolbar } from '@/components/ui/data-toolbar';
+import { KpiCard, KpiGrid } from '@/components/ui/kpi-card';
 import { getActiveCurrency } from '@/lib/currency';
 import type { Entity } from './EntitySettings';
 
@@ -372,121 +373,85 @@ const formatted = new Intl.NumberFormat('en-US', { style: 'currency', currency: 
 
   return (
     <div className="space-y-4 font-sans text-slate-800 p-2 md:p-6">
-      {/* Top Header & Quick Actions */}
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-3 bg-white p-3 rounded-xl border border-gray-200 shadow-sm">
-        <div>
-          <h1 className="text-base font-bold text-slate-900 tracking-tight flex items-center gap-2">
-            <Building2 className="w-4 h-4 text-emerald-600" /> Banking & Payments
-          </h1>
-          <p className="text-[10px] text-slate-500 mt-0.5">
-            Manage bank accounts, cash registers, live bank feeds, statement imports, vendor payments & customer receipts for {currentEntity?.name || 'Active Entity'}.
-          </p>
-        </div>
+      {/* Page Header — AMS Signature Hero Band */}
+      <div className="relative overflow-hidden rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)] shadow-sm">
+        <div className="absolute inset-0 bg-gradient-to-r from-blue-500/10 via-blue-500/[0.03] to-transparent pointer-events-none" />
+        <div className="absolute -right-10 -top-16 w-56 h-56 rounded-full bg-blue-500/10 blur-3xl pointer-events-none" />
+        <div className="relative flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 px-5 py-4">
+          <div className="flex items-center gap-4">
+            <div className="relative h-14 w-14 shrink-0">
+              <div className="absolute inset-[6px] rotate-45 rounded-[12px] shadow-xl bg-gradient-to-br from-blue-500 to-indigo-700" />
+              <div className="absolute inset-0 flex items-center justify-center"><Building2 className="w-6 h-6 text-white" /></div>
+            </div>
+            <div>
+              <div className="flex items-center gap-2.5">
+                <h1 className="text-2xl font-black tracking-tight text-[var(--color-text-strong)]">Banking &amp; Payments</h1>
+                <span className="hidden sm:inline-flex items-center gap-1.5 rounded-full border border-blue-500/25 bg-blue-500/10 px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider text-blue-600 dark:text-blue-400"><span className="h-1.5 w-1.5 rounded-full bg-blue-500 animate-pulse" /> Live Ledger</span>
+              </div>
+              <p className="text-xs text-[var(--color-text-muted)] mt-0.5">
+                Manage bank accounts, cash registers, live bank feeds, statement imports, vendor payments &amp; customer receipts for {currentEntity?.name || 'Active Entity'}.
+              </p>
+            </div>
+          </div>
 
-        <div className="flex flex-wrap items-center gap-2">
-          <DataToolbar
-            exportFileName="bank-accounts"
-            exportSheetName="Bank Accounts"
-            exportTitle="Banking & Payments Workspace"
-            exportSubtitle={`Bank accounts, cash registers and transactions for ${currentEntity?.name || 'Active Entity'}.`}
-            exportHeaders={exportHeaders}
-            exportRows={exportRows}
-            exportTotals={[{ label: 'Total Balance', value: totalBalance }]}
-            onRefresh={() => setQuery('')}
-          />
-          <DataToolbar
-            exportFileName="bank-transactions"
-            exportSheetName="Bank Transactions"
-            exportTitle="Bank Transactions"
-            exportSubtitle={`All payment transactions across accounts.`}
-            exportHeaders={exportTxHeaders}
-            exportRows={exportTxRows}
-          />
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => setIsConnectBankModalOpen(true)}
-            className="h-9 gap-1.5 text-xs font-semibold text-slate-700 bg-white border-slate-200 hover:bg-slate-50 shadow-xs"
-          >
-            <Link2 className="w-4 h-4 text-indigo-600" />
-            Connect Live Bank Feed
-          </Button>
+          <div className="flex flex-wrap items-center gap-2 shrink-0">
+            <DataToolbar
+              exportFileName="bank-accounts"
+              exportSheetName="Bank Accounts"
+              exportTitle="Banking & Payments Workspace"
+              exportSubtitle={`Bank accounts, cash registers and transactions for ${currentEntity?.name || 'Active Entity'}.`}
+              exportHeaders={exportHeaders}
+              exportRows={exportRows}
+              exportTotals={[{ label: 'Total Balance', value: totalBalance }]}
+              onRefresh={() => setQuery('')}
+            />
+            <DataToolbar
+              exportFileName="bank-transactions"
+              exportSheetName="Bank Transactions"
+              exportTitle="Bank Transactions"
+              exportSubtitle={`All payment transactions across accounts.`}
+              exportHeaders={exportTxHeaders}
+              exportRows={exportTxRows}
+            />
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setIsConnectBankModalOpen(true)}
+              className="h-9 gap-1.5 text-xs font-semibold text-slate-700 bg-white border-slate-200 hover:bg-slate-50 shadow-xs"
+            >
+              <Link2 className="w-4 h-4 text-indigo-600" />
+              Connect Live Bank Feed
+            </Button>
 
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => setIsTransferModalOpen(true)}
-            className="h-9 gap-1.5 text-xs font-semibold text-slate-700 bg-white border-slate-200 hover:bg-slate-50 shadow-xs"
-          >
-            <ArrowLeftRight className="w-4 h-4 text-emerald-600" />
-            Fund Transfer
-          </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setIsTransferModalOpen(true)}
+              className="h-9 gap-1.5 text-xs font-semibold text-slate-700 bg-white border-slate-200 hover:bg-slate-50 shadow-xs"
+            >
+              <ArrowLeftRight className="w-4 h-4 text-emerald-600" />
+              Fund Transfer
+            </Button>
 
-          <Button
-            size="sm"
-            onClick={() => setIsNewPaymentModalOpen(true)}
-            className="h-9 gap-1.5 text-xs font-semibold text-white bg-[#143e2b] hover:bg-[#0f3222] shadow-xs"
-          >
-            <Plus className="w-4 h-4" />
-            New Payment / Receipt
-          </Button>
+            <Button
+              size="sm"
+              onClick={() => setIsNewPaymentModalOpen(true)}
+              className="h-9 gap-1.5 text-xs font-semibold text-white bg-[#143e2b] hover:bg-[#0f3222] shadow-xs"
+            >
+              <Plus className="w-4 h-4" />
+              New Payment / Receipt
+            </Button>
+          </div>
         </div>
       </div>
 
       {/* KPI Summary Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3">
-        <Card className="bg-white border-slate-200 shadow-xs">
-          <CardContent className="p-3 flex items-center gap-2.5">
-            <div className="p-2 bg-emerald-50 rounded-lg text-emerald-600 border border-emerald-100">
-              <Wallet className="w-4 h-4" />
-            </div>
-            <div className="min-w-0">
-              <p className="text-[10px] font-semibold uppercase tracking-wider text-slate-500">Total Liquid Reserves</p>
-              <h3 className="text-base font-bold text-slate-900">PKR 6,475,000</h3>
-              <p className="text-[10px] text-emerald-600 font-medium">Across 4 active accounts</p>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card className="bg-white border-slate-200 shadow-xs">
-          <CardContent className="p-3 flex items-center gap-2.5">
-            <div className="p-2 bg-indigo-50 rounded-lg text-indigo-600 border border-indigo-100">
-              <Zap className="w-4 h-4" />
-            </div>
-            <div className="min-w-0">
-              <p className="text-[10px] font-semibold uppercase tracking-wider text-slate-500">Live Bank Connections</p>
-              <h3 className="text-base font-bold text-slate-900">2 Accounts Active</h3>
-              <p className="text-[10px] text-indigo-600 font-medium">HBL & Standard Chartered feeds</p>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card className="bg-white border-slate-200 shadow-xs">
-          <CardContent className="p-3 flex items-center gap-2.5">
-            <div className="p-2 bg-amber-50 rounded-lg text-amber-600 border border-amber-100">
-              <Clock className="w-4 h-4" />
-            </div>
-            <div className="min-w-0">
-              <p className="text-[10px] font-semibold uppercase tracking-wider text-slate-500">Pending Reconciliation</p>
-              <h3 className="text-base font-bold text-slate-900">1 Bank Account</h3>
-              <p className="text-[10px] text-amber-600 font-medium">Meezan Bank needs review</p>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card className="bg-white border-slate-200 shadow-xs">
-          <CardContent className="p-3 flex items-center gap-2.5">
-            <div className="p-2 bg-blue-50 rounded-lg text-blue-600 border border-blue-100">
-              <DollarSign className="w-4 h-4" />
-            </div>
-            <div className="min-w-0">
-              <p className="text-[10px] font-semibold uppercase tracking-wider text-slate-500">Foreign Currency Reserves</p>
-              <h3 className="text-base font-bold text-slate-900">{formatMoney(bankAccounts.filter(a => a.currency === 'USD').reduce((s, a) => s + a.balance, 0), 'USD')} USD</h3>
-              <p className="text-[10px] text-blue-600 font-medium">Global SCB USD Account</p>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
+      <KpiGrid cols={4}>
+        <KpiCard icon={Wallet} label="Total Liquid Reserves" value="PKR 6,475,000" desc="Across 4 active accounts" tone="emerald" />
+        <KpiCard icon={Zap} label="Live Bank Connections" value="2 Accounts Active" desc="HBL & Standard Chartered feeds" tone="indigo" />
+        <KpiCard icon={Clock} label="Pending Reconciliation" value="1 Bank Account" desc="Meezan Bank needs review" tone="amber" />
+        <KpiCard icon={DollarSign} label="Foreign Currency Reserves" value={`${formatMoney(bankAccounts.filter(a => a.currency === 'USD').reduce((s, a) => s + a.balance, 0), 'USD')} USD`} desc="Global SCB USD Account" tone="blue" />
+      </KpiGrid>
 
       {/* Banking Sidebar Menu / Tabs Navigation matching selected option 3 */}
       <Tabs value={activeTab} onValueChange={(val: string) => setActiveTab(val)} className="w-full space-y-4">
@@ -546,7 +511,7 @@ const formatted = new Intl.NumberFormat('en-US', { style: 'currency', currency: 
 
           <div className="bg-white border border-slate-200 rounded-xl overflow-hidden shadow-xs">
             <Table>
-              <TableHeader className="bg-slate-50 border-b border-slate-200">
+              <TableHeader className="bg-blue-500/[0.05] dark:bg-blue-400/[0.07] border-b border-slate-200">
                 <TableRow>
                   <TableHead className="text-[11px] font-bold text-slate-500 uppercase tracking-wider pl-4">GL CODE</TableHead>
                   <TableHead className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">ACCOUNT NAME</TableHead>
@@ -609,7 +574,7 @@ const formatted = new Intl.NumberFormat('en-US', { style: 'currency', currency: 
             </CardHeader>
             <CardContent className="pt-4">
               <Table>
-                <TableHeader className="bg-slate-50">
+                <TableHeader className="bg-blue-500/[0.05] dark:bg-blue-400/[0.07]">
                   <TableRow>
                     <TableHead className="text-[11px] font-bold text-slate-500 uppercase tracking-wider pl-4">CODE</TableHead>
                     <TableHead className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">CASH REGISTER NAME</TableHead>
@@ -737,7 +702,7 @@ const formatted = new Intl.NumberFormat('en-US', { style: 'currency', currency: 
             </CardHeader>
             <CardContent className="pt-4">
               <Table>
-                <TableHeader className="bg-slate-50">
+                <TableHeader className="bg-blue-500/[0.05] dark:bg-blue-400/[0.07]">
                   <TableRow>
                     <TableHead className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">DATE</TableHead>
                     <TableHead className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">REFERENCE</TableHead>
@@ -857,7 +822,7 @@ const formatted = new Intl.NumberFormat('en-US', { style: 'currency', currency: 
             </CardHeader>
             <CardContent className="pt-4">
               <Table>
-                <TableHeader className="bg-slate-50">
+                <TableHeader className="bg-blue-500/[0.05] dark:bg-blue-400/[0.07]">
                   <TableRow>
                     <TableHead className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">DATE</TableHead>
                     <TableHead className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">REFERENCE</TableHead>
@@ -911,7 +876,7 @@ const formatted = new Intl.NumberFormat('en-US', { style: 'currency', currency: 
             </CardHeader>
             <CardContent className="pt-4">
               <Table>
-                <TableHeader className="bg-slate-50">
+                <TableHeader className="bg-blue-500/[0.05] dark:bg-blue-400/[0.07]">
                   <TableRow>
                     <TableHead className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">DATE</TableHead>
                     <TableHead className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">REFERENCE</TableHead>
@@ -962,7 +927,7 @@ const formatted = new Intl.NumberFormat('en-US', { style: 'currency', currency: 
             </CardHeader>
             <CardContent className="pt-4">
               <Table>
-                <TableHeader className="bg-slate-50">
+                <TableHeader className="bg-blue-500/[0.05] dark:bg-blue-400/[0.07]">
                   <TableRow>
                     <TableHead className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">DATE</TableHead>
                     <TableHead className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">REFERENCE</TableHead>
@@ -1005,7 +970,7 @@ const formatted = new Intl.NumberFormat('en-US', { style: 'currency', currency: 
             <CardContent className="space-y-4">
               <div className="border border-slate-200 rounded-xl overflow-hidden">
                 <Table>
-                  <TableHeader className="bg-slate-50">
+                  <TableHeader className="bg-blue-500/[0.05] dark:bg-blue-400/[0.07]">
                     <TableRow>
                       <TableHead className="font-bold text-xs">CASH ACTIVITY LINE ITEM</TableHead>
                       <TableHead className="text-right font-bold text-xs">AMOUNT (PKR)</TableHead>

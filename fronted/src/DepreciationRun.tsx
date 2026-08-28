@@ -4,6 +4,7 @@ import { useAssetsInventoryStore } from './stores'
 import type { DepreciationRunResult } from './api/modules/assetsInventory.api'
 
 import { money } from './lib/currency';
+import { StatusChip } from './components/ui/status-chip';
 
 export default function DepreciationRun({ activeEntityId }: { activeEntityId: string }) {
   const assets = useAssetsInventoryStore((s) => s.fixedAssets as any[])
@@ -54,13 +55,24 @@ export default function DepreciationRun({ activeEntityId }: { activeEntityId: st
 
   return (
     <div className="space-y-4">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-xl font-bold text-gray-900 flex items-center gap-2">
-            <TrendingDown className="w-5 h-5 text-blue-600" /> Depreciation Run
-          </h1>
-          <p className="text-xs text-gray-500 mt-0.5">Post monthly straight-line depreciation for all active fixed assets</p>
+      {/* Page Header — AMS Signature Hero Band */}
+      <div className="relative overflow-hidden rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)] shadow-sm">
+        <div className="absolute inset-0 bg-gradient-to-r from-teal-500/10 via-teal-500/[0.03] to-transparent pointer-events-none" />
+        <div className="absolute -right-10 -top-16 w-56 h-56 rounded-full bg-teal-500/10 blur-3xl pointer-events-none" />
+        <div className="relative flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 px-5 py-4">
+          <div className="flex items-center gap-4">
+            <div className="relative h-14 w-14 shrink-0">
+              <div className="absolute inset-[6px] rotate-45 rounded-[12px] shadow-xl bg-gradient-to-br from-teal-500 to-cyan-700" />
+              <div className="absolute inset-0 flex items-center justify-center"><TrendingDown className="w-6 h-6 text-white" /></div>
+            </div>
+            <div>
+              <div className="flex items-center gap-2.5">
+                <h1 className="text-2xl font-black tracking-tight text-[var(--color-text-strong)]">Depreciation Run</h1>
+                <span className="hidden sm:inline-flex items-center gap-1.5 rounded-full border border-teal-500/25 bg-teal-500/10 px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider text-teal-600 dark:text-teal-400"><span className="h-1.5 w-1.5 rounded-full bg-teal-500 animate-pulse" /> Live Ledger</span>
+              </div>
+              <p className="text-xs text-[var(--color-text-muted)] mt-0.5">Post monthly straight-line depreciation for all active fixed assets</p>
+            </div>
+          </div>
         </div>
       </div>
 
@@ -144,7 +156,7 @@ export default function DepreciationRun({ activeEntityId }: { activeEntityId: st
             <h3 className="text-sm font-bold text-gray-900">Depreciation Results</h3>
           </div>
           <table className="w-full text-left text-sm">
-            <thead className="bg-gray-50 text-gray-500 text-xs uppercase tracking-wider">
+            <thead className="bg-teal-500/[0.05] dark:bg-teal-400/[0.07] text-gray-500 text-xs uppercase tracking-wider">
               <tr>
                 <th className="py-2.5 px-4">Asset</th>
                 <th className="py-2.5 px-4 text-right">Cost</th>
@@ -169,13 +181,9 @@ export default function DepreciationRun({ activeEntityId }: { activeEntityId: st
                   </td>
                   <td className="py-2.5 px-4 text-center">
                     {r.status === 'Posted' ? (
-                      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-700">
-                        <CheckCircle2 className="w-3 h-3" /> Posted
-                      </span>
+                      <StatusChip status="Posted" label="Posted" hex="#10b981" />
                     ) : (
-                      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-gray-100 text-gray-500">
-                        {r.status}
-                      </span>
+                      <StatusChip status={r.status} />
                     )}
                   </td>
                 </tr>
@@ -203,7 +211,7 @@ export default function DepreciationRun({ activeEntityId }: { activeEntityId: st
             <span className="text-xs text-gray-400">{activeAssets.length} assets</span>
           </div>
           <table className="w-full text-left text-sm">
-            <thead className="bg-gray-50 text-gray-500 text-xs uppercase tracking-wider">
+            <thead className="bg-teal-500/[0.05] dark:bg-teal-400/[0.07] text-gray-500 text-xs uppercase tracking-wider">
               <tr>
                 <th className="py-2.5 px-4">Asset</th>
                 <th className="py-2.5 px-4 text-right">Cost</th>

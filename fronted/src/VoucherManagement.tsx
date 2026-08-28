@@ -2,13 +2,15 @@ import React, { useState, useMemo, useEffect } from 'react';
 import {
   Layers, Search, Plus, CheckCircle2,
   FileSpreadsheet, Download, Printer, RefreshCw,
-  Send, ArrowDownLeft, Wallet, Building2, BookOpen,
-  DollarSign, Clock, X, FileText
+  Send, ArrowDownCircle, Wallet, Building2, BookOpen,
+  DollarSign, Clock, X, FileText, TrendingUp, Hash
 } from 'lucide-react';
 import type { Entity } from './EntitySettings';
 import { useVendorsStore, useCustomersStore, useVouchersStore, useBankingStore } from './stores';
 import { money } from './lib/currency';
 import { downloadExcel, downloadCSV } from './lib/exportUtils';
+import { KpiCard, KpiGrid } from './components/ui/kpi-card';
+import { EmptyState, TableSkeleton } from './components/ui/empty-state';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 
@@ -417,7 +419,7 @@ export const VoucherManagement: React.FC<VoucherManagementProps> = ({ activeEnti
     const pageHeight = doc.internal.pageSize.getHeight();
     doc.setTextColor(...grayColor);
     doc.setFontSize(7);
-    doc.text('Official Financial Voucher. Generated from AccountBook General Ledger & Voucher Module.', margin, pageHeight - 8);
+    doc.text('Official Financial Voucher. Generated from AMS General Ledger & Voucher Module.', margin, pageHeight - 8);
 
     const safeNum = (v.voucherNumber || 'Voucher').replace(/[^a-zA-Z0-9_-]/g, '_');
     doc.save(`Voucher_${v.voucherType}_${safeNum}.pdf`);
@@ -464,51 +466,62 @@ export const VoucherManagement: React.FC<VoucherManagementProps> = ({ activeEnti
 
   return (
     <div className="space-y-4 max-w-7xl mx-auto pb-10">
-      {/* Header Banner */}
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-3 bg-[var(--color-surface)] p-3.5 rounded-xl border border-[var(--color-border)] shadow-xs">
-        <div>
-          <h1 className="text-base font-bold text-[var(--color-text-strong)] tracking-tight flex items-center gap-2">
-            <Layers className="w-4 h-4 text-emerald-600" /> Voucher Management & General Ledger Journals
-          </h1>
-          <p className="text-[var(--color-text-muted)] text-xs mt-0.5">
-            Create, post, and audit Bank Payment (BPV), Bank Receipt (BRV), Cash Payment (CPV), Cash Receipt (CRV), and Journal Vouchers (JV) for {currentEntity?.name || 'Active Company'}.
-          </p>
-        </div>
+      {/* Page Header — AMS Signature Hero Band */}
+      <div className="relative overflow-hidden rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)] shadow-sm">
+        <div className="absolute inset-0 bg-gradient-to-r from-blue-500/10 via-blue-500/[0.03] to-transparent pointer-events-none" />
+        <div className="absolute -right-10 -top-16 w-56 h-56 rounded-full bg-blue-500/10 blur-3xl pointer-events-none" />
+        <div className="relative flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 px-5 py-4">
+          <div className="flex items-center gap-4">
+            <div className="relative h-14 w-14 shrink-0">
+              <div className="absolute inset-[6px] rotate-45 rounded-[12px] shadow-xl bg-gradient-to-br from-blue-500 to-teal-700" />
+              <div className="absolute inset-0 flex items-center justify-center"><Layers className="w-6 h-6 text-white" /></div>
+            </div>
+            <div>
+              <div className="flex items-center gap-2.5">
+                <h1 className="text-2xl font-black tracking-tight text-[var(--color-text-strong)]">Voucher Management &amp; General Ledger Journals</h1>
+                <span className="hidden sm:inline-flex items-center gap-1.5 rounded-full border border-blue-500/25 bg-blue-500/10 px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider text-blue-600 dark:text-blue-400"><span className="h-1.5 w-1.5 rounded-full bg-blue-500 animate-pulse" /> Live Ledger</span>
+              </div>
+              <p className="text-xs text-[var(--color-text-muted)] mt-0.5">
+                Create, post, and audit Bank Payment (BPV), Bank Receipt (BRV), Cash Payment (CPV), Cash Receipt (CRV), and Journal Vouchers (JV) for {currentEntity?.name || 'Active Company'}.
+              </p>
+            </div>
+          </div>
 
-        {/* Global Action Buttons */}
-        <div className="flex items-center gap-2 shrink-0 flex-wrap">
-          <button
-            onClick={exportVouchersExcel}
-            className="secondary h-8.5 px-3 rounded-lg text-xs font-semibold flex items-center gap-1.5 shadow-xs"
-            title="Export vouchers register to Excel"
-          >
-            <FileSpreadsheet className="w-3.5 h-3.5 text-emerald-600" /> Excel
-          </button>
-          <button
-            onClick={exportVouchersCSV}
-            className="secondary h-8.5 px-2.5 rounded-lg text-xs font-semibold"
-          >
-            CSV
-          </button>
-          <button
-            onClick={() => window.print()}
-            className="secondary h-8.5 px-2.5 rounded-lg text-xs font-semibold flex items-center gap-1"
-          >
-            <Printer className="w-3.5 h-3.5" /> Print
-          </button>
-          <button
-            onClick={loadData}
-            className="secondary h-8.5 w-8.5 rounded-lg flex items-center justify-center text-xs text-[var(--color-text)]"
-            title="Refresh vouchers"
-          >
-            <RefreshCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin' : ''}`} />
-          </button>
-          <button
-            onClick={() => openVoucherModal('BPV')}
-            className="primary h-8.5 px-3.5 rounded-lg text-xs font-semibold flex items-center gap-1.5 shadow-xs"
-          >
-            <Plus className="w-3.5 h-3.5" /> Post New Voucher
-          </button>
+          {/* Global Action Buttons */}
+          <div className="flex flex-wrap items-center gap-2 shrink-0">
+            <button
+              onClick={exportVouchersExcel}
+              className="secondary h-8.5 px-3 rounded-lg text-xs font-semibold flex items-center gap-1.5 shadow-xs"
+              title="Export vouchers register to Excel"
+            >
+              <FileSpreadsheet className="w-3.5 h-3.5 text-emerald-600" /> Excel
+            </button>
+            <button
+              onClick={exportVouchersCSV}
+              className="secondary h-8.5 px-2.5 rounded-lg text-xs font-semibold"
+            >
+              CSV
+            </button>
+            <button
+              onClick={() => window.print()}
+              className="secondary h-8.5 px-2.5 rounded-lg text-xs font-semibold flex items-center gap-1"
+            >
+              <Printer className="w-3.5 h-3.5" /> Print
+            </button>
+            <button
+              onClick={loadData}
+              className="secondary h-8.5 w-8.5 rounded-lg flex items-center justify-center text-xs text-[var(--color-text)]"
+              title="Refresh vouchers"
+            >
+              <RefreshCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin' : ''}`} />
+            </button>
+            <button
+              onClick={() => openVoucherModal('BPV')}
+              className="primary h-8.5 px-3.5 rounded-lg text-xs font-semibold flex items-center gap-1.5 shadow-xs"
+            >
+              <Plus className="w-3.5 h-3.5" /> Post New Voucher
+            </button>
+          </div>
         </div>
       </div>
 
@@ -544,7 +557,7 @@ export const VoucherManagement: React.FC<VoucherManagementProps> = ({ activeEnti
         >
           <div className="flex items-center justify-between mb-1.5">
             <span className="p-2 rounded-lg bg-emerald-100 dark:bg-emerald-900/40 text-emerald-700 dark:text-emerald-300">
-              <ArrowDownLeft className="w-4 h-4" />
+              <ArrowDownCircle className="w-4 h-4" />
             </span>
             <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-100 dark:bg-emerald-900/50 text-emerald-800 dark:text-emerald-200">
               BRV
@@ -626,42 +639,12 @@ export const VoucherManagement: React.FC<VoucherManagementProps> = ({ activeEnti
       </div>
 
       {/* 4 Financial Metric Cards - 4 in 1 Row */}
-      <section className="stats" style={{ gridTemplateColumns: 'repeat(4, minmax(0, 1fr))' }}>
-        <article>
-          <span className="stat-icon blue"><Send className="w-4 h-4 text-rose-600" /></span>
-          <div>
-            <small>PAYMENTS (BPV + CPV)</small>
-            <h2 className="text-rose-600 dark:text-rose-400">{money(totalDisbursements, currentEntity?.currencyCode)}</h2>
-            <p>Disbursements to vendors</p>
-          </div>
-        </article>
-        <article>
-          <span className="stat-icon teal"><ArrowDownLeft className="w-4 h-4 text-emerald-600" /></span>
-          <div>
-            <small>RECEIPTS (BRV + CRV)</small>
-            <h2 className="text-emerald-600 dark:text-emerald-400">{money(totalReceipts, currentEntity?.currencyCode)}</h2>
-            <p>Collections from customers</p>
-          </div>
-        </article>
-        <article>
-          <span className="stat-icon blue"><DollarSign className="w-4 h-4" /></span>
-          <div>
-            <small>NET VOUCHER LIQUIDITY</small>
-            <h2 className={netLiquidity >= 0 ? 'text-blue-600 dark:text-blue-400' : 'text-amber-600 dark:text-amber-400'}>
-              {money(netLiquidity, currentEntity?.currencyCode)}
-            </h2>
-            <p>{netLiquidity >= 0 ? 'Net positive liquidity' : 'Net disbursement surplus'}</p>
-          </div>
-        </article>
-        <article>
-          <span className="stat-icon violet"><Clock className="w-4 h-4" /></span>
-          <div>
-            <small>VOUCHERS COUNT</small>
-            <h2>{totalCount}</h2>
-            <p>Posted financial vouchers</p>
-          </div>
-        </article>
-      </section>
+      <KpiGrid cols={4}>
+        <KpiCard icon={Send} label="PAYMENTS (BPV + CPV)" value={money(totalDisbursements, currentEntity?.currencyCode)} desc="Disbursements to vendors" tone="rose" />
+        <KpiCard icon={ArrowDownCircle} label="RECEIPTS (BRV + CRV)" value={money(totalReceipts, currentEntity?.currencyCode)} desc="Collections from customers" tone="emerald" />
+        <KpiCard icon={TrendingUp} label="NET VOUCHER LIQUIDITY" value={money(netLiquidity, currentEntity?.currencyCode)} desc={netLiquidity >= 0 ? 'Net positive liquidity' : 'Net disbursement surplus'} tone={netLiquidity >= 0 ? 'blue' : 'amber'} />
+        <KpiCard icon={Hash} label="VOUCHERS COUNT" value={totalCount} desc="Posted financial vouchers" tone="purple" />
+      </KpiGrid>
 
       {/* Filter Toolbar & Non-Overlapping Search Box */}
       <div className="flex flex-wrap items-center justify-between gap-3 bg-[var(--color-surface)] p-3 rounded-xl border border-[var(--color-border)] shadow-xs">
@@ -722,18 +705,19 @@ export const VoucherManagement: React.FC<VoucherManagementProps> = ({ activeEnti
 
       {/* Vouchers Register Table */}
       <div className="bg-[var(--color-surface)] border border-[var(--color-border)] rounded-xl shadow-xs overflow-hidden">
-        <div className="p-3 border-b border-[var(--color-border)] flex justify-between items-center bg-gray-50/50 dark:bg-gray-900/50">
-          <span className="text-xs font-bold text-[var(--color-text-strong)] flex items-center gap-2">
-            <BookOpen className="w-3.5 h-3.5 text-emerald-600" /> Vouchers Register Ledger ({filteredVouchers.length})
-          </span>
+        <div className="px-5 py-3.5 border-b border-[var(--color-border)] bg-[var(--color-surface-muted)] flex items-center justify-between">
+          <p className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-[var(--color-text-strong)]">
+            <span className="inline-block h-2 w-2 rotate-45 rounded-[2px] bg-gradient-to-br from-blue-500 to-teal-700" />
+            Vouchers Register Ledger
+          </p>
           <span className="text-[11px] text-[var(--color-text-muted)]">
-            Click <strong>Voucher PDF</strong> to generate an official double-entry voucher slip.
+            {filteredVouchers.length} vouchers · Click <strong>Voucher PDF</strong> to generate an official double-entry voucher slip.
           </span>
         </div>
 
         <div className="overflow-x-auto">
           <table className="w-full text-left text-xs">
-            <thead className="bg-gray-50 dark:bg-gray-900/80 text-[var(--color-text-muted)] border-b border-[var(--color-border)] text-[10px] uppercase font-bold tracking-wider">
+            <thead className="bg-blue-500/[0.05] dark:bg-blue-400/[0.07] text-[var(--color-text-muted)] border-b border-[var(--color-border)] text-[10px] uppercase font-bold tracking-wider">
               <tr>
                 <th className="py-2.5 px-3.5">Voucher #</th>
                 <th className="py-2.5 px-3 text-center">Type</th>
@@ -749,20 +733,18 @@ export const VoucherManagement: React.FC<VoucherManagementProps> = ({ activeEnti
             <tbody className="divide-y divide-[var(--color-border)]">
               {loading ? (
                 <tr>
-                  <td colSpan={9} className="py-12 text-center text-[var(--color-text-muted)]">
-                    <div className="flex flex-col items-center gap-2">
-                      <RefreshCw className="w-6 h-6 animate-spin text-emerald-600" />
-                      <p className="font-semibold text-xs">Loading financial vouchers...</p>
-                    </div>
+                  <td colSpan={9} className="p-0">
+                    <TableSkeleton rows={6} />
                   </td>
                 </tr>
               ) : filteredVouchers.length === 0 ? (
                 <tr>
-                  <td colSpan={9} className="py-12 text-center text-[var(--color-text-muted)]">
-                    <div className="flex flex-col items-center gap-2">
-                      <CheckCircle2 className="w-8 h-8 text-gray-400" />
-                      <p className="font-semibold text-xs">No vouchers found for the selected criteria.</p>
-                    </div>
+                  <td colSpan={9}>
+                    <EmptyState
+                      icon={BookOpen}
+                      title="No vouchers found"
+                      hint="Post a BPV, BRV, CPV, CRV or JV, or adjust the type filter and search."
+                    />
                   </td>
                 </tr>
               ) : (
@@ -851,7 +833,7 @@ export const VoucherManagement: React.FC<VoucherManagementProps> = ({ activeEnti
       {isModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs p-3 md:p-6 overflow-y-auto" onClick={() => setIsModalOpen(false)}>
           <div
-            className="bg-[var(--color-surface)] border border-[var(--color-border)] rounded-2xl shadow-2xl w-full max-w-4xl overflow-hidden flex flex-col my-auto max-h-[92vh] transition-all animate-in fade-in zoom-in-95 duration-200"
+            className="bg-[var(--color-surface)] border border-[var(--color-border)] rounded-2xl shadow-2xl w-full max-w-5xl overflow-hidden flex flex-col my-auto max-h-[92vh] transition-all animate-in fade-in zoom-in-95 duration-200"
             onClick={(e) => e.stopPropagation()}
           >
             {/* Modal Header */}

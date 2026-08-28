@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { useManufacturingStore, useProductsStore, useAssetsInventoryStore } from './stores';
+import { KpiCard, KpiGrid } from './components/ui/kpi-card';
 import { assetsInventoryApi } from './api/modules/assetsInventory.api';
 import type { FixedAsset } from './api/modules/assetsInventory.api';
 import { manufacturingApi } from './api/modules/manufacturing.api';
@@ -12,15 +13,17 @@ import {
 import { money } from './lib/currency';
 import { downloadExcel, downloadCSV } from './lib/exportUtils';
 import ExportDropdown from './components/ExportDropdown';
+import { StatusChip } from './components/ui/status-chip';
+import { EmptyState } from './components/ui/empty-state';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 
-const statusColors: Record<string, string> = {
-  Draft: 'bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300',
-  Released: 'bg-blue-100 dark:bg-blue-950 text-blue-700 dark:text-blue-300',
-  InProgress: 'bg-amber-100 dark:bg-amber-950 text-amber-800 dark:text-amber-300 animate-pulse',
-  Completed: 'bg-emerald-100 dark:bg-emerald-950 text-emerald-800 dark:text-emerald-300',
-  Cancelled: 'bg-rose-100 dark:bg-rose-950 text-rose-700 dark:text-rose-300'
+const statusHex: Record<string, string> = {
+  Draft: '#94a3b8',
+  Released: '#3b82f6',
+  InProgress: '#f59e0b',
+  Completed: '#10b981',
+  Cancelled: '#ef4444'
 };
 
 const FACTORY_WORK_CENTERS = [
@@ -32,8 +35,15 @@ const FACTORY_WORK_CENTERS = [
   'Quality Testing & Inspection Lab',
 ];
 
-export const ManufacturingWorkspace: React.FC<{ activeEntityId: string; entities?: any[]; initialTab?: any }> = ({ activeEntityId }) => {
-  const [activeTab, setActiveTab] = useState<'shopfloor' | 'orders' | 'boms' | 'qc' | 'costing'>('shopfloor');
+export const ManufacturingWorkspace: React.FC<{ activeEntityId: string; entities?: any[]; initialTab?: 'shopfloor' | 'orders' | 'boms' | 'qc' | 'costing' }> = ({ activeEntityId, initialTab = 'shopfloor' }) => {
+  const [activeTab, setActiveTab] = useState<'shopfloor' | 'orders' | 'boms' | 'qc' | 'costing'>(initialTab);
+
+  useEffect(() => {
+    if (initialTab) {
+      setActiveTab(initialTab);
+    }
+  }, [initialTab]);
+
   const [toast, setToast] = useState('');
   const [machines, setMachines] = useState<FixedAsset[]>([]);
   const [query, setQuery] = useState('');
@@ -372,26 +382,31 @@ export const ManufacturingWorkspace: React.FC<{ activeEntityId: string; entities
         </div>
       )}
 
-      {/* Top Banner & Actions */}
-      <div className="flex items-center justify-between border-b border-[var(--color-border)] pb-4 flex-wrap gap-4">
-        <div className="flex items-center gap-2">
-          <span className="p-2.5 bg-teal-50 dark:bg-teal-950/50 text-teal-600 rounded-2xl">
-            <Factory className="w-6 h-6" />
-          </span>
-          <div>
-            <h1 className="text-xl font-bold text-[var(--color-text-strong)] flex items-center gap-2">
-              Factory Work Orders & Real-time Shop Floor Job Costing
-              <span className="text-[10px] font-mono font-normal px-2 py-0.5 rounded-full bg-teal-100 dark:bg-teal-900/60 text-teal-700 dark:text-teal-300">
-                IAS 2 / IAS 16
-              </span>
-            </h1>
-            <p className="text-[var(--color-text-muted)] text-xs mt-0.5">
-              Live shop floor operations, plant machinery runtime meter integration, QC inspections, and direct overhead absorption.
-            </p>
+      {/* Page Header — AMS Signature Hero Band */}
+      <div className="relative overflow-hidden rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)] shadow-sm">
+        <div className="absolute inset-0 bg-gradient-to-r from-orange-500/10 via-orange-500/[0.03] to-transparent pointer-events-none" />
+        <div className="absolute -right-10 -top-16 w-56 h-56 rounded-full bg-orange-500/10 blur-3xl pointer-events-none" />
+        <div className="relative flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 px-5 py-4">
+          <div className="flex items-center gap-4">
+            <div className="relative h-14 w-14 shrink-0">
+              <div className="absolute inset-[6px] rotate-45 rounded-[12px] shadow-xl bg-gradient-to-br from-orange-500 to-amber-700" />
+              <div className="absolute inset-0 flex items-center justify-center"><Factory className="w-6 h-6 text-white" /></div>
+            </div>
+            <div>
+              <div className="flex items-center gap-2.5">
+                <h1 className="text-2xl font-black tracking-tight text-[var(--color-text-strong)]">Factory Work Orders &amp; Real-time Shop Floor Job Costing</h1>
+                <span className="hidden sm:inline-flex items-center gap-1.5 rounded-full border border-orange-500/25 bg-orange-500/10 px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider text-orange-600 dark:text-orange-400"><span className="h-1.5 w-1.5 rounded-full bg-orange-500 animate-pulse" /> Live Ledger</span>
+                <span className="hidden md:inline-flex text-[9px] font-mono font-normal px-2 py-0.5 rounded-full bg-teal-100 dark:bg-teal-900/60 text-teal-700 dark:text-teal-300">
+                  IAS 2 / IAS 16
+                </span>
+              </div>
+              <p className="text-xs text-[var(--color-text-muted)] mt-0.5">
+                Live shop floor operations, plant machinery runtime meter integration, QC inspections, and direct overhead absorption.
+              </p>
+            </div>
           </div>
-        </div>
 
-        <div className="flex items-center gap-2 flex-wrap">
+          <div className="flex items-center gap-2 flex-wrap shrink-0">
           <ExportDropdown
             label="Export Shop Floor"
             onPDF={handleExportPDF}
@@ -411,47 +426,17 @@ export const ManufacturingWorkspace: React.FC<{ activeEntityId: string; entities
           >
             <Plus className="w-4 h-4" /> Release Work Order
           </button>
+          </div>
         </div>
       </div>
 
       {/* KPI Cards */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-        <div className="bg-[var(--color-surface)] border border-[var(--color-border)] rounded-2xl p-4 shadow-2xs space-y-1">
-          <div className="flex items-center justify-between text-xs text-[var(--color-text-muted)] font-semibold">
-            <span>Active Shop Floor Jobs</span>
-            <Activity className="w-4 h-4 text-amber-600 animate-spin" />
-          </div>
-          <p className="text-xl font-bold text-amber-600 font-mono">{activeJobsCount}</p>
-          <p className="text-[10px] text-[var(--color-text-muted)]">In-Production Work Centers</p>
-        </div>
-
-        <div className="bg-[var(--color-surface)] border border-[var(--color-border)] rounded-2xl p-4 shadow-2xs space-y-1">
-          <div className="flex items-center justify-between text-xs text-[var(--color-text-muted)] font-semibold">
-            <span>WIP Valuation (IAS 2)</span>
-            <Layers className="w-4 h-4 text-teal-600" />
-          </div>
-          <p className="text-xl font-bold text-teal-600 font-mono">{money(totalWipValuation)}</p>
-          <p className="text-[10px] text-[var(--color-text-muted)]">Materials + Labor + Overhead</p>
-        </div>
-
-        <div className="bg-[var(--color-surface)] border border-[var(--color-border)] rounded-2xl p-4 shadow-2xs space-y-1">
-          <div className="flex items-center justify-between text-xs text-[var(--color-text-muted)] font-semibold">
-            <span>Plant Machines Engaged</span>
-            <Cpu className="w-4 h-4 text-purple-600" />
-          </div>
-          <p className="text-xl font-bold text-purple-600 font-mono">{machines.length}</p>
-          <p className="text-[10px] text-[var(--color-text-muted)]">Fixed Assets Linked</p>
-        </div>
-
-        <div className="bg-[var(--color-surface)] border border-[var(--color-border)] rounded-2xl p-4 shadow-2xs space-y-1">
-          <div className="flex items-center justify-between text-xs text-[var(--color-text-muted)] font-semibold">
-            <span>Completed Work Orders</span>
-            <CheckCircle2 className="w-4 h-4 text-emerald-600" />
-          </div>
-          <p className="text-xl font-bold text-emerald-600 font-mono">{completedJobsCount}</p>
-          <p className="text-[10px] text-emerald-600/80 font-semibold">{money(totalProductionCost)} Capitalized</p>
-        </div>
-      </div>
+      <KpiGrid cols={4}>
+        <KpiCard icon={Activity} label="Active Shop Floor Jobs" value={activeJobsCount} desc="In-Production Work Centers" tone="amber" />
+        <KpiCard icon={Layers} label="WIP Valuation (IAS 2)" value={money(totalWipValuation)} desc="Materials + Labor + Overhead" tone="teal" />
+        <KpiCard icon={Cpu} label="Plant Machines Engaged" value={machines.length} desc="Fixed Assets Linked" tone="purple" />
+        <KpiCard icon={CheckCircle2} label="Completed Work Orders" value={completedJobsCount} desc={`${money(totalProductionCost)} Capitalized`} tone="emerald" />
+      </KpiGrid>
 
       {/* Tabs */}
       <div className="flex items-center gap-1.5 bg-[var(--color-surface-muted)] p-1.5 rounded-2xl border border-[var(--color-border)] overflow-x-auto text-xs font-semibold">
@@ -500,9 +485,7 @@ export const ManufacturingWorkspace: React.FC<{ activeEntityId: string; entities
                         <Factory className="w-3 h-3 text-purple-600" /> {wo.workCenterName || 'CNC Center'}
                       </p>
                     </div>
-                    <span className={`px-2.5 py-1 rounded-full text-[10px] font-bold ${statusColors[wo.status] || 'bg-gray-100'}`}>
-                      {String(wo.status)}
-                    </span>
+                    <StatusChip status={String(wo.status)} label={String(wo.status)} hex={statusHex[String(wo.status)] ?? '#94a3b8'} />
                   </div>
 
                   {/* Machine & Technician Link */}
@@ -637,7 +620,7 @@ export const ManufacturingWorkspace: React.FC<{ activeEntityId: string; entities
           <div className="bg-[var(--color-surface)] border border-[var(--color-border)] rounded-2xl overflow-hidden shadow-2xs">
             <table className="w-full text-left text-xs border-collapse">
               <thead>
-                <tr className="bg-[var(--color-surface-muted)] border-b border-[var(--color-border)] text-[var(--color-text-muted)] font-semibold uppercase tracking-wider text-[10px]">
+                <tr className="bg-orange-500/[0.05] dark:bg-orange-400/[0.07] border-b border-[var(--color-border)] text-[var(--color-text-muted)] font-semibold uppercase tracking-wider text-[10px]">
                   <th className="py-3 px-4">WO Number</th>
                   <th className="py-3 px-3">Finished Good</th>
                   <th className="py-3 px-3">Work Center & Machine</th>
@@ -653,8 +636,8 @@ export const ManufacturingWorkspace: React.FC<{ activeEntityId: string; entities
               <tbody className="divide-y divide-[var(--color-border)]">
                 {filteredWorkOrders.length === 0 ? (
                   <tr>
-                    <td colSpan={10} className="py-10 text-center text-[var(--color-text-muted)] text-xs">
-                      No manufacturing work orders found.
+                    <td colSpan={10}>
+                      <EmptyState icon={Factory} title="No manufacturing work orders found" hint="Release a work order from a BOM recipe to start production." />
                     </td>
                   </tr>
                 ) : (
@@ -675,9 +658,7 @@ export const ManufacturingWorkspace: React.FC<{ activeEntityId: string; entities
                       <td className="py-3 px-3 text-right font-mono font-bold text-teal-600">{money(wo.totalCost || 0)}</td>
                       <td className="py-3 px-3 text-right font-mono font-bold text-[var(--color-text-strong)]">{money(wo.unitCost || 0)}</td>
                       <td className="py-3 px-3 text-center">
-                        <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold ${statusColors[wo.status] || 'bg-gray-100'}`}>
-                          {String(wo.status)}
-                        </span>
+                        <StatusChip status={String(wo.status)} label={String(wo.status)} hex={statusHex[String(wo.status)] ?? '#94a3b8'} />
                       </td>
                     </tr>
                   ))
@@ -743,7 +724,7 @@ export const ManufacturingWorkspace: React.FC<{ activeEntityId: string; entities
           <div className="bg-[var(--color-surface)] border border-[var(--color-border)] rounded-2xl overflow-hidden shadow-2xs">
             <table className="w-full text-left text-xs border-collapse">
               <thead>
-                <tr className="bg-[var(--color-surface-muted)] border-b border-[var(--color-border)] text-[var(--color-text-muted)] font-semibold uppercase text-[10px]">
+                <tr className="bg-orange-500/[0.05] dark:bg-orange-400/[0.07] border-b border-[var(--color-border)] text-[var(--color-text-muted)] font-semibold uppercase text-[10px]">
                   <th className="py-3 px-4">WO Number & Product</th>
                   <th className="py-3 px-3">Inspector</th>
                   <th className="py-3 px-3 text-right">Accepted Qty</th>

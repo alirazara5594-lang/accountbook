@@ -7,8 +7,10 @@ import type { Entity } from './api/modules/entities.api';
 import { setActiveCurrency } from './lib/currency';
 import {
   Users, ShieldCheck, Building2, GitBranch, CheckCircle2, Hash, Coins, ScrollText, Plus, Trash2, Pencil, KeyRound, Lock, Globe, Search,
-  Power, X, Download, FileSpreadsheet, Eye, RefreshCw, ArrowRight, FileText, Shield, UserCheck, LayoutGrid, ListFilter, Copy, Check
+  Power, X, Download, FileSpreadsheet, Eye, RefreshCw, ArrowRight, FileText, Shield, UserCheck, LayoutGrid, ListFilter, Copy, Check,
+  MapPin, Receipt, Sparkles
 } from 'lucide-react';
+import { KpiCard, KpiGrid } from './components/ui/kpi-card';
 import { downloadExcel, downloadCSV } from './lib/exportUtils';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
@@ -80,73 +82,40 @@ export function AdministrationSummaryView({ setPage }: { setPage?: (p: string) =
 
   return (
     <div className="p-6 max-w-[1400px] mx-auto space-y-6">
-      {/* Header */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-[var(--color-border)] pb-4">
-        <div>
-          <h1 className="text-xl font-black tracking-tight text-[var(--color-text-strong)] flex items-center gap-2.5">
-            <div className="p-2 rounded-xl bg-teal-500/10 text-teal-600 border border-teal-500/20">
-              <ShieldCheck className="w-5 h-5" />
+      {/* Page Header — AMS Signature Hero Band */}
+      <div className="relative overflow-hidden rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)] shadow-sm">
+        <div className="absolute inset-0 bg-gradient-to-r from-violet-500/10 via-violet-500/[0.03] to-transparent pointer-events-none" />
+        <div className="absolute -right-10 -top-16 w-56 h-56 rounded-full bg-violet-500/10 blur-3xl pointer-events-none" />
+        <div className="relative flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 px-5 py-4">
+          <div className="flex items-center gap-4">
+            <div className="relative h-14 w-14 shrink-0">
+              <div className="absolute inset-[6px] rotate-45 rounded-[12px] shadow-xl bg-gradient-to-br from-violet-500 to-purple-700" />
+              <div className="absolute inset-0 flex items-center justify-center"><ShieldCheck className="w-6 h-6 text-white" /></div>
             </div>
-            Administration & System Governance
-          </h1>
-          <p className="text-xs text-[var(--color-text-muted)] mt-1">
-            Enterprise user management, role-based access control (RBAC), multi-entity hierarchy, and audit governance.
-          </p>
-        </div>
-        <div className="flex items-center gap-2">
-          <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800">
-            <CheckCircle2 className="w-3.5 h-3.5" />
-            Security Posture: Compliant
-          </span>
+            <div>
+              <div className="flex items-center gap-2.5">
+                <h1 className="text-2xl font-black tracking-tight text-[var(--color-text-strong)]">Administration &amp; System Governance</h1>
+                <span className="hidden sm:inline-flex items-center gap-1.5 rounded-full border border-violet-500/25 bg-violet-500/10 px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider text-violet-600 dark:text-violet-400"><span className="h-1.5 w-1.5 rounded-full bg-violet-500 animate-pulse" /> Live Ledger</span>
+              </div>
+              <p className="text-xs text-[var(--color-text-muted)] mt-0.5">Enterprise user management, role-based access control (RBAC), multi-entity hierarchy, and audit governance.</p>
+            </div>
+          </div>
+          <div className="flex items-center gap-2 shrink-0">
+            <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800">
+              <CheckCircle2 className="w-3.5 h-3.5" />
+              Security Posture: Compliant
+            </span>
+          </div>
         </div>
       </div>
 
       {/* 4-in-1 Top KPI Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        <div className="p-4 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] shadow-sm space-y-1">
-          <div className="flex items-center justify-between text-[var(--color-text-muted)]">
-            <span className="text-xs font-semibold uppercase tracking-wider">System Users</span>
-            <Users className="w-4 h-4 text-teal-600" />
-          </div>
-          <div className="text-2xl font-black text-[var(--color-text-strong)] font-mono">{users.length}</div>
-          <div className="text-[11px] text-[var(--color-text-muted)] flex items-center gap-1">
-            <span className="text-emerald-600 font-bold">{activeUsers} Active</span> · <span className="text-rose-600 font-bold">{lockedUsers} Locked</span>
-          </div>
-        </div>
-
-        <div className="p-4 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] shadow-sm space-y-1">
-          <div className="flex items-center justify-between text-[var(--color-text-muted)]">
-            <span className="text-xs font-semibold uppercase tracking-wider">Security Roles</span>
-            <KeyRound className="w-4 h-4 text-blue-600" />
-          </div>
-          <div className="text-2xl font-black text-[var(--color-text-strong)] font-mono">{roles.length}</div>
-          <div className="text-[11px] text-[var(--color-text-muted)]">
-            {roles.reduce((s, r) => s + r.permissions.length, 0)} Total module grants
-          </div>
-        </div>
-
-        <div className="p-4 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] shadow-sm space-y-1">
-          <div className="flex items-center justify-between text-[var(--color-text-muted)]">
-            <span className="text-xs font-semibold uppercase tracking-wider">Companies & Entities</span>
-            <Building2 className="w-4 h-4 text-emerald-600" />
-          </div>
-          <div className="text-2xl font-black text-[var(--color-text-strong)] font-mono">{entities.length}</div>
-          <div className="text-[11px] text-[var(--color-text-muted)]">
-            <span className="text-emerald-600 font-bold">{activeEntities} Operational</span> ({new Set(entities.map(e => e.country)).size} Countries)
-          </div>
-        </div>
-
-        <div className="p-4 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] shadow-sm space-y-1">
-          <div className="flex items-center justify-between text-[var(--color-text-muted)]">
-            <span className="text-xs font-semibold uppercase tracking-wider">Branches & Units</span>
-            <GitBranch className="w-4 h-4 text-purple-600" />
-          </div>
-          <div className="text-2xl font-black text-[var(--color-text-strong)] font-mono">{branches.length}</div>
-          <div className="text-[11px] text-[var(--color-text-muted)]">
-            {branches.filter(b => b.active).length} Active operating branches
-          </div>
-        </div>
-      </div>
+      <KpiGrid cols={4}>
+        <KpiCard icon={Users} label="System Users" value={users.length} desc={<>{activeUsers} Active · {lockedUsers} Locked</>} tone="teal" />
+        <KpiCard icon={KeyRound} label="Security Roles" value={roles.length} desc={`${roles.reduce((s, r) => s + r.permissions.length, 0)} Total module grants`} tone="blue" />
+        <KpiCard icon={Building2} label="Companies & Entities" value={entities.length} desc={<>{activeEntities} Operational ({new Set(entities.map(e => e.country)).size} Countries)</>} tone="emerald" />
+        <KpiCard icon={GitBranch} label="Branches & Units" value={branches.length} desc={`${branches.filter(b => b.active).length} Active operating branches`} tone="purple" />
+      </KpiGrid>
 
       {/* Quick Navigation Matrix */}
       <div>
@@ -484,7 +453,7 @@ export function UsersView({ activeEntityId, notify }: { activeEntityId?: string;
   const handleExportPDF = () => {
     const doc = new jsPDF('landscape');
     doc.setFontSize(14);
-    doc.text('AccountBook ERP — System Users & Operator Directory', 14, 15);
+    doc.text('AMS ERP — System Users & Operator Directory', 14, 15);
     doc.setFontSize(9);
     doc.setTextColor(100);
     doc.text(`Generated on: ${new Date().toLocaleString()} | Filter: ${roleFilter} Role, ${statusFilter} Status`, 14, 21);
@@ -514,21 +483,26 @@ export function UsersView({ activeEntityId, notify }: { activeEntityId?: string;
 
   return (
     <div className="p-6 max-w-[1500px] mx-auto space-y-6">
-      {/* Header */}
-      <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 border-b border-[var(--color-border)] pb-4">
-        <div className="min-w-0 flex-1">
-          <h1 className="text-xl font-black tracking-tight text-[var(--color-text-strong)] flex items-center gap-2.5">
-            <div className="p-2 rounded-xl bg-teal-500/10 text-teal-600 border border-teal-500/20 shrink-0">
-              <Users className="w-5 h-5" />
+      {/* Page Header — AMS Signature Hero Band */}
+      <div className="relative overflow-hidden rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)] shadow-sm">
+        <div className="absolute inset-0 bg-gradient-to-r from-violet-500/10 via-violet-500/[0.03] to-transparent pointer-events-none" />
+        <div className="absolute -right-10 -top-16 w-56 h-56 rounded-full bg-violet-500/10 blur-3xl pointer-events-none" />
+        <div className="relative flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 px-5 py-4">
+          <div className="flex items-center gap-4">
+            <div className="relative h-14 w-14 shrink-0">
+              <div className="absolute inset-[6px] rotate-45 rounded-[12px] shadow-xl bg-gradient-to-br from-violet-500 to-purple-700" />
+              <div className="absolute inset-0 flex items-center justify-center"><Users className="w-6 h-6 text-white" /></div>
             </div>
-            Users & Operator Management Suite
-          </h1>
-          <p className="text-xs text-[var(--color-text-muted)] mt-1">
-            Maintain operator identities, assign security profiles, govern multi-company permissions, and enforce authentication policies.
-          </p>
-        </div>
+            <div>
+              <div className="flex items-center gap-2.5">
+                <h1 className="text-2xl font-black tracking-tight text-[var(--color-text-strong)]">Users &amp; Operator Management Suite</h1>
+                <span className="hidden sm:inline-flex items-center gap-1.5 rounded-full border border-violet-500/25 bg-violet-500/10 px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider text-violet-600 dark:text-violet-400"><span className="h-1.5 w-1.5 rounded-full bg-violet-500 animate-pulse" /> Live Ledger</span>
+              </div>
+              <p className="text-xs text-[var(--color-text-muted)] mt-0.5">Maintain operator identities, assign security profiles, govern multi-company permissions, and enforce authentication policies.</p>
+            </div>
+          </div>
 
-        <div className="flex items-center gap-2 shrink-0 flex-nowrap overflow-x-auto">
+          <div className="flex items-center gap-2 shrink-0 flex-wrap">
           <button
             onClick={fetchUsers}
             title="Refresh Users Directory"
@@ -564,47 +538,17 @@ export function UsersView({ activeEntityId, notify }: { activeEntityId?: string;
           >
             <Plus className="w-4 h-4" /> Add System User
           </button>
+          </div>
         </div>
       </div>
 
       {/* 4-in-1 KPI Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        <div className="p-4 rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)] shadow-xs space-y-1">
-          <div className="flex items-center justify-between text-[var(--color-text-muted)]">
-            <span className="text-xs font-semibold uppercase tracking-wider">Total Operators</span>
-            <Users className="w-4 h-4 text-teal-600" />
-          </div>
-          <div className="text-2xl font-black text-[var(--color-text-strong)] font-mono">{users.length}</div>
-          <div className="text-[11px] text-[var(--color-text-muted)]">Registered accounts in tenant</div>
-        </div>
-
-        <div className="p-4 rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)] shadow-xs space-y-1">
-          <div className="flex items-center justify-between text-[var(--color-text-muted)]">
-            <span className="text-xs font-semibold uppercase tracking-wider">Active Operators</span>
-            <UserCheck className="w-4 h-4 text-emerald-600" />
-          </div>
-          <div className="text-2xl font-black text-emerald-600 font-mono">{activeCount}</div>
-          <div className="text-[11px] text-emerald-600 font-medium">Ready for immediate login</div>
-        </div>
-
-        <div className="p-4 rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)] shadow-xs space-y-1">
-          <div className="flex items-center justify-between text-[var(--color-text-muted)]">
-            <span className="text-xs font-semibold uppercase tracking-wider">Locked / Restricted</span>
-            <Lock className="w-4 h-4 text-rose-600" />
-          </div>
-          <div className="text-2xl font-black text-rose-600 font-mono">{lockedCount + inactiveCount}</div>
-          <div className="text-[11px] text-rose-600 font-medium">{lockedCount} Locked · {inactiveCount} Inactive</div>
-        </div>
-
-        <div className="p-4 rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)] shadow-xs space-y-1">
-          <div className="flex items-center justify-between text-[var(--color-text-muted)]">
-            <span className="text-xs font-semibold uppercase tracking-wider">Assigned Roles</span>
-            <ShieldCheck className="w-4 h-4 text-purple-600" />
-          </div>
-          <div className="text-2xl font-black text-purple-600 font-mono">{uniqueRoles.length}</div>
-          <div className="text-[11px] text-[var(--color-text-muted)]">Security access matrix groups</div>
-        </div>
-      </div>
+      <KpiGrid cols={4}>
+        <KpiCard icon={Users} label="Total Operators" value={users.length} desc="Registered accounts in tenant" tone="teal" />
+        <KpiCard icon={UserCheck} label="Active Operators" value={activeCount} desc="Ready for immediate login" tone="emerald" />
+        <KpiCard icon={Lock} label="Locked / Restricted" value={lockedCount + inactiveCount} desc={`${lockedCount} Locked · ${inactiveCount} Inactive`} tone="rose" />
+        <KpiCard icon={ShieldCheck} label="Assigned Roles" value={uniqueRoles.length} desc="Security access matrix groups" tone="purple" />
+      </KpiGrid>
 
       {/* Control & Filter Center */}
       <div className="p-4 rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)] shadow-xs space-y-3">
@@ -1449,69 +1393,42 @@ export function RolesPermissionsView({ notify }: { activeEntityId?: string; noti
 
   return (
     <div className="p-6 max-w-[1400px] mx-auto space-y-6">
-      {/* Header */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-[var(--color-border)] pb-4">
-        <div>
-          <h1 className="text-xl font-black tracking-tight text-[var(--color-text-strong)] flex items-center gap-2.5">
-            <div className="p-2 rounded-xl bg-blue-500/10 text-blue-600 border border-blue-500/20">
-              <ShieldCheck className="w-5 h-5" />
+      {/* Page Header — AMS Signature Hero Band */}
+      <div className="relative overflow-hidden rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)] shadow-sm">
+        <div className="absolute inset-0 bg-gradient-to-r from-violet-500/10 via-violet-500/[0.03] to-transparent pointer-events-none" />
+        <div className="absolute -right-10 -top-16 w-56 h-56 rounded-full bg-violet-500/10 blur-3xl pointer-events-none" />
+        <div className="relative flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 px-5 py-4">
+          <div className="flex items-center gap-4">
+            <div className="relative h-14 w-14 shrink-0">
+              <div className="absolute inset-[6px] rotate-45 rounded-[12px] shadow-xl bg-gradient-to-br from-violet-500 to-purple-700" />
+              <div className="absolute inset-0 flex items-center justify-center"><ShieldCheck className="w-6 h-6 text-white" /></div>
             </div>
-            Roles & Security Permissions Matrix (RBAC)
-          </h1>
-          <p className="text-xs text-[var(--color-text-muted)] mt-1">
-            Configure access control policies across all 13 ERP functional modules.
-          </p>
+            <div>
+              <div className="flex items-center gap-2.5">
+                <h1 className="text-2xl font-black tracking-tight text-[var(--color-text-strong)]">Roles &amp; Security Permissions Matrix (RBAC)</h1>
+                <span className="hidden sm:inline-flex items-center gap-1.5 rounded-full border border-violet-500/25 bg-violet-500/10 px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider text-violet-600 dark:text-violet-400"><span className="h-1.5 w-1.5 rounded-full bg-violet-500 animate-pulse" /> Live Ledger</span>
+              </div>
+              <p className="text-xs text-[var(--color-text-muted)] mt-0.5">Configure access control policies across all 13 ERP functional modules.</p>
+            </div>
+          </div>
+          <div className="flex items-center gap-2 shrink-0">
+            <button
+              onClick={openCreate}
+              className="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold shadow-sm transition-all"
+            >
+              <Plus className="w-4 h-4" /> Create Custom Role
+            </button>
+          </div>
         </div>
-        <button
-          onClick={openCreate}
-          className="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold shadow-sm transition-all"
-        >
-          <Plus className="w-4 h-4" /> Create Custom Role
-        </button>
       </div>
 
       {/* 4-in-1 KPI Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        <div className="p-4 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] shadow-sm space-y-1">
-          <div className="flex items-center justify-between text-[var(--color-text-muted)]">
-            <span className="text-xs font-semibold uppercase tracking-wider">Defined Roles</span>
-            <ShieldCheck className="w-4 h-4 text-blue-600" />
-          </div>
-          <div className="text-2xl font-black text-[var(--color-text-strong)] font-mono">{roles.length}</div>
-          <div className="text-[11px] text-[var(--color-text-muted)]">Active security roles</div>
-        </div>
-
-        <div className="p-4 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] shadow-sm space-y-1">
-          <div className="flex items-center justify-between text-[var(--color-text-muted)]">
-            <span className="text-xs font-semibold uppercase tracking-wider">Permission Grants</span>
-            <KeyRound className="w-4 h-4 text-emerald-600" />
-          </div>
-          <div className="text-2xl font-black text-emerald-600 font-mono">
-            {roles.reduce((s, r) => s + r.permissions.length, 0)}
-          </div>
-          <div className="text-[11px] text-[var(--color-text-muted)]">Total granted module privileges</div>
-        </div>
-
-        <div className="p-4 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] shadow-sm space-y-1">
-          <div className="flex items-center justify-between text-[var(--color-text-muted)]">
-            <span className="text-xs font-semibold uppercase tracking-wider">Modules Protected</span>
-            <Lock className="w-4 h-4 text-purple-600" />
-          </div>
-          <div className="text-2xl font-black text-[var(--color-text-strong)] font-mono">{ALL_MODULES.length}</div>
-          <div className="text-[11px] text-[var(--color-text-muted)]">13 ERP operational modules</div>
-        </div>
-
-        <div className="p-4 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] shadow-sm space-y-1">
-          <div className="flex items-center justify-between text-[var(--color-text-muted)]">
-            <span className="text-xs font-semibold uppercase tracking-wider">Full Access Roles</span>
-            <CheckCircle2 className="w-4 h-4 text-teal-600" />
-          </div>
-          <div className="text-2xl font-black text-teal-600 font-mono">
-            {roles.filter(r => r.permissions.length === ALL_MODULES.length).length}
-          </div>
-          <div className="text-[11px] text-[var(--color-text-muted)]">Unrestricted superuser profiles</div>
-        </div>
-      </div>
+      <KpiGrid cols={4}>
+        <KpiCard icon={ShieldCheck} label="Defined Roles" value={roles.length} desc="Active security roles" tone="blue" />
+        <KpiCard icon={KeyRound} label="Permission Grants" value={roles.reduce((s, r) => s + r.permissions.length, 0)} desc="Total granted module privileges" tone="emerald" />
+        <KpiCard icon={Lock} label="Modules Protected" value={ALL_MODULES.length} desc="13 ERP operational modules" tone="purple" />
+        <KpiCard icon={CheckCircle2} label="Full Access Roles" value={roles.filter(r => r.permissions.length === ALL_MODULES.length).length} desc="Unrestricted superuser profiles" tone="teal" />
+      </KpiGrid>
 
       {/* Preset Role Templates */}
       <div className="p-4 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] space-y-3">
@@ -1719,61 +1636,226 @@ export function RolesPermissionsView({ notify }: { activeEntityId?: string; noti
 // ─────────────────────────────────────────────────────────────────────────────
 // 4. COMPANIES & MULTI-ENTITY VIEW
 // ─────────────────────────────────────────────────────────────────────────────
+const COUNTRY_PROVINCES: Record<string, { flag: string; currency: string; taxIdLabel: string; taxAuthority: string; provinces: { code: string; name: string }[] }> = {
+  Pakistan: {
+    flag: '🇵🇰',
+    currency: 'PKR',
+    taxIdLabel: 'National Tax Number (NTN) & STRN',
+    taxAuthority: 'FBR / Provincial Revenue Authorities (PRA / SRB / KPRA / BRA)',
+    provinces: [
+      { code: 'Punjab', name: 'Punjab (PRA - 16% / IT 5%)' },
+      { code: 'Sindh', name: 'Sindh (SRB - 13% / IT 3%)' },
+      { code: 'KPK', name: 'Khyber Pakhtunkhwa (KPRA - 15% / IT 2%)' },
+      { code: 'Balochistan', name: 'Balochistan (BRA - 15%)' },
+      { code: 'Islamabad', name: 'Islamabad Capital Territory (ICT - 15%)' },
+    ],
+  },
+  'United Kingdom': {
+    flag: '🇬🇧',
+    currency: 'GBP',
+    taxIdLabel: 'VAT Registration Number (VRN)',
+    taxAuthority: 'HMRC (Making Tax Digital VAT / CIS)',
+    provinces: [
+      { code: 'England', name: 'England' },
+      { code: 'Scotland', name: 'Scotland' },
+      { code: 'Wales', name: 'Wales' },
+      { code: 'Northern Ireland', name: 'Northern Ireland (Dual Protocol)' },
+    ],
+  },
+  'Saudi Arabia': {
+    flag: '🇸🇦',
+    currency: 'SAR',
+    taxIdLabel: 'ZATCA VAT / TIN Number',
+    taxAuthority: 'ZATCA (Fatoora Phase 2 E-Invoicing)',
+    provinces: [
+      { code: 'Riyadh', name: 'Riyadh Region' },
+      { code: 'Makkah', name: 'Makkah Region (Jeddah)' },
+      { code: 'Eastern Province', name: 'Eastern Province (Dammam/Khobar)' },
+      { code: 'Madinah', name: 'Madinah Region' },
+      { code: 'Asir', name: 'Asir Region' },
+    ],
+  },
+  'United Arab Emirates': {
+    flag: '🇦🇪',
+    currency: 'AED',
+    taxIdLabel: 'Tax Registration Number (TRN)',
+    taxAuthority: 'Federal Tax Authority (FTA)',
+    provinces: [
+      { code: 'Dubai', name: 'Dubai' },
+      { code: 'Abu Dhabi', name: 'Abu Dhabi' },
+      { code: 'Sharjah', name: 'Sharjah' },
+      { code: 'Ajman', name: 'Ajman' },
+      { code: 'Ras Al Khaimah', name: 'Ras Al Khaimah' },
+      { code: 'Fujairah', name: 'Fujairah' },
+      { code: 'Umm Al Quwain', name: 'Umm Al Quwain' },
+    ],
+  },
+  'United States': {
+    flag: '🇺🇸',
+    currency: 'USD',
+    taxIdLabel: 'Federal Employer ID (EIN) / State Tax ID',
+    taxAuthority: 'IRS & State Revenue Depts',
+    provinces: [
+      { code: 'California', name: 'California (CDTFA - 7.25% / 9.5%)' },
+      { code: 'New York', name: 'New York (NYS - 8.875%)' },
+      { code: 'Texas', name: 'Texas (TX-CPA - 8.25%)' },
+      { code: 'Florida', name: 'Florida (FL-DOR - 6.0%)' },
+      { code: 'Illinois', name: 'Illinois (IL-DOR - 6.25%)' },
+      { code: 'Washington', name: 'Washington (WA - 6.5%)' },
+    ],
+  },
+  Canada: {
+    flag: '🇨🇦',
+    currency: 'CAD',
+    taxIdLabel: 'Business Number (BN / GST/HST #)',
+    taxAuthority: 'Canada Revenue Agency (CRA) & Revenu Québec',
+    provinces: [
+      { code: 'Ontario', name: 'Ontario (HST 13%)' },
+      { code: 'British Columbia', name: 'British Columbia (GST 5% + PST 7%)' },
+      { code: 'Quebec', name: 'Quebec (GST 5% + QST 9.975%)' },
+      { code: 'Alberta', name: 'Alberta (GST 5% only)' },
+      { code: 'Nova Scotia', name: 'Nova Scotia / Atlantic (HST 15%)' },
+    ],
+  },
+  'European Union': {
+    flag: '🇪🇺',
+    currency: 'EUR',
+    taxIdLabel: 'EU VAT Identification Number (VIES)',
+    taxAuthority: 'Member-State Tax Office (BZSt / DGFiP / Revenue)',
+    provinces: [
+      { code: 'Germany', name: 'Germany (BZSt - 19% / 7%)' },
+      { code: 'France', name: 'France (DGFiP - 20% / 10% / 5.5%)' },
+      { code: 'Netherlands', name: 'Netherlands (BTW - 21% / 9%)' },
+      { code: 'Ireland', name: 'Ireland (Revenue - 23% / 13.5%)' },
+      { code: 'Italy', name: 'Italy (Agenzia delle Entrate - 22%)' },
+      { code: 'Spain', name: 'Spain (Agencia Tributaria - 21%)' },
+    ],
+  },
+};
+
+type CompanyModalTab = 'identity' | 'jurisdiction' | 'tax' | 'contact' | 'modules' | 'preview';
+
 export function CompaniesView({ activeEntityId, notify }: { activeEntityId?: string; setPage?: (p: string) => void; notify?: (m: string) => void }) {
   const { entities, fetchCompanies, saveCompany, toggleCompanyStatus, deleteCompany, setActiveEntityId } = useCompanyStore();
   const [modalOpen, setModalOpen] = useState(false);
+  const [modalTab, setModalTab] = useState<CompanyModalTab>('identity');
   const [editingId, setEditingId] = useState<string | null>(null);
   const [query, setQuery] = useState('');
 
   const [formData, setFormData] = useState({
     name: '',
+    legalName: '',
     code: '',
     currencyCode: 'PKR',
     country: 'Pakistan',
+    state: 'Punjab',
+    taxRegistrationNumber: '',
+    address: '',
+    city: '',
+    phone: '',
+    email: '',
+    website: '',
+    fiscalYearStartMonth: 7,
     type: 'Subsidiary',
+    parentId: '' as string | undefined,
     active: true,
     modules: ALL_MODULES.map(m => m.id),
   });
 
   useEffect(() => { fetchCompanies(); }, [fetchCompanies]);
 
+  const activeCountryData = COUNTRY_PROVINCES[formData.country] || COUNTRY_PROVINCES['Pakistan'];
+
+  const handleCountryChange = (countryName: string) => {
+    const data = COUNTRY_PROVINCES[countryName];
+    if (data) {
+      setFormData(prev => ({
+        ...prev,
+        country: countryName,
+        currencyCode: data.currency,
+        state: data.provinces[0]?.code || '',
+        fiscalYearStartMonth: countryName === 'Pakistan' ? 7 : countryName === 'United Kingdom' ? 4 : 1,
+      }));
+    } else {
+      setFormData(prev => ({ ...prev, country: countryName }));
+    }
+  };
+
   const openCreate = () => {
     setEditingId(null);
     setFormData({
       name: '',
+      legalName: '',
       code: '',
       currencyCode: 'PKR',
       country: 'Pakistan',
+      state: 'Punjab',
+      taxRegistrationNumber: '',
+      address: '',
+      city: '',
+      phone: '',
+      email: '',
+      website: '',
+      fiscalYearStartMonth: 7,
       type: 'Subsidiary',
+      parentId: '',
       active: true,
       modules: ALL_MODULES.map(m => m.id),
     });
+    setModalTab('identity');
     setModalOpen(true);
   };
 
   const openEdit = (e: Entity) => {
     setEditingId(e.id);
+    const country = e.country || 'Pakistan';
+    const cData = COUNTRY_PROVINCES[country] || COUNTRY_PROVINCES['Pakistan'];
     setFormData({
       name: e.name,
+      legalName: e.legalName || e.name,
       code: e.code || '',
-      currencyCode: e.currencyCode || e.functionalCurrency || 'PKR',
-      country: e.country || 'Pakistan',
+      currencyCode: e.currencyCode || e.functionalCurrency || cData.currency,
+      country: country,
+      state: e.state || cData.provinces[0]?.code || '',
+      taxRegistrationNumber: e.taxRegistrationNumber || e.taxId || '',
+      address: e.address || '',
+      city: e.city || '',
+      phone: e.phone || '',
+      email: e.email || '',
+      website: e.website || '',
+      fiscalYearStartMonth: e.fiscalYearStartMonth || (country === 'Pakistan' ? 7 : country === 'United Kingdom' ? 4 : 1),
       type: e.type || 'Subsidiary',
+      parentId: e.parentId || '',
       active: e.active,
       modules: e.modules?.length ? e.modules : ALL_MODULES.map(m => m.id),
     });
+    setModalTab('identity');
     setModalOpen(true);
   };
 
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!formData.name.trim()) return;
+    if (!formData.name.trim()) {
+      notify?.('Company name is required.');
+      setModalTab('identity');
+      return;
+    }
 
-    await saveCompany(formData, editingId ?? undefined);
+    if (modalTab !== 'preview') {
+      setModalTab('preview');
+      return;
+    }
+
+    const payload = {
+      ...formData,
+      parentId: formData.parentId ? formData.parentId : undefined,
+    };
+
+    await saveCompany(payload, editingId ?? undefined);
     if (editingId && editingId === activeEntityId) {
       setActiveCurrency(formData.currencyCode);
     }
-    notify?.(`Company ${formData.name} saved successfully`);
+    notify?.(`Company ${formData.name} saved successfully with ${formData.country} tax pack`);
     setModalOpen(false);
   };
 
@@ -1818,11 +1900,16 @@ export function CompaniesView({ activeEntityId, notify }: { activeEntityId?: str
       theme: 'grid',
       styles: { fontSize: 9 },
       body: [
-        ['Company Legal Name', e.name],
-        ['Company Entity Code', e.code || '—'],
-        ['Operating Jurisdiction', e.country || '—'],
+        ['Company Legal Name', e.legalName || e.name],
+        ['Entity Code', e.code || '—'],
+        ['Country Jurisdiction', e.country || '—'],
+        ['Operating State / Province', e.state || '—'],
+        ['Tax Registration # (NTN/TRN/EIN)', e.taxRegistrationNumber || e.taxId || '—'],
         ['Functional Ledger Currency', e.currencyCode || e.functionalCurrency || 'PKR'],
         ['Entity Corporate Type', e.type || 'Subsidiary'],
+        ['Fiscal Year Start Month', e.fiscalYearStartMonth === 7 ? 'July (Pakistan Fiscal)' : e.fiscalYearStartMonth === 4 ? 'April (UK Fiscal)' : 'January (Calendar Year)'],
+        ['Registered Address', e.address ? `${e.address}, ${e.city || ''}` : '—'],
+        ['Official Email / Phone', `${e.email || '—'} / ${e.phone || '—'}`],
         ['Operating Status', e.active ? 'ACTIVE & OPERATIONAL' : 'DEACTIVATED (READ-ONLY)'],
       ],
     });
@@ -1848,74 +1935,47 @@ export function CompaniesView({ activeEntityId, notify }: { activeEntityId?: str
   };
 
   const filteredEntities = entities.filter(e =>
-    (e.name + ' ' + (e.code || '') + ' ' + (e.country || '')).toLowerCase().includes(query.toLowerCase())
+    (e.name + ' ' + (e.code || '') + ' ' + (e.country || '') + ' ' + (e.state || '') + ' ' + (e.taxRegistrationNumber || '')).toLowerCase().includes(query.toLowerCase())
   );
 
   return (
     <div className="p-6 max-w-[1400px] mx-auto space-y-6">
-      {/* Header */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-[var(--color-border)] pb-4">
-        <div>
-          <h1 className="text-xl font-black tracking-tight text-[var(--color-text-strong)] flex items-center gap-2.5">
-            <div className="p-2 rounded-xl bg-emerald-500/10 text-emerald-600 border border-emerald-500/20">
-              <Building2 className="w-5 h-5" />
+      {/* Page Header — AMS Signature Hero Band */}
+      <div className="relative overflow-hidden rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)] shadow-sm">
+        <div className="absolute inset-0 bg-gradient-to-r from-violet-500/10 via-violet-500/[0.03] to-transparent pointer-events-none" />
+        <div className="absolute -right-10 -top-16 w-56 h-56 rounded-full bg-violet-500/10 blur-3xl pointer-events-none" />
+        <div className="relative flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 px-5 py-4">
+          <div className="flex items-center gap-4">
+            <div className="relative h-14 w-14 shrink-0">
+              <div className="absolute inset-[6px] rotate-45 rounded-[12px] shadow-xl bg-gradient-to-br from-violet-500 to-purple-700" />
+              <div className="absolute inset-0 flex items-center justify-center"><Building2 className="w-6 h-6 text-white" /></div>
             </div>
-            Companies & Multi-Entity Hierarchy
-          </h1>
-          <p className="text-xs text-[var(--color-text-muted)] mt-1">
-            Govern corporate entities, operating subsidiaries, tax jurisdictions, and functional currencies.
-          </p>
+            <div>
+              <div className="flex items-center gap-2.5">
+                <h1 className="text-2xl font-black tracking-tight text-[var(--color-text-strong)]">Companies &amp; Multi-Entity Hierarchy</h1>
+                <span className="hidden sm:inline-flex items-center gap-1.5 rounded-full border border-violet-500/25 bg-violet-500/10 px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider text-violet-600 dark:text-violet-400"><span className="h-1.5 w-1.5 rounded-full bg-violet-500 animate-pulse" /> Live Ledger</span>
+              </div>
+              <p className="text-xs text-[var(--color-text-muted)] mt-0.5">Govern corporate entities, operating subsidiaries, national &amp; provincial tax jurisdictions, and functional currencies.</p>
+            </div>
+          </div>
+          <div className="flex items-center gap-2 shrink-0">
+            <button
+              onClick={openCreate}
+              className="inline-flex items-center gap-2 px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold shadow-sm transition-all"
+            >
+              <Plus className="w-4 h-4" /> Add Company / Entity
+            </button>
+          </div>
         </div>
-        <button
-          onClick={openCreate}
-          className="inline-flex items-center gap-2 px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold shadow-sm transition-all"
-        >
-          <Plus className="w-4 h-4" /> Add Company / Entity
-        </button>
       </div>
 
       {/* 4-in-1 KPI Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        <div className="p-4 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] shadow-sm space-y-1">
-          <div className="flex items-center justify-between text-[var(--color-text-muted)]">
-            <span className="text-xs font-semibold uppercase tracking-wider">Registered Entities</span>
-            <Building2 className="w-4 h-4 text-emerald-600" />
-          </div>
-          <div className="text-2xl font-black text-[var(--color-text-strong)] font-mono">{entities.length}</div>
-          <div className="text-[11px] text-[var(--color-text-muted)]">Multi-company ecosystem</div>
-        </div>
-
-        <div className="p-4 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] shadow-sm space-y-1">
-          <div className="flex items-center justify-between text-[var(--color-text-muted)]">
-            <span className="text-xs font-semibold uppercase tracking-wider">Active Entities</span>
-            <CheckCircle2 className="w-4 h-4 text-teal-600" />
-          </div>
-          <div className="text-2xl font-black text-teal-600 font-mono">{entities.filter(e => e.active).length}</div>
-          <div className="text-[11px] text-teal-600 font-medium">Open for financial postings</div>
-        </div>
-
-        <div className="p-4 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] shadow-sm space-y-1">
-          <div className="flex items-center justify-between text-[var(--color-text-muted)]">
-            <span className="text-xs font-semibold uppercase tracking-wider">Jurisdictions</span>
-            <Globe className="w-4 h-4 text-blue-600" />
-          </div>
-          <div className="text-2xl font-black text-[var(--color-text-strong)] font-mono">
-            {new Set(entities.map(e => e.country)).size}
-          </div>
-          <div className="text-[11px] text-[var(--color-text-muted)]">Operating countries</div>
-        </div>
-
-        <div className="p-4 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] shadow-sm space-y-1">
-          <div className="flex items-center justify-between text-[var(--color-text-muted)]">
-            <span className="text-xs font-semibold uppercase tracking-wider">Ledger Currencies</span>
-            <Coins className="w-4 h-4 text-purple-600" />
-          </div>
-          <div className="text-2xl font-black text-[var(--color-text-strong)] font-mono">
-            {new Set(entities.map(e => e.currencyCode || e.functionalCurrency)).size}
-          </div>
-          <div className="text-[11px] text-[var(--color-text-muted)]">Multi-currency functional books</div>
-        </div>
-      </div>
+      <KpiGrid cols={4}>
+        <KpiCard icon={Building2} label="Registered Entities" value={entities.length} desc="Multi-company ecosystem" tone="emerald" />
+        <KpiCard icon={CheckCircle2} label="Active Entities" value={entities.filter(e => e.active).length} desc="Open for financial postings" tone="teal" />
+        <KpiCard icon={Globe} label="Jurisdictions" value={new Set(entities.map(e => e.country)).size} desc="Operating countries" tone="blue" />
+        <KpiCard icon={Coins} label="Ledger Currencies" value={new Set(entities.map(e => e.currencyCode || e.functionalCurrency)).size} desc="Multi-currency functional books" tone="purple" />
+      </KpiGrid>
 
       {/* Search Bar */}
       <div className="relative flex items-center">
@@ -1924,7 +1984,7 @@ export function CompaniesView({ activeEntityId, notify }: { activeEntityId?: str
           type="text"
           value={query}
           onChange={e => setQuery(e.target.value)}
-          placeholder="Filter by company name, entity code, or jurisdiction..."
+          placeholder="Filter by company name, entity code, jurisdiction, province, or tax ID..."
           className="w-full pl-11 pr-8 py-2.5 text-xs bg-[var(--color-surface)] border border-[var(--color-border)] rounded-xl outline-none text-[var(--color-text-strong)] focus:border-teal-500 transition-colors"
         />
         {query && (
@@ -1942,6 +2002,7 @@ export function CompaniesView({ activeEntityId, notify }: { activeEntityId?: str
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
         {filteredEntities.map(e => {
           const isWorkingIn = e.id === activeEntityId;
+          const countryInfo = COUNTRY_PROVINCES[e.country || 'Pakistan'] || COUNTRY_PROVINCES['Pakistan'];
           return (
             <div
               key={e.id}
@@ -1954,8 +2015,8 @@ export function CompaniesView({ activeEntityId, notify }: { activeEntityId?: str
               <div className="space-y-3">
                 <div className="flex items-start justify-between gap-2">
                   <div className="flex items-center gap-2.5">
-                    <div className="w-10 h-10 rounded-xl bg-emerald-600 text-white font-bold flex items-center justify-center text-sm shadow-sm">
-                      {e.code || e.name[0] || 'C'}
+                    <div className="w-10 h-10 rounded-xl bg-emerald-600 text-white font-bold flex items-center justify-center text-sm shadow-sm shrink-0">
+                      {countryInfo.flag || (e.code || e.name[0] || 'C')}
                     </div>
                     <div>
                       <h3 className="font-bold text-sm text-[var(--color-text-strong)] flex items-center gap-2">
@@ -1966,7 +2027,9 @@ export function CompaniesView({ activeEntityId, notify }: { activeEntityId?: str
                           </span>
                         )}
                       </h3>
-                      <p className="text-xs text-[var(--color-text-muted)] font-mono">{e.code || 'NO-CODE'} · {e.country || 'Global'}</p>
+                      <p className="text-xs text-[var(--color-text-muted)] font-mono">
+                        {e.code || 'NO-CODE'} · {e.country || 'Global'} {e.state ? `(${e.state})` : ''}
+                      </p>
                     </div>
                   </div>
                 </div>
@@ -1974,17 +2037,28 @@ export function CompaniesView({ activeEntityId, notify }: { activeEntityId?: str
                 <div className="grid grid-cols-2 gap-2 p-2.5 rounded-xl bg-[var(--color-surface-muted)] text-xs">
                   <div>
                     <span className="text-[10px] uppercase text-[var(--color-text-muted)] font-semibold block">Currency</span>
-                    <span className="font-bold font-mono text-[var(--color-text-strong)]">{e.currencyCode || e.functionalCurrency || 'PKR'}</span>
+                    <span className="font-bold font-mono text-[var(--color-text-strong)]">{e.currencyCode || e.functionalCurrency || countryInfo.currency}</span>
                   </div>
                   <div>
                     <span className="text-[10px] uppercase text-[var(--color-text-muted)] font-semibold block">Type</span>
                     <span className="font-semibold text-[var(--color-text-strong)]">{e.type || 'Subsidiary'}</span>
                   </div>
+                  <div className="col-span-2 pt-1 border-t border-[var(--color-border)]/50">
+                    <span className="text-[10px] uppercase text-[var(--color-text-muted)] font-semibold block">Tax Registration #</span>
+                    <span className="font-mono font-medium text-[var(--color-text-strong)] text-[11px] truncate block">
+                      {e.taxRegistrationNumber || e.taxId || 'Not Registered'}
+                    </span>
+                  </div>
                 </div>
 
-                <div className="text-[11px] text-[var(--color-text-muted)] flex items-center gap-1.5">
-                  <span className={`w-2 h-2 rounded-full ${e.active ? 'bg-emerald-500' : 'bg-rose-500'}`} />
-                  {e.active ? 'Operational (Read / Write)' : 'Deactivated (Read-Only)'}
+                <div className="text-[11px] text-[var(--color-text-muted)] flex items-center justify-between">
+                  <div className="flex items-center gap-1.5">
+                    <span className={`w-2 h-2 rounded-full ${e.active ? 'bg-emerald-500' : 'bg-rose-500'}`} />
+                    {e.active ? 'Operational' : 'Deactivated'}
+                  </div>
+                  {e.city && (
+                    <span className="text-[10px] text-[var(--color-text-muted)]">{e.city}</span>
+                  )}
                 </div>
               </div>
 
@@ -1997,19 +2071,23 @@ export function CompaniesView({ activeEntityId, notify }: { activeEntityId?: str
                     <Building2 className="w-3.5 h-3.5" /> Switch To Entity
                   </button>
                 ) : (
-                  <button
-                    onClick={() => exportCompanyProfilePDF(e)}
-                    className="px-3 py-1.5 border border-[var(--color-border)] hover:bg-[var(--color-surface-muted)] text-[var(--color-text-strong)] rounded-lg text-xs font-semibold flex items-center gap-1"
-                  >
-                    <Download className="w-3.5 h-3.5" /> PDF Profile
-                  </button>
+                  <div className="text-[11px] text-emerald-700 font-semibold flex items-center gap-1">
+                    <CheckCircle2 className="w-3.5 h-3.5" /> Current Workspace
+                  </div>
                 )}
 
                 <div className="flex items-center gap-1">
                   <button
+                    onClick={() => exportCompanyProfilePDF(e)}
+                    title="Download Corporate Entity Profile PDF"
+                    className="p-1.5 rounded-lg border border-[var(--color-border)] hover:bg-[var(--color-surface-muted)] text-[var(--color-text-muted)] hover:text-[var(--color-text-strong)]"
+                  >
+                    <Download className="w-3.5 h-3.5" />
+                  </button>
+                  <button
                     onClick={() => openEdit(e)}
-                    title="Edit Entity"
-                    className="p-1.5 rounded-lg border border-[var(--color-border)] hover:bg-[var(--color-surface-muted)] text-blue-600"
+                    title="Edit Corporate Parameters"
+                    className="p-1.5 rounded-lg border border-[var(--color-border)] hover:bg-[var(--color-surface-muted)] text-indigo-600"
                   >
                     <Pencil className="w-3.5 h-3.5" />
                   </button>
@@ -2036,98 +2114,458 @@ export function CompaniesView({ activeEntityId, notify }: { activeEntityId?: str
         })}
       </div>
 
-      {/* Company Modal */}
+      {/* Corporate Multi-Tabbed Entity Modal */}
       {modalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs">
-          <div className="w-full max-w-xl bg-[var(--color-surface)] border border-[var(--color-border)] rounded-2xl shadow-2xl overflow-hidden animate-in fade-in zoom-in-95">
-            <div className="flex items-center justify-between p-4 border-b border-[var(--color-border)] bg-[var(--color-surface-muted)]">
-              <h3 className="font-bold text-sm text-[var(--color-text-strong)] flex items-center gap-2">
-                <Building2 className="w-4 h-4 text-emerald-600" />
-                {editingId ? 'Edit Corporate Entity' : 'Register New Company Entity'}
-              </h3>
-              <button onClick={() => setModalOpen(false)} className="p-1 rounded-lg hover:bg-[var(--color-surface)] text-[var(--color-text-muted)]">
+          <div className="w-full max-w-3xl bg-[var(--color-surface)] border border-[var(--color-border)] rounded-2xl shadow-2xl overflow-hidden animate-in fade-in zoom-in-95 flex flex-col max-h-[90vh]">
+            {/* Modal Header */}
+            <div className="px-6 py-4 border-b border-[var(--color-border)] bg-[var(--color-surface-muted)] flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-emerald-600 text-white font-bold flex items-center justify-center text-base shadow-sm">
+                  {activeCountryData.flag}
+                </div>
+                <div>
+                  <h3 className="font-bold text-sm text-[var(--color-text-strong)] flex items-center gap-2">
+                    {editingId ? `Edit ${formData.name || 'Company Entity'}` : 'Register New Corporate Entity'}
+                  </h3>
+                  <p className="text-[11px] text-[var(--color-text-muted)]">
+                    Operating Jurisdiction: <strong className="text-[var(--color-text-strong)]">{formData.country}</strong> ({formData.state || 'National'})
+                  </p>
+                </div>
+              </div>
+              <button onClick={() => setModalOpen(false)} className="p-1.5 rounded-lg hover:bg-[var(--color-surface)] text-[var(--color-text-muted)]">
                 <X className="w-4 h-4" />
               </button>
             </div>
-            <form onSubmit={handleSave} className="p-4 space-y-3.5 text-xs">
-              <div className="grid grid-cols-3 gap-3">
-                <div className="col-span-2 space-y-1">
-                  <label className="font-semibold text-[var(--color-text-strong)]">Company Legal Name *</label>
-                  <input
-                    required
-                    type="text"
-                    value={formData.name}
-                    onChange={e => setFormData({ ...formData, name: e.target.value })}
-                    placeholder="e.g. Apex Industrial Solutions Ltd"
-                    className="w-full px-3 py-2 bg-[var(--color-surface-muted)] border border-[var(--color-border)] rounded-xl outline-none text-[var(--color-text)]"
-                  />
-                </div>
-                <div className="space-y-1">
-                  <label className="font-semibold text-[var(--color-text-strong)]">Entity Code *</label>
-                  <input
-                    required
-                    type="text"
-                    value={formData.code}
-                    onChange={e => setFormData({ ...formData, code: e.target.value.toUpperCase() })}
-                    placeholder="APEX"
-                    className="w-full px-3 py-2 bg-[var(--color-surface-muted)] border border-[var(--color-border)] rounded-xl outline-none text-[var(--color-text)] font-mono"
-                  />
-                </div>
-              </div>
 
-              <div className="grid grid-cols-2 gap-3">
-                <div className="space-y-1">
-                  <label className="font-semibold text-[var(--color-text-strong)]">Country / Jurisdiction</label>
-                  <select
-                    value={formData.country}
-                    onChange={e => setFormData({ ...formData, country: e.target.value })}
-                    className="w-full px-3 py-2 bg-[var(--color-surface-muted)] border border-[var(--color-border)] rounded-xl outline-none text-[var(--color-text)]"
-                  >
-                    <option value="Pakistan">Pakistan (PKR / FBR Compliant)</option>
-                    <option value="United States">United States (USD / US GAAP)</option>
-                    <option value="United Kingdom">United Kingdom (GBP / HMRC VAT)</option>
-                    <option value="United Arab Emirates">United Arab Emirates (AED / FTA VAT)</option>
-                    <option value="Saudi Arabia">Saudi Arabia (SAR / ZATCA E-Invoicing)</option>
-                    <option value="Canada">Canada (CAD / CRA GST/HST)</option>
-                    <option value="European Union">European Union (EUR / EU VAT)</option>
-                    <option value="Australia">Australia (AUD / ATO GST)</option>
-                  </select>
+            {/* Navigation Tabs */}
+            <div className="flex items-center gap-1 px-6 pt-3 border-b border-[var(--color-border)] bg-[var(--color-surface)] overflow-x-auto">
+              <button
+                type="button"
+                onClick={() => setModalTab('identity')}
+                className={`flex items-center gap-1.5 px-3 py-2 text-xs font-semibold rounded-t-lg border-b-2 transition-all whitespace-nowrap ${
+                  modalTab === 'identity'
+                    ? 'border-emerald-600 text-emerald-600 bg-emerald-500/10'
+                    : 'border-transparent text-[var(--color-text-muted)] hover:text-[var(--color-text-strong)]'
+                }`}
+              >
+                <Building2 className="w-3.5 h-3.5" /> 1. Identity & Type
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setModalTab('jurisdiction')}
+                className={`flex items-center gap-1.5 px-3 py-2 text-xs font-semibold rounded-t-lg border-b-2 transition-all whitespace-nowrap ${
+                  modalTab === 'jurisdiction'
+                    ? 'border-emerald-600 text-emerald-600 bg-emerald-500/10'
+                    : 'border-transparent text-[var(--color-text-muted)] hover:text-[var(--color-text-strong)]'
+                }`}
+              >
+                <Globe className="w-3.5 h-3.5" /> 2. Country & Province
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setModalTab('tax')}
+                className={`flex items-center gap-1.5 px-3 py-2 text-xs font-semibold rounded-t-lg border-b-2 transition-all whitespace-nowrap ${
+                  modalTab === 'tax'
+                    ? 'border-emerald-600 text-emerald-600 bg-emerald-500/10'
+                    : 'border-transparent text-[var(--color-text-muted)] hover:text-[var(--color-text-strong)]'
+                }`}
+              >
+                <Receipt className="w-3.5 h-3.5" /> 3. Tax & Fiscal
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setModalTab('contact')}
+                className={`flex items-center gap-1.5 px-3 py-2 text-xs font-semibold rounded-t-lg border-b-2 transition-all whitespace-nowrap ${
+                  modalTab === 'contact'
+                    ? 'border-emerald-600 text-emerald-600 bg-emerald-500/10'
+                    : 'border-transparent text-[var(--color-text-muted)] hover:text-[var(--color-text-strong)]'
+                }`}
+              >
+                <MapPin className="w-3.5 h-3.5" /> 4. Address & Contact
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setModalTab('modules')}
+                className={`flex items-center gap-1.5 px-3 py-2 text-xs font-semibold rounded-t-lg border-b-2 transition-all whitespace-nowrap ${
+                  modalTab === 'modules'
+                    ? 'border-emerald-600 text-emerald-600 bg-emerald-500/10'
+                    : 'border-transparent text-[var(--color-text-muted)] hover:text-[var(--color-text-strong)]'
+                }`}
+              >
+                <LayoutGrid className="w-3.5 h-3.5" /> 5. Modules
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setModalTab('preview')}
+                className={`flex items-center gap-1.5 px-3 py-2 text-xs font-semibold rounded-t-lg border-b-2 transition-all whitespace-nowrap ${
+                  modalTab === 'preview'
+                    ? 'border-emerald-600 text-emerald-600 bg-emerald-500/10 font-bold'
+                    : 'border-transparent text-[var(--color-text-muted)] hover:text-[var(--color-text-strong)]'
+                }`}
+              >
+                <Eye className="w-3.5 h-3.5" /> 6. Preview
+              </button>
+            </div>
+
+            {/* Modal Body */}
+            <form onSubmit={handleSave} className="p-6 overflow-y-auto flex-1 space-y-4 text-xs">
+              {/* TAB 1: IDENTITY */}
+              {modalTab === 'identity' && (
+                <div className="space-y-4 animate-in fade-in">
+                  <div className="grid grid-cols-3 gap-3">
+                    <div className="col-span-2 space-y-1">
+                      <label className="font-semibold text-[var(--color-text-strong)]">Company Trading / Brand Name *</label>
+                      <input
+                        required
+                        type="text"
+                        value={formData.name}
+                        onChange={e => setFormData({ ...formData, name: e.target.value })}
+                        placeholder="e.g. Apex Industrial Solutions"
+                        className="w-full px-3 py-2 bg-[var(--color-surface)] border border-[var(--color-border)] rounded-xl outline-none text-[var(--color-text-strong)] focus:border-emerald-500"
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <label className="font-semibold text-[var(--color-text-strong)]">Entity Short Code *</label>
+                      <input
+                        required
+                        type="text"
+                        value={formData.code}
+                        onChange={e => setFormData({ ...formData, code: e.target.value.toUpperCase() })}
+                        placeholder="APEX"
+                        className="w-full px-3 py-2 bg-[var(--color-surface)] border border-[var(--color-border)] rounded-xl outline-none text-[var(--color-text-strong)] font-mono font-bold focus:border-emerald-500"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="space-y-1">
+                    <label className="font-semibold text-[var(--color-text-strong)]">Full Registered Legal Name</label>
+                    <input
+                      type="text"
+                      value={formData.legalName}
+                      onChange={e => setFormData({ ...formData, legalName: e.target.value })}
+                      placeholder="e.g. Apex Industrial Solutions (Private) Limited"
+                      className="w-full px-3 py-2 bg-[var(--color-surface)] border border-[var(--color-border)] rounded-xl outline-none text-[var(--color-text-strong)] focus:border-emerald-500"
+                    />
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="space-y-1">
+                      <label className="font-semibold text-[var(--color-text-strong)]">Corporate Entity Type</label>
+                      <select
+                        value={formData.type}
+                        onChange={e => setFormData({ ...formData, type: e.target.value })}
+                        className="w-full px-3 py-2 bg-[var(--color-surface)] border border-[var(--color-border)] rounded-xl outline-none text-[var(--color-text-strong)] focus:border-emerald-500"
+                      >
+                        <option value="Parent Corporation">Parent Corporation (Holding Company)</option>
+                        <option value="Subsidiary">Operating Subsidiary</option>
+                        <option value="Joint Venture">Joint Venture</option>
+                        <option value="Branch Office">Branch / Regional Operating Unit</option>
+                        <option value="Associate">Associate Entity</option>
+                      </select>
+                    </div>
+
+                    {formData.type !== 'Parent Corporation' && (
+                      <div className="space-y-1">
+                        <label className="font-semibold text-[var(--color-text-strong)]">Parent / Holding Company</label>
+                        <select
+                          value={formData.parentId || ''}
+                          onChange={e => setFormData({ ...formData, parentId: e.target.value })}
+                          className="w-full px-3 py-2 bg-[var(--color-surface)] border border-[var(--color-border)] rounded-xl outline-none text-[var(--color-text-strong)] focus:border-emerald-500"
+                        >
+                          <option value="">None / Standalone Entity</option>
+                          {entities.filter(e => e.id !== editingId).map(e => (
+                            <option key={e.id} value={e.id}>{e.name} ({e.code || 'CO'})</option>
+                          ))}
+                        </select>
+                      </div>
+                    )}
+                  </div>
                 </div>
+              )}
 
-                <div className="space-y-1">
-                  <label className="font-semibold text-[var(--color-text-strong)]">Functional Ledger Currency</label>
-                  <select
-                    value={formData.currencyCode}
-                    onChange={e => setFormData({ ...formData, currencyCode: e.target.value })}
-                    className="w-full px-3 py-2 bg-[var(--color-surface-muted)] border border-[var(--color-border)] rounded-xl outline-none text-[var(--color-text)] font-mono"
-                  >
-                    <option value="PKR">PKR - Pakistani Rupee</option>
-                    <option value="USD">USD - US Dollar</option>
-                    <option value="GBP">GBP - British Pound</option>
-                    <option value="EUR">EUR - Euro</option>
-                    <option value="AED">AED - UAE Dirham</option>
-                    <option value="SAR">SAR - Saudi Riyal</option>
-                    <option value="CAD">CAD - Canadian Dollar</option>
-                    <option value="AUD">AUD - Australian Dollar</option>
-                  </select>
+              {/* TAB 2: JURISDICTION & PROVINCE */}
+              {modalTab === 'jurisdiction' && (
+                <div className="space-y-4 animate-in fade-in">
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="space-y-1">
+                      <label className="font-semibold text-[var(--color-text-strong)]">Country / Sovereign Jurisdiction *</label>
+                      <select
+                        value={formData.country}
+                        onChange={e => handleCountryChange(e.target.value)}
+                        className="w-full px-3 py-2 bg-[var(--color-surface)] border border-[var(--color-border)] rounded-xl outline-none text-[var(--color-text-strong)] font-semibold focus:border-emerald-500"
+                      >
+                        <option value="Pakistan">🇵🇰 Pakistan</option>
+                        <option value="United Kingdom">🇬🇧 United Kingdom</option>
+                        <option value="Saudi Arabia">🇸🇦 Saudi Arabia (KSA)</option>
+                        <option value="United Arab Emirates">🇦🇪 United Arab Emirates (UAE)</option>
+                        <option value="United States">🇺🇸 United States of America</option>
+                        <option value="Canada">🇨🇦 Canada</option>
+                        <option value="European Union">🇪🇺 European Union (Germany / France / Netherlands / Ireland)</option>
+                      </select>
+                    </div>
+
+                    <div className="space-y-1">
+                      <label className="font-semibold text-[var(--color-text-strong)]">
+                        State / Province / Regional Authority *
+                      </label>
+                      <select
+                        value={formData.state}
+                        onChange={e => setFormData({ ...formData, state: e.target.value })}
+                        className="w-full px-3 py-2 bg-[var(--color-surface)] border border-[var(--color-border)] rounded-xl outline-none text-[var(--color-text-strong)] font-semibold focus:border-emerald-500"
+                      >
+                        {activeCountryData.provinces.map(p => (
+                          <option key={p.code} value={p.code}>{p.name}</option>
+                        ))}
+                      </select>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="space-y-1">
+                      <label className="font-semibold text-[var(--color-text-strong)]">Functional General Ledger Currency</label>
+                      <select
+                        value={formData.currencyCode}
+                        onChange={e => setFormData({ ...formData, currencyCode: e.target.value })}
+                        className="w-full px-3 py-2 bg-[var(--color-surface)] border border-[var(--color-border)] rounded-xl outline-none text-[var(--color-text-strong)] font-mono font-bold focus:border-emerald-500"
+                      >
+                        <option value="PKR">PKR — Pakistani Rupee</option>
+                        <option value="GBP">GBP — British Pound Sterling</option>
+                        <option value="SAR">SAR — Saudi Riyal</option>
+                        <option value="AED">AED — UAE Dirham</option>
+                        <option value="USD">USD — US Dollar</option>
+                        <option value="CAD">CAD — Canadian Dollar</option>
+                        <option value="EUR">EUR — Euro</option>
+                      </select>
+                    </div>
+
+                    <div className="space-y-1">
+                      <label className="font-semibold text-[var(--color-text-strong)]">Governing Tax Ecosystem</label>
+                      <div className="px-3 py-2 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-700 dark:text-emerald-300 font-semibold text-[11px] flex items-center gap-1.5">
+                        <Sparkles className="w-3.5 h-3.5 shrink-0" />
+                        <span className="truncate">{activeCountryData.taxAuthority}</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="p-3.5 rounded-xl border border-blue-500/20 bg-blue-500/5 text-xs text-[var(--color-text-muted)] space-y-1">
+                    <p className="font-bold text-blue-700 dark:text-blue-300 flex items-center gap-1.5">
+                      <Globe className="w-4 h-4" />
+                      Automatic Localization Engine Active
+                    </p>
+                    <p className="text-[11px]">
+                      Selecting <strong>{formData.country} ({formData.state})</strong> automatically provisions the official tax authorities, dual-entry GL mappings, standard & reduced VAT rates, zero-rated exports, and withholding tax slabs for this entity.
+                    </p>
+                  </div>
                 </div>
-              </div>
+              )}
 
-              <div className="space-y-1">
-                <label className="font-semibold text-[var(--color-text-strong)]">Corporate Entity Type</label>
-                <select
-                  value={formData.type}
-                  onChange={e => setFormData({ ...formData, type: e.target.value })}
-                  className="w-full px-3 py-2 bg-[var(--color-surface-muted)] border border-[var(--color-border)] rounded-xl outline-none text-[var(--color-text)]"
-                >
-                  <option value="Parent Corporation">Parent Corporation (Holding)</option>
-                  <option value="Subsidiary">Operating Subsidiary</option>
-                  <option value="Joint Venture">Joint Venture</option>
-                  <option value="Branch Office">Branch / Regional Office</option>
-                </select>
-              </div>
+              {/* TAB 3: TAX REGISTRATION */}
+              {modalTab === 'tax' && (
+                <div className="space-y-4 animate-in fade-in">
+                  <div className="space-y-1">
+                    <label className="font-semibold text-[var(--color-text-strong)]">
+                      {activeCountryData.taxIdLabel} *
+                    </label>
+                    <input
+                      type="text"
+                      value={formData.taxRegistrationNumber}
+                      onChange={e => setFormData({ ...formData, taxRegistrationNumber: e.target.value })}
+                      placeholder={formData.country === 'Pakistan' ? 'e.g. NTN: 1234567-8 / STRN: 32-00-1234-567' : formData.country === 'United Kingdom' ? 'e.g. GB 123 4567 89' : 'e.g. 12-3456789'}
+                      className="w-full px-3 py-2 bg-[var(--color-surface)] border border-[var(--color-border)] rounded-xl outline-none text-[var(--color-text-strong)] font-mono focus:border-emerald-500"
+                    />
+                  </div>
 
-              <div className="flex items-center justify-end gap-2 pt-3 border-t border-[var(--color-border)]">
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="space-y-1">
+                      <label className="font-semibold text-[var(--color-text-strong)]">Fiscal Year Start Month</label>
+                      <select
+                        value={formData.fiscalYearStartMonth}
+                        onChange={e => setFormData({ ...formData, fiscalYearStartMonth: parseInt(e.target.value, 10) })}
+                        className="w-full px-3 py-2 bg-[var(--color-surface)] border border-[var(--color-border)] rounded-xl outline-none text-[var(--color-text-strong)] focus:border-emerald-500"
+                      >
+                        <option value={1}>January (Calendar Year — US / EU / UAE / SA)</option>
+                        <option value={4}>April (UK / Japan Fiscal Year)</option>
+                        <option value={7}>July (Pakistan / Australia Fiscal Year)</option>
+                        <option value={10}>October (US Federal Govt Fiscal)</option>
+                      </select>
+                    </div>
+
+                    <div className="space-y-1">
+                      <label className="font-semibold text-[var(--color-text-strong)]">Accounting Standards Framework</label>
+                      <select
+                        defaultValue="IFRS"
+                        className="w-full px-3 py-2 bg-[var(--color-surface)] border border-[var(--color-border)] rounded-xl outline-none text-[var(--color-text-strong)] focus:border-emerald-500 font-semibold"
+                      >
+                        <option value="IFRS">IAS / IFRS (International Accounting Standards)</option>
+                        <option value="GAAP">US GAAP (Generally Accepted Accounting Principles)</option>
+                      </select>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* TAB 4: ADDRESS & CONTACT */}
+              {modalTab === 'contact' && (
+                <div className="space-y-4 animate-in fade-in">
+                  <div className="space-y-1">
+                    <label className="font-semibold text-[var(--color-text-strong)]">Registered Corporate Address</label>
+                    <textarea
+                      rows={2}
+                      value={formData.address}
+                      onChange={e => setFormData({ ...formData, address: e.target.value })}
+                      placeholder="e.g. Suite 402, Corporate Towers, Main Boulevard"
+                      className="w-full px-3 py-2 bg-[var(--color-surface)] border border-[var(--color-border)] rounded-xl outline-none text-[var(--color-text-strong)] focus:border-emerald-500"
+                    />
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="space-y-1">
+                      <label className="font-semibold text-[var(--color-text-strong)]">City / District</label>
+                      <input
+                        type="text"
+                        value={formData.city}
+                        onChange={e => setFormData({ ...formData, city: e.target.value })}
+                        placeholder="e.g. Lahore / London / Dubai"
+                        className="w-full px-3 py-2 bg-[var(--color-surface)] border border-[var(--color-border)] rounded-xl outline-none text-[var(--color-text-strong)] focus:border-emerald-500"
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <label className="font-semibold text-[var(--color-text-strong)]">Official Contact Phone</label>
+                      <input
+                        type="text"
+                        value={formData.phone}
+                        onChange={e => setFormData({ ...formData, phone: e.target.value })}
+                        placeholder="e.g. +92 42 3578 9000"
+                        className="w-full px-3 py-2 bg-[var(--color-surface)] border border-[var(--color-border)] rounded-xl outline-none text-[var(--color-text-strong)] focus:border-emerald-500 font-mono"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="space-y-1">
+                      <label className="font-semibold text-[var(--color-text-strong)]">Corporate Email</label>
+                      <input
+                        type="email"
+                        value={formData.email}
+                        onChange={e => setFormData({ ...formData, email: e.target.value })}
+                        placeholder="finance@company.com"
+                        className="w-full px-3 py-2 bg-[var(--color-surface)] border border-[var(--color-border)] rounded-xl outline-none text-[var(--color-text-strong)] focus:border-emerald-500"
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <label className="font-semibold text-[var(--color-text-strong)]">Corporate Website</label>
+                      <input
+                        type="text"
+                        value={formData.website}
+                        onChange={e => setFormData({ ...formData, website: e.target.value })}
+                        placeholder="https://company.com"
+                        className="w-full px-3 py-2 bg-[var(--color-surface)] border border-[var(--color-border)] rounded-xl outline-none text-[var(--color-text-strong)] focus:border-emerald-500"
+                      />
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* TAB 5: ENABLED MODULES */}
+              {modalTab === 'modules' && (
+                <div className="space-y-3 animate-in fade-in">
+                  <div className="flex items-center justify-between pb-2 border-b border-[var(--color-border)]">
+                    <span className="font-semibold text-[var(--color-text-strong)]">Enable Functional Modules for this Entity</span>
+                    <button
+                      type="button"
+                      onClick={() => setFormData({ ...formData, modules: ALL_MODULES.map(m => m.id) })}
+                      className="text-[11px] text-emerald-600 font-bold hover:underline"
+                    >
+                      Enable All
+                    </button>
+                  </div>
+
+                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                    {ALL_MODULES.map(m => {
+                      const enabled = formData.modules.includes(m.id);
+                      return (
+                        <button
+                          key={m.id}
+                          type="button"
+                          onClick={() => {
+                            const next = enabled
+                              ? formData.modules.filter(id => id !== m.id)
+                              : [...formData.modules, m.id];
+                            setFormData({ ...formData, modules: next });
+                          }}
+                          className={`p-2.5 rounded-xl border text-left flex items-center justify-between transition-all ${
+                            enabled
+                              ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-700 dark:text-emerald-300 font-bold'
+                              : 'bg-[var(--color-surface)] border-[var(--color-border)] text-[var(--color-text-muted)]'
+                          }`}
+                        >
+                          <span className="text-[11px]">{m.name}</span>
+                          <span className={`w-3.5 h-3.5 rounded-full flex items-center justify-center text-[9px] ${enabled ? 'bg-emerald-600 text-white' : 'border border-[var(--color-border)]'}`}>
+                            {enabled ? '✓' : ''}
+                          </span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+
+              {/* TAB 6: LIVE PREVIEW */}
+              {modalTab === 'preview' && (
+                <div className="space-y-4 animate-in fade-in">
+                  <div className="p-4 rounded-2xl bg-gradient-to-r from-emerald-900 via-teal-900 to-slate-900 text-white shadow-md">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-3">
+                        <span className="text-3xl">{activeCountryData.flag}</span>
+                        <div>
+                          <h3 className="text-base font-bold tracking-tight">{formData.name || 'Unnamed Company'}</h3>
+                          <p className="text-xs text-emerald-200 font-mono">
+                            {formData.code || 'NO-CODE'} · {formData.legalName || formData.name}
+                          </p>
+                        </div>
+                      </div>
+                      <span className="px-3 py-1 rounded-full bg-emerald-500/20 text-emerald-200 border border-emerald-400/30 text-xs font-bold font-mono">
+                        {formData.currencyCode} Functional
+                      </span>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-3 text-xs">
+                    <div className="p-3.5 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] space-y-2">
+                      <span className="font-bold text-[var(--color-text-strong)] block border-b border-[var(--color-border)] pb-1">
+                        📍 Jurisdiction & Tax Setup
+                      </span>
+                      <div className="space-y-1 text-[11px]">
+                        <p><span className="text-[var(--color-text-muted)]">Country:</span> <strong>{formData.country}</strong></p>
+                        <p><span className="text-[var(--color-text-muted)]">State / Province:</span> <strong>{formData.state}</strong></p>
+                        <p><span className="text-[var(--color-text-muted)]">Tax Registration:</span> <strong className="font-mono">{formData.taxRegistrationNumber || 'Not Specified'}</strong></p>
+                        <p><span className="text-[var(--color-text-muted)]">Tax Authority:</span> <span className="text-emerald-600 font-semibold">{activeCountryData.taxAuthority}</span></p>
+                      </div>
+                    </div>
+
+                    <div className="p-3.5 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] space-y-2">
+                      <span className="font-bold text-[var(--color-text-strong)] block border-b border-[var(--color-border)] pb-1">
+                        🏢 Corporate & Contact
+                      </span>
+                      <div className="space-y-1 text-[11px]">
+                        <p><span className="text-[var(--color-text-muted)]">Entity Type:</span> <strong>{formData.type}</strong></p>
+                        <p><span className="text-[var(--color-text-muted)]">Fiscal Year Start:</span> <strong>Month {formData.fiscalYearStartMonth}</strong></p>
+                        <p><span className="text-[var(--color-text-muted)]">City / Address:</span> <span>{formData.city || '—'} {formData.address ? `(${formData.address})` : ''}</span></p>
+                        <p><span className="text-[var(--color-text-muted)]">Contact:</span> <span className="font-mono">{formData.email || '—'}</span></p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Modal Footer Controls */}
+              <div className="flex items-center justify-between pt-4 border-t border-[var(--color-border)]">
                 <button
                   type="button"
                   onClick={() => setModalOpen(false)}
@@ -2135,12 +2573,58 @@ export function CompaniesView({ activeEntityId, notify }: { activeEntityId?: str
                 >
                   Cancel
                 </button>
-                <button
-                  type="submit"
-                  className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold shadow-sm"
-                >
-                  {editingId ? 'Save Company Changes' : 'Register Corporate Entity'}
-                </button>
+
+                <div className="flex items-center gap-2">
+                  {modalTab !== 'identity' && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (modalTab === 'preview') setModalTab('modules');
+                        else if (modalTab === 'modules') setModalTab('contact');
+                        else if (modalTab === 'contact') setModalTab('tax');
+                        else if (modalTab === 'tax') setModalTab('jurisdiction');
+                        else if (modalTab === 'jurisdiction') setModalTab('identity');
+                      }}
+                      className="px-3.5 py-2 border border-[var(--color-border)] rounded-xl text-xs font-semibold hover:bg-[var(--color-surface-muted)] text-[var(--color-text)]"
+                    >
+                      Back
+                    </button>
+                  )}
+
+                  {modalTab !== 'preview' ? (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (modalTab === 'identity') {
+                          if (!formData.name.trim()) { notify?.('Company name is required.'); return; }
+                          setModalTab('jurisdiction');
+                        } else if (modalTab === 'jurisdiction') {
+                          setModalTab('tax');
+                        } else if (modalTab === 'tax') {
+                          setModalTab('contact');
+                        } else if (modalTab === 'contact') {
+                          setModalTab('modules');
+                        } else if (modalTab === 'modules') {
+                          setModalTab('preview');
+                        }
+                      }}
+                      className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold flex items-center gap-1.5 shadow-sm"
+                    >
+                      <span>
+                        {modalTab === 'identity' ? 'Next: Jurisdiction & Province' : modalTab === 'jurisdiction' ? 'Next: Tax Registration' : modalTab === 'tax' ? 'Next: Address & Contact' : modalTab === 'contact' ? 'Next: Modules' : 'Preview & Review'}
+                      </span>
+                      <ArrowRight className="w-3.5 h-3.5" />
+                    </button>
+                  ) : (
+                    <button
+                      type="submit"
+                      className="px-5 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold shadow-md flex items-center gap-1.5"
+                    >
+                      <Check className="w-3.5 h-3.5" />
+                      <span>{editingId ? 'Confirm & Save Changes' : 'Confirm & Register Corporate Entity'}</span>
+                    </button>
+                  )}
+                </div>
               </div>
             </form>
           </div>
@@ -2179,71 +2663,42 @@ export function BranchesView({ activeEntityId, notify }: { activeEntityId?: stri
 
   return (
     <div className="p-6 max-w-[1400px] mx-auto space-y-6">
-      {/* Header */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-[var(--color-border)] pb-4">
-        <div>
-          <h1 className="text-xl font-black tracking-tight text-[var(--color-text-strong)] flex items-center gap-2.5">
-            <div className="p-2 rounded-xl bg-purple-500/10 text-purple-600 border border-purple-500/20">
-              <GitBranch className="w-5 h-5" />
+      {/* Page Header — AMS Signature Hero Band */}
+      <div className="relative overflow-hidden rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)] shadow-sm">
+        <div className="absolute inset-0 bg-gradient-to-r from-violet-500/10 via-violet-500/[0.03] to-transparent pointer-events-none" />
+        <div className="absolute -right-10 -top-16 w-56 h-56 rounded-full bg-violet-500/10 blur-3xl pointer-events-none" />
+        <div className="relative flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 px-5 py-4">
+          <div className="flex items-center gap-4">
+            <div className="relative h-14 w-14 shrink-0">
+              <div className="absolute inset-[6px] rotate-45 rounded-[12px] shadow-xl bg-gradient-to-br from-violet-500 to-purple-700" />
+              <div className="absolute inset-0 flex items-center justify-center"><GitBranch className="w-6 h-6 text-white" /></div>
             </div>
-            Branches & Regional Operating Units
-          </h1>
-          <p className="text-xs text-[var(--color-text-muted)] mt-1">
-            Define physical outlets, regional offices, and cost centers for segmented transaction tagging.
-          </p>
+            <div>
+              <div className="flex items-center gap-2.5">
+                <h1 className="text-2xl font-black tracking-tight text-[var(--color-text-strong)]">Branches &amp; Regional Operating Units</h1>
+                <span className="hidden sm:inline-flex items-center gap-1.5 rounded-full border border-violet-500/25 bg-violet-500/10 px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider text-violet-600 dark:text-violet-400"><span className="h-1.5 w-1.5 rounded-full bg-violet-500 animate-pulse" /> Live Ledger</span>
+              </div>
+              <p className="text-xs text-[var(--color-text-muted)] mt-0.5">Define physical outlets, regional offices, and cost centers for segmented transaction tagging.</p>
+            </div>
+          </div>
+          <div className="flex items-center gap-2 shrink-0">
+            <button
+              onClick={() => setModalOpen(true)}
+              className="inline-flex items-center gap-2 px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-xl text-xs font-bold shadow-sm transition-all"
+            >
+              <Plus className="w-4 h-4" /> Add Branch
+            </button>
+          </div>
         </div>
-        <button
-          onClick={() => setModalOpen(true)}
-          className="inline-flex items-center gap-2 px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-xl text-xs font-bold shadow-sm transition-all"
-        >
-          <Plus className="w-4 h-4" /> Add Branch
-        </button>
       </div>
 
       {/* 4-in-1 KPI Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        <div className="p-4 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] shadow-sm space-y-1">
-          <div className="flex items-center justify-between text-[var(--color-text-muted)]">
-            <span className="text-xs font-semibold uppercase tracking-wider">Total Branches</span>
-            <GitBranch className="w-4 h-4 text-purple-600" />
-          </div>
-          <div className="text-2xl font-black text-[var(--color-text-strong)] font-mono">{branches.length}</div>
-          <div className="text-[11px] text-[var(--color-text-muted)]">Operating units</div>
-        </div>
-
-        <div className="p-4 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] shadow-sm space-y-1">
-          <div className="flex items-center justify-between text-[var(--color-text-muted)]">
-            <span className="text-xs font-semibold uppercase tracking-wider">Active Units</span>
-            <CheckCircle2 className="w-4 h-4 text-emerald-600" />
-          </div>
-          <div className="text-2xl font-black text-emerald-600 font-mono">
-            {branches.filter(b => b.active).length}
-          </div>
-          <div className="text-[11px] text-emerald-600 font-medium">Accepting transactions</div>
-        </div>
-
-        <div className="p-4 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] shadow-sm space-y-1">
-          <div className="flex items-center justify-between text-[var(--color-text-muted)]">
-            <span className="text-xs font-semibold uppercase tracking-wider">Operating Cities</span>
-            <Building2 className="w-4 h-4 text-blue-600" />
-          </div>
-          <div className="text-2xl font-black text-[var(--color-text-strong)] font-mono">
-            {new Set(branches.map(b => b.city).filter(Boolean)).size}
-          </div>
-          <div className="text-[11px] text-[var(--color-text-muted)]">Geographic reach</div>
-        </div>
-
-        <div className="p-4 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] shadow-sm space-y-1">
-          <div className="flex items-center justify-between text-[var(--color-text-muted)]">
-            <span className="text-xs font-semibold uppercase tracking-wider">Network Architecture</span>
-            <Globe className="w-4 h-4 text-teal-600" />
-          </div>
-          <div className="text-2xl font-black text-[var(--color-text-strong)] font-mono">
-            {branches.length > 1 ? 'Multi-Branch' : 'Single Unit'}
-          </div>
-          <div className="text-[11px] text-[var(--color-text-muted)]">Branch segment reporting</div>
-        </div>
-      </div>
+      <KpiGrid cols={4}>
+        <KpiCard icon={GitBranch} label="Total Branches" value={branches.length} desc="Operating units" tone="purple" />
+        <KpiCard icon={CheckCircle2} label="Active Units" value={branches.filter(b => b.active).length} desc="Accepting transactions" tone="emerald" />
+        <KpiCard icon={Building2} label="Operating Cities" value={new Set(branches.map(b => b.city).filter(Boolean)).size} desc="Geographic reach" tone="blue" />
+        <KpiCard icon={Globe} label="Network Architecture" value={branches.length > 1 ? 'Multi-Branch' : 'Single Unit'} desc="Branch segment reporting" tone="teal" />
+      </KpiGrid>
 
       {/* Branches Table */}
       <div className="rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] overflow-hidden shadow-sm">
@@ -2416,71 +2871,42 @@ export function ApprovalWorkflowsView({ activeEntityId, notify }: { activeEntity
 
   return (
     <div className="p-6 max-w-[1400px] mx-auto space-y-6">
-      {/* Header */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-[var(--color-border)] pb-4">
-        <div>
-          <h1 className="text-xl font-black tracking-tight text-[var(--color-text-strong)] flex items-center gap-2.5">
-            <div className="p-2 rounded-xl bg-amber-500/10 text-amber-600 border border-amber-500/20">
-              <CheckCircle2 className="w-5 h-5" />
+      {/* Page Header — AMS Signature Hero Band */}
+      <div className="relative overflow-hidden rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)] shadow-sm">
+        <div className="absolute inset-0 bg-gradient-to-r from-violet-500/10 via-violet-500/[0.03] to-transparent pointer-events-none" />
+        <div className="absolute -right-10 -top-16 w-56 h-56 rounded-full bg-violet-500/10 blur-3xl pointer-events-none" />
+        <div className="relative flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 px-5 py-4">
+          <div className="flex items-center gap-4">
+            <div className="relative h-14 w-14 shrink-0">
+              <div className="absolute inset-[6px] rotate-45 rounded-[12px] shadow-xl bg-gradient-to-br from-violet-500 to-purple-700" />
+              <div className="absolute inset-0 flex items-center justify-center"><CheckCircle2 className="w-6 h-6 text-white" /></div>
             </div>
-            Multi-Tiered Approval Workflows
-          </h1>
-          <p className="text-xs text-[var(--color-text-muted)] mt-1">
-            Enforce segregation of duties (SoD) and multi-step authorization rules before posting financial transactions.
-          </p>
+            <div>
+              <div className="flex items-center gap-2.5">
+                <h1 className="text-2xl font-black tracking-tight text-[var(--color-text-strong)]">Multi-Tiered Approval Workflows</h1>
+                <span className="hidden sm:inline-flex items-center gap-1.5 rounded-full border border-violet-500/25 bg-violet-500/10 px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider text-violet-600 dark:text-violet-400"><span className="h-1.5 w-1.5 rounded-full bg-violet-500 animate-pulse" /> Live Ledger</span>
+              </div>
+              <p className="text-xs text-[var(--color-text-muted)] mt-0.5">Enforce segregation of duties (SoD) and multi-step authorization rules before posting financial transactions.</p>
+            </div>
+          </div>
+          <div className="flex items-center gap-2 shrink-0">
+            <button
+              onClick={() => setModalOpen(true)}
+              className="inline-flex items-center gap-2 px-4 py-2 bg-amber-600 hover:bg-amber-700 text-white rounded-xl text-xs font-bold shadow-sm transition-all"
+            >
+              <Plus className="w-4 h-4" /> Create Workflow
+            </button>
+          </div>
         </div>
-        <button
-          onClick={() => setModalOpen(true)}
-          className="inline-flex items-center gap-2 px-4 py-2 bg-amber-600 hover:bg-amber-700 text-white rounded-xl text-xs font-bold shadow-sm transition-all"
-        >
-          <Plus className="w-4 h-4" /> Create Workflow
-        </button>
       </div>
 
       {/* 4-in-1 KPI Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        <div className="p-4 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] shadow-sm space-y-1">
-          <div className="flex items-center justify-between text-[var(--color-text-muted)]">
-            <span className="text-xs font-semibold uppercase tracking-wider">Defined Workflows</span>
-            <CheckCircle2 className="w-4 h-4 text-amber-600" />
-          </div>
-          <div className="text-2xl font-black text-[var(--color-text-strong)] font-mono">{workflows.length}</div>
-          <div className="text-[11px] text-[var(--color-text-muted)]">Governance approval chains</div>
-        </div>
-
-        <div className="p-4 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] shadow-sm space-y-1">
-          <div className="flex items-center justify-between text-[var(--color-text-muted)]">
-            <span className="text-xs font-semibold uppercase tracking-wider">Active Routing</span>
-            <Power className="w-4 h-4 text-emerald-600" />
-          </div>
-          <div className="text-2xl font-black text-emerald-600 font-mono">
-            {workflows.filter(w => w.active).length}
-          </div>
-          <div className="text-[11px] text-emerald-600 font-medium">Currently intercepting submissions</div>
-        </div>
-
-        <div className="p-4 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] shadow-sm space-y-1">
-          <div className="flex items-center justify-between text-[var(--color-text-muted)]">
-            <span className="text-xs font-semibold uppercase tracking-wider">Approval Steps</span>
-            <GitBranch className="w-4 h-4 text-blue-600" />
-          </div>
-          <div className="text-2xl font-black text-[var(--color-text-strong)] font-mono">
-            {workflows.reduce((s, w) => s + w.steps, 0)}
-          </div>
-          <div className="text-[11px] text-[var(--color-text-muted)]">Sequential audit checkpoints</div>
-        </div>
-
-        <div className="p-4 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] shadow-sm space-y-1">
-          <div className="flex items-center justify-between text-[var(--color-text-muted)]">
-            <span className="text-xs font-semibold uppercase tracking-wider">Approver Roles</span>
-            <ShieldCheck className="w-4 h-4 text-purple-600" />
-          </div>
-          <div className="text-2xl font-black text-[var(--color-text-strong)] font-mono">
-            {new Set(workflows.map(w => w.approverRole)).size}
-          </div>
-          <div className="text-[11px] text-[var(--color-text-muted)]">Designated authorizers</div>
-        </div>
-      </div>
+      <KpiGrid cols={4}>
+        <KpiCard icon={CheckCircle2} label="Defined Workflows" value={workflows.length} desc="Governance approval chains" tone="amber" />
+        <KpiCard icon={Power} label="Active Routing" value={workflows.filter(w => w.active).length} desc="Currently intercepting submissions" tone="emerald" />
+        <KpiCard icon={GitBranch} label="Approval Steps" value={workflows.reduce((s, w) => s + w.steps, 0)} desc="Sequential audit checkpoints" tone="blue" />
+        <KpiCard icon={ShieldCheck} label="Approver Roles" value={new Set(workflows.map(w => w.approverRole)).size} desc="Designated authorizers" tone="purple" />
+      </KpiGrid>
 
       {/* Workflows Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -2672,71 +3098,42 @@ export function NumberSeriesView({ activeEntityId, notify }: { activeEntityId?: 
 
   return (
     <div className="p-6 max-w-[1400px] mx-auto space-y-6">
-      {/* Header */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-[var(--color-border)] pb-4">
-        <div>
-          <h1 className="text-xl font-black tracking-tight text-[var(--color-text-strong)] flex items-center gap-2.5">
-            <div className="p-2 rounded-xl bg-indigo-500/10 text-indigo-600 border border-indigo-500/20">
-              <Hash className="w-5 h-5" />
+      {/* Page Header — AMS Signature Hero Band */}
+      <div className="relative overflow-hidden rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)] shadow-sm">
+        <div className="absolute inset-0 bg-gradient-to-r from-violet-500/10 via-violet-500/[0.03] to-transparent pointer-events-none" />
+        <div className="absolute -right-10 -top-16 w-56 h-56 rounded-full bg-violet-500/10 blur-3xl pointer-events-none" />
+        <div className="relative flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 px-5 py-4">
+          <div className="flex items-center gap-4">
+            <div className="relative h-14 w-14 shrink-0">
+              <div className="absolute inset-[6px] rotate-45 rounded-[12px] shadow-xl bg-gradient-to-br from-violet-500 to-purple-700" />
+              <div className="absolute inset-0 flex items-center justify-center"><Hash className="w-6 h-6 text-white" /></div>
             </div>
-            Document Number Series & Auto-Sequencing
-          </h1>
-          <p className="text-xs text-[var(--color-text-muted)] mt-1">
-            Automate document numbering, prefixes, and sequence padding for invoices, vouchers, and bills.
-          </p>
+            <div>
+              <div className="flex items-center gap-2.5">
+                <h1 className="text-2xl font-black tracking-tight text-[var(--color-text-strong)]">Document Number Series &amp; Auto-Sequencing</h1>
+                <span className="hidden sm:inline-flex items-center gap-1.5 rounded-full border border-violet-500/25 bg-violet-500/10 px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider text-violet-600 dark:text-violet-400"><span className="h-1.5 w-1.5 rounded-full bg-violet-500 animate-pulse" /> Live Ledger</span>
+              </div>
+              <p className="text-xs text-[var(--color-text-muted)] mt-0.5">Automate document numbering, prefixes, and sequence padding for invoices, vouchers, and bills.</p>
+            </div>
+          </div>
+          <div className="flex items-center gap-2 shrink-0">
+            <button
+              onClick={() => setModalOpen(true)}
+              className="inline-flex items-center gap-2 px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-bold shadow-sm transition-all"
+            >
+              <Plus className="w-4 h-4" /> Add Series
+            </button>
+          </div>
         </div>
-        <button
-          onClick={() => setModalOpen(true)}
-          className="inline-flex items-center gap-2 px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-bold shadow-sm transition-all"
-        >
-          <Plus className="w-4 h-4" /> Add Series
-        </button>
       </div>
 
       {/* 4-in-1 KPI Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        <div className="p-4 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] shadow-sm space-y-1">
-          <div className="flex items-center justify-between text-[var(--color-text-muted)]">
-            <span className="text-xs font-semibold uppercase tracking-wider">Configured Series</span>
-            <Hash className="w-4 h-4 text-indigo-600" />
-          </div>
-          <div className="text-2xl font-black text-[var(--color-text-strong)] font-mono">{numberSeries.length}</div>
-          <div className="text-[11px] text-[var(--color-text-muted)]">Document sequence definitions</div>
-        </div>
-
-        <div className="p-4 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] shadow-sm space-y-1">
-          <div className="flex items-center justify-between text-[var(--color-text-muted)]">
-            <span className="text-xs font-semibold uppercase tracking-wider">Active Series</span>
-            <CheckCircle2 className="w-4 h-4 text-emerald-600" />
-          </div>
-          <div className="text-2xl font-black text-emerald-600 font-mono">
-            {numberSeries.filter(s => s.active).length}
-          </div>
-          <div className="text-[11px] text-emerald-600 font-medium">Ready for document creation</div>
-        </div>
-
-        <div className="p-4 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] shadow-sm space-y-1">
-          <div className="flex items-center justify-between text-[var(--color-text-muted)]">
-            <span className="text-xs font-semibold uppercase tracking-wider">Unique Prefixes</span>
-            <KeyRound className="w-4 h-4 text-blue-600" />
-          </div>
-          <div className="text-2xl font-black text-[var(--color-text-strong)] font-mono">
-            {new Set(numberSeries.map(s => s.prefix)).size}
-          </div>
-          <div className="text-[11px] text-[var(--color-text-muted)]">Document type prefixes</div>
-        </div>
-
-        <div className="p-4 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] shadow-sm space-y-1">
-          <div className="flex items-center justify-between text-[var(--color-text-muted)]">
-            <span className="text-xs font-semibold uppercase tracking-wider">Next Sequenced Count</span>
-            <ScrollText className="w-4 h-4 text-purple-600" />
-          </div>
-          <div className="text-2xl font-black text-[var(--color-text-strong)] font-mono">
-            {numberSeries.reduce((s, x) => s + x.nextNumber, 0)}
-          </div>
-          <div className="text-[11px] text-[var(--color-text-muted)]">Issued document count</div>
-        </div>
-      </div>
+      <KpiGrid cols={4}>
+        <KpiCard icon={Hash} label="Configured Series" value={numberSeries.length} desc="Document sequence definitions" tone="indigo" />
+        <KpiCard icon={CheckCircle2} label="Active Series" value={numberSeries.filter(s => s.active).length} desc="Ready for document creation" tone="emerald" />
+        <KpiCard icon={KeyRound} label="Unique Prefixes" value={new Set(numberSeries.map(s => s.prefix)).size} desc="Document type prefixes" tone="blue" />
+        <KpiCard icon={ScrollText} label="Next Sequenced Count" value={numberSeries.reduce((s, x) => s + x.nextNumber, 0)} desc="Issued document count" tone="purple" />
+      </KpiGrid>
 
       {/* Number Series Register */}
       <div className="rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] overflow-hidden shadow-sm">
@@ -2909,67 +3306,42 @@ export function CurrencyView({ activeEntityId, notify }: { activeEntityId?: stri
 
   return (
     <div className="p-6 max-w-[1400px] mx-auto space-y-6">
-      {/* Header */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-[var(--color-border)] pb-4">
-        <div>
-          <h1 className="text-xl font-black tracking-tight text-[var(--color-text-strong)] flex items-center gap-2.5">
-            <div className="p-2 rounded-xl bg-rose-500/10 text-rose-600 border border-rose-500/20">
-              <Coins className="w-5 h-5" />
+      {/* Page Header — AMS Signature Hero Band */}
+      <div className="relative overflow-hidden rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)] shadow-sm">
+        <div className="absolute inset-0 bg-gradient-to-r from-violet-500/10 via-violet-500/[0.03] to-transparent pointer-events-none" />
+        <div className="absolute -right-10 -top-16 w-56 h-56 rounded-full bg-violet-500/10 blur-3xl pointer-events-none" />
+        <div className="relative flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 px-5 py-4">
+          <div className="flex items-center gap-4">
+            <div className="relative h-14 w-14 shrink-0">
+              <div className="absolute inset-[6px] rotate-45 rounded-[12px] shadow-xl bg-gradient-to-br from-violet-500 to-purple-700" />
+              <div className="absolute inset-0 flex items-center justify-center"><Coins className="w-6 h-6 text-white" /></div>
             </div>
-            Multi-Currency & Exchange Rates Engine
-          </h1>
-          <p className="text-xs text-[var(--color-text-muted)] mt-1">
-            Manage ISO currencies, FX valuation rates, and base functional currency for IAS 21 compliance.
-          </p>
+            <div>
+              <div className="flex items-center gap-2.5">
+                <h1 className="text-2xl font-black tracking-tight text-[var(--color-text-strong)]">Multi-Currency &amp; Exchange Rates Engine</h1>
+                <span className="hidden sm:inline-flex items-center gap-1.5 rounded-full border border-violet-500/25 bg-violet-500/10 px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider text-violet-600 dark:text-violet-400"><span className="h-1.5 w-1.5 rounded-full bg-violet-500 animate-pulse" /> Live Ledger</span>
+              </div>
+              <p className="text-xs text-[var(--color-text-muted)] mt-0.5">Manage ISO currencies, FX valuation rates, and base functional currency for IAS 21 compliance.</p>
+            </div>
+          </div>
+          <div className="flex items-center gap-2 shrink-0">
+            <button
+              onClick={() => setModalOpen(true)}
+              className="inline-flex items-center gap-2 px-4 py-2 bg-rose-600 hover:bg-rose-700 text-white rounded-xl text-xs font-bold shadow-sm transition-all"
+            >
+              <Plus className="w-4 h-4" /> Add Foreign Currency
+            </button>
+          </div>
         </div>
-        <button
-          onClick={() => setModalOpen(true)}
-          className="inline-flex items-center gap-2 px-4 py-2 bg-rose-600 hover:bg-rose-700 text-white rounded-xl text-xs font-bold shadow-sm transition-all"
-        >
-          <Plus className="w-4 h-4" /> Add Foreign Currency
-        </button>
       </div>
 
       {/* 4-in-1 KPI Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        <div className="p-4 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] shadow-sm space-y-1">
-          <div className="flex items-center justify-between text-[var(--color-text-muted)]">
-            <span className="text-xs font-semibold uppercase tracking-wider">Currencies Supported</span>
-            <Coins className="w-4 h-4 text-rose-600" />
-          </div>
-          <div className="text-2xl font-black text-[var(--color-text-strong)] font-mono">{currencies.length}</div>
-          <div className="text-[11px] text-[var(--color-text-muted)]">Active multi-currency pool</div>
-        </div>
-
-        <div className="p-4 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] shadow-sm space-y-1">
-          <div className="flex items-center justify-between text-[var(--color-text-muted)]">
-            <span className="text-xs font-semibold uppercase tracking-wider">Functional Base</span>
-            <Building2 className="w-4 h-4 text-blue-600" />
-          </div>
-          <div className="text-2xl font-black text-blue-600 font-mono">{baseCurrency?.code || 'PKR'}</div>
-          <div className="text-[11px] text-blue-600 font-medium">Standard GL reporting currency</div>
-        </div>
-
-        <div className="p-4 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] shadow-sm space-y-1">
-          <div className="flex items-center justify-between text-[var(--color-text-muted)]">
-            <span className="text-xs font-semibold uppercase tracking-wider">Enabled Currencies</span>
-            <CheckCircle2 className="w-4 h-4 text-emerald-600" />
-          </div>
-          <div className="text-2xl font-black text-emerald-600 font-mono">
-            {currencies.filter(c => c.active).length}
-          </div>
-          <div className="text-[11px] text-emerald-600 font-medium">Available for transactions</div>
-        </div>
-
-        <div className="p-4 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] shadow-sm space-y-1">
-          <div className="flex items-center justify-between text-[var(--color-text-muted)]">
-            <span className="text-xs font-semibold uppercase tracking-wider">IAS 21 FX Standard</span>
-            <Globe className="w-4 h-4 text-purple-600" />
-          </div>
-          <div className="text-2xl font-black text-[var(--color-text-strong)] font-mono">Active</div>
-          <div className="text-[11px] text-[var(--color-text-muted)]">Realized / Unrealized FX Gain</div>
-        </div>
-      </div>
+      <KpiGrid cols={4}>
+        <KpiCard icon={Coins} label="Currencies Supported" value={currencies.length} desc="Active multi-currency pool" tone="rose" />
+        <KpiCard icon={Building2} label="Functional Base" value={baseCurrency?.code || 'PKR'} desc="Standard GL reporting currency" tone="blue" />
+        <KpiCard icon={CheckCircle2} label="Enabled Currencies" value={currencies.filter(c => c.active).length} desc="Available for transactions" tone="emerald" />
+        <KpiCard icon={Globe} label="IAS 21 FX Standard" value="Active" desc="Realized / Unrealized FX Gain" tone="purple" />
+      </KpiGrid>
 
       {/* Currencies Table */}
       <div className="rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] overflow-hidden shadow-sm">
@@ -3220,20 +3592,25 @@ export function AuditLogsView({ activeEntityId, notify }: { activeEntityId?: str
 
   return (
     <div className="p-6 max-w-[1400px] mx-auto space-y-6">
-      {/* Header */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-[var(--color-border)] pb-4">
-        <div>
-          <h1 className="text-xl font-black tracking-tight text-[var(--color-text-strong)] flex items-center gap-2.5">
-            <div className="p-2 rounded-xl bg-slate-500/10 text-slate-600 border border-slate-500/20">
-              <ScrollText className="w-5 h-5" />
+      {/* Page Header — AMS Signature Hero Band */}
+      <div className="relative overflow-hidden rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)] shadow-sm">
+        <div className="absolute inset-0 bg-gradient-to-r from-violet-500/10 via-violet-500/[0.03] to-transparent pointer-events-none" />
+        <div className="absolute -right-10 -top-16 w-56 h-56 rounded-full bg-violet-500/10 blur-3xl pointer-events-none" />
+        <div className="relative flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 px-5 py-4">
+          <div className="flex items-center gap-4">
+            <div className="relative h-14 w-14 shrink-0">
+              <div className="absolute inset-[6px] rotate-45 rounded-[12px] shadow-xl bg-gradient-to-br from-violet-500 to-purple-700" />
+              <div className="absolute inset-0 flex items-center justify-center"><ScrollText className="w-6 h-6 text-white" /></div>
             </div>
-            Immutable Audit Trail & Governance Log
-          </h1>
-          <p className="text-xs text-[var(--color-text-muted)] mt-1">
-            Forensic non-repudiation event stream tracking all journal postings, mutations, deletions, and logins.
-          </p>
-        </div>
-        <div className="flex items-center gap-2">
+            <div>
+              <div className="flex items-center gap-2.5">
+                <h1 className="text-2xl font-black tracking-tight text-[var(--color-text-strong)]">Immutable Audit Trail &amp; Governance Log</h1>
+                <span className="hidden sm:inline-flex items-center gap-1.5 rounded-full border border-violet-500/25 bg-violet-500/10 px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider text-violet-600 dark:text-violet-400"><span className="h-1.5 w-1.5 rounded-full bg-violet-500 animate-pulse" /> Live Ledger</span>
+              </div>
+              <p className="text-xs text-[var(--color-text-muted)] mt-0.5">Forensic non-repudiation event stream tracking all journal postings, mutations, deletions, and logins.</p>
+            </div>
+          </div>
+          <div className="flex items-center gap-2 shrink-0">
           <button
             onClick={exportPDF}
             className="px-3 py-1.5 border border-[var(--color-border)] hover:bg-[var(--color-surface-muted)] text-[var(--color-text-strong)] rounded-xl text-xs font-bold flex items-center gap-1.5 shadow-xs"
@@ -3261,47 +3638,15 @@ export function AuditLogsView({ activeEntityId, notify }: { activeEntityId?: str
           </button>
         </div>
       </div>
+    </div>
 
       {/* 4-in-1 KPI Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        <div className="p-4 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] shadow-sm space-y-1">
-          <div className="flex items-center justify-between text-[var(--color-text-muted)]">
-            <span className="text-xs font-semibold uppercase tracking-wider">Logged Events</span>
-            <ScrollText className="w-4 h-4 text-teal-600" />
-          </div>
-          <div className="text-2xl font-black text-[var(--color-text-strong)] font-mono">{items.length}</div>
-          <div className="text-[11px] text-[var(--color-text-muted)]">Total chronological events</div>
-        </div>
-
-        <div className="p-4 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] shadow-sm space-y-1">
-          <div className="flex items-center justify-between text-[var(--color-text-muted)]">
-            <span className="text-xs font-semibold uppercase tracking-wider">Action Types</span>
-            <Hash className="w-4 h-4 text-blue-600" />
-          </div>
-          <div className="text-2xl font-black text-blue-600 font-mono">{uniqueActions.length}</div>
-          <div className="text-[11px] text-blue-600 font-medium">Distinct transaction types</div>
-        </div>
-
-        <div className="p-4 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] shadow-sm space-y-1">
-          <div className="flex items-center justify-between text-[var(--color-text-muted)]">
-            <span className="text-xs font-semibold uppercase tracking-wider">Entities Tracked</span>
-            <Building2 className="w-4 h-4 text-purple-600" />
-          </div>
-          <div className="text-2xl font-black text-[var(--color-text-strong)] font-mono">
-            {new Set(items.map(i => i.entityName)).size}
-          </div>
-          <div className="text-[11px] text-[var(--color-text-muted)]">Data models monitored</div>
-        </div>
-
-        <div className="p-4 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] shadow-sm space-y-1">
-          <div className="flex items-center justify-between text-[var(--color-text-muted)]">
-            <span className="text-xs font-semibold uppercase tracking-wider">Audit Integrity</span>
-            <CheckCircle2 className="w-4 h-4 text-emerald-600" />
-          </div>
-          <div className="text-2xl font-black text-emerald-600 font-mono">100% SECURE</div>
-          <div className="text-[11px] text-emerald-600 font-medium">Tamper-evident WORM storage</div>
-        </div>
-      </div>
+      <KpiGrid cols={4}>
+        <KpiCard icon={ScrollText} label="Logged Events" value={items.length} desc="Total chronological events" tone="teal" />
+        <KpiCard icon={Hash} label="Action Types" value={uniqueActions.length} desc="Distinct transaction types" tone="blue" />
+        <KpiCard icon={Building2} label="Entities Tracked" value={new Set(items.map(i => i.entityName)).size} desc="Data models monitored" tone="purple" />
+        <KpiCard icon={CheckCircle2} label="Audit Integrity" value="100% SECURE" desc="Tamper-evident WORM storage" tone="emerald" />
+      </KpiGrid>
 
       {/* Filter Bar */}
       <div className="flex flex-col sm:flex-row items-center gap-3 p-3 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)]">

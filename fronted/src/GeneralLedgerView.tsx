@@ -5,10 +5,12 @@ import {
   BookOpen, Search, X, ShieldCheck,
   Download, FileSpreadsheet, RefreshCw,
   Layers, ArrowUpRight, ArrowDownRight,
-  FileText, CheckCircle2, AlertCircle, Filter
+  FileText, AlertCircle, Filter
 } from 'lucide-react';
 import { money } from './lib/currency';
 import { downloadExcel, downloadCSV } from './lib/exportUtils';
+import { KpiCard, KpiGrid } from './components/ui/kpi-card';
+import { EmptyState, TableSkeleton } from './components/ui/empty-state';
 import type { Entity } from './EntitySettings';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
@@ -309,27 +311,30 @@ export const GeneralLedgerView: React.FC<GeneralLedgerViewProps> = ({ activeEnti
 
   return (
     <div className="p-6 max-w-[1400px] mx-auto space-y-6">
-      {/* ─── Top Control & Action Bar ─── */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-[var(--color-border)] pb-4">
-        <div className="flex items-center gap-3">
-          <div className="p-2.5 bg-emerald-500/10 text-emerald-600 rounded-xl border border-emerald-500/20 shrink-0">
-            <BookOpen className="w-5 h-5" />
+      {/* ─── Page Header — AMS Signature Hero Band ─── */}
+      <div className="relative overflow-hidden rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)] shadow-sm">
+        <div className="absolute inset-0 bg-gradient-to-r from-violet-500/10 via-violet-500/[0.03] to-transparent pointer-events-none" />
+        <div className="absolute -right-10 -top-16 w-56 h-56 rounded-full bg-violet-500/10 blur-3xl pointer-events-none" />
+        <div className="relative flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 px-5 py-4">
+          <div className="flex items-center gap-4">
+            <div className="relative h-14 w-14 shrink-0">
+              <div className="absolute inset-[6px] rotate-45 rounded-[12px] shadow-xl bg-gradient-to-br from-violet-500 to-indigo-700" />
+              <div className="absolute inset-0 flex items-center justify-center"><BookOpen className="w-6 h-6 text-white" /></div>
+            </div>
+            <div>
+              <div className="flex items-center gap-2.5 flex-wrap">
+                <h1 className="text-2xl font-black tracking-tight text-[var(--color-text-strong)]">General Ledger Register</h1>
+                <span className="hidden sm:inline-flex items-center gap-1.5 rounded-full border border-violet-500/25 bg-violet-500/10 px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider text-violet-600 dark:text-violet-400"><span className="h-1.5 w-1.5 rounded-full bg-violet-500 animate-pulse" /> Live Ledger</span>
+                <span className="text-[10px] px-2 py-0.5 rounded-full bg-blue-500/10 text-blue-600 font-semibold border border-blue-500/20">IAS 1 / IFRS Double-Entry</span>
+              </div>
+              <p className="text-xs text-[var(--color-text-muted)] mt-0.5">
+                Audit-trail ledger of all posted transactions, running balances, and T-account allocations for {currentEntity?.name || 'Active Entity'}.
+              </p>
+            </div>
           </div>
-          <div>
-            <h1 className="text-xl font-black tracking-tight text-[var(--color-text-strong)] flex items-center gap-2.5">
-              General Ledger Register
-              <span className="text-[10px] px-2 py-0.5 rounded-full bg-blue-500/10 text-blue-600 font-semibold border border-blue-500/20">
-                IAS 1 / IFRS Double-Entry
-              </span>
-            </h1>
-            <p className="text-xs text-[var(--color-text-muted)] mt-1">
-              Audit-trail ledger of all posted transactions, running balances, and T-account allocations for {currentEntity?.name || 'Active Entity'}.
-            </p>
-          </div>
-        </div>
 
-        {/* Action Buttons */}
-        <div className="flex items-center gap-2 flex-wrap">
+          {/* Action Buttons */}
+          <div className="flex flex-wrap items-center gap-2 shrink-0">
           <button
             onClick={load}
             disabled={loading}
@@ -356,93 +361,48 @@ export const GeneralLedgerView: React.FC<GeneralLedgerViewProps> = ({ activeEnti
           >
             <FileText className="w-3.5 h-3.5" /> CSV
           </button>
+          </div>
         </div>
       </div>
 
       {/* ─── 4-in-1 Financial KPI Summary Cards ─── */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+      <KpiGrid cols={4}>
         {/* Total Debit */}
-        <div className="bg-[var(--color-surface)] border border-[var(--color-border)] rounded-2xl p-4 shadow-xs flex flex-col justify-between hover:border-emerald-500/30 transition-all">
-          <div className="flex items-center justify-between">
-            <span className="text-[10px] font-extrabold uppercase tracking-wider text-[var(--color-text-muted)]">
-              TOTAL POSTED DEBITS (DR)
-            </span>
-            <div className="p-1.5 rounded-lg bg-emerald-500/10 text-emerald-600">
-              <ArrowUpRight className="w-4 h-4" />
-            </div>
-          </div>
-          <div className="mt-2">
-            <div className="text-xl font-mono font-extrabold text-emerald-600 dark:text-emerald-400">
-              {money(totalDebit)}
-            </div>
-            <p className="text-[10px] text-[var(--color-text-muted)] mt-0.5">Asset & Expense debit movements</p>
-          </div>
-        </div>
+        <KpiCard
+          icon={ArrowUpRight}
+          label="TOTAL POSTED DEBITS (DR)"
+          value={money(totalDebit)}
+          desc="Asset & Expense debit movements"
+          tone="emerald"
+        />
 
         {/* Total Credit */}
-        <div className="bg-[var(--color-surface)] border border-[var(--color-border)] rounded-2xl p-4 shadow-xs flex flex-col justify-between hover:border-rose-500/30 transition-all">
-          <div className="flex items-center justify-between">
-            <span className="text-[10px] font-extrabold uppercase tracking-wider text-[var(--color-text-muted)]">
-              TOTAL POSTED CREDITS (CR)
-            </span>
-            <div className="p-1.5 rounded-lg bg-rose-500/10 text-rose-600">
-              <ArrowDownRight className="w-4 h-4" />
-            </div>
-          </div>
-          <div className="mt-2">
-            <div className="text-xl font-mono font-extrabold text-rose-600 dark:text-rose-400">
-              {money(totalCredit)}
-            </div>
-            <p className="text-[10px] text-[var(--color-text-muted)] mt-0.5">Liability, Equity & Income credit movements</p>
-          </div>
-        </div>
+        <KpiCard
+          icon={ArrowDownRight}
+          label="TOTAL POSTED CREDITS (CR)"
+          value={money(totalCredit)}
+          desc="Liability, Equity & Income credit movements"
+          tone="rose"
+        />
 
         {/* Ledger Integrity */}
-        <div className="bg-[var(--color-surface)] border border-[var(--color-border)] rounded-2xl p-4 shadow-xs flex flex-col justify-between hover:border-blue-500/30 transition-all">
-          <div className="flex items-center justify-between">
-            <span className="text-[10px] font-extrabold uppercase tracking-wider text-[var(--color-text-muted)]">
-              DOUBLE-ENTRY INTEGRITY
-            </span>
-            <div className="p-1.5 rounded-lg bg-blue-500/10 text-blue-600">
-              <ShieldCheck className="w-4 h-4" />
-            </div>
-          </div>
-          <div className="mt-2">
-            <div className="text-xl font-mono font-extrabold text-[var(--color-text-strong)] flex items-center gap-1.5">
-              {isBalanced ? (
-                <span className="text-emerald-600 dark:text-emerald-400 flex items-center gap-1">
-                  <CheckCircle2 className="w-4 h-4" /> 0.00 Diff
-                </span>
-              ) : (
-                <span className="text-rose-600 flex items-center gap-1">
-                  <AlertCircle className="w-4 h-4" /> {money(netDifference)} Diff
-                </span>
-              )}
-            </div>
-            <p className="text-[10px] text-[var(--color-text-muted)] mt-0.5">
-              {isBalanced ? '✓ 100% Balanced (IAS 1 Double-Entry)' : '⚠ Imbalance Detected'}
-            </p>
-          </div>
-        </div>
+        <KpiCard
+          icon={ShieldCheck}
+          label="DOUBLE-ENTRY INTEGRITY"
+          value={isBalanced ? '0.00 Diff' : `${money(netDifference)} Diff`}
+          desc={isBalanced ? '✓ 100% Balanced (IAS 1 Double-Entry)' : '⚠ Imbalance Detected'}
+          tone={isBalanced ? 'blue' : 'red'}
+        />
 
         {/* Transaction Lines */}
-        <div className="bg-[var(--color-surface)] border border-[var(--color-border)] rounded-2xl p-4 shadow-xs flex flex-col justify-between hover:border-teal-500/30 transition-all">
-          <div className="flex items-center justify-between">
-            <span className="text-[10px] font-extrabold uppercase tracking-wider text-[var(--color-text-muted)]">
-              POSTED LEDGER LINES
-            </span>
-            <div className="p-1.5 rounded-lg bg-teal-500/10 text-teal-600">
-              <Layers className="w-4 h-4" />
-            </div>
-          </div>
-          <div className="mt-2">
-            <div className="text-xl font-mono font-extrabold text-[var(--color-text-strong)]">
-              {filtered.length} Lines
-            </div>
-            <p className="text-[10px] text-[var(--color-text-muted)] mt-0.5">Across {availableAccounts.length} Chart Accounts</p>
-          </div>
-        </div>
-      </div>
+        <KpiCard
+          icon={Layers}
+          label="POSTED LEDGER LINES"
+          value={`${filtered.length}`}
+          desc={`Lines · Across ${availableAccounts.length} Chart Accounts`}
+          tone="teal"
+        />
+      </KpiGrid>
 
       {/* ─── Search, Date Range & Filter Toolbar ─── */}
       <div className="bg-[var(--color-surface)] p-4 rounded-2xl border border-[var(--color-border)] shadow-xs space-y-3">
@@ -568,7 +528,7 @@ export const GeneralLedgerView: React.FC<GeneralLedgerViewProps> = ({ activeEnti
           <div className="overflow-x-auto">
             <table className="w-full text-left border-collapse text-xs">
               <thead>
-                <tr className="border-b border-[var(--color-border)] bg-[var(--color-surface-muted)] text-[var(--color-text-muted)] font-bold uppercase tracking-wider text-[11px]">
+                <tr className="border-b border-[var(--color-border)] bg-violet-500/[0.05] dark:bg-violet-400/[0.07] text-[var(--color-text-muted)] font-bold uppercase tracking-wider text-[11px]">
                   <th className="py-3 px-4 w-28">Date</th>
                   <th className="py-3 px-4 w-32">Reference #</th>
                   <th className="py-3 px-4 min-w-[200px]">GL Account</th>
@@ -581,21 +541,18 @@ export const GeneralLedgerView: React.FC<GeneralLedgerViewProps> = ({ activeEnti
               <tbody className="divide-y divide-[var(--color-border)] font-sans text-[var(--color-text)]">
                 {loading ? (
                   <tr>
-                    <td colSpan={7} className="py-12 text-center text-xs text-[var(--color-text-muted)]">
-                      <div className="flex flex-col items-center justify-center gap-2">
-                        <RefreshCw className="w-5 h-5 animate-spin text-emerald-600" />
-                        <span>Loading general ledger entries…</span>
-                      </div>
+                    <td colSpan={7} className="p-0">
+                      <TableSkeleton rows={6} />
                     </td>
                   </tr>
                 ) : filtered.length === 0 ? (
                   <tr>
-                    <td colSpan={7} className="py-12 text-center text-xs text-[var(--color-text-muted)]">
-                      <div className="flex flex-col items-center justify-center gap-1.5">
-                        <BookOpen className="w-6 h-6 text-gray-400 opacity-40 mb-1" />
-                        <span className="font-semibold text-sm text-[var(--color-text-strong)]">No general ledger entries found</span>
-                        <span className="text-[11px]">Post journals, sales invoices, or bills to generate ledger movements.</span>
-                      </div>
+                    <td colSpan={7}>
+                      <EmptyState
+                        icon={BookOpen}
+                        title="No general ledger entries found"
+                        hint="Post journals, sales invoices, or bills to generate ledger movements."
+                      />
                     </td>
                   </tr>
                 ) : (
@@ -660,8 +617,12 @@ export const GeneralLedgerView: React.FC<GeneralLedgerViewProps> = ({ activeEnti
       {viewMode === 'grouped' && (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
           {groupedByAccount.length === 0 ? (
-            <div className="col-span-2 p-12 text-center text-xs text-[var(--color-text-muted)] border border-[var(--color-border)] rounded-2xl bg-[var(--color-surface)]">
-              No T-Account ledgers available for the selected criteria.
+            <div className="col-span-2 border border-[var(--color-border)] rounded-2xl bg-[var(--color-surface)]">
+              <EmptyState
+                icon={Layers}
+                title="No T-Account ledgers available"
+                hint="Adjust the filters or switch the view mode to see grouped ledgers."
+              />
             </div>
           ) : (
             groupedByAccount.map((group) => (

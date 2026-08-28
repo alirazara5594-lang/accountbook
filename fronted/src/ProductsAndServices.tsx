@@ -10,6 +10,7 @@ import {
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { DataToolbar } from '@/components/ui/data-toolbar'
+import { KpiCard, KpiGrid } from '@/components/ui/kpi-card'
 
 import { useProductsStore, useCoaStore, useTaxStore } from './stores'
 import { useFormDraft } from './hooks/useFormDraft'
@@ -126,12 +127,52 @@ export default function ProductsAndServices({
     return entities?.find((e: any) => e.id === activeEntityId)?.taxAuthorityId || ''
   }, [entities, activeEntityId])
 
+  // Default tax options when no tax codes from API
+  const defaultTaxOptions = [
+    { id: 'STANDARD_17', code: 'ST', name: 'Standard Sales Tax', rate: 17 },
+    { id: 'REDUCED_5', code: 'RT', name: 'Reduced Rate Tax', rate: 5 },
+    { id: 'ZERO_RATE', code: 'ZT', name: 'Zero Rate Tax', rate: 0 },
+    { id: 'EXEMPT', code: 'EX', name: 'Tax Exempt', rate: 0 },
+  ]
+
+  const getTaxRatePercent = (taxCode: any) => {
+    if (!taxCode) return null
+    if (typeof taxCode.rate === 'number') return taxCode.rate
+    if (taxCode.rates && taxCode.rates.length > 0) {
+      const last = taxCode.rates[taxCode.rates.length - 1]
+      return typeof last.percentage === 'number' ? last.percentage : typeof last.ratePercent === 'number' ? last.ratePercent : null
+    }
+    return null
+  }
+
+  const getTaxCodeDisplay = (taxCodeId?: string) => {
+    if (!taxCodeId) return { label: 'No Tax (0%)', code: 'None', rate: 0 }
+    // Check API tax codes first
+    const taxCode = taxCodes.find((t: any) => t.id === taxCodeId)
+    if (taxCode) {
+      const rate = getTaxRatePercent(taxCode)
+      return {
+        label: rate !== null ? `${taxCode.code} (${rate}%)` : taxCode.code,
+        code: taxCode.code,
+        rate: rate ?? 0
+      }
+    }
+    // Check default options
+    const defaultOpt = defaultTaxOptions.find(t => t.id === taxCodeId)
+    if (defaultOpt) {
+      return { label: `${defaultOpt.code} (${defaultOpt.rate}%)`, code: defaultOpt.code, rate: defaultOpt.rate }
+    }
+    return { label: 'No Tax (0%)', code: 'None', rate: 0 }
+  }
+
   const groupedTaxCodes = useMemo(() => {
     return {
       default: taxCodes.filter((t: any) => t.taxAuthorityId === defaultTaxAuthorityId),
       other: taxCodes.filter((t: any) => t.taxAuthorityId !== defaultTaxAuthorityId)
     }
   }, [taxCodes, defaultTaxAuthorityId])
+
+  const hasTaxCodes = taxCodes.length > 0
 
   const filteredProducts = useMemo(() => {
     return products.filter((p: any) => {
@@ -206,8 +247,18 @@ export default function ProductsAndServices({
     e.preventDefault()
     if (!form.name.trim()) {
       notify('Product name is required.')
+      setModalTab('info')
       return
     }
+
+    // Always require reviewing on the Preview tab before committing changes to the database
+    if (modalTab !== 'preview') {
+      setModalTab('preview')
+      return
+    }
+
+    // Check if taxCodeId exists in actual tax codes from API
+    const taxCodeExists = taxCodes.some((t: any) => t.id === form.taxCodeId)
 
     const payload = {
       code: form.code || null,
@@ -218,7 +269,7 @@ export default function ProductsAndServices({
       unit: form.unit.trim() || 'Each',
       unitPrice: Number(form.unitPrice) || 0,
       costPrice: Number(form.costPrice) || 0,
-      taxCodeId: form.taxCodeId || null,
+      taxCodeId: taxCodeExists ? form.taxCodeId : null,
       incomeAccountId: form.incomeAccountId || null,
       expenseAccountId: form.expenseAccountId || null,
       assetAccountId: form.assetAccountId || null
@@ -244,109 +295,95 @@ export default function ProductsAndServices({
     }
   }
 
-  const getAccountName = (id?: string) => {
-    if (!id) return 'Not mapped'
-    const acc = accounts.find((a: any) => a.id === id)
-    return acc ? `${acc.code} ${acc.name}` : 'Unknown'
-  }
-
   return (
     <div className="space-y-6">
-      {/* Submodule Heading Banner (Row 1) */}
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-3 bg-[var(--color-surface)] p-3.5 rounded-xl border border-[var(--color-border)] shadow-sm">
-        <div>
-          <h1 className="text-base font-bold text-[var(--color-text-strong)] tracking-tight flex items-center gap-2">
-            <span className="text-lg">📦</span> Products & Services Catalog
-          </h1>
-          <p className="text-[var(--color-text-muted)] text-xs mt-0.5">Manage physical inventory goods, billable services, kits, and GAAP GL mappings.</p>
-        </div>
-        <div className="flex items-center gap-2 shrink-0 flex-wrap">
-          <DataToolbar
-            query={search}
-            setQuery={setSearch}
-            searchPlaceholder="Search item name, SKU..."
-            exportFileName="products-and-services"
-            exportSheetName="Products & Services"
-            exportTitle="Product & Service Catalog"
-            exportSubtitle={`Master catalog (${filteredProducts.length} items).`}
-            exportHeaders={exportHeaders}
-            exportRows={exportRows}
-          >
-            <select
-              className="h-9 px-3 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] text-xs text-[var(--color-text)] outline-none focus:border-[var(--color-primary)] transition-colors shadow-2xs box-border"
-              style={{ paddingTop: 0, paddingBottom: 0 }}
-              value={typeFilter}
-              onChange={e => setTypeFilter(e.target.value)}
+      {/* AMS Signature Hero Band */}
+      <div className="relative overflow-hidden rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)] shadow-sm">
+        <div className="absolute inset-0 bg-gradient-to-r from-amber-500/10 via-amber-500/[0.03] to-transparent pointer-events-none" />
+        <div className="absolute -right-10 -top-16 w-56 h-56 rounded-full bg-amber-500/10 blur-3xl pointer-events-none" />
+        <div className="relative flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 px-5 py-4">
+          <div className="flex items-center gap-4">
+            <div className="relative h-14 w-14 shrink-0">
+              <div className="absolute inset-[6px] rotate-45 rounded-[12px] shadow-xl bg-gradient-to-br from-amber-500 to-orange-700" />
+              <div className="absolute inset-0 flex items-center justify-center"><Package className="w-6 h-6 text-white" /></div>
+            </div>
+            <div>
+              <div className="flex items-center gap-2.5">
+                <h1 className="text-2xl font-black tracking-tight text-[var(--color-text-strong)]">Products &amp; Services Catalog</h1>
+                <span className="hidden sm:inline-flex items-center gap-1.5 rounded-full border border-amber-500/25 bg-amber-500/10 px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider text-amber-600 dark:text-amber-400"><span className="h-1.5 w-1.5 rounded-full bg-amber-500 animate-pulse" /> Live Ledger</span>
+              </div>
+              <p className="text-xs text-[var(--color-text-muted)] mt-0.5">
+                Manage physical inventory goods, billable services, kits, and GAAP GL mappings.
+              </p>
+            </div>
+          </div>
+          <div className="flex items-center gap-2 shrink-0 flex-wrap">
+            <DataToolbar
+              query={search}
+              setQuery={setSearch}
+              searchPlaceholder="Search item name, SKU..."
+              exportFileName="products-and-services"
+              exportSheetName="Products & Services"
+              exportTitle="Product & Service Catalog"
+              exportSubtitle={`Master catalog (${filteredProducts.length} items).`}
+              exportHeaders={exportHeaders}
+              exportRows={exportRows}
             >
-              <option value="all">⚡ All Item Types</option>
-              <option value="Physical">📦 Physical Goods</option>
-              <option value="Service">🛠️ Services</option>
-              <option value="NonInventory">📑 Non-Inventory Supplies</option>
-              <option value="Bundle">🎁 Bundles / Kits</option>
-            </select>
-          </DataToolbar>
-          <div className="flex items-center border border-[var(--color-border)] rounded-xl overflow-hidden bg-[var(--color-surface)] p-0.5">
-            <button
-              type="button"
-              onClick={() => setViewMode('table')}
-              className={`p-1.5 rounded-lg text-xs font-medium transition-colors flex items-center gap-1 ${
-                viewMode === 'table'
-                  ? 'bg-[var(--color-primary)] text-white shadow-2xs'
-                  : 'text-[var(--color-text-muted)] hover:text-[var(--color-text-strong)]'
-              }`}
-              title="Table Rows View"
-            >
-              <List className="w-3.5 h-3.5" />
-              <span className="hidden sm:inline">Rows</span>
-            </button>
-            <button
-              type="button"
-              onClick={() => setViewMode('grid')}
-              className={`p-1.5 rounded-lg text-xs font-medium transition-colors flex items-center gap-1 ${
-                viewMode === 'grid'
-                  ? 'bg-[var(--color-primary)] text-white shadow-2xs'
-                  : 'text-[var(--color-text-muted)] hover:text-[var(--color-text-strong)]'
-              }`}
-              title="Grid Cards View"
-            >
-              <LayoutGrid className="w-3.5 h-3.5" />
-              <span className="hidden sm:inline">Grid</span>
+              <select
+                className="h-9 px-3 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] text-xs text-[var(--color-text)] outline-none focus:border-[var(--color-primary)] transition-colors shadow-2xs box-border"
+                style={{ paddingTop: 0, paddingBottom: 0 }}
+                value={typeFilter}
+                onChange={e => setTypeFilter(e.target.value)}
+              >
+                <option value="all">⚡ All Item Types</option>
+                <option value="Physical">📦 Physical Goods</option>
+                <option value="Service">🛠️ Services</option>
+                <option value="NonInventory">📑 Non-Inventory Supplies</option>
+                <option value="Bundle">🎁 Bundles / Kits</option>
+              </select>
+            </DataToolbar>
+            <div className="flex items-center border border-[var(--color-border)] rounded-xl overflow-hidden bg-[var(--color-surface)] p-0.5">
+              <button
+                type="button"
+                onClick={() => setViewMode('table')}
+                className={`p-1.5 rounded-lg text-xs font-medium transition-colors flex items-center gap-1 ${
+                  viewMode === 'table'
+                    ? 'bg-[var(--color-primary)] text-white shadow-2xs'
+                    : 'text-[var(--color-text-muted)] hover:text-[var(--color-text-strong)]'
+                }`}
+                title="Table Rows View"
+              >
+                <List className="w-3.5 h-3.5" />
+                <span className="hidden sm:inline">Rows</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setViewMode('grid')}
+                className={`p-1.5 rounded-lg text-xs font-medium transition-colors flex items-center gap-1 ${
+                  viewMode === 'grid'
+                    ? 'bg-[var(--color-primary)] text-white shadow-2xs'
+                    : 'text-[var(--color-text-muted)] hover:text-[var(--color-text-strong)]'
+                }`}
+                title="Grid Cards View"
+              >
+                <LayoutGrid className="w-3.5 h-3.5" />
+                <span className="hidden sm:inline">Grid</span>
+              </button>
+            </div>
+
+            <button onClick={openCreateModal} className="primary h-9 px-4 rounded-xl text-xs font-semibold whitespace-nowrap flex items-center justify-center gap-1.5 shadow-sm">
+              <span>＋</span> Add Item
             </button>
           </div>
-
-          <button onClick={openCreateModal} className="primary h-9 px-4 rounded-xl text-xs font-semibold whitespace-nowrap flex items-center justify-center gap-1.5 shadow-sm">
-            <span>＋</span> Add Item
-          </button>
         </div>
       </div>
 
       {/* Stats Cards (Row 2) */}
-      <section className="stats">
-        <article>
-          <span className="stat-icon blue"><Package className="w-4 h-4" /></span>
-          <div>
-            <small>TOTAL CATALOG ITEMS</small>
-            <h2>{stats.total}</h2>
-            <p>Active products & services</p>
-          </div>
-        </article>
-        <article>
-          <span className="stat-icon teal"><Archive className="w-4 h-4" /></span>
-          <div>
-            <small>PHYSICAL GOODS</small>
-            <h2>{stats.physical}</h2>
-            <p>Inventory tracked in warehouse</p>
-          </div>
-        </article>
-        <article>
-          <span className="stat-icon violet"><Wrench className="w-4 h-4" /></span>
-          <div>
-            <small>BILLABLE SERVICES</small>
-            <h2>{stats.services}</h2>
-            <p>Non-inventory consulting & labor</p>
-          </div>
-        </article>
-      </section>
+      <KpiGrid cols={3}>
+        <KpiCard icon={Package} label="Total Catalog Items" value={stats.total} desc="Active products & services" tone="blue" />
+        <KpiCard icon={Archive} label="Physical Goods" value={stats.physical} desc="Inventory tracked in warehouse" tone="teal" />
+        <KpiCard icon={Wrench} label="Billable Services" value={stats.services} desc="Non-inventory consulting & labor" tone="purple" />
+      </KpiGrid>
 
       {/* Products & Services View */}
       {viewMode === 'table' ? (
@@ -361,8 +398,7 @@ export default function ProductsAndServices({
                   <th className="py-3.5 px-4 text-right">Sales Price</th>
                   <th className="py-3.5 px-4 text-right">Cost Price</th>
                   <th className="py-3.5 px-4 text-right">Margin</th>
-                  <th className="py-3.5 px-4">GAAP GL Mappings</th>
-                  <th className="py-3.5 px-4 text-center">Tax Code</th>
+                  <th className="py-3.5 px-4 text-center">Tax Code & Rate</th>
                   <th className="py-3.5 px-4 text-center">Status</th>
                   <th className="py-3.5 px-4 text-right">Actions</th>
                 </tr>
@@ -370,13 +406,13 @@ export default function ProductsAndServices({
               <tbody className="divide-y divide-[var(--color-border)]">
                 {loading ? (
                   <tr>
-                    <td colSpan={10} className="py-12 text-center text-[var(--color-text-muted)]">
+                    <td colSpan={9} className="py-12 text-center text-[var(--color-text-muted)]">
                       Loading catalog items...
                     </td>
                   </tr>
                 ) : filteredProducts.length === 0 ? (
                   <tr>
-                    <td colSpan={10} className="py-12 text-center text-[var(--color-text-muted)]">
+                    <td colSpan={9} className="py-12 text-center text-[var(--color-text-muted)]">
                       No products or services found matching your criteria.
                     </td>
                   </tr>
@@ -424,25 +460,18 @@ export default function ProductsAndServices({
                             {margin}%
                           </span>
                         </td>
-                        <td className="py-3.5 px-4 text-[11px] text-[var(--color-text-muted)] whitespace-nowrap">
-                          <div>
-                            <span className="font-medium text-[var(--color-text-strong)]">Rev:</span> {getAccountName(p.incomeAccountId)}
-                          </div>
-                          {p.type !== 'Service' && p.expenseAccountId && (
-                            <div className="mt-0.5">
-                              <span className="font-medium text-[var(--color-text-strong)]">COGS:</span> {getAccountName(p.expenseAccountId)}
-                            </div>
-                          )}
-                          {p.type === 'Physical' && p.assetAccountId && (
-                            <div className="mt-0.5">
-                              <span className="font-medium text-[var(--color-text-strong)]">Inv:</span> {getAccountName(p.assetAccountId)}
-                            </div>
-                          )}
-                        </td>
-                        <td className="py-3.5 px-4 text-center whitespace-nowrap font-mono text-[11px]">
-                          <span className="px-2 py-0.5 bg-[var(--color-surface-muted)] text-[var(--color-text-muted)] rounded border border-[var(--color-border)]">
-                            {taxCodes.find((t: any) => t.id === p.taxCodeId)?.code || 'Standard'}
-                          </span>
+                        <td className="py-3.5 px-4 text-center whitespace-nowrap">
+                          {(() => {
+                            const tc = getTaxCodeDisplay(p.taxCodeId)
+                            if (!p.taxCodeId) {
+                              return <span className="px-2 py-0.5 bg-[var(--color-surface-muted)] text-[var(--color-text-muted)] rounded border border-[var(--color-border)] font-mono text-[11px]">No Tax (0%)</span>
+                            }
+                            return (
+                              <span className="px-2 py-0.5 bg-amber-500/10 text-amber-600 dark:text-amber-400 rounded border border-amber-500/20 font-mono text-[11px]">
+                                {tc.code} ({tc.rate}%)
+                              </span>
+                            )
+                          })()}
                         </td>
                         <td className="py-3.5 px-4 text-center whitespace-nowrap">
                           <span className={`text-[10px] px-2.5 py-0.5 rounded-full font-semibold ${
@@ -515,28 +544,20 @@ export default function ProductsAndServices({
                   </div>
 
                   <div className="space-y-1.5 text-[11px]">
-                    <small className="text-[10px] font-bold text-[var(--color-text-muted)] uppercase tracking-wider block mb-1">GAAP GL Mappings</small>
+                    <small className="text-[10px] font-bold text-[var(--color-text-muted)] uppercase tracking-wider block mb-1">Tax & Compliance</small>
                     <div className="flex justify-between text-[var(--color-text-muted)]">
-                      <span>Revenue:</span>
-                      <span className="font-medium text-[var(--color-text-strong)]">{getAccountName(p.incomeAccountId)}</span>
-                    </div>
-                    {p.type !== 'Service' && (
-                      <div className="flex justify-between text-[var(--color-text-muted)]">
-                        <span>COGS:</span>
-                        <span className="font-medium text-[var(--color-text-strong)]">{getAccountName(p.expenseAccountId)}</span>
-                      </div>
-                    )}
-                    {p.type === 'Physical' && (
-                      <div className="flex justify-between text-[var(--color-text-muted)]">
-                        <span>Inventory:</span>
-                        <span className="font-medium text-[var(--color-text-strong)]">{getAccountName(p.assetAccountId)}</span>
-                      </div>
-                    )}
-                    <div className="flex justify-between text-[var(--color-text-muted)]">
-                      <span>Default Tax Code:</span>
-                      <span className="font-medium text-[var(--color-text-strong)]">
-                        {taxCodes.find((t: any) => t.id === p.taxCodeId)?.code || 'Standard VAT'}
-                      </span>
+                      <span>Tax Code:</span>
+                      {(() => {
+                        const tc = getTaxCodeDisplay(p.taxCodeId)
+                        if (!p.taxCodeId) {
+                          return <span className="font-medium text-[var(--color-text-muted)]">No Tax (0%)</span>
+                        }
+                        return (
+                          <span className="font-medium text-amber-600 dark:text-amber-400">
+                            {tc.code} ({tc.rate}%)
+                          </span>
+                        )
+                      })()}
                     </div>
                   </div>
 
@@ -565,7 +586,7 @@ export default function ProductsAndServices({
             {/* Modal Header */}
             <div className="px-6 py-4.5 border-b border-[var(--color-border)] bg-[var(--color-surface-muted)]/50 flex items-center justify-between">
               <div className="flex items-center gap-3.5">
-                <div className="w-11 h-11 rounded-xl bg-gradient-to-br from-amber-500 to-orange-600 flex items-center justify-center text-white shadow-sm shrink-0">
+                <div className="w-9 h-9 rounded-lg bg-gradient-to-br from-amber-500 to-orange-600 flex items-center justify-center text-white shadow-sm shrink-0">
                   <Package className="w-5 h-5" />
                 </div>
                 <div>
@@ -868,35 +889,58 @@ export default function ProductsAndServices({
               )}
 
               {modalTab === 'tax' && (
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                <div className="space-y-5">
                   <div className="md:col-span-2">
                     <label className="block text-xs font-semibold text-[var(--color-text-strong)] mb-1.5">
-                      Default Sales Tax / VAT Code
+                      Tax Type Selection
                     </label>
                     <select
                       value={form.taxCodeId}
                       onChange={e => setForm({ ...form, taxCodeId: e.target.value })}
                       className="w-full h-10 px-3.5 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] text-xs text-[var(--color-text-strong)] focus:border-[var(--color-primary)] outline-none shadow-2xs"
                     >
-                      <option value="">Standard VAT / FBR Sales Tax (Default)</option>
-                      {groupedTaxCodes.default.length > 0 && (
-                        <optgroup label="Active Workspace Authority">
-                          {groupedTaxCodes.default.map((t: any) => (
-                            <option key={t.id} value={t.id}>{t.code} ({t.rates && t.rates.length > 0 ? t.rates[t.rates.length - 1].percentage : 0}%)</option>
+                      <option value="">🚫 No Tax (0%) — Exempt / Not Taxable</option>
+                      {!hasTaxCodes && (
+                        <optgroup label="📋 Standard Tax Types">
+                          {defaultTaxOptions.map((t) => (
+                            <option key={t.id} value={t.id}>✅ {t.code} — {t.name} ({t.rate}%)</option>
                           ))}
+                        </optgroup>
+                      )}
+                      {groupedTaxCodes.default.length > 0 && (
+                        <optgroup label="🏢 Your Tax Authority">
+                          {groupedTaxCodes.default.map((t: any) => {
+                            const rate = t.rates && t.rates.length > 0 ? t.rates[t.rates.length - 1].percentage : 0
+                            return (
+                              <option key={t.id} value={t.id}>✅ {t.code} — {t.name || 'Sales Tax'} ({rate}%)</option>
+                            )
+                          })}
                         </optgroup>
                       )}
                       {groupedTaxCodes.other.length > 0 && (
-                        <optgroup label="Other Regional Tax Codes">
-                          {groupedTaxCodes.other.map((t: any) => (
-                            <option key={t.id} value={t.id}>{t.code} ({t.rates && t.rates.length > 0 ? t.rates[t.rates.length - 1].percentage : 0}%)</option>
-                          ))}
+                        <optgroup label="🌍 Other Tax Authorities">
+                          {groupedTaxCodes.other.map((t: any) => {
+                            const rate = t.rates && t.rates.length > 0 ? t.rates[t.rates.length - 1].percentage : 0
+                            return (
+                              <option key={t.id} value={t.id}>📌 {t.code} — {t.name || 'Regional Tax'} ({rate}%)</option>
+                            )
+                          })}
                         </optgroup>
                       )}
                     </select>
-                    <p className="text-[11px] text-[var(--color-text-muted)] mt-1.5">
-                      Automatically calculated when added to customer invoices or sales orders.
-                    </p>
+                  </div>
+
+                  {/* Tax Info Card */}
+                  <div className="p-3.5 rounded-xl border border-amber-500/20 bg-amber-500/5 text-xs text-[var(--color-text-muted)] flex items-start gap-2">
+                    <Receipt className="w-4 h-4 text-amber-500 shrink-0 mt-0.5" />
+                    <div>
+                      <p className="font-semibold text-amber-600 dark:text-amber-400 mb-1">Tax Info</p>
+                      <ul className="space-y-0.5 text-[11px]">
+                        <li>• <b>No Tax (0%)</b> — Item is tax exempt or not taxable</li>
+                        <li>• <b>Sales Tax / VAT</b> — Automatically calculated on invoices</li>
+                        <li>• Tax rate applies when added to customer invoices</li>
+                      </ul>
+                    </div>
                   </div>
                 </div>
               )}
@@ -986,7 +1030,19 @@ export default function ProductsAndServices({
                         <Receipt className="w-4 h-4 text-amber-500" /> Tax & Classification
                       </h4>
                       <div className="grid grid-cols-2 gap-2 text-[11px]">
-                        <div><span className="text-[var(--color-text-muted)]">Default Tax Code:</span> <p className="font-semibold text-[var(--color-text-strong)]">{taxCodes.find((t: any) => t.id === form.taxCodeId)?.code || 'Standard Tax Code'}</p></div>
+                        <div>
+                          <span className="text-[var(--color-text-muted)]">Default Tax Code:</span>
+                          <p className="font-semibold text-[var(--color-text-strong)]">
+                            {(() => {
+                              const tc = getTaxCodeDisplay(form.taxCodeId)
+                              return form.taxCodeId ? (
+                                <span className="text-amber-600 dark:text-amber-400">{tc.code} ({tc.rate}%)</span>
+                              ) : (
+                                <span className="text-[var(--color-text-muted)]">No Tax (0%)</span>
+                              )
+                            })()}
+                          </p>
+                        </div>
                         <div><span className="text-[var(--color-text-muted)]">Inventory Valuation:</span> <p className="font-semibold text-[var(--color-text-strong)]">FIFO / Weighted Average</p></div>
                       </div>
                     </div>

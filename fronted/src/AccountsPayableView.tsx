@@ -2,8 +2,11 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { reportsApi } from './api/modules/reports.api';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Input } from '@/components/ui/input';
-import { Search, Wallet } from 'lucide-react';
+import { Search, Wallet, CalendarCheck, AlarmClock } from 'lucide-react';
 import { DataToolbar } from '@/components/ui/data-toolbar';
+import { KpiCard, KpiGrid } from '@/components/ui/kpi-card';
+import { EmptyState, TableSkeleton } from './components/ui/empty-state';
+import { StatusChip } from './components/ui/status-chip';
 import type { Entity } from './EntitySettings';
 
 interface ApBill {
@@ -72,16 +75,27 @@ export const AccountsPayableView: React.FC<AccountsPayableViewProps> = ({ active
 
   return (
     <div className="space-y-4 font-sans text-slate-800 p-2 md:p-6">
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-3 bg-white p-3 rounded-xl border border-gray-200 shadow-sm">
-        <div>
-          <h1 className="text-base font-bold text-slate-900 tracking-tight flex items-center gap-2">
-            <Wallet className="w-4 h-4 text-indigo-600" /> Accounts Payable
-          </h1>
-          <p className="text-[10px] text-slate-500 mt-0.5">
-            Vendor trade payables aged by due date for {currentEntity?.name || 'Active Entity'} (IAS 37 / IAS 32 financial liabilities).
-          </p>
-        </div>
-        <div className="flex items-center gap-2 shrink-0">
+      {/* Page Header — AMS Signature Hero Band */}
+      <div className="relative overflow-hidden rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)] shadow-sm">
+        <div className="absolute inset-0 bg-gradient-to-r from-amber-500/10 via-amber-500/[0.03] to-transparent pointer-events-none" />
+        <div className="absolute -right-10 -top-16 w-56 h-56 rounded-full bg-amber-500/10 blur-3xl pointer-events-none" />
+        <div className="relative flex flex-col md:flex-row justify-between items-start md:items-center gap-4 px-5 py-4">
+          <div className="flex items-center gap-4">
+            <div className="relative h-14 w-14 shrink-0">
+              <div className="absolute inset-[6px] rotate-45 rounded-[12px] shadow-xl bg-gradient-to-br from-amber-500 to-orange-700" />
+              <div className="absolute inset-0 flex items-center justify-center"><Wallet className="w-6 h-6 text-white" /></div>
+            </div>
+            <div>
+              <div className="flex items-center gap-2.5">
+                <h1 className="text-2xl font-black tracking-tight text-[var(--color-text-strong)]">Accounts Payable</h1>
+                <span className="hidden sm:inline-flex items-center gap-1.5 rounded-full border border-amber-500/25 bg-amber-500/10 px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider text-amber-600 dark:text-amber-400"><span className="h-1.5 w-1.5 rounded-full bg-amber-500 animate-pulse" /> Live Ledger</span>
+              </div>
+              <p className="text-xs text-[var(--color-text-muted)] mt-0.5">
+                Vendor trade payables aged by due date for {currentEntity?.name || 'Active Entity'} (IAS 37 / IAS 32 financial liabilities).
+              </p>
+            </div>
+          </div>
+          <div className="flex items-center gap-2 shrink-0">
           <DataToolbar
             exportFileName="accounts-payable"
             exportSheetName="Accounts Payable"
@@ -92,23 +106,15 @@ export const AccountsPayableView: React.FC<AccountsPayableViewProps> = ({ active
             exportTotals={[{ label: 'Total Due', value: totalDue }]}
             onRefresh={load}
           />
+          </div>
         </div>
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-        <div className="p-3 bg-white border border-slate-200 rounded-xl shadow-xs">
-          <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Total Payable</p>
-          <p className="text-lg font-bold text-slate-900 font-mono mt-0.5">{totalDue.toLocaleString(undefined, { minimumFractionDigits: 2 })}</p>
-        </div>
-        <div className="p-3 bg-emerald-50 border border-emerald-200 rounded-xl shadow-xs">
-          <p className="text-[10px] font-bold text-emerald-600 uppercase tracking-wider">Current (Not Yet Due)</p>
-          <p className="text-lg font-bold text-emerald-800 font-mono mt-0.5">{current.toLocaleString(undefined, { minimumFractionDigits: 2 })}</p>
-        </div>
-        <div className="p-3 bg-rose-50 border border-rose-200 rounded-xl shadow-xs">
-          <p className="text-[10px] font-bold text-rose-600 uppercase tracking-wider">Past Due</p>
-          <p className="text-lg font-bold text-rose-800 font-mono mt-0.5">{pastDue.toLocaleString(undefined, { minimumFractionDigits: 2 })}</p>
-        </div>
-      </div>
+      <KpiGrid cols={3}>
+        <KpiCard icon={Wallet} label="Total Payable" value={totalDue.toLocaleString(undefined, { minimumFractionDigits: 2 })} tone="blue" />
+        <KpiCard icon={CalendarCheck} label="Current (Not Yet Due)" value={current.toLocaleString(undefined, { minimumFractionDigits: 2 })} tone="emerald" />
+        <KpiCard icon={AlarmClock} label="Past Due" value={pastDue.toLocaleString(undefined, { minimumFractionDigits: 2 })} tone="rose" />
+      </KpiGrid>
 
       <div className="flex flex-wrap items-center gap-3 p-3 bg-slate-50 border border-slate-200 rounded-xl">
         <div className="relative w-72">
@@ -122,12 +128,12 @@ export const AccountsPayableView: React.FC<AccountsPayableViewProps> = ({ active
         </select>
       </div>
 
-      {loading && <p className="text-xs text-slate-500">Loading accounts payable…</p>}
+      {loading && <TableSkeleton rows={6} />}
       {error && <p className="text-xs text-rose-600">{error}</p>}
 
       <div className="bg-white border border-slate-200 rounded-xl overflow-hidden shadow-xs">
         <Table>
-          <TableHeader className="bg-slate-50 border-b border-slate-200">
+          <TableHeader className="bg-amber-500/[0.05] dark:bg-amber-400/[0.07] border-b border-slate-200">
             <TableRow>
               <TableHead className="w-32 text-[11px] font-bold text-slate-500 uppercase tracking-wider pl-4">BILL #</TableHead>
               <TableHead className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">VENDOR</TableHead>
@@ -142,8 +148,8 @@ export const AccountsPayableView: React.FC<AccountsPayableViewProps> = ({ active
           <TableBody className="divide-y divide-slate-100">
             {filtered.length === 0 && !loading && (
               <TableRow>
-                <TableCell colSpan={8} className="py-8 text-center text-xs text-slate-400">
-                  No outstanding vendor bills. Create Purchase Orders / Bills to build payables.
+                <TableCell colSpan={8}>
+                  <EmptyState icon={Wallet} title="No outstanding vendor bills" hint="Create Purchase Orders / Bills to build payables." />
                 </TableCell>
               </TableRow>
             )}
@@ -157,7 +163,11 @@ export const AccountsPayableView: React.FC<AccountsPayableViewProps> = ({ active
                 <TableCell className="py-3 text-right font-mono text-xs text-emerald-700">{b.amountPaid.toLocaleString(undefined, { minimumFractionDigits: 2 })}</TableCell>
                 <TableCell className="py-3 text-right font-mono text-xs font-bold text-rose-600">{b.amountDue.toLocaleString(undefined, { minimumFractionDigits: 2 })}</TableCell>
                 <TableCell className="py-3">
-                  <span className={`inline-flex px-2.5 py-0.5 rounded-md text-[11px] font-semibold border ${b.status === 'Paid' ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : b.status === 'PartiallyPaid' ? 'bg-amber-50 text-amber-700 border-amber-200' : 'bg-rose-50 text-rose-700 border-rose-200'}`}>{b.status}</span>
+                  <StatusChip
+                    status={b.status === 'Paid' ? 'paid' : b.status === 'PartiallyPaid' ? 'partial' : 'overdue'}
+                    label={b.status}
+                    hex={b.status === 'Paid' ? '#10b981' : b.status === 'PartiallyPaid' ? '#f59e0b' : '#f43f5e'}
+                  />
                 </TableCell>
               </TableRow>
             ))}

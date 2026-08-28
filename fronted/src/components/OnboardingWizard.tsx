@@ -6,6 +6,34 @@ import {
 } from 'lucide-react'
 import type { UserData } from '../Login'
 import { setActiveCurrency } from '../lib/currency'
+import { setLicenseMode as syncLicenseMode, activateLicenseKey, type LicenseModeId } from '../licenseManager'
+
+const LICENSE_MODES = [
+  {
+    id: 'trial-90',
+    title: '90-Day Free Commercial Trial',
+    badge: 'Standard 3-Month Trial',
+    desc: 'Full access to all modules for 90 days. Ideal for new client evaluations.'
+  },
+  {
+    id: 'trial-180',
+    title: '180-Day Extended Commercial Trial',
+    badge: '6-Month Extended Trial',
+    desc: 'Extended evaluation period for larger enterprises & multi-branch rollouts.'
+  },
+  {
+    id: 'beta-365',
+    title: 'Founding Customer / Beta Partner',
+    badge: '1-Year Free Access',
+    desc: 'Free pilot access in exchange for sector feedback and feature suggestions.'
+  },
+  {
+    id: 'licensed',
+    title: 'Commercial Licensed Edition',
+    badge: 'Enter Key',
+    desc: 'Unlock permanent or annual license using a signed AMS License Key.'
+  }
+]
 
 const COUNTRIES = [
   { code: 'PK', name: 'Pakistan', currency: 'PKR', flag: '🇵🇰', tax: 'FBR GST 18%' },
@@ -106,32 +134,11 @@ const ERP_MODULES = [
   { id: 'analytics', label: 'AI Analytics & Insights', desc: 'Cash flow forecasting, financial intelligence', icon: Sparkles },
 ]
 
-const LICENSE_MODES = [
-  {
-    id: 'trial',
-    title: '90-Day Free Commercial Trial',
-    badge: 'Standard 3-Month Trial',
-    desc: 'Full access to all modules for 90 days. Ideal for new prospect installations.'
-  },
-  {
-    id: 'beta',
-    title: 'Founding Customer / Beta Partner',
-    badge: '1-Year Free Access',
-    desc: 'Free pilot access in exchange for sector feedback and feature suggestions.'
-  },
-  {
-    id: 'licensed',
-    title: 'Commercial Licensed Edition',
-    badge: 'Enter Key',
-    desc: 'Unlock permanent or annual license using a signed AMS License Key.'
-  }
-]
-
 export default function OnboardingWizard({ currentUser }: {
   currentUser: UserData
 }) {
   const [step, setStep] = useState<1 | 2 | 3>(1)
-  const [licenseMode, setLicenseMode] = useState('trial')
+  const [licenseMode, setLicenseMode] = useState<LicenseModeId>('trial-90')
   const [licenseKeyInput, setLicenseKeyInput] = useState('')
   const [country, setCountry] = useState('PK')
   const [selectedSectorId, setSelectedSectorId] = useState('All_FullSuite')
@@ -183,6 +190,13 @@ export default function OnboardingWizard({ currentUser }: {
     localStorage.setItem('onboarding_company_name', finalCompanyName)
     localStorage.setItem('onboarding_license_mode', licenseMode)
     localStorage.setItem('onboarding_sector_id', selectedSectorId)
+
+    // Sync license mode and start date
+    if (licenseMode === 'licensed' && licenseKeyInput.trim()) {
+      activateLicenseKey(licenseKeyInput.trim());
+    } else {
+      syncLicenseMode(licenseMode, new Date().toISOString());
+    }
 
     // Clear old local company caches so new name displays instantly
     localStorage.removeItem('ab_companies');

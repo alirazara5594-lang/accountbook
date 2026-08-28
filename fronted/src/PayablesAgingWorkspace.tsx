@@ -1,13 +1,17 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useVendorsStore, useCompanyStore, useProcurementStore } from './stores';
 import {
-  Clock, Download, ArrowLeft,
+  Download, ArrowLeft,
   Search, Printer, FileSpreadsheet,
-  CheckCircle2, ChevronRight, RefreshCw, Layers
+  CheckCircle2, ChevronRight, RefreshCw,
+  CalendarCheck, Hourglass, History, AlertTriangle, ShieldAlert, Wallet
 } from 'lucide-react';
 import { money } from './lib/currency';
 import { downloadExcel, downloadCSV } from './lib/exportUtils';
 import ExportDropdown from './components/ExportDropdown';
+import { KpiCard, KpiGrid } from './components/ui/kpi-card';
+import { EmptyState, TableSkeleton } from './components/ui/empty-state';
+import { StatusChip } from './components/ui/status-chip';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 
@@ -520,7 +524,7 @@ export function PayablesAgingWorkspace({ activeEntityId }: PayablesAgingProps) {
           <div className="flex items-center gap-1.5 shrink-0 flex-wrap">
             <button
               onClick={() => generateVendorAgingPDF(vendor.id)}
-              className="primary h-8.5 px-3 rounded-lg text-xs font-semibold flex items-center gap-1.5 shadow-xs"
+              className="h-9 px-5 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 text-white text-xs font-bold shadow-lg shadow-blue-500/25"
             >
               <Download className="w-3.5 h-3.5" /> Download PDF
             </button>
@@ -532,7 +536,7 @@ export function PayablesAgingWorkspace({ activeEntityId }: PayablesAgingProps) {
             </button>
             <button
               onClick={() => window.print()}
-              className="secondary h-8.5 px-2.5 rounded-lg text-xs font-semibold flex items-center gap-1"
+              className="h-9 px-4 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] text-xs font-medium hover:bg-[var(--color-surface-muted)] transition-colors"
             >
               <Printer className="w-3.5 h-3.5" />
             </button>
@@ -540,53 +544,27 @@ export function PayablesAgingWorkspace({ activeEntityId }: PayablesAgingProps) {
         </div>
 
         {/* Aging Bucket Metric Cards */}
-        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-2">
-          <div className="bg-[var(--color-surface)] p-3 rounded-xl border border-[var(--color-border)] shadow-2xs text-center">
-            <span className="text-[10px] font-bold text-emerald-600 block uppercase">Current</span>
-            <span className="text-sm font-extrabold text-[var(--color-text-strong)] mt-0.5 block">{fmt(summary.current)}</span>
-            <span className="text-[9px] text-[var(--color-text-muted)]">Not yet due</span>
-          </div>
-          <div className="bg-[var(--color-surface)] p-3 rounded-xl border border-[var(--color-border)] shadow-2xs text-center">
-            <span className="text-[10px] font-bold text-amber-600 block uppercase">1 - 30 Days</span>
-            <span className="text-sm font-extrabold text-[var(--color-text-strong)] mt-0.5 block">{fmt(summary.days30)}</span>
-            <span className="text-[9px] text-[var(--color-text-muted)]">Past due</span>
-          </div>
-          <div className="bg-[var(--color-surface)] p-3 rounded-xl border border-[var(--color-border)] shadow-2xs text-center">
-            <span className="text-[10px] font-bold text-amber-600 block uppercase">31 - 60 Days</span>
-            <span className="text-sm font-extrabold text-[var(--color-text-strong)] mt-0.5 block">{fmt(summary.days60)}</span>
-            <span className="text-[9px] text-[var(--color-text-muted)]">Overdue</span>
-          </div>
-          <div className="bg-[var(--color-surface)] p-3 rounded-xl border border-[var(--color-border)] shadow-2xs text-center">
-            <span className="text-[10px] font-bold text-rose-600 block uppercase">61 - 90 Days</span>
-            <span className="text-sm font-extrabold text-[var(--color-text-strong)] mt-0.5 block">{fmt(summary.days90)}</span>
-            <span className="text-[9px] text-[var(--color-text-muted)]">High Risk</span>
-          </div>
-          <div className="bg-[var(--color-surface)] p-3 rounded-xl border border-[var(--color-border)] shadow-2xs text-center">
-            <span className="text-[10px] font-bold text-rose-700 block uppercase">90+ Days</span>
-            <span className="text-sm font-extrabold text-rose-600 mt-0.5 block">{fmt(summary.days90Plus)}</span>
-            <span className="text-[9px] text-[var(--color-text-muted)]">Critical</span>
-          </div>
-          <div className="bg-blue-50/50 dark:bg-blue-950/20 p-3 rounded-xl border border-blue-200 dark:border-blue-800 shadow-2xs text-center">
-            <span className="text-[10px] font-bold text-blue-700 dark:text-blue-300 block uppercase">Total Balance</span>
-            <span className="text-sm font-extrabold text-blue-800 dark:text-blue-200 mt-0.5 block">{fmt(summary.totalDue)}</span>
-            <span className="text-[9px] text-blue-600 dark:text-blue-400">{summary.openBillsCount} open bills</span>
-          </div>
-        </div>
+        <KpiGrid cols={3}>
+          <KpiCard icon={CalendarCheck} label="Current" value={fmt(summary.current)} desc="Not yet due" tone="emerald" />
+          <KpiCard icon={Hourglass} label="1 - 30 Days" value={fmt(summary.days30)} desc="Past due" tone="amber" />
+          <KpiCard icon={History} label="31 - 60 Days" value={fmt(summary.days60)} desc="Overdue" tone="amber" />
+          <KpiCard icon={AlertTriangle} label="61 - 90 Days" value={fmt(summary.days90)} desc="High Risk" tone="rose" />
+          <KpiCard icon={ShieldAlert} label="90+ Days" value={fmt(summary.days90Plus)} desc="Critical" tone="red" />
+          <KpiCard icon={Wallet} label="Total Balance" value={fmt(summary.totalDue)} desc={`${summary.openBillsCount} open bills`} tone="blue" />
+        </KpiGrid>
 
         {/* Itemized Open Bills Table */}
         <div className="bg-[var(--color-surface)] border border-[var(--color-border)] rounded-xl shadow-xs overflow-hidden">
-          <div className="p-3 border-b border-[var(--color-border)] flex justify-between items-center bg-gray-50/50 dark:bg-gray-900/50">
-            <span className="text-xs font-bold text-[var(--color-text-strong)] flex items-center gap-1.5">
-              <Layers className="w-3.5 h-3.5 text-blue-600" /> Open Vendor Bills Schedule ({openBills.length})
-            </span>
+          <div className="px-5 py-3.5 border-b border-[var(--color-border)] bg-[var(--color-surface-muted)] flex items-center justify-between">
+            <p className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-[var(--color-text-strong)]"><span className="inline-block h-2 w-2 rotate-45 rounded-[2px] bg-gradient-to-br from-rose-500 to-red-700" />Open Vendor Bills Schedule</p>
             <span className="text-[11px] text-[var(--color-text-muted)]">
-              Ranked from oldest overdue bill to newest
+              {openBills.length} bills • Ranked from oldest overdue bill to newest
             </span>
           </div>
 
           <div className="overflow-x-auto">
             <table className="w-full text-left text-xs">
-              <thead className="bg-gray-50 dark:bg-gray-900/80 text-[var(--color-text-muted)] border-b border-[var(--color-border)] text-[10px] uppercase font-bold tracking-wider">
+              <thead className="bg-rose-500/[0.05] dark:bg-rose-400/[0.07] text-[var(--color-text-muted)] border-b border-[var(--color-border)] text-[10px] uppercase font-bold tracking-wider">
                 <tr>
                   <th className="py-2.5 px-3.5">Bill Number</th>
                   <th className="py-2.5 px-3">Bill Date</th>
@@ -602,11 +580,8 @@ export function PayablesAgingWorkspace({ activeEntityId }: PayablesAgingProps) {
               <tbody className="divide-y divide-[var(--color-border)]">
                 {openBills.length === 0 ? (
                   <tr>
-                    <td colSpan={9} className="py-12 text-center text-[var(--color-text-muted)]">
-                      <div className="flex flex-col items-center gap-2">
-                        <CheckCircle2 className="w-8 h-8 text-emerald-500" />
-                        <p className="font-semibold text-xs">All bills are fully settled! Zero outstanding payable.</p>
-                      </div>
+                    <td colSpan={9}>
+                      <EmptyState icon={CheckCircle2} title="All bills are fully settled!" hint="Zero outstanding payable for this supplier." />
                     </td>
                   </tr>
                 ) : (
@@ -637,9 +612,7 @@ export function PayablesAgingWorkspace({ activeEntityId }: PayablesAgingProps) {
                         {fmt(b.amountDue)}
                       </td>
                       <td className="py-2.5 px-3 text-center">
-                        <span className="text-[10px] px-2 py-0.5 rounded-full bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300">
-                          {b.status}
-                        </span>
+                        <StatusChip status={b.status} label={b.status} />
                       </td>
                     </tr>
                   ))
@@ -676,19 +649,29 @@ export function PayablesAgingWorkspace({ activeEntityId }: PayablesAgingProps) {
   // ════════════════════════════════════════════════════════════════════════════
   return (
     <div className="space-y-4 max-w-7xl mx-auto pb-10">
-      {/* Header Banner */}
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-3 bg-[var(--color-surface)] p-3.5 rounded-xl border border-[var(--color-border)] shadow-xs">
-        <div>
-          <h1 className="text-base font-bold text-[var(--color-text-strong)] tracking-tight flex items-center gap-2">
-            <span className="text-lg">⏳</span> Payables Aging Schedule
-          </h1>
-          <p className="text-[var(--color-text-muted)] text-xs mt-0.5">
-            Accounts Payable aging exposure analyzed into 30, 60, 90, and 90+ days maturity buckets.
-          </p>
-        </div>
+      {/* Page Header — AMS Signature Hero Band */}
+      <div className="relative overflow-hidden rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)] shadow-sm">
+        <div className="absolute inset-0 bg-gradient-to-r from-rose-500/10 via-rose-500/[0.03] to-transparent pointer-events-none" />
+        <div className="absolute -right-10 -top-16 w-56 h-56 rounded-full bg-rose-500/10 blur-3xl pointer-events-none" />
+        <div className="relative flex flex-col md:flex-row justify-between items-start md:items-center gap-4 px-5 py-4">
+          <div className="flex items-center gap-4">
+            <div className="relative h-14 w-14 shrink-0">
+              <div className="absolute inset-[6px] rotate-45 rounded-[12px] shadow-xl bg-gradient-to-br from-rose-500 to-red-700" />
+              <div className="absolute inset-0 flex items-center justify-center"><Hourglass className="w-6 h-6 text-white" /></div>
+            </div>
+            <div>
+              <div className="flex items-center gap-2.5">
+                <h1 className="text-2xl font-black tracking-tight text-[var(--color-text-strong)]">Payables Aging Schedule</h1>
+                <span className="hidden sm:inline-flex items-center gap-1.5 rounded-full border border-rose-500/25 bg-rose-500/10 px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider text-rose-600 dark:text-rose-400"><span className="h-1.5 w-1.5 rounded-full bg-rose-500 animate-pulse" /> Live Ledger</span>
+              </div>
+              <p className="text-xs text-[var(--color-text-muted)] mt-0.5">
+                Accounts Payable aging exposure analyzed into 30, 60, 90, and 90+ days maturity buckets.
+              </p>
+            </div>
+          </div>
 
-        {/* Controls: Search, As-Of Date Picker & Export */}
-        <div className="flex items-center gap-2 shrink-0 flex-wrap">
+          {/* Controls: Search, As-Of Date Picker & Export */}
+          <div className="flex items-center gap-2 shrink-0 flex-wrap">
           {/* Robust Search Box */}
           <div className="flex items-center h-8.5 w-60 px-2.5 bg-[var(--color-surface)] border border-[var(--color-border)] rounded-lg text-xs focus-within:border-blue-500 focus-within:ring-1 focus-within:ring-blue-200 transition-all shadow-2xs">
             <Search className="w-3.5 h-3.5 text-gray-400 mr-2 shrink-0 pointer-events-none" />
@@ -697,16 +680,6 @@ export function PayablesAgingWorkspace({ activeEntityId }: PayablesAgingProps) {
               value={query}
               onChange={(e) => setQuery(e.target.value)}
               placeholder="Search vendor or ID..."
-              style={{
-                border: 'none',
-                outline: 'none',
-                background: 'transparent',
-                padding: '0 !important',
-                width: '100%',
-                fontSize: '12px',
-                color: 'var(--color-text)',
-                boxShadow: 'none',
-              }}
               className="!p-0 !border-0 !outline-none !bg-transparent w-full text-xs text-[var(--color-text)]"
             />
             {query && (
@@ -742,47 +715,24 @@ export function PayablesAgingWorkspace({ activeEntityId }: PayablesAgingProps) {
           {/* Refresh */}
           <button
             onClick={loadData}
-            className="secondary h-8.5 w-8.5 rounded-lg flex items-center justify-center text-xs text-[var(--color-text)]"
+            className="h-9 px-4 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] text-xs font-medium hover:bg-[var(--color-surface-muted)] transition-colors"
             title="Refresh"
           >
             <RefreshCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin' : ''}`} />
           </button>
+          </div>
         </div>
       </div>
 
       {/* Top Aging Exposure Breakdown Grid */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-2">
-        <div className="bg-[var(--color-surface)] p-3 rounded-xl border border-[var(--color-border)] shadow-2xs text-center">
-          <span className="text-[10px] font-bold text-emerald-600 block uppercase">Current (Not Due)</span>
-          <span className="text-sm font-extrabold text-[var(--color-text-strong)] mt-0.5 block">{fmt(overallTotals.current)}</span>
-          <span className="text-[9px] text-[var(--color-text-muted)]">Within credit terms</span>
-        </div>
-        <div className="bg-[var(--color-surface)] p-3 rounded-xl border border-[var(--color-border)] shadow-2xs text-center">
-          <span className="text-[10px] font-bold text-amber-600 block uppercase">1 - 30 Days</span>
-          <span className="text-sm font-extrabold text-[var(--color-text-strong)] mt-0.5 block">{fmt(overallTotals.days30)}</span>
-          <span className="text-[9px] text-[var(--color-text-muted)]">Grace period</span>
-        </div>
-        <div className="bg-[var(--color-surface)] p-3 rounded-xl border border-[var(--color-border)] shadow-2xs text-center">
-          <span className="text-[10px] font-bold text-amber-600 block uppercase">31 - 60 Days</span>
-          <span className="text-sm font-extrabold text-[var(--color-text-strong)] mt-0.5 block">{fmt(overallTotals.days60)}</span>
-          <span className="text-[9px] text-[var(--color-text-muted)]">Overdue</span>
-        </div>
-        <div className="bg-[var(--color-surface)] p-3 rounded-xl border border-[var(--color-border)] shadow-2xs text-center">
-          <span className="text-[10px] font-bold text-rose-600 block uppercase">61 - 90 Days</span>
-          <span className="text-sm font-extrabold text-[var(--color-text-strong)] mt-0.5 block">{fmt(overallTotals.days90)}</span>
-          <span className="text-[9px] text-[var(--color-text-muted)]">Immediate action</span>
-        </div>
-        <div className="bg-[var(--color-surface)] p-3 rounded-xl border border-[var(--color-border)] shadow-2xs text-center">
-          <span className="text-[10px] font-bold text-rose-700 block uppercase">90+ Days</span>
-          <span className="text-sm font-extrabold text-rose-600 mt-0.5 block">{fmt(overallTotals.days90Plus)}</span>
-          <span className="text-[9px] text-[var(--color-text-muted)]">Critical risk</span>
-        </div>
-        <div className="bg-blue-50/50 dark:bg-blue-950/20 p-3 rounded-xl border border-blue-200 dark:border-blue-800 shadow-2xs text-center">
-          <span className="text-[10px] font-bold text-blue-700 dark:text-blue-300 block uppercase">Total AP Due</span>
-          <span className="text-sm font-extrabold text-blue-800 dark:text-blue-200 mt-0.5 block">{fmt(overallTotals.totalDue)}</span>
-          <span className="text-[9px] text-blue-600 dark:text-blue-400">{overallTotals.vendorsWithBalances} suppliers</span>
-        </div>
-      </div>
+      <KpiGrid cols={3}>
+        <KpiCard icon={CalendarCheck} label="Current (Not Due)" value={fmt(overallTotals.current)} desc="Within credit terms" tone="emerald" />
+        <KpiCard icon={Hourglass} label="1 - 30 Days" value={fmt(overallTotals.days30)} desc="Grace period" tone="amber" />
+        <KpiCard icon={History} label="31 - 60 Days" value={fmt(overallTotals.days60)} desc="Overdue" tone="amber" />
+        <KpiCard icon={AlertTriangle} label="61 - 90 Days" value={fmt(overallTotals.days90)} desc="Immediate action" tone="rose" />
+        <KpiCard icon={ShieldAlert} label="90+ Days" value={fmt(overallTotals.days90Plus)} desc="Critical risk" tone="red" />
+        <KpiCard icon={Wallet} label="Total AP Due" value={fmt(overallTotals.totalDue)} desc={`${overallTotals.vendorsWithBalances} suppliers`} tone="blue" />
+      </KpiGrid>
 
       {/* Aging Risk Filter Tabs */}
       <div className="flex items-center gap-1.5 overflow-x-auto pb-1">
@@ -811,18 +761,16 @@ export function PayablesAgingWorkspace({ activeEntityId }: PayablesAgingProps) {
 
       {/* Vendors Aging Schedule Table */}
       <div className="bg-[var(--color-surface)] border border-[var(--color-border)] rounded-xl shadow-xs overflow-hidden">
-        <div className="p-3 border-b border-[var(--color-border)] flex justify-between items-center bg-gray-50/50 dark:bg-gray-900/50">
-          <span className="text-xs font-bold text-[var(--color-text-strong)] flex items-center gap-2">
-            <Clock className="w-3.5 h-3.5 text-blue-600" /> Supplier Payables Aging Matrix ({filteredData.length})
-          </span>
+        <div className="px-5 py-3.5 border-b border-[var(--color-border)] bg-[var(--color-surface-muted)] flex items-center justify-between">
+          <p className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-[var(--color-text-strong)]"><span className="inline-block h-2 w-2 rotate-45 rounded-[2px] bg-gradient-to-br from-rose-500 to-red-700" />Supplier Payables Aging Matrix</p>
           <span className="text-[11px] text-[var(--color-text-muted)]">
-            Click <strong>Download PDF</strong> on any vendor row to export their schedule.
+            {filteredData.length} suppliers • Click <strong>Download PDF</strong> on any vendor row to export their schedule.
           </span>
         </div>
 
         <div className="overflow-x-auto">
           <table className="w-full text-left text-xs">
-            <thead className="bg-gray-50 dark:bg-gray-900/80 text-[var(--color-text-muted)] border-b border-[var(--color-border)] text-[10px] uppercase font-bold tracking-wider">
+            <thead className="bg-rose-500/[0.05] dark:bg-rose-400/[0.07] text-[var(--color-text-muted)] border-b border-[var(--color-border)] text-[10px] uppercase font-bold tracking-wider">
               <tr>
                 <th className="py-2.5 px-3.5">Vendor</th>
                 <th className="py-2.5 px-2.5 text-right">Current</th>
@@ -838,20 +786,14 @@ export function PayablesAgingWorkspace({ activeEntityId }: PayablesAgingProps) {
             <tbody className="divide-y divide-[var(--color-border)]">
               {loading ? (
                 <tr>
-                  <td colSpan={9} className="py-12 text-center text-[var(--color-text-muted)]">
-                    <div className="flex flex-col items-center gap-2">
-                      <RefreshCw className="w-6 h-6 animate-spin text-blue-600" />
-                      <p className="font-semibold text-xs">Calculating accounts payable aging schedule...</p>
-                    </div>
+                  <td colSpan={9}>
+                    <TableSkeleton rows={6} />
                   </td>
                 </tr>
               ) : filteredData.length === 0 ? (
                 <tr>
-                  <td colSpan={9} className="py-12 text-center text-[var(--color-text-muted)]">
-                    <div className="flex flex-col items-center gap-2">
-                      <CheckCircle2 className="w-8 h-8 text-emerald-500" />
-                      <p className="font-semibold text-xs">No suppliers matched your filter criteria.</p>
-                    </div>
+                  <td colSpan={9}>
+                    <EmptyState icon={CheckCircle2} title="No suppliers matched your filter criteria" />
                   </td>
                 </tr>
               ) : (

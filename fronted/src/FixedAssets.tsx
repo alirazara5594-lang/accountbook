@@ -15,6 +15,8 @@ import {
 import { money } from './lib/currency';
 import { downloadExcel, downloadCSV } from './lib/exportUtils';
 import ExportDropdown from './components/ExportDropdown';
+import { KpiCard } from './components/ui/kpi-card';
+import { EmptyState } from './components/ui/empty-state';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 
@@ -585,28 +587,31 @@ export const FixedAssets: React.FC<{ activeEntityId: string }> = ({ activeEntity
         </div>
       )}
 
-      {/* Top Banner & Action Controls */}
-      <div className="flex items-center justify-between border-b border-[var(--color-border)] pb-4 flex-wrap gap-4">
-        <div>
-          <div className="flex items-center gap-2">
-            <span className="p-2 bg-teal-50 dark:bg-teal-950/50 text-teal-600 rounded-xl">
-              <Factory className="w-5 h-5" />
-            </span>
+      {/* Page Header — AMS Signature Hero Band */}
+      <div className="relative overflow-hidden rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)] shadow-sm">
+        <div className="absolute inset-0 bg-gradient-to-r from-teal-500/10 via-teal-500/[0.03] to-transparent pointer-events-none" />
+        <div className="absolute -right-10 -top-16 w-56 h-56 rounded-full bg-teal-500/10 blur-3xl pointer-events-none" />
+        <div className="relative flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 px-5 py-4">
+          <div className="flex items-center gap-4">
+            <div className="relative h-14 w-14 shrink-0">
+              <div className="absolute inset-[6px] rotate-45 rounded-[12px] shadow-xl bg-gradient-to-br from-teal-500 to-cyan-700" />
+              <div className="absolute inset-0 flex items-center justify-center"><Factory className="w-6 h-6 text-white" /></div>
+            </div>
             <div>
-              <h1 className="text-xl font-bold text-[var(--color-text-strong)] flex items-center gap-2">
-                Fixed Assets & Factory Equipment Hub
-                <span className="text-[10px] font-mono font-normal px-2 py-0.5 rounded-full bg-teal-100 dark:bg-teal-900/60 text-teal-700 dark:text-teal-300">
+              <div className="flex items-center gap-2.5">
+                <h1 className="text-2xl font-black tracking-tight text-[var(--color-text-strong)]">Fixed Assets & Factory Equipment Hub</h1>
+                <span className="hidden sm:inline-flex items-center gap-1.5 rounded-full border border-teal-500/25 bg-teal-500/10 px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider text-teal-600 dark:text-teal-400"><span className="h-1.5 w-1.5 rounded-full bg-teal-500 animate-pulse" /> Live Ledger</span>
+                <span className="hidden md:inline-flex text-[9px] font-mono font-normal px-2 py-0.5 rounded-full bg-teal-100 dark:bg-teal-900/60 text-teal-700 dark:text-teal-300">
                   IAS 16 / IFRS 16
                 </span>
-              </h1>
-              <p className="text-[var(--color-text-muted)] text-xs mt-0.5">
+              </div>
+              <p className="text-xs text-[var(--color-text-muted)] mt-0.5">
                 Integrated capital asset register, plant machine runtime health, procurement bridge, and MOH depreciation routing.
               </p>
             </div>
           </div>
-        </div>
 
-        <div className="flex flex-wrap items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2 shrink-0">
           <ExportDropdown
             label="Export Assets"
             onPDF={handleExportPDF}
@@ -628,64 +633,18 @@ export const FixedAssets: React.FC<{ activeEntityId: string }> = ({ activeEntity
           >
             <Plus className="w-4 h-4" /> Capitalize New Asset
           </button>
+          </div>
         </div>
       </div>
 
       {/* KPI Cards */}
       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
-        <div className="bg-[var(--color-surface)] border border-[var(--color-border)] rounded-2xl p-3.5 shadow-2xs space-y-1">
-          <div className="flex items-center justify-between text-[11px] font-semibold text-[var(--color-text-muted)]">
-            <span>Capitalized Cost</span>
-            <DollarSign className="w-3.5 h-3.5 text-blue-600" />
-          </div>
-          <p className="text-base font-bold text-[var(--color-text-strong)] font-mono">{money(totalCost)}</p>
-          <p className="text-[10px] text-blue-600 font-semibold">{assets.length} Total Assets</p>
-        </div>
-
-        <div className="bg-[var(--color-surface)] border border-[var(--color-border)] rounded-2xl p-3.5 shadow-2xs space-y-1">
-          <div className="flex items-center justify-between text-[11px] font-semibold text-[var(--color-text-muted)]">
-            <span>Accum. Depreciation</span>
-            <TrendingDown className="w-3.5 h-3.5 text-amber-600" />
-          </div>
-          <p className="text-base font-bold text-amber-600 font-mono">{money(totalAccumDepr)}</p>
-          <p className="text-[10px] text-[var(--color-text-muted)]">Contra-Asset Balance</p>
-        </div>
-
-        <div className="bg-[var(--color-surface)] border border-[var(--color-border)] rounded-2xl p-3.5 shadow-2xs space-y-1">
-          <div className="flex items-center justify-between text-[11px] font-semibold text-[var(--color-text-muted)]">
-            <span>Net Book Value (NBV)</span>
-            <Building className="w-3.5 h-3.5 text-teal-600" />
-          </div>
-          <p className="text-base font-bold text-teal-600 font-mono">{money(totalNBV)}</p>
-          <p className="text-[10px] text-[var(--color-text-muted)]">Carrying Value</p>
-        </div>
-
-        <div className="bg-[var(--color-surface)] border border-[var(--color-border)] rounded-2xl p-3.5 shadow-2xs space-y-1">
-          <div className="flex items-center justify-between text-[11px] font-semibold text-[var(--color-text-muted)]">
-            <span>Factory Machinery</span>
-            <Cpu className="w-3.5 h-3.5 text-purple-600" />
-          </div>
-          <p className="text-base font-bold text-purple-600 font-mono">{plantMachineryCount}</p>
-          <p className="text-[10px] text-purple-600/80 font-semibold">MOH Cost Centers</p>
-        </div>
-
-        <div className="bg-[var(--color-surface)] border border-[var(--color-border)] rounded-2xl p-3.5 shadow-2xs space-y-1">
-          <div className="flex items-center justify-between text-[11px] font-semibold text-[var(--color-text-muted)]">
-            <span>Under Maintenance</span>
-            <Wrench className="w-3.5 h-3.5 text-rose-600" />
-          </div>
-          <p className="text-base font-bold text-rose-600 font-mono">{underMaintenanceCount}</p>
-          <p className="text-[10px] text-rose-600/80 font-semibold">Service Tickets</p>
-        </div>
-
-        <div className="bg-[var(--color-surface)] border border-[var(--color-border)] rounded-2xl p-3.5 shadow-2xs space-y-1">
-          <div className="flex items-center justify-between text-[11px] font-semibold text-[var(--color-text-muted)]">
-            <span>Procurement Pending</span>
-            <ShoppingCart className="w-3.5 h-3.5 text-emerald-600" />
-          </div>
-          <p className="text-base font-bold text-emerald-600 font-mono">{uncapitalizedProcurementLines.length}</p>
-          <p className="text-[10px] text-emerald-600 font-semibold">Capital Goods Lines</p>
-        </div>
+        <KpiCard icon={DollarSign} label="Capitalized Cost" value={money(totalCost)} desc={`${assets.length} Total Assets`} tone="blue" />
+        <KpiCard icon={TrendingDown} label="Accum. Depreciation" value={money(totalAccumDepr)} desc="Contra-Asset Balance" tone="amber" />
+        <KpiCard icon={Building} label="Net Book Value (NBV)" value={money(totalNBV)} desc="Carrying Value" tone="teal" />
+        <KpiCard icon={Cpu} label="Factory Machinery" value={plantMachineryCount} desc="MOH Cost Centers" tone="purple" />
+        <KpiCard icon={Wrench} label="Under Maintenance" value={underMaintenanceCount} desc="Service Tickets" tone="rose" />
+        <KpiCard icon={ShoppingCart} label="Procurement Pending" value={uncapitalizedProcurementLines.length} desc="Capital Goods Lines" tone="emerald" />
       </div>
 
       {/* Navigation Tabs */}
@@ -783,7 +742,7 @@ export const FixedAssets: React.FC<{ activeEntityId: string }> = ({ activeEntity
             <div className="overflow-x-auto">
               <table className="w-full text-left text-xs border-collapse">
                 <thead>
-                  <tr className="bg-[var(--color-surface-muted)] border-b border-[var(--color-border)] text-[var(--color-text-muted)] font-semibold uppercase tracking-wider text-[10px]">
+                  <tr className="bg-teal-500/[0.05] dark:bg-teal-400/[0.07] border-b border-[var(--color-border)] text-[var(--color-text-muted)] font-semibold uppercase tracking-wider text-[10px]">
                     <th className="py-3 px-4">Asset Tag & Name</th>
                     <th className="py-3 px-3">Category & Location</th>
                     <th className="py-3 px-3">Acquired</th>
@@ -798,9 +757,8 @@ export const FixedAssets: React.FC<{ activeEntityId: string }> = ({ activeEntity
                 <tbody className="divide-y divide-[var(--color-border)]">
                   {filteredAssets.length === 0 ? (
                     <tr>
-                      <td colSpan={9} className="py-12 text-center text-[var(--color-text-muted)] text-xs">
-                        <Building className="w-8 h-8 mx-auto mb-2 opacity-30 text-teal-600" />
-                        No fixed assets found matching the selected filters.
+                      <td colSpan={9}>
+                        <EmptyState icon={Building} title="No fixed assets found" hint="Adjust the search, category, status, or allocation filters to locate capital assets." />
                       </td>
                     </tr>
                   ) : (
@@ -1099,7 +1057,7 @@ export const FixedAssets: React.FC<{ activeEntityId: string }> = ({ activeEntity
           <div className="bg-[var(--color-surface)] border border-[var(--color-border)] rounded-2xl overflow-hidden shadow-2xs">
             <table className="w-full text-left text-xs border-collapse">
               <thead>
-                <tr className="bg-[var(--color-surface-muted)] border-b border-[var(--color-border)] text-[var(--color-text-muted)] font-semibold uppercase tracking-wider text-[10px]">
+                <tr className="bg-teal-500/[0.05] dark:bg-teal-400/[0.07] border-b border-[var(--color-border)] text-[var(--color-text-muted)] font-semibold uppercase tracking-wider text-[10px]">
                   <th className="py-3 px-4">Document Type & Number</th>
                   <th className="py-3 px-3">Date</th>
                   <th className="py-3 px-3">Vendor / Supplier</th>
@@ -1111,9 +1069,8 @@ export const FixedAssets: React.FC<{ activeEntityId: string }> = ({ activeEntity
               <tbody className="divide-y divide-[var(--color-border)]">
                 {uncapitalizedProcurementLines.length === 0 ? (
                   <tr>
-                    <td colSpan={6} className="py-10 text-center text-[var(--color-text-muted)]">
-                      <Check className="w-6 h-6 mx-auto mb-1 text-emerald-600" />
-                      All capital equipment purchase orders and bills are fully capitalized.
+                    <td colSpan={6}>
+                      <EmptyState icon={Check} title="Procurement bridge fully capitalized" hint="All capital equipment purchase orders and bills are capitalized." />
                     </td>
                   </tr>
                 ) : (
@@ -1247,7 +1204,7 @@ export const FixedAssets: React.FC<{ activeEntityId: string }> = ({ activeEntity
             <div className="overflow-x-auto">
               <table className="w-full text-left text-xs border-collapse">
                 <thead>
-                  <tr className="bg-[var(--color-surface-muted)] text-[var(--color-text-muted)] text-[10px] uppercase">
+                  <tr className="bg-teal-500/[0.05] dark:bg-teal-400/[0.07] text-[var(--color-text-muted)] text-[10px] uppercase">
                     <th className="py-2.5 px-3">Asset Tag & Name</th>
                     <th className="py-2.5 px-3">Method</th>
                     <th className="py-2.5 px-3">Allocation</th>

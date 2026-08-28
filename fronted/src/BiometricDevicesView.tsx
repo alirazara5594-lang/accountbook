@@ -4,6 +4,7 @@ import {
   Cpu, Plus, Wifi, Edit3, Trash2,
   Server, X, Building2, Factory, Globe
 } from 'lucide-react';
+import { StatusChip } from './components/ui/status-chip';
 
 export interface BiometricDevice {
   id: string;
@@ -116,21 +117,26 @@ export default function BiometricDevicesView() {
 
   return (
     <div className="p-6 max-w-[1500px] mx-auto space-y-6">
-      {/* Header */}
-      <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 border-b border-[var(--color-border)] pb-4">
-        <div className="min-w-0 flex-1">
-          <h1 className="text-xl font-black tracking-tight text-[var(--color-text-strong)] flex items-center gap-2.5">
-            <div className="p-2 rounded-xl bg-indigo-500/10 text-indigo-600 border border-indigo-500/20 shrink-0">
-              <Cpu className="w-5 h-5" />
+      {/* Page Header — AMS Signature Hero Band */}
+      <div className="relative overflow-hidden rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)] shadow-sm">
+        <div className="absolute inset-0 bg-gradient-to-r from-amber-500/10 via-amber-500/[0.03] to-transparent pointer-events-none" />
+        <div className="absolute -right-10 -top-16 w-56 h-56 rounded-full bg-amber-500/10 blur-3xl pointer-events-none" />
+        <div className="relative flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 px-5 py-4">
+          <div className="flex items-center gap-4">
+            <div className="relative h-14 w-14 shrink-0">
+              <div className="absolute inset-[6px] rotate-45 rounded-[12px] shadow-xl bg-gradient-to-br from-amber-500 to-rose-700" />
+              <div className="absolute inset-0 flex items-center justify-center"><Cpu className="w-6 h-6 text-white" /></div>
             </div>
-            Biometric Hardware Configuration (Multi-Location / Multi-Branch)
-          </h1>
-          <p className="text-xs text-[var(--color-text-muted)] mt-1">
-            Connect machines located in **Head Office**, **Factory / Manufacturing Plant**, and **Warehouses** to the central ERP.
-          </p>
-        </div>
+            <div>
+              <div className="flex items-center gap-2.5">
+                <h1 className="text-2xl font-black tracking-tight text-[var(--color-text-strong)]">Biometric Hardware Configuration (Multi-Location / Multi-Branch)</h1>
+                <span className="hidden sm:inline-flex items-center gap-1.5 rounded-full border border-amber-500/25 bg-amber-500/10 px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider text-amber-600 dark:text-amber-400"><span className="h-1.5 w-1.5 rounded-full bg-amber-500 animate-pulse" /> Live Ledger</span>
+              </div>
+              <p className="text-xs text-[var(--color-text-muted)] mt-0.5">Connect machines located in Head Office, Factory / Manufacturing Plant, and Warehouses to the central ERP.</p>
+            </div>
+          </div>
 
-        <div className="flex items-center gap-2 shrink-0">
+          <div className="flex items-center gap-2 shrink-0">
           <button
             onClick={() => {
               setEditingDevice({
@@ -155,6 +161,7 @@ export default function BiometricDevicesView() {
           >
             <Plus className="w-4 h-4" /> Add Biometric Device Manually
           </button>
+          </div>
         </div>
       </div>
 
@@ -242,11 +249,10 @@ export default function BiometricDevicesView() {
                   </div>
                 </div>
 
-                <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
-                  dev.status === 'Online' ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' : 'bg-slate-100 text-slate-600'
-                }`}>
-                  ● {dev.status}
-                </span>
+                <StatusChip status={dev.status} label={dev.status} hex={
+                  dev.status === 'Online' ? '#10b981' :
+                  dev.status === 'Maintenance' ? '#f59e0b' : '#94a3b8'
+                } />
               </div>
 
               {/* Device Network & Credentials Details */}

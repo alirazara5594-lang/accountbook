@@ -1,19 +1,21 @@
 import { useState, useEffect, useMemo } from 'react'
 import {
-  Package, Plus, Check, X, ArrowRight, ArrowLeft, Coins,
+  Plus, Check, X, ArrowRight, ArrowLeft, Coins,
   CheckCircle2, Hash, Users, Truck, Eye, XCircle,
-  FileText, ArrowUpRight
+  FileText, ArrowUpRight, TrendingUp
 } from 'lucide-react'
 import { useSalesOrdersStore, useCustomersStore, useProductsStore } from './stores'
 import { useFormDraft } from './hooks/useFormDraft'
 import { DataToolbar } from '@/components/ui/data-toolbar'
 import { money } from './lib/currency'
+import { StatusChip } from './components/ui/status-chip'
+import { EmptyState, TableSkeleton } from './components/ui/empty-state'
 
-const statusStyles: Record<string, { label: string; class: string }> = {
-  Draft: { label: 'Draft', class: 'bg-slate-500/10 text-slate-600 border border-slate-500/20' },
-  Confirmed: { label: 'Confirmed', class: 'bg-sky-500/10 text-sky-600 border border-sky-500/20' },
-  Invoiced: { label: 'Invoiced', class: 'bg-emerald-500/10 text-emerald-600 border border-emerald-500/20' },
-  Cancelled: { label: 'Cancelled', class: 'bg-rose-500/10 text-rose-600 border border-rose-500/20' }
+const statusStyles: Record<string, { label: string; hex: string }> = {
+  Draft: { label: 'Draft', hex: '#94a3b8' },
+  Confirmed: { label: 'Confirmed', hex: '#0ea5e9' },
+  Invoiced: { label: 'Invoiced', hex: '#10b981' },
+  Cancelled: { label: 'Cancelled', hex: '#ef4444' }
 }
 
 export const SalesOrdersWorkspace: React.FC<{ activeEntityId: string; entities?: any[] }> = ({
@@ -143,6 +145,7 @@ export const SalesOrdersWorkspace: React.FC<{ activeEntityId: string; entities?:
       companyId: activeEntityId || undefined,
       lines: lines.map(l => ({
         productId: l.productId,
+        productName: l.productName || l.description || '',
         description: l.description,
         quantity: parseFloat(l.quantity || '1'),
         unitPrice: parseFloat(l.unitPrice || '0'),
@@ -228,116 +231,124 @@ export const SalesOrdersWorkspace: React.FC<{ activeEntityId: string; entities?:
   return (
     <div className="space-y-6">
       {toast && (
-        <div className="px-3.5 py-2 bg-emerald-500/10 border border-emerald-500/20 text-emerald-600 rounded-xl text-xs font-semibold">
+        <div className="px-3.5 py-2 bg-emerald-500/10 border border-emerald-500/20 text-emerald-600 rounded-xl text-xs font-semibold z-[9999]">
           {toast}
         </div>
       )}
 
-      {/* Submodule Heading Banner (Row 1) */}
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-3 bg-[var(--color-surface)] p-3.5 rounded-xl border border-[var(--color-border)] shadow-sm">
-        <div>
-          <h1 className="text-base font-bold text-[var(--color-text-strong)] tracking-tight flex items-center gap-2">
-            <span className="text-lg">📦</span> Sales Orders Management
-          </h1>
-          <p className="text-[var(--color-text-muted)] text-xs mt-0.5">
-            Manage sales order confirmations, warehouse fulfillment schedules, and seamless invoice conversion.
-          </p>
-        </div>
-        <div className="flex items-center gap-2 shrink-0 flex-wrap">
-          <DataToolbar
-            query={query}
-            setQuery={setQuery}
-            searchPlaceholder="Search order #, customer..."
-            exportFileName="sales-orders"
-            exportSheetName="Sales Orders"
-            exportTitle="Sales Orders Register"
-            exportSubtitle="Sales orders, confirmations, and fulfillment tracking."
-            exportHeaders={exportHeaders}
-            exportRows={exportRows}
-            exportTotals={[{ label: 'Active Value', value: metrics.totalVal }]}
-          >
-            <select
-              className="h-9 px-3 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] text-xs text-[var(--color-text)] outline-none focus:border-[var(--color-primary)] transition-colors shadow-2xs box-border"
-              style={{ paddingTop: 0, paddingBottom: 0 }}
-              value={statusFilter}
-              onChange={e => setStatusFilter(e.target.value)}
+      {/* Page Header — AMS Signature Hero Band */}
+      <div className="relative overflow-hidden rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)] shadow-sm">
+        <div className="absolute inset-0 bg-gradient-to-r from-sky-500/10 via-sky-500/[0.03] to-transparent pointer-events-none" />
+        <div className="absolute -right-10 -top-16 w-56 h-56 rounded-full bg-sky-500/10 blur-3xl pointer-events-none" />
+        <div className="relative flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 px-5 py-4">
+          <div className="flex items-center gap-4">
+            <div className="relative h-14 w-14 shrink-0">
+              <div className="absolute inset-[6px] rotate-45 rounded-[12px] shadow-xl bg-gradient-to-br from-sky-500 to-blue-700" />
+              <div className="absolute inset-0 flex items-center justify-center"><FileText className="w-6 h-6 text-white" /></div>
+            </div>
+            <div>
+              <div className="flex items-center gap-2.5">
+                <h1 className="text-2xl font-black tracking-tight text-[var(--color-text-strong)]">Sales Orders Management</h1>
+                <span className="hidden sm:inline-flex items-center gap-1.5 rounded-full border border-sky-500/25 bg-sky-500/10 px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider text-sky-600 dark:text-sky-400">
+                  <span className="h-1.5 w-1.5 rounded-full bg-sky-500 animate-pulse" /> Live Ledger
+                </span>
+              </div>
+              <p className="text-xs text-[var(--color-text-muted)] mt-0.5">
+                Manage sales order confirmations, warehouse fulfillment schedules, and seamless invoice conversion.
+              </p>
+            </div>
+          </div>
+          <div className="flex items-center gap-2 shrink-0 flex-wrap">
+            <DataToolbar
+              query={query}
+              setQuery={setQuery}
+              searchPlaceholder="Search order #, customer..."
+              exportFileName="sales-orders"
+              exportSheetName="Sales Orders"
+              exportTitle="Sales Orders Register"
+              exportSubtitle="Sales orders, confirmations, and fulfillment tracking."
+              exportHeaders={exportHeaders}
+              exportRows={exportRows}
+              exportTotals={[{ label: 'Active Value', value: metrics.totalVal }]}
             >
-              <option value="all">⚡ All Statuses</option>
-              <option value="draft">⚪ Draft</option>
-              <option value="confirmed">🔵 Confirmed</option>
-              <option value="invoiced">🟢 Invoiced</option>
-              <option value="cancelled">🔴 Cancelled</option>
-            </select>
-          </DataToolbar>
-          <button
-            onClick={openCreateModal}
-            className="primary h-9 px-4 rounded-xl text-xs font-semibold whitespace-nowrap flex items-center justify-center gap-1.5 shadow-sm"
-          >
-            <span>＋</span> New Order
-          </button>
+              <select
+                className="h-9 px-3 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] text-xs text-[var(--color-text)] outline-none focus:border-[var(--color-primary)] transition-colors shadow-2xs box-border"
+                value={statusFilter}
+                onChange={e => setStatusFilter(e.target.value)}
+              >
+                <option value="all">⚡ All Statuses</option>
+                <option value="draft">⚪ Draft</option>
+                <option value="confirmed">🔵 Confirmed</option>
+                <option value="invoiced">🟢 Invoiced</option>
+                <option value="cancelled">🔴 Cancelled</option>
+              </select>
+            </DataToolbar>
+            <button
+              onClick={openCreateModal}
+              className="h-9 px-5 rounded-xl bg-gradient-to-r from-indigo-600 to-purple-600 text-white text-xs font-bold shadow-lg shadow-indigo-500/25 whitespace-nowrap flex items-center justify-center gap-1.5"
+            >
+              <span>＋</span> New Order
+            </button>
+          </div>
         </div>
       </div>
 
       {/* Stats Cards (Row 2) */}
-      <section className="stats">
-        <article>
-          <span className="stat-icon blue">
-            <Coins className="w-4 h-4" />
-          </span>
-          <div>
-            <small>ACTIVE PIPELINE VALUE</small>
-            <h2>{money(metrics.totalVal)}</h2>
-            <p>Non-cancelled orders</p>
+      <div className="grid grid-cols-2 lg:grid-cols-3 gap-4">
+        {[
+          { label: 'ACTIVE PIPELINE VALUE', value: money(metrics.totalVal), desc: 'Non-cancelled orders', icon: TrendingUp, color: 'from-blue-500 to-indigo-600', bg: 'bg-blue-50 dark:bg-blue-950/30', textColor: 'text-blue-600 dark:text-blue-400' },
+          { label: 'PENDING DELIVERY', value: metrics.confirmed, desc: 'Confirmed sales orders', icon: Truck, color: 'from-teal-500 to-emerald-600', bg: 'bg-teal-50 dark:bg-teal-950/30', textColor: 'text-teal-600 dark:text-teal-400' },
+          { label: 'INVOICED ORDERS', value: metrics.invoiced, desc: 'Billed to customers', icon: CheckCircle2, color: 'from-violet-500 to-purple-600', bg: 'bg-violet-50 dark:bg-violet-950/30', textColor: 'text-violet-600 dark:text-violet-400' },
+        ].map((kpi) => (
+          <div key={kpi.label} className="relative overflow-hidden rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)] p-3 shadow-sm hover:shadow-md transition-shadow">
+            <div className="flex items-start justify-between">
+              <div>
+                <p className="text-xs font-semibold text-[var(--color-text-muted)] uppercase tracking-wider">{kpi.label}</p>
+                <p className={`text-lg font-semibold mt-1 ${kpi.textColor}`}>{kpi.value}</p>
+                <p className="text-xs text-[var(--color-text-muted)] mt-1">{kpi.desc}</p>
+              </div>
+              <div className={`w-9 h-9 rounded-lg bg-gradient-to-br ${kpi.color} flex items-center justify-center text-white shadow-lg`}>
+                <kpi.icon className="w-5 h-5" />
+              </div>
+            </div>
+            <div className={`absolute -bottom-4 -right-4 w-24 h-24 rounded-full ${kpi.bg} opacity-50`} />
           </div>
-        </article>
-        <article>
-          <span className="stat-icon teal">
-            <Truck className="w-4 h-4" />
-          </span>
-          <div>
-            <small>PENDING DELIVERY</small>
-            <h2>{metrics.confirmed}</h2>
-            <p>Confirmed sales orders</p>
-          </div>
-        </article>
-        <article>
-          <span className="stat-icon violet">
-            <CheckCircle2 className="w-4 h-4" />
-          </span>
-          <div>
-            <small>INVOICED ORDERS</small>
-            <h2>{metrics.invoiced}</h2>
-            <p>Billed to customers</p>
-          </div>
-        </article>
-      </section>
+        ))}
+      </div>
 
       {/* Orders Table */}
       <div className="bg-[var(--color-surface)] border border-[var(--color-border)] rounded-xl overflow-hidden shadow-sm">
         <div className="px-4 py-2.5 border-b border-[var(--color-border)] bg-[var(--color-surface-muted)] flex items-center justify-between">
-          <p className="text-xs font-semibold text-[var(--color-text-strong)]">Sales Orders Directory</p>
+          <p className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-[var(--color-text-strong)]">
+            <span className="inline-block h-2 w-2 rotate-45 rounded-[2px] bg-gradient-to-br from-sky-500 to-blue-700" />
+            Sales Orders Directory
+          </p>
           <span className="text-[11px] text-[var(--color-text-muted)]">
             Showing {filteredOrders.length} of {orders.length} order{orders.length !== 1 ? 's' : ''}
           </span>
         </div>
 
         {loading ? (
-          <div className="py-12 text-center text-xs text-[var(--color-text-muted)]">Loading sales orders...</div>
+          <TableSkeleton rows={6} />
         ) : filteredOrders.length === 0 ? (
-          <div className="py-12 text-center text-xs text-[var(--color-text-muted)]">No sales orders found matching your criteria.</div>
+          <EmptyState
+            icon={FileText}
+            title="No sales orders found"
+            hint="Adjust the search or status filters to see more results."
+          />
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full text-xs">
               <thead>
-                <tr className="border-b border-[var(--color-border)] bg-[var(--color-surface-muted)]">
-                  <th className="text-left px-3 py-2 font-semibold text-[var(--color-text-muted)]">Order #</th>
-                  <th className="text-left px-3 py-2 font-semibold text-[var(--color-text-muted)]">Customer</th>
-                  <th className="text-left px-3 py-2 font-semibold text-[var(--color-text-muted)]">Date</th>
-                  <th className="text-left px-3 py-2 font-semibold text-[var(--color-text-muted)]">Expected Delivery</th>
-                  <th className="text-left px-3 py-2 font-semibold text-[var(--color-text-muted)]">Reference</th>
-                  <th className="text-right px-3 py-2 font-semibold text-[var(--color-text-muted)]">Total</th>
-                  <th className="text-center px-3 py-2 font-semibold text-[var(--color-text-muted)]">Status</th>
-                  <th className="text-right px-3 py-2 font-semibold text-[var(--color-text-muted)]">Actions</th>
+                <tr className="border-b border-[var(--color-border)] bg-sky-500/[0.05] dark:bg-sky-400/[0.07]">
+                  <th className="text-left px-3 py-3 text-[10px] font-bold uppercase tracking-wider text-[var(--color-text-muted)]">Order #</th>
+                  <th className="text-left px-3 py-3 text-[10px] font-bold uppercase tracking-wider text-[var(--color-text-muted)]">Customer</th>
+                  <th className="text-left px-3 py-3 text-[10px] font-bold uppercase tracking-wider text-[var(--color-text-muted)]">Date</th>
+                  <th className="text-left px-3 py-3 text-[10px] font-bold uppercase tracking-wider text-[var(--color-text-muted)]">Expected Delivery</th>
+                  <th className="text-left px-3 py-3 text-[10px] font-bold uppercase tracking-wider text-[var(--color-text-muted)]">Reference</th>
+                  <th className="text-right px-3 py-3 text-[10px] font-bold uppercase tracking-wider text-[var(--color-text-muted)]">Total</th>
+                  <th className="text-center px-3 py-3 text-[10px] font-bold uppercase tracking-wider text-[var(--color-text-muted)]">Status</th>
+                  <th className="text-right px-3 py-3 text-[10px] font-bold uppercase tracking-wider text-[var(--color-text-muted)]">Actions</th>
                 </tr>
               </thead>
               <tbody>
@@ -354,9 +365,7 @@ export const SalesOrdersWorkspace: React.FC<{ activeEntityId: string; entities?:
                       <td className="px-3 py-2 text-[var(--color-text-muted)] font-mono">{o.reference || '—'}</td>
                       <td className="px-3 py-2 text-right font-bold text-sky-600 font-mono">{money(o.totalAmount)}</td>
                       <td className="px-3 py-2 text-center">
-                        <span className={`inline-block px-2 py-0.5 rounded-full text-[10px] font-semibold ${badge.class}`}>
-                          {badge.label}
-                        </span>
+                        <StatusChip status={o.status} label={badge.label} hex={badge.hex} />
                       </td>
                       <td className="px-3 py-2 text-right">
                         <div className="flex items-center justify-end gap-1">
@@ -407,21 +416,16 @@ export const SalesOrdersWorkspace: React.FC<{ activeEntityId: string; entities?:
 
       {/* Stepped Order Creation Modal */}
       {showForm && (
-        <div className="overlay animate-in fade-in duration-200">
-          <div className="w-full max-w-4xl bg-[var(--color-surface)] border border-[var(--color-border)] rounded-2xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh]">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm animate-in fade-in duration-200">
+          <div className="w-full max-w-5xl bg-[var(--color-surface)] border border-[var(--color-border)] rounded-2xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh]">
             {/* Modal Header */}
-            <div className="px-6 py-4.5 border-b border-[var(--color-border)] bg-[var(--color-surface-muted)]/50 flex items-center justify-between">
+            <div className="px-6 py-4 border-b border-[var(--color-border)] flex items-center justify-between">
               <div className="flex items-center gap-3.5">
-                <div className="w-11 h-11 rounded-xl bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center text-white shadow-sm shrink-0">
-                  <Package className="w-5 h-5" />
+                <div className="w-11 h-11 rounded-xl bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-white shadow-sm shrink-0">
+                  <FileText className="w-5 h-5" />
                 </div>
                 <div>
-                  <div className="flex items-center gap-2">
-                    <h2 className="text-base font-bold text-[var(--color-text-strong)] tracking-tight">Create Sales Order</h2>
-                    <span className="px-2.5 py-0.5 rounded-full text-[10px] font-semibold bg-blue-500/10 text-blue-600 border border-blue-500/20">
-                      Draft Order
-                    </span>
-                  </div>
+                  <h2 className="text-base font-bold text-[var(--color-text-strong)]">New Sales Order</h2>
                   <p className="text-xs text-[var(--color-text-muted)] mt-0.5 flex items-center gap-1.5">
                     <span>Assigned Entity:</span>
                     <span className="font-semibold text-[var(--color-text-strong)]">
@@ -433,7 +437,7 @@ export const SalesOrdersWorkspace: React.FC<{ activeEntityId: string; entities?:
 
               <button
                 type="button"
-                className="w-8 h-8 rounded-lg flex items-center justify-center text-[var(--color-text-muted)] hover:text-[var(--color-text-strong)] hover:bg-[var(--color-surface-muted)] transition-colors"
+                className="w-8 h-8 rounded-lg flex items-center justify-center text-[var(--color-text-muted)] hover:bg-[var(--color-surface-muted)] transition-colors"
                 onClick={() => setShowForm(false)}
               >
                 <X className="w-4 h-4" />
@@ -523,8 +527,7 @@ export const SalesOrdersWorkspace: React.FC<{ activeEntityId: string; entities?:
                         placeholder="e.g. SO-0001"
                         value={form.reference}
                         onChange={e => setForm({ ...form, reference: e.target.value })}
-                        className="w-full h-full border-0 outline-none bg-transparent font-mono text-xs text-[var(--color-text-strong)] placeholder:text-[var(--color-text-muted)]"
-                        style={{ border: 0, outline: 'none', padding: 0, background: 'transparent' }}
+                        className="w-full h-10 px-3 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] text-xs outline-none"
                       />
                     </div>
                   </div>
@@ -584,8 +587,8 @@ export const SalesOrdersWorkspace: React.FC<{ activeEntityId: string; entities?:
                           <th className="p-2.5 text-left">Description</th>
                           <th className="p-2.5 text-right w-16">Qty</th>
                           <th className="p-2.5 text-right w-24">Price (Rs)</th>
-                          <th className="p-2.5 text-right w-20">Disc (Rs)</th>
-                          <th className="p-2.5 text-right w-20">Tax (Rs)</th>
+                          <th className="p-2.5 text-right w-28">Disc (Rs)</th>
+                          <th className="p-2.5 text-right w-28">Tax (Rs)</th>
                           <th className="p-2.5 text-right w-24">Total</th>
                           <th className="p-2.5 w-8"></th>
                         </tr>
@@ -821,7 +824,7 @@ export const SalesOrdersWorkspace: React.FC<{ activeEntityId: string; entities?:
             </div>
 
             {/* Modal Footer */}
-            <div className="px-6 py-3.5 border-t border-[var(--color-border)] bg-[var(--color-surface-muted)]/50 flex items-center justify-between gap-3">
+            <div className="px-6 py-4 border-t border-[var(--color-border)] flex items-center justify-between">
               <div className="text-[11px] text-[var(--color-text-muted)] flex items-center gap-1.5">
                 <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 inline-block" />
                 <span>{modalTab === 'preview' ? 'Ready for final verification & creation' : 'Auto-draft protection active'}</span>
@@ -830,7 +833,7 @@ export const SalesOrdersWorkspace: React.FC<{ activeEntityId: string; entities?:
               <div className="flex items-center gap-2">
                 <button
                   type="button"
-                  className="h-8.5 px-3.5 rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] text-xs font-medium text-[var(--color-text)] hover:bg-[var(--color-surface-muted)] transition-colors"
+                  className="h-9 px-4 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] text-xs font-medium hover:bg-[var(--color-surface-muted)] transition-colors"
                   onClick={() => setShowForm(false)}
                 >
                   Cancel
@@ -838,7 +841,7 @@ export const SalesOrdersWorkspace: React.FC<{ activeEntityId: string; entities?:
                 {modalTab !== 'preview' && (
                   <button
                     type="button"
-                    className="h-8.5 px-3.5 rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] text-xs font-medium text-[var(--color-text-muted)] hover:text-[var(--color-text-strong)] transition-colors"
+                    className="h-9 px-4 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] text-xs font-medium hover:bg-[var(--color-surface-muted)] transition-colors"
                     onClick={(e) => { e.preventDefault(); saveDraft(); notify('Order draft saved locally.'); }}
                   >
                     Save Draft
@@ -853,7 +856,7 @@ export const SalesOrdersWorkspace: React.FC<{ activeEntityId: string; entities?:
                       else if (modalTab === 'summary') setModalTab('lines')
                       else if (modalTab === 'lines') setModalTab('details')
                     }}
-                    className="h-8.5 px-3 rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] text-xs font-medium text-[var(--color-text)] hover:bg-[var(--color-surface-muted)] transition-colors flex items-center gap-1"
+                    className="h-9 px-4 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] text-xs font-medium hover:bg-[var(--color-surface-muted)] transition-colors flex items-center gap-1"
                   >
                     <ArrowLeft className="w-3 h-3" />
                     <span>{modalTab === 'preview' ? 'Back to Edit' : 'Back'}</span>
@@ -873,7 +876,7 @@ export const SalesOrdersWorkspace: React.FC<{ activeEntityId: string; entities?:
                         setModalTab('preview')
                       }
                     }}
-                    className="primary h-8.5 px-4 rounded-lg text-xs font-semibold shadow-xs flex items-center gap-1.5"
+                    className="h-9 px-5 rounded-xl bg-gradient-to-r from-indigo-600 to-purple-600 text-white text-xs font-bold shadow-lg shadow-indigo-500/25 flex items-center gap-1.5"
                   >
                     <span>{modalTab === 'details' ? 'Next: Order Lines' : modalTab === 'lines' ? 'Next: Terms & Confirmation' : 'Preview & Review'}</span>
                     {modalTab === 'summary' ? <Eye className="w-3 h-3" /> : <ArrowRight className="w-3 h-3" />}
@@ -882,7 +885,7 @@ export const SalesOrdersWorkspace: React.FC<{ activeEntityId: string; entities?:
                   <button
                     type="button"
                     onClick={handleSave}
-                    className="primary h-8.5 px-5 rounded-lg text-xs font-semibold shadow-xs flex items-center gap-1.5 bg-blue-600 hover:bg-blue-700 text-white"
+                    className="h-9 px-5 rounded-xl bg-gradient-to-r from-indigo-600 to-purple-600 text-white text-xs font-bold shadow-lg shadow-indigo-500/25 flex items-center gap-1.5"
                   >
                     <Check className="w-3 h-3" />
                     <span>Confirm & Create Sales Order</span>
@@ -896,7 +899,7 @@ export const SalesOrdersWorkspace: React.FC<{ activeEntityId: string; entities?:
 
       {/* View Order Details Slideover/Modal */}
       {activeOrderDetails && (
-        <div className="overlay animate-in fade-in duration-200">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm animate-in fade-in duration-200">
           <div className="w-full max-w-lg bg-[var(--color-surface)] border border-[var(--color-border)] rounded-2xl shadow-2xl p-6 space-y-4">
             <div className="flex items-center justify-between border-b border-[var(--color-border)] pb-3">
               <div>
@@ -905,7 +908,7 @@ export const SalesOrdersWorkspace: React.FC<{ activeEntityId: string; entities?:
               </div>
               <button
                 onClick={() => setActiveOrderDetails(null)}
-                className="w-8 h-8 rounded-lg flex items-center justify-center text-[var(--color-text-muted)] hover:bg-[var(--color-surface-muted)]"
+                className="w-8 h-8 rounded-lg flex items-center justify-center text-[var(--color-text-muted)] hover:bg-[var(--color-surface-muted)] transition-colors"
               >
                 <X className="w-4 h-4" />
               </button>
@@ -926,16 +929,18 @@ export const SalesOrdersWorkspace: React.FC<{ activeEntityId: string; entities?:
               </div>
               <div className="flex justify-between py-1 border-b border-[var(--color-border)]">
                 <span className="text-[var(--color-text-muted)]">Status:</span>
-                <span className={`px-2 py-0.5 rounded-full text-[10px] font-semibold ${statusStyles[activeOrderDetails.status]?.class}`}>
-                  {activeOrderDetails.status}
-                </span>
+                <StatusChip
+                  status={activeOrderDetails.status}
+                  label={statusStyles[activeOrderDetails.status]?.label ?? activeOrderDetails.status}
+                  hex={statusStyles[activeOrderDetails.status]?.hex}
+                />
               </div>
             </div>
 
             <div className="pt-2">
               <button
                 onClick={() => setActiveOrderDetails(null)}
-                className="w-full h-8.5 rounded-lg border border-[var(--color-border)] text-xs font-semibold text-[var(--color-text)] hover:bg-[var(--color-surface-muted)] transition-colors"
+                className="w-full h-9 rounded-xl border border-[var(--color-border)] text-xs font-semibold text-[var(--color-text)] hover:bg-[var(--color-surface-muted)] transition-colors"
               >
                 Close
               </button>

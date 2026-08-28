@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import {
   BarChart3, Search, RefreshCw, ShoppingCart,
-  CreditCard, Clock, Users,
+  CreditCard, Users, TrendingDown,
   Layers, FileText, CheckCircle2
 } from 'lucide-react';
 import type { Entity } from './EntitySettings';
@@ -9,6 +9,8 @@ import { reportsApi } from './api/modules/reports.api';
 import { money } from './lib/currency';
 import { downloadExcel } from './lib/exportUtils';
 import ExportDropdown from './components/ExportDropdown';
+import { EmptyState, TableSkeleton } from './components/ui/empty-state';
+import { StatusChip } from './components/ui/status-chip';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 
@@ -257,19 +259,29 @@ export const PurchaseReportsView: React.FC<{ activeEntityId: string; entities: E
 
   return (
     <div className="space-y-4 max-w-7xl mx-auto pb-10">
-      {/* Header Banner */}
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-3 bg-[var(--color-surface)] p-3.5 rounded-xl border border-[var(--color-border)] shadow-xs">
-        <div>
-          <h1 className="text-base font-bold text-[var(--color-text-strong)] tracking-tight flex items-center gap-2">
-            <BarChart3 className="w-4 h-4 text-blue-600" /> Purchase & Spend Analytics
-          </h1>
-          <p className="text-[var(--color-text-muted)] text-xs mt-0.5">
-            Procurement spend analysis, vendor billing summaries, and Accounts Payable commitments for {currentEntity?.name || 'Active Entity'}.
-          </p>
-        </div>
+      {/* Page Header — AMS Signature Hero Band */}
+      <div className="relative overflow-hidden rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)] shadow-sm">
+        <div className="absolute inset-0 bg-gradient-to-r from-green-500/10 via-green-500/[0.03] to-transparent pointer-events-none" />
+        <div className="absolute -right-10 -top-16 w-56 h-56 rounded-full bg-green-500/10 blur-3xl pointer-events-none" />
+        <div className="relative flex flex-col md:flex-row justify-between items-start md:items-center gap-4 px-5 py-4">
+          <div className="flex items-center gap-4">
+            <div className="relative h-14 w-14 shrink-0">
+              <div className="absolute inset-[6px] rotate-45 rounded-[12px] shadow-xl bg-gradient-to-br from-green-500 to-teal-700" />
+              <div className="absolute inset-0 flex items-center justify-center"><BarChart3 className="w-6 h-6 text-white" /></div>
+            </div>
+            <div>
+              <div className="flex items-center gap-2.5">
+                <h1 className="text-2xl font-black tracking-tight text-[var(--color-text-strong)]">Purchase &amp; Spend Analytics</h1>
+                <span className="hidden sm:inline-flex items-center gap-1.5 rounded-full border border-green-500/25 bg-green-500/10 px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider text-green-600 dark:text-green-400"><span className="h-1.5 w-1.5 rounded-full bg-green-500 animate-pulse" /> Live Ledger</span>
+              </div>
+              <p className="text-xs text-[var(--color-text-muted)] mt-0.5">
+                Procurement spend analysis, vendor billing summaries, and Accounts Payable commitments for {currentEntity?.name || 'Active Entity'}.
+              </p>
+            </div>
+          </div>
 
-        {/* Date Presets, Range Pickers & Export Actions */}
-        <div className="flex items-center gap-2 shrink-0 flex-wrap">
+          {/* Date Presets, Range Pickers & Export Actions */}
+          <div className="flex items-center gap-2 shrink-0 flex-wrap">
           {/* Presets */}
           <div className="flex items-center gap-1">
             {(['thisMonth', 'lastMonth', 'thisQuarter', 'ytd', 'all'] as DatePreset[]).map((p) => (
@@ -313,50 +325,37 @@ export const PurchaseReportsView: React.FC<{ activeEntityId: string; entities: E
           />
           <button
             onClick={loadReport}
-            className="secondary h-8.5 w-8.5 rounded-lg flex items-center justify-center text-xs text-[var(--color-text)]"
+            className="h-9 px-4 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] text-xs font-medium hover:bg-[var(--color-surface-muted)] transition-colors h-8.5 w-8.5 flex items-center justify-center text-[var(--color-text)]"
           >
             <RefreshCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin' : ''}`} />
           </button>
+          </div>
         </div>
       </div>
 
       {/* 4 Financial Metric Cards (4 in one row) */}
-      <section className="stats" style={{ gridTemplateColumns: 'repeat(4, minmax(0, 1fr))' }}>
-        <article>
-          <span className="stat-icon blue"><ShoppingCart className="w-4 h-4" /></span>
-          <div>
-            <small>PO COMMITTED VALUE</small>
-            <h2>{fmt(report?.purchaseOrderValue)}</h2>
-            <p>{report?.totalPurchaseOrders || 0} Purchase Orders</p>
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        {[
+          { label: 'PO COMMITTED VALUE', value: fmt(report?.purchaseOrderValue), desc: `${report?.totalPurchaseOrders || 0} Purchase Orders`, icon: ShoppingCart, color: 'from-blue-500 to-blue-600', bg: 'bg-blue-50 dark:bg-blue-950/30', textColor: 'text-blue-600 dark:text-blue-400' },
+          { label: 'TOTAL INVOICED SPEND', value: fmt(report?.totalBilled), desc: `${report?.totalBills || 0} Vendor Bills`, icon: FileText, color: 'from-slate-500 to-slate-600', bg: 'bg-slate-50 dark:bg-slate-950/30', textColor: 'text-[var(--color-text-strong)]' },
+          { label: 'PAYMENTS DISBURSED', value: fmt(report?.vendorPayments || report?.amountPaid), desc: 'Settled liabilities', icon: CreditCard, color: 'from-emerald-500 to-emerald-600', bg: 'bg-emerald-50 dark:bg-emerald-950/30', textColor: 'text-emerald-600 dark:text-emerald-400' },
+          { label: 'NET AP OUTSTANDING', value: fmt(report?.amountDue), desc: `${report?.openBills || 0} Open / Unpaid Bills`, icon: TrendingDown, color: report?.amountDue > 0 ? 'from-amber-500 to-amber-600' : 'from-emerald-500 to-emerald-600', bg: report?.amountDue > 0 ? 'bg-amber-50 dark:bg-amber-950/30' : 'bg-emerald-50 dark:bg-emerald-950/30', textColor: report?.amountDue > 0 ? 'text-amber-600 dark:text-amber-400' : 'text-emerald-600 dark:text-emerald-400' },
+        ].map((kpi) => (
+          <div key={kpi.label} className="relative overflow-hidden rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)] p-3 shadow-sm hover:shadow-md transition-shadow">
+            <div className="flex items-start justify-between">
+              <div>
+                <p className="text-xs font-semibold text-[var(--color-text-muted)] uppercase tracking-wider">{kpi.label}</p>
+                <p className={`text-lg font-semibold mt-1 ${kpi.textColor}`}>{kpi.value}</p>
+                <p className="text-xs text-[var(--color-text-muted)] mt-1">{kpi.desc}</p>
+              </div>
+              <div className={`w-9 h-9 rounded-lg bg-gradient-to-br ${kpi.color} flex items-center justify-center text-white shadow-lg`}>
+                <kpi.icon className="w-5 h-5" />
+              </div>
+            </div>
+            <div className={`absolute -bottom-4 -right-4 w-24 h-24 rounded-full ${kpi.bg} opacity-50`} />
           </div>
-        </article>
-        <article>
-          <span className="stat-icon blue"><FileText className="w-4 h-4 text-blue-600" /></span>
-          <div>
-            <small>TOTAL INVOICED SPEND</small>
-            <h2>{fmt(report?.totalBilled)}</h2>
-            <p>{report?.totalBills || 0} Vendor Bills</p>
-          </div>
-        </article>
-        <article>
-          <span className="stat-icon teal"><CreditCard className="w-4 h-4 text-emerald-600" /></span>
-          <div>
-            <small>PAYMENTS DISBURSED</small>
-            <h2 className="text-emerald-600 dark:text-emerald-400">{fmt(report?.vendorPayments || report?.amountPaid)}</h2>
-            <p>Settled liabilities</p>
-          </div>
-        </article>
-        <article>
-          <span className="stat-icon violet"><Clock className="w-4 h-4 text-amber-600" /></span>
-          <div>
-            <small>NET AP OUTSTANDING</small>
-            <h2 className={report?.amountDue > 0 ? 'text-amber-600 dark:text-amber-400' : 'text-emerald-600'}>
-              {fmt(report?.amountDue)}
-            </h2>
-            <p>{report?.openBills || 0} Open / Unpaid Bills</p>
-          </div>
-        </article>
-      </section>
+        ))}
+      </div>
 
       {/* Search & Tabs Toolbar */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 p-3 bg-[var(--color-surface)] border border-[var(--color-border)] rounded-xl shadow-2xs">
@@ -392,16 +391,6 @@ export const PurchaseReportsView: React.FC<{ activeEntityId: string; entities: E
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             placeholder={activeTab === 'spend' ? 'Search suppliers...' : 'Search bills, vendor...'}
-            style={{
-              border: 'none',
-              outline: 'none',
-              background: 'transparent',
-              padding: '0 !important',
-              width: '100%',
-              fontSize: '12px',
-              color: 'var(--color-text)',
-              boxShadow: 'none',
-            }}
             className="!p-0 !border-0 !outline-none !bg-transparent w-full text-xs text-[var(--color-text)]"
           />
           {query && (
@@ -430,7 +419,7 @@ export const PurchaseReportsView: React.FC<{ activeEntityId: string; entities: E
 
           <div className="overflow-x-auto">
             <table className="w-full text-left text-xs">
-              <thead className="bg-gray-50 dark:bg-gray-900/80 text-[var(--color-text-muted)] border-b border-[var(--color-border)] text-[10px] uppercase font-bold tracking-wider">
+              <thead className="bg-green-500/[0.05] dark:bg-green-400/[0.07] text-[var(--color-text-muted)] border-b border-[var(--color-border)] text-[10px] uppercase font-bold tracking-wider">
                 <tr>
                   <th className="py-2.5 px-3.5">Supplier</th>
                   <th className="py-2.5 px-3 text-center">Bills Count</th>
@@ -444,20 +433,14 @@ export const PurchaseReportsView: React.FC<{ activeEntityId: string; entities: E
               <tbody className="divide-y divide-[var(--color-border)]">
                 {loading ? (
                   <tr>
-                    <td colSpan={7} className="py-12 text-center text-[var(--color-text-muted)]">
-                      <div className="flex flex-col items-center gap-2">
-                        <RefreshCw className="w-6 h-6 animate-spin text-blue-600" />
-                        <p className="font-semibold text-xs">Analyzing purchase reports & spend metrics...</p>
-                      </div>
+                    <td colSpan={7}>
+                      <TableSkeleton rows={6} />
                     </td>
                   </tr>
                 ) : filteredVendors.length === 0 ? (
                   <tr>
-                    <td colSpan={7} className="py-12 text-center text-[var(--color-text-muted)]">
-                      <div className="flex flex-col items-center gap-2">
-                        <CheckCircle2 className="w-8 h-8 text-gray-400" />
-                        <p className="font-semibold text-xs">No vendor purchase records found for this period.</p>
-                      </div>
+                    <td colSpan={7}>
+                      <EmptyState icon={CheckCircle2} title="No vendor purchase records found for this period." />
                     </td>
                   </tr>
                 ) : (
@@ -550,7 +533,7 @@ export const PurchaseReportsView: React.FC<{ activeEntityId: string; entities: E
 
           <div className="overflow-x-auto">
             <table className="w-full text-left text-xs">
-              <thead className="bg-gray-50 dark:bg-gray-900/80 text-[var(--color-text-muted)] border-b border-[var(--color-border)] text-[10px] uppercase font-bold tracking-wider">
+              <thead className="bg-green-500/[0.05] dark:bg-green-400/[0.07] text-[var(--color-text-muted)] border-b border-[var(--color-border)] text-[10px] uppercase font-bold tracking-wider">
                 <tr>
                   <th className="py-2.5 px-3.5">Bill Number</th>
                   <th className="py-2.5 px-3">Supplier</th>
@@ -565,11 +548,8 @@ export const PurchaseReportsView: React.FC<{ activeEntityId: string; entities: E
               <tbody className="divide-y divide-[var(--color-border)]">
                 {filteredBills.length === 0 ? (
                   <tr>
-                    <td colSpan={8} className="py-12 text-center text-[var(--color-text-muted)]">
-                      <div className="flex flex-col items-center gap-2">
-                        <CheckCircle2 className="w-8 h-8 text-gray-400" />
-                        <p className="font-semibold text-xs">No recent bills found.</p>
-                      </div>
+                    <td colSpan={8}>
+                      <EmptyState icon={CheckCircle2} title="No recent bills found." />
                     </td>
                   </tr>
                 ) : (
@@ -587,9 +567,7 @@ export const PurchaseReportsView: React.FC<{ activeEntityId: string; entities: E
                         </span>
                       </td>
                       <td className="py-2.5 px-3.5 text-center">
-                        <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300">
-                          {b.status}
-                        </span>
+                        <StatusChip status={b.status} label={b.status} />
                       </td>
                     </tr>
                   ))

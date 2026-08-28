@@ -8,12 +8,20 @@ export interface Entity {
   type?: string;
   parentId?: string;
   country: string;
+  state?: string;
   currencyCode?: string;
   functionalCurrency?: string;
   modules?: string[];
   active: boolean;
   taxAuthorityId?: string | null;
+  taxRegistrationNumber?: string;
   taxId?: string;
+  address?: string;
+  city?: string;
+  phone?: string;
+  email?: string;
+  website?: string;
+  fiscalYearStartMonth?: number;
   fiscalYearEnd?: string;
 }
 
