@@ -43,11 +43,14 @@ export const GLOBAL_TAX_STRUCTURES: Record<string, CountryTaxStructure> = {
         taxNumberPlaceholder: 'e.g. 1234567-8 / PRA-998877',
         defaultRate: 16,
         taxCodes: [
-          { code: 'PRA_16', label: 'PRA Punjab Services VAT', rate: 16, type: 'services', authority: 'PRA' },
+          { code: 'PRA_16', label: 'PRA Punjab Services Standard VAT', rate: 16, type: 'services', authority: 'PRA' },
+          { code: 'PRA_IT_5', label: 'PRA IT, Software & Digital Services', rate: 5, type: 'services', authority: 'PRA' },
           { code: 'FBR_18', label: 'FBR Standard GST (Goods)', rate: 18, type: 'goods', authority: 'FBR' },
+          { code: 'FBR_WHT_IT_3', label: 'FBR IT Corporate Services WHT', rate: 3, type: 'services', authority: 'FBR' },
           { code: 'FBR_WHT_1', label: 'FBR WHT Active Withholding', rate: 1, type: 'services', authority: 'FBR' },
+          { code: 'FBR_IT_EXP_025', label: 'PSEB / IT Export Final Tax', rate: 0.25, type: 'exempt', authority: 'FBR' },
           { code: 'FBR_0', label: 'FBR Zero-Rated Export', rate: 0, type: 'exempt', authority: 'FBR' },
-          { code: 'EXEMPT_0', label: 'Tax Exempt Supply', rate: 0, type: 'exempt', authority: 'FBR' }
+          { code: 'EXEMPT_0', label: 'Tax Exempt / No Tax Supply', rate: 0, type: 'exempt', authority: 'FBR' }
         ]
       },
       {
@@ -58,10 +61,13 @@ export const GLOBAL_TAX_STRUCTURES: Record<string, CountryTaxStructure> = {
         taxNumberPlaceholder: 'e.g. 1234567-8 / SRB-112233',
         defaultRate: 13,
         taxCodes: [
-          { code: 'SRB_13', label: 'SRB Sindh Services Tax', rate: 13, type: 'services', authority: 'SRB' },
+          { code: 'SRB_13', label: 'SRB Sindh Services Standard Tax', rate: 13, type: 'services', authority: 'SRB' },
+          { code: 'SRB_IT_5', label: 'SRB IT, Software & Digital Services', rate: 5, type: 'services', authority: 'SRB' },
           { code: 'FBR_18', label: 'FBR Standard GST (Goods)', rate: 18, type: 'goods', authority: 'FBR' },
+          { code: 'FBR_WHT_IT_3', label: 'FBR IT Corporate Services WHT', rate: 3, type: 'services', authority: 'FBR' },
+          { code: 'FBR_IT_EXP_025', label: 'PSEB / IT Export Final Tax', rate: 0.25, type: 'exempt', authority: 'FBR' },
           { code: 'FBR_0', label: 'FBR Zero-Rated Export', rate: 0, type: 'exempt', authority: 'FBR' },
-          { code: 'EXEMPT_0', label: 'Tax Exempt Supply', rate: 0, type: 'exempt', authority: 'FBR' }
+          { code: 'EXEMPT_0', label: 'Tax Exempt / No Tax Supply', rate: 0, type: 'exempt', authority: 'FBR' }
         ]
       },
       {
@@ -72,10 +78,13 @@ export const GLOBAL_TAX_STRUCTURES: Record<string, CountryTaxStructure> = {
         taxNumberPlaceholder: 'e.g. 1234567-8 / KPRA-445566',
         defaultRate: 15,
         taxCodes: [
-          { code: 'KPRA_15', label: 'KPRA Services Tax', rate: 15, type: 'services', authority: 'KPRA' },
+          { code: 'KPRA_15', label: 'KPRA Services Standard Tax', rate: 15, type: 'services', authority: 'KPRA' },
+          { code: 'KPRA_IT_5', label: 'KPRA IT, Software & Digital Services', rate: 5, type: 'services', authority: 'KPRA' },
           { code: 'FBR_18', label: 'FBR Standard GST (Goods)', rate: 18, type: 'goods', authority: 'FBR' },
+          { code: 'FBR_WHT_IT_3', label: 'FBR IT Corporate Services WHT', rate: 3, type: 'services', authority: 'FBR' },
+          { code: 'FBR_IT_EXP_025', label: 'PSEB / IT Export Final Tax', rate: 0.25, type: 'exempt', authority: 'FBR' },
           { code: 'FBR_0', label: 'FBR Zero-Rated Export', rate: 0, type: 'exempt', authority: 'FBR' },
-          { code: 'EXEMPT_0', label: 'Tax Exempt Supply', rate: 0, type: 'exempt', authority: 'FBR' }
+          { code: 'EXEMPT_0', label: 'Tax Exempt / No Tax Supply', rate: 0, type: 'exempt', authority: 'FBR' }
         ]
       },
       {
@@ -86,10 +95,13 @@ export const GLOBAL_TAX_STRUCTURES: Record<string, CountryTaxStructure> = {
         taxNumberPlaceholder: 'e.g. 1234567-8 / BRA-778899',
         defaultRate: 15,
         taxCodes: [
-          { code: 'BRA_15', label: 'BRA Balochistan Services Tax', rate: 15, type: 'services', authority: 'BRA' },
+          { code: 'BRA_15', label: 'BRA Balochistan Services Standard Tax', rate: 15, type: 'services', authority: 'BRA' },
+          { code: 'BRA_IT_5', label: 'BRA IT, Software & Digital Services', rate: 5, type: 'services', authority: 'BRA' },
           { code: 'FBR_18', label: 'FBR Standard GST (Goods)', rate: 18, type: 'goods', authority: 'FBR' },
+          { code: 'FBR_WHT_IT_3', label: 'FBR IT Corporate Services WHT', rate: 3, type: 'services', authority: 'FBR' },
+          { code: 'FBR_IT_EXP_025', label: 'PSEB / IT Export Final Tax', rate: 0.25, type: 'exempt', authority: 'FBR' },
           { code: 'FBR_0', label: 'FBR Zero-Rated Export', rate: 0, type: 'exempt', authority: 'FBR' },
-          { code: 'EXEMPT_0', label: 'Tax Exempt Supply', rate: 0, type: 'exempt', authority: 'FBR' }
+          { code: 'EXEMPT_0', label: 'Tax Exempt / No Tax Supply', rate: 0, type: 'exempt', authority: 'FBR' }
         ]
       },
       {
@@ -100,10 +112,13 @@ export const GLOBAL_TAX_STRUCTURES: Record<string, CountryTaxStructure> = {
         taxNumberPlaceholder: 'e.g. 1234567-8',
         defaultRate: 15,
         taxCodes: [
-          { code: 'ICT_15', label: 'ICT Islamabad Services Tax', rate: 15, type: 'services', authority: 'FBR' },
+          { code: 'ICT_15', label: 'ICT Islamabad Services Standard Tax', rate: 15, type: 'services', authority: 'FBR' },
+          { code: 'ICT_IT_5', label: 'ICT IT, Software & Digital Services', rate: 5, type: 'services', authority: 'FBR' },
           { code: 'FBR_18', label: 'FBR Standard GST (Goods)', rate: 18, type: 'goods', authority: 'FBR' },
+          { code: 'FBR_WHT_IT_3', label: 'FBR IT Corporate Services WHT', rate: 3, type: 'services', authority: 'FBR' },
+          { code: 'FBR_IT_EXP_025', label: 'PSEB / IT Export Final Tax', rate: 0.25, type: 'exempt', authority: 'FBR' },
           { code: 'FBR_0', label: 'FBR Zero-Rated Export', rate: 0, type: 'exempt', authority: 'FBR' },
-          { code: 'EXEMPT_0', label: 'Tax Exempt Supply', rate: 0, type: 'exempt', authority: 'FBR' }
+          { code: 'EXEMPT_0', label: 'Tax Exempt / No Tax Supply', rate: 0, type: 'exempt', authority: 'FBR' }
         ]
       }
     ]
@@ -385,26 +400,33 @@ export const GLOBAL_TAX_STRUCTURES: Record<string, CountryTaxStructure> = {
  * Returns the active localized tax codes for the currently configured company
  */
 export function getActiveTaxCodes(): TaxCodeOption[] {
-  let codes: TaxCodeOption[] = [];
+  const countryCode = localStorage.getItem('onboarding_country') || 'PK';
+  const regionId = localStorage.getItem('onboarding_region_id') || 'punjab';
+  const structure = GLOBAL_TAX_STRUCTURES[countryCode] || GLOBAL_TAX_STRUCTURES.PK;
+  const region = structure.regions.find(r => r.id === regionId) || structure.regions[0];
+  const regionDefaults = region?.taxCodes || [];
+
+  let savedCodes: TaxCodeOption[] = [];
   try {
     const raw = localStorage.getItem('onboarding_active_tax_codes');
     if (raw) {
       const parsed = JSON.parse(raw);
       if (Array.isArray(parsed) && parsed.length > 0) {
-        codes = parsed;
+        savedCodes = parsed;
       }
     }
   } catch {}
 
-  if (codes.length === 0) {
-    const countryCode = localStorage.getItem('onboarding_country') || 'PK';
-    const regionId = localStorage.getItem('onboarding_region_id') || 'punjab';
-    const structure = GLOBAL_TAX_STRUCTURES[countryCode] || GLOBAL_TAX_STRUCTURES.PK;
-    const region = structure.regions.find(r => r.id === regionId) || structure.regions[0];
-    codes = region?.taxCodes || [
-      { code: 'STD_TAX', label: 'Standard Sales Tax', rate: 18, type: 'all', authority: 'FBR' }
-    ];
+  // Merge region defaults with saved codes so newly supported rates (like IT Tax 5%) are never lost
+  const codeMap = new Map<string, TaxCodeOption>();
+  for (const c of regionDefaults) {
+    codeMap.set(c.code, c);
   }
+  for (const c of savedCodes) {
+    codeMap.set(c.code, c);
+  }
+
+  const codes = Array.from(codeMap.values());
 
   // Ensure 'No Tax (0%)' is always an available option
   const hasZero = codes.some(c => c.rate === 0);
