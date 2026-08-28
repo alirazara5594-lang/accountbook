@@ -48,7 +48,18 @@ export default function TopHeader(props: Props) {
       setLicenseInfo(e.detail || getLicenseInfo());
     };
     window.addEventListener('ams-license-changed', handleLicenseUpdate);
-    return () => window.removeEventListener('ams-license-changed', handleLicenseUpdate);
+    window.addEventListener('storage', () => setLicenseInfo(getLicenseInfo()));
+
+    // Periodic check every 60 seconds to update live countdown across time / midnight
+    const timer = setInterval(() => {
+      setLicenseInfo(getLicenseInfo());
+    }, 60000);
+
+    return () => {
+      window.removeEventListener('ams-license-changed', handleLicenseUpdate);
+      window.removeEventListener('storage', () => setLicenseInfo(getLicenseInfo()));
+      clearInterval(timer);
+    };
   }, []);
 
   const [query, setQuery] = useState('');
@@ -441,13 +452,19 @@ export default function TopHeader(props: Props) {
             )}
           </div>
 
-          {/* User profile */}
+          {/* User profile with Muhammad Ali */}
           <div style={{ display: 'flex', alignItems: 'center', gap: 7, flexShrink: 0 }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 7 }}>
-              <div className="avatar small" style={{ width: 28, height: 28, fontSize: 11 }}>{currentUser?.avatar}</div>
+              <div className="avatar small" style={{ width: 28, height: 28, fontSize: 11, background: 'linear-gradient(135deg, #1d72d6, #0284c7)', color: '#fff', fontWeight: 800, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                {currentUser?.avatar || 'MA'}
+              </div>
               <div style={{ lineHeight: 1.15 }}>
-                <strong style={{ display: 'block', fontSize: 12, color: 'var(--color-text)', whiteSpace: 'nowrap' }}>{currentUser?.fullName}</strong>
-                <small style={{ display: 'block', fontSize: 10, color: 'var(--color-text-muted)', whiteSpace: 'nowrap' }}>{currentUser?.role}</small>
+                <strong style={{ display: 'block', fontSize: 12, color: 'var(--color-text)', whiteSpace: 'nowrap', fontWeight: 700 }}>
+                  {currentUser?.fullName || 'Muhammad Ali'}
+                </strong>
+                <small style={{ display: 'block', fontSize: 10, color: 'var(--color-text-muted)', whiteSpace: 'nowrap' }}>
+                  {currentUser?.role || 'Finance admin'}
+                </small>
               </div>
             </div>
             <ChevronDown size={12} style={{ color: 'var(--color-text-muted)' }} />

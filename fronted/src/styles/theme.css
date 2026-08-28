@@ -35,15 +35,15 @@
   --color-info: #006aa7;
   --color-info-background: #e2effa;
 
-  /* ─── Sidebar (Teal to Cyan Gradient #1b6572 -> #b9efff) ─── */
-  --color-sidebar-bg: #1b6572;
-  --color-sidebar-bg-gradient: linear-gradient(180deg, #1b6572 0%, #23717f 25%, #3d8c9a 55%, #7abdc9 80%, #b9efff 100%);
-  --color-sidebar-bg-hover: rgba(255, 255, 255, 0.16);
-  --color-sidebar-text: #e2f4f8;
+  /* ─── Sidebar (Clean Deep Midnight Sapphire Blue Light Theme) ─── */
+  --color-sidebar-bg: #041c42;
+  --color-sidebar-bg-gradient: radial-gradient(ellipse 120% 50% at 30% 100%, rgba(37, 99, 235, 0.18) 0%, rgba(29, 78, 216, 0.05) 50%, transparent 80%), linear-gradient(170deg, #02132e 0%, #041c42 35%, #062657 70%, #031533 100%);
+  --color-sidebar-bg-hover: rgba(255, 255, 255, 0.14);
+  --color-sidebar-text: #e0f2fe;
   --color-sidebar-text-hover: #ffffff;
   --color-sidebar-brand: #ffffff;
-  --color-sidebar-border: rgba(255, 255, 255, 0.18);
-  --color-sidebar-accent: #b9efff;
+  --color-sidebar-border: rgba(255, 255, 255, 0.1);
+  --color-sidebar-accent: #38bdf8;
 
   /* ─── Layout tokens ─── */
   --radius-sm: 0.5rem;
