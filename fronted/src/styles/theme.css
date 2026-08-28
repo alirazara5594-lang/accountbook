@@ -35,14 +35,15 @@
   --color-info: #006aa7;
   --color-info-background: #e2effa;
 
-  /* ─── Sidebar (Frosted Ice Glass & Electric Blue) ─── */
-  --color-sidebar-bg: #e8f1fb;
-  --color-sidebar-bg-hover: rgba(255, 255, 255, 0.75);
-  --color-sidebar-text: #4a6176;
-  --color-sidebar-text-hover: #2f80ed;
-  --color-sidebar-brand: #1e293b;
-  --color-sidebar-border: #d4e3f3;
-  --color-sidebar-accent: #2f80ed;
+  /* ─── Sidebar (Teal to Cyan Gradient #1b6572 -> #b9efff) ─── */
+  --color-sidebar-bg: #1b6572;
+  --color-sidebar-bg-gradient: linear-gradient(180deg, #1b6572 0%, #23717f 25%, #3d8c9a 55%, #7abdc9 80%, #b9efff 100%);
+  --color-sidebar-bg-hover: rgba(255, 255, 255, 0.16);
+  --color-sidebar-text: #e2f4f8;
+  --color-sidebar-text-hover: #ffffff;
+  --color-sidebar-brand: #ffffff;
+  --color-sidebar-border: rgba(255, 255, 255, 0.18);
+  --color-sidebar-accent: #b9efff;
 
   /* ─── Layout tokens ─── */
   --radius-sm: 0.5rem;
