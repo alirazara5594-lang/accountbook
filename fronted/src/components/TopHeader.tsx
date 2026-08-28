@@ -187,33 +187,33 @@ export default function TopHeader(props: Props) {
     border: '1px solid var(--color-border)',
     borderRadius: 12,
     boxShadow: '0 20px 45px rgba(0, 0, 0, 0.35)',
-    zIndex: 9999,
+    zIndex: 99999,
     overflow: 'hidden',
   };
 
   return (
-    <header className="topbar" style={{ background: 'var(--color-surface)', borderBottom: '1px solid var(--color-border)', position: 'sticky', top: 0, zIndex: 2000, boxShadow: 'var(--shadow-sm)' }}>
-      {/* Strict 1-line flex container */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '0 24px', height: 52, maxWidth: 1450, margin: '0 auto', flexWrap: 'nowrap', boxSizing: 'border-box', position: 'relative' }}>
+    <header className="topbar" style={{ background: 'var(--color-surface)', borderBottom: '1px solid var(--color-border)', position: 'sticky', top: 0, zIndex: 2000, boxShadow: 'var(--shadow-sm)', width: '100%', boxSizing: 'border-box', overflow: 'visible' }}>
+      {/* Strict 1-line flex container with zero page overflow */}
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, padding: '0 16px', height: 52, width: '100%', maxWidth: '100%', boxSizing: 'border-box' }}>
         
-        {/* Working entity switcher — moved slightly left */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexShrink: 0, marginLeft: -8 }}>
-          <div ref={entityRef} style={{ position: 'relative' }}>
+        {/* Left container: Entity Switcher & Truncated Breadcrumb */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 1, minWidth: 0, overflow: 'hidden', maxWidth: '38%' }}>
+          <div ref={entityRef} style={{ position: 'relative', flexShrink: 0 }}>
             <button
               onClick={() => setEntityOpen(o => !o)}
               title="Switch working entity"
               style={{
-                display: 'flex', alignItems: 'center', gap: 8,
+                display: 'flex', alignItems: 'center', gap: 6,
                 background: 'var(--color-surface-muted)', border: '1px solid var(--color-border)', borderRadius: 9,
-                padding: '4px 10px', cursor: 'pointer', height: 34,
+                padding: '4px 8px', cursor: 'pointer', height: 32,
               }}
             >
-              <span className="avatar small" style={{ width: 24, height: 24, fontSize: 10 }}>{activeEntity?.code?.[0] || activeEntity?.name?.[0] || 'E'}</span>
+              <span className="avatar small" style={{ width: 22, height: 22, fontSize: 10 }}>{activeEntity?.code?.[0] || activeEntity?.name?.[0] || 'E'}</span>
               <span style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', lineHeight: 1.15 }}>
-                <strong style={{ fontSize: 12.5, color: 'var(--color-text)', whiteSpace: 'nowrap', maxWidth: 130, overflow: 'hidden', textOverflow: 'ellipsis' }}>{activeEntity?.name || 'Select entity'}</strong>
-                <small style={{ fontSize: 10, color: 'var(--color-text-muted)' }}>{activeEntity?.currencyCode || activeEntity?.functionalCurrency || 'PKR'}</small>
+                <strong style={{ fontSize: 12, color: 'var(--color-text)', whiteSpace: 'nowrap', maxWidth: 110, overflow: 'hidden', textOverflow: 'ellipsis' }}>{activeEntity?.name || 'Select entity'}</strong>
+                <small style={{ fontSize: 9.5, color: 'var(--color-text-muted)' }}>{activeEntity?.currencyCode || activeEntity?.functionalCurrency || 'PKR'}</small>
               </span>
-              <ChevronDown size={13} style={{ color: 'var(--color-text-muted)' }} />
+              <ChevronDown size={12} style={{ color: 'var(--color-text-muted)' }} />
             </button>
             {entityOpen && (
               <div style={{ ...dropdownBase, left: 0, right: 'auto', minWidth: 260 }}>
@@ -263,60 +263,60 @@ export default function TopHeader(props: Props) {
             )}
           </div>
 
-          <div style={{ width: 1, height: 18, background: 'var(--color-border)' }} />
+          <div style={{ width: 1, height: 16, background: 'var(--color-border)', flexShrink: 0 }} />
 
-          {/* Breadcrumb */}
-          <div style={{ fontSize: 12, color: 'var(--color-text-muted)', whiteSpace: 'nowrap', fontWeight: 500, flexShrink: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis' }}>
+          {/* Breadcrumb with robust ellipsis truncation */}
+          <div style={{ fontSize: 12, color: 'var(--color-text-muted)', whiteSpace: 'nowrap', fontWeight: 500, flexShrink: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis' }} title={`${groupLabel}${itemName && itemName !== 'Summary' && itemName !== 'Dashboard' ? ` / ${itemName}` : ''}`}>
             <span style={{ color: 'var(--color-text)', fontWeight: 600 }}>{groupLabel}</span>
             {itemName && itemName !== 'Summary' && itemName !== 'Dashboard' && <><span style={{ margin: '0 4px', color: 'var(--color-text-muted)' }}>/</span><span>{itemName}</span></>}
           </div>
         </div>
 
-        {/* Global search */}
-        <div ref={searchRef} style={{ position: 'relative', flex: 1, maxWidth: 220, marginLeft: 'auto', flexShrink: 1, minWidth: 120 }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 7, background: 'var(--color-surface-muted)', border: `1px solid ${searchOpen ? 'var(--color-primary)' : 'var(--color-border)'}`, borderRadius: 9, padding: '0 10px', height: 34, transition: 'all 0.2s ease' }}>
-            <Search size={14} style={{ color: 'var(--color-text-muted)', flexShrink: 0 }} />
-            <input
-              ref={searchInputRef}
-              value={query}
-              onChange={e => { setQuery(e.target.value); setSearchOpen(true); }}
-              onFocus={() => setSearchOpen(true)}
-              placeholder="Search pages, accounts…"
-              style={{ border: 0, outline: 'none', background: 'transparent', width: '100%', minWidth: 0, fontSize: 12.5, color: 'var(--color-text)' }}
-            />
-            {query && <button onClick={() => { setQuery(''); setSearchOpen(false); }} style={{ border: 0, background: 'none', cursor: 'pointer', padding: 0, color: 'var(--color-text-muted)' }}><X size={13} /></button>}
-          </div>
-          {searchOpen && (
-            <div style={{ ...dropdownBase, left: 'auto', right: 0, minWidth: 280 }}>
-              {results.length === 0 ? (
-                <div style={{ padding: '16px 14px', fontSize: 12, color: 'var(--color-text-muted)', textAlign: 'center' }}>
-                  {query ? 'No matches found' : 'Type to search pages, accounts or companies'}
-                </div>
-              ) : (
-                <div style={{ maxHeight: 300, overflowY: 'auto' }}>
-                  {results.map((r, i) => (
-                    <button
-                      key={i}
-                      onClick={() => { r.action(); setSearchOpen(false); setQuery(''); }}
-                      style={{ display: 'flex', alignItems: 'center', gap: 9, width: '100%', padding: '9px 14px', border: 0, background: 'transparent', cursor: 'pointer', textAlign: 'left', color: 'var(--color-text)', fontSize: 12.5, borderBottom: '1px solid var(--color-border-subtle)' }}
-                      onMouseEnter={e => (e.currentTarget.style.background = 'var(--color-surface-muted)')}
-                      onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
-                    >
-                      <span style={{ color: 'var(--color-primary)', display: 'flex' }}>{r.icon}</span>
-                      <span style={{ flex: 1, minWidth: 0 }}>
-                        <span style={{ display: 'block', fontWeight: 600, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{r.label}</span>
-                        <span style={{ display: 'block', fontSize: 10.5, color: 'var(--color-text-muted)' }}>{r.sub}</span>
-                      </span>
-                    </button>
-                  ))}
-                </div>
-              )}
+        {/* Right Action Icons Group (Search + Ticker + Period + Quick + Theme + Alerts) */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0, marginLeft: 'auto' }}>
+          
+          {/* Global search */}
+          <div ref={searchRef} style={{ position: 'relative', width: 170, flexShrink: 1, minWidth: 90 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6, background: 'var(--color-surface-muted)', border: `1px solid ${searchOpen ? 'var(--color-primary)' : 'var(--color-border)'}`, borderRadius: 8, padding: '0 8px', height: 32, transition: 'all 0.2s ease' }}>
+              <Search size={13} style={{ color: 'var(--color-text-muted)', flexShrink: 0 }} />
+              <input
+                ref={searchInputRef}
+                value={query}
+                onChange={e => { setQuery(e.target.value); setSearchOpen(true); }}
+                onFocus={() => setSearchOpen(true)}
+                placeholder="Search…"
+                style={{ border: 0, outline: 'none', background: 'transparent', width: '100%', minWidth: 0, fontSize: 12, color: 'var(--color-text)' }}
+              />
+              {query && <button onClick={() => { setQuery(''); setSearchOpen(false); }} style={{ border: 0, background: 'none', cursor: 'pointer', padding: 0, color: 'var(--color-text-muted)' }}><X size={12} /></button>}
             </div>
-          )}
-        </div>
-
-        {/* Action icons row — strictly in 1 line */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
+            {searchOpen && (
+              <div style={{ ...dropdownBase, left: 'auto', right: 0, minWidth: 260 }}>
+                {results.length === 0 ? (
+                  <div style={{ padding: '16px 14px', fontSize: 12, color: 'var(--color-text-muted)', textAlign: 'center' }}>
+                    {query ? 'No matches found' : 'Type to search pages, accounts or companies'}
+                  </div>
+                ) : (
+                  <div style={{ maxHeight: 300, overflowY: 'auto' }}>
+                    {results.map((r, i) => (
+                      <button
+                        key={i}
+                        onClick={() => { r.action(); setSearchOpen(false); setQuery(''); }}
+                        style={{ display: 'flex', alignItems: 'center', gap: 9, width: '100%', padding: '9px 14px', border: 0, background: 'transparent', cursor: 'pointer', textAlign: 'left', color: 'var(--color-text)', fontSize: 12.5, borderBottom: '1px solid var(--color-border-subtle)' }}
+                        onMouseEnter={e => (e.currentTarget.style.background = 'var(--color-surface-muted)')}
+                        onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
+                      >
+                        <span style={{ color: 'var(--color-primary)', display: 'flex' }}>{r.icon}</span>
+                        <span style={{ flex: 1, minWidth: 0 }}>
+                          <span style={{ display: 'block', fontWeight: 600, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{r.label}</span>
+                          <span style={{ display: 'block', fontSize: 10.5, color: 'var(--color-text-muted)' }}>{r.sub}</span>
+                        </span>
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
           
           {/* Dynamic Live Trial / License Status Pill */}
           <button
