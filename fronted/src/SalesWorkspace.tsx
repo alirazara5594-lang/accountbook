@@ -13,6 +13,7 @@ import { KpiCard, KpiGrid } from './components/ui/kpi-card'
 import { StatusChip } from './components/ui/status-chip'
 import { EmptyState, TableSkeleton } from './components/ui/empty-state'
 import { money } from './lib/currency'
+import { getActiveTaxCodes, getDefaultTaxPercentage, type TaxCodeOption } from './lib/taxLocalization'
 
 const statusStyles: Record<string, { label: string; hex: string }> = {
   Draft: { label: 'Draft', hex: '#94a3b8' },
@@ -52,6 +53,13 @@ export const SalesWorkspace: React.FC<{ activeEntityId: string; entities?: any[]
   const [statusFilter, setStatusFilter] = useState<string>('all')
   const [pendingInvoiceNumber, setPendingInvoiceNumber] = useState<string>('')
 
+  // Active Regional Tax Codes
+  const applicableTaxCodes = useMemo(() => {
+    return getActiveTaxCodes()
+  }, [activeEntityId])
+
+  const defaultTaxRate = String(applicableTaxCodes[0]?.rate ?? 0)
+
   // Form state
   const [form, setForm] = useState({
     customerId: '',
@@ -63,7 +71,7 @@ export const SalesWorkspace: React.FC<{ activeEntityId: string; entities?: any[]
   })
 
   const [lines, setLines] = useState([
-    { productId: '', productName: '', description: '', quantity: '1', unitPrice: '0', discountType: 0, discountValue: '0', taxPercent: '0' }
+    { productId: '', productName: '', description: '', quantity: '1', unitPrice: '0', discountType: 0, discountValue: '0', taxPercent: defaultTaxRate }
   ])
 
   const { saveDraft, clearDraft } = useFormDraft('sales_invoice', { form, lines }, (saved: any) => {
@@ -132,7 +140,7 @@ export const SalesWorkspace: React.FC<{ activeEntityId: string; entities?: any[]
       notes: 'Payment is due within invoice terms. Thank you for your business.',
       currencyCode: 'PKR'
     })
-    setLines([{ productId: '', productName: '', description: '', quantity: '1', unitPrice: '0', discountType: 0, discountValue: '0', taxPercent: '0' }])
+    setLines([{ productId: '', productName: '', description: '', quantity: '1', unitPrice: '0', discountType: 0, discountValue: '0', taxPercent: defaultTaxRate }])
     setModalTab('details')
     setShowForm(true)
   }
@@ -205,7 +213,7 @@ export const SalesWorkspace: React.FC<{ activeEntityId: string; entities?: any[]
   }
 
   const addLine = () =>
-    setLines([...lines, { productId: '', productName: '', description: '', quantity: '1', unitPrice: '0', discountType: 0, discountValue: '0', taxPercent: '0' }])
+    setLines([...lines, { productId: '', productName: '', description: '', quantity: '1', unitPrice: '0', discountType: 0, discountValue: '0', taxPercent: defaultTaxRate }])
   
   const removeLine = (i: number) => setLines(lines.filter((_, idx) => idx !== i))
 
@@ -1076,14 +1084,17 @@ export const SalesWorkspace: React.FC<{ activeEntityId: string; entities?: any[]
                               </div>
                             </td>
                             <td className="p-2">
-                              <input
-                                type="number"
-                                min="0"
-                                max="100"
+                              <select
                                 value={l.taxPercent}
                                 onChange={e => updateLine(i, 'taxPercent', e.target.value)}
-                                className="w-full h-8 px-2 rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] text-xs text-right font-mono text-[var(--color-text-strong)] outline-none"
-                              />
+                                className="w-full h-8 px-1.5 rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] text-xs font-semibold text-[var(--color-text-strong)] outline-none"
+                              >
+                                {applicableTaxCodes.map(tc => (
+                                  <option key={tc.code} value={String(tc.rate)}>
+                                    {tc.label} ({tc.rate}%)
+                                  </option>
+                                ))}
+                              </select>
                             </td>
                             <td className="p-2 text-right font-mono font-semibold text-[var(--color-text-strong)]">
                               {money(lineCalculations[i]?.total || 0)}
