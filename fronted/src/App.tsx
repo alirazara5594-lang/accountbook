@@ -244,6 +244,8 @@ export default function App() {
   const handleLogout = () => {
     authApi.logout();
     localStorage.removeItem('ab_demo_mode');
+    localStorage.removeItem('auth_user');
+    localStorage.removeItem('auth_token');
     setCurrentUser(null);
     notify('Logged out successfully');
   };
@@ -455,15 +457,51 @@ export default function App() {
   const activeGroupItems = activeGroup?.items || []
 
   const enabledModules = useMemo(() => {
+    const email = currentUser?.email?.toLowerCase() || '';
+
+    // Check user-specific configuration saved during Setup Configuration
+    if (email) {
+      try {
+        const userSaved = localStorage.getItem(`erp_enabled_modules_${email}`);
+        if (userSaved) {
+          const parsed = JSON.parse(userSaved);
+          if (Array.isArray(parsed) && parsed.length > 0) {
+            return parsed;
+          }
+        }
+      } catch {}
+    }
+
     if (activeEntity?.modules && activeEntity.modules.length > 0) {
       return activeEntity.modules;
     }
-    try {
-      const saved = localStorage.getItem('erp_enabled_modules');
-      if (saved) return JSON.parse(saved);
-    } catch {}
+
+    // Default for Finance Admin if no custom setup is saved
+    if (email === 'admin@acme.com' || currentUser?.role?.toLowerCase().includes('admin')) {
+      return []; // All 13 modules
+    }
+
     return [];
-  }, [activeEntity]);
+  }, [activeEntity, currentUser]);
+
+  const accessibleEntities = useMemo(() => {
+    if (!currentUser) return entities;
+    const email = currentUser.email.toLowerCase();
+    const role = currentUser.role?.toLowerCase() || '';
+
+    // Finance Admin / Super Admin sees all entities
+    if (email === 'admin@acme.com' || role.includes('admin')) {
+      return entities;
+    }
+
+    // Check if user has an assigned company ID
+    const assignedCompanyId = (currentUser as any)?.companyId;
+    if (assignedCompanyId) {
+      const matched = entities.filter(e => e.id === assignedCompanyId);
+      if (matched.length > 0) return matched;
+    }
+    return entities;
+  }, [entities, currentUser]);
 
   if (!currentUser) {
     return <Login onLogin={handleLogin} />;
@@ -486,7 +524,7 @@ export default function App() {
       <div className="main-col">
         <TopHeader
           currentUser={currentUser}
-          entities={entities}
+          entities={accessibleEntities}
           activeEntityId={activeEntityId}
           onSelectEntity={setActiveEntityId}
           page={page}
@@ -517,7 +555,7 @@ export default function App() {
               <label className="entity-picker">
                 Working in
                 <select value={activeEntityId} onChange={e => setActiveEntityId(e.target.value)}>
-                  {entities.map(x => (
+                  {accessibleEntities.map(x => (
                     <option key={x.id} value={x.id}>
                       {x.name}{x.code ? ` · ${x.code}` : ''}
                     </option>

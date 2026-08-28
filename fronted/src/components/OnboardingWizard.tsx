@@ -185,11 +185,15 @@ export default function OnboardingWizard({ currentUser }: {
       localStorage.setItem('onboarding_country_name', selectedCountry.name)
     }
 
-    const finalModules = Array.from(new Set([...selectedModules, 'overview', 'administration']))
-    localStorage.setItem('erp_enabled_modules', JSON.stringify(finalModules))
-    localStorage.setItem('onboarding_company_name', finalCompanyName)
-    localStorage.setItem('onboarding_license_mode', licenseMode)
-    localStorage.setItem('onboarding_sector_id', selectedSectorId)
+    const userEmail = (currentUser?.email || '').toLowerCase().trim();
+    const finalModules = Array.from(new Set([...selectedModules, 'overview', 'administration']));
+    if (userEmail) {
+      localStorage.setItem(`erp_enabled_modules_${userEmail}`, JSON.stringify(finalModules));
+    }
+    localStorage.setItem('erp_enabled_modules', JSON.stringify(finalModules));
+    localStorage.setItem('onboarding_company_name', finalCompanyName);
+    localStorage.setItem('onboarding_license_mode', licenseMode);
+    localStorage.setItem('onboarding_sector_id', selectedSectorId);
 
     // Sync license mode and start date
     if (licenseMode === 'licensed' && licenseKeyInput.trim()) {
