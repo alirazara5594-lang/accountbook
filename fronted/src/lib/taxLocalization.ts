@@ -385,25 +385,37 @@ export const GLOBAL_TAX_STRUCTURES: Record<string, CountryTaxStructure> = {
  * Returns the active localized tax codes for the currently configured company
  */
 export function getActiveTaxCodes(): TaxCodeOption[] {
+  let codes: TaxCodeOption[] = [];
   try {
     const raw = localStorage.getItem('onboarding_active_tax_codes');
     if (raw) {
       const parsed = JSON.parse(raw);
       if (Array.isArray(parsed) && parsed.length > 0) {
-        return parsed;
+        codes = parsed;
       }
     }
   } catch {}
 
-  const countryCode = localStorage.getItem('onboarding_country') || 'PK';
-  const regionId = localStorage.getItem('onboarding_region_id') || 'punjab';
-  const structure = GLOBAL_TAX_STRUCTURES[countryCode] || GLOBAL_TAX_STRUCTURES.PK;
-  const region = structure.regions.find(r => r.id === regionId) || structure.regions[0];
+  if (codes.length === 0) {
+    const countryCode = localStorage.getItem('onboarding_country') || 'PK';
+    const regionId = localStorage.getItem('onboarding_region_id') || 'punjab';
+    const structure = GLOBAL_TAX_STRUCTURES[countryCode] || GLOBAL_TAX_STRUCTURES.PK;
+    const region = structure.regions.find(r => r.id === regionId) || structure.regions[0];
+    codes = region?.taxCodes || [
+      { code: 'STD_TAX', label: 'Standard Sales Tax', rate: 18, type: 'all', authority: 'FBR' }
+    ];
+  }
 
-  return region?.taxCodes || [
-    { code: 'STD_TAX', label: 'Standard Sales Tax', rate: 18, type: 'all', authority: 'FBR' },
-    { code: 'EXEMPT', label: 'Tax Exempt', rate: 0, type: 'exempt', authority: 'FBR' }
-  ];
+  // Ensure 'No Tax (0%)' is always an available option
+  const hasZero = codes.some(c => c.rate === 0);
+  if (!hasZero) {
+    return [
+      { code: 'NO_TAX_0', label: 'No Tax / Exempt (0%)', rate: 0, type: 'exempt', authority: 'None' },
+      ...codes
+    ];
+  }
+
+  return codes;
 }
 
 /**

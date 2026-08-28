@@ -11,6 +11,7 @@ import { useFormDraft } from './hooks/useFormDraft'
 import { KpiCard, KpiGrid } from './components/ui/kpi-card'
 import { StatusChip } from './components/ui/status-chip'
 import { EmptyState, TableSkeleton } from './components/ui/empty-state'
+import { getActiveTaxCodes, type TaxCodeOption } from './lib/taxLocalization'
 
 import { money } from './lib/currency'
 
@@ -70,6 +71,8 @@ export const EstimatesAndQuotes: React.FC<{ activeEntityId: string; entities?: a
   const products = useProductsStore((s) => s.products)
   const fetchProducts = useProductsStore((s) => s.fetchProducts)
   const createInvoiceStore = useSalesStore((s) => s.createInvoice)
+
+  const applicableTaxCodes = useMemo(() => getActiveTaxCodes(), [activeEntityId])
 
   const [loading, setLoading] = useState(true)
   const [showForm, setShowForm] = useState(false)
@@ -572,7 +575,19 @@ export const EstimatesAndQuotes: React.FC<{ activeEntityId: string; entities?: a
                             <td className="p-2"><input type="number" min="1" value={l.quantity} onChange={e => updateLine(i, 'quantity', e.target.value)} className="w-full h-8 px-2 rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] text-xs text-right font-mono outline-none" /></td>
                             <td className="p-2"><input type="number" step="0.01" value={l.unitPrice} onChange={e => updateLine(i, 'unitPrice', e.target.value)} className="w-full h-8 px-2 rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] text-xs text-right font-mono outline-none" /></td>
                             <td className="p-2"><div className="flex items-center gap-1"><select value={l.discountType} onChange={e => updateLine(i, 'discountType', parseInt(e.target.value))} className="h-8 w-12 shrink-0 border border-[var(--color-border)] rounded-lg px-1 text-xs bg-[var(--color-surface)] outline-none"><option value={0}>%</option><option value={1}>{form.currencyCode}</option></select><input type="number" min="0" step={l.discountType === 0 ? "1" : "0.01"} value={l.discountValue} onChange={e => updateLine(i, 'discountValue', e.target.value)} className="w-full h-8 px-2 rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] text-xs text-right font-mono outline-none" /></div></td>
-                            <td className="p-2"><input type="number" min="0" max="100" value={l.taxPercent} onChange={e => updateLine(i, 'taxPercent', e.target.value)} className="w-full h-8 px-2 rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] text-xs text-right font-mono outline-none" /></td>
+                            <td className="p-2">
+                              <select
+                                value={l.taxPercent}
+                                onChange={e => updateLine(i, 'taxPercent', e.target.value)}
+                                className="w-full h-8 px-1.5 rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] text-xs font-semibold text-[var(--color-text-strong)] outline-none"
+                              >
+                                {applicableTaxCodes.map(tc => (
+                                  <option key={tc.code} value={String(tc.rate)}>
+                                    {tc.label} ({tc.rate}%)
+                                  </option>
+                                ))}
+                              </select>
+                            </td>
                             <td className="p-2 text-right font-mono font-bold text-emerald-600">{money(lineCalculations[i]?.total || 0)}</td>
                             <td className="p-2 text-center">{lines.length > 1 && <button onClick={() => removeLine(i)} className="text-rose-500 hover:bg-rose-500/10 rounded p-1"><X className="w-3 h-3" /></button>}</td>
                           </tr>
@@ -743,76 +758,274 @@ export const EstimatesAndQuotes: React.FC<{ activeEntityId: string; entities?: a
   )
 }
 
-function ConvertToInvoiceModal({ estimate, products, onConfirm, onClose }: { estimate: any; customers: any[]; products: any[]; onConfirm: (p: any) => void; onClose: () => void }) {
+function ConvertToInvoiceModal({
+  estimate,
+  products,
+  onConfirm,
+  onClose
+}: {
+  estimate: any
+  customers: any[]
+  products: any[]
+  onConfirm: (p: any) => void
+  onClose: () => void
+}) {
   const [submitting, setSubmitting] = useState(false)
   const est = estimate
+  const applicableTaxCodes = useMemo(() => getActiveTaxCodes(), [])
   const allInvoices = useSalesStore((s) => s.invoices)
+
   const computeNextInvNum = () => {
     let maxNum = 0
     for (const item of allInvoices) {
       const str = (item.invoiceNumber || item.reference || '') + ''
       const match = str.match(/INV-(\d+)/i)
-      if (match) { const num = parseInt(match[1], 10); if (!isNaN(num) && num > maxNum) maxNum = num }
+      if (match) {
+        const num = parseInt(match[1], 10)
+        if (!isNaN(num) && num > maxNum) maxNum = num
+      }
     }
     return `INV-${(maxNum + 1).toString().padStart(5, '0')}`
   }
-  const [invForm, setInvForm] = useState({ customerId: est.customerId || '', invoiceDate: new Date().toISOString().slice(0, 10), dueDate: new Date(Date.now() + 30 * 86400000).toISOString().slice(0, 10), reference: computeNextInvNum(), notes: est.notes || '', currencyCode: est.currencyCode || 'PKR' })
-  const [invLines, setInvLines] = useState<any[]>(est.lines && est.lines.length > 0 ? est.lines.map((l: any) => ({ productId: l.productId || '', description: l.description || '', quantity: String(l.quantity || 1), unitPrice: String(l.unitPrice || 0), discountAmount: String(l.discountAmount || l.discountValue || 0), taxAmount: String(l.taxAmount || 0) })) : [{ productId: '', description: est.customerName ? `${est.customerName} - Products & Services` : 'Products & Services', quantity: '1', unitPrice: String(est.totalAmount || est.subtotal || 0), discountAmount: String(est.discountTotal || 0), taxAmount: String(est.taxTotal || 0) }])
 
-  const updateInvLine = (i: number, f: string, v: string) => { const u = [...invLines]; u[i] = { ...u[i], [f]: v }; if (f === 'productId' && v) { const p = products.find((pp: any) => pp.id === v); if (p) { u[i].description = u[i].description || p.name; u[i].unitPrice = String(p.unitPrice || p.salesPrice || 0) } } setInvLines(u) }
-  const addInvLine = () => setInvLines([...invLines, { productId: '', description: '', quantity: '1', unitPrice: '0', discountAmount: '0', taxAmount: '0' }])
-  const removeInvLine = (i: number) => { if (invLines.length > 1) setInvLines(invLines.filter((_, j) => j !== i)) }
+  const [invForm, setInvForm] = useState({
+    customerId: est.customerId || '',
+    invoiceDate: new Date().toISOString().slice(0, 10),
+    dueDate: new Date(Date.now() + 30 * 86400000).toISOString().slice(0, 10),
+    reference: computeNextInvNum(),
+    notes: est.notes || '',
+    currencyCode: est.currencyCode || 'PKR'
+  })
 
-  const lcs = invLines.map(l => { const q = parseFloat(l.quantity) || 0; const p = parseFloat(l.unitPrice) || 0; const g = q * p; const d = parseFloat(l.discountAmount) || 0; const t = parseFloat(l.taxAmount) || 0; return { g, d, t, total: g - d + t } })
-  const invTotals = lcs.reduce((a, c) => ({ sub: a.sub + c.g, disc: a.disc + c.d, tax: a.tax + c.t, total: a.total + c.total }), { sub: 0, disc: 0, tax: 0, total: 0 })
+  const [invLines, setInvLines] = useState<any[]>(
+    est.lines && est.lines.length > 0
+      ? est.lines.map((l: any) => ({
+          productId: l.productId || '',
+          description: l.description || l.productName || '',
+          quantity: String(l.quantity || 1),
+          unitPrice: String(l.unitPrice || 0),
+          discountType: l.discountType ?? 0,
+          discountValue: String(l.discountValue ?? l.discountAmount ?? 0),
+          taxPercent: String(l.taxPercent ?? 0)
+        }))
+      : [{
+          productId: '',
+          description: est.customerName ? `${est.customerName} - Products & Services` : 'Products & Services',
+          quantity: '1',
+          unitPrice: String(est.totalAmount || est.subtotal || 0),
+          discountType: 0,
+          discountValue: '0',
+          taxPercent: '0'
+        }]
+  )
 
-  const handleSubmit = async () => { setSubmitting(true); await onConfirm({ ...invForm, companyId: est.companyId || null, estimateId: est.id || null, lines: invLines.map(l => ({ productId: l.productId || null, description: l.description, quantity: parseFloat(l.quantity || '1'), unitPrice: parseFloat(l.unitPrice || '0'), discountAmount: parseFloat(l.discountAmount || '0'), taxCodeId: null, taxAmount: parseFloat(l.taxAmount || '0') })) }); setSubmitting(false) }
+  const updateInvLine = (i: number, f: string, v: any) => {
+    const u = [...invLines]
+    u[i] = { ...u[i], [f]: v }
+    if (f === 'productId' && v) {
+      const p = products.find((pp: any) => pp.id === v)
+      if (p) {
+        u[i].description = u[i].description || p.name
+        u[i].unitPrice = String(p.unitPrice || p.salesPrice || 0)
+      }
+    }
+    setInvLines(u)
+  }
+
+  const addInvLine = () =>
+    setInvLines([
+      ...invLines,
+      { productId: '', description: '', quantity: '1', unitPrice: '0', discountType: 0, discountValue: '0', taxPercent: '0' }
+    ])
+
+  const removeInvLine = (i: number) => {
+    if (invLines.length > 1) setInvLines(invLines.filter((_, j) => j !== i))
+  }
+
+  const lcs = invLines.map(l => {
+    const q = parseFloat(l.quantity) || 0
+    const p = parseFloat(l.unitPrice) || 0
+    const gross = q * p
+    const dv = parseFloat(l.discountValue) || 0
+    const dt = l.discountType ?? 0
+    const da = dt === 0 ? (gross * dv) / 100 : Math.min(dv, gross)
+    const taxable = Math.max(0, gross - da)
+    const tp = parseFloat(l.taxPercent) || 0
+    const ta = (taxable * tp) / 100
+    return { gross, da, taxable, ta, total: taxable + ta }
+  })
+
+  const invTotals = lcs.reduce(
+    (a, c) => ({
+      sub: a.sub + c.gross,
+      disc: a.disc + c.da,
+      tax: a.tax + c.ta,
+      total: a.total + c.total
+    }),
+    { sub: 0, disc: 0, tax: 0, total: 0 }
+  )
+
+  const handleSubmit = async () => {
+    setSubmitting(true)
+    await onConfirm({
+      ...invForm,
+      companyId: est.companyId || null,
+      estimateId: est.id || null,
+      lines: invLines.map((l, i) => {
+        const c = lcs[i]
+        return {
+          productId: l.productId || null,
+          productName: l.description,
+          description: l.description,
+          quantity: parseFloat(l.quantity || '1'),
+          unitPrice: parseFloat(l.unitPrice || '0'),
+          discountType: l.discountType ?? 0,
+          discountValue: parseFloat(l.discountValue || '0'),
+          discountAmount: c?.da || 0,
+          taxCodeId: null,
+          taxPercent: parseFloat(l.taxPercent || '0'),
+          taxAmount: c?.ta || 0,
+          totalAmount: c?.total || 0
+        }
+      })
+    })
+    setSubmitting(false)
+  }
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm" onClick={onClose}>
       <div className="w-full max-w-5xl bg-[var(--color-surface)] border border-[var(--color-border)] rounded-2xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh]" onClick={e => e.stopPropagation()}>
         <div className="px-6 py-4 border-b border-[var(--color-border)] flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className="w-11 h-11 rounded-xl bg-gradient-to-br from-emerald-500 to-teal-600 flex items-center justify-center text-white"><ArrowRight className="w-5 h-5" /></div>
-            <div><h2 className="text-base font-bold text-[var(--color-text-strong)]">Convert to Invoice</h2><p className="text-xs text-[var(--color-text-muted)]">From: <strong>{est.estimateNumber || est.reference}</strong></p></div>
+            <div className="w-11 h-11 rounded-xl bg-gradient-to-br from-emerald-500 to-teal-600 flex items-center justify-center text-white">
+              <ArrowRight className="w-5 h-5" />
+            </div>
+            <div>
+              <h2 className="text-base font-bold text-[var(--color-text-strong)]">Convert to Invoice</h2>
+              <p className="text-xs text-[var(--color-text-muted)]">From: <strong>{est.estimateNumber || est.reference}</strong></p>
+            </div>
           </div>
-          <button onClick={onClose} className="w-8 h-8 rounded-lg flex items-center justify-center text-[var(--color-text-muted)] hover:bg-[var(--color-surface-muted)]"><X className="w-4 h-4" /></button>
+          <button onClick={onClose} className="w-8 h-8 rounded-lg flex items-center justify-center text-[var(--color-text-muted)] hover:bg-[var(--color-surface-muted)]">
+            <X className="w-4 h-4" />
+          </button>
         </div>
         <form className="flex-1 overflow-y-auto p-6 space-y-5" onSubmit={e => { e.preventDefault(); handleSubmit() }}>
           <div className="grid grid-cols-2 gap-4">
-            <div><label className="block text-xs font-semibold mb-1.5">Invoice Date</label><input type="date" value={invForm.invoiceDate} onChange={e => setInvForm({ ...invForm, invoiceDate: e.target.value })} className="w-full h-10 px-3 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] text-xs outline-none" /></div>
-            <div><label className="block text-xs font-semibold mb-1.5">Due Date</label><input type="date" value={invForm.dueDate} onChange={e => setInvForm({ ...invForm, dueDate: e.target.value })} className="w-full h-10 px-3 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] text-xs outline-none" /></div>
+            <div>
+              <label className="block text-xs font-semibold mb-1.5 text-[var(--color-text-strong)]">Invoice Date</label>
+              <input type="date" value={invForm.invoiceDate} onChange={e => setInvForm({ ...invForm, invoiceDate: e.target.value })} className="w-full h-10 px-3 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] text-xs text-[var(--color-text-strong)] outline-none" />
+            </div>
+            <div>
+              <label className="block text-xs font-semibold mb-1.5 text-[var(--color-text-strong)]">Due Date</label>
+              <input type="date" value={invForm.dueDate} onChange={e => setInvForm({ ...invForm, dueDate: e.target.value })} className="w-full h-10 px-3 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] text-xs text-[var(--color-text-strong)] outline-none" />
+            </div>
           </div>
           <div className="rounded-xl border border-[var(--color-border)] overflow-hidden">
             <table className="w-full text-xs">
-              <thead className="bg-[var(--color-surface-muted)] border-b border-[var(--color-border)]"><tr>
-                <th className="p-2.5 text-left">Description</th><th className="p-2.5 text-right w-16">Qty</th><th className="p-2.5 text-right w-24">Price</th><th className="p-2.5 text-right w-32">Discount</th><th className="p-2.5 text-right w-24">Tax</th><th className="p-2.5 text-right w-28">Total</th><th className="p-2.5 w-8"></th>
-              </tr></thead>
+              <thead className="bg-[var(--color-surface-muted)] border-b border-[var(--color-border)]">
+                <tr>
+                  <th className="p-2.5 text-left">Description</th>
+                  <th className="p-2.5 text-right w-16">Qty</th>
+                  <th className="p-2.5 text-right w-24">Price</th>
+                  <th className="p-2.5 text-center w-36">Discount</th>
+                  <th className="p-2.5 text-center w-36">Tax</th>
+                  <th className="p-2.5 text-right w-28">Total</th>
+                  <th className="p-2.5 w-8"></th>
+                </tr>
+              </thead>
               <tbody className="divide-y divide-[var(--color-border)]">
                 {invLines.map((l: any, i: number) => (
                   <tr key={i}>
-                    <td className="p-2"><input value={l.description} onChange={e => updateInvLine(i, 'description', e.target.value)} className="w-full px-2 py-1 rounded border border-[var(--color-border)] bg-[var(--color-surface)] text-xs outline-none" /></td>
-                    <td className="p-2"><input type="number" value={l.quantity} onChange={e => updateInvLine(i, 'quantity', e.target.value)} className="w-full px-2 py-1 rounded border border-[var(--color-border)] bg-[var(--color-surface)] text-xs text-right font-mono outline-none" /></td>
-                    <td className="p-2"><input type="number" step="0.01" value={l.unitPrice} onChange={e => updateInvLine(i, 'unitPrice', e.target.value)} className="w-full px-2 py-1 rounded border border-[var(--color-border)] bg-[var(--color-surface)] text-xs text-right font-mono outline-none" /></td>
-                    <td className="p-2"><input type="number" step="0.01" value={l.discountAmount} onChange={e => updateInvLine(i, 'discountAmount', e.target.value)} className="w-full px-2 py-1 rounded border border-[var(--color-border)] bg-[var(--color-surface)] text-xs text-right font-mono outline-none" /></td>
-                    <td className="p-2"><input type="number" step="0.01" value={l.taxAmount} onChange={e => updateInvLine(i, 'taxAmount', e.target.value)} className="w-full px-2 py-1 rounded border border-[var(--color-border)] bg-[var(--color-surface)] text-xs text-right font-mono outline-none" /></td>
-                    <td className="p-2 text-right font-mono font-bold">{money(lcs[i]?.total || 0)}</td>
-                    <td className="p-2 text-center">{invLines.length > 1 && <button type="button" onClick={() => removeInvLine(i)} className="text-rose-500"><X className="w-3 h-3" /></button>}</td>
+                    <td className="p-2">
+                      <input value={l.description} onChange={e => updateInvLine(i, 'description', e.target.value)} className="w-full px-2 py-1.5 rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] text-xs text-[var(--color-text-strong)] outline-none" />
+                    </td>
+                    <td className="p-2">
+                      <input type="number" value={l.quantity} onChange={e => updateInvLine(i, 'quantity', e.target.value)} className="w-full px-2 py-1.5 rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] text-xs text-right font-mono text-[var(--color-text-strong)] outline-none" />
+                    </td>
+                    <td className="p-2">
+                      <input type="number" step="0.01" value={l.unitPrice} onChange={e => updateInvLine(i, 'unitPrice', e.target.value)} className="w-full px-2 py-1.5 rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] text-xs text-right font-mono text-[var(--color-text-strong)] outline-none" />
+                    </td>
+                    <td className="p-2">
+                      <div className="flex items-center gap-1">
+                        <select
+                          value={l.discountType}
+                          onChange={e => updateInvLine(i, 'discountType', parseInt(e.target.value))}
+                          className="h-8 w-12 shrink-0 border border-[var(--color-border)] rounded-lg px-1 text-xs bg-[var(--color-surface)] text-[var(--color-text-strong)] font-bold outline-none"
+                        >
+                          <option value={0}>%</option>
+                          <option value={1}>{invForm.currencyCode}</option>
+                        </select>
+                        <input
+                          type="number"
+                          min="0"
+                          step={l.discountType === 0 ? "1" : "0.01"}
+                          value={l.discountValue}
+                          onChange={e => updateInvLine(i, 'discountValue', e.target.value)}
+                          className="w-full h-8 px-2 rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] text-xs text-right font-mono text-[var(--color-text-strong)] outline-none"
+                        />
+                      </div>
+                    </td>
+                    <td className="p-2">
+                      <select
+                        value={l.taxPercent}
+                        onChange={e => updateInvLine(i, 'taxPercent', e.target.value)}
+                        className="w-full h-8 px-1.5 rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] text-xs font-semibold text-[var(--color-text-strong)] outline-none"
+                      >
+                        {applicableTaxCodes.map(tc => (
+                          <option key={tc.code} value={String(tc.rate)}>
+                            {tc.label} ({tc.rate}%)
+                          </option>
+                        ))}
+                      </select>
+                    </td>
+                    <td className="p-2 text-right font-mono font-bold text-[var(--color-text-strong)]">
+                      {money(lcs[i]?.total || 0)}
+                    </td>
+                    <td className="p-2 text-center">
+                      {invLines.length > 1 && (
+                        <button type="button" onClick={() => removeInvLine(i)} className="text-rose-500 hover:bg-rose-500/10 rounded p-1">
+                          <X className="w-3 h-3" />
+                        </button>
+                      )}
+                    </td>
                   </tr>
                 ))}
               </tbody>
             </table>
           </div>
-          <button type="button" onClick={addInvLine} className="h-8 px-3 rounded-lg border border-indigo-500 text-indigo-600 text-xs font-semibold hover:bg-indigo-500/10 flex items-center gap-1"><Plus className="w-3 h-3" /> Add Line</button>
-          <div className="w-64 ml-auto rounded-xl border border-[var(--color-border)] bg-[var(--color-surface-muted)]/50 p-4 space-y-2 text-xs">
-            <div className="flex justify-between"><span className="text-[var(--color-text-muted)]">Subtotal</span><span className="font-mono font-semibold">{money(invTotals.sub)}</span></div>
-            {invTotals.disc > 0 && <div className="flex justify-between text-rose-500"><span>Discount</span><span>-{money(invTotals.disc)}</span></div>}
-            {invTotals.tax > 0 && <div className="flex justify-between text-amber-600"><span>Tax</span><span>+{money(invTotals.tax)}</span></div>}
-            <div className="border-t border-[var(--color-border)] pt-2 flex justify-between font-bold text-sm"><span>Total</span><span className="text-emerald-600 font-mono">{money(invTotals.total)}</span></div>
+          <button type="button" onClick={addInvLine} className="h-8 px-3 rounded-lg border border-indigo-500 text-indigo-600 text-xs font-semibold hover:bg-indigo-500/10 flex items-center gap-1">
+            <Plus className="w-3 h-3" /> Add Line
+          </button>
+          <div className="w-72 ml-auto rounded-xl border border-[var(--color-border)] bg-[var(--color-surface-muted)]/50 p-4 space-y-2 text-xs">
+            <div className="flex justify-between text-[var(--color-text-muted)]">
+              <span>Subtotal</span>
+              <span className="font-mono font-semibold text-[var(--color-text-strong)]">{money(invTotals.sub)}</span>
+            </div>
+            {invTotals.disc > 0 && (
+              <div className="flex justify-between text-rose-500">
+                <span>Discount</span>
+                <span className="font-mono">-{money(invTotals.disc)}</span>
+              </div>
+            )}
+            {invTotals.tax > 0 && (
+              <div className="flex justify-between text-amber-600">
+                <span>Tax</span>
+                <span className="font-mono">+{money(invTotals.tax)}</span>
+              </div>
+            )}
+            <div className="border-t border-[var(--color-border)] pt-2 flex justify-between font-bold text-sm text-[var(--color-text-strong)]">
+              <span>Total</span>
+              <span className="text-emerald-600 font-mono">{money(invTotals.total)}</span>
+            </div>
           </div>
           <div className="flex justify-end gap-2.5 pt-2 border-t border-[var(--color-border)]">
-            <button type="button" onClick={onClose} className="h-9 px-4 rounded-xl border border-[var(--color-border)] text-xs font-semibold hover:bg-[var(--color-surface-muted)]">Cancel</button>
-            <button type="submit" disabled={submitting} className="h-9 px-5 rounded-xl bg-gradient-to-r from-emerald-600 to-green-600 text-white text-xs font-bold shadow-lg flex items-center gap-1.5 disabled:opacity-50"><Check className="w-4 h-4" />{submitting ? 'Creating...' : 'Create Sales Invoice'}</button>
+            <button type="button" onClick={onClose} className="h-9 px-4 rounded-xl border border-[var(--color-border)] text-xs font-semibold hover:bg-[var(--color-surface-muted)] text-[var(--color-text)]">
+              Cancel
+            </button>
+            <button type="submit" disabled={submitting} className="h-9 px-5 rounded-xl bg-gradient-to-r from-emerald-600 to-green-600 text-white text-xs font-bold shadow-lg flex items-center gap-1.5 disabled:opacity-50 cursor-pointer">
+              <Check className="w-4 h-4" />
+              {submitting ? 'Creating...' : 'Create Sales Invoice'}
+            </button>
           </div>
         </form>
       </div>

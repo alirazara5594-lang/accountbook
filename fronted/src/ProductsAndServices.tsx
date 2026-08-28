@@ -821,6 +821,30 @@ export default function ProductsAndServices({
                       Estimated purchase or standard landed cost per unit.
                     </p>
                   </div>
+
+                  <div className="md:col-span-2 pt-2 border-t border-[var(--color-border)]">
+                    <label className="block text-xs font-semibold text-[var(--color-text-strong)] mb-1.5">
+                      Default Sales Tax Rate (Optional)
+                    </label>
+                    <select
+                      value={form.taxCodeId}
+                      onChange={e => setForm({ ...form, taxCodeId: e.target.value })}
+                      className="w-full h-10 px-3.5 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] text-xs text-[var(--color-text-strong)] focus:border-[var(--color-primary)] outline-none shadow-2xs"
+                    >
+                      <option value="">No Tax (0% / Determined on Invoice)</option>
+                      {taxCodes.map(tc => {
+                        const r = getTaxRatePercent(tc)
+                        return (
+                          <option key={tc.id} value={tc.id}>
+                            {tc.code} {r !== null ? `(${r}%)` : ''} — {tc.name}
+                          </option>
+                        )
+                      })}
+                    </select>
+                    <p className="text-[11px] text-[var(--color-text-muted)] mt-1.5">
+                      Optional template default. Invoices can still select, override, or omit tax per line item.
+                    </p>
+                  </div>
                 </div>
               )}
 
