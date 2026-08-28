@@ -214,10 +214,18 @@ export default function App() {
   };
 
   const handleLogin = async (userData: UserData) => {
+    const emailNorm = userData.email.toLowerCase().trim();
+
+    // Reset Sarah Jenkins onboarding so she always triggers Setup Configuration
+    if (emailNorm === 'accountant@acme.com') {
+      localStorage.removeItem('onboarding_complete_accountant@acme.com');
+      localStorage.removeItem('erp_enabled_modules_accountant@acme.com');
+    }
+
     const user: UserData = {
       email: userData.email,
       fullName: userData.fullName,
-      role: userData.role || (userData.email === 'admin@acme.com' ? 'Finance admin' : 'Senior Accountant'),
+      role: userData.role || (emailNorm === 'admin@acme.com' ? 'Finance admin' : 'Senior Accountant'),
       avatar: userData.avatar || 'MA',
       provider: userData.provider || 'email',
     };
