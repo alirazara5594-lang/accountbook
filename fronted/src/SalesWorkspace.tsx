@@ -33,6 +33,7 @@ export const SalesWorkspace: React.FC<{ activeEntityId: string; entities?: any[]
   const createInvoiceStore = useSalesStore((s) => s.createInvoice)
   const updateInvoiceStore = useSalesStore((s) => s.updateInvoice)
   const updateInvoiceStatusStore = useSalesStore((s) => s.updateInvoiceStatus)
+  const updateEstimateStatusStore = useSalesStore((s) => s.updateEstimateStatus)
 
   const customers = useCustomersStore((s) => s.customers)
   const fetchCustomers = useCustomersStore((s) => s.fetchCustomers)
@@ -48,10 +49,12 @@ export const SalesWorkspace: React.FC<{ activeEntityId: string; entities?: any[]
   const [editingInvoice, setEditingInvoice] = useState<any>(null)
   const [modalTab, setModalTab] = useState<'details' | 'lines' | 'summary' | 'preview'>('details')
   const [postModal, setPostModal] = useState<any>(null)
+  const [postForm, setPostForm] = useState({ arAccId: '', revenueAccId: '', taxLiabilityAccId: '' })
   const [toast, setToast] = useState('')
   const [query, setQuery] = useState('')
   const [statusFilter, setStatusFilter] = useState<string>('all')
   const [pendingInvoiceNumber, setPendingInvoiceNumber] = useState<string>('')
+  const [convertedEstimateId, setConvertedEstimateId] = useState<string | null>(null)
 
   // Active Regional Tax Codes
   const applicableTaxCodes = useMemo(() => {
@@ -79,9 +82,6 @@ export const SalesWorkspace: React.FC<{ activeEntityId: string; entities?: any[]
     if (saved.lines) setLines(saved.lines)
   }, showForm)
 
-  // Post form
-  const [postForm, setPostForm] = useState({ arAccId: '', revenueAccId: '', taxLiabilityAccId: '' })
-
   const fetchData = async () => {
     setLoading(true)
     try {
@@ -95,9 +95,56 @@ export const SalesWorkspace: React.FC<{ activeEntityId: string; entities?: any[]
     setLoading(false)
   }
 
+  const checkPendingQuoteConversion = () => {
+    try {
+      const raw = localStorage.getItem('ams_pending_invoice_from_quote')
+      if (raw) {
+        const data = JSON.parse(raw)
+        localStorage.removeItem('ams_pending_invoice_from_quote')
+
+        const nextRef = computeNextInvoiceNumber()
+        setPendingInvoiceNumber(nextRef)
+        setConvertedEstimateId(data.estimateId || null)
+
+        setForm({
+          customerId: data.customerId || customers[0]?.id || '',
+          invoiceDate: new Date().toISOString().slice(0, 10),
+          dueDate: new Date(Date.now() + 30 * 86400000).toISOString().slice(0, 10),
+          reference: nextRef,
+          notes: data.notes || (data.estimateNumber ? `Converted from quotation ${data.estimateNumber}` : ''),
+          currencyCode: data.currencyCode || 'PKR'
+        })
+
+        if (data.lines && data.lines.length > 0) {
+          setLines(data.lines)
+        }
+
+        setEditingInvoice(null)
+        setModalTab('details')
+        setShowForm(true)
+        notify(`✓ Pre-filled from Quote ${data.estimateNumber || ''}! Review each tab and confirm.`)
+      }
+    } catch {}
+  }
+
   useEffect(() => {
-    fetchData()
+    fetchData().then(() => {
+      checkPendingQuoteConversion()
+    })
   }, [activeEntityId])
+
+  useEffect(() => {
+    const handleHash = () => {
+      checkPendingQuoteConversion()
+    }
+    window.addEventListener('hashchange', handleHash)
+    // Also check on interval/mount
+    const t = setTimeout(checkPendingQuoteConversion, 300)
+    return () => {
+      window.removeEventListener('hashchange', handleHash)
+      clearTimeout(t)
+    }
+  }, [])
 
   const notify = (m: string) => {
     setToast(m)
@@ -118,7 +165,7 @@ export const SalesWorkspace: React.FC<{ activeEntityId: string; entities?: any[]
   }
 
   const getFormattedInvoiceNumber = (rawNum: string, index: number) => {
-    if (!rawNum) return `INV-${(index + 1).toString().padStart(5, '0')}`
+    if (!rawNum || rawNum.startsWith('EST-')) return `INV-${(index + 1).toString().padStart(5, '0')}`
     const match = rawNum.match(/INV-(\d+)/i)
     if (match) return `INV-${parseInt(match[1], 10).toString().padStart(5, '0')}`
     return rawNum
@@ -310,6 +357,12 @@ export const SalesWorkspace: React.FC<{ activeEntityId: string; entities?: any[]
         notify('✓ Sales invoice created as Draft')
         // Clear pending number after successful save
         setPendingInvoiceNumber('')
+        if (convertedEstimateId) {
+          try {
+            await updateEstimateStatusStore(convertedEstimateId, '5')
+          } catch {}
+          setConvertedEstimateId(null)
+        }
       }
       clearDraft()
       setShowForm(false)

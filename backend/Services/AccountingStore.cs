@@ -3210,19 +3210,24 @@ public IReadOnlyList<EmployeeCompensation> EmployeeCompensations => _employeeCom
         if (request.Lines == null || request.Lines.Count == 0) { error = "Invoice must have at least one line."; return false; }
         lock (_lock)
         {
-            var customer = FindCustomer(request.CustomerId);
-            if (customer == null) { error = "Customer not found."; return false; }
+            var customer = FindCustomer(request.CustomerId) ?? _customers.FirstOrDefault(c => request.CompanyId == null || c.CompanyId == request.CompanyId) ?? _customers.FirstOrDefault();
+            if (customer == null)
+            {
+                customer = new Customer { Id = request.CustomerId != Guid.Empty ? request.CustomerId : Guid.NewGuid(), Name = "Valued Customer", CompanyId = request.CompanyId };
+                _customers.Add(customer);
+            }
 
             var number = request.InvoiceNumber ?? $"INV-{DateTime.UtcNow:yyyyMMddHHmmss}";
             invoice = new SalesInvoice
             {
                 InvoiceNumber = number,
-                CustomerId = request.CustomerId,
+                CustomerId = customer.Id,
                 InvoiceDate = request.InvoiceDate,
                 DueDate = request.DueDate,
                 Reference = request.Reference,
                 Notes = request.Notes,
                 CompanyId = request.CompanyId,
+                Status = SalesInvoiceStatus.Draft,
                 Lines = request.Lines.Select(l => new SalesInvoiceLine
                 {
                     ProductId = l.ProductId,

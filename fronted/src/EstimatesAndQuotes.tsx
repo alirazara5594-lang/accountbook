@@ -191,16 +191,42 @@ export const EstimatesAndQuotes: React.FC<{ activeEntityId: string; entities?: a
     } catch (e: any) { notify(e.message || 'Error saving') }
   }
 
-  const createInvoiceFromEstimate = async (payload: any) => {
-    try { 
-      await createInvoiceStore(payload); 
-      if (convertModal?.id) await updateEstimateStatusStore(convertModal.id, '5'); 
-      setPendingEstimateNumber(''); // Clear pending number after converting to invoice
-      notify('Invoice created!'); 
-      setConvertModal(null); 
-      await fetchData() 
-    } catch (e: any) { notify(e.message || 'Invoice failed') }
-  }
+  const convertQuoteToInvoice = (est: any) => {
+    const quoteLines = (est.lines && est.lines.length > 0)
+      ? est.lines.map((l: any) => ({
+          productId: l.productId || '',
+          productName: l.productName || l.description || '',
+          description: l.description || l.productName || '',
+          quantity: String(l.quantity || 1),
+          unitPrice: String(l.unitPrice || 0),
+          discountType: l.discountType ?? 0,
+          discountValue: String(l.discountValue ?? l.discountAmount ?? 0),
+          taxPercent: String(l.taxPercent ?? 0)
+        }))
+      : [{
+          productId: '',
+          productName: est.customerName ? `${est.customerName} - Items` : 'Items',
+          description: est.customerName ? `${est.customerName} - Items` : 'Items',
+          quantity: '1',
+          unitPrice: String(est.totalAmount || est.subtotal || 0),
+          discountType: 0,
+          discountValue: String(est.discountTotal || 0),
+          taxPercent: '0'
+        }];
+
+    const payload = {
+      estimateId: est.id,
+      estimateNumber: est.estimateNumber || est.reference,
+      customerId: est.customerId || '',
+      customerName: est.customerName || '',
+      notes: est.notes || '',
+      currencyCode: est.currencyCode || 'PKR',
+      lines: quoteLines
+    };
+
+    localStorage.setItem('ams_pending_invoice_from_quote', JSON.stringify(payload));
+    window.location.hash = '#Sales & Customers.Sales Invoices';
+  };
 
   const filteredEstimates = useMemo(() => estimates.filter((est: any) => { const sn = getNumericStatus(est.status); const mq = !query.trim() ? true : `${est.estimateNumber || ''} ${est.customerName || ''} ${est.reference || ''}`.toLowerCase().includes(query.toLowerCase()); const ms = statusFilter === 'all' || String(sn) === statusFilter; return mq && ms }), [estimates, query, statusFilter])
 
@@ -472,12 +498,20 @@ export const EstimatesAndQuotes: React.FC<{ activeEntityId: string; entities?: a
                     <td className="px-5 py-3.5 text-center"><StatusChip status={String(sn)} label={st?.label || 'Draft'} hex={st?.hex} /></td>
                     <td className="px-5 py-3.5">
                       <div className="flex items-center justify-center gap-1.5">
-                        <button onClick={() => openEditModal(est)} title="Edit" className="w-8 h-8 rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] hover:bg-blue-500/10 hover:border-blue-500/30 flex items-center justify-center transition-all"><Pencil className="w-3.5 h-3.5 text-blue-500" /></button>
-                        <button onClick={() => setViewingEstimate(est)} title="View" className="w-8 h-8 rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] hover:bg-sky-500/10 hover:border-sky-500/30 flex items-center justify-center transition-all"><Eye className="w-3.5 h-3.5 text-sky-500" /></button>
-                        {sn === 0 && <button onClick={() => finalizeEstimate(est)} title="Finalize" className="w-8 h-8 rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] hover:bg-emerald-500/10 hover:border-emerald-500/30 flex items-center justify-center transition-all"><CheckCircle2 className="w-3.5 h-3.5 text-emerald-500" /></button>}
-                        {sn === 2 && <button onClick={() => setConvertModal(est)} title="Convert to Invoice" className="w-8 h-8 rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] hover:bg-purple-500/10 hover:border-purple-500/30 flex items-center justify-center transition-all"><ArrowRight className="w-3.5 h-3.5 text-purple-500" /></button>}
+                        {sn !== 5 && sn !== 3 && (
+                          <button onClick={() => openEditModal(est)} title="Edit Quotation" className="w-8 h-8 rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] hover:bg-blue-500/10 hover:border-blue-500/30 flex items-center justify-center transition-all"><Pencil className="w-3.5 h-3.5 text-blue-500" /></button>
+                        )}
+                        <button onClick={() => setViewingEstimate(est)} title="View Quotation" className="w-8 h-8 rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] hover:bg-sky-500/10 hover:border-sky-500/30 flex items-center justify-center transition-all"><Eye className="w-3.5 h-3.5 text-sky-500" /></button>
+                        {(sn === 0 || sn === 1) && (
+                          <button onClick={() => finalizeEstimate(est)} title="Approve / Finalize Quotation" className="w-8 h-8 rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] hover:bg-emerald-500/10 hover:border-emerald-500/30 flex items-center justify-center transition-all"><CheckCircle2 className="w-3.5 h-3.5 text-emerald-500" /></button>
+                        )}
+                        {sn === 2 && (
+                          <button onClick={() => convertQuoteToInvoice(est)} title="Convert to Invoice (Open Full Invoice Wizard)" className="w-8 h-8 rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] hover:bg-purple-500/10 hover:border-purple-500/30 flex items-center justify-center transition-all cursor-pointer"><ArrowRight className="w-3.5 h-3.5 text-purple-500" /></button>
+                        )}
                         <button onClick={() => downloadQuotePdf(est, idx)} title="Download PDF" className="w-8 h-8 rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] hover:bg-gray-500/10 hover:border-gray-500/30 flex items-center justify-center transition-all"><Download className="w-3.5 h-3.5 text-gray-500" /></button>
-                        {(sn === 0 || sn === 1) && <button onClick={() => cancelEstimate(est)} title="Cancel" className="w-8 h-8 rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] hover:bg-rose-500/10 hover:border-rose-500/30 flex items-center justify-center transition-all"><Ban className="w-3.5 h-3.5 text-rose-500" /></button>}
+                        {sn !== 3 && (
+                          <button onClick={() => cancelEstimate(est)} title="Cancel / Decline Quotation" className="w-8 h-8 rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] hover:bg-rose-500/10 hover:border-rose-500/30 flex items-center justify-center transition-all"><Ban className="w-3.5 h-3.5 text-rose-500" /></button>
+                        )}
                       </div>
                     </td>
                   </tr>
@@ -901,8 +935,10 @@ function ConvertToInvoiceModal({
               <ArrowRight className="w-5 h-5" />
             </div>
             <div>
-              <h2 className="text-base font-bold text-[var(--color-text-strong)]">Convert to Invoice</h2>
-              <p className="text-xs text-[var(--color-text-muted)]">From: <strong>{est.estimateNumber || est.reference}</strong></p>
+              <h2 className="text-base font-bold text-[var(--color-text-strong)]">Convert to Invoice (Draft)</h2>
+              <p className="text-xs text-[var(--color-text-muted)]">
+                Assigned Invoice Number: <strong className="font-mono text-emerald-600 dark:text-emerald-400">{invForm.reference}</strong> • (Quotation Ref: {est.estimateNumber || est.reference})
+              </p>
             </div>
           </div>
           <button onClick={onClose} className="w-8 h-8 rounded-lg flex items-center justify-center text-[var(--color-text-muted)] hover:bg-[var(--color-surface-muted)]">
@@ -910,7 +946,16 @@ function ConvertToInvoiceModal({
           </button>
         </div>
         <form className="flex-1 overflow-y-auto p-6 space-y-5" onSubmit={e => { e.preventDefault(); handleSubmit() }}>
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            <div>
+              <label className="block text-xs font-semibold mb-1.5 text-[var(--color-text-strong)]">Invoice Number</label>
+              <input
+                type="text"
+                value={invForm.reference}
+                onChange={e => setInvForm({ ...invForm, reference: e.target.value })}
+                className="w-full h-10 px-3 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] text-xs font-mono font-bold text-sky-600 dark:text-sky-400 outline-none"
+              />
+            </div>
             <div>
               <label className="block text-xs font-semibold mb-1.5 text-[var(--color-text-strong)]">Invoice Date</label>
               <input type="date" value={invForm.invoiceDate} onChange={e => setInvForm({ ...invForm, invoiceDate: e.target.value })} className="w-full h-10 px-3 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] text-xs text-[var(--color-text-strong)] outline-none" />
