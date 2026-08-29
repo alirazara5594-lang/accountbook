@@ -149,6 +149,15 @@ export const ManufacturingWorkspace: React.FC<{ activeEntityId: string; entities
       const matchCenter = workCenterFilter === 'All' || w.workCenterName === workCenterFilter;
 
       return matchQ && matchStatus && matchCenter;
+    }).sort((a, b) => {
+      const dateA = a.startDate || a.createdAt || '';
+      const dateB = b.startDate || b.createdAt || '';
+      if (dateA !== dateB) {
+        return dateB.localeCompare(dateA);
+      }
+      const numA = a.workOrderNumber || '';
+      const numB = b.workOrderNumber || '';
+      return numB.localeCompare(numA, undefined, { numeric: true, sensitivity: 'base' });
     });
   }, [workOrders, query, statusFilter, workCenterFilter]);
 

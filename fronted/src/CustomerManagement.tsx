@@ -156,6 +156,10 @@ export default function CustomerManagement({
       const matchesStatus = statusFilter === 'all' ? true : c.status === statusFilter
 
       return matchesSearch && matchesCompany && matchesStatus
+    }).sort((a, b) => {
+      const numA = a.customerNumber || a.name || ''
+      const numB = b.customerNumber || b.name || ''
+      return numA.localeCompare(numB, undefined, { numeric: true, sensitivity: 'base' })
     })
   }, [customers, search, companyFilter, statusFilter])
 

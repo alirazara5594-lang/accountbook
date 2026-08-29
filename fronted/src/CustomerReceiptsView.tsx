@@ -83,15 +83,26 @@ export const CustomerReceiptsView: React.FC<CustomerReceiptsViewProps> = ({ acti
   };
 
   const filtered = useMemo(() => {
-    return receipts.filter(r => {
-      if (query.trim()) {
-        const lower = query.toLowerCase();
-        const matchesCustomer = r.customerName.toLowerCase().includes(lower);
-        const matchesRef = r.reference.toLowerCase().includes(lower);
-        if (!matchesCustomer && !matchesRef) return false;
-      }
-      return true;
-    });
+    return receipts
+      .filter(r => {
+        if (query.trim()) {
+          const lower = query.toLowerCase();
+          const matchesCustomer = r.customerName.toLowerCase().includes(lower);
+          const matchesRef = r.reference.toLowerCase().includes(lower);
+          if (!matchesCustomer && !matchesRef) return false;
+        }
+        return true;
+      })
+      .sort((a, b) => {
+        const dateA = a.date || '';
+        const dateB = b.date || '';
+        if (dateA !== dateB) {
+          return dateB.localeCompare(dateA);
+        }
+        const numA = a.reference || '';
+        const numB = b.reference || '';
+        return numB.localeCompare(numA, undefined, { numeric: true, sensitivity: 'base' });
+      });
   }, [receipts, query]);
 
   const handleCreateReceipt = (e: React.FormEvent) => {

@@ -294,28 +294,39 @@ export const JournalEntriesView: React.FC<JournalEntriesViewProps> = ({ accounts
   }, 0);
 
   const filteredEntries = useMemo(() => {
-    return entries.filter((e) => {
-      if (statusFilter !== 'All') {
-        const s = e.status || 'Draft';
-        if (s !== statusFilter) return false;
-      }
-      if (query.trim()) {
-        const q = query.toLowerCase();
-        const matchesRef = (e.reference || '').toLowerCase().includes(q);
-        const matchesDesc = (e.description || '').toLowerCase().includes(q);
-        const matchesStatus = (e.status || '').toLowerCase().includes(q);
-        const matchesLines = (e.lines || []).some((l) => {
-          const acc = accounts.find((a) => a.id === l.accountId);
-          return (
-            (acc?.code || '').toLowerCase().includes(q) ||
-            (acc?.name || '').toLowerCase().includes(q) ||
-            (l.memo || '').toLowerCase().includes(q)
-          );
-        });
-        if (!matchesRef && !matchesDesc && !matchesStatus && !matchesLines) return false;
-      }
-      return true;
-    });
+    return entries
+      .filter((e) => {
+        if (statusFilter !== 'All') {
+          const s = e.status || 'Draft';
+          if (s !== statusFilter) return false;
+        }
+        if (query.trim()) {
+          const q = query.toLowerCase();
+          const matchesRef = (e.reference || '').toLowerCase().includes(q);
+          const matchesDesc = (e.description || '').toLowerCase().includes(q);
+          const matchesStatus = (e.status || '').toLowerCase().includes(q);
+          const matchesLines = (e.lines || []).some((l) => {
+            const acc = accounts.find((a) => a.id === l.accountId);
+            return (
+              (acc?.code || '').toLowerCase().includes(q) ||
+              (acc?.name || '').toLowerCase().includes(q) ||
+              (l.memo || '').toLowerCase().includes(q)
+            );
+          });
+          if (!matchesRef && !matchesDesc && !matchesStatus && !matchesLines) return false;
+        }
+        return true;
+      })
+      .sort((a, b) => {
+        const dateA = a.date || a.createdAt || '';
+        const dateB = b.date || b.createdAt || '';
+        if (dateA !== dateB) {
+          return dateB.localeCompare(dateA);
+        }
+        const numA = a.entryNumber || a.reference || '';
+        const numB = b.entryNumber || b.reference || '';
+        return numB.localeCompare(numA, undefined, { numeric: true, sensitivity: 'base' });
+      });
   }, [entries, statusFilter, query, accounts]);
 
   // ─── Branded Official IAS 1 Journal Voucher PDF Generator ───────────────────

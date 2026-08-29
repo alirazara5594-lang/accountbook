@@ -200,18 +200,29 @@ export const SalesOrdersWorkspace: React.FC<{ activeEntityId: string; entities?:
   }
 
   const filteredOrders = useMemo(() => {
-    return orders.filter(o => {
-      const cust = customers.find(c => c.id === o.customerId)
-      const matchesQuery = !query.trim()
-        ? true
-        : `${o.orderNumber} ${o.reference || ''} ${cust?.name || ''}`
-            .toLowerCase()
-            .includes(query.toLowerCase())
+    return orders
+      .filter(o => {
+        const cust = customers.find(c => c.id === o.customerId)
+        const matchesQuery = !query.trim()
+          ? true
+          : `${o.orderNumber} ${o.reference || ''} ${cust?.name || ''}`
+              .toLowerCase()
+              .includes(query.toLowerCase())
 
-      const matchesStatus = statusFilter === 'all' || o.status.toLowerCase() === statusFilter.toLowerCase()
+        const matchesStatus = statusFilter === 'all' || o.status.toLowerCase() === statusFilter.toLowerCase()
 
-      return matchesQuery && matchesStatus
-    })
+        return matchesQuery && matchesStatus
+      })
+      .sort((a, b) => {
+        const dateA = a.orderDate || ''
+        const dateB = b.orderDate || ''
+        if (dateA !== dateB) {
+          return dateB.localeCompare(dateA)
+        }
+        const numA = a.orderNumber || a.reference || ''
+        const numB = b.orderNumber || b.reference || ''
+        return numB.localeCompare(numA, undefined, { numeric: true, sensitivity: 'base' })
+      })
   }, [orders, customers, query, statusFilter])
 
   const metrics = useMemo(() => ({

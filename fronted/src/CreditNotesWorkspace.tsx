@@ -110,17 +110,28 @@ export function CreditNotesWorkspace({
   const formatDate = (dateStr: string) => (dateStr ? new Date(dateStr).toLocaleDateString() : '—')
 
   const filtered = useMemo(() => {
-    return creditNotes.filter((cn: any) => {
-      const cust = customers.find(c => c.id === cn.customerId)
-      const custName = cust?.name || cn.customerId || ''
-      const matchesQuery = !query.trim()
-        ? true
-        : `${custName} ${cn.notes || ''} ${cn.status || ''}`.toLowerCase().includes(query.toLowerCase())
+    return creditNotes
+      .filter((cn: any) => {
+        const cust = customers.find(c => c.id === cn.customerId)
+        const custName = cust?.name || cn.customerId || ''
+        const matchesQuery = !query.trim()
+          ? true
+          : `${cn.creditNoteNumber || ''} ${custName} ${cn.notes || ''} ${cn.status || ''}`.toLowerCase().includes(query.toLowerCase())
 
-      const matchesStatus = statusFilter === 'all' || (cn.status || '').toLowerCase() === statusFilter.toLowerCase()
+        const matchesStatus = statusFilter === 'all' || (cn.status || '').toLowerCase() === statusFilter.toLowerCase()
 
-      return matchesQuery && matchesStatus
-    })
+        return matchesQuery && matchesStatus
+      })
+      .sort((a: any, b: any) => {
+        const dateA = a.creditNoteDate || a.createdAt || ''
+        const dateB = b.creditNoteDate || b.createdAt || ''
+        if (dateA !== dateB) {
+          return dateB.localeCompare(dateA)
+        }
+        const numA = a.creditNoteNumber || a.reference || ''
+        const numB = b.creditNoteNumber || b.reference || ''
+        return numB.localeCompare(numA, undefined, { numeric: true, sensitivity: 'base' })
+      })
   }, [creditNotes, customers, query, statusFilter])
 
   const exportHeaders = ['Date', 'Customer', 'Reason', 'Amount', 'Status']

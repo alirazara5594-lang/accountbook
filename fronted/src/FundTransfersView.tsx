@@ -71,14 +71,27 @@ export const FundTransfersView: React.FC<{ activeEntityId: string; entities: Ent
   }, [isModalOpen, accounts]);
 
   const filtered = useMemo(() => {
-    if (!query.trim()) return transfers;
-    const q = query.toLowerCase();
-    return transfers.filter(t =>
-      (t.transferNumber || '').toLowerCase().includes(q) ||
-      (t.fromAccountName || '').toLowerCase().includes(q) ||
-      (t.toAccountName || '').toLowerCase().includes(q) ||
-      (t.reference || '').toLowerCase().includes(q)
-    );
+    return transfers
+      .filter(t => {
+        if (!query.trim()) return true;
+        const q = query.toLowerCase();
+        return (
+          (t.transferNumber || '').toLowerCase().includes(q) ||
+          (t.fromAccountName || '').toLowerCase().includes(q) ||
+          (t.toAccountName || '').toLowerCase().includes(q) ||
+          (t.reference || '').toLowerCase().includes(q)
+        );
+      })
+      .sort((a, b) => {
+        const dateA = a.date || '';
+        const dateB = b.date || '';
+        if (dateA !== dateB) {
+          return dateB.localeCompare(dateA);
+        }
+        const numA = a.transferNumber || a.reference || '';
+        const numB = b.transferNumber || b.reference || '';
+        return numB.localeCompare(numA, undefined, { numeric: true, sensitivity: 'base' });
+      });
   }, [transfers, query]);
 
   const exportHeaders = ['Date', 'Transfer #', 'Source Account', 'Target Account', 'Reference', 'Status', 'Amount'];

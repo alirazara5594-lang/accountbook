@@ -168,6 +168,10 @@ export default function VendorManagement({
       const matchesStatus = statusFilter === 'all' ? true : v.status === statusFilter
 
       return matchesSearch && matchesCompany && matchesStatus
+    }).sort((a, b) => {
+      const numA = a.vendorNumber || a.name || ''
+      const numB = b.vendorNumber || b.name || ''
+      return numA.localeCompare(numB, undefined, { numeric: true, sensitivity: 'base' });
     })
   }, [vendors, search, companyFilter, statusFilter])
 

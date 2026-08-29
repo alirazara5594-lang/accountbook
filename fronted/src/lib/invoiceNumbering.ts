@@ -16,42 +16,25 @@ export function getGlobalNextInvoiceNumber(): string {
     }
   };
 
-  // 1. Scan store invoices
+  // 1. Scan store invoices (Authoritative live state)
   try {
     const storeInvoices = useSalesStore.getState().invoices || [];
+    if (storeInvoices.length === 0) {
+      // If store is empty (e.g. database wiped / swapped), clear stale local caches
+      try {
+        localStorage.removeItem('ams_last_used_inv_sequence');
+        localStorage.removeItem('ams_local_invoices_list');
+        localStorage.removeItem('ams_invoices_lines_cache');
+      } catch {}
+      return 'INV-00001';
+    }
+
     for (const inv of storeInvoices) {
       inspectString(inv.invoiceNumber);
       inspectString((inv as any).InvoiceNumber);
       inspectString(inv.reference);
       inspectString((inv as any).Reference);
       inspectString((inv as any).code);
-    }
-  } catch {}
-
-  // 2. Scan localStorage local invoices cache
-  try {
-    const localInvoices = JSON.parse(localStorage.getItem('ams_local_invoices_list') || '[]');
-    for (const inv of localInvoices) {
-      inspectString(inv.invoiceNumber);
-      inspectString((inv as any).InvoiceNumber);
-      inspectString(inv.reference);
-      inspectString((inv as any).Reference);
-    }
-  } catch {}
-
-  // 3. Scan cached line-item keys (e.g. "INV-00001")
-  try {
-    const cachedLines = JSON.parse(localStorage.getItem('ams_invoices_lines_cache') || '{}');
-    for (const key of Object.keys(cachedLines)) {
-      inspectString(key);
-    }
-  } catch {}
-
-  // 4. Scan persistent counter
-  try {
-    const tracked = parseInt(localStorage.getItem('ams_last_used_inv_sequence') || '0', 10);
-    if (!isNaN(tracked) && tracked < 100000 && tracked > maxNum) {
-      maxNum = tracked;
     }
   } catch {}
 

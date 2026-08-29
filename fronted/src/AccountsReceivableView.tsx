@@ -58,17 +58,35 @@ export const AccountsReceivableView: React.FC<AccountsReceivableViewProps> = ({ 
   useEffect(() => { load(); }, [activeEntityId]);
 
   const filtered = useMemo(() => {
-    return invoices.filter(i => {
-      if (statusFilter !== 'All' && i.status !== statusFilter) return false;
-      if (query.trim()) {
-        const q = query.toLowerCase();
-        if (!i.customerName.toLowerCase().includes(q) && !i.invoiceNumber.toLowerCase().includes(q)) return false;
-      }
-      return true;
-    });
+    return invoices
+      .filter(i => {
+        if (i.status === 'Draft' || i.status === 'Void') return false;
+        if (statusFilter !== 'All') {
+          if (statusFilter === 'Unpaid' && i.status !== 'Sent' && i.status !== 'Overdue') return false;
+          else if (statusFilter === 'PartiallyPaid' && i.status !== 'PartiallyPaid') return false;
+          else if (statusFilter === 'Paid' && i.status !== 'Paid') return false;
+          else if (statusFilter !== 'Unpaid' && statusFilter !== 'PartiallyPaid' && statusFilter !== 'Paid' && i.status !== statusFilter) return false;
+        }
+        if (query.trim()) {
+          const q = query.toLowerCase();
+          if (!i.customerName.toLowerCase().includes(q) && !i.invoiceNumber.toLowerCase().includes(q)) return false;
+        }
+        return true;
+      })
+      .sort((a, b) => {
+        const dateA = a.date || a.dueDate || '';
+        const dateB = b.date || b.dueDate || '';
+        if (dateA !== dateB) {
+          return dateB.localeCompare(dateA);
+        }
+        const numA = a.invoiceNumber || '';
+        const numB = b.invoiceNumber || '';
+        return numB.localeCompare(numA, undefined, { numeric: true, sensitivity: 'base' });
+      });
   }, [invoices, query, statusFilter]);
 
-  const totalDue = invoices.reduce((s, i) => s + (i.amountDue || 0), 0);
+  const activeInvoices = useMemo(() => invoices.filter(i => i.status !== 'Draft' && i.status !== 'Void'), [invoices]);
+  const totalDue = useMemo(() => activeInvoices.reduce((s, i) => s + (i.amountDue || 0), 0), [activeInvoices]);
 
   const exportHeaders = ['Invoice #', 'Customer', 'Date', 'Due Date', 'Total', 'Paid', 'Due', 'Status'];
   const exportRows = filtered.map(i => [i.invoiceNumber, i.customerName, i.date, i.dueDate, i.totalAmount, i.amountPaid, i.amountDue, i.status]);

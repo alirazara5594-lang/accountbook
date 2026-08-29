@@ -326,6 +326,7 @@ public class ReportsController(AccountingStore store) : ControllerBase
         var invoices = store.SalesInvoices
             .Where(i => companyId == null || i.CompanyId == companyId)
             .Where(i => customerId == null || i.CustomerId == customerId.Value)
+            .Where(i => i.Status != SalesInvoiceStatus.Draft && i.Status != SalesInvoiceStatus.Void)
             .Select(i => new
             {
                 i.Id,
@@ -354,7 +355,7 @@ public class ReportsController(AccountingStore store) : ControllerBase
         var bills = store.VendorBills
             .Where(b => companyId == null || b.CompanyId == companyId)
             .Where(b => vendorId == null || b.VendorId == vendorId.Value)
-            .Where(b => b.Status == VendorBillStatus.Open || b.Status == VendorBillStatus.PartiallyPaid)
+            .Where(b => b.Status != VendorBillStatus.Draft && b.Status != VendorBillStatus.Void)
             .Select(b => new
             {
                 b.Id,
@@ -388,14 +389,17 @@ public class ReportsController(AccountingStore store) : ControllerBase
 
         var bills = store.VendorBills
             .Where(b => companyId == null || b.CompanyId == companyId)
+            .Where(b => b.Status != VendorBillStatus.Void)
             .Where(b => InRange(b.Date))
             .ToList();
         var purchaseOrders = store.PurchaseOrders
             .Where(p => companyId == null || p.CompanyId == companyId)
+            .Where(p => p.Status != PurchaseOrderStatus.Canceled)
             .Where(p => InRange(p.Date))
             .ToList();
         var payments = store.VendorPayments
             .Where(p => companyId == null || p.CompanyId == companyId)
+            .Where(p => p.Status != VendorPaymentStatus.Void)
             .Where(p => InRange(p.PaymentDate))
             .ToList();
 

@@ -109,15 +109,26 @@ export const ExpenseClaimsView: React.FC<{ activeEntityId: string; entities?: En
   }
 
   const filtered = useMemo(() => {
-    return claims.filter(c => {
-      const matchesQuery = !query.trim()
-        ? true
-        : `${c.claimNumber} ${c.employeeName} ${c.department} ${c.notes || ''}`.toLowerCase().includes(query.toLowerCase())
+    return claims
+      .filter(c => {
+        const matchesQuery = !query.trim()
+          ? true
+          : `${c.claimNumber} ${c.employeeName} ${c.department} ${c.notes || ''}`.toLowerCase().includes(query.toLowerCase())
 
-      const matchesStatus = statusFilter === 'all' || c.status.toLowerCase() === statusFilter.toLowerCase()
+        const matchesStatus = statusFilter === 'all' || c.status.toLowerCase() === statusFilter.toLowerCase()
 
-      return matchesQuery && matchesStatus
-    })
+        return matchesQuery && matchesStatus
+      })
+      .sort((a, b) => {
+        const dateA = a.date || a.createdAt || ''
+        const dateB = b.date || b.createdAt || ''
+        if (dateA !== dateB) {
+          return dateB.localeCompare(dateA)
+        }
+        const numA = a.claimNumber || ''
+        const numB = b.claimNumber || ''
+        return numB.localeCompare(numA, undefined, { numeric: true, sensitivity: 'base' })
+      })
   }, [claims, query, statusFilter])
 
   const exportHeaders = ['Claim #', 'Date', 'Employee', 'Department', 'Amount', 'Currency', 'Status', 'Notes']

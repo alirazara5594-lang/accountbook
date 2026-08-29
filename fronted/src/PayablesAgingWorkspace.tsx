@@ -221,6 +221,9 @@ export function PayablesAgingWorkspace({ activeEntityId }: PayablesAgingProps) {
     const vendorBills = bills.filter(
       (b: any) =>
         b.vendorId === selectedVendorId &&
+        b.status !== 0 &&
+        b.status !== '0' &&
+        String(b.status).toLowerCase() !== 'draft' &&
         (b.amountDue == null || b.amountDue > 0.01) &&
         String(b.status).toLowerCase() !== 'void' &&
         String(b.status).toLowerCase() !== 'cancelled'

@@ -1075,6 +1075,12 @@ public IReadOnlyList<EmployeeCompensation> EmployeeCompensations => _employeeCom
                 _entries.Add(journal);
                 selectedClaim.JournalEntryId = journal.Id;
             }
+            else if (status != ExpenseClaimStatus.Paid && selectedClaim.Status == ExpenseClaimStatus.Paid && selectedClaim.JournalEntryId != null)
+            {
+                // Reversal of reimbursement journal
+                ExecuteJournalReversal(selectedClaim.ClaimNumber, "REV", $"Reversal of cancelled expense claim reimbursement {selectedClaim.ClaimNumber}", selectedClaim.CompanyId);
+                selectedClaim.JournalEntryId = null;
+            }
 
             claim.Status = status;
             claim.UpdatedAt = DateTime.UtcNow;
@@ -3404,6 +3410,37 @@ public IReadOnlyList<EmployeeCompensation> EmployeeCompensations => _employeeCom
         }
     }
 
+    public void ExecuteJournalReversal(string documentReference, string reversalPrefix, string reversalDescription, Guid? companyId, DateOnly? reversalDate = null)
+    {
+        var postedEntries = _entries.Where(e => e.Reference == documentReference && e.Status == JournalStatus.Posted).ToList();
+        foreach (var origEntry in postedEntries)
+        {
+            var revLines = origEntry.Lines.Select(l => new JournalLine(
+                l.AccountId,
+                l.Credit, // Original Credit becomes Debit
+                l.Debit,  // Original Debit becomes Credit
+                $"Reversal: {l.Memo}",
+                l.Comment,
+                l.CurrencyCode,
+                l.ExchangeRate,
+                l.CompanyId
+            )).ToList();
+
+            var revJournal = new JournalEntry
+            {
+                Date = reversalDate ?? DateOnly.FromDateTime(DateTime.UtcNow),
+                Reference = $"{reversalPrefix}-{documentReference}",
+                Description = $"{reversalDescription} ({documentReference})",
+                TransactionType = origEntry.TransactionType,
+                CompanyId = companyId ?? origEntry.CompanyId,
+                Lines = revLines,
+                Status = JournalStatus.Posted
+            };
+            _entries.Add(revJournal);
+            origEntry.Status = JournalStatus.Reversed;
+        }
+    }
+
     public bool VoidCreditNote(Guid creditNoteId, out string? error)
     {
         error = null;
@@ -3411,13 +3448,12 @@ public IReadOnlyList<EmployeeCompensation> EmployeeCompensations => _employeeCom
         {
             var creditNote = _creditNotes.FirstOrDefault(cn => cn.Id == creditNoteId);
             if (creditNote == null) { error = "Credit Note not found."; return false; }
-            if (creditNote.Status != CreditNoteStatus.Posted) { error = "Only posted credit notes can be voided."; return false; }
+            if (creditNote.Status == CreditNoteStatus.Void) { error = "Credit Note is already voided."; return false; }
 
-            // 1. Revert ledger entry
-            var entry = _entries.FirstOrDefault(e => e.Reference == creditNote.CreditNoteNumber && e.Status == JournalStatus.Posted);
-            if (entry != null)
+            // 1. Execute GAAP Journal Reversal
+            if (creditNote.Status == CreditNoteStatus.Posted)
             {
-                entry.Status = JournalStatus.Reversed;
+                ExecuteJournalReversal(creditNote.CreditNoteNumber, "REV", $"Reversal of voided Credit Note {creditNote.CreditNoteNumber}", creditNote.CompanyId);
             }
 
             // 2. Restore invoice balance if originally linked
@@ -3426,10 +3462,9 @@ public IReadOnlyList<EmployeeCompensation> EmployeeCompensations => _employeeCom
                 var invoice = _salesInvoices.FirstOrDefault(i => i.Id == creditNote.OriginalInvoiceId.Value);
                 if (invoice != null)
                 {
-                    invoice.AmountPaid -= creditNote.TotalAmount;
+                    invoice.AmountPaid = Math.Max(0, invoice.AmountPaid - creditNote.TotalAmount);
                     if (invoice.AmountPaid <= 0)
                     {
-                        invoice.AmountPaid = 0;
                         invoice.Status = SalesInvoiceStatus.Draft;
                     }
                     else
@@ -3441,6 +3476,151 @@ public IReadOnlyList<EmployeeCompensation> EmployeeCompensations => _employeeCom
 
             creditNote.Status = CreditNoteStatus.Void;
             creditNote.UpdatedAt = DateTime.UtcNow;
+            Persist();
+            return true;
+        }
+    }
+
+    public bool VoidCustomerPayment(Guid paymentId, out string? error)
+    {
+        error = null;
+        lock (_lock)
+        {
+            var payment = _customerPayments.FirstOrDefault(p => p.Id == paymentId);
+            if (payment == null) { error = "Customer payment not found."; return false; }
+            if (payment.Status == CustomerPaymentStatus.Void) { error = "Payment is already voided."; return false; }
+
+            // 1. Execute GAAP Journal Reversal
+            if (payment.Status == CustomerPaymentStatus.Posted)
+            {
+                ExecuteJournalReversal(payment.ReceiptNumber, "REV", $"Reversal of voided Customer Receipt {payment.ReceiptNumber}", payment.CompanyId);
+            }
+
+            // 2. Restore linked invoice if any
+            if (payment.InvoiceId.HasValue)
+            {
+                var invoice = _salesInvoices.FirstOrDefault(i => i.Id == payment.InvoiceId.Value);
+                if (invoice != null)
+                {
+                    invoice.AmountPaid = Math.Max(0, invoice.AmountPaid - payment.Amount);
+                    if (invoice.AmountPaid <= 0)
+                    {
+                        invoice.Status = SalesInvoiceStatus.Sent;
+                    }
+                    else
+                    {
+                        invoice.Status = SalesInvoiceStatus.PartiallyPaid;
+                    }
+                }
+            }
+
+            payment.Status = CustomerPaymentStatus.Void;
+            payment.UpdatedAt = DateTime.UtcNow;
+            Persist();
+            return true;
+        }
+    }
+
+    public bool VoidVendorPayment(Guid paymentId, out string? error)
+    {
+        error = null;
+        lock (_lock)
+        {
+            var payment = _vendorPayments.FirstOrDefault(p => p.Id == paymentId);
+            if (payment == null) { error = "Vendor payment not found."; return false; }
+            if (payment.Status == VendorPaymentStatus.Void) { error = "Payment is already voided."; return false; }
+
+            // 1. Execute GAAP Journal Reversal
+            if (payment.Status == VendorPaymentStatus.Posted)
+            {
+                ExecuteJournalReversal(payment.PaymentNumber, "REV", $"Reversal of voided Vendor Payment {payment.PaymentNumber}", payment.CompanyId);
+            }
+
+            // 2. Restore linked vendor bill if any
+            if (payment.BillId.HasValue)
+            {
+                var bill = _vendorBills.FirstOrDefault(b => b.Id == payment.BillId.Value);
+                if (bill != null)
+                {
+                    bill.AmountPaid = Math.Max(0, bill.AmountPaid - payment.Amount);
+                    if (bill.AmountPaid <= 0)
+                    {
+                        bill.Status = VendorBillStatus.Open;
+                    }
+                    else
+                    {
+                        bill.Status = VendorBillStatus.PartiallyPaid;
+                    }
+                }
+            }
+
+            payment.Status = VendorPaymentStatus.Void;
+            payment.UpdatedAt = DateTime.UtcNow;
+            Persist();
+            return true;
+        }
+    }
+
+    public bool VoidVendorBill(Guid billId, out string? error)
+    {
+        error = null;
+        lock (_lock)
+        {
+            var bill = _vendorBills.FirstOrDefault(b => b.Id == billId);
+            if (bill == null) { error = "Vendor bill not found."; return false; }
+            if (bill.Status == VendorBillStatus.Void) { error = "Bill is already voided."; return false; }
+            if (bill.AmountPaid > 0) { error = "Cannot void a bill with existing payments. Void the payments first."; return false; }
+
+            // 1. Execute GAAP Journal Reversal if posted
+            if (bill.Status != VendorBillStatus.Draft)
+            {
+                ExecuteJournalReversal(bill.BillNumber, "REV", $"Reversal of voided Vendor Bill {bill.BillNumber}", bill.CompanyId);
+            }
+
+            bill.Status = VendorBillStatus.Void;
+            bill.UpdatedAt = DateTime.UtcNow;
+            Persist();
+            return true;
+        }
+    }
+
+    public bool VoidFundTransfer(Guid transferId, out string? error)
+    {
+        error = null;
+        lock (_lock)
+        {
+            var transfer = _fundTransfers.FirstOrDefault(t => t.Id == transferId);
+            if (transfer == null) { error = "Fund transfer not found."; return false; }
+            if (transfer.Status == FundTransferStatus.Void) { error = "Transfer is already voided."; return false; }
+
+            // 1. Execute GAAP Journal Reversal if posted
+            if (transfer.Status == FundTransferStatus.Posted)
+            {
+                ExecuteJournalReversal(transfer.TransferNumber, "REV", $"Reversal of voided Fund Transfer {transfer.TransferNumber}", transfer.CompanyId);
+            }
+
+            transfer.Status = FundTransferStatus.Void;
+            Persist();
+            return true;
+        }
+    }
+
+    public bool VoidVoucher(Guid voucherId, out string? error)
+    {
+        error = null;
+        lock (_lock)
+        {
+            var voucher = _vouchers.FirstOrDefault(v => v.Id == voucherId);
+            if (voucher == null) { error = "Voucher not found."; return false; }
+            if (voucher.Status == "Void" || voucher.Status == "Cancelled") { error = "Voucher is already voided."; return false; }
+
+            // 1. Execute GAAP Journal Reversal if posted
+            if (voucher.Status == "Posted")
+            {
+                ExecuteJournalReversal(voucher.VoucherNumber, "REV", $"Reversal of voided Voucher {voucher.VoucherNumber}", voucher.CompanyId);
+            }
+
+            voucher.Status = "Void";
             Persist();
             return true;
         }

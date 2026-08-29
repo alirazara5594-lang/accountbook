@@ -15,6 +15,7 @@ public class SalesInvoicesController : ControllerBase
         var invoices = _store.SalesInvoices
             .Where(i => companyId == null || i.CompanyId == null || i.CompanyId == companyId)
             .OrderByDescending(i => i.InvoiceDate)
+            .ThenByDescending(i => i.InvoiceNumber)
             .Select(i => new {
                 i.Id, i.InvoiceNumber, i.CustomerId,
                 CustomerName = _store.Customers.FirstOrDefault(c => c.Id == i.CustomerId)?.Name ?? "Unknown",

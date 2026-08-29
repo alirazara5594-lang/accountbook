@@ -58,17 +58,30 @@ export const AccountsPayableView: React.FC<AccountsPayableViewProps> = ({ active
   useEffect(() => { load(); }, [activeEntityId]);
 
   const filtered = useMemo(() => {
-    return bills.filter(b => {
-      if (statusFilter !== 'All' && b.status !== statusFilter) return false;
-      if (query.trim()) {
-        const q = query.toLowerCase();
-        if (!b.vendorName.toLowerCase().includes(q) && !b.billNumber.toLowerCase().includes(q)) return false;
-      }
-      return true;
-    });
+    return bills
+      .filter(b => {
+        if (b.status === 'Draft' || b.status === 'Void' || b.status === 'Cancelled') return false;
+        if (statusFilter !== 'All' && b.status !== statusFilter) return false;
+        if (query.trim()) {
+          const q = query.toLowerCase();
+          if (!b.vendorName.toLowerCase().includes(q) && !b.billNumber.toLowerCase().includes(q)) return false;
+        }
+        return true;
+      })
+      .sort((a, b) => {
+        const dateA = a.date || a.dueDate || '';
+        const dateB = b.date || b.dueDate || '';
+        if (dateA !== dateB) {
+          return dateB.localeCompare(dateA);
+        }
+        const numA = a.billNumber || '';
+        const numB = b.billNumber || '';
+        return numB.localeCompare(numA, undefined, { numeric: true, sensitivity: 'base' });
+      });
   }, [bills, query, statusFilter]);
 
-  const totalDue = bills.reduce((s, b) => s + (b.amountDue || 0), 0);
+  const activeBills = useMemo(() => bills.filter(b => b.status !== 'Draft' && b.status !== 'Void' && b.status !== 'Cancelled'), [bills]);
+  const totalDue = useMemo(() => activeBills.reduce((s, b) => s + (b.amountDue || 0), 0), [activeBills]);
 
   const exportHeaders = ['Bill #', 'Vendor', 'Date', 'Due Date', 'Total', 'Paid', 'Due', 'Status'];
   const exportRows = filtered.map(b => [b.billNumber, b.vendorName, b.date, b.dueDate, b.totalAmount, b.amountPaid, b.amountDue, b.status]);

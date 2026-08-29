@@ -184,20 +184,31 @@ export function CustomerPaymentsWorkspace() {
   };
 
   const filteredPayments = useMemo(() => {
-    return payments.filter((p: any) => {
-      if (methodFilter !== 'all' && p.paymentMethod !== methodFilter) return false;
-      if (statusFilter !== 'all' && String(p.status).toLowerCase() !== statusFilter.toLowerCase()) return false;
+    return payments
+      .filter((p: any) => {
+        if (methodFilter !== 'all' && p.paymentMethod !== methodFilter) return false;
+        if (statusFilter !== 'all' && String(p.status).toLowerCase() !== statusFilter.toLowerCase()) return false;
 
-      if (query.trim()) {
-        const q = query.toLowerCase();
-        const matchesRef = (p.receiptNumber || '').toLowerCase().includes(q) || (p.reference || '').toLowerCase().includes(q);
-        const matchesCust = (p.customerName || p.customerId || '').toLowerCase().includes(q);
-        const matchesInv = (p.invoiceNumber || '').toLowerCase().includes(q);
-        const matchesBank = (p.depositToAccountName || '').toLowerCase().includes(q);
-        if (!matchesRef && !matchesCust && !matchesInv && !matchesBank) return false;
-      }
-      return true;
-    });
+        if (query.trim()) {
+          const q = query.toLowerCase();
+          const matchesRef = (p.receiptNumber || '').toLowerCase().includes(q) || (p.reference || '').toLowerCase().includes(q);
+          const matchesCust = (p.customerName || p.customerId || '').toLowerCase().includes(q);
+          const matchesInv = (p.invoiceNumber || '').toLowerCase().includes(q);
+          const matchesBank = (p.depositToAccountName || '').toLowerCase().includes(q);
+          if (!matchesRef && !matchesCust && !matchesInv && !matchesBank) return false;
+        }
+        return true;
+      })
+      .sort((a: any, b: any) => {
+        const dateA = a.date || a.paymentDate || a.createdAt || '';
+        const dateB = b.date || b.paymentDate || b.createdAt || '';
+        if (dateA !== dateB) {
+          return dateB.localeCompare(dateA);
+        }
+        const numA = a.receiptNumber || a.reference || a.paymentNumber || '';
+        const numB = b.receiptNumber || b.reference || b.paymentNumber || '';
+        return numB.localeCompare(numA, undefined, { numeric: true, sensitivity: 'base' });
+      });
   }, [payments, query, methodFilter, statusFilter]);
 
   const totalReceived = filteredPayments.reduce((s: number, p: any) => s + (p.amount || 0), 0);

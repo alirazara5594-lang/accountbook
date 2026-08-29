@@ -241,6 +241,7 @@ export const SalesWorkspace: React.FC<{ activeEntityId: string; entities?: any[]
   }
 
   const openPostModal = (inv: any) => {
+    if (!inv) return
     const mappingsStr = localStorage.getItem('system_account_mappings')
     let mappings: any = {}
     if (mappingsStr) {
@@ -248,9 +249,10 @@ export const SalesWorkspace: React.FC<{ activeEntityId: string; entities?: any[]
         mappings = JSON.parse(mappingsStr)
       } catch {}
     }
-    const arAccount = accounts.find((a: any) => a.id === mappings.arAccountId || a.code === '12000' || a.name?.toLowerCase().includes('receivable')) || accounts.find((a: any) => a.type === 'Asset')
-    const revAccount = accounts.find((a: any) => a.id === mappings.revenueAccountId || a.code === '41100' || a.name?.toLowerCase().includes('sales')) || accounts.find((a: any) => a.type === 'Revenue')
-    const taxAccount = accounts.find((a: any) => a.id === mappings.taxAccountId || a.code === '22000' || a.name?.toLowerCase().includes('tax')) || accounts.find((a: any) => a.type === 'Liability')
+    const accs = Array.isArray(accounts) ? accounts : []
+    const arAccount = accs.find((a: any) => a.id === mappings.arAccountId || a.code === '12000' || a.name?.toLowerCase().includes('receivable')) || accs.find((a: any) => a.type === 'Asset' || a.type === 0 || String(a.type).toLowerCase() === 'asset' || a.code?.startsWith('1'))
+    const revAccount = accs.find((a: any) => a.id === mappings.revenueAccountId || a.code === '41100' || a.name?.toLowerCase().includes('sales') || a.name?.toLowerCase().includes('revenue')) || accs.find((a: any) => a.type === 'Revenue' || a.type === 3 || String(a.type).toLowerCase() === 'revenue' || a.code?.startsWith('4'))
+    const taxAccount = accs.find((a: any) => a.id === mappings.taxAccountId || a.code === '22000' || a.name?.toLowerCase().includes('tax')) || accs.find((a: any) => a.type === 'Liability' || a.type === 1 || String(a.type).toLowerCase() === 'liability' || a.code?.startsWith('2'))
 
     setPostModal(inv)
     setPostForm({
@@ -716,21 +718,32 @@ export const SalesWorkspace: React.FC<{ activeEntityId: string; entities?: any[]
   }
 
   const filteredInvoices = useMemo(() => {
-    return invoices.filter((inv: any) => {
-      const statusText = typeof inv.status === 'number'
-        ? ['Draft', 'Sent', 'Paid', 'Void', 'Partly Paid', 'Overdue'][inv.status] || ''
-        : String(inv.status || '')
+    return invoices
+      .filter((inv: any) => {
+        const statusText = typeof inv.status === 'number'
+          ? ['Draft', 'Sent', 'Paid', 'Void', 'Partly Paid', 'Overdue'][inv.status] || ''
+          : String(inv.status || '')
 
-      const matchesQuery = !query.trim()
-        ? true
-        : `${inv.invoiceNumber || ''} ${inv.customerName || ''} ${statusText}`
-            .toLowerCase()
-            .includes(query.toLowerCase())
+        const matchesQuery = !query.trim()
+          ? true
+          : `${inv.invoiceNumber || ''} ${inv.customerName || ''} ${statusText}`
+              .toLowerCase()
+              .includes(query.toLowerCase())
 
-      const matchesStatus = statusFilter === 'all' || statusText.toLowerCase() === statusFilter.toLowerCase()
+        const matchesStatus = statusFilter === 'all' || statusText.toLowerCase() === statusFilter.toLowerCase()
 
-      return matchesQuery && matchesStatus
-    })
+        return matchesQuery && matchesStatus
+      })
+      .sort((a: any, b: any) => {
+        const dateA = a.invoiceDate || a.date || ''
+        const dateB = b.invoiceDate || b.date || ''
+        if (dateA !== dateB) {
+          return dateB.localeCompare(dateA)
+        }
+        const numA = a.invoiceNumber || a.reference || ''
+        const numB = b.invoiceNumber || b.reference || ''
+        return numB.localeCompare(numA, undefined, { numeric: true, sensitivity: 'base' })
+      })
   }, [invoices, query, statusFilter])
 
   const exportHeaders = ['Invoice #', 'Customer', 'Date', 'Due Date', 'Discount', 'Tax', 'Total', 'Due', 'Status']
@@ -1481,8 +1494,8 @@ export const SalesWorkspace: React.FC<{ activeEntityId: string; entities?: any[]
           <div className="w-full max-w-lg bg-[var(--color-surface)] border border-[var(--color-border)] rounded-2xl shadow-2xl p-6 space-y-4">
             <h3 className="text-base font-bold text-[var(--color-text-strong)] tracking-tight">Post Invoice to Ledger</h3>
             <div className="bg-sky-500/10 border border-sky-500/20 rounded-xl p-3.5 text-xs">
-              <p className="font-semibold text-[var(--color-text-strong)]">{formatInvoiceNumber(postModal.invoiceNumber || postModal.reference)} — {postModal.customerName}</p>
-              <p className="text-[var(--color-text-muted)] mt-1">Total Amount: <strong className="text-sky-600 font-mono">{money(postModal.totalAmount)}</strong></p>
+              <p className="font-semibold text-[var(--color-text-strong)]">{formatInvoiceNumber(postModal?.invoiceNumber || postModal?.reference)} — {postModal?.customerName || 'Customer'}</p>
+              <p className="text-[var(--color-text-muted)] mt-1">Total Amount: <strong className="text-sky-600 font-mono">{money(postModal?.totalAmount || 0)}</strong></p>
               <p className="text-[11px] text-[var(--color-text-muted)] mt-1.5">
                 Posting generates GAAP double entries: <strong>Dr Accounts Receivable</strong> and <strong>Cr Revenue / Sales Tax</strong>.
               </p>
@@ -1497,7 +1510,7 @@ export const SalesWorkspace: React.FC<{ activeEntityId: string; entities?: any[]
                 className="w-full h-10 px-3 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] text-xs text-[var(--color-text-strong)] outline-none"
               >
                 <option value="">Select AR Account...</option>
-                {accounts.filter((a: any) => a.type === 'Asset').map((a: any) => (
+                {(Array.isArray(accounts) ? accounts : []).filter((a: any) => a.type === 'Asset' || a.type === 0 || String(a.type).toLowerCase() === 'asset' || a.code?.startsWith('1')).map((a: any) => (
                   <option key={a.id} value={a.id}>{a.code} — {a.name}</option>
                 ))}
               </select>
@@ -1512,7 +1525,7 @@ export const SalesWorkspace: React.FC<{ activeEntityId: string; entities?: any[]
                 className="w-full h-10 px-3 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] text-xs text-[var(--color-text-strong)] outline-none"
               >
                 <option value="">Select Revenue Account...</option>
-                {accounts.filter((a: any) => a.type === 'Revenue').map((a: any) => (
+                {(Array.isArray(accounts) ? accounts : []).filter((a: any) => a.type === 'Revenue' || a.type === 3 || String(a.type).toLowerCase() === 'revenue' || a.code?.startsWith('4')).map((a: any) => (
                   <option key={a.id} value={a.id}>{a.code} — {a.name}</option>
                 ))}
               </select>

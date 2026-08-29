@@ -238,7 +238,25 @@ export const EstimatesAndQuotes: React.FC<{ activeEntityId: string; entities?: a
     window.dispatchEvent(new CustomEvent('ams_navigate', { detail: 'Sales & Customers.Sales Invoices' }));
   };
 
-  const filteredEstimates = useMemo(() => estimates.filter((est: any) => { const sn = getNumericStatus(est.status); const mq = !query.trim() ? true : `${est.estimateNumber || ''} ${est.customerName || ''} ${est.reference || ''}`.toLowerCase().includes(query.toLowerCase()); const ms = statusFilter === 'all' || String(sn) === statusFilter; return mq && ms }), [estimates, query, statusFilter])
+  const filteredEstimates = useMemo(() => {
+    return estimates
+      .filter((est: any) => {
+        const sn = getNumericStatus(est.status);
+        const mq = !query.trim() ? true : `${est.estimateNumber || ''} ${est.customerName || ''} ${est.reference || ''}`.toLowerCase().includes(query.toLowerCase());
+        const ms = statusFilter === 'all' || String(sn) === statusFilter;
+        return mq && ms;
+      })
+      .sort((a: any, b: any) => {
+        const dateA = a.estimateDate || '';
+        const dateB = b.estimateDate || '';
+        if (dateA !== dateB) {
+          return dateB.localeCompare(dateA);
+        }
+        const numA = a.estimateNumber || a.reference || '';
+        const numB = b.estimateNumber || b.reference || '';
+        return numB.localeCompare(numA, undefined, { numeric: true, sensitivity: 'base' });
+      });
+  }, [estimates, query, statusFilter]);
 
   const getFormattedEstimateNumber = (rawNum: string, index: number) => {
     if (!rawNum || rawNum.startsWith('EST-202') || rawNum.length > 10 || rawNum.includes('/')) return `EST-${(index + 1).toString().padStart(5, '0')}`

@@ -39,6 +39,60 @@ export const ProcurementWorkspace: React.FC<{ activeEntityId: string; entities?:
   const transfers = useProcurementStore((s) => s.transfers);
   const loading = useProcurementStore((s) => s.loading);
 
+  const sortedRequests = React.useMemo(() => [...requests].sort((a: any, b: any) => {
+    const dateA = a.createdAt || a.requestDate || '';
+    const dateB = b.createdAt || b.requestDate || '';
+    if (dateA !== dateB) return dateB.localeCompare(dateA);
+    const numA = a.requestNumber || '';
+    const numB = b.requestNumber || '';
+    return numB.localeCompare(numA, undefined, { numeric: true, sensitivity: 'base' });
+  }), [requests]);
+
+  const sortedRfqs = React.useMemo(() => [...rfqs].sort((a: any, b: any) => {
+    const dateA = a.createdAt || a.rfqDate || '';
+    const dateB = b.createdAt || b.rfqDate || '';
+    if (dateA !== dateB) return dateB.localeCompare(dateA);
+    const numA = a.rfqNumber || '';
+    const numB = b.rfqNumber || '';
+    return numB.localeCompare(numA, undefined, { numeric: true, sensitivity: 'base' });
+  }), [rfqs]);
+
+  const sortedOrders = React.useMemo(() => [...orders].sort((a: any, b: any) => {
+    const dateA = a.orderDate || a.createdAt || '';
+    const dateB = b.orderDate || b.createdAt || '';
+    if (dateA !== dateB) return dateB.localeCompare(dateA);
+    const numA = a.orderNumber || a.poNumber || '';
+    const numB = b.orderNumber || b.poNumber || '';
+    return numB.localeCompare(numA, undefined, { numeric: true, sensitivity: 'base' });
+  }), [orders]);
+
+  const sortedGrns = React.useMemo(() => [...grns].sort((a: any, b: any) => {
+    const dateA = a.receivedDate || a.dateReceived || a.receiptDate || a.createdAt || '';
+    const dateB = b.receivedDate || b.dateReceived || b.receiptDate || b.createdAt || '';
+    if (dateA !== dateB) return dateB.localeCompare(dateA);
+    const numA = a.grnNumber || '';
+    const numB = b.grnNumber || '';
+    return numB.localeCompare(numA, undefined, { numeric: true, sensitivity: 'base' });
+  }), [grns]);
+
+  const sortedBills = React.useMemo(() => [...bills].sort((a: any, b: any) => {
+    const dateA = a.billDate || a.date || a.createdAt || '';
+    const dateB = b.billDate || b.date || b.createdAt || '';
+    if (dateA !== dateB) return dateB.localeCompare(dateA);
+    const numA = a.billNumber || a.vendorInvoiceNumber || a.reference || '';
+    const numB = b.billNumber || b.vendorInvoiceNumber || b.reference || '';
+    return numB.localeCompare(numA, undefined, { numeric: true, sensitivity: 'base' });
+  }), [bills]);
+
+  const sortedTransfers = React.useMemo(() => [...transfers].sort((a: any, b: any) => {
+    const dateA = a.transferDate || a.date || a.createdAt || '';
+    const dateB = b.transferDate || b.date || b.createdAt || '';
+    if (dateA !== dateB) return dateB.localeCompare(dateA);
+    const numA = a.transferNumber || '';
+    const numB = b.transferNumber || '';
+    return numB.localeCompare(numA, undefined, { numeric: true, sensitivity: 'base' });
+  }), [transfers]);
+
   const fetchAllProcurement = useProcurementStore((s) => s.fetchAllProcurement);
   const createRequestStore = useProcurementStore((s) => s.createRequest);
   const submitVendorQuoteStore = useProcurementStore((s) => s.submitVendorQuote);
@@ -389,7 +443,7 @@ export const ProcurementWorkspace: React.FC<{ activeEntityId: string; entities?:
               <tr><th className="py-3 px-4">PR Number</th><th className="py-3 px-4">Requestor</th><th className="py-3 px-4">Dept</th><th className="py-3 px-4 text-right">Est. Amount</th><th className="py-3 px-4">Items Count</th><th className="py-3 px-4 text-center">Status</th></tr>
             </thead>
             <tbody className="divide-y divide-gray-50">
-              {requests.map(pr => (
+              {sortedRequests.map(pr => (
                 <tr key={pr.id} className="hover:bg-gray-50/60">
                   <td className="py-3 px-4 font-mono font-bold text-blue-600">{pr.requestNumber}</td>
                   <td className="py-3 px-4 font-medium text-gray-900">{pr.requestorName}</td>
@@ -413,7 +467,7 @@ export const ProcurementWorkspace: React.FC<{ activeEntityId: string; entities?:
       {activeTab === 'rfq' && (
         <div className="space-y-4">
           <div className="grid gap-4 md:grid-cols-2">
-            {rfqs.map(rfq => (
+            {sortedRfqs.map(rfq => (
               <Card key={rfq.id} className="border-gray-200">
                 <CardHeader className="pb-2">
                   <div className="flex justify-between items-center">
@@ -509,7 +563,7 @@ export const ProcurementWorkspace: React.FC<{ activeEntityId: string; entities?:
               <tr><th className="py-3 px-4">PO Number</th><th className="py-3 px-4">Vendor</th><th className="py-3 px-4">Order Date</th><th className="py-3 px-4 text-right">Total Amount</th><th className="py-3 px-4 text-center">Status</th><th className="py-3 px-4 text-right">Actions</th></tr>
             </thead>
             <tbody className="divide-y divide-gray-50">
-              {orders.map(po => (
+              {sortedOrders.map(po => (
                 <tr key={po.id} className="hover:bg-gray-50/60">
                   <td className="py-3 px-4 font-mono font-bold text-gray-900">{po.orderNumber}</td>
                   <td className="py-3 px-4 font-medium text-gray-900">{vendors.find(v => v.id === po.vendorId)?.name || 'Vendor'}</td>
@@ -551,7 +605,7 @@ export const ProcurementWorkspace: React.FC<{ activeEntityId: string; entities?:
                 <tr><th className="py-3 px-4">GRN Number</th><th className="py-3 px-4">PO Ref</th><th className="py-3 px-4">Vendor</th><th className="py-3 px-4">Challan No.</th><th className="py-3 px-4">Received Date</th><th className="py-3 px-4">Line Destinations</th></tr>
               </thead>
               <tbody className="divide-y divide-gray-50">
-                {grns.map(g => (
+                {sortedGrns.map(g => (
                   <tr key={g.id} className="hover:bg-gray-50/50">
                     <td className="py-3 px-4 font-mono font-bold text-gray-900">{g.grnNumber}</td>
                     <td className="py-3 px-4 font-mono text-xs text-gray-500">{g.purchaseOrderNumber}</td>
@@ -591,7 +645,7 @@ export const ProcurementWorkspace: React.FC<{ activeEntityId: string; entities?:
               <tr><th className="py-3 px-4">Bill Number</th><th className="py-3 px-4">Supplier Invoice #</th><th className="py-3 px-4">Vendor</th><th className="py-3 px-4">Bill Date</th><th className="py-3 px-4">Due Date</th><th className="py-3 px-4 text-right">Total Amount</th><th className="py-3 px-4 text-center">3-Way Match</th></tr>
             </thead>
             <tbody className="divide-y divide-gray-50">
-              {bills.map((b: any) => (
+              {sortedBills.map((b: any) => (
                 <tr key={b.id} className="hover:bg-gray-50/50">
                   <td className="py-3 px-4 font-mono font-bold text-gray-900">{b.billNumber}</td>
                   <td className="py-3 px-4 font-mono text-xs text-purple-700 bg-purple-50 px-2 py-0.5 rounded w-fit">{b.vendorInvoiceNumber || b.vendorBillNumber}</td>
@@ -672,7 +726,7 @@ export const ProcurementWorkspace: React.FC<{ activeEntityId: string; entities?:
               <tr><th className="py-3 px-4">Transfer No.</th><th className="py-3 px-4">Date</th><th className="py-3 px-4">Product</th><th className="py-3 px-4">Source Warehouse</th><th className="py-3 px-4">Destination Warehouse</th><th className="py-3 px-4 text-right">Quantity</th><th className="py-3 px-4">Reason</th></tr>
             </thead>
             <tbody className="divide-y divide-gray-50">
-              {transfers.map(t => (
+              {sortedTransfers.map(t => (
                 <tr key={t.id} className="hover:bg-gray-50/50">
                   <td className="py-3 px-4 font-mono font-bold text-gray-900">{t.transferNumber}</td>
                   <td className="py-3 px-4 text-gray-500">{t.date}</td>
