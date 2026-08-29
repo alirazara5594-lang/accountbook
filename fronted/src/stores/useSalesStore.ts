@@ -261,7 +261,7 @@ export const useSalesStore = create<SalesState>((set, get) => ({
       } catch {}
       set((state) => ({
         invoices: state.invoices.map((inv) =>
-          inv.id === id ? { ...inv, status: 1 } : inv
+          inv.id === id ? { ...inv, status: 'Sent' as any } : inv
         )
       }));
     }

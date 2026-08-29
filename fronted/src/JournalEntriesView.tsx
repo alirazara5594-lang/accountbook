@@ -323,8 +323,8 @@ export const JournalEntriesView: React.FC<JournalEntriesViewProps> = ({ accounts
         if (dateA !== dateB) {
           return dateB.localeCompare(dateA);
         }
-        const numA = a.entryNumber || a.reference || '';
-        const numB = b.entryNumber || b.reference || '';
+        const numA = (a as any).entryNumber || a.reference || '';
+        const numB = (b as any).entryNumber || b.reference || '';
         return numB.localeCompare(numA, undefined, { numeric: true, sensitivity: 'base' });
       });
   }, [entries, statusFilter, query, accounts]);

@@ -211,8 +211,8 @@ export const FixedAssets: React.FC<{ activeEntityId: string }> = ({ activeEntity
 
       return matchQuery && matchCat && matchStatus && matchAlloc;
     }).sort((a, b) => {
-      const tagA = a.assetTag || a.code || a.name || '';
-      const tagB = b.assetTag || b.code || b.name || '';
+      const tagA = a.assetTag || (a as any).code || a.name || '';
+      const tagB = b.assetTag || (b as any).code || b.name || '';
       return tagA.localeCompare(tagB, undefined, { numeric: true, sensitivity: 'base' });
     });
   }, [assets, query, categoryFilter, statusFilter, allocationFilter]);

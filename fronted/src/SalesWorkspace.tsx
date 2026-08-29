@@ -13,8 +13,7 @@ import { KpiCard, KpiGrid } from './components/ui/kpi-card'
 import { StatusChip } from './components/ui/status-chip'
 import { EmptyState, TableSkeleton } from './components/ui/empty-state'
 import { money } from './lib/currency'
-import { getActiveTaxCodes, getDefaultTaxPercentage, type TaxCodeOption } from './lib/taxLocalization'
-import { getGlobalNextInvoiceNumber, recordUsedInvoiceNumber } from './lib/invoiceNumbering'
+import { getGlobalNextInvoiceNumber, recordUsedInvoiceNumber, formatInvoiceNumber } from './lib/invoiceNumbering'
 
 const statusStyles: Record<string, { label: string; hex: string }> = {
   Draft: { label: 'Draft', hex: '#94a3b8' },
@@ -242,6 +241,9 @@ export const SalesWorkspace: React.FC<{ activeEntityId: string; entities?: any[]
 
   const openPostModal = (inv: any) => {
     if (!inv) return
+    if (!accounts || accounts.length === 0) {
+      try { fetchAccounts() } catch {}
+    }
     const mappingsStr = localStorage.getItem('system_account_mappings')
     let mappings: any = {}
     if (mappingsStr) {
@@ -249,9 +251,9 @@ export const SalesWorkspace: React.FC<{ activeEntityId: string; entities?: any[]
         mappings = JSON.parse(mappingsStr)
       } catch {}
     }
-    const accs = Array.isArray(accounts) ? accounts : []
-    const arAccount = accs.find((a: any) => a.id === mappings.arAccountId || a.code === '12000' || a.name?.toLowerCase().includes('receivable')) || accs.find((a: any) => a.type === 'Asset' || a.type === 0 || String(a.type).toLowerCase() === 'asset' || a.code?.startsWith('1'))
-    const revAccount = accs.find((a: any) => a.id === mappings.revenueAccountId || a.code === '41100' || a.name?.toLowerCase().includes('sales') || a.name?.toLowerCase().includes('revenue')) || accs.find((a: any) => a.type === 'Revenue' || a.type === 3 || String(a.type).toLowerCase() === 'revenue' || a.code?.startsWith('4'))
+    const accs = Array.isArray(accounts) ? accounts.filter((a: any) => a && typeof a === 'object') : []
+    const arAccount = accs.find((a: any) => a.id === mappings.arAccountId || a.code === '12000' || a.name?.toLowerCase().includes('receivable')) || accs.find((a: any) => a.type === 'Asset' || a.type === 0 || String(a.type).toLowerCase() === 'asset' || a.code?.startsWith('1')) || accs[0]
+    const revAccount = accs.find((a: any) => a.id === mappings.revenueAccountId || a.code === '41100' || a.name?.toLowerCase().includes('sales') || a.name?.toLowerCase().includes('revenue')) || accs.find((a: any) => a.type === 'Revenue' || a.type === 3 || String(a.type).toLowerCase() === 'revenue' || a.code?.startsWith('4')) || accs[1] || accs[0]
     const taxAccount = accs.find((a: any) => a.id === mappings.taxAccountId || a.code === '22000' || a.name?.toLowerCase().includes('tax')) || accs.find((a: any) => a.type === 'Liability' || a.type === 1 || String(a.type).toLowerCase() === 'liability' || a.code?.startsWith('2'))
 
     setPostModal(inv)
@@ -322,7 +324,7 @@ export const SalesWorkspace: React.FC<{ activeEntityId: string; entities?: any[]
     return customers.find((c: any) => c.id === form.customerId)
   }, [customers, form.customerId])
 
-  const customerCreditLimit = parseFloat(selectedCustomer?.creditLimit || 0)
+  const customerCreditLimit = parseFloat(String(selectedCustomer?.creditLimit || '0'))
 
   const currentCustomerBalance = useMemo(() => {
     if (!form.customerId) return 0
@@ -1502,31 +1504,37 @@ export const SalesWorkspace: React.FC<{ activeEntityId: string; entities?: any[]
             </div>
             <div>
               <label className="block text-xs font-semibold text-[var(--color-text-strong)] mb-1.5">
-                <span className="text-rose-500 font-bold mr-1">*</span> Accounts Receivable Account
+                Accounts Receivable Account
               </label>
               <select
                 value={postForm.arAccId}
                 onChange={e => setPostForm({ ...postForm, arAccId: e.target.value })}
                 className="w-full h-10 px-3 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] text-xs text-[var(--color-text-strong)] outline-none"
               >
-                <option value="">Select AR Account...</option>
-                {(Array.isArray(accounts) ? accounts : []).filter((a: any) => a.type === 'Asset' || a.type === 0 || String(a.type).toLowerCase() === 'asset' || a.code?.startsWith('1')).map((a: any) => (
-                  <option key={a.id} value={a.id}>{a.code} — {a.name}</option>
+                <option value="">Default (Customer Receivables 12000)</option>
+                {((Array.isArray(accounts) ? accounts : []).filter((a: any) => a && (a.type === 'Asset' || a.type === 0 || String(a.type).toLowerCase() === 'asset' || a.code?.startsWith('1'))).length > 0
+                  ? (Array.isArray(accounts) ? accounts : []).filter((a: any) => a && (a.type === 'Asset' || a.type === 0 || String(a.type).toLowerCase() === 'asset' || a.code?.startsWith('1')))
+                  : (Array.isArray(accounts) ? accounts : [])
+                ).map((a: any) => (
+                  <option key={a?.id || a?.code} value={a?.id}>{a?.code} — {a?.name}</option>
                 ))}
               </select>
             </div>
             <div>
               <label className="block text-xs font-semibold text-[var(--color-text-strong)] mb-1.5">
-                <span className="text-rose-500 font-bold mr-1">*</span> Revenue Account
+                Revenue Account
               </label>
               <select
                 value={postForm.revenueAccId}
                 onChange={e => setPostForm({ ...postForm, revenueAccId: e.target.value })}
                 className="w-full h-10 px-3 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] text-xs text-[var(--color-text-strong)] outline-none"
               >
-                <option value="">Select Revenue Account...</option>
-                {(Array.isArray(accounts) ? accounts : []).filter((a: any) => a.type === 'Revenue' || a.type === 3 || String(a.type).toLowerCase() === 'revenue' || a.code?.startsWith('4')).map((a: any) => (
-                  <option key={a.id} value={a.id}>{a.code} — {a.name}</option>
+                <option value="">Default (Sales Revenue 41100)</option>
+                {((Array.isArray(accounts) ? accounts : []).filter((a: any) => a && (a.type === 'Revenue' || a.type === 3 || String(a.type).toLowerCase() === 'revenue' || a.code?.startsWith('4'))).length > 0
+                  ? (Array.isArray(accounts) ? accounts : []).filter((a: any) => a && (a.type === 'Revenue' || a.type === 3 || String(a.type).toLowerCase() === 'revenue' || a.code?.startsWith('4')))
+                  : (Array.isArray(accounts) ? accounts : [])
+                ).map((a: any) => (
+                  <option key={a?.id || a?.code} value={a?.id}>{a?.code} — {a?.name}</option>
                 ))}
               </select>
             </div>
@@ -1534,8 +1542,7 @@ export const SalesWorkspace: React.FC<{ activeEntityId: string; entities?: any[]
               <button
                 type="button"
                 onClick={postInvoice}
-                disabled={!postForm.arAccId || !postForm.revenueAccId}
-                className="flex-1 h-8.5 rounded-lg bg-sky-600 hover:bg-sky-700 disabled:opacity-40 text-white font-semibold text-xs transition-colors"
+                className="flex-1 h-8.5 rounded-lg bg-sky-600 hover:bg-sky-700 text-white font-semibold text-xs transition-colors"
               >
                 Post to Ledger
               </button>

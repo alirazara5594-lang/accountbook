@@ -590,9 +590,9 @@ export const EstimatesAndQuotes: React.FC<{ activeEntityId: string; entities?: a
                     </select>
                     {(() => {
                       const cust = customers.find((c: any) => c.id === form.customerId)
-                      const limit = parseFloat(cust?.creditLimit || 0)
+                      const limit = parseFloat(String(cust?.creditLimit || '0'))
                       if (!cust || limit <= 0) return null
-                      const quoteTotal = net
+                      const quoteTotal = totals.total
                       const exceeds = quoteTotal > limit
                       return (
                         <div className={`mt-2 p-2.5 rounded-xl border text-[11px] ${exceeds ? 'bg-amber-500/10 border-amber-500/30 text-amber-900 dark:text-amber-200' : 'bg-emerald-500/10 border-emerald-500/30 text-emerald-900 dark:text-emerald-200'}`}>
@@ -835,7 +835,7 @@ export const EstimatesAndQuotes: React.FC<{ activeEntityId: string; entities?: a
       })()}
 
       {/* CONVERT TO INVOICE MODAL */}
-      {convertModal && <ConvertToInvoiceModal estimate={convertModal} customers={customers} products={products} onConfirm={createInvoiceFromEstimate} onClose={() => setConvertModal(null)} />}
+      {convertModal && <ConvertToInvoiceModal estimate={convertModal} customers={customers} products={products} onConfirm={convertQuoteToInvoice} onClose={() => setConvertModal(null)} />}
     </div>
   )
 }
