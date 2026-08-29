@@ -14,6 +14,7 @@ import { StatusChip } from './components/ui/status-chip'
 import { EmptyState, TableSkeleton } from './components/ui/empty-state'
 import { money } from './lib/currency'
 import { getActiveTaxCodes, getDefaultTaxPercentage, type TaxCodeOption } from './lib/taxLocalization'
+import { getGlobalNextInvoiceNumber, recordUsedInvoiceNumber } from './lib/invoiceNumbering'
 
 const statusStyles: Record<string, { label: string; hex: string }> = {
   Draft: { label: 'Draft', hex: '#94a3b8' },
@@ -152,17 +153,7 @@ export const SalesWorkspace: React.FC<{ activeEntityId: string; entities?: any[]
   }
 
   const computeNextInvoiceNumber = () => {
-    let maxNum = 0
-    for (const item of invoices) {
-      const str = (item.invoiceNumber || item.reference || '') + ''
-      if (str.startsWith('INV-202') || str.length > 10) continue
-      const match = str.match(/INV-(\d+)/i)
-      if (match) {
-        const num = parseInt(match[1], 10)
-        if (!isNaN(num) && num < 100000 && num > maxNum) maxNum = num
-      }
-    }
-    return `INV-${(maxNum + 1).toString().padStart(5, '0')}`
+    return getGlobalNextInvoiceNumber()
   }
 
   const getFormattedInvoiceNumber = (rawNum: string, index: number) => {
@@ -365,6 +356,16 @@ export const SalesWorkspace: React.FC<{ activeEntityId: string; entities?: any[]
         notify('✓ Sales invoice created as Draft')
         // Clear pending number after successful save
         setPendingInvoiceNumber('')
+        const refMatch = String(body.reference || '').match(/INV-(\d+)/i)
+        if (refMatch) {
+          const num = parseInt(refMatch[1], 10)
+          if (!isNaN(num) && num < 100000) {
+            const cur = parseInt(localStorage.getItem('ams_last_used_inv_sequence') || '0', 10)
+            if (num > cur) {
+              localStorage.setItem('ams_last_used_inv_sequence', String(num))
+            }
+          }
+        }
         if (convertedEstimateId) {
           try {
             await updateEstimateStatusStore(convertedEstimateId, '5')

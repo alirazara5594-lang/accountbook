@@ -12,6 +12,7 @@ import { KpiCard, KpiGrid } from './components/ui/kpi-card'
 import { StatusChip } from './components/ui/status-chip'
 import { EmptyState, TableSkeleton } from './components/ui/empty-state'
 import { getActiveTaxCodes, type TaxCodeOption } from './lib/taxLocalization'
+import { getGlobalNextInvoiceNumber } from './lib/invoiceNumbering'
 
 import { money } from './lib/currency'
 
@@ -214,6 +215,8 @@ export const EstimatesAndQuotes: React.FC<{ activeEntityId: string; entities?: a
           taxPercent: '0'
         }];
 
+    const nextInvRef = getGlobalNextInvoiceNumber();
+
     const payload = {
       estimateId: est.id,
       estimateNumber: est.estimateNumber || est.reference,
@@ -221,6 +224,7 @@ export const EstimatesAndQuotes: React.FC<{ activeEntityId: string; entities?: a
       customerName: est.customerName || '',
       notes: est.notes || '',
       currencyCode: est.currencyCode || 'PKR',
+      reference: nextInvRef,
       lines: quoteLines
     };
 
