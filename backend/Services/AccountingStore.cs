@@ -3221,7 +3221,7 @@ public IReadOnlyList<EmployeeCompensation> EmployeeCompensations => _employeeCom
             var customer = FindCustomer(request.CustomerId) ?? _customers.FirstOrDefault(c => request.CompanyId == null || c.CompanyId == request.CompanyId) ?? _customers.FirstOrDefault();
             if (customer == null)
             {
-                customer = new Customer { Id = request.CustomerId != Guid.Empty ? request.CustomerId : Guid.NewGuid(), Name = "Valued Customer", CompanyId = request.CompanyId };
+                customer = new Customer { Id = request.CustomerId != Guid.Empty ? request.CustomerId : Guid.NewGuid(), CustomerNumber = NextCustomerNumber(), Name = "Valued Customer", CompanyId = request.CompanyId };
                 _customers.Add(customer);
             }
 
@@ -3611,6 +3611,76 @@ public IReadOnlyList<EmployeeCompensation> EmployeeCompensations => _employeeCom
         {
             var invoice = _salesInvoices.FirstOrDefault(i => i.Id == invoiceId);
             if (invoice == null) { error = "Invoice not found."; return false; }
+
+            // If cancelling / voiding a posted invoice, execute GAAP reversal journal and restore stock
+            if (status == SalesInvoiceStatus.Void && invoice.Status != SalesInvoiceStatus.Draft && invoice.Status != SalesInvoiceStatus.Void)
+            {
+                // 1. Find all posted journal entries associated with this invoice
+                var postedEntries = _entries.Where(e => e.Reference == invoice.InvoiceNumber && e.Status == JournalStatus.Posted).ToList();
+                foreach (var origEntry in postedEntries)
+                {
+                    // Create reversing lines (swap debit and credit)
+                    var revLines = origEntry.Lines.Select(l => new JournalLine(
+                        l.AccountId,
+                        l.Credit, // Original Credit becomes Debit
+                        l.Debit,  // Original Debit becomes Credit
+                        $"Reversal: {l.Memo}",
+                        l.Comment,
+                        l.CurrencyCode,
+                        l.ExchangeRate,
+                        l.CompanyId
+                    )).ToList();
+
+                    var revJournal = new JournalEntry
+                    {
+                        Date = DateOnly.FromDateTime(DateTime.UtcNow),
+                        Reference = $"REV-{invoice.InvoiceNumber}",
+                        Description = $"Reversal of cancelled invoice {invoice.InvoiceNumber}",
+                        TransactionType = TransactionType.Sales,
+                        CompanyId = invoice.CompanyId,
+                        Lines = revLines,
+                        Status = JournalStatus.Posted
+                    };
+                    _entries.Add(revJournal);
+                    origEntry.Status = JournalStatus.Reversed;
+                }
+
+                // 2. Restore Stock if it was reduced
+                if (invoice.StockReduced)
+                {
+                    var warehouse = _warehouses.FirstOrDefault(w => w.CompanyId == invoice.CompanyId) ?? _warehouses.FirstOrDefault();
+                    foreach (var line in invoice.Lines)
+                    {
+                        if (line.ProductId == null) continue;
+                        var product = FindProduct(line.ProductId.Value);
+                        if (product == null || product.Type != ProductType.Physical) continue;
+
+                        var stockLevel = warehouse != null
+                            ? _stockLevels.FirstOrDefault(s => s.ProductId == product.Id && s.WarehouseId == warehouse.Id)
+                            : null;
+
+                        if (stockLevel != null)
+                        {
+                            stockLevel.QuantityOnHand += line.Quantity;
+                            product.QuantityOnHand += line.Quantity;
+
+                            _stockTransactions.Add(new StockTransaction
+                            {
+                                Date = DateOnly.FromDateTime(DateTime.UtcNow),
+                                ProductId = product.Id,
+                                WarehouseId = warehouse!.Id,
+                                Quantity = line.Quantity,
+                                UnitCost = stockLevel.MovingAverageCost,
+                                Type = StockTransactionType.In,
+                                Reference = $"RESTORE-{invoice.InvoiceNumber}",
+                                CompanyId = invoice.CompanyId
+                            });
+                        }
+                    }
+                    invoice.StockReduced = false;
+                }
+            }
+
             invoice.Status = status;
             invoice.UpdatedAt = DateTime.UtcNow;
             Persist();

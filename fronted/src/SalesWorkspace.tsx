@@ -34,6 +34,7 @@ export const SalesWorkspace: React.FC<{ activeEntityId: string; entities?: any[]
   const createInvoiceStore = useSalesStore((s) => s.createInvoice)
   const updateInvoiceStore = useSalesStore((s) => s.updateInvoice)
   const updateInvoiceStatusStore = useSalesStore((s) => s.updateInvoiceStatus)
+  const postInvoiceStore = useSalesStore((s) => s.postInvoice)
   const updateEstimateStatusStore = useSalesStore((s) => s.updateEstimateStatus)
 
   const customers = useCustomersStore((s) => s.customers)
@@ -56,6 +57,7 @@ export const SalesWorkspace: React.FC<{ activeEntityId: string; entities?: any[]
   const [statusFilter, setStatusFilter] = useState<string>('all')
   const [pendingInvoiceNumber, setPendingInvoiceNumber] = useState<string>('')
   const [convertedEstimateId, setConvertedEstimateId] = useState<string | null>(null)
+  const [creditOverride, setCreditOverride] = useState(false)
 
   // Active Regional Tax Codes
   const applicableTaxCodes = useMemo(() => {
@@ -246,9 +248,9 @@ export const SalesWorkspace: React.FC<{ activeEntityId: string; entities?: any[]
         mappings = JSON.parse(mappingsStr)
       } catch {}
     }
-    const arAccount = accounts.find((a: any) => a.id === mappings.arAccountId || a.code === '12000')
-    const revAccount = accounts.find((a: any) => a.id === mappings.revenueAccountId || a.code === '41100')
-    const taxAccount = accounts.find((a: any) => a.id === mappings.taxAccountId || a.code === '22000')
+    const arAccount = accounts.find((a: any) => a.id === mappings.arAccountId || a.code === '12000' || a.name?.toLowerCase().includes('receivable')) || accounts.find((a: any) => a.type === 'Asset')
+    const revAccount = accounts.find((a: any) => a.id === mappings.revenueAccountId || a.code === '41100' || a.name?.toLowerCase().includes('sales')) || accounts.find((a: any) => a.type === 'Revenue')
+    const taxAccount = accounts.find((a: any) => a.id === mappings.taxAccountId || a.code === '22000' || a.name?.toLowerCase().includes('tax')) || accounts.find((a: any) => a.type === 'Liability')
 
     setPostModal(inv)
     setPostForm({
@@ -314,10 +316,40 @@ export const SalesWorkspace: React.FC<{ activeEntityId: string; entities?: any[]
   const taxTotal = totals.tax
   const netTotal = totals.total
 
+  const selectedCustomer = useMemo(() => {
+    return customers.find((c: any) => c.id === form.customerId)
+  }, [customers, form.customerId])
+
+  const customerCreditLimit = parseFloat(selectedCustomer?.creditLimit || 0)
+
+  const currentCustomerBalance = useMemo(() => {
+    if (!form.customerId) return 0
+    return invoices
+      .filter((inv: any) =>
+        inv.customerId === form.customerId &&
+        inv.id !== editingInvoice?.id &&
+        inv.status !== 0 &&
+        inv.status !== '0' &&
+        String(inv.status).toLowerCase() !== 'draft' &&
+        inv.status !== 3 &&
+        String(inv.status).toLowerCase() !== 'void'
+      )
+      .reduce((sum: number, inv: any) => sum + (parseFloat(inv.amountDue ?? inv.totalAmount) || 0), 0)
+  }, [invoices, form.customerId, editingInvoice])
+
+  const totalCreditExposure = currentCustomerBalance + netTotal
+  const isCreditLimitExceeded = customerCreditLimit > 0 && totalCreditExposure > customerCreditLimit
+  const excessCreditAmount = Math.max(0, totalCreditExposure - customerCreditLimit)
+
   const saveInvoice = async () => {
     if (!form.customerId) {
       notify('Please select a customer.')
       return
+    }
+    if (isCreditLimitExceeded && !creditOverride) {
+      if (!window.confirm(`⚠️ Credit Limit Warning:\nCustomer's credit limit is ${money(customerCreditLimit, form.currencyCode)}.\nCurrent AR Balance is ${money(currentCustomerBalance, form.currencyCode)}.\nThis invoice of ${money(netTotal, form.currencyCode)} brings total exposure to ${money(totalCreditExposure, form.currencyCode)} (Exceeds credit limit by ${money(excessCreditAmount, form.currencyCode)}).\n\nDo you want to apply Manager Override and proceed?`)) {
+        return
+      }
     }
     const body = {
       ...form,
@@ -385,7 +417,7 @@ export const SalesWorkspace: React.FC<{ activeEntityId: string; entities?: any[]
   const downloadInvoicePdf = (inv: any) => {
     try {
       const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' })
-      const invNum = inv.invoiceNumber || inv.reference || 'INV-00001'
+      const invNum = formatInvoiceNumber(inv.invoiceNumber || inv.reference || 'INV-00001')
       const compName = assignedCompany?.name || 'Muhammad Ali Enterprises'
       const statusText = typeof inv.status === 'number'
         ? ['Draft', 'Approved', 'Paid', 'Cancelled / Void', 'Partially Paid', 'Overdue'][inv.status] || 'Draft'
@@ -669,20 +701,15 @@ export const SalesWorkspace: React.FC<{ activeEntityId: string; entities?: any[]
 
   const postInvoice = async () => {
     try {
-      if (postModal) {
-        const salesStore = useSalesStore.getState()
-        if ((salesStore as any).postInvoice) {
-          await (salesStore as any).postInvoice(postModal.id, {
-            arAccountId: postForm.arAccId || null,
-            revenueAccountId: postForm.revenueAccId || null,
-            taxLiabilityAccountId: postForm.taxLiabilityAccId || null
-          })
-        }
-      }
-      await useSalesStore.getState().fetchAllSales(activeEntityId)
-      notify('✓ Invoice posted to General Ledger!')
+      if (!postModal) return
+      await postInvoiceStore(postModal.id, {
+        arAccountId: postForm.arAccId || null,
+        revenueAccountId: postForm.revenueAccId || null,
+        taxLiabilityAccountId: postForm.taxLiabilityAccId || null
+      })
+      notify(`✓ Invoice ${postModal.invoiceNumber || postModal.reference} approved and posted to General Ledger!`)
       setPostModal(null)
-      fetchData()
+      await fetchData()
     } catch (e: any) {
       notify(e.message || 'Error posting invoice')
     }
@@ -999,10 +1026,39 @@ export const SalesWorkspace: React.FC<{ activeEntityId: string; entities?: any[]
                       <option value="">Select a customer...</option>
                       {customers.map((c: any) => (
                         <option key={c.id} value={c.id}>
-                          {c.name} {c.customerNumber ? `(${c.customerNumber})` : ''}
+                          {c.name} {c.customerNumber ? `(${c.customerNumber})` : ''} {c.creditLimit ? `— Limit: ${money(c.creditLimit, c.currencyCode || form.currencyCode)}` : ''}
                         </option>
                       ))}
                     </select>
+
+                    {selectedCustomer && (
+                      <div className={`mt-2.5 p-3.5 rounded-xl border text-xs transition-all ${
+                        isCreditLimitExceeded
+                          ? 'bg-amber-500/10 border-amber-500/30 text-amber-900 dark:text-amber-200'
+                          : customerCreditLimit > 0
+                          ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-900 dark:text-emerald-200'
+                          : 'bg-[var(--color-surface-muted)]/50 border-[var(--color-border)] text-[var(--color-text-muted)]'
+                      }`}>
+                        <div className="flex items-center justify-between font-semibold">
+                          <span className="flex items-center gap-1.5">
+                            {isCreditLimitExceeded ? '⚠️ Credit Limit Warning' : customerCreditLimit > 0 ? '✓ Credit Policy Check' : 'ℹ️ Credit Policy'}
+                          </span>
+                          <span className="font-mono">
+                            Limit: {customerCreditLimit > 0 ? money(customerCreditLimit, form.currencyCode) : 'Unlimited'}
+                          </span>
+                        </div>
+                        <div className="mt-1.5 flex flex-wrap items-center justify-between text-[11px] gap-2 opacity-95">
+                          <span>Current AR Balance: <strong>{money(currentCustomerBalance, form.currencyCode)}</strong></span>
+                          <span>This Invoice: <strong>{money(netTotal, form.currencyCode)}</strong></span>
+                          <span>Total Exposure: <strong className={isCreditLimitExceeded ? 'text-rose-600 dark:text-rose-400 font-mono font-bold' : 'font-mono'}>{money(totalCreditExposure, form.currencyCode)}</strong></span>
+                        </div>
+                        {isCreditLimitExceeded && (
+                          <p className="mt-2 text-[11px] font-medium text-rose-600 dark:text-rose-300">
+                            ⚠️ This invoice exceeds the customer's credit limit by <strong>{money(excessCreditAmount, form.currencyCode)}</strong>. Manager override acknowledgment is required.
+                          </p>
+                        )}
+                      </div>
+                    )}
                   </div>
 
                   <div>
@@ -1207,6 +1263,26 @@ export const SalesWorkspace: React.FC<{ activeEntityId: string; entities?: any[]
                       <ShieldCheck className="w-4 h-4 text-emerald-500 shrink-0" />
                       <span>Saving as Draft creates the audit record. You can post to the GL at any time.</span>
                     </div>
+
+                    {isCreditLimitExceeded && (
+                      <div className="p-4 rounded-xl border border-amber-500/40 bg-amber-500/10 text-xs space-y-2">
+                        <div className="font-bold flex items-center gap-1.5 text-amber-900 dark:text-amber-200">
+                          <span>⚠️ Manager Credit Override Required</span>
+                        </div>
+                        <p className="text-[11px] text-amber-800 dark:text-amber-300">
+                          Customer limit is <strong>{money(customerCreditLimit, form.currencyCode)}</strong>. Total exposure will be <strong>{money(totalCreditExposure, form.currencyCode)}</strong> (Exceeds by <strong>{money(excessCreditAmount, form.currencyCode)}</strong>).
+                        </p>
+                        <label className="flex items-center gap-2 pt-1 cursor-pointer font-semibold text-rose-600 dark:text-rose-400">
+                          <input
+                            type="checkbox"
+                            checked={creditOverride}
+                            onChange={e => setCreditOverride(e.target.checked)}
+                            className="rounded border-amber-500 text-amber-600 focus:ring-amber-500 w-4 h-4"
+                          />
+                          <span>Acknowledge & Authorize Credit Limit Override</span>
+                        </label>
+                      </div>
+                    )}
                   </div>
 
                   <div className="bg-[var(--color-surface-muted)]/60 border border-[var(--color-border)] rounded-xl p-4 space-y-3">
@@ -1405,7 +1481,7 @@ export const SalesWorkspace: React.FC<{ activeEntityId: string; entities?: any[]
           <div className="w-full max-w-lg bg-[var(--color-surface)] border border-[var(--color-border)] rounded-2xl shadow-2xl p-6 space-y-4">
             <h3 className="text-base font-bold text-[var(--color-text-strong)] tracking-tight">Post Invoice to Ledger</h3>
             <div className="bg-sky-500/10 border border-sky-500/20 rounded-xl p-3.5 text-xs">
-              <p className="font-semibold text-[var(--color-text-strong)]">{postModal.invoiceNumber} — {postModal.customerName}</p>
+              <p className="font-semibold text-[var(--color-text-strong)]">{formatInvoiceNumber(postModal.invoiceNumber || postModal.reference)} — {postModal.customerName}</p>
               <p className="text-[var(--color-text-muted)] mt-1">Total Amount: <strong className="text-sky-600 font-mono">{money(postModal.totalAmount)}</strong></p>
               <p className="text-[11px] text-[var(--color-text-muted)] mt-1.5">
                 Posting generates GAAP double entries: <strong>Dr Accounts Receivable</strong> and <strong>Cr Revenue / Sales Tax</strong>.

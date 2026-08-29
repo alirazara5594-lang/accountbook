@@ -111,7 +111,15 @@ const blank = { code: '', name: '', type: 'Asset' as AccountType, parentId: '', 
 
 export default function App() {
   const [page, setPage] = useState<string>(() => {
-    return localStorage.getItem('last_active_page') || 'Overview.Dashboard';
+    try {
+      if (typeof window !== 'undefined' && window.location.hash) {
+        const hash = decodeURIComponent(window.location.hash.replace(/^#/, ''));
+        if (hash) return hash;
+      }
+      const saved = localStorage.getItem('last_active_page');
+      if (saved) return saved;
+    } catch {}
+    return 'Overview.Dashboard';
   });
   const [theme, setTheme] = useState<string>(getStoredTheme);
   const [settingsView, setSettingsView] = useState<'home' | 'entities' | 'mappings'>('home')
@@ -270,7 +278,26 @@ export default function App() {
   };
 
   useEffect(() => {
-    localStorage.setItem('last_active_page', page);
+    try {
+      localStorage.setItem('last_active_page', page);
+      const currentHash = window.location.hash ? decodeURIComponent(window.location.hash.replace(/^#/, '')) : '';
+      if (currentHash !== page) {
+        window.history.replaceState(null, '', '#' + encodeURIComponent(page));
+      }
+    } catch {}
+  }, [page]);
+
+  useEffect(() => {
+    const handleHashChange = () => {
+      try {
+        const hash = window.location.hash ? decodeURIComponent(window.location.hash.replace(/^#/, '')) : '';
+        if (hash && hash !== page) {
+          setPage(hash);
+        }
+      } catch {}
+    };
+    window.addEventListener('hashchange', handleHashChange);
+    return () => window.removeEventListener('hashchange', handleHashChange);
   }, [page]);
 
   useEffect(() => {

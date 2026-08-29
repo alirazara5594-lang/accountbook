@@ -5,6 +5,7 @@ import { customersApi, type Customer } from './api/modules/customers.api';
 import { apiClient } from './api/client';
 import { useCompanyStore } from './stores';
 import { money } from './lib/currency';
+import { formatInvoiceNumber } from './lib/invoiceNumbering';
 import { downloadExcel, downloadCSV } from './lib/exportUtils';
 import { KpiCard, KpiGrid } from './components/ui/kpi-card';
 import { StatusChip } from './components/ui/status-chip';
@@ -92,7 +93,18 @@ export function CustomerPaymentsWorkspace() {
           apiClient<DepositAccount[]>('/customer-payments/deposit-accounts'),
         ]);
         setCustomers(custs);
-        setInvoices(invs.filter((i: any) => String(i.status).toLowerCase() !== 'paid' && String(i.status).toLowerCase() !== 'void'));
+        setInvoices(
+          invs.filter(
+            (i: any) =>
+              i.status !== 0 &&
+              i.status !== '0' &&
+              String(i.status).toLowerCase() !== 'draft' &&
+              String(i.status).toLowerCase() !== 'paid' &&
+              i.status !== 2 &&
+              String(i.status).toLowerCase() !== 'void' &&
+              i.status !== 3
+          )
+        );
         setDepositAccounts(accts);
         if (accts.length > 0 && !formData.depositToAccountId) {
           setFormData((prev) => ({ ...prev, depositToAccountId: accts[0].id }));
@@ -597,9 +609,9 @@ export function CustomerPaymentsWorkspace() {
                   className="w-full h-9 px-3 rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] text-xs text-[var(--color-text)] outline-none focus:border-blue-500"
                 >
                   <option value="">On-Account (Unapplied collection)</option>
-                  {filteredInvoices.map((inv: any) => (
+                  {filteredInvoices.map((inv: any, idx: number) => (
                     <option key={inv.id} value={inv.id}>
-                      {inv.invoiceNumber} — Balance Due: {money(inv.amountDue ?? inv.totalAmount)} (Date: {inv.invoiceDate || inv.date})
+                      {formatInvoiceNumber(inv.invoiceNumber || inv.reference, idx + 1)} — Balance Due: {money(inv.amountDue ?? inv.totalAmount)} (Date: {(inv.invoiceDate || inv.date || '').slice(0, 10)})
                     </option>
                   ))}
                 </select>

@@ -65,6 +65,7 @@ export const EstimatesAndQuotes: React.FC<{ activeEntityId: string; entities?: a
   const allEntities = useCompanyStore((s) => s.entities)
   const estimates = useSalesStore((s) => s.estimates)
   const fetchEstimates = useSalesStore((s) => s.fetchEstimates)
+  const fetchInvoices = useSalesStore((s) => s.fetchInvoices)
   const createEstimateStore = useSalesStore((s) => s.createEstimate)
   const updateEstimateStatusStore = useSalesStore((s) => s.updateEstimateStatus)
   const customers = useCustomersStore((s) => s.customers)
@@ -106,7 +107,12 @@ export const EstimatesAndQuotes: React.FC<{ activeEntityId: string; entities?: a
   const fetchData = async () => {
     setLoading(true)
     try {
-      await Promise.all([fetchEstimates(activeEntityId), fetchCustomers(activeEntityId), fetchProducts()])
+      await Promise.all([
+        fetchEstimates(activeEntityId),
+        fetchInvoices(activeEntityId),
+        fetchCustomers(activeEntityId),
+        fetchProducts()
+      ])
     } catch { /* empty */ }
     setLoading(false)
   }
@@ -562,8 +568,28 @@ export const EstimatesAndQuotes: React.FC<{ activeEntityId: string; entities?: a
                     <label className="block text-xs font-semibold text-[var(--color-text-strong)] mb-1.5"><span className="text-rose-500 mr-1">*</span>Customer / Client</label>
                     <select value={form.customerId} onChange={e => setForm({ ...form, customerId: e.target.value })} className="w-full h-10 px-3.5 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] text-xs text-[var(--color-text-strong)] focus:border-[var(--color-primary)] outline-none">
                       <option value="">Select customer...</option>
-                      {customers.map((c: any) => (<option key={c.id} value={c.id}>{c.name} {c.customerNumber ? `(${c.customerNumber})` : ''}</option>))}
+                      {customers.map((c: any) => (<option key={c.id} value={c.id}>{c.name} {c.customerNumber ? `(${c.customerNumber})` : ''} {c.creditLimit ? `— Limit: ${money(c.creditLimit, c.currencyCode || form.currencyCode)}` : ''}</option>))}
                     </select>
+                    {(() => {
+                      const cust = customers.find((c: any) => c.id === form.customerId)
+                      const limit = parseFloat(cust?.creditLimit || 0)
+                      if (!cust || limit <= 0) return null
+                      const quoteTotal = net
+                      const exceeds = quoteTotal > limit
+                      return (
+                        <div className={`mt-2 p-2.5 rounded-xl border text-[11px] ${exceeds ? 'bg-amber-500/10 border-amber-500/30 text-amber-900 dark:text-amber-200' : 'bg-emerald-500/10 border-emerald-500/30 text-emerald-900 dark:text-emerald-200'}`}>
+                          <div className="flex justify-between font-semibold">
+                            <span>{exceeds ? '⚠️ Quotation Exceeds Credit Limit' : '✓ Credit Policy'}</span>
+                            <span className="font-mono">Configured Limit: {money(limit, form.currencyCode)}</span>
+                          </div>
+                          {exceeds && (
+                            <p className="mt-1 text-[10px] text-rose-600 dark:text-rose-300">
+                              Quote total ({money(quoteTotal, form.currencyCode)}) exceeds credit limit by {money(quoteTotal - limit, form.currencyCode)}.
+                            </p>
+                          )}
+                        </div>
+                      )
+                    })()}
                   </div>
                   <div>
                     <label className="block text-xs font-semibold text-[var(--color-text-strong)] mb-1.5">Quote Reference</label>

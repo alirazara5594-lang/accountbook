@@ -4,6 +4,7 @@ import { DataToolbar } from '@/components/ui/data-toolbar';
 import { KpiCard, KpiGrid } from '@/components/ui/kpi-card';
 import { EmptyState } from './components/ui/empty-state';
 import { money } from './lib/currency';
+import { formatBillNumber } from './lib/invoiceNumbering';
 import {
   FileText, Receipt, CheckCircle, Plus, X, Eye, ArrowRight,
   CreditCard, Truck, Trash2
@@ -61,8 +62,12 @@ export const VendorBills: React.FC<{ activeEntityId: string }> = ({ activeEntity
     let maxNum = 0;
     for (const item of bills) {
       const str = (item.billNumber || '') + '';
+      if (str.startsWith('BILL-202') || str.length > 11) continue;
       const match = str.match(/BILL-(\d+)/i);
-      if (match) { const num = parseInt(match[1], 10); if (!isNaN(num) && num > maxNum) maxNum = num; }
+      if (match) {
+        const num = parseInt(match[1], 10);
+        if (!isNaN(num) && num < 100000 && num > maxNum) maxNum = num;
+      }
     }
     return `BILL-${(maxNum + 1).toString().padStart(5, '0')}`;
   };
@@ -259,13 +264,13 @@ export const VendorBills: React.FC<{ activeEntityId: string }> = ({ activeEntity
             </tr>
           </thead>
           <tbody className="divide-y divide-[var(--color-border)]">
-            {filteredBills.map((bill: any) => {
+            {filteredBills.map((bill: any, idx: number) => {
               const vendor = vendors.find(v => v.id === bill.vendorId);
               const total = bill.lines?.reduce((acc: number, l: any) => acc + ((l.quantity || 1) * (l.unitPrice || 0)), 0) || 0;
               const isDirect = !bill.purchaseOrderId;
               return (
                 <tr key={bill.id} className="hover:bg-[var(--color-surface-muted)]/50 transition-colors">
-                  <td className="px-5 py-3 font-mono font-bold text-[var(--color-text-strong)]">{bill.billNumber}</td>
+                  <td className="px-5 py-3 font-mono font-bold text-[var(--color-text-strong)]">{formatBillNumber(bill.billNumber || bill.reference, idx + 1)}</td>
                   <td className="px-5 py-3"><span className="px-2 py-0.5 rounded-md bg-purple-500/10 text-purple-600 dark:text-purple-400 font-mono text-[10px] font-bold">{bill.vendorInvoiceNumber || bill.vendorBillNumber}</span></td>
                   <td className="px-5 py-3">
                     {isDirect ? (

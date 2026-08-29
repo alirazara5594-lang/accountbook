@@ -3,6 +3,7 @@ import { useProcurementStore, useVendorsStore, useProductsStore, useTaxStore } f
 import { DataToolbar } from '@/components/ui/data-toolbar';
 import { EmptyState, TableSkeleton } from './components/ui/empty-state';
 import { StatusChip } from './components/ui/status-chip';
+import { formatPONumber } from './lib/invoiceNumbering';
 import { Package, Info, X, ShoppingCart, FileText } from 'lucide-react';
 
 interface TaxRate {
@@ -321,12 +322,12 @@ export const PurchaseOrders: React.FC<{activeEntityId?: string, entities?: any[]
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-50">
-                  {pos.map(po => {
+                  {pos.map((po, idx) => {
                     const vendor = vendors.find(v => v.id === po.vendorId);
                     const total = po.lines.reduce((s, l) => s + (l.totalAmount || 0), 0);
                     return (
                       <tr key={po.id} className="hover:bg-gray-50/50 transition-colors">
-                        <td className="py-4 font-medium text-gray-900">{po.poNumber}</td>
+                        <td className="py-4 font-medium text-gray-900 font-mono">{formatPONumber(po.poNumber, idx + 1)}</td>
                         <td className="py-4 text-gray-500">{po.date}</td>
                         <td className="py-4 text-gray-700">{vendor?.name || 'Unknown'}</td>
                         <td className="py-4 text-gray-900 font-medium text-right">${total.toFixed(2)}</td>

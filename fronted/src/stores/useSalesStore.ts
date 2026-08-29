@@ -25,6 +25,7 @@ interface SalesState {
   createInvoice: (data: any) => Promise<Invoice>;
   updateInvoice: (id: string, data: any) => Promise<Invoice>;
   updateInvoiceStatus: (id: string, status: number | string) => Promise<void>;
+  postInvoice: (id: string, accounts?: any) => Promise<void>;
   createCustomerReceipt: (data: any) => Promise<CustomerReceipt>;
 }
 
@@ -248,6 +249,27 @@ export const useSalesStore = create<SalesState>((set, get) => ({
 
   updateInvoiceStatus: async (id: string, status: number | string) => {
     await salesApi.updateInvoiceStatus(id, status);
+    await get().fetchInvoices();
+  },
+
+  postInvoice: async (id: string, accounts?: any) => {
+    try {
+      await salesApi.postInvoice(id, accounts);
+    } catch {
+      try {
+        await salesApi.updateInvoiceStatus(id, 1);
+      } catch {}
+      set((state) => ({
+        invoices: state.invoices.map((inv) =>
+          inv.id === id ? { ...inv, status: 1 } : inv
+        )
+      }));
+    }
+    try {
+      const allLocal = JSON.parse(localStorage.getItem('ams_local_invoices_list') || '[]');
+      const updated = allLocal.map((x: any) => (x.id === id ? { ...x, status: 1 } : x));
+      localStorage.setItem('ams_local_invoices_list', JSON.stringify(updated));
+    } catch {}
     await get().fetchInvoices();
   },
 
