@@ -422,6 +422,7 @@ public class VendorBill
     public List<VendorBillLine> Lines { get; set; } = [];
     public Guid CompanyId { get; set; }
     public DateTime CreatedAt { get; init; } = DateTime.UtcNow;
+    public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
     public bool HasVarianceWarning { get; set; } = false;
     public int PaymentTermsDays { get; set; } = 30;
     public string CurrencyCode { get; set; } = "USD";

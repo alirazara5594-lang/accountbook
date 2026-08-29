@@ -13,7 +13,7 @@ public class VendorBillsController(AccountingStore store) : ControllerBase
     {
         var query = store.VendorBills
             .Where(a => !companyId.HasValue || a.CompanyId == companyId.Value)
-            .OrderByDescending(b => b.BillDate)
+            .OrderByDescending(b => b.Date)
             .ThenByDescending(b => b.BillNumber);
         return Ok(query);
     }
