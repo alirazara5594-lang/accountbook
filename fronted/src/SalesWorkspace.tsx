@@ -13,6 +13,7 @@ import { KpiCard, KpiGrid } from './components/ui/kpi-card'
 import { StatusChip } from './components/ui/status-chip'
 import { EmptyState, TableSkeleton } from './components/ui/empty-state'
 import { money } from './lib/currency'
+import { getActiveTaxCodes, getDefaultTaxPercentage, type TaxCodeOption } from './lib/taxLocalization'
 import { getGlobalNextInvoiceNumber, recordUsedInvoiceNumber, formatInvoiceNumber } from './lib/invoiceNumbering'
 
 const statusStyles: Record<string, { label: string; hex: string }> = {
@@ -523,16 +524,26 @@ export const SalesWorkspace: React.FC<{ activeEntityId: string; entities?: any[]
         const price = parseFloat(l.unitPrice || l.price || l.unit_price || '0') || 0
         const gross = qty * price
         
-        // Calculate discount based on discountType (0=percentage, 1=fixed)
-        const dv = parseFloat(l.discountValue || l.discountAmount || l.discount || '0') || 0
-        const dt = l.discountType ?? 1
-        const discAmt = dt === 0 ? (gross * dv / 100) : Math.min(dv, gross)
+        // Calculate discount based on discountType (0=percentage, 1=fixed) or stored amount
+        const discAmt = (l.discountAmount !== undefined && l.discountAmount !== null && Number(l.discountAmount) > 0)
+          ? (parseFloat(l.discountAmount) || 0)
+          : (() => {
+              const dv = parseFloat(l.discountValue || l.discount || '0') || 0
+              const dt = l.discountType ?? 0
+              return dt === 0 ? (gross * dv / 100) : Math.min(dv, gross)
+            })()
         
-        // Calculate tax based on tax percentage
+        // Calculate tax based on tax percentage or stored amount
         const taxable = Math.max(0, gross - discAmt)
-        const tp = parseFloat(l.taxPercent || l.taxPercentage || l.taxRate || '0') || 0
-        const taxAmt = (taxable * tp) / 100
-        const total = taxable + taxAmt
+        const taxAmt = (l.taxAmount !== undefined && l.taxAmount !== null && Number(l.taxAmount) > 0)
+          ? (parseFloat(l.taxAmount) || 0)
+          : (() => {
+              const tp = parseFloat(l.taxPercent || l.taxPercentage || l.taxRate || '0') || 0
+              return (taxable * tp) / 100
+            })()
+        const total = (l.lineTotalWithTax !== undefined && l.lineTotalWithTax !== null)
+          ? Number(l.lineTotalWithTax)
+          : (taxable + taxAmt)
         
         const desc = l.description || l.itemDescription || l.desc || l.productName || l.itemName || l.name || 'Commercial Tax Invoice Items'
 
@@ -575,32 +586,41 @@ export const SalesWorkspace: React.FC<{ activeEntityId: string; entities?: any[]
       doc.setDrawColor(...tealMid)
       doc.line(totalsX, finalY + 8, totalsValX, finalY + 8)
 
-      // Compute totals from lines
-      const subTotal = lines.reduce((s: number, l: any) => {
-        const q = parseFloat(l.quantity || '1') || 1
-        const p = parseFloat(l.unitPrice || '0') || 0
-        return s + (q * p)
-      }, 0)
-      const discTotal = lines.reduce((s: number, l: any) => {
-        const q = parseFloat(l.quantity || '1') || 1
-        const p = parseFloat(l.unitPrice || '0') || 0
-        const gross = q * p
-        const dv = parseFloat(l.discountValue || l.discountAmount || '0') || 0
-        const dt = l.discountType ?? 1
-        return s + (dt === 0 ? (gross * dv / 100) : Math.min(dv, gross))
-      }, 0)
-      const taxTotal = lines.reduce((s: number, l: any) => {
-        const q = parseFloat(l.quantity || '1') || 1
-        const p = parseFloat(l.unitPrice || '0') || 0
-        const gross = q * p
-        const dv = parseFloat(l.discountValue || l.discountAmount || '0') || 0
-        const dt = l.discountType ?? 1
-        const da = dt === 0 ? (gross * dv / 100) : Math.min(dv, gross)
-        const taxable = Math.max(0, gross - da)
-        const tp = parseFloat(l.taxPercent || '0') || 0
-        return s + (taxable * tp) / 100
-      }, 0)
-      const netTotal = inv.totalAmount || (subTotal - discTotal + taxTotal)
+      // Canonical totals for PDF
+      const subTotal = inv.subTotal !== undefined && inv.subTotal !== null
+        ? Number(inv.subTotal)
+        : lines.reduce((s: number, l: any) => s + ((parseFloat(l.quantity) || 1) * (parseFloat(l.unitPrice) || 0)), 0)
+
+      const discTotal = inv.discountTotal !== undefined && inv.discountTotal !== null
+        ? Number(inv.discountTotal)
+        : lines.reduce((s: number, l: any) => {
+            if (l.discountAmount !== undefined && l.discountAmount !== null) return s + (parseFloat(l.discountAmount) || 0)
+            const q = parseFloat(l.quantity || '1') || 1
+            const p = parseFloat(l.unitPrice || '0') || 0
+            const gross = q * p
+            const dv = parseFloat(l.discountValue || '0') || 0
+            const dt = l.discountType ?? 0
+            return s + (dt === 0 ? (gross * dv / 100) : Math.min(dv, gross))
+          }, 0)
+
+      const taxTotal = inv.taxTotal !== undefined && inv.taxTotal !== null
+        ? Number(inv.taxTotal)
+        : lines.reduce((s: number, l: any) => {
+            if (l.taxAmount !== undefined && l.taxAmount !== null) return s + (parseFloat(l.taxAmount) || 0)
+            const q = parseFloat(l.quantity || '1') || 1
+            const p = parseFloat(l.unitPrice || '0') || 0
+            const gross = q * p
+            const da = l.discountAmount !== undefined && l.discountAmount !== null
+              ? (parseFloat(l.discountAmount) || 0)
+              : ((l.discountType ?? 0) === 0 ? (gross * (parseFloat(l.discountValue) || 0)) / 100 : Math.min(parseFloat(l.discountValue) || 0, gross))
+            const taxable = Math.max(0, gross - da)
+            const tp = parseFloat(l.taxPercent || '0') || 0
+            return s + (taxable * tp) / 100
+          }, 0)
+
+      const netTotal = inv.totalAmount !== undefined && inv.totalAmount !== null
+        ? Number(inv.totalAmount)
+        : (subTotal - discTotal + taxTotal)
 
       doc.setFontSize(9)
       doc.setFont('helvetica', 'normal')
@@ -895,38 +915,57 @@ export const SalesWorkspace: React.FC<{ activeEntityId: string; entities?: any[]
                   const badge = statusStyles[statusKey] || statusStyles.Draft
                   const lines: any[] = inv.lines || []
                   
-                  // Compute from lines if available, otherwise use API fields
-                  const grossAmount = lines.length > 0
-                    ? lines.reduce((s, l) => s + ((parseFloat(l.quantity) || 1) * (parseFloat(l.unitPrice) || 0)), 0)
-                    : (inv.subTotal ?? inv.grossAmount ?? inv.totalAmount ?? 0)
-                  // Compute discount amount from lines
-                  const discountAmount = lines.length > 0
-                    ? lines.reduce((s, l) => {
-                        const qty = parseFloat(l.quantity) || 1
-                        const price = parseFloat(l.unitPrice) || 0
-                        const gross = qty * price
-                        const dv = parseFloat(l.discountValue || l.discountAmount) || 0
-                        const dt = l.discountType ?? 1
-                        // dt=0 is percentage, dt=1 is fixed amount
-                        return s + (dt === 0 ? (gross * dv) / 100 : Math.min(dv, gross))
-                      }, 0)
-                    : (inv.discountTotal ?? 0)
-                  // Compute tax amount from lines (tax is always percentage)
-                  const taxAmount = lines.length > 0
-                    ? lines.reduce((s, l) => {
-                        const qty = parseFloat(l.quantity) || 1
-                        const price = parseFloat(l.unitPrice) || 0
-                        const gross = qty * price
-                        const dv = parseFloat(l.discountValue || l.discountAmount) || 0
-                        const dt = l.discountType ?? 1
-                        const da = dt === 0 ? (gross * dv) / 100 : Math.min(dv, gross)
-                        const taxable = Math.max(0, gross - da)
-                        const tp = parseFloat(l.taxPercent || l.taxAmount) || 0
-                        return s + (taxable * tp) / 100
-                      }, 0)
-                    : (inv.taxTotal ?? 0)
-                  const netTotal = inv.totalAmount ?? (grossAmount - discountAmount + taxAmount)
-                  const amountDue = inv.amountDue ?? (netTotal - (inv.paidAmount || inv.amountPaid || 0))
+                  // Canonical subtotal / gross
+                  const grossAmount = inv.subTotal !== undefined && inv.subTotal !== null
+                    ? Number(inv.subTotal)
+                    : (lines.length > 0
+                        ? lines.reduce((s, l) => s + ((parseFloat(l.quantity) || 1) * (parseFloat(l.unitPrice) || 0)), 0)
+                        : (inv.grossAmount ?? inv.totalAmount ?? 0))
+
+                  // Canonical discount
+                  const discountAmount = inv.discountTotal !== undefined && inv.discountTotal !== null
+                    ? Number(inv.discountTotal)
+                    : (lines.length > 0
+                        ? lines.reduce((s, l) => {
+                            if (l.discountAmount !== undefined && l.discountAmount !== null) {
+                              return s + (parseFloat(l.discountAmount) || 0)
+                            }
+                            const qty = parseFloat(l.quantity) || 1
+                            const price = parseFloat(l.unitPrice) || 0
+                            const gross = qty * price
+                            const dv = parseFloat(l.discountValue) || 0
+                            const dt = l.discountType ?? 0
+                            return s + (dt === 0 ? (gross * dv) / 100 : Math.min(dv, gross))
+                          }, 0)
+                        : 0)
+
+                  // Canonical tax
+                  const taxAmount = inv.taxTotal !== undefined && inv.taxTotal !== null
+                    ? Number(inv.taxTotal)
+                    : (lines.length > 0
+                        ? lines.reduce((s, l) => {
+                            if (l.taxAmount !== undefined && l.taxAmount !== null) {
+                              return s + (parseFloat(l.taxAmount) || 0)
+                            }
+                            const qty = parseFloat(l.quantity) || 1
+                            const price = parseFloat(l.unitPrice) || 0
+                            const gross = qty * price
+                            const da = l.discountAmount !== undefined && l.discountAmount !== null
+                              ? (parseFloat(l.discountAmount) || 0)
+                              : ((l.discountType ?? 0) === 0 ? (gross * (parseFloat(l.discountValue) || 0)) / 100 : Math.min(parseFloat(l.discountValue) || 0, gross))
+                            const taxable = Math.max(0, gross - da)
+                            const tp = parseFloat(l.taxPercent) || 0
+                            return s + (taxable * tp) / 100
+                          }, 0)
+                        : 0)
+
+                  const netTotal = inv.totalAmount !== undefined && inv.totalAmount !== null
+                    ? Number(inv.totalAmount)
+                    : (grossAmount - discountAmount + taxAmount)
+
+                  const amountDue = inv.amountDue !== undefined && inv.amountDue !== null
+                    ? Number(inv.amountDue)
+                    : (netTotal - (Number(inv.paidAmount || inv.amountPaid) || 0))
 
                   return (
                     <tr key={inv.id} className="hover:bg-[var(--color-surface-muted)]/30 transition-colors">
