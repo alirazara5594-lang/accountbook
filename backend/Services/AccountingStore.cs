@@ -3203,7 +3203,15 @@ public IReadOnlyList<EmployeeCompensation> EmployeeCompensations => _employeeCom
         }
     }
 
-    // ─── Sales Invoices ───────────────────────────────────────────────────────
+    public string NextSalesInvoiceNumber()
+    {
+        var numbers = _salesInvoices.Select(i => i.InvoiceNumber)
+            .Where(n => !string.IsNullOrEmpty(n) && n.StartsWith("INV-") && n.Length <= 10 && int.TryParse(n[4..], out _))
+            .Select(n => int.Parse(n[4..]))
+            .DefaultIfEmpty(0);
+        return $"INV-{(numbers.Max() + 1):D5}";
+    }
+
     public bool CreateSalesInvoice(SalesInvoiceRequest request, out SalesInvoice? invoice, out string? error)
     {
         error = null; invoice = null;
@@ -3217,14 +3225,16 @@ public IReadOnlyList<EmployeeCompensation> EmployeeCompensations => _employeeCom
                 _customers.Add(customer);
             }
 
-            var number = request.InvoiceNumber ?? $"INV-{DateTime.UtcNow:yyyyMMddHHmmss}";
+            var number = (!string.IsNullOrWhiteSpace(request.InvoiceNumber) && !request.InvoiceNumber.StartsWith("INV-202"))
+                ? request.InvoiceNumber
+                : NextSalesInvoiceNumber();
             invoice = new SalesInvoice
             {
                 InvoiceNumber = number,
                 CustomerId = customer.Id,
                 InvoiceDate = request.InvoiceDate,
                 DueDate = request.DueDate,
-                Reference = request.Reference,
+                Reference = request.Reference ?? number,
                 Notes = request.Notes,
                 CompanyId = request.CompanyId,
                 Status = SalesInvoiceStatus.Draft,

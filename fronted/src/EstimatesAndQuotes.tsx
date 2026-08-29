@@ -225,7 +225,7 @@ export const EstimatesAndQuotes: React.FC<{ activeEntityId: string; entities?: a
     };
 
     localStorage.setItem('ams_pending_invoice_from_quote', JSON.stringify(payload));
-    window.location.hash = '#Sales & Customers.Sales Invoices';
+    window.dispatchEvent(new CustomEvent('ams_navigate', { detail: 'Sales & Customers.Sales Invoices' }));
   };
 
   const filteredEstimates = useMemo(() => estimates.filter((est: any) => { const sn = getNumericStatus(est.status); const mq = !query.trim() ? true : `${est.estimateNumber || ''} ${est.customerName || ''} ${est.reference || ''}`.toLowerCase().includes(query.toLowerCase()); const ms = statusFilter === 'all' || String(sn) === statusFilter; return mq && ms }), [estimates, query, statusFilter])

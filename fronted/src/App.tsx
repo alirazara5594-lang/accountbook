@@ -136,6 +136,17 @@ export default function App() {
   const [feedbackModalOpen, setFeedbackModalOpen] = useState(false);
   const [shortcutsModalOpen, setShortcutsModalOpen] = useState(false);
 
+  // Global Navigation Event Listener for seamless inter-module workflow transitions
+  useEffect(() => {
+    const handleNav = (e: any) => {
+      if (e?.detail && typeof e.detail === 'string') {
+        setPage(e.detail);
+      }
+    };
+    window.addEventListener('ams_navigate', handleNav);
+    return () => window.removeEventListener('ams_navigate', handleNav);
+  }, []);
+
   // Global Keyboard Shortcuts Listener
   useEffect(() => {
     const handleGlobalKeys = (e: KeyboardEvent) => {

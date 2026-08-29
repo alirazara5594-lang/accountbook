@@ -155,20 +155,28 @@ export const SalesWorkspace: React.FC<{ activeEntityId: string; entities?: any[]
     let maxNum = 0
     for (const item of invoices) {
       const str = (item.invoiceNumber || item.reference || '') + ''
+      if (str.startsWith('INV-202') || str.length > 10) continue
       const match = str.match(/INV-(\d+)/i)
       if (match) {
         const num = parseInt(match[1], 10)
-        if (!isNaN(num) && num > maxNum) maxNum = num
+        if (!isNaN(num) && num < 100000 && num > maxNum) maxNum = num
       }
     }
     return `INV-${(maxNum + 1).toString().padStart(5, '0')}`
   }
 
   const getFormattedInvoiceNumber = (rawNum: string, index: number) => {
-    if (!rawNum || rawNum.startsWith('EST-')) return `INV-${(index + 1).toString().padStart(5, '0')}`
+    if (!rawNum || rawNum.startsWith('EST-') || rawNum.startsWith('INV-202') || rawNum.length > 10) {
+      return `INV-${(index + 1).toString().padStart(5, '0')}`
+    }
     const match = rawNum.match(/INV-(\d+)/i)
-    if (match) return `INV-${parseInt(match[1], 10).toString().padStart(5, '0')}`
-    return rawNum
+    if (match) {
+      const num = parseInt(match[1], 10)
+      if (!isNaN(num) && num < 100000) {
+        return `INV-${num.toString().padStart(5, '0')}`
+      }
+    }
+    return `INV-${(index + 1).toString().padStart(5, '0')}`
   }
 
   const openCreateModal = () => {
