@@ -106,7 +106,7 @@ export function SalesSummaryView({ activeEntityId, setPage }: { activeEntityId?:
   const isPaidBill = (b: any) => b.status === 3 || b.status === '3' || String(b.status).toLowerCase() === 'paid';
 
   const activeBillsList = billsArr.filter((b: any) => !isDraftBill(b) && !isVoidBill(b));
-  const unpaidBills = activeBillsList.filter((b: any) => !isPaidBill(b) && (b.amountDue ?? (b.totalAmount - (b.amountPaid || 0)) ?? b.total ?? 0) > 0);
+  const unpaidBills = activeBillsList.filter((b: any) => !isPaidBill(b) && ((b.amountDue ?? (b.totalAmount ? (b.totalAmount - (b.amountPaid || 0)) : b.total)) || 0) > 0);
   const apAgingBuckets: Record<string, number> = {}; BUCKETS.forEach(b => { apAgingBuckets[b] = 0; });
   unpaidBills.forEach((b: any) => {
     const due = b.amountDue ?? (b.totalAmount ? (b.totalAmount - (b.amountPaid || 0)) : b.total ?? 0);

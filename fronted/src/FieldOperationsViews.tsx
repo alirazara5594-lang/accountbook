@@ -216,7 +216,7 @@ export function SurveysView({ activeEntityId }: { activeEntityId?: string }) {
               <FormField label="Assigned Lead / Supervisor">
                 <Select value={form.assignedTo} onValueChange={v => v !== null && setF('assignedTo', v)}>
                   <SelectTrigger><SelectValue placeholder="Select lead" /></SelectTrigger>
-                  <SelectContent>{employees.filter(e => e.status === 'Active').map(e => <SelectItem key={e.id} value={e.id}>{e.firstName} {e.lastName} ({e.role || 'Staff'})</SelectItem>)}</SelectContent>
+                  <SelectContent>{employees.filter(e => e.status === 'Active').map(e => <SelectItem key={e.id} value={e.id}>{e.firstName} {e.lastName} ({(e as any).role || (e as any).jobTitle || 'Staff'})</SelectItem>)}</SelectContent>
                 </Select>
               </FormField>
             </div>
@@ -399,7 +399,7 @@ export function FieldVisitsView({ activeEntityId }: { activeEntityId?: string })
               <FormField label="Assigned Technician / Lead">
                 <Select value={form.assignedTo} onValueChange={v => v !== null && setF('assignedTo', v)}>
                   <SelectTrigger><SelectValue placeholder="Select technician" /></SelectTrigger>
-                  <SelectContent>{employees.filter(e => e.status === 'Active').map(e => <SelectItem key={e.id} value={e.id}>{e.firstName} {e.lastName} ({e.role || 'Field Engineer'})</SelectItem>)}</SelectContent>
+                  <SelectContent>{employees.filter(e => e.status === 'Active').map(e => <SelectItem key={e.id} value={e.id}>{e.firstName} {e.lastName} ({(e as any).role || (e as any).jobTitle || 'Field Engineer'})</SelectItem>)}</SelectContent>
                 </Select>
               </FormField>
             </div>
@@ -559,7 +559,7 @@ export function InspectionsView({ activeEntityId }: { activeEntityId?: string })
               <FormField label="Assigned Inspector / Engineer">
                 <Select value={form.inspectorId} onValueChange={v => v !== null && setF('inspectorId', v)}>
                   <SelectTrigger><SelectValue placeholder="Select inspector" /></SelectTrigger>
-                  <SelectContent>{employees.filter(e => e.status === 'Active').map(e => <SelectItem key={e.id} value={e.id}>{e.firstName} {e.lastName} ({e.role || 'Inspector'})</SelectItem>)}</SelectContent>
+                  <SelectContent>{employees.filter(e => e.status === 'Active').map(e => <SelectItem key={e.id} value={e.id}>{e.firstName} {e.lastName} ({(e as any).role || (e as any).jobTitle || 'Inspector'})</SelectItem>)}</SelectContent>
                 </Select>
               </FormField>
             </div>
@@ -744,7 +744,7 @@ export function WorkOrdersView({ activeEntityId }: { activeEntityId?: string }) 
               <FormField label="Assigned Technician / Specialist">
                 <Select value={form.assignedTo} onValueChange={v => v !== null && setF('assignedTo', v)}>
                   <SelectTrigger><SelectValue placeholder="Select technician" /></SelectTrigger>
-                  <SelectContent>{employees.filter(e => e.status === 'Active').map(e => <SelectItem key={e.id} value={e.id}>{e.firstName} {e.lastName} ({e.role || 'Technician'})</SelectItem>)}</SelectContent>
+                  <SelectContent>{employees.filter(e => e.status === 'Active').map(e => <SelectItem key={e.id} value={e.id}>{e.firstName} {e.lastName} ({(e as any).role || (e as any).jobTitle || 'Technician'})</SelectItem>)}</SelectContent>
                 </Select>
               </FormField>
             </div>

@@ -352,7 +352,7 @@ export default function OnboardingWizard({ currentUser }: {
                 {LICENSE_MODES.map(mode => (
                   <div
                     key={mode.id}
-                    onClick={() => setLicenseMode(mode.id)}
+                    onClick={() => setLicenseMode(mode.id as any)}
                     className={`p-3.5 rounded-2xl border cursor-pointer transition-all flex items-start justify-between gap-3 ${
                       licenseMode === mode.id
                         ? 'border-teal-500 bg-teal-50/50 dark:bg-teal-950/30 shadow-xs'
@@ -371,7 +371,7 @@ export default function OnboardingWizard({ currentUser }: {
                     <input
                       type="radio"
                       checked={licenseMode === mode.id}
-                      onChange={() => setLicenseMode(mode.id)}
+                      onChange={() => setLicenseMode(mode.id as any)}
                       className="accent-teal-600 mt-1 shrink-0 cursor-pointer"
                     />
                   </div>

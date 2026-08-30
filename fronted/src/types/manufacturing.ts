@@ -43,6 +43,7 @@ export interface BomLine {
   isOptional: boolean;
   substituteProductId?: string;
   substituteProduct?: Product;
+  quantityRequired?: number;
   notes?: string;
 }
 
@@ -55,6 +56,7 @@ export interface Bom {
   finishedProductCode: string;
   finishedProductName: string;
   quantityPerBatch: number;
+  quantityProduced?: number;
   unitOfMeasure: string;
   status: 'Draft' | 'Approved' | 'Active' | 'Obsolete' | 'Archived';
   type: 'Standard' | 'Phantom' | 'Planning' | 'Engineering' | 'Service';
@@ -238,6 +240,22 @@ export interface WorkOrder {
   varianceLabor: number;
   varianceOverhead: number;
   totalVariance: number;
+  finishedProductName?: string;
+  workCenterName?: string;
+  machineAssetName?: string;
+  quantityToProduce?: number;
+  directLaborCost?: number;
+  overheadCost?: number;
+  totalCost?: number;
+  unitCost?: number;
+  machineRunHours?: number;
+  machineHourlyRate?: number;
+  laborHours?: number;
+  laborHourlyRate?: number;
+  acceptedQuantity?: number;
+  inspectorName?: string;
+  scrapQuantity?: number;
+  scrapReason?: string;
   lines: WorkOrderLine[];
   operations: WorkOrderOperation[];
   qcRequired: boolean;

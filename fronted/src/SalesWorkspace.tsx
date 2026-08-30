@@ -13,8 +13,8 @@ import { KpiCard, KpiGrid } from './components/ui/kpi-card'
 import { StatusChip } from './components/ui/status-chip'
 import { EmptyState, TableSkeleton } from './components/ui/empty-state'
 import { money } from './lib/currency'
-import { getActiveTaxCodes, getDefaultTaxPercentage, type TaxCodeOption } from './lib/taxLocalization'
-import { getGlobalNextInvoiceNumber, recordUsedInvoiceNumber, formatInvoiceNumber } from './lib/invoiceNumbering'
+import { getActiveTaxCodes } from './lib/taxLocalization'
+import { getGlobalNextInvoiceNumber, formatInvoiceNumber } from './lib/invoiceNumbering'
 
 const statusStyles: Record<string, { label: string; hex: string }> = {
   Draft: { label: 'Draft', hex: '#94a3b8' },
@@ -83,7 +83,7 @@ export const SalesWorkspace: React.FC<{ activeEntityId: string; entities?: any[]
   const { saveDraft, clearDraft } = useFormDraft('sales_invoice', { form, lines }, (saved: any) => {
     if (saved.form) setForm(saved.form)
     if (saved.lines) setLines(saved.lines)
-  }, showForm)
+  }, showForm, !!editingInvoice)
 
   const fetchData = async () => {
     setLoading(true)
@@ -790,7 +790,7 @@ export const SalesWorkspace: React.FC<{ activeEntityId: string; entities?: any[]
   const activeInvoices = invoices.filter((i: any) => !isDraftInv(i) && !isVoidInv(i))
   const openInvoicesList = activeInvoices.filter((i: any) => !isPaidInv(i) && (i.amountDue ?? (i.totalAmount - (i.paidAmount || 0))) > 0)
 
-  const totalOutstanding = openInvoicesList.reduce((s: number, i: any) => s + (i.amountDue ?? (i.totalAmount - (i.paidAmount || 0)) || 0), 0)
+  const totalOutstanding = openInvoicesList.reduce((s: number, i: any) => s + ((i.amountDue ?? (i.totalAmount - (i.paidAmount || 0))) || 0), 0)
   const totalPaid = invoices.filter((i: any) => !isVoidInv(i)).reduce((s: number, i: any) => s + (Number(i.paidAmount || (isPaidInv(i) ? i.totalAmount : 0)) || 0), 0)
   
   const draftInvoicesList = invoices.filter((i: any) => isDraftInv(i))
@@ -1017,161 +1017,164 @@ export const SalesWorkspace: React.FC<{ activeEntityId: string; entities?: any[]
               <button onClick={handleCancelForm} className="w-8 h-8 rounded-lg flex items-center justify-center text-[var(--color-text-muted)] hover:text-[var(--color-text-strong)] hover:bg-[var(--color-surface-muted)] transition-colors"><X className="w-4 h-4" /></button>
             </div>
 
-            {/* Modal Tabs */}
-            <div className="flex items-center gap-1 px-4 pt-3 border-b border-[var(--color-border)] bg-[var(--color-surface)]">
+            {/* Modal Stepper Navigation */}
+            <div className="erp-stepper-nav">
               <button
                 type="button"
                 onClick={() => setModalTab('details')}
-                className={`flex items-center gap-1.5 px-2.5 py-1.5 text-[11px] font-semibold rounded-t-lg border-b-2 transition-all whitespace-nowrap ${
-                  modalTab === 'details'
-                    ? 'border-[var(--color-primary)] text-[var(--color-primary)] bg-[var(--color-primary)]/5'
-                    : 'border-transparent text-[var(--color-text-muted)] hover:text-[var(--color-text-strong)]'
-                }`}
+                className={`erp-step-pill ${modalTab === 'details' ? 'active' : ''}`}
               >
-                <Users className="w-3 h-3" /> 1. Customer & Terms
+                <span className="erp-step-num">1</span>
+                <Users className="w-3.5 h-3.5" />
+                <span>Customer & Details</span>
               </button>
 
               <button
                 type="button"
                 onClick={() => setModalTab('lines')}
-                className={`flex items-center gap-1.5 px-2.5 py-1.5 text-[11px] font-semibold rounded-t-lg border-b-2 transition-all whitespace-nowrap ${
-                  modalTab === 'lines'
-                    ? 'border-[var(--color-primary)] text-[var(--color-primary)] bg-[var(--color-primary)]/5'
-                    : 'border-transparent text-[var(--color-text-muted)] hover:text-[var(--color-text-strong)]'
-                }`}
+                className={`erp-step-pill ${modalTab === 'lines' ? 'active' : ''}`}
               >
-                <Receipt className="w-3 h-3" /> 2. Invoice Line Items ({lines.length})
+                <span className="erp-step-num">2</span>
+                <Receipt className="w-3.5 h-3.5" />
+                <span>Line Items ({lines.length})</span>
               </button>
 
               <button
                 type="button"
                 onClick={() => setModalTab('summary')}
-                className={`flex items-center gap-1.5 px-2.5 py-1.5 text-[11px] font-semibold rounded-t-lg border-b-2 transition-all whitespace-nowrap ${
-                  modalTab === 'summary'
-                    ? 'border-[var(--color-primary)] text-[var(--color-primary)] bg-[var(--color-primary)]/5'
-                    : 'border-transparent text-[var(--color-text-muted)] hover:text-[var(--color-text-strong)]'
-                }`}
+                className={`erp-step-pill ${modalTab === 'summary' ? 'active' : ''}`}
               >
-                <Coins className="w-3 h-3" /> 3. Summary & Posting
+                <span className="erp-step-num">3</span>
+                <Coins className="w-3.5 h-3.5" />
+                <span>Summary & Posting</span>
               </button>
 
               <button
                 type="button"
                 onClick={() => setModalTab('preview')}
-                className={`flex items-center gap-1.5 px-2.5 py-1.5 text-[11px] font-semibold rounded-t-lg border-b-2 transition-all whitespace-nowrap ${
-                  modalTab === 'preview'
-                    ? 'border-emerald-600 text-emerald-600 bg-emerald-500/10'
-                    : 'border-transparent text-[var(--color-text-muted)] hover:text-[var(--color-text-strong)]'
-                }`}
+                className={`erp-step-pill ${modalTab === 'preview' ? 'active' : ''}`}
               >
-                <Eye className="w-3 h-3" /> Preview
+                <span className="erp-step-num">4</span>
+                <Eye className="w-3.5 h-3.5" />
+                <span>Review & Preview</span>
               </button>
             </div>
 
             {/* Modal Body */}
-            <div className="p-6 md:p-8 overflow-y-auto flex-1 space-y-5">
+            <div className="p-6 md:p-8 overflow-y-auto flex-1 space-y-6">
               {modalTab === 'details' && (
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-                  <div className="md:col-span-2">
-                    <label className="block text-xs font-semibold text-[var(--color-text-strong)] mb-1.5">
-                      <span className="text-rose-500 font-bold mr-1">*</span> Customer Account
-                    </label>
-                    <select
-                      value={form.customerId}
-                      onChange={e => setForm({ ...form, customerId: e.target.value })}
-                      className="w-full h-10 px-3.5 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] text-xs text-[var(--color-text-strong)] focus:border-[var(--color-primary)] outline-none shadow-2xs"
-                    >
-                      <option value="">Select a customer...</option>
-                      {customers.map((c: any) => (
-                        <option key={c.id} value={c.id}>
-                          {c.name} {c.customerNumber ? `(${c.customerNumber})` : ''} {c.creditLimit ? `— Limit: ${money(c.creditLimit, c.currencyCode || form.currencyCode)}` : ''}
-                        </option>
-                      ))}
-                    </select>
+                <div className="space-y-5">
+                  <div className="erp-form-card space-y-4">
+                    <div className="border-b border-[var(--color-border)] pb-3 flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <Users className="w-4 h-4 text-sky-500" />
+                        <h4 className="text-xs font-bold uppercase tracking-wider text-[var(--color-text-strong)]">Invoice Header & Terms</h4>
+                      </div>
+                      <span className="text-[11px] text-[var(--color-text-muted)] font-medium">Step 1 of 4</span>
+                    </div>
 
-                    {selectedCustomer && (
-                      <div className={`mt-2.5 p-3.5 rounded-xl border text-xs transition-all ${
-                        isCreditLimitExceeded
-                          ? 'bg-amber-500/10 border-amber-500/30 text-amber-900 dark:text-amber-200'
-                          : customerCreditLimit > 0
-                          ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-900 dark:text-emerald-200'
-                          : 'bg-[var(--color-surface-muted)]/50 border-[var(--color-border)] text-[var(--color-text-muted)]'
-                      }`}>
-                        <div className="flex items-center justify-between font-semibold">
-                          <span className="flex items-center gap-1.5">
-                            {isCreditLimitExceeded ? '⚠️ Credit Limit Warning' : customerCreditLimit > 0 ? '✓ Credit Policy Check' : 'ℹ️ Credit Policy'}
-                          </span>
-                          <span className="font-mono">
-                            Limit: {customerCreditLimit > 0 ? money(customerCreditLimit, form.currencyCode) : 'Unlimited'}
-                          </span>
-                        </div>
-                        <div className="mt-1.5 flex flex-wrap items-center justify-between text-[11px] gap-2 opacity-95">
-                          <span>Current AR Balance: <strong>{money(currentCustomerBalance, form.currencyCode)}</strong></span>
-                          <span>This Invoice: <strong>{money(netTotal, form.currencyCode)}</strong></span>
-                          <span>Total Exposure: <strong className={isCreditLimitExceeded ? 'text-rose-600 dark:text-rose-400 font-mono font-bold' : 'font-mono'}>{money(totalCreditExposure, form.currencyCode)}</strong></span>
-                        </div>
-                        {isCreditLimitExceeded && (
-                          <p className="mt-2 text-[11px] font-medium text-rose-600 dark:text-rose-300">
-                            ⚠️ This invoice exceeds the customer's credit limit by <strong>{money(excessCreditAmount, form.currencyCode)}</strong>. Manager override acknowledgment is required.
-                          </p>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div className="md:col-span-2">
+                        <label className="erp-form-label">
+                          <span className="text-rose-500 font-bold mr-1">*</span> Customer Account
+                        </label>
+                        <select
+                          value={form.customerId}
+                          onChange={e => setForm({ ...form, customerId: e.target.value })}
+                          className="erp-form-select font-semibold"
+                        >
+                          <option value="">Select a customer...</option>
+                          {customers.map((c: any) => (
+                            <option key={c.id} value={c.id}>
+                              {c.name} {c.customerNumber ? `(${c.customerNumber})` : ''} {c.creditLimit ? `— Limit: ${money(c.creditLimit, c.currencyCode || form.currencyCode)}` : ''}
+                            </option>
+                          ))}
+                        </select>
+
+                        {selectedCustomer && (
+                          <div className={`mt-3 p-4 rounded-xl border text-xs transition-all ${
+                            isCreditLimitExceeded
+                              ? 'bg-amber-500/10 border-amber-500/30 text-amber-900 dark:text-amber-200'
+                              : customerCreditLimit > 0
+                              ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-900 dark:text-emerald-200'
+                              : 'bg-[var(--color-surface-muted)]/50 border-[var(--color-border)] text-[var(--color-text-muted)]'
+                          }`}>
+                            <div className="flex items-center justify-between font-bold">
+                              <span className="flex items-center gap-1.5">
+                                {isCreditLimitExceeded ? '⚠️ Credit Limit Warning' : customerCreditLimit > 0 ? '✓ Credit Policy Verified' : 'ℹ️ Customer Terms'}
+                              </span>
+                              <span className="font-mono">
+                                Limit: {customerCreditLimit > 0 ? money(customerCreditLimit, form.currencyCode) : 'Unlimited'}
+                              </span>
+                            </div>
+                            <div className="mt-2 flex flex-wrap items-center justify-between text-[11px] gap-2">
+                              <span>Outstanding AR: <strong>{money(currentCustomerBalance, form.currencyCode)}</strong></span>
+                              <span>This Invoice Total: <strong>{money(netTotal, form.currencyCode)}</strong></span>
+                              <span>Post-Invoice Exposure: <strong className={isCreditLimitExceeded ? 'text-rose-600 dark:text-rose-400 font-mono font-bold' : 'font-mono'}>{money(totalCreditExposure, form.currencyCode)}</strong></span>
+                            </div>
+                            {isCreditLimitExceeded && (
+                              <p className="mt-2 text-[11px] font-semibold text-rose-600 dark:text-rose-300">
+                                ⚠️ This invoice exceeds the customer's credit limit by <strong>{money(excessCreditAmount, form.currencyCode)}</strong>.
+                              </p>
+                            )}
+                          </div>
                         )}
                       </div>
-                    )}
-                  </div>
 
-                  <div>
-                    <label className="block text-xs font-semibold text-[var(--color-text-strong)] mb-1.5">
-                      Invoice Reference # / Code
-                    </label>
-                    <div className="flex items-center gap-2.5 h-10 px-3.5 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] focus-within:border-[var(--color-primary)] transition-colors shadow-2xs">
-                      <Hash className="w-4 h-4 text-[var(--color-text-muted)] shrink-0" />
-                      <input
-                        placeholder="e.g. INV-0001"
-                        value={form.reference}
-                        onChange={e => setForm({ ...form, reference: e.target.value })}
-                        className="w-full h-full border-0 outline-none bg-transparent font-mono text-xs text-[var(--color-text-strong)] placeholder:text-[var(--color-text-muted)]"
-                        style={{ border: 0, outline: 'none', padding: 0, background: 'transparent' }}
-                      />
+                      <div>
+                        <label className="erp-form-label">
+                          Invoice Reference #
+                        </label>
+                        <div className="relative">
+                          <Hash className="w-4 h-4 text-[var(--color-text-muted)] absolute left-3.5 top-1/2 -translate-y-1/2" />
+                          <input
+                            placeholder="e.g. INV-0001 (Auto-generated)"
+                            value={form.reference}
+                            onChange={e => setForm({ ...form, reference: e.target.value })}
+                            className="erp-form-input pl-10! font-mono font-bold"
+                          />
+                        </div>
+                      </div>
+
+                      <div>
+                        <label className="erp-form-label">
+                          Billing Currency
+                        </label>
+                        <select
+                          value={form.currencyCode}
+                          onChange={e => setForm({ ...form, currencyCode: e.target.value })}
+                          className="erp-form-select font-bold"
+                        >
+                          {['PKR', 'USD', 'AED', 'SAR', 'GBP', 'EUR', 'CAD', 'AUD'].map(curr => (
+                            <option key={curr} value={curr}>{curr}</option>
+                          ))}
+                        </select>
+                      </div>
+
+                      <div>
+                        <label className="erp-form-label">
+                          Invoice Date
+                        </label>
+                        <input
+                          type="date"
+                          value={form.invoiceDate}
+                          onChange={e => setForm({ ...form, invoiceDate: e.target.value })}
+                          className="erp-form-input font-medium"
+                        />
+                      </div>
+
+                      <div>
+                        <label className="erp-form-label">
+                          Payment Due Date
+                        </label>
+                        <input
+                          type="date"
+                          value={form.dueDate}
+                          onChange={e => setForm({ ...form, dueDate: e.target.value })}
+                          className="erp-form-input font-medium"
+                        />
+                      </div>
                     </div>
-                  </div>
-
-                  <div>
-                    <label className="block text-xs font-semibold text-[var(--color-text-strong)] mb-1.5">
-                      Default Currency
-                    </label>
-                    <select
-                      value={form.currencyCode}
-                      onChange={e => setForm({ ...form, currencyCode: e.target.value })}
-                      className="w-full h-10 px-3.5 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] text-xs font-semibold text-[var(--color-text-strong)] focus:border-[var(--color-primary)] outline-none shadow-2xs"
-                    >
-                      {['PKR', 'USD', 'AED', 'SAR', 'GBP', 'EUR', 'CAD', 'AUD'].map(curr => (
-                        <option key={curr} value={curr}>{curr}</option>
-                      ))}
-                    </select>
-                  </div>
-
-                  <div>
-                    <label className="block text-xs font-semibold text-[var(--color-text-strong)] mb-1.5">
-                      Invoice Date
-                    </label>
-                    <input
-                      type="date"
-                      value={form.invoiceDate}
-                      onChange={e => setForm({ ...form, invoiceDate: e.target.value })}
-                      className="w-full h-10 px-3.5 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] text-xs text-[var(--color-text-strong)] focus:border-[var(--color-primary)] outline-none shadow-2xs"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-xs font-semibold text-[var(--color-text-strong)] mb-1.5">
-                      Payment Due Date
-                    </label>
-                    <input
-                      type="date"
-                      value={form.dueDate}
-                      onChange={e => setForm({ ...form, dueDate: e.target.value })}
-                      className="w-full h-10 px-3.5 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] text-xs text-[var(--color-text-strong)] focus:border-[var(--color-primary)] outline-none shadow-2xs"
-                    />
                   </div>
                 </div>
               )}
@@ -1461,10 +1464,10 @@ export const SalesWorkspace: React.FC<{ activeEntityId: string; entities?: any[]
                 <span>{modalTab === 'preview' ? 'Ready for final verification & creation' : 'Auto-draft protection active'}</span>
               </div>
 
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2.5 flex-wrap sm:flex-nowrap shrink-0">
                 <button
                   type="button"
-                  className="h-8.5 px-3.5 rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] text-xs font-medium text-[var(--color-text)] hover:bg-[var(--color-surface-muted)] transition-colors"
+                  className="h-9 min-h-[36px] px-4 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] text-xs font-semibold text-[var(--color-text)] hover:bg-[var(--color-surface-muted)] transition-colors whitespace-nowrap leading-none flex items-center justify-center shrink-0"
                   onClick={handleCancelForm}
                 >
                   Cancel
@@ -1472,7 +1475,7 @@ export const SalesWorkspace: React.FC<{ activeEntityId: string; entities?: any[]
                 {modalTab !== 'preview' && (
                   <button
                     type="button"
-                    className="h-8.5 px-3.5 rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] text-xs font-medium text-[var(--color-text-muted)] hover:text-[var(--color-text-strong)] transition-colors"
+                    className="h-9 min-h-[36px] px-4 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] text-xs font-semibold text-[var(--color-text-muted)] hover:text-[var(--color-text-strong)] hover:bg-[var(--color-surface-muted)] transition-colors whitespace-nowrap leading-none flex items-center justify-center shrink-0"
                     onClick={(e) => { e.preventDefault(); saveDraft(); notify('Invoice draft saved locally.'); }}
                   >
                     Save Draft
@@ -1487,9 +1490,9 @@ export const SalesWorkspace: React.FC<{ activeEntityId: string; entities?: any[]
                       else if (modalTab === 'summary') setModalTab('lines')
                       else if (modalTab === 'lines') setModalTab('details')
                     }}
-                    className="h-8.5 px-3 rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] text-xs font-medium text-[var(--color-text)] hover:bg-[var(--color-surface-muted)] transition-colors flex items-center gap-1"
+                    className="h-9 min-h-[36px] px-4 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] text-xs font-semibold text-[var(--color-text)] hover:bg-[var(--color-surface-muted)] transition-colors flex items-center justify-center gap-1.5 whitespace-nowrap leading-none shrink-0"
                   >
-                    <ArrowLeft className="w-3 h-3" />
+                    <ArrowLeft className="w-3.5 h-3.5 shrink-0" />
                     <span>{modalTab === 'preview' ? 'Back to Edit' : 'Back'}</span>
                   </button>
                 )}
@@ -1510,20 +1513,20 @@ export const SalesWorkspace: React.FC<{ activeEntityId: string; entities?: any[]
                         setModalTab('preview')
                       }
                     }}
-                    className="primary h-8.5 px-4 rounded-lg text-xs font-semibold shadow-xs flex items-center gap-1.5"
+                    className="h-9 min-h-[36px] px-4 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] text-xs font-semibold text-[var(--color-text)] hover:bg-[var(--color-surface-muted)] transition-colors flex items-center justify-center gap-1.5 whitespace-nowrap leading-none shrink-0"
                   >
                     <span>
-                      {modalTab === 'details' ? 'Next: Line Items' : modalTab === 'lines' ? 'Next: Summary & Posting' : 'Preview & Review'}
+                      {modalTab === 'details' ? 'Next: Line Items' : modalTab === 'lines' ? 'Next: Summary & Posting' : 'Preview Invoice'}
                     </span>
-                    {modalTab === 'summary' ? <Eye className="w-3 h-3" /> : <ArrowRight className="w-3 h-3" />}
+                    {modalTab === 'summary' ? <Eye className="w-3.5 h-3.5 shrink-0" /> : <ArrowRight className="w-3.5 h-3.5 shrink-0" />}
                   </button>
                 ) : (
                   <button
                     type="button"
                     onClick={saveInvoice}
-                    className="primary h-8.5 px-5 rounded-lg text-xs font-semibold shadow-xs flex items-center gap-1.5 bg-emerald-600 hover:bg-emerald-700 text-white"
+                    className="h-9 min-h-[36px] px-5 rounded-xl text-xs font-bold shadow-md flex items-center justify-center gap-1.5 bg-gradient-to-r from-emerald-600 to-green-600 hover:from-emerald-700 hover:to-green-700 text-white whitespace-nowrap leading-none shrink-0"
                   >
-                    <Check className="w-3 h-3" />
+                    <Check className="w-3.5 h-3.5 shrink-0" />
                     <span>{editingInvoice ? 'Confirm & Save Changes' : 'Confirm & Create Invoice (Draft)'}</span>
                   </button>
                 )}

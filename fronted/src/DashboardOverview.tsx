@@ -55,7 +55,7 @@ export function DashboardOverview({ accounts = [], entries = [], setPage, active
   useEffect(() => {
     Promise.all([
       fetchAllSales(activeEntityId), fetchAllProcurement(activeEntityId), fetchAllBanking(activeEntityId),
-      fetchAllAssetsInventory(activeEntityId), fetchAllManufacturing(activeEntityId),
+      fetchAllAssetsInventory(activeEntityId), fetchAllManufacturing(activeEntityId || ''),
       usePayrollStore.getState().fetchAll(), fieldStore.fetchAll(), complianceStore.fetchAll(),
       fetchProjectsAll(), adminStore.fetchAll(), fetchAllTaxData(),
     ]).catch(() => {});
@@ -82,7 +82,7 @@ export function DashboardOverview({ accounts = [], entries = [], setPage, active
   const isDraftDoc = (s: any) => s === 0 || s === '0' || String(s).toLowerCase() === 'draft';
   const isVoidDoc = (s: any) => s === 3 || s === 4 || s === '3' || s === '4' || String(s).toLowerCase() === 'void' || String(s).toLowerCase() === 'cancelled';
 
-  const openInvoices = safeInvoices.filter(i => !isDraftDoc(i.status) && !isVoidDoc(i.status) && (i?.amountDue ?? (i?.totalAmount - (i?.paidAmount || 0)) ?? 0) > 0);
+  const openInvoices = safeInvoices.filter(i => !isDraftDoc(i.status) && !isVoidDoc(i.status) && (i?.amountDue ?? (i?.totalAmount - (i?.paidAmount || 0))) > 0);
   const unpaidBillsArr = (safeBills as any[]).filter(b => !isDraftDoc(b.status) && !isVoidDoc(b.status) && (b?.amountDue ?? (b?.status !== 'Paid' ? b?.totalAmount ?? b?.total ?? 0 : 0)) > 0);
 
   const arAging: Record<string, number> = {}; BUCKETS.forEach(b => arAging[b] = 0);

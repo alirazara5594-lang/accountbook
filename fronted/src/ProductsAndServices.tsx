@@ -115,7 +115,7 @@ export default function ProductsAndServices({
   const [modalTab, setModalTab] = useState<'info' | 'pricing' | 'accounting' | 'tax' | 'preview'>('info')
   const [editingProduct, setEditingProduct] = useState<Product | null>(null)
   const [form, setForm] = useState<ProductForm>(blankForm())
-  const { saveDraft, clearDraft } = useFormDraft('product', form, setForm, modalOpen)
+  const { saveDraft, clearDraft } = useFormDraft('product', form, setForm, modalOpen, !!editingProduct)
 
   useEffect(() => {
     fetchProducts()
@@ -243,17 +243,11 @@ export default function ProductsAndServices({
     setModalOpen(true)
   }
 
-  const handleSave = async (e: FormEvent) => {
-    e.preventDefault()
+  const handleSave = async (e?: FormEvent) => {
+    if (e) e.preventDefault()
     if (!form.name.trim()) {
       notify('Product name is required.')
       setModalTab('info')
-      return
-    }
-
-    // Always require reviewing on the Preview tab before committing changes to the database
-    if (modalTab !== 'preview') {
-      setModalTab('preview')
       return
     }
 
@@ -613,357 +607,377 @@ export default function ProductsAndServices({
               </button>
             </div>
 
-            {/* Modal Tabs Navigation */}
-            <div className="flex items-center gap-1 px-4 pt-3 border-b border-[var(--color-border)] bg-[var(--color-surface)]">
+            {/* Modal Stepper Navigation */}
+            <div className="erp-stepper-nav">
               <button
                 type="button"
                 onClick={() => setModalTab('info')}
-                className={`flex items-center gap-1.5 px-2.5 py-1.5 text-[11px] font-semibold rounded-t-lg border-b-2 transition-all whitespace-nowrap ${
-                  modalTab === 'info'
-                    ? 'border-[var(--color-primary)] text-[var(--color-primary)] bg-[var(--color-primary)]/5'
-                    : 'border-transparent text-[var(--color-text-muted)] hover:text-[var(--color-text-strong)]'
-                }`}
+                className={`erp-step-pill ${modalTab === 'info' ? 'active' : ''}`}
               >
-                <Package className="w-3 h-3" /> Item Info & Type
+                <span className="erp-step-num">1</span>
+                <Package className="w-3.5 h-3.5" />
+                <span>Item Info</span>
               </button>
 
               <button
                 type="button"
                 onClick={() => setModalTab('pricing')}
-                className={`flex items-center gap-1.5 px-2.5 py-1.5 text-[11px] font-semibold rounded-t-lg border-b-2 transition-all whitespace-nowrap ${
-                  modalTab === 'pricing'
-                    ? 'border-[var(--color-primary)] text-[var(--color-primary)] bg-[var(--color-primary)]/5'
-                    : 'border-transparent text-[var(--color-text-muted)] hover:text-[var(--color-text-strong)]'
-                }`}
+                className={`erp-step-pill ${modalTab === 'pricing' ? 'active' : ''}`}
               >
-                <Coins className="w-3 h-3" /> Pricing & Costing
+                <span className="erp-step-num">2</span>
+                <Coins className="w-3.5 h-3.5" />
+                <span>Pricing & Cost</span>
               </button>
 
               <button
                 type="button"
                 onClick={() => setModalTab('accounting')}
-                className={`flex items-center gap-1.5 px-2.5 py-1.5 text-[11px] font-semibold rounded-t-lg border-b-2 transition-all whitespace-nowrap ${
-                  modalTab === 'accounting'
-                    ? 'border-[var(--color-primary)] text-[var(--color-primary)] bg-[var(--color-primary)]/5'
-                    : 'border-transparent text-[var(--color-text-muted)] hover:text-[var(--color-text-strong)]'
-                }`}
+                className={`erp-step-pill ${modalTab === 'accounting' ? 'active' : ''}`}
               >
-                <Layers className="w-3 h-3" /> GAAP GL Accounts
+                <span className="erp-step-num">3</span>
+                <Layers className="w-3.5 h-3.5" />
+                <span>GAAP GL Accounts</span>
               </button>
 
               <button
                 type="button"
                 onClick={() => setModalTab('tax')}
-                className={`flex items-center gap-1.5 px-2.5 py-1.5 text-[11px] font-semibold rounded-t-lg border-b-2 transition-all whitespace-nowrap ${
-                  modalTab === 'tax'
-                    ? 'border-[var(--color-primary)] text-[var(--color-primary)] bg-[var(--color-primary)]/5'
-                    : 'border-transparent text-[var(--color-text-muted)] hover:text-[var(--color-text-strong)]'
-                }`}
+                className={`erp-step-pill ${modalTab === 'tax' ? 'active' : ''}`}
               >
-                <Receipt className="w-3 h-3" /> Tax & Classification
+                <span className="erp-step-num">4</span>
+                <Receipt className="w-3.5 h-3.5" />
+                <span>Tax & Compliance</span>
               </button>
 
               <button
                 type="button"
                 onClick={() => setModalTab('preview')}
-                className={`flex items-center gap-1.5 px-2.5 py-1.5 text-[11px] font-semibold rounded-t-lg border-b-2 transition-all whitespace-nowrap ${
-                  modalTab === 'preview'
-                    ? 'border-emerald-600 text-emerald-600 bg-emerald-500/10'
-                    : 'border-transparent text-[var(--color-text-muted)] hover:text-[var(--color-text-strong)]'
-                }`}
+                className={`erp-step-pill ${modalTab === 'preview' ? 'active' : ''}`}
               >
-                <Eye className="w-3 h-3" /> Preview
+                <span className="erp-step-num">5</span>
+                <Eye className="w-3.5 h-3.5" />
+                <span>Review & Preview</span>
               </button>
             </div>
 
             {/* Modal Body */}
-            <div className="p-6 md:p-8 overflow-y-auto flex-1 space-y-5">
+            <div className="p-6 md:p-8 overflow-y-auto flex-1 space-y-6">
               {modalTab === 'info' && (
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-                  <div>
-                    <label className="block text-xs font-semibold text-[var(--color-text-strong)] mb-1.5">
-                      <span className="text-rose-500 font-bold mr-1">*</span> Item Type
-                    </label>
-                    <select
-                      value={form.type}
-                      onChange={e => setForm({ ...form, type: e.target.value as ProductType })}
-                      className="w-full h-10 px-3.5 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] text-xs text-[var(--color-text-strong)] focus:border-[var(--color-primary)] outline-none shadow-2xs cursor-pointer"
-                    >
-                      <option value="Physical">📦 Physical Good (Inventory Tracked)</option>
-                      <option value="Service">🛠️ Service (Consulting, Labor, Hours)</option>
-                      <option value="NonInventory">📑 Non-Inventory (Consumables, Office)</option>
-                      <option value="Bundle">🎁 Bundle / Kit (Composite Items)</option>
-                    </select>
-                  </div>
-
-                  <div>
-                    <label className="block text-xs font-semibold text-[var(--color-text-strong)] mb-1.5">
-                      Item SKU / Code
-                    </label>
-                    <div className="flex items-center gap-2.5 h-10 px-3.5 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] focus-within:border-[var(--color-primary)] transition-colors shadow-2xs">
-                      <Hash className="w-4 h-4 text-[var(--color-text-muted)] shrink-0" />
-                      <input
-                        placeholder="Auto-generated if blank"
-                        value={form.code}
-                        onChange={e => setForm({ ...form, code: e.target.value })}
-                        className="w-full h-full border-0 outline-none bg-transparent font-mono text-xs text-[var(--color-text-strong)] placeholder:text-[var(--color-text-muted)]"
-                        style={{ border: 0, outline: 'none', padding: 0, background: 'transparent' }}
-                      />
+                <div className="space-y-5">
+                  <div className="erp-form-card space-y-4">
+                    <div className="border-b border-[var(--color-border)] pb-3 flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <Package className="w-4 h-4 text-amber-500" />
+                        <h4 className="text-xs font-bold uppercase tracking-wider text-[var(--color-text-strong)]">General Identification</h4>
+                      </div>
+                      <span className="text-[11px] text-[var(--color-text-muted)] font-medium">Step 1 of 5</span>
                     </div>
-                  </div>
 
-                  <div className="md:col-span-2">
-                    <label className="block text-xs font-semibold text-[var(--color-text-strong)] mb-1.5">
-                      <span className="text-rose-500 font-bold mr-1">*</span> Item Name
-                    </label>
-                    <div className="flex items-center gap-2.5 h-10 px-3.5 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] focus-within:border-[var(--color-primary)] transition-colors shadow-2xs">
-                      <Package className="w-4 h-4 text-[var(--color-text-muted)] shrink-0" />
-                      <input
-                        required
-                        placeholder="e.g. Enterprise Accounting Consultation"
-                        value={form.name}
-                        onChange={e => setForm({ ...form, name: e.target.value })}
-                        className="w-full h-full border-0 outline-none bg-transparent text-xs text-[var(--color-text-strong)] placeholder:text-[var(--color-text-muted)]"
-                        style={{ border: 0, outline: 'none', padding: 0, background: 'transparent' }}
-                      />
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div>
+                        <label className="erp-form-label">
+                          <span className="text-rose-500 font-bold mr-1">*</span> Item Classification
+                        </label>
+                        <select
+                          value={form.type}
+                          onChange={e => setForm({ ...form, type: e.target.value as ProductType })}
+                          className="erp-form-select cursor-pointer font-medium"
+                        >
+                          <option value="Physical">📦 Physical Good (Inventory Tracked)</option>
+                          <option value="Service">🛠️ Service (Consulting, Labor, Hours)</option>
+                          <option value="NonInventory">📑 Non-Inventory (Consumables, Office)</option>
+                          <option value="Bundle">🎁 Bundle / Kit (Composite Items)</option>
+                        </select>
+                      </div>
+
+                      <div>
+                        <label className="erp-form-label">
+                          Item SKU / Code
+                        </label>
+                        <div className="relative">
+                          <Hash className="w-4 h-4 text-[var(--color-text-muted)] absolute left-3.5 top-1/2 -translate-y-1/2" />
+                          <input
+                            placeholder="Auto-generated if blank"
+                            value={form.code}
+                            onChange={e => setForm({ ...form, code: e.target.value })}
+                            className="erp-form-input pl-10! font-mono"
+                          />
+                        </div>
+                      </div>
+
+                      <div className="md:col-span-2">
+                        <label className="erp-form-label">
+                          <span className="text-rose-500 font-bold mr-1">*</span> Item Name / Title
+                        </label>
+                        <div className="relative">
+                          <Package className="w-4 h-4 text-[var(--color-text-muted)] absolute left-3.5 top-1/2 -translate-y-1/2" />
+                          <input
+                            required
+                            placeholder="e.g. Enterprise Accounting Consultation or Industrial Bearing #402"
+                            value={form.name}
+                            onChange={e => setForm({ ...form, name: e.target.value })}
+                            className="erp-form-input pl-10! font-semibold"
+                          />
+                        </div>
+                      </div>
+
+                      <div>
+                        <label className="erp-form-label">Category</label>
+                        <div className="relative">
+                          <Tag className="w-4 h-4 text-[var(--color-text-muted)] absolute left-3.5 top-1/2 -translate-y-1/2" />
+                          <input
+                            placeholder="e.g. Professional Services, Hardware, Raw Materials"
+                            value={form.category}
+                            onChange={e => setForm({ ...form, category: e.target.value })}
+                            className="erp-form-input pl-10!"
+                          />
+                        </div>
+                      </div>
+
+                      <div>
+                        <label className="erp-form-label">Unit of Measure (UoM)</label>
+                        <input
+                          placeholder="Each, Hour, Kg, Meter, Box, Day"
+                          value={form.unit}
+                          onChange={e => setForm({ ...form, unit: e.target.value })}
+                          className="erp-form-input"
+                        />
+                      </div>
+
+                      <div className="md:col-span-2">
+                        <label className="erp-form-label">Description / Customer Invoice Notes</label>
+                        <textarea
+                          rows={3}
+                          placeholder="Detailed line item specifications, scope of work, or standard customer-facing notes..."
+                          value={form.description}
+                          onChange={e => setForm({ ...form, description: e.target.value })}
+                          className="erp-form-textarea"
+                        />
+                      </div>
                     </div>
-                  </div>
-
-                  <div>
-                    <label className="block text-xs font-semibold text-[var(--color-text-strong)] mb-1.5">
-                      Category
-                    </label>
-                    <div className="flex items-center gap-2.5 h-10 px-3.5 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] focus-within:border-[var(--color-primary)] transition-colors shadow-2xs">
-                      <Tag className="w-4 h-4 text-[var(--color-text-muted)] shrink-0" />
-                      <input
-                        placeholder="e.g. Professional Services"
-                        value={form.category}
-                        onChange={e => setForm({ ...form, category: e.target.value })}
-                        className="w-full h-full border-0 outline-none bg-transparent text-xs text-[var(--color-text-strong)] placeholder:text-[var(--color-text-muted)]"
-                        style={{ border: 0, outline: 'none', padding: 0, background: 'transparent' }}
-                      />
-                    </div>
-                  </div>
-
-                  <div>
-                    <label className="block text-xs font-semibold text-[var(--color-text-strong)] mb-1.5">
-                      Unit of Measure
-                    </label>
-                    <input
-                      placeholder="Each, Hour, Kg, Meter, Box"
-                      value={form.unit}
-                      onChange={e => setForm({ ...form, unit: e.target.value })}
-                      className="w-full h-10 px-3.5 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] text-xs text-[var(--color-text-strong)] placeholder:text-[var(--color-text-muted)] focus:border-[var(--color-primary)] outline-none shadow-2xs"
-                    />
-                  </div>
-
-                  <div className="md:col-span-2">
-                    <label className="block text-xs font-semibold text-[var(--color-text-strong)] mb-1.5">
-                      Description / Sales Notes
-                    </label>
-                    <textarea
-                      rows={3}
-                      placeholder="Internal descriptions, product specifications, or invoice line details..."
-                      value={form.description}
-                      onChange={e => setForm({ ...form, description: e.target.value })}
-                      className="w-full p-3 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] text-xs text-[var(--color-text-strong)] placeholder:text-[var(--color-text-muted)] focus:border-[var(--color-primary)] outline-none shadow-2xs resize-none"
-                    />
                   </div>
                 </div>
               )}
 
               {modalTab === 'pricing' && (
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-                  <div>
-                    <label className="block text-xs font-semibold text-[var(--color-text-strong)] mb-1.5">
-                      Unit Sales Price
-                    </label>
-                    <div className="flex items-center gap-2.5 h-10 px-3.5 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] focus-within:border-[var(--color-primary)] transition-colors shadow-2xs">
-                      <span className="text-[11px] font-bold font-mono text-[var(--color-text-muted)] shrink-0 px-1.5 py-0.5 rounded bg-[var(--color-surface-muted)]">
-                        Rs
-                      </span>
-                      <input
-                        type="number"
-                        step="0.01"
-                        min="0"
-                        placeholder="0.00"
-                        value={form.unitPrice}
-                        onChange={e => setForm({ ...form, unitPrice: e.target.value })}
-                        className="w-full h-full border-0 outline-none bg-transparent font-mono text-xs text-[var(--color-text-strong)] placeholder:text-[var(--color-text-muted)]"
-                        style={{ border: 0, outline: 'none', padding: 0, background: 'transparent' }}
-                      />
+                <div className="space-y-5">
+                  <div className="erp-form-card space-y-4">
+                    <div className="border-b border-[var(--color-border)] pb-3 flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <Coins className="w-4 h-4 text-emerald-500" />
+                        <h4 className="text-xs font-bold uppercase tracking-wider text-[var(--color-text-strong)]">Unit Pricing & Costing</h4>
+                      </div>
+                      <span className="text-[11px] text-[var(--color-text-muted)] font-medium">Step 2 of 5</span>
                     </div>
-                    <p className="text-[11px] text-[var(--color-text-muted)] mt-1.5">
-                      Default unit selling rate billed on customer invoices.
-                    </p>
-                  </div>
 
-                  <div>
-                    <label className="block text-xs font-semibold text-[var(--color-text-strong)] mb-1.5">
-                      Unit Cost / Purchase Price
-                    </label>
-                    <div className="flex items-center gap-2.5 h-10 px-3.5 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] focus-within:border-[var(--color-primary)] transition-colors shadow-2xs">
-                      <span className="text-[11px] font-bold font-mono text-[var(--color-text-muted)] shrink-0 px-1.5 py-0.5 rounded bg-[var(--color-surface-muted)]">
-                        Rs
-                      </span>
-                      <input
-                        type="number"
-                        step="0.01"
-                        min="0"
-                        placeholder="0.00"
-                        value={form.costPrice}
-                        onChange={e => setForm({ ...form, costPrice: e.target.value })}
-                        className="w-full h-full border-0 outline-none bg-transparent font-mono text-xs text-[var(--color-text-strong)] placeholder:text-[var(--color-text-muted)]"
-                        style={{ border: 0, outline: 'none', padding: 0, background: 'transparent' }}
-                      />
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                      <div>
+                        <label className="erp-form-label">
+                          <span className="text-rose-500 font-bold mr-1">*</span> Unit Sales Price (Revenue)
+                        </label>
+                        <div className="relative">
+                          <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-xs font-bold font-mono text-[var(--color-text-muted)]">
+                            PKR
+                          </span>
+                          <input
+                            type="number"
+                            step="0.01"
+                            min="0"
+                            placeholder="0.00"
+                            value={form.unitPrice}
+                            onChange={e => setForm({ ...form, unitPrice: e.target.value })}
+                            className="erp-form-input pl-14! font-mono font-bold text-emerald-600 dark:text-emerald-400"
+                          />
+                        </div>
+                        <p className="text-[11px] text-[var(--color-text-muted)] mt-1.5">
+                          Standard rate automatically billed on sales invoices & quotes.
+                        </p>
+                      </div>
+
+                      <div>
+                        <label className="erp-form-label">
+                          Unit Cost Price (COGS / Expense)
+                        </label>
+                        <div className="relative">
+                          <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-xs font-bold font-mono text-[var(--color-text-muted)]">
+                            PKR
+                          </span>
+                          <input
+                            type="number"
+                            step="0.01"
+                            min="0"
+                            placeholder="0.00"
+                            value={form.costPrice}
+                            onChange={e => setForm({ ...form, costPrice: e.target.value })}
+                            className="erp-form-input pl-14! font-mono font-bold text-rose-600 dark:text-rose-400"
+                          />
+                        </div>
+                        <p className="text-[11px] text-[var(--color-text-muted)] mt-1.5">
+                          Purchase or landed standard cost per unit for margin tracking.
+                        </p>
+                      </div>
                     </div>
-                    <p className="text-[11px] text-[var(--color-text-muted)] mt-1.5">
-                      Estimated purchase or standard landed cost per unit.
-                    </p>
-                  </div>
 
-                  <div className="md:col-span-2 pt-2 border-t border-[var(--color-border)]">
-                    <label className="block text-xs font-semibold text-[var(--color-text-strong)] mb-1.5">
-                      Default Sales Tax Rate (Optional)
-                    </label>
-                    <select
-                      value={form.taxCodeId}
-                      onChange={e => setForm({ ...form, taxCodeId: e.target.value })}
-                      className="w-full h-10 px-3.5 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] text-xs text-[var(--color-text-strong)] focus:border-[var(--color-primary)] outline-none shadow-2xs"
-                    >
-                      <option value="">No Tax (0% / Determined on Invoice)</option>
-                      {taxCodes.map(tc => {
-                        const r = getTaxRatePercent(tc)
-                        return (
-                          <option key={tc.id} value={tc.id}>
-                            {tc.code} {r !== null ? `(${r}%)` : ''} — {tc.name}
-                          </option>
-                        )
-                      })}
-                    </select>
-                    <p className="text-[11px] text-[var(--color-text-muted)] mt-1.5">
-                      Optional template default. Invoices can still select, override, or omit tax per line item.
-                    </p>
+                    {/* Live Margin Calculation Card */}
+                    <div className="p-4 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface-muted)]/50 flex items-center justify-between">
+                      <div>
+                        <small className="text-[10px] uppercase font-bold text-[var(--color-text-muted)] block">Estimated Gross Margin</small>
+                        <span className="text-sm font-bold text-emerald-600 dark:text-emerald-400 font-mono">
+                          {(() => {
+                            const p = parseFloat(form.unitPrice) || 0;
+                            const c = parseFloat(form.costPrice) || 0;
+                            if (p <= 0) return '0.00% (No Sales Price)';
+                            const margin = ((p - c) / p) * 100;
+                            const profit = p - c;
+                            return `+${margin.toFixed(1)}% (Profit: ${money(profit)} per unit)`;
+                          })()}
+                        </span>
+                      </div>
+                      <div className="text-right">
+                        <small className="text-[10px] uppercase font-bold text-[var(--color-text-muted)] block">Markup Rate</small>
+                        <span className="text-xs font-semibold text-[var(--color-text-strong)] font-mono">
+                          {(() => {
+                            const p = parseFloat(form.unitPrice) || 0;
+                            const c = parseFloat(form.costPrice) || 0;
+                            if (c <= 0) return '—';
+                            return `${(((p - c) / c) * 100).toFixed(1)}% markup`;
+                          })()}
+                        </span>
+                      </div>
+                    </div>
                   </div>
                 </div>
               )}
 
               {modalTab === 'accounting' && (
                 <div className="space-y-5">
-                  <div className="p-3.5 rounded-xl border border-emerald-500/20 bg-emerald-500/5 text-xs text-[var(--color-text-muted)] flex items-center gap-2">
-                    <ShieldCheck className="w-4 h-4 text-emerald-500 shrink-0" />
-                    <span>GAAP Double-Entry compliance: Transactions using this item automatically post to these mapped ledger lines.</span>
-                  </div>
-
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-                    <div className="md:col-span-2">
-                      <label className="block text-xs font-semibold text-[var(--color-text-strong)] mb-1.5">
-                        <span className="text-rose-500 font-bold mr-1">*</span> Income Account (Revenue)
-                      </label>
-                      <select
-                        required
-                        value={form.incomeAccountId}
-                        onChange={e => setForm({ ...form, incomeAccountId: e.target.value })}
-                        className="w-full h-10 px-3.5 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] text-xs text-[var(--color-text-strong)] focus:border-[var(--color-primary)] outline-none shadow-2xs"
-                      >
-                        <option value="">Select Revenue Account...</option>
-                        {accounts.filter((a: any) => a.type === 'Revenue').map((a: any) => (
-                          <option key={a.id} value={a.id}>{a.code} — {a.name}</option>
-                        ))}
-                      </select>
+                  <div className="erp-form-card space-y-4">
+                    <div className="border-b border-[var(--color-border)] pb-3 flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <Layers className="w-4 h-4 text-violet-500" />
+                        <h4 className="text-xs font-bold uppercase tracking-wider text-[var(--color-text-strong)]">GAAP Chart of Accounts Mapping</h4>
+                      </div>
+                      <span className="text-[11px] text-[var(--color-text-muted)] font-medium">Step 3 of 5</span>
                     </div>
 
-                    {form.type !== 'Service' && (
-                      <div>
-                        <label className="block text-xs font-semibold text-[var(--color-text-strong)] mb-1.5">
-                          COGS / Expense Account
-                        </label>
-                        <select
-                          value={form.expenseAccountId}
-                          onChange={e => setForm({ ...form, expenseAccountId: e.target.value })}
-                          className="w-full h-10 px-3.5 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] text-xs text-[var(--color-text-strong)] focus:border-[var(--color-primary)] outline-none shadow-2xs"
-                        >
-                          <option value="">Select Expense / COGS Account...</option>
-                          {accounts.filter((a: any) => a.type === 'Expense').map((a: any) => (
-                            <option key={a.id} value={a.id}>{a.code} — {a.name}</option>
-                          ))}
-                        </select>
-                      </div>
-                    )}
+                    <div className="p-3.5 rounded-xl border border-emerald-500/20 bg-emerald-500/5 text-xs text-[var(--color-text-muted)] flex items-center gap-2.5">
+                      <ShieldCheck className="w-5 h-5 text-emerald-600 shrink-0" />
+                      <span><b>Double-Entry Compliance:</b> Invoices, Bills, and Inventory movements using this catalog item will post directly to these General Ledger accounts.</span>
+                    </div>
 
-                    {form.type === 'Physical' && (
-                      <div>
-                        <label className="block text-xs font-semibold text-[var(--color-text-strong)] mb-1.5">
-                          Inventory Asset Account
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-1">
+                      <div className="md:col-span-2">
+                        <label className="erp-form-label">
+                          <span className="text-rose-500 font-bold mr-1">*</span> Sales Revenue GL Account
                         </label>
                         <select
-                          value={form.assetAccountId}
-                          onChange={e => setForm({ ...form, assetAccountId: e.target.value })}
-                          className="w-full h-10 px-3.5 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] text-xs text-[var(--color-text-strong)] focus:border-[var(--color-primary)] outline-none shadow-2xs"
+                          required
+                          value={form.incomeAccountId}
+                          onChange={e => setForm({ ...form, incomeAccountId: e.target.value })}
+                          className="erp-form-select font-medium"
                         >
-                          <option value="">Select Inventory Asset Account...</option>
-                          {accounts.filter((a: any) => a.type === 'Asset').map((a: any) => (
+                          <option value="">Select Revenue Account...</option>
+                          {accounts.filter((a: any) => a.type === 'Revenue').map((a: any) => (
                             <option key={a.id} value={a.id}>{a.code} — {a.name}</option>
                           ))}
                         </select>
                       </div>
-                    )}
+
+                      {form.type !== 'Service' && (
+                        <div>
+                          <label className="erp-form-label">
+                            COGS / Expense GL Account
+                          </label>
+                          <select
+                            value={form.expenseAccountId}
+                            onChange={e => setForm({ ...form, expenseAccountId: e.target.value })}
+                            className="erp-form-select font-medium"
+                          >
+                            <option value="">Select Expense / COGS Account...</option>
+                            {accounts.filter((a: any) => a.type === 'Expense').map((a: any) => (
+                              <option key={a.id} value={a.id}>{a.code} — {a.name}</option>
+                            ))}
+                          </select>
+                        </div>
+                      )}
+
+                      {form.type === 'Physical' && (
+                        <div>
+                          <label className="erp-form-label">
+                            Inventory Asset GL Account
+                          </label>
+                          <select
+                            value={form.assetAccountId}
+                            onChange={e => setForm({ ...form, assetAccountId: e.target.value })}
+                            className="erp-form-select font-medium"
+                          >
+                            <option value="">Select Inventory Asset Account...</option>
+                            {accounts.filter((a: any) => a.type === 'Asset').map((a: any) => (
+                              <option key={a.id} value={a.id}>{a.code} — {a.name}</option>
+                            ))}
+                          </select>
+                        </div>
+                      )}
+                    </div>
                   </div>
                 </div>
               )}
 
               {modalTab === 'tax' && (
                 <div className="space-y-5">
-                  <div className="md:col-span-2">
-                    <label className="block text-xs font-semibold text-[var(--color-text-strong)] mb-1.5">
-                      Tax Type Selection
-                    </label>
-                    <select
-                      value={form.taxCodeId}
-                      onChange={e => setForm({ ...form, taxCodeId: e.target.value })}
-                      className="w-full h-10 px-3.5 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] text-xs text-[var(--color-text-strong)] focus:border-[var(--color-primary)] outline-none shadow-2xs"
-                    >
-                      <option value="">🚫 No Tax (0%) — Exempt / Not Taxable</option>
-                      {!hasTaxCodes && (
-                        <optgroup label="📋 Standard Tax Types">
-                          {defaultTaxOptions.map((t) => (
-                            <option key={t.id} value={t.id}>✅ {t.code} — {t.name} ({t.rate}%)</option>
-                          ))}
-                        </optgroup>
-                      )}
-                      {groupedTaxCodes.default.length > 0 && (
-                        <optgroup label="🏢 Your Tax Authority">
-                          {groupedTaxCodes.default.map((t: any) => {
-                            const rate = t.rates && t.rates.length > 0 ? t.rates[t.rates.length - 1].percentage : 0
-                            return (
-                              <option key={t.id} value={t.id}>✅ {t.code} — {t.name || 'Sales Tax'} ({rate}%)</option>
-                            )
-                          })}
-                        </optgroup>
-                      )}
-                      {groupedTaxCodes.other.length > 0 && (
-                        <optgroup label="🌍 Other Tax Authorities">
-                          {groupedTaxCodes.other.map((t: any) => {
-                            const rate = t.rates && t.rates.length > 0 ? t.rates[t.rates.length - 1].percentage : 0
-                            return (
-                              <option key={t.id} value={t.id}>📌 {t.code} — {t.name || 'Regional Tax'} ({rate}%)</option>
-                            )
-                          })}
-                        </optgroup>
-                      )}
-                    </select>
-                  </div>
+                  <div className="erp-form-card space-y-4">
+                    <div className="border-b border-[var(--color-border)] pb-3 flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <Receipt className="w-4 h-4 text-amber-500" />
+                        <h4 className="text-xs font-bold uppercase tracking-wider text-[var(--color-text-strong)]">Global Tax & VAT Classification</h4>
+                      </div>
+                      <span className="text-[11px] text-[var(--color-text-muted)] font-medium">Step 4 of 5</span>
+                    </div>
 
-                  {/* Tax Info Card */}
-                  <div className="p-3.5 rounded-xl border border-amber-500/20 bg-amber-500/5 text-xs text-[var(--color-text-muted)] flex items-start gap-2">
-                    <Receipt className="w-4 h-4 text-amber-500 shrink-0 mt-0.5" />
                     <div>
-                      <p className="font-semibold text-amber-600 dark:text-amber-400 mb-1">Tax Info</p>
-                      <ul className="space-y-0.5 text-[11px]">
-                        <li>• <b>No Tax (0%)</b> — Item is tax exempt or not taxable</li>
-                        <li>• <b>Sales Tax / VAT</b> — Automatically calculated on invoices</li>
-                        <li>• Tax rate applies when added to customer invoices</li>
-                      </ul>
+                      <label className="erp-form-label">Default Tax Code</label>
+                      <select
+                        value={form.taxCodeId}
+                        onChange={e => setForm({ ...form, taxCodeId: e.target.value })}
+                        className="erp-form-select font-medium"
+                      >
+                        <option value="">🚫 No Tax (0%) — Exempt / Non-Taxable Item</option>
+                        {!hasTaxCodes && (
+                          <optgroup label="📋 Standard Tax Types">
+                            {defaultTaxOptions.map((t) => (
+                              <option key={t.id} value={t.id}>✅ {t.code} — {t.name} ({t.rate}%)</option>
+                            ))}
+                          </optgroup>
+                        )}
+                        {groupedTaxCodes.default.length > 0 && (
+                          <optgroup label="🏢 Your Active Tax Authority">
+                            {groupedTaxCodes.default.map((t: any) => {
+                              const rate = t.rates && t.rates.length > 0 ? t.rates[t.rates.length - 1].percentage : 0
+                              return (
+                                <option key={t.id} value={t.id}>✅ {t.code} — {t.name || 'Sales Tax'} ({rate}%)</option>
+                              )
+                            })}
+                          </optgroup>
+                        )}
+                        {groupedTaxCodes.other.length > 0 && (
+                          <optgroup label="🌍 Other Authorities">
+                            {groupedTaxCodes.other.map((t: any) => {
+                              const rate = t.rates && t.rates.length > 0 ? t.rates[t.rates.length - 1].percentage : 0
+                              return (
+                                <option key={t.id} value={t.id}>📌 {t.code} — {t.name || 'Regional Tax'} ({rate}%)</option>
+                              )
+                            })}
+                          </optgroup>
+                        )}
+                      </select>
+                    </div>
+
+                    <div className="p-3.5 rounded-xl border border-amber-500/20 bg-amber-500/5 text-xs text-[var(--color-text-muted)] flex items-start gap-2.5">
+                      <Receipt className="w-4 h-4 text-amber-500 shrink-0 mt-0.5" />
+                      <div>
+                        <p className="font-semibold text-amber-600 dark:text-amber-400 mb-0.5">Tax Calculation Behavior</p>
+                        <p className="text-[11px]">When added to invoices or bills, this item will automatically apply this tax rate while still allowing transaction-level overrides.</p>
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -1082,10 +1096,10 @@ export default function ProductsAndServices({
                 <span>{modalTab === 'preview' ? 'Ready for final verification & creation' : 'Auto-draft protection active'}</span>
               </div>
 
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2.5 flex-wrap sm:flex-nowrap shrink-0">
                 <button
                   type="button"
-                  className="h-8.5 px-3.5 rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] text-xs font-medium text-[var(--color-text)] hover:bg-[var(--color-surface-muted)] transition-colors"
+                  className="h-9 min-h-[36px] px-4 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] text-xs font-semibold text-[var(--color-text)] hover:bg-[var(--color-surface-muted)] transition-colors whitespace-nowrap leading-none flex items-center justify-center shrink-0"
                   onClick={() => setModalOpen(false)}
                 >
                   Cancel
@@ -1093,7 +1107,7 @@ export default function ProductsAndServices({
                 {modalTab !== 'preview' && (
                   <button
                     type="button"
-                    className="h-8.5 px-3.5 rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] text-xs font-medium text-[var(--color-text-muted)] hover:text-[var(--color-text-strong)] transition-colors"
+                    className="h-9 min-h-[36px] px-4 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] text-xs font-semibold text-[var(--color-text-muted)] hover:text-[var(--color-text-strong)] hover:bg-[var(--color-surface-muted)] transition-colors whitespace-nowrap leading-none flex items-center justify-center shrink-0"
                     onClick={(e) => { e.preventDefault(); saveDraft(); notify('Item draft saved locally.'); }}
                   >
                     Save Draft
@@ -1109,44 +1123,53 @@ export default function ProductsAndServices({
                       else if (modalTab === 'accounting') setModalTab('pricing')
                       else if (modalTab === 'pricing') setModalTab('info')
                     }}
-                    className="h-8.5 px-3 rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] text-xs font-medium text-[var(--color-text)] hover:bg-[var(--color-surface-muted)] transition-colors flex items-center gap-1"
+                    className="h-9 min-h-[36px] px-4 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] text-xs font-semibold text-[var(--color-text)] hover:bg-[var(--color-surface-muted)] transition-colors flex items-center justify-center gap-1.5 whitespace-nowrap leading-none shrink-0"
                   >
-                    <ArrowLeft className="w-3.5 h-3.5" />
-                    <span>{modalTab === 'preview' ? 'Back to Edit' : 'Back'}</span>
+                    <ArrowLeft className="w-3.5 h-3.5 shrink-0" />
+                    <span>Back</span>
                   </button>
                 )}
 
                 {modalTab !== 'preview' ? (
-                  <button
-                    type="button"
-                    onClick={() => {
-                      if (modalTab === 'info') {
-                        if (!form.name.trim()) {
-                          notify('Item name is required.')
-                          return
+                  <>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (modalTab === 'info') {
+                          if (!form.name.trim()) {
+                            notify('Item name is required.')
+                            return
+                          }
+                          setModalTab('pricing')
+                        } else if (modalTab === 'pricing') {
+                          setModalTab('accounting')
+                        } else if (modalTab === 'accounting') {
+                          setModalTab('tax')
+                        } else if (modalTab === 'tax') {
+                          setModalTab('preview')
                         }
-                        setModalTab('pricing')
-                      } else if (modalTab === 'pricing') {
-                        setModalTab('accounting')
-                      } else if (modalTab === 'accounting') {
-                        setModalTab('tax')
-                      } else if (modalTab === 'tax') {
-                        setModalTab('preview')
-                      }
-                    }}
-                    className="primary h-8.5 px-4 rounded-lg text-xs font-semibold shadow-xs flex items-center gap-1.5"
-                  >
-                    <span>
-                      {modalTab === 'info' ? 'Next: Pricing & Costing' : modalTab === 'pricing' ? 'Next: GAAP GL Accounts' : modalTab === 'accounting' ? 'Next: Tax & Classification' : 'Preview & Review'}
-                    </span>
-                    {modalTab === 'tax' ? <Eye className="w-3.5 h-3.5" /> : <ArrowRight className="w-3.5 h-3.5" />}
-                  </button>
+                      }}
+                      className="h-9 min-h-[36px] px-4 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] text-xs font-semibold text-[var(--color-text)] hover:bg-[var(--color-surface-muted)] transition-colors flex items-center justify-center gap-1.5 whitespace-nowrap leading-none shrink-0"
+                    >
+                      <span>
+                        {modalTab === 'info' ? 'Next: Pricing & Costing' : modalTab === 'pricing' ? 'Next: GAAP GL Accounts' : modalTab === 'accounting' ? 'Next: Tax & Classification' : 'Preview Item'}
+                      </span>
+                      {modalTab === 'tax' ? <Eye className="w-3.5 h-3.5 shrink-0" /> : <ArrowRight className="w-3.5 h-3.5 shrink-0" />}
+                    </button>
+                    <button
+                      type="submit"
+                      className="h-9 min-h-[36px] px-5 rounded-xl text-xs font-bold shadow-md flex items-center justify-center gap-1.5 bg-gradient-to-r from-amber-500 to-orange-600 hover:from-amber-600 hover:to-orange-700 text-white whitespace-nowrap leading-none shrink-0"
+                    >
+                      <Check className="w-3.5 h-3.5 shrink-0" />
+                      <span>{editingProduct ? 'Save Changes' : 'Create Item'}</span>
+                    </button>
+                  </>
                 ) : (
                   <button
                     type="submit"
-                    className="primary h-8.5 px-5 rounded-lg text-xs font-semibold shadow-xs flex items-center gap-1.5 bg-emerald-600 hover:bg-emerald-700 text-white"
+                    className="h-9 min-h-[36px] px-5 rounded-xl text-xs font-bold shadow-md flex items-center justify-center gap-1.5 bg-gradient-to-r from-emerald-600 to-green-600 hover:from-emerald-700 hover:to-green-700 text-white whitespace-nowrap leading-none shrink-0"
                   >
-                    <Check className="w-3.5 h-3.5" />
+                    <Check className="w-3.5 h-3.5 shrink-0" />
                     <span>{editingProduct ? 'Confirm & Save Changes' : 'Confirm & Create Item'}</span>
                   </button>
                 )}

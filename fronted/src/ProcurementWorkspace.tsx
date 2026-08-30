@@ -1026,7 +1026,6 @@ export const ProcurementWorkspace: React.FC<{ activeEntityId: string; entities?:
 
                 <div style={{ display: 'flex', justifyContent: 'flex-start', marginTop: 10 }}>
                   <button type="button" className="btn-secondary" style={{ fontSize: 12, padding: '4px 10px' }} onClick={() => {
-                    const defaultRate = applicableTaxCodes[0]?.rate ?? 0;
                     setBillLines([...billLines, { description: '', quantity: 1, unitPrice: 0, taxCode: applicableTaxCodes[0]?.code, taxAmount: 0, destination: 'Expense' }]);
                   }}>
                     + Add Line Item

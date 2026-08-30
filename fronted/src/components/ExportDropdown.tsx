@@ -169,13 +169,10 @@ export const ExportDropdown: React.FC<ExportDropdownProps> = ({
 
   const options = customOptions || defaultOptions;
 
-  if (options.length === 0) return null;
-
   return (
-    <div className={`relative inline-block text-left ${className}`}>
+    <div ref={buttonRef as any} className={`relative inline-block text-left ${className}`}>
       {/* Trigger Button */}
       <Button
-        ref={buttonRef}
         type="button"
         size={size}
         variant={variant === 'default' ? undefined : (variant as any)}

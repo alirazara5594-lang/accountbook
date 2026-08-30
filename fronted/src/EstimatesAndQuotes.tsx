@@ -11,7 +11,7 @@ import { useFormDraft } from './hooks/useFormDraft'
 import { KpiCard, KpiGrid } from './components/ui/kpi-card'
 import { StatusChip } from './components/ui/status-chip'
 import { EmptyState, TableSkeleton } from './components/ui/empty-state'
-import { getActiveTaxCodes, type TaxCodeOption } from './lib/taxLocalization'
+import { getActiveTaxCodes } from './lib/taxLocalization'
 import { getGlobalNextInvoiceNumber } from './lib/invoiceNumbering'
 
 import { money } from './lib/currency'
@@ -72,7 +72,6 @@ export const EstimatesAndQuotes: React.FC<{ activeEntityId: string; entities?: a
   const fetchCustomers = useCustomersStore((s) => s.fetchCustomers)
   const products = useProductsStore((s) => s.products)
   const fetchProducts = useProductsStore((s) => s.fetchProducts)
-  const createInvoiceStore = useSalesStore((s) => s.createInvoice)
 
   const applicableTaxCodes = useMemo(() => getActiveTaxCodes(), [activeEntityId])
 
@@ -102,7 +101,7 @@ export const EstimatesAndQuotes: React.FC<{ activeEntityId: string; entities?: a
   const { saveDraft, clearDraft } = useFormDraft('estimate_quote', { form, lines }, (saved: any) => {
     if (saved.form) setForm(saved.form)
     if (saved.lines) setLines(saved.lines)
-  }, showForm)
+  }, showForm, !!editingEstimate)
 
   const fetchData = async () => {
     setLoading(true)
@@ -584,69 +583,152 @@ export const EstimatesAndQuotes: React.FC<{ activeEntityId: string; entities?: a
               <button onClick={handleCancelForm} className="w-8 h-8 rounded-lg flex items-center justify-center text-[var(--color-text-muted)] hover:text-[var(--color-text-strong)] hover:bg-[var(--color-surface-muted)] transition-colors"><X className="w-4 h-4" /></button>
             </div>
 
-            {/* Tabs */}
-            <div className="flex items-center gap-1 px-4 pt-3 border-b border-[var(--color-border)]">
-              {(['details', 'lines', 'summary', 'preview'] as const).map(tab => (
-                <button key={tab} onClick={() => setModalTab(tab)} className={`flex items-center gap-1.5 px-3 py-2 text-[11px] font-semibold rounded-t-lg border-b-2 transition-all ${modalTab === tab ? (tab === 'preview' ? 'border-emerald-600 text-emerald-600 bg-emerald-500/10' : 'border-indigo-600 text-indigo-600 bg-indigo-500/10') : 'border-transparent text-[var(--color-text-muted)] hover:text-[var(--color-text-strong)]'}`}>
-                  {tab === 'details' && <><Users className="w-3 h-3" /> 1. Customer & Dates</>}
-                  {tab === 'lines' && <><Coins className="w-3 h-3" /> 2. Line Items ({lines.length})</>}
-                  {tab === 'summary' && <><FileText className="w-3 h-3" /> 3. Terms & Summary</>}
-                  {tab === 'preview' && <><Eye className="w-3 h-3" /> Preview & Submit</>}
-                </button>
-              ))}
+            {/* Modal Stepper Navigation */}
+            <div className="erp-stepper-nav">
+              <button
+                type="button"
+                onClick={() => setModalTab('details')}
+                className={`erp-step-pill ${modalTab === 'details' ? 'active' : ''}`}
+              >
+                <span className="erp-step-num">1</span>
+                <Users className="w-3.5 h-3.5" />
+                <span>Customer & Dates</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setModalTab('lines')}
+                className={`erp-step-pill ${modalTab === 'lines' ? 'active' : ''}`}
+              >
+                <span className="erp-step-num">2</span>
+                <Coins className="w-3.5 h-3.5" />
+                <span>Line Items ({lines.length})</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setModalTab('summary')}
+                className={`erp-step-pill ${modalTab === 'summary' ? 'active' : ''}`}
+              >
+                <span className="erp-step-num">3</span>
+                <FileText className="w-3.5 h-3.5" />
+                <span>Terms & Summary</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setModalTab('preview')}
+                className={`erp-step-pill ${modalTab === 'preview' ? 'active' : ''}`}
+              >
+                <span className="erp-step-num">4</span>
+                <Eye className="w-3.5 h-3.5" />
+                <span>Review & Preview</span>
+              </button>
             </div>
 
             {/* Body */}
-            <div className="p-6 md:p-8 overflow-y-auto flex-1">
+            <div className="p-6 md:p-8 overflow-y-auto flex-1 space-y-6">
               {modalTab === 'details' && (
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-5 max-w-3xl">
-                  <div className="md:col-span-2">
-                    <label className="block text-xs font-semibold text-[var(--color-text-strong)] mb-1.5"><span className="text-rose-500 mr-1">*</span>Customer / Client</label>
-                    <select value={form.customerId} onChange={e => setForm({ ...form, customerId: e.target.value })} className="w-full h-10 px-3.5 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] text-xs text-[var(--color-text-strong)] focus:border-[var(--color-primary)] outline-none">
-                      <option value="">Select customer...</option>
-                      {customers.map((c: any) => (<option key={c.id} value={c.id}>{c.name} {c.customerNumber ? `(${c.customerNumber})` : ''} {c.creditLimit ? `— Limit: ${money(c.creditLimit, c.currencyCode || form.currencyCode)}` : ''}</option>))}
-                    </select>
-                    {(() => {
-                      const cust = customers.find((c: any) => c.id === form.customerId)
-                      const limit = parseFloat(String(cust?.creditLimit || '0'))
-                      if (!cust || limit <= 0) return null
-                      const quoteTotal = totals.total
-                      const exceeds = quoteTotal > limit
-                      return (
-                        <div className={`mt-2 p-2.5 rounded-xl border text-[11px] ${exceeds ? 'bg-amber-500/10 border-amber-500/30 text-amber-900 dark:text-amber-200' : 'bg-emerald-500/10 border-emerald-500/30 text-emerald-900 dark:text-emerald-200'}`}>
-                          <div className="flex justify-between font-semibold">
-                            <span>{exceeds ? '⚠️ Quotation Exceeds Credit Limit' : '✓ Credit Policy'}</span>
-                            <span className="font-mono">Configured Limit: {money(limit, form.currencyCode)}</span>
-                          </div>
-                          {exceeds && (
-                            <p className="mt-1 text-[10px] text-rose-600 dark:text-rose-300">
-                              Quote total ({money(quoteTotal, form.currencyCode)}) exceeds credit limit by {money(quoteTotal - limit, form.currencyCode)}.
-                            </p>
-                          )}
-                        </div>
-                      )
-                    })()}
-                  </div>
-                  <div>
-                    <label className="block text-xs font-semibold text-[var(--color-text-strong)] mb-1.5">Quote Reference</label>
-                    <div className="flex items-center gap-2 h-10 px-3.5 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] focus-within:border-[var(--color-primary)]">
-                      <Hash className="w-4 h-4 text-[var(--color-text-muted)]" />
-                      <input value={form.reference} onChange={e => setForm({ ...form, reference: e.target.value })} className="flex-1 h-full border-0 outline-none bg-transparent font-mono text-xs text-[var(--color-text-strong)]" />
+                <div className="space-y-5">
+                  <div className="erp-form-card space-y-4">
+                    <div className="border-b border-[var(--color-border)] pb-3 flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <Users className="w-4 h-4 text-indigo-500" />
+                        <h4 className="text-xs font-bold uppercase tracking-wider text-[var(--color-text-strong)]">Quotation Header & Validity</h4>
+                      </div>
+                      <span className="text-[11px] text-[var(--color-text-muted)] font-medium">Step 1 of 4</span>
                     </div>
-                  </div>
-                  <div>
-                    <label className="block text-xs font-semibold text-[var(--color-text-strong)] mb-1.5">Currency</label>
-                    <select value={form.currencyCode} onChange={e => setForm({ ...form, currencyCode: e.target.value })} className="w-full h-10 px-3.5 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] text-xs font-semibold text-[var(--color-text-strong)] focus:border-[var(--color-primary)] outline-none">
-                      {['PKR', 'USD', 'AED', 'SAR', 'GBP', 'EUR', 'CAD', 'AUD'].map(c => <option key={c} value={c}>{c}</option>)}
-                    </select>
-                  </div>
-                  <div>
-                    <label className="block text-xs font-semibold text-[var(--color-text-strong)] mb-1.5">Quotation Date</label>
-                    <input type="date" value={form.estimateDate} onChange={e => setForm({ ...form, estimateDate: e.target.value })} className="w-full h-10 px-3.5 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] text-xs text-[var(--color-text-strong)] focus:border-[var(--color-primary)] outline-none" />
-                  </div>
-                  <div>
-                    <label className="block text-xs font-semibold text-[var(--color-text-strong)] mb-1.5">Expiry Date</label>
-                    <input type="date" value={form.expiryDate} onChange={e => setForm({ ...form, expiryDate: e.target.value })} className="w-full h-10 px-3.5 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] text-xs text-[var(--color-text-strong)] focus:border-[var(--color-primary)] outline-none" />
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div className="md:col-span-2">
+                        <label className="erp-form-label">
+                          <span className="text-rose-500 font-bold mr-1">*</span> Customer / Client
+                        </label>
+                        <select
+                          value={form.customerId}
+                          onChange={e => setForm({ ...form, customerId: e.target.value })}
+                          className="erp-form-select font-semibold"
+                        >
+                          <option value="">Select customer...</option>
+                          {customers.map((c: any) => (
+                            <option key={c.id} value={c.id}>
+                              {c.name} {c.customerNumber ? `(${c.customerNumber})` : ''} {c.creditLimit ? `— Limit: ${money(c.creditLimit, c.currencyCode || form.currencyCode)}` : ''}
+                            </option>
+                          ))}
+                        </select>
+                        {(() => {
+                          const cust = customers.find((c: any) => c.id === form.customerId)
+                          const limit = parseFloat(String(cust?.creditLimit || '0'))
+                          if (!cust || limit <= 0) return null
+                          const quoteTotal = totals.total
+                          const exceeds = quoteTotal > limit
+                          return (
+                            <div className={`mt-3 p-3.5 rounded-xl border text-xs ${exceeds ? 'bg-amber-500/10 border-amber-500/30 text-amber-900 dark:text-amber-200' : 'bg-emerald-500/10 border-emerald-500/30 text-emerald-900 dark:text-emerald-200'}`}>
+                              <div className="flex justify-between font-bold">
+                                <span>{exceeds ? '⚠️ Quotation Exceeds Credit Limit' : '✓ Credit Policy Check'}</span>
+                                <span className="font-mono">Configured Limit: {money(limit, form.currencyCode)}</span>
+                              </div>
+                              {exceeds && (
+                                <p className="mt-1 text-[11px] font-semibold text-rose-600 dark:text-rose-300">
+                                  Quote total ({money(quoteTotal, form.currencyCode)}) exceeds credit limit by {money(quoteTotal - limit, form.currencyCode)}.
+                                </p>
+                              )}
+                            </div>
+                          )
+                        })()}
+                      </div>
+
+                      <div>
+                        <label className="erp-form-label">
+                          Quote Reference #
+                        </label>
+                        <div className="relative">
+                          <Hash className="w-4 h-4 text-[var(--color-text-muted)] absolute left-3.5 top-1/2 -translate-y-1/2" />
+                          <input
+                            value={form.reference}
+                            onChange={e => setForm({ ...form, reference: e.target.value })}
+                            className="erp-form-input pl-10! font-mono font-bold"
+                          />
+                        </div>
+                      </div>
+
+                      <div>
+                        <label className="erp-form-label">
+                          Quotation Currency
+                        </label>
+                        <select
+                          value={form.currencyCode}
+                          onChange={e => setForm({ ...form, currencyCode: e.target.value })}
+                          className="erp-form-select font-bold"
+                        >
+                          {['PKR', 'USD', 'AED', 'SAR', 'GBP', 'EUR', 'CAD', 'AUD'].map(c => <option key={c} value={c}>{c}</option>)}
+                        </select>
+                      </div>
+
+                      <div>
+                        <label className="erp-form-label">
+                          Quotation Date
+                        </label>
+                        <input
+                          type="date"
+                          value={form.estimateDate}
+                          onChange={e => setForm({ ...form, estimateDate: e.target.value })}
+                          className="erp-form-input font-medium"
+                        />
+                      </div>
+
+                      <div>
+                        <label className="erp-form-label">
+                          Validity / Expiry Date
+                        </label>
+                        <input
+                          type="date"
+                          value={form.expiryDate}
+                          onChange={e => setForm({ ...form, expiryDate: e.target.value })}
+                          className="erp-form-input font-medium"
+                        />
+                      </div>
+                    </div>
                   </div>
                 </div>
               )}

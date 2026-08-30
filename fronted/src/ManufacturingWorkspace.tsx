@@ -141,17 +141,17 @@ export const ManufacturingWorkspace: React.FC<{ activeEntityId: string; entities
     return workOrders.filter(w => {
       const matchQ = !query ||
         w.workOrderNumber?.toLowerCase().includes(query.toLowerCase()) ||
-        w.finishedProductName?.toLowerCase().includes(query.toLowerCase()) ||
+        (w.finishedProductName || (w as any).productName || '')?.toLowerCase().includes(query.toLowerCase()) ||
         w.machineAssetName?.toLowerCase().includes(query.toLowerCase()) ||
-        w.assignedTechnicianName?.toLowerCase().includes(query.toLowerCase());
+        (w as any).assignedTechnicianName?.toLowerCase().includes(query.toLowerCase());
 
       const matchStatus = statusFilter === 'All' || String(w.status) === statusFilter;
       const matchCenter = workCenterFilter === 'All' || w.workCenterName === workCenterFilter;
 
       return matchQ && matchStatus && matchCenter;
     }).sort((a, b) => {
-      const dateA = a.startDate || a.createdAt || '';
-      const dateB = b.startDate || b.createdAt || '';
+      const dateA = (a as any).startDate || a.createdAt || '';
+      const dateB = (b as any).startDate || b.createdAt || '';
       if (dateA !== dateB) {
         return dateB.localeCompare(dateA);
       }
@@ -164,8 +164,9 @@ export const ManufacturingWorkspace: React.FC<{ activeEntityId: string; entities
   // ─── Actions ───────────────────────────────────────────────────────────────
   const handleSaveBom = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!bomForm.finishedProductId || bomLines.length === 0) return alert('Finished product and at least one raw material line required.');
+    if (!bomForm.finishedProductId) return alert('Please select a finished good product.');
     const finishedProd = products.find(p => p.id === bomForm.finishedProductId);
+
     const body = {
       finishedProductId: bomForm.finishedProductId,
       finishedProductName: finishedProd?.name || '',
@@ -179,14 +180,14 @@ export const ManufacturingWorkspace: React.FC<{ activeEntityId: string; entities
         return {
           rawMaterialProductId: l.rawMaterialProductId,
           rawMaterialProductName: rawMat?.name || '',
-          unitOfMeasure: (rawMat as any)?.unitOfMeasure || rawMat?.unit || 'Pcs',
+          unitOfMeasure: (rawMat as any)?.unitOfMeasure || (rawMat as any)?.unit || 'Pcs',
           quantityRequired: parseFloat(l.quantityRequired) || 1,
           wastePercentage: parseFloat(l.wastePercentage || '0')
         };
       })
     };
     try {
-      await createBomStore(body);
+      await createBomStore(body as any);
       notify('✓ Bill of Materials (BOM) recipe created!');
       setShowBomModal(false);
       setBomLines([{ rawMaterialProductId: '', quantityRequired: '1', wastePercentage: '0' }]);
@@ -228,7 +229,7 @@ export const ManufacturingWorkspace: React.FC<{ activeEntityId: string; entities
       })) || []
     };
     try {
-      await createWorkOrderStore(body);
+      await createWorkOrderStore(body as any);
       notify('✓ Work Order released to Shop Floor!');
       setShowWoModal(false);
       fetchAllManufacturing(activeEntityId);
@@ -253,7 +254,7 @@ export const ManufacturingWorkspace: React.FC<{ activeEntityId: string; entities
     try {
       const hours = parseFloat(machineHoursForm.additionalHours) || 0;
       const rate = parseFloat(machineHoursForm.hourlyRate) || 35;
-      await manufacturingApi.logMachineHours(machineHoursModalWo.id, hours, rate);
+      await (manufacturingApi as any).logMachineHours(machineHoursModalWo.id, hours, rate);
       notify(`✓ Logged ${hours} machine run hours into Fixed Assets meter & absorbed overhead.`);
       setMachineHoursModalWo(null);
       fetchAllManufacturing(activeEntityId);
@@ -267,11 +268,11 @@ export const ManufacturingWorkspace: React.FC<{ activeEntityId: string; entities
     e.preventDefault();
     if (!qcModalWo) return;
     try {
-      const inspected = parseFloat(qcForm.quantityInspected) || qcModalWo.quantityToProduce;
+      const inspected = parseFloat(qcForm.quantityInspected) || (qcModalWo.quantityToProduce || 0);
       const passed = parseFloat(qcForm.quantityPassed) || inspected;
       const rejected = parseFloat(qcForm.quantityRejected) || 0;
 
-      await manufacturingApi.performQcInspection(qcModalWo.id, {
+      await (manufacturingApi as any).performQcInspection(qcModalWo.id, {
         workOrderId: qcModalWo.id,
         inspectorName: qcForm.inspectorName,
         quantityInspected: inspected,
@@ -294,11 +295,11 @@ export const ManufacturingWorkspace: React.FC<{ activeEntityId: string; entities
     e.preventDefault();
     if (!completeModalWo) return;
     try {
-      const actualQty = parseFloat(completeForm.actualProducedQty) || completeModalWo.acceptedQuantity || completeModalWo.quantityToProduce;
-      const labor = parseFloat(completeForm.directLabor) || completeModalWo.directLaborCost;
-      const overhead = parseFloat(completeForm.overhead) || completeModalWo.overheadCost;
+      const actualQty = parseFloat(completeForm.actualProducedQty) || completeModalWo.acceptedQuantity || (completeModalWo.quantityToProduce || 0);
+      const labor = parseFloat(completeForm.directLabor) || (completeModalWo.directLaborCost || 0);
+      const overhead = parseFloat(completeForm.overhead) || (completeModalWo.overheadCost || 0);
 
-      await manufacturingApi.completeWorkOrder(completeModalWo.id, {
+      await (manufacturingApi as any).completeWorkOrder(completeModalWo.id, {
         actualProducedQty: actualQty,
         directLabor: labor,
         overhead: overhead
@@ -322,15 +323,15 @@ export const ManufacturingWorkspace: React.FC<{ activeEntityId: string; entities
     doc.text(`Active Jobs: ${activeJobsCount} | WIP Valuation: ${money(totalWipValuation)} | As of ${new Date().toLocaleDateString()}`, 14, 22);
 
     const tableData = filteredWorkOrders.map(w => [
-      w.workOrderNumber,
-      w.finishedProductName,
+      w.workOrderNumber || '',
+      w.finishedProductName || (w as any).productName || '',
       w.workCenterName || 'Shop Floor',
       w.machineAssetName || 'N/A',
-      `${w.quantityProduced || 0} / ${w.quantityToProduce}`,
+      `${w.quantityProduced || 0} / ${w.quantityToProduce || (w as any).quantityOrdered || 0}`,
       money(w.totalMaterialCost || 0),
       money(w.directLaborCost || 0),
       money(w.overheadCost || 0),
-      money(w.totalCost || 0),
+      money(w.totalCost || (w as any).totalActualCost || 0),
       money(w.unitCost || 0),
       String(w.status),
     ]);
