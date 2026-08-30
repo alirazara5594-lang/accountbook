@@ -783,15 +783,19 @@ export const SalesWorkspace: React.FC<{ activeEntityId: string; entities?: any[]
       : inv.status
   ])
 
-  const totalOutstanding = invoices
-    .filter((i: any) => i.status !== 2 && i.status !== 3)
-    .reduce((s: number, i: any) => s + (i.amountDue || 0), 0)
+  const isDraftInv = (i: any) => i.status === 0 || i.status === '0' || String(i.status).toLowerCase() === 'draft'
+  const isVoidInv = (i: any) => i.status === 3 || i.status === '3' || String(i.status).toLowerCase() === 'void' || String(i.status).toLowerCase() === 'cancelled'
+  const isPaidInv = (i: any) => i.status === 2 || i.status === '2' || String(i.status).toLowerCase() === 'paid'
 
-  const totalPaid = invoices
-    .filter((i: any) => i.status === 2)
-    .reduce((s: number, i: any) => s + (i.totalAmount || 0), 0)
+  const activeInvoices = invoices.filter((i: any) => !isDraftInv(i) && !isVoidInv(i))
+  const openInvoicesList = activeInvoices.filter((i: any) => !isPaidInv(i) && (i.amountDue ?? (i.totalAmount - (i.paidAmount || 0))) > 0)
 
-  const draftCount = invoices.filter((i: any) => i.status === 0).length
+  const totalOutstanding = openInvoicesList.reduce((s: number, i: any) => s + (i.amountDue ?? (i.totalAmount - (i.paidAmount || 0)) || 0), 0)
+  const totalPaid = invoices.filter((i: any) => !isVoidInv(i)).reduce((s: number, i: any) => s + (Number(i.paidAmount || (isPaidInv(i) ? i.totalAmount : 0)) || 0), 0)
+  
+  const draftInvoicesList = invoices.filter((i: any) => isDraftInv(i))
+  const draftCount = draftInvoicesList.length
+  const draftTotalAmount = draftInvoicesList.reduce((s: number, i: any) => s + (Number(i.totalAmount) || 0), 0)
 
   const assignedCompany = entities.find(e => e.id === activeEntityId)
 
@@ -855,10 +859,10 @@ export const SalesWorkspace: React.FC<{ activeEntityId: string; entities?: any[]
       {/* Modern KPI Cards */}
       <KpiGrid cols={4}>
         {[
-          { label: 'Total Outstanding', value: money(totalOutstanding), desc: `${invoices.filter((i: any) => i.status !== 2 && i.status !== 3).length} open invoices`, icon: Coins, tone: 'blue' },
-          { label: 'Paid Collections', value: money(totalPaid), desc: `${invoices.filter((i: any) => i.status === 2).length} settled invoices`, icon: CheckCircle2, tone: 'emerald' },
-          { label: 'Draft Invoices', value: String(draftCount), desc: 'Ready for posting', icon: FileText, tone: 'amber' },
-          { label: 'Total Invoices', value: String(invoices.length), desc: 'All time records', icon: Receipt, tone: 'purple' },
+          { label: 'Total Outstanding', value: money(totalOutstanding), desc: `${openInvoicesList.length} approved receivables`, icon: Coins, tone: 'blue' },
+          { label: 'Paid Collections', value: money(totalPaid), desc: `${invoices.filter((i: any) => isPaidInv(i)).length} settled invoices`, icon: CheckCircle2, tone: 'emerald' },
+          { label: 'Draft Invoices', value: String(draftCount), desc: draftCount > 0 ? `${money(draftTotalAmount)} pending` : 'Ready for posting', icon: FileText, tone: 'amber' },
+          { label: 'Total Invoices', value: String(invoices.filter((i: any) => !isVoidInv(i)).length), desc: `${invoices.filter((i: any) => isVoidInv(i)).length} cancelled/void`, icon: Receipt, tone: 'purple' },
         ].map((kpi) => (
           <KpiCard key={kpi.label} {...kpi} />
         ))}

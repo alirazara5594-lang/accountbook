@@ -266,13 +266,31 @@ export const EstimatesAndQuotes: React.FC<{ activeEntityId: string; entities?: a
   const assignedCompany = allEntities?.find((e: any) => e.id === activeEntityId)
 
   const stats = useMemo(() => {
-    const totalValue = estimates.reduce((s: number, e: any) => s + (parseFloat(e.totalAmount) || 0), 0)
+    const drafts = estimates.filter((e: any) => getNumericStatus(e.status) === 0)
+    const pipeline = estimates.filter((e: any) => getNumericStatus(e.status) === 1)
     const accepted = estimates.filter((e: any) => getNumericStatus(e.status) === 2)
-    const acceptedValue = accepted.reduce((s: number, e: any) => s + (parseFloat(e.totalAmount) || 0), 0)
-    const pending = estimates.filter((e: any) => getNumericStatus(e.status) === 0 || getNumericStatus(e.status) === 1)
-    const cancelled = estimates.filter((e: any) => getNumericStatus(e.status) === 3)
+    const cancelled = estimates.filter((e: any) => getNumericStatus(e.status) === 3 || getNumericStatus(e.status) === 4)
     const invoiced = estimates.filter((e: any) => getNumericStatus(e.status) === 5)
-    return { totalValue, acceptedValue, accepted: accepted.length, total: estimates.length, pending: pending.length, cancelled: cancelled.length, invoiced: invoiced.length }
+
+    const draftValue = drafts.reduce((s: number, e: any) => s + (parseFloat(e.totalAmount) || 0), 0)
+    const pipelineValue = pipeline.reduce((s: number, e: any) => s + (parseFloat(e.totalAmount) || 0), 0)
+    const acceptedValue = accepted.reduce((s: number, e: any) => s + (parseFloat(e.totalAmount) || 0), 0)
+    const invoicedValue = invoiced.reduce((s: number, e: any) => s + (parseFloat(e.totalAmount) || 0), 0)
+    const totalValue = pipelineValue + acceptedValue + invoicedValue
+
+    return {
+      draftCount: drafts.length,
+      draftValue,
+      pipelineCount: pipeline.length,
+      pipelineValue,
+      acceptedCount: accepted.length,
+      acceptedValue,
+      cancelledCount: cancelled.length,
+      invoicedCount: invoiced.length,
+      invoicedValue,
+      totalActiveCount: estimates.length - cancelled.length,
+      totalValue
+    }
   }, [estimates])
 
   const downloadQuotePdf = (est: any, index?: number) => {
@@ -425,11 +443,11 @@ export const EstimatesAndQuotes: React.FC<{ activeEntityId: string; entities?: a
       {/* KPI Cards */}
       <KpiGrid cols={5}>
         {[
-          { label: 'Total Pipeline', value: money(stats.totalValue), desc: `${stats.total} quotations`, icon: Coins, tone: 'blue' },
-          { label: 'Accepted', value: money(stats.acceptedValue), desc: `${stats.accepted} finalized`, icon: CheckCircle2, tone: 'emerald' },
-          { label: 'Pending', value: String(stats.pending), desc: 'Awaiting approval', icon: Users, tone: 'amber' },
-          { label: 'Cancelled', value: String(stats.cancelled), desc: 'Declined quotes', icon: Ban, tone: 'rose' },
-          { label: 'Invoiced', value: String(stats.invoiced), desc: 'Converted to bill', icon: FileText, tone: 'purple' },
+          { label: 'Active Pipeline', value: money(stats.pipelineValue), desc: `${stats.pipelineCount} issued quotes`, icon: Coins, tone: 'blue' },
+          { label: 'Draft Quotes', value: money(stats.draftValue), desc: `${stats.draftCount} pending review`, icon: Users, tone: 'amber' },
+          { label: 'Accepted', value: money(stats.acceptedValue), desc: `${stats.acceptedCount} finalized`, icon: CheckCircle2, tone: 'emerald' },
+          { label: 'Converted to Invoice', value: money(stats.invoicedValue), desc: `${stats.invoicedCount} billed`, icon: FileText, tone: 'purple' },
+          { label: 'Declined / Expired', value: String(stats.cancelledCount), desc: 'Lost opportunities', icon: Ban, tone: 'rose' },
         ].map((kpi) => (
           <KpiCard key={kpi.label} {...kpi} />
         ))}

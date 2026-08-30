@@ -168,9 +168,26 @@ export const VendorBills: React.FC<{ activeEntityId: string }> = ({ activeEntity
     setMatchModal(res);
   };
 
-  const totalOutstanding = bills.reduce((sum: number, b: any) => sum + (b.lines?.reduce((s: number, l: any) => s + ((l.quantity || 1) * (l.unitPrice || 0)), 0) || 0), 0);
-  const directCount = bills.filter((b: any) => !b.purchaseOrderId).length;
-  const poCount = bills.filter((b: any) => b.purchaseOrderId).length;
+  const isDraftBill = (b: any) => b.status === 0 || b.status === '0' || String(b.status).toLowerCase() === 'draft';
+  const isVoidBill = (b: any) => b.status === 4 || b.status === '4' || String(b.status).toLowerCase() === 'void' || String(b.status).toLowerCase() === 'cancelled';
+  const isPaidBill = (b: any) => b.status === 3 || b.status === '3' || String(b.status).toLowerCase() === 'paid';
+
+  const activeBills = (bills as any[]).filter(b => !isDraftBill(b) && !isVoidBill(b));
+  const openBills = activeBills.filter(b => !isPaidBill(b) && (b.amountDue ?? (b.totalAmount - (b.amountPaid || 0))) > 0);
+  const draftBills = (bills as any[]).filter(b => isDraftBill(b));
+
+  const totalOutstanding = openBills.reduce((sum: number, b: any) => {
+    const due = b.amountDue ?? (b.totalAmount ? (b.totalAmount - (b.amountPaid || 0)) : b.lines?.reduce((s: number, l: any) => s + ((l.quantity || 1) * (l.unitPrice || 0)), 0) || 0);
+    return sum + due;
+  }, 0);
+
+  const draftBillsTotal = draftBills.reduce((sum: number, b: any) => {
+    const tot = b.totalAmount ?? (b.lines?.reduce((s: number, l: any) => s + ((l.quantity || 1) * (l.unitPrice || 0)), 0) || 0);
+    return sum + tot;
+  }, 0);
+
+  const directCount = activeBills.filter((b: any) => !b.purchaseOrderId).length;
+  const poCount = activeBills.filter((b: any) => b.purchaseOrderId).length;
 
   const filteredBills = (bills as any[]).filter((bill: any) => {
     if (!query.trim()) return true;
@@ -226,22 +243,24 @@ export const VendorBills: React.FC<{ activeEntityId: string }> = ({ activeEntity
             exportHeaders={exportHeaders} exportRows={exportRows}
             exportTotals={[{ label: 'Total Outstanding', value: totalOutstanding }]}
             onRefresh={() => { fetchBills(activeEntityId); fetchOrders(activeEntityId); }}
-          />
-          <button onClick={openDirectBill} className="h-10 px-4 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] text-xs font-semibold text-[var(--color-text-strong)] hover:bg-[var(--color-surface-muted)] transition-colors flex items-center gap-2">
-            <CreditCard className="w-4 h-4 text-blue-500" /> Direct Bill
-          </button>
-          <button onClick={openPOBill} className="h-10 px-5 rounded-xl bg-gradient-to-r from-amber-500 to-orange-600 text-white text-xs font-bold shadow-lg shadow-amber-500/25 flex items-center gap-2">
-            <Truck className="w-4 h-4" /> PO Bill
-          </button>
+          >
+            <button onClick={openDirectBill} className="h-10 px-4 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] text-xs font-semibold text-[var(--color-text-strong)] hover:bg-[var(--color-surface-muted)] transition-colors flex items-center gap-2">
+              <CreditCard className="w-4 h-4 text-blue-500" /> Direct Bill
+            </button>
+            <button onClick={openPOBill} className="h-10 px-5 rounded-xl bg-gradient-to-r from-amber-500 to-orange-600 text-white text-xs font-bold shadow-lg shadow-amber-500/25 flex items-center gap-2">
+              <Truck className="w-4 h-4" /> PO Bill
+            </button>
+          </DataToolbar>
           </div>
         </div>
       </div>
 
       {/* KPI Cards */}
-      <KpiGrid cols={3}>
-        <KpiCard icon={FileText} label="Total Outstanding" value={money(totalOutstanding)} desc={`${bills.length} bills recorded`} tone="amber" />
-        <KpiCard icon={CreditCard} label="Direct Bills" value={String(directCount)} desc="Posted to AP directly" tone="blue" />
-        <KpiCard icon={Truck} label="PO Linked Bills" value={String(poCount)} desc="3-way match active" tone="emerald" />
+      <KpiGrid cols={4}>
+        <KpiCard icon={FileText} label="Total Outstanding" value={money(totalOutstanding)} desc={`${openBills.length} approved payables`} tone="amber" />
+        <KpiCard icon={FileText} label="Draft Bills" value={String(draftBills.length)} desc={draftBills.length > 0 ? `${money(draftBillsTotal)} pending` : 'Ready for approval'} tone="blue" />
+        <KpiCard icon={CreditCard} label="Direct Bills" value={String(directCount)} desc="Posted to AP directly" tone="emerald" />
+        <KpiCard icon={Truck} label="PO Linked Bills" value={String(poCount)} desc="3-way match active" tone="purple" />
       </KpiGrid>
 
       {/* Bills Table */}
