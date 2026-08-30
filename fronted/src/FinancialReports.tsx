@@ -511,21 +511,29 @@ export const FinancialReports: React.FC<FinancialReportsProps> = ({
   const incomeStatement = useMemo(() => {
     const postingAccounts = accounts.filter(isLeafAccount);
 
-    const grossSalesAccounts = postingAccounts.filter(a => 
-      a.type === 'Revenue' && (a.code.startsWith('41') || a.name.toLowerCase().includes('sales') || a.name.toLowerCase().includes('service') || a.name.toLowerCase().includes('revenue'))
+    // Revenue Dissection (IFRS 15)
+    const productSalesAccounts = postingAccounts.filter(a => 
+      a.type === 'Revenue' && (a.code === '41100' || a.name.toLowerCase().includes('product') || a.name.toLowerCase().includes('sales revenue') || a.name.toLowerCase().includes('merchandise'))
+    );
+    const serviceSalesAccounts = postingAccounts.filter(a => 
+      a.type === 'Revenue' && !productSalesAccounts.includes(a) && (
+        a.code === '41200' || a.name.toLowerCase().includes('service') || a.name.toLowerCase().includes('consulting') || a.name.toLowerCase().includes('professional')
+      )
     );
     const salesDiscountAccounts = postingAccounts.filter(a => 
-      a.type === 'ContraRevenue' || a.code.startsWith('412') || a.code.startsWith('413') || a.name.toLowerCase().includes('discount') || a.name.toLowerCase().includes('return')
+      a.type === 'ContraRevenue' || a.code === '41300' || a.code === '41400' || a.name.toLowerCase().includes('discount') || a.name.toLowerCase().includes('return')
     );
     const otherRevAccounts = postingAccounts.filter(a => 
-      a.type === 'Revenue' && !grossSalesAccounts.includes(a) && !salesDiscountAccounts.includes(a)
+      a.type === 'Revenue' && !productSalesAccounts.includes(a) && !serviceSalesAccounts.includes(a) && !salesDiscountAccounts.includes(a)
     );
 
-    const grossSalesTotal = grossSalesAccounts.reduce((sum, a) => sum + (ledgerState.closingBalances[a.id] || 0), 0);
+    const productSalesTotal = productSalesAccounts.reduce((sum, a) => sum + (ledgerState.closingBalances[a.id] || 0), 0);
+    const serviceSalesTotal = serviceSalesAccounts.reduce((sum, a) => sum + (ledgerState.closingBalances[a.id] || 0), 0);
     const salesDiscountTotal = salesDiscountAccounts.reduce((sum, a) => sum + (ledgerState.closingBalances[a.id] || 0), 0);
-    const netSalesTotal = grossSalesTotal - salesDiscountTotal;
     const otherRevTotal = otherRevAccounts.reduce((sum, a) => sum + (ledgerState.closingBalances[a.id] || 0), 0);
-    const grossRevenue = netSalesTotal + otherRevTotal;
+
+    const grossTurnover = productSalesTotal + serviceSalesTotal + otherRevTotal;
+    const grossRevenue = grossTurnover - salesDiscountTotal;
 
     // Cost of Goods Sold (IAS 2)
     const cogsAccounts = postingAccounts.filter(a => 
@@ -558,7 +566,7 @@ export const FinancialReports: React.FC<FinancialReportsProps> = ({
 
     const financeExpAccounts = allExpenses.filter(a => 
       !payrollExpAccounts.includes(a) && !deprExpAccounts.includes(a) && (
-        a.code.startsWith('618') || a.code.startsWith('62') || a.name.toLowerCase().includes('interest') || a.name.toLowerCase().includes('bank charges') || a.name.toLowerCase().includes('tax provision') || a.name.toLowerCase().includes('corporate income tax')
+        a.code.startsWith('618') || a.code.startsWith('614') || a.code.startsWith('62') || a.name.toLowerCase().includes('interest') || a.name.toLowerCase().includes('bank charges') || a.name.toLowerCase().includes('tax provision') || a.name.toLowerCase().includes('corporate income tax')
       )
     );
 
@@ -583,9 +591,12 @@ export const FinancialReports: React.FC<FinancialReportsProps> = ({
 
     return {
       revenueGroups: [
-        { id: 'op_rev', title: 'Operating Revenue & Sales Turnover (41000)', total: netSalesTotal, accounts: [...grossSalesAccounts, ...salesDiscountAccounts] },
-        ...(otherRevAccounts.length > 0 ? [{ id: 'other_rev', title: 'Other Operating Income & Gains (42000)', total: otherRevTotal, accounts: otherRevAccounts }] : [])
+        ...(productSalesAccounts.length > 0 ? [{ id: 'prod_rev', title: 'Product Sales Revenue (41100)', total: productSalesTotal, accounts: productSalesAccounts }] : []),
+        ...(serviceSalesAccounts.length > 0 ? [{ id: 'serv_rev', title: 'Service Revenue & Professional Fees (41200)', total: serviceSalesTotal, accounts: serviceSalesAccounts }] : []),
+        ...(otherRevAccounts.length > 0 ? [{ id: 'other_rev', title: 'Other Operating Income & Gains (41500)', total: otherRevTotal, accounts: otherRevAccounts }] : []),
+        ...(salesDiscountAccounts.length > 0 ? [{ id: 'sales_disc', title: 'Less: Sales Discounts & Returns (41300-41400)', total: -salesDiscountTotal, accounts: salesDiscountAccounts }] : [])
       ],
+      grossTurnover,
       grossRevenue,
       cogsGroup: { id: 'cogs', title: 'Cost of Goods Sold & Direct Costs (IAS 2) (51000)', total: cogsTotal, accounts: cogsAccounts },
       grossProfit,
