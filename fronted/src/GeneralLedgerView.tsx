@@ -48,7 +48,7 @@ export const GeneralLedgerView: React.FC<GeneralLedgerViewProps> = ({ activeEnti
   const [to, setTo] = useState('');
   const [datePreset, setDatePreset] = useState<'all' | 'today' | 'this_month' | 'this_quarter' | 'this_year'>('all');
   const [selectedAccountFilter, setSelectedAccountFilter] = useState<string>('ALL');
-  const [viewMode, setViewMode] = useState<'chronological' | 'grouped' | 'paired_reversals'>('chronological');
+  const [viewMode, setViewMode] = useState<'chronological' | 'account_ledgers' | 'grouped' | 'paired_reversals'>('chronological');
   const [filterType, setFilterType] = useState<'all' | 'active' | 'reversals'>('all');
 
   // Load COA accounts if empty
@@ -164,10 +164,10 @@ export const GeneralLedgerView: React.FC<GeneralLedgerViewProps> = ({ activeEnti
 
   // Combined Unique Accounts List (All COA Accounts + Any Transaction Accounts)
   const availableAccounts = useMemo(() => {
-    const map = new Map<string, { code: string; name: string; type?: string; id?: string }>();
+    const map = new Map<string, { code: string; name: string; type?: string; subtype?: string; openingBalance?: number; id?: string }>();
     coaAccounts.forEach((a) => {
       if (a.code) {
-        map.set(a.code, { code: a.code, name: a.name, type: a.type, id: a.id });
+        map.set(a.code, { code: a.code, name: a.name, type: a.type, subtype: a.subtype, openingBalance: a.openingBalance, id: a.id });
       }
     });
     lines.forEach((l) => {
@@ -217,6 +217,83 @@ export const GeneralLedgerView: React.FC<GeneralLedgerViewProps> = ({ activeEnti
   const totalCredit = useMemo(() => filtered.reduce((acc, curr) => acc + (curr.credit || 0), 0), [filtered]);
   const netDifference = Math.abs(totalDebit - totalCredit);
   const isBalanced = netDifference < 0.01;
+
+  // Account Head Ledger Sheets (Institutional Running-Balance Ledgers per Head)
+  const accountLedgerSheets = useMemo(() => {
+    const map: Record<string, {
+      code: string;
+      name: string;
+      type?: string;
+      subtype?: string;
+      opening: number;
+      lines: Array<GeneralLedgerLine & { runningBalance: number }>;
+      totalDebit: number;
+      totalCredit: number;
+      closingBalance: number;
+      isNormalDebit: boolean;
+    }> = {};
+
+    availableAccounts.forEach((acc) => {
+      const isNormalDebit = ['Asset', 'Expense', 'ContraLiability', 'ContraEquity', 'ContraRevenue'].includes(acc.type || '') ||
+        acc.code.startsWith('1') || acc.code.startsWith('5') || acc.code.startsWith('6');
+      const opening = Number(acc.openingBalance) || 0;
+
+      map[acc.code] = {
+        code: acc.code,
+        name: acc.name,
+        type: acc.type,
+        subtype: acc.subtype,
+        opening,
+        lines: [],
+        totalDebit: 0,
+        totalCredit: 0,
+        closingBalance: opening,
+        isNormalDebit,
+      };
+    });
+
+    filtered.forEach((line) => {
+      const key = line.accountCode || 'UNASSIGNED';
+      if (!map[key]) {
+        const isNormalDebit = line.accountCode.startsWith('1') || line.accountCode.startsWith('5') || line.accountCode.startsWith('6');
+        map[key] = {
+          code: line.accountCode,
+          name: line.accountName,
+          opening: 0,
+          lines: [],
+          totalDebit: 0,
+          totalCredit: 0,
+          closingBalance: 0,
+          isNormalDebit,
+        };
+      }
+
+      const sheet = map[key];
+      sheet.totalDebit += line.debit || 0;
+      sheet.totalCredit += line.credit || 0;
+
+      let running = sheet.opening;
+      if (sheet.lines.length > 0) {
+        running = sheet.lines[sheet.lines.length - 1].runningBalance;
+      }
+
+      if (sheet.isNormalDebit) {
+        running = running + (line.debit || 0) - (line.credit || 0);
+      } else {
+        running = running + (line.credit || 0) - (line.debit || 0);
+      }
+
+      sheet.lines.push({
+        ...line,
+        runningBalance: running,
+      });
+      sheet.closingBalance = running;
+    });
+
+    return Object.values(map)
+      .filter((sheet) => sheet.lines.length > 0 || sheet.opening !== 0)
+      .sort((a, b) => a.code.localeCompare(b.code));
+  }, [availableAccounts, filtered]);
 
   // Grouped Accounts for T-Account View
   const groupedByAccount = useMemo(() => {
@@ -600,6 +677,16 @@ export const GeneralLedgerView: React.FC<GeneralLedgerViewProps> = ({ activeEnti
                 📄 Postings Register
               </button>
               <button
+                onClick={() => setViewMode('account_ledgers')}
+                className={`px-3 py-1 rounded-lg text-xs transition-all ${
+                  viewMode === 'account_ledgers'
+                    ? 'bg-[var(--color-surface)] text-emerald-600 dark:text-emerald-400 shadow-2xs font-bold'
+                    : 'text-[var(--color-text-muted)] hover:text-[var(--color-text-strong)]'
+                }`}
+              >
+                📚 Account Head Ledgers ({accountLedgerSheets.length})
+              </button>
+              <button
                 onClick={() => setViewMode('grouped')}
                 className={`px-3 py-1 rounded-lg text-xs transition-all ${
                   viewMode === 'grouped'
@@ -628,6 +715,180 @@ export const GeneralLedgerView: React.FC<GeneralLedgerViewProps> = ({ activeEnti
         <div className="p-4 bg-rose-500/10 border border-rose-500/20 text-rose-600 rounded-xl text-xs flex items-center gap-2 font-medium">
           <AlertCircle className="w-4 h-4 shrink-0" />
           <span>{error}</span>
+        </div>
+      )}
+
+      {/* ─── Mode 4: Dedicated Account Head Ledgers (Running Balance per Head) ─── */}
+      {viewMode === 'account_ledgers' && (
+        <div className="space-y-6 animate-in fade-in duration-200">
+          {accountLedgerSheets.length === 0 ? (
+            <div className="p-10 border border-[var(--color-border)] rounded-2xl bg-[var(--color-surface)] text-center">
+              <BookOpen className="w-10 h-10 text-muted-foreground mx-auto mb-3 opacity-40" />
+              <h4 className="font-bold text-sm text-foreground">No Account Ledgers Found</h4>
+              <p className="text-xs text-muted-foreground mt-1">No transaction activity recorded for the selected filter criteria.</p>
+            </div>
+          ) : (
+            accountLedgerSheets.map((sheet) => (
+              <div key={sheet.code} className="rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)] shadow-xs overflow-hidden">
+                {/* Account Head Header */}
+                <div className="p-4 bg-muted/40 border-b border-[var(--color-border)] flex flex-wrap items-center justify-between gap-3">
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <span className="px-2 py-0.5 rounded bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30 text-xs font-mono font-black">
+                        {sheet.code}
+                      </span>
+                      <h3 className="font-extrabold text-sm text-foreground">
+                        {sheet.name}
+                      </h3>
+                      {sheet.type && (
+                        <span className="text-[10px] px-2 py-0.5 rounded-full bg-muted text-muted-foreground font-medium">
+                          {sheet.type} {sheet.subtype ? `• ${sheet.subtype}` : ''}
+                        </span>
+                      )}
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-4 text-xs font-mono">
+                    <div>
+                      <span className="text-muted-foreground text-[10px] block uppercase font-sans">Opening Balance</span>
+                      <span className="font-bold text-foreground">{money(sheet.opening)}</span>
+                    </div>
+                    <div>
+                      <span className="text-muted-foreground text-[10px] block uppercase font-sans">Total Debits</span>
+                      <span className="font-bold text-emerald-600">{money(sheet.totalDebit)}</span>
+                    </div>
+                    <div>
+                      <span className="text-muted-foreground text-[10px] block uppercase font-sans">Total Credits</span>
+                      <span className="font-bold text-rose-600">{money(sheet.totalCredit)}</span>
+                    </div>
+                    <div>
+                      <span className="text-muted-foreground text-[10px] block uppercase font-sans">Closing Balance</span>
+                      <span className={`font-black px-2 py-0.5 rounded border ${
+                        (sheet.isNormalDebit ? sheet.closingBalance >= 0 : sheet.closingBalance <= 0)
+                          ? 'bg-emerald-500/10 text-emerald-600 border-emerald-500/20'
+                          : 'bg-rose-500/10 text-rose-600 border-rose-500/20'
+                      }`}>
+                        {money(Math.abs(sheet.closingBalance))} {sheet.closingBalance >= 0 ? (sheet.isNormalDebit ? '(DR)' : '(CR)') : (sheet.isNormalDebit ? '(CR)' : '(DR)')}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Ledger Transactions Table */}
+                <div className="overflow-x-auto">
+                  <table className="w-full text-left border-collapse text-xs">
+                    <thead>
+                      <tr className="border-b border-[var(--color-border)] bg-muted/20 text-[10px] uppercase tracking-wider text-muted-foreground font-bold font-mono">
+                        <th className="py-2.5 px-4 w-28">Date</th>
+                        <th className="py-2.5 px-4 w-36">Reference #</th>
+                        <th className="py-2.5 px-4">Description / Narration</th>
+                        <th className="py-2.5 px-4 w-28">Type</th>
+                        <th className="py-2.5 px-4 text-right w-28">Debit (DR)</th>
+                        <th className="py-2.5 px-4 text-right w-28">Credit (CR)</th>
+                        <th className="py-2.5 px-4 text-right w-32">Running Balance</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-[var(--color-border)] font-sans">
+                      {sheet.opening !== 0 && (
+                        <tr className="bg-muted/10 text-muted-foreground text-[11px]">
+                          <td className="py-2 px-4 font-mono">—</td>
+                          <td className="py-2 px-4 font-mono font-bold">OPENING</td>
+                          <td className="py-2 px-4 italic">Brought forward opening balance</td>
+                          <td className="py-2 px-4">—</td>
+                          <td className="py-2 px-4 text-right font-mono">—</td>
+                          <td className="py-2 px-4 text-right font-mono">—</td>
+                          <td className="py-2 px-4 text-right font-mono font-bold text-foreground">
+                            {money(sheet.opening)}
+                          </td>
+                        </tr>
+                      )}
+                      {sheet.lines.map((l) => {
+                        const isRev = l.reference?.startsWith('REV-');
+                        const isCancelled = l.reference && reversedRefsSet.has(l.reference);
+                        return (
+                          <tr
+                            key={l.id}
+                            className={`hover:bg-muted/30 transition-colors ${
+                              isRev
+                                ? 'bg-rose-500/[0.04] dark:bg-rose-500/[0.08]'
+                                : isCancelled
+                                ? 'bg-amber-500/[0.04] dark:bg-amber-500/[0.08]'
+                                : ''
+                            }`}
+                          >
+                            <td className="py-2.5 px-4 font-mono text-muted-foreground">
+                              {l.date?.slice(0, 10)}
+                            </td>
+                            <td className="py-2.5 px-4">
+                              {isRev ? (
+                                <div className="flex flex-col gap-0.5">
+                                  <div className="flex items-center gap-1.5">
+                                    <span className="px-1.5 py-0.2 rounded bg-rose-500/20 text-rose-600 text-[8px] font-black uppercase">
+                                      REV
+                                    </span>
+                                    <span className="font-mono font-bold text-rose-600 text-xs">
+                                      {l.reference}
+                                    </span>
+                                  </div>
+                                  <span className="text-[9px] text-muted-foreground">
+                                    Reverses: {l.reference.replace('REV-', '')}
+                                  </span>
+                                </div>
+                              ) : isCancelled ? (
+                                <div className="flex flex-col gap-0.5">
+                                  <div className="flex items-center gap-1.5">
+                                    <span className="px-1.5 py-0.2 rounded bg-amber-500/20 text-amber-700 text-[8px] font-black uppercase">
+                                      CANCELLED
+                                    </span>
+                                    <span className="font-mono font-bold text-foreground text-xs line-through opacity-70">
+                                      {l.reference}
+                                    </span>
+                                  </div>
+                                  <span className="text-[9px] text-amber-600">
+                                    Reversal: REV-{l.reference}
+                                  </span>
+                                </div>
+                              ) : (
+                                <span className="font-mono font-bold text-blue-600 text-xs">
+                                  {l.reference}
+                                </span>
+                              )}
+                            </td>
+                            <td className="py-2.5 px-4 text-xs text-foreground">
+                              <div className={isRev ? 'font-medium text-rose-700 dark:text-rose-300' : ''}>
+                                {l.description || '—'}
+                              </div>
+                              {l.memo && <div className="text-[10px] text-muted-foreground italic mt-0.5">{l.memo}</div>}
+                            </td>
+                            <td className="py-2.5 px-4">
+                              <span className={`px-2 py-0.5 rounded text-[10px] font-semibold border ${
+                                isRev 
+                                  ? 'bg-rose-500/10 text-rose-600 border-rose-500/20' 
+                                  : isCancelled 
+                                  ? 'bg-amber-500/10 text-amber-600 border-amber-500/20' 
+                                  : 'bg-muted text-muted-foreground border-border'
+                              }`}>
+                                {isRev ? 'Reversal' : l.transactionType || 'Journal'}
+                              </span>
+                            </td>
+                            <td className="py-2.5 px-4 text-right font-mono font-bold text-emerald-600">
+                              {l.debit > 0 ? money(l.debit) : '—'}
+                            </td>
+                            <td className="py-2.5 px-4 text-right font-mono font-bold text-rose-600">
+                              {l.credit > 0 ? money(l.credit) : '—'}
+                            </td>
+                            <td className="py-2.5 px-4 text-right font-mono font-bold text-foreground">
+                              {money(Math.abs(l.runningBalance))}
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            ))
+          )}
         </div>
       )}
 

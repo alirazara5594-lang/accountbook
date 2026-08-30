@@ -3686,14 +3686,17 @@ public IReadOnlyList<EmployeeCompensation> EmployeeCompensations => _employeeCom
 
             var serviceRevId = GetMappedAccount("Service Revenue");
             var productRevId = GetMappedAccount("Sales");
+            var discountAccId = GetMappedAccount("Sales Discount");
 
             var lineRevenueGroups = new Dictionary<Guid, decimal>();
+            decimal totalDiscountGiven = 0;
 
             if (invoice.Lines != null && invoice.Lines.Count > 0)
             {
                 foreach (var line in invoice.Lines)
                 {
-                    var netLineTotal = line.LineTotalAfterDiscount;
+                    var grossLineTotal = line.LineTotal;
+                    totalDiscountGiven += line.DiscountAmount;
                     Guid lineRevAcc = resolvedRev;
 
                     if (line.ProductId.HasValue)
@@ -3718,13 +3721,14 @@ public IReadOnlyList<EmployeeCompensation> EmployeeCompensations => _employeeCom
 
                     if (!lineRevenueGroups.ContainsKey(lineRevAcc))
                         lineRevenueGroups[lineRevAcc] = 0;
-                    lineRevenueGroups[lineRevAcc] += netLineTotal;
+                    lineRevenueGroups[lineRevAcc] += grossLineTotal;
                 }
             }
             else
             {
-                var revenueTotal = invoice.SubTotal - invoice.DiscountTotal;
-                lineRevenueGroups[resolvedRev] = revenueTotal;
+                var grossSubtotal = invoice.SubTotal;
+                totalDiscountGiven = invoice.DiscountTotal;
+                lineRevenueGroups[resolvedRev] = grossSubtotal;
             }
 
             foreach (var kvp in lineRevenueGroups)
@@ -3732,6 +3736,13 @@ public IReadOnlyList<EmployeeCompensation> EmployeeCompensations => _employeeCom
                 var revAccObj = Find(kvp.Key);
                 var accName = revAccObj?.Name ?? "Revenue";
                 journalLines.Add(new JournalLine(kvp.Key, 0, kvp.Value, $"{accName}: {invoice.InvoiceNumber}", null, null, 1, invoice.CompanyId));
+            }
+
+            if (totalDiscountGiven > 0 && discountAccId != Guid.Empty)
+            {
+                var discAcc = Find(discountAccId);
+                var discAccName = discAcc?.Name ?? "Sales Discounts";
+                journalLines.Add(new JournalLine(discountAccId, totalDiscountGiven, 0, $"{discAccName}: {invoice.InvoiceNumber}", null, null, 1, invoice.CompanyId));
             }
 
             if (invoice.TaxTotal > 0 && resolvedTax.HasValue)
