@@ -3678,14 +3678,61 @@ public IReadOnlyList<EmployeeCompensation> EmployeeCompensations => _employeeCom
                 }
             }
 
-            // 1. Post AR Journal: Dr AR / Cr Revenue (+ Cr Tax Liability if applicable)
+            // 1. Post AR Journal: Dr AR / Cr Revenue per product/service (+ Cr Tax Liability if applicable)
             var journalLines = new List<JournalLine>
             {
                 new JournalLine(resolvedAr, invoice.TotalAmount, 0, $"AR: {invoice.InvoiceNumber}", null, null, 1, invoice.CompanyId)
             };
 
-            var revenueTotal = invoice.SubTotal - invoice.DiscountTotal;
-            journalLines.Add(new JournalLine(resolvedRev, 0, revenueTotal, $"Revenue: {invoice.InvoiceNumber}", null, null, 1, invoice.CompanyId));
+            var serviceRevId = GetMappedAccount("Service Revenue");
+            var productRevId = GetMappedAccount("Sales");
+
+            var lineRevenueGroups = new Dictionary<Guid, decimal>();
+
+            if (invoice.Lines != null && invoice.Lines.Count > 0)
+            {
+                foreach (var line in invoice.Lines)
+                {
+                    var netLineTotal = line.LineTotalAfterDiscount;
+                    Guid lineRevAcc = resolvedRev;
+
+                    if (line.ProductId.HasValue)
+                    {
+                        var prod = FindProduct(line.ProductId.Value);
+                        if (prod != null)
+                        {
+                            if (prod.IncomeAccountId.HasValue && prod.IncomeAccountId.Value != Guid.Empty)
+                            {
+                                lineRevAcc = prod.IncomeAccountId.Value;
+                            }
+                            else if (prod.Type == ProductType.Service && serviceRevId != Guid.Empty)
+                            {
+                                lineRevAcc = serviceRevId;
+                            }
+                            else if (prod.Type == ProductType.Physical && productRevId != Guid.Empty)
+                            {
+                                lineRevAcc = productRevId;
+                            }
+                        }
+                    }
+
+                    if (!lineRevenueGroups.ContainsKey(lineRevAcc))
+                        lineRevenueGroups[lineRevAcc] = 0;
+                    lineRevenueGroups[lineRevAcc] += netLineTotal;
+                }
+            }
+            else
+            {
+                var revenueTotal = invoice.SubTotal - invoice.DiscountTotal;
+                lineRevenueGroups[resolvedRev] = revenueTotal;
+            }
+
+            foreach (var kvp in lineRevenueGroups)
+            {
+                var revAccObj = Find(kvp.Key);
+                var accName = revAccObj?.Name ?? "Revenue";
+                journalLines.Add(new JournalLine(kvp.Key, 0, kvp.Value, $"{accName}: {invoice.InvoiceNumber}", null, null, 1, invoice.CompanyId));
+            }
 
             if (invoice.TaxTotal > 0 && resolvedTax.HasValue)
                 journalLines.Add(new JournalLine(resolvedTax.Value, 0, invoice.TaxTotal, $"Tax: {invoice.InvoiceNumber}", null, null, 1, invoice.CompanyId));
@@ -5273,9 +5320,10 @@ _bankImports.Clear(); _bankImports.AddRange(state.BankImports ?? []);
                 "Non-Recoverable Purchase Tax & Duty Expense" or "Non-Recoverable Tax Expense" => "61700",
                 "Corporate Income Tax Provision Expense" or "Corporate Income Tax Expense" => "61800",
                 "Deferred Revenue" => "23000",
-                "Sales" => "41100",
-                "Sales Discount" => "41200",
-                "Sales Returns" => "41300",
+                "Sales" or "Product Sales Revenue" => "41100",
+                "Service Revenue" => "41200",
+                "Sales Discount" => "41300",
+                "Sales Returns" => "41400",
                 "Cost of Goods Sold" => "51000",
                 "Purchase Discounts" => "51100",
                 "Purchase Returns" => "51200",

@@ -637,17 +637,65 @@ export const JournalEntriesView: React.FC<JournalEntriesViewProps> = ({ accounts
                 filteredEntries.map((entry) => {
                   const debitTotal = (entry.lines || []).reduce((s, l) => s + (l.debit || 0), 0);
                   const status = entry.status || 'Draft';
+                  const isRev = entry.reference?.startsWith('REV-');
+                  const hasReversal = !isRev && entries.some(e => e.reference === `REV-${entry.reference}`);
+                  const originalRef = isRev && entry.reference ? entry.reference.replace('REV-', '') : null;
 
                   return (
-                    <tr key={entry.id} className="hover:bg-gray-50/50 dark:hover:bg-gray-900/30 transition-colors">
+                    <tr 
+                      key={entry.id} 
+                      className={`transition-colors ${
+                        isRev 
+                          ? 'bg-rose-500/[0.03] dark:bg-rose-500/[0.06] hover:bg-rose-500/[0.08]' 
+                          : hasReversal 
+                          ? 'bg-amber-500/[0.03] dark:bg-amber-500/[0.06] hover:bg-amber-500/[0.08]' 
+                          : 'hover:bg-gray-50/50 dark:hover:bg-gray-900/30'
+                      }`}
+                    >
                       <td className="py-3 px-4 font-mono font-semibold text-[var(--color-text)]">
                         {entry.date?.slice(0, 10)}
                       </td>
-                      <td className="py-3 px-4 font-mono font-bold text-blue-600 dark:text-blue-400">
-                        {entry.reference}
+                      <td className="py-3 px-4">
+                        {isRev ? (
+                          <div className="flex flex-col gap-0.5">
+                            <div className="flex items-center gap-1.5 flex-wrap">
+                              <span className="px-1.5 py-0.5 rounded bg-rose-500/15 text-rose-600 dark:text-rose-400 border border-rose-500/30 text-[9px] font-black tracking-wider uppercase">
+                                REVERSAL
+                              </span>
+                              <span className="font-mono font-bold text-rose-600 dark:text-rose-400 text-xs">
+                                {entry.reference}
+                              </span>
+                            </div>
+                            {originalRef && (
+                              <span className="text-[10px] text-[var(--color-text-muted)] font-mono">
+                                Reverses: <strong className="text-[var(--color-text-strong)]">{originalRef}</strong>
+                              </span>
+                            )}
+                          </div>
+                        ) : hasReversal ? (
+                          <div className="flex flex-col gap-0.5">
+                            <div className="flex items-center gap-1.5 flex-wrap">
+                              <span className="px-1.5 py-0.5 rounded bg-amber-500/15 text-amber-600 dark:text-amber-400 border border-amber-500/30 text-[9px] font-black tracking-wider uppercase">
+                                CANCELLED
+                              </span>
+                              <span className="font-mono font-bold text-blue-600 dark:text-blue-400 text-xs">
+                                {entry.reference}
+                              </span>
+                            </div>
+                            <span className="text-[10px] text-amber-600 dark:text-amber-400 font-medium">
+                              Reversed by REV-{entry.reference}
+                            </span>
+                          </div>
+                        ) : (
+                          <span className="font-mono font-bold text-blue-600 dark:text-blue-400 text-xs">
+                            {entry.reference}
+                          </span>
+                        )}
                       </td>
                       <td className="py-3 px-4 font-medium text-[var(--color-text-strong)] max-w-xs truncate">
-                        {entry.description}
+                        <div className={isRev ? 'text-rose-700 dark:text-rose-300 font-medium' : ''}>
+                          {entry.description}
+                        </div>
                       </td>
                       <td className="py-3 px-4 text-center font-mono">
                         <span className="px-2 py-0.5 bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 rounded-md font-bold text-[10px]">

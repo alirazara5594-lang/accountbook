@@ -473,7 +473,10 @@ export const ChartOfAccounts: React.FC<ChartOfAccountsProps> = ({
     if (!selectedGLAccountId || !glAccount) return [];
     
     const lines: any[] = [];
-    const posted = journalEntries.filter(e => String(e.status) === 'Posted' || String(e.status) === '3');
+    const posted = journalEntries.filter(e => {
+      const s = String(e.status || '').toLowerCase();
+      return s === 'posted' || s === '3' || s === 'reversed' || s === '4' || !e.status;
+    });
 
     posted.forEach(entry => {
       entry.lines?.forEach(line => {
@@ -506,6 +509,16 @@ export const ChartOfAccounts: React.FC<ChartOfAccountsProps> = ({
       return { ...l, runningBalance: running };
     });
   }, [selectedGLAccountId, glAccount, journalEntries]);
+
+  const reversedGLRefsSet = useMemo(() => {
+    const set = new Set<string>();
+    journalEntries.forEach(e => {
+      if (e.reference && e.reference.startsWith('REV-')) {
+        set.add(e.reference.replace('REV-', ''));
+      }
+    });
+    return set;
+  }, [journalEntries]);
 
   // Filtered GL lines based on text query
   const filteredGLLines = useMemo(() => {
@@ -1332,25 +1345,49 @@ export const ChartOfAccounts: React.FC<ChartOfAccountsProps> = ({
                     <TableCell className="py-2.5 text-right font-bold">{formatCurrency(glAccount.openingBalance)}</TableCell>
                     <TableCell className="py-2.5 text-center">—</TableCell>
                   </TableRow>
-                  {filteredGLLines.map((line, idx) => (
-                    <TableRow key={idx} className="hover:bg-slate-50/50">
-                      <TableCell className="py-2.5 text-slate-500">{line.date}</TableCell>
-                      <TableCell className="py-2.5 font-bold text-slate-700">{line.reference}</TableCell>
-                      <TableCell className="py-2.5 font-sans text-slate-600 max-w-[200px] truncate" title={line.description}>{line.description}</TableCell>
-                      <TableCell className="py-2.5 text-right text-emerald-600 font-semibold">{line.debit > 0 ? formatCurrency(line.debit) : '—'}</TableCell>
-                      <TableCell className="py-2.5 text-right text-rose-600 font-semibold">{line.credit > 0 ? formatCurrency(line.credit) : '—'}</TableCell>
-                      <TableCell className="py-2.5 text-right font-bold text-slate-800">{formatCurrency(line.runningBalance)}</TableCell>
-                      <TableCell className="py-2.5 text-center">
-                        <button
-                          onClick={() => setActiveSourceTx(line.entry)}
-                          className="p-1 hover:bg-blue-50 text-blue-600 rounded cursor-pointer"
-                          title="Audit Source Transaction Document"
-                        >
-                          <Shield size={12.5} />
-                        </button>
-                      </TableCell>
-                    </TableRow>
-                  ))}
+                  {filteredGLLines.map((line, idx) => {
+                    const isRev = line.reference?.startsWith('REV-');
+                    const isCancelled = line.reference && reversedGLRefsSet.has(line.reference);
+                    return (
+                      <TableRow key={idx} className={`transition-colors ${isRev ? 'bg-rose-50/50 hover:bg-rose-50' : isCancelled ? 'bg-amber-50/40 hover:bg-amber-50' : 'hover:bg-slate-50/50'}`}>
+                        <TableCell className="py-2.5 text-slate-500">{line.date}</TableCell>
+                        <TableCell className="py-2.5">
+                          {isRev ? (
+                            <div className="flex flex-col gap-0.5">
+                              <span className="font-bold text-rose-600 flex items-center gap-1">
+                                <span className="bg-rose-100 text-rose-700 text-[8px] font-black px-1 rounded">REV</span>
+                                {line.reference}
+                              </span>
+                              <span className="text-[9px] text-slate-400 font-sans">Reverses: {line.reference.replace('REV-', '')}</span>
+                            </div>
+                          ) : isCancelled ? (
+                            <div className="flex flex-col gap-0.5">
+                              <span className="font-bold text-slate-700 flex items-center gap-1">
+                                <span className="bg-amber-100 text-amber-800 text-[8px] font-black px-1 rounded">VOID</span>
+                                {line.reference}
+                              </span>
+                              <span className="text-[9px] text-amber-600 font-sans">Reversed by REV-{line.reference}</span>
+                            </div>
+                          ) : (
+                            <span className="font-bold text-slate-700">{line.reference}</span>
+                          )}
+                        </TableCell>
+                        <TableCell className="py-2.5 font-sans text-slate-600 max-w-[200px] truncate" title={line.description}>{line.description}</TableCell>
+                        <TableCell className="py-2.5 text-right text-emerald-600 font-semibold">{line.debit > 0 ? formatCurrency(line.debit) : '—'}</TableCell>
+                        <TableCell className="py-2.5 text-right text-rose-600 font-semibold">{line.credit > 0 ? formatCurrency(line.credit) : '—'}</TableCell>
+                        <TableCell className="py-2.5 text-right font-bold text-slate-800">{formatCurrency(line.runningBalance)}</TableCell>
+                        <TableCell className="py-2.5 text-center">
+                          <button
+                            onClick={() => setActiveSourceTx(line.entry)}
+                            className="p-1 hover:bg-blue-50 text-blue-600 rounded cursor-pointer"
+                            title="Audit Source Transaction Document"
+                          >
+                            <Shield size={12.5} />
+                          </button>
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })}
                   {filteredGLLines.length === 0 && (
                     <TableRow>
                       <TableCell colSpan={7} className="py-8 text-center text-slate-400 font-sans">

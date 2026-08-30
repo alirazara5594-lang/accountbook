@@ -36,6 +36,7 @@ export const SystemAccountMapping: React.FC<SystemAccountMappingProps> = ({ acco
     // Sales & AR
     arAccountId: '',
     revenueAccountId: '',
+    serviceRevenueAccountId: '',
     discountAccountId: '',
     salesReturnsAccountId: '',
     allowanceAccountId: '',
@@ -113,9 +114,10 @@ export const SystemAccountMapping: React.FC<SystemAccountMappingProps> = ({ acco
       setMappings({
         // Sales & AR
         arAccountId: getAccId('Customer Receivables', '12000'),
-        revenueAccountId: getAccId('Sales', '41100'),
-        discountAccountId: getAccId('Sales Discount', '41200'),
-        salesReturnsAccountId: getAccId('Sales Returns', '41300'),
+        revenueAccountId: getAccId('Sales', '41100') || getAccId('Product Sales Revenue', '41100'),
+        serviceRevenueAccountId: getAccId('Service Revenue', '41200'),
+        discountAccountId: getAccId('Sales Discount', '41300'),
+        salesReturnsAccountId: getAccId('Sales Returns', '41400'),
         allowanceAccountId: getAccId('Allowance for Doubtful Accounts', '12100'),
         deferredRevenueAccountId: getAccId('Deferred Revenue', '23000'),
 
@@ -194,6 +196,8 @@ export const SystemAccountMapping: React.FC<SystemAccountMappingProps> = ({ acco
         // Sales & AR
         { key: 'Customer Receivables', id: mappings.arAccountId },
         { key: 'Sales', id: mappings.revenueAccountId },
+        { key: 'Product Sales Revenue', id: mappings.revenueAccountId },
+        { key: 'Service Revenue', id: mappings.serviceRevenueAccountId },
         { key: 'Sales Discount', id: mappings.discountAccountId },
         { key: 'Sales Returns', id: mappings.salesReturnsAccountId },
         { key: 'Allowance for Doubtful Accounts', id: mappings.allowanceAccountId },
@@ -283,8 +287,9 @@ export const SystemAccountMapping: React.FC<SystemAccountMappingProps> = ({ acco
         // Sales & AR
         arAccountId: getSeed('12000'),
         revenueAccountId: getSeed('41100'),
-        discountAccountId: getSeed('41200'),
-        salesReturnsAccountId: getSeed('41300'),
+        serviceRevenueAccountId: getSeed('41200'),
+        discountAccountId: getSeed('41300'),
+        salesReturnsAccountId: getSeed('41400'),
         allowanceAccountId: getSeed('12100'),
         deferredRevenueAccountId: getSeed('23000'),
 
@@ -574,14 +579,15 @@ export const SystemAccountMapping: React.FC<SystemAccountMappingProps> = ({ acco
         {(activeCategory === 'all' || activeCategory === 'sales') && (
           <div className="p-5 rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)] shadow-sm space-y-4 text-xs">
             <h3 className="font-bold text-sm text-[var(--color-text-strong)] flex items-center gap-2 border-b border-[var(--color-border)] pb-2.5">
-              <TrendingUp className="w-4 h-4 text-blue-600" /> Sales & Commercial Receivables
+              <TrendingUp className="w-4 h-4 text-blue-600" /> Sales & Commercial Receivables (Multi-Sector Revenue)
             </h3>
-            {renderField('Customer Receivables (AR)', mappings.arAccountId, 'arAccountId', assetAccounts, 'Code 12000')}
-            {renderField('Operating Revenue / Sales', mappings.revenueAccountId, 'revenueAccountId', revenueAccounts, 'Code 41100')}
-            {renderField('Sales Discounts', mappings.discountAccountId, 'discountAccountId', revenueAccounts, 'Code 41200')}
-            {renderField('Sales Returns & Allowances', mappings.salesReturnsAccountId, 'salesReturnsAccountId', revenueAccounts, 'Code 41300')}
-            {renderField('Allowance for Doubtful Accounts', mappings.allowanceAccountId, 'allowanceAccountId', assetAccounts, 'Code 12100')}
-            {renderField('Deferred / Unearned Revenue', mappings.deferredRevenueAccountId, 'deferredRevenueAccountId', liabilityAccounts, 'Code 23000')}
+            {renderField('Customer Receivables (AR) (Debit)', mappings.arAccountId, 'arAccountId', assetAccounts, 'Default Accounts Receivable | Code 12000')}
+            {renderField('Product Sales Revenue (Physical Goods) (Credit)', mappings.revenueAccountId, 'revenueAccountId', revenueAccounts, 'Physical inventory sales revenue | Code 41100')}
+            {renderField('Service Revenue & Consulting Fees (Credit)', mappings.serviceRevenueAccountId, 'serviceRevenueAccountId', revenueAccounts, 'Hourly, retainer & professional service revenue | Code 41200')}
+            {renderField('Sales Discounts & Allowances (Contra-Revenue)', mappings.discountAccountId, 'discountAccountId', revenueAccounts, 'Volume & promotional customer discounts | Code 41300')}
+            {renderField('Sales Returns & Concessions (Contra-Revenue)', mappings.salesReturnsAccountId, 'salesReturnsAccountId', revenueAccounts, 'Damaged product returns & allowances | Code 41400')}
+            {renderField('Allowance for Doubtful Accounts (Asset)', mappings.allowanceAccountId, 'allowanceAccountId', assetAccounts, 'Expected credit loss provision | Code 12100')}
+            {renderField('Deferred / Unearned Revenue (Liability)', mappings.deferredRevenueAccountId, 'deferredRevenueAccountId', liabilityAccounts, 'Advance billing for future service delivery | Code 23000')}
           </div>
         )}
 
