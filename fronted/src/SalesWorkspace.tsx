@@ -233,12 +233,17 @@ export const SalesWorkspace: React.FC<{ activeEntityId: string; entities?: any[]
   const cancelInvoice = async (inv: any) => {
     try {
       await updateInvoiceStatusStore(inv.id, 3) // 3 = Void / Cancelled
-      notify(`✓ Invoice ${inv.invoiceNumber || inv.reference} marked as Cancelled / Void.`)
-      await fetchData()
+      try {
+        const allLocal = JSON.parse(localStorage.getItem('ams_local_invoices_list') || '[]');
+        const updated = allLocal.map((x: any) => (x.id === inv.id || x.invoiceNumber === inv.invoiceNumber ? { ...x, status: 3 } : x));
+        localStorage.setItem('ams_local_invoices_list', JSON.stringify(updated));
+      } catch {}
+      notify(`✓ Invoice ${inv.invoiceNumber || inv.reference} marked as Cancelled / Void. Reversal posted to General Ledger.`);
+      await fetchData();
     } catch (e: any) {
-      notify(e.message || 'Failed to cancel invoice')
+      notify(e.message || 'Failed to cancel invoice');
     }
-  }
+  };
 
   const openPostModal = (inv: any) => {
     if (!inv) return

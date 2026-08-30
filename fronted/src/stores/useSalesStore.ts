@@ -248,6 +248,18 @@ export const useSalesStore = create<SalesState>((set, get) => ({
   },
 
   updateInvoiceStatus: async (id: string, status: number | string) => {
+    set((state) => ({
+      invoices: state.invoices.map((inv) =>
+        inv.id === id ? { ...inv, status: status as any } : inv
+      )
+    }));
+
+    try {
+      const allLocal = JSON.parse(localStorage.getItem('ams_local_invoices_list') || '[]');
+      const updated = allLocal.map((x: any) => (x.id === id ? { ...x, status } : x));
+      localStorage.setItem('ams_local_invoices_list', JSON.stringify(updated));
+    } catch {}
+
     await salesApi.updateInvoiceStatus(id, status);
     await get().fetchInvoices();
   },

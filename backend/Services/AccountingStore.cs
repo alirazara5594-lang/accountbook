@@ -3793,36 +3793,44 @@ public IReadOnlyList<EmployeeCompensation> EmployeeCompensations => _employeeCom
             if (invoice == null) { error = "Invoice not found."; return false; }
 
             // If cancelling / voiding a posted invoice, execute GAAP reversal journal and restore stock
-            if (status == SalesInvoiceStatus.Void && invoice.Status != SalesInvoiceStatus.Draft && invoice.Status != SalesInvoiceStatus.Void)
+            if ((status == SalesInvoiceStatus.Void || status == SalesInvoiceStatus.Draft) && invoice.Status != SalesInvoiceStatus.Draft && invoice.Status != SalesInvoiceStatus.Void)
             {
                 // 1. Find all posted journal entries associated with this invoice
-                var postedEntries = _entries.Where(e => e.Reference == invoice.InvoiceNumber && e.Status == JournalStatus.Posted).ToList();
+                var postedEntries = _entries.Where(e => 
+                    (e.Reference == invoice.InvoiceNumber || (!string.IsNullOrEmpty(invoice.Reference) && e.Reference == invoice.Reference) || e.Description.Contains(invoice.InvoiceNumber)) && 
+                    !e.Reference.StartsWith("REV-")
+                ).ToList();
+
+                var customerName = _customers.FirstOrDefault(c => c.Id == invoice.CustomerId)?.Name ?? "Customer";
+
                 foreach (var origEntry in postedEntries)
                 {
-                    // Create reversing lines (swap debit and credit)
-                    var revLines = origEntry.Lines.Select(l => new JournalLine(
-                        l.AccountId,
-                        l.Credit, // Original Credit becomes Debit
-                        l.Debit,  // Original Debit becomes Credit
-                        $"Reversal: {l.Memo}",
-                        l.Comment,
-                        l.CurrencyCode,
-                        l.ExchangeRate,
-                        l.CompanyId
-                    )).ToList();
-
-                    var revJournal = new JournalEntry
+                    if (origEntry.Status == JournalStatus.Posted)
                     {
-                        Date = DateOnly.FromDateTime(DateTime.UtcNow),
-                        Reference = $"REV-{invoice.InvoiceNumber}",
-                        Description = $"Reversal of cancelled invoice {invoice.InvoiceNumber}",
-                        TransactionType = TransactionType.Sales,
-                        CompanyId = invoice.CompanyId,
-                        Lines = revLines,
-                        Status = JournalStatus.Posted
-                    };
-                    _entries.Add(revJournal);
-                    origEntry.Status = JournalStatus.Reversed;
+                        // Create reversing lines (swap debit and credit)
+                        var revLines = origEntry.Lines.Select(l => new JournalLine(
+                            l.AccountId,
+                            l.Credit, // Original Credit becomes Debit
+                            l.Debit,  // Original Debit becomes Credit
+                            $"Reversal of {invoice.InvoiceNumber}: {l.Memo}",
+                            $"Reverses original entry from {origEntry.Date:yyyy-MM-dd} for invoice {invoice.InvoiceNumber} ({customerName})",
+                            l.CurrencyCode,
+                            l.ExchangeRate,
+                            l.CompanyId
+                        )).ToList();
+
+                        var revJournal = new JournalEntry
+                        {
+                            Date = DateOnly.FromDateTime(DateTime.UtcNow),
+                            Reference = $"REV-{invoice.InvoiceNumber}",
+                            Description = $"Cancellation Reversal of Sales Invoice {invoice.InvoiceNumber} (Customer: {customerName})",
+                            TransactionType = TransactionType.Sales,
+                            CompanyId = invoice.CompanyId,
+                            Lines = revLines,
+                            Status = JournalStatus.Posted
+                        };
+                        _entries.Add(revJournal);
+                    }
                 }
 
                 // 2. Restore Stock if it was reduced

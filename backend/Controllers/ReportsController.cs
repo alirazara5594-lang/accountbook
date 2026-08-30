@@ -19,7 +19,7 @@ public class ReportsController(AccountingStore store) : ControllerBase
 
     private static IEnumerable<JournalEntry> PostedEntries(AccountingStore store, Guid? companyId, string? from, string? to)
     {
-        var query = store.Entries.Where(e => e.Status == JournalStatus.Posted);
+        var query = store.Entries.Where(e => e.Status == JournalStatus.Posted || e.Status == JournalStatus.Reversed);
         if (companyId.HasValue) query = query.Where(e => e.CompanyId == companyId);
         if (DateOnly.TryParse(from, out var fromDate)) query = query.Where(e => e.Date >= fromDate);
         if (DateOnly.TryParse(to, out var toDate)) query = query.Where(e => e.Date <= toDate);

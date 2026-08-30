@@ -341,19 +341,41 @@ export default function App() {
     }
   }, [currentUser, entities, page])
   const openCreate = async () => { setEditing(null); setForm(blank); setModal(true) }
-  const openEdit = (a: Account) => { setEditing(a); setForm({ code: a.code, name: a.name, type: a.type as AccountType, parentId: a.parentId || '', openingBalance: String(a.openingBalance), reconciliationEnabled: a.reconciliationEnabled, ifrsTag: a.ifrsTag || '', gaapTag: a.gaapTag || '', isSystem: a.isSystem, subtype: a.subtype || '', currency: a.currency || 'USD', taxCategory: a.taxCategory || '', allowManualJournal: a.allowManualJournal !== false, description: a.description || '', status: a.status || 'Active' }); setModal(true) }
+  const openEdit = (a: Account) => { 
+    setEditing(a); 
+    const effectiveSubtype = a.subtype || inferSubtype(a.code, a.type);
+    setForm({ 
+      code: a.code, 
+      name: a.name, 
+      type: a.type as AccountType, 
+      parentId: a.parentId || '', 
+      openingBalance: String(a.openingBalance || 0), 
+      reconciliationEnabled: a.reconciliationEnabled, 
+      ifrsTag: a.ifrsTag || '', 
+      gaapTag: a.gaapTag || '', 
+      isSystem: a.isSystem, 
+      subtype: effectiveSubtype, 
+      currency: a.currency || 'USD', 
+      taxCategory: a.taxCategory || '', 
+      allowManualJournal: a.allowManualJournal !== false, 
+      description: a.description || '', 
+      status: a.status || 'Active' 
+    }); 
+    setModal(true); 
+  }
 
   const saveAccount = async (e: FormEvent) => {
     e.preventDefault();
+    const effectiveSubtype = form.subtype || inferSubtype(form.code, form.type) || "";
     const body = { 
       ...form, 
       parentId: form.parentId || null, 
-      openingBalance: Number(form.openingBalance), 
+      openingBalance: Number(form.openingBalance) || 0, 
       openingBalanceDate: Number(form.openingBalance) ? new Date().toISOString().slice(0, 10) : null, 
       gaapTag: form.gaapTag || null, 
       customFields: {}, 
       isSystem: form.isSystem,
-      subtype: form.subtype || "",
+      subtype: effectiveSubtype,
       currency: form.currency || 'USD',
       taxCategory: form.taxCategory || null,
       allowManualJournal: form.allowManualJournal,
@@ -362,8 +384,9 @@ export default function App() {
     };
     try {
       await saveAccountStore(body, editing ? editing.id : undefined);
+      await fetchAccounts();
       setModal(false);
-      notify(editing ? 'Account updated' : 'Account created');
+      notify(editing ? '✓ Account updated successfully' : '✓ Account created successfully');
     } catch (err: any) {
       notify(err.message || 'Could not save account');
     }
@@ -776,34 +799,55 @@ export default function App() {
 
 const subtypesMap: Record<string, string[]> = {
   Asset: ['Current Assets', 'Non-Current Assets'],
-  ContraAsset: ['Non-Current Assets'],
+  ContraAsset: ['Current Assets', 'Non-Current Assets'],
   Liability: ['Current Liabilities', 'Non-Current Liabilities'],
-  ContraLiability: ['Current Liabilities'],
+  ContraLiability: ['Current Liabilities', 'Non-Current Liabilities'],
   Equity: ['Share Capital & Premium', 'Retained Earnings & Reserves'],
   ContraEquity: ['Share Capital & Premium', 'Retained Earnings & Reserves'],
   Revenue: ['Operating Revenue', 'Non-Operating Revenue'],
-  ContraRevenue: ['Operating Revenue'],
-  Expense: ['Cost of Goods Sold', 'Operating Expenses', 'Non-Operating Expenses'],
-  ContraExpense: ['Operating Expenses']
+  ContraRevenue: ['Operating Revenue', 'Non-Operating Revenue'],
+  Expense: ['Operating Expenses', 'Cost of Goods Sold', 'Non-Operating Expenses'],
+  ContraExpense: ['Cost of Goods Sold', 'Operating Expenses']
 };
 
 const inferSubtype = (code: string, type: string): string => {
+  if (!code) return '';
+  const num = parseInt(code, 10);
+  
   if (type === 'Asset' || type === 'ContraAsset') {
-    return code.startsWith('11') ? 'Current Assets' : 'Non-Current Assets';
+    if (!isNaN(num)) {
+      if (num >= 10000 && num < 15000) return 'Current Assets';
+      if (num >= 15000) return 'Non-Current Assets';
+    }
+    return code.startsWith('11') || code.startsWith('12') || code.startsWith('13') || code.startsWith('14')
+      ? 'Current Assets' : 'Non-Current Assets';
   }
+  
   if (type === 'Liability' || type === 'ContraLiability') {
-    return code.startsWith('25') ? 'Non-Current Liabilities' : 'Current Liabilities';
+    if (!isNaN(num)) {
+      if (num >= 20000 && num < 25000) return 'Current Liabilities';
+      if (num >= 25000) return 'Non-Current Liabilities';
+    }
+    return code.startsWith('25') || code.startsWith('26') || code.startsWith('27') || code.startsWith('28')
+      ? 'Non-Current Liabilities' : 'Current Liabilities';
   }
+  
   if (type === 'Equity' || type === 'ContraEquity') {
-    return code.startsWith('32') ? 'Retained Earnings & Reserves' : 'Share Capital & Premium';
+    if (!isNaN(num) && num >= 30000 && num < 32000) return 'Share Capital & Premium';
+    return 'Retained Earnings & Reserves';
   }
+  
   if (type === 'Revenue' || type === 'ContraRevenue') {
-    return code.startsWith('42') ? 'Non-Operating Revenue' : 'Operating Revenue';
+    if (!isNaN(num) && num >= 40000 && num < 42000) return 'Operating Revenue';
+    return 'Non-Operating Revenue';
   }
+  
   if (type === 'Expense' || type === 'ContraExpense') {
-    if (code.startsWith('5')) return 'Cost of Goods Sold';
-    return code.startsWith('61') ? 'Operating Expenses' : 'Non-Operating Expenses';
+    if (!isNaN(num) && num >= 50000 && num < 60000) return 'Cost of Goods Sold';
+    if (!isNaN(num) && num >= 60000 && num < 62000) return 'Operating Expenses';
+    return 'Non-Operating Expenses';
   }
+  
   return '';
 };
 
@@ -811,8 +855,9 @@ function AccountModal({ form, setForm, accounts, editing, close, save }: { form:
   const field = (key: string, value: any) => setForm((f: any) => ({ ...f, [key]: value }));
 
   const [subtype, setSubtype] = useState(() => {
+    if (form.subtype) return form.subtype;
     if (editing) {
-      return inferSubtype(editing.code, editing.type);
+      return editing.subtype || inferSubtype(editing.code, editing.type);
     }
     const initialType = form.type || 'Asset';
     return subtypesMap[initialType]?.[0] || '';
@@ -865,28 +910,28 @@ function AccountModal({ form, setForm, accounts, editing, close, save }: { form:
     setSubtype(newSubtype);
     field('subtype', newSubtype);
     
-    // Suggest standard parent account based on selected subtype
-    let suggestedParentCode = '';
-    switch (newSubtype) {
-      case 'Current Assets': suggestedParentCode = '11000'; break;
-      case 'Non-Current Assets': suggestedParentCode = '15000'; break;
-      case 'Current Liabilities': suggestedParentCode = '21000'; break;
-      case 'Non-Current Liabilities': suggestedParentCode = '25000'; break;
-      case 'Share Capital & Premium': suggestedParentCode = '31000'; break;
-      case 'Retained Earnings & Reserves': suggestedParentCode = '32000'; break;
-      case 'Operating Revenue': suggestedParentCode = '41000'; break;
-      case 'Non-Operating Revenue': suggestedParentCode = '42000'; break;
-      case 'Cost of Goods Sold': suggestedParentCode = '50000'; break;
-      case 'Operating Expenses': suggestedParentCode = '61000'; break;
-      case 'Non-Operating Expenses': suggestedParentCode = '60000'; break;
-    }
-    
-    const suggestedParent = accounts.find(a => a.code === suggestedParentCode);
-    const parentId = suggestedParent ? suggestedParent.id : '';
-    setForm((f: any) => ({ ...f, parentId }));
-    
-    if (!editing) {
-      fetchNextCode(form.type, parentId);
+    // Only auto-suggest standard parent code for brand new accounts if parent is not selected yet
+    if (!editing && !form.parentId) {
+      let suggestedParentCode = '';
+      switch (newSubtype) {
+        case 'Current Assets': suggestedParentCode = '11000'; break;
+        case 'Non-Current Assets': suggestedParentCode = '15000'; break;
+        case 'Current Liabilities': suggestedParentCode = '21000'; break;
+        case 'Non-Current Liabilities': suggestedParentCode = '25000'; break;
+        case 'Share Capital & Premium': suggestedParentCode = '31000'; break;
+        case 'Retained Earnings & Reserves': suggestedParentCode = '32000'; break;
+        case 'Operating Revenue': suggestedParentCode = '41000'; break;
+        case 'Non-Operating Revenue': suggestedParentCode = '42000'; break;
+        case 'Cost of Goods Sold': suggestedParentCode = '50000'; break;
+        case 'Operating Expenses': suggestedParentCode = '61000'; break;
+        case 'Non-Operating Expenses': suggestedParentCode = '60000'; break;
+      }
+      
+      const suggestedParent = accounts.find(a => a.code === suggestedParentCode);
+      if (suggestedParent) {
+        setForm((f: any) => ({ ...f, parentId: suggestedParent.id }));
+        fetchNextCode(form.type, suggestedParent.id);
+      }
     }
   };
 
@@ -897,62 +942,36 @@ function AccountModal({ form, setForm, accounts, editing, close, save }: { form:
     setSubtype(firstSubtype);
     field('subtype', firstSubtype);
 
-    // Auto-select standard parent based on subtype
-    let suggestedParentCode = '';
-    switch (firstSubtype) {
-      case 'Current Assets': suggestedParentCode = '11000'; break;
-      case 'Non-Current Assets': suggestedParentCode = '15000'; break;
-      case 'Current Liabilities': suggestedParentCode = '21000'; break;
-      case 'Non-Current Liabilities': suggestedParentCode = '25000'; break;
-      case 'Share Capital & Premium': suggestedParentCode = '31000'; break;
-      case 'Retained Earnings & Reserves': suggestedParentCode = '32000'; break;
-      case 'Operating Revenue': suggestedParentCode = '41000'; break;
-      case 'Non-Operating Revenue': suggestedParentCode = '42000'; break;
-      case 'Cost of Goods Sold': suggestedParentCode = '50000'; break;
-      case 'Operating Expenses': suggestedParentCode = '61000'; break;
-      case 'Non-Operating Expenses': suggestedParentCode = '60000'; break;
-    }
-    const suggestedParent = accounts.find(a => a.code === suggestedParentCode);
-    const parentId = suggestedParent ? suggestedParent.id : '';
-    setForm((f: any) => ({ ...f, parentId }));
-
     if (!editing) {
+      let suggestedParentCode = '';
+      switch (firstSubtype) {
+        case 'Current Assets': suggestedParentCode = '11000'; break;
+        case 'Non-Current Assets': suggestedParentCode = '15000'; break;
+        case 'Current Liabilities': suggestedParentCode = '21000'; break;
+        case 'Non-Current Liabilities': suggestedParentCode = '25000'; break;
+        case 'Share Capital & Premium': suggestedParentCode = '31000'; break;
+        case 'Retained Earnings & Reserves': suggestedParentCode = '32000'; break;
+        case 'Operating Revenue': suggestedParentCode = '41000'; break;
+        case 'Non-Operating Revenue': suggestedParentCode = '42000'; break;
+        case 'Cost of Goods Sold': suggestedParentCode = '50000'; break;
+        case 'Operating Expenses': suggestedParentCode = '61000'; break;
+        case 'Non-Operating Expenses': suggestedParentCode = '60000'; break;
+      }
+      const suggestedParent = accounts.find(a => a.code === suggestedParentCode);
+      const parentId = suggestedParent ? suggestedParent.id : '';
+      setForm((f: any) => ({ ...f, parentId }));
       fetchNextCode(val, parentId);
     }
   };
 
   const filteredParents = useMemo(() => {
-    if (!subtype) return accounts.filter(a => a.id !== editing?.id);
+    const baseType = form.type?.replace('Contra', '');
     return accounts.filter(a => {
       if (a.id === editing?.id) return false;
-      switch (subtype) {
-        case 'Current Assets':
-          return a.code.startsWith('11') || a.code === '10000';
-        case 'Non-Current Assets':
-          return a.code.startsWith('15') || a.code === '10000';
-        case 'Current Liabilities':
-          return a.code.startsWith('21') || a.code.startsWith('22') || a.code === '20000';
-        case 'Non-Current Liabilities':
-          return a.code.startsWith('25') || a.code === '20000';
-        case 'Share Capital & Premium':
-          return a.code === '30000' || a.code.startsWith('31');
-        case 'Retained Earnings & Reserves':
-          return a.code === '30000' || a.code.startsWith('32');
-        case 'Operating Revenue':
-          return a.code === '40000' || a.code.startsWith('41');
-        case 'Non-Operating Revenue':
-          return a.code === '40000' || a.code.startsWith('42');
-        case 'Cost of Goods Sold':
-          return a.code === '50000' || a.code.startsWith('5');
-        case 'Operating Expenses':
-          return a.code === '60000' || a.code.startsWith('61');
-        case 'Non-Operating Expenses':
-          return a.code === '60000';
-        default:
-          return true;
-      }
-    });
-  }, [accounts, subtype, editing]);
+      const aBaseType = a.type?.replace('Contra', '');
+      return aBaseType === baseType;
+    }).sort((a, b) => a.code.localeCompare(b.code));
+  }, [accounts, form.type, editing]);
 
   const calculatedLevel = useMemo(() => {
     if (!form.parentId) return 'Main Head';
