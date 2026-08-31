@@ -45,6 +45,8 @@ export const SalesWorkspace: React.FC<{ activeEntityId: string; entities?: any[]
 
   const accounts = useCoaStore((s) => s.accounts)
   const fetchAccounts = useCoaStore((s) => s.fetchAccounts)
+  const coaMappings = useCoaStore((s) => s.mappings)
+  const fetchMappings = useCoaStore((s) => s.fetchMappings)
 
   const [loading, setLoading] = useState(true)
   const [showForm, setShowForm] = useState(false)
@@ -135,6 +137,12 @@ export const SalesWorkspace: React.FC<{ activeEntityId: string; entities?: any[]
       checkPendingQuoteConversion()
     })
   }, [activeEntityId])
+
+  useEffect(() => {
+    if (coaMappings.length === 0) {
+      fetchMappings()
+    }
+  }, [coaMappings.length, fetchMappings])
 
   useEffect(() => {
     const handleHash = () => {
@@ -245,22 +253,25 @@ export const SalesWorkspace: React.FC<{ activeEntityId: string; entities?: any[]
     }
   };
 
-  const openPostModal = (inv: any) => {
+  const openPostModal = async (inv: any) => {
     if (!inv) return
     if (!accounts || accounts.length === 0) {
       try { fetchAccounts() } catch {}
     }
-    const mappingsStr = localStorage.getItem('system_account_mappings')
-    let mappings: any = {}
-    if (mappingsStr) {
-      try {
-        mappings = JSON.parse(mappingsStr)
-      } catch {}
+    let liveMappings = coaMappings
+    if (!liveMappings || liveMappings.length === 0) {
+      try { liveMappings = await fetchMappings() } catch {}
+    }
+    const getMappedId = (key: string, fallbackCode: string) => {
+      const found = liveMappings?.find((m: any) => m.mappingKey === key)
+      if (found?.accountId) return found.accountId
+      const fallback = accs.find((a: any) => a.code === fallbackCode)
+      return fallback?.id || ''
     }
     const accs = Array.isArray(accounts) ? accounts.filter((a: any) => a && typeof a === 'object') : []
-    const arAccount = accs.find((a: any) => a.id === mappings.arAccountId || a.code === '12000' || a.name?.toLowerCase().includes('receivable')) || accs.find((a: any) => a.type === 'Asset' || a.type === 0 || String(a.type).toLowerCase() === 'asset' || a.code?.startsWith('1')) || accs[0]
-    const revAccount = accs.find((a: any) => a.id === mappings.revenueAccountId || a.code === '41100' || a.name?.toLowerCase().includes('sales') || a.name?.toLowerCase().includes('revenue')) || accs.find((a: any) => a.type === 'Revenue' || a.type === 3 || String(a.type).toLowerCase() === 'revenue' || a.code?.startsWith('4')) || accs[1] || accs[0]
-    const taxAccount = accs.find((a: any) => a.id === mappings.taxAccountId || a.code === '22000' || a.name?.toLowerCase().includes('tax')) || accs.find((a: any) => a.type === 'Liability' || a.type === 1 || String(a.type).toLowerCase() === 'liability' || a.code?.startsWith('2'))
+    const arAccount = accs.find((a: any) => a.id === getMappedId('Customer Receivables', '12000')) || accs.find((a: any) => a.code === '12000' || a.name?.toLowerCase().includes('receivable'))
+    const revAccount = accs.find((a: any) => a.id === getMappedId('Sales', '41100')) || accs.find((a: any) => a.code === '41100' || a.name?.toLowerCase().includes('revenue'))
+    const taxAccount = accs.find((a: any) => a.id === getMappedId('Taxes', '22000')) || accs.find((a: any) => a.code === '22000' || a.name?.toLowerCase().includes('tax'))
 
     setPostModal(inv)
     setPostForm({

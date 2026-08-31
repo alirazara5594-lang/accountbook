@@ -48,7 +48,7 @@ export const GeneralLedgerView: React.FC<GeneralLedgerViewProps> = ({ activeEnti
   const [to, setTo] = useState('');
   const [datePreset, setDatePreset] = useState<'all' | 'today' | 'this_month' | 'this_quarter' | 'this_year'>('all');
   const [selectedAccountFilter, setSelectedAccountFilter] = useState<string>('ALL');
-  const [viewMode, setViewMode] = useState<'chronological' | 'account_ledgers' | 'grouped' | 'paired_reversals'>('chronological');
+  const [viewMode, setViewMode] = useState<'chronological' | 'journal_entries' | 'account_ledgers' | 'grouped' | 'paired_reversals'>('chronological');
   const [filterType, setFilterType] = useState<'all' | 'active' | 'reversals'>('all');
 
   // Load COA accounts if empty
@@ -321,6 +321,49 @@ export const GeneralLedgerView: React.FC<GeneralLedgerViewProps> = ({ activeEnti
 
     return Object.values(groups).sort((a, b) => a.code.localeCompare(b.code));
   }, [filtered]);
+
+  // Journal Entry Summary — groups all lines by reference to show complete double-entry per transaction
+  const journalEntryGroups = useMemo(() => {
+    const map = new Map<string, {
+      reference: string;
+      date: string;
+      description: string;
+      transactionType: string;
+      status: string;
+      lines: GeneralLedgerLine[];
+      totalDebit: number;
+      totalCredit: number;
+      isReversal: boolean;
+      isCancelled: boolean;
+    }>();
+
+    filtered.forEach((l) => {
+      const ref = l.reference || 'UNASSIGNED';
+      if (!map.has(ref)) {
+        map.set(ref, {
+          reference: ref,
+          date: l.date || '',
+          description: l.description || '',
+          transactionType: l.transactionType || 'Journal',
+          status: l.status || '',
+          lines: [],
+          totalDebit: 0,
+          totalCredit: 0,
+          isReversal: ref.startsWith('REV-'),
+          isCancelled: !ref.startsWith('REV-') && reversedRefsSet.has(ref),
+        });
+      }
+      const group = map.get(ref)!;
+      group.lines.push(l);
+      group.totalDebit += l.debit || 0;
+      group.totalCredit += l.credit || 0;
+    });
+
+    return Array.from(map.values()).sort((a, b) => {
+      if (a.date !== b.date) return a.date.localeCompare(b.date);
+      return a.reference.localeCompare(b.reference);
+    });
+  }, [filtered, reversedRefsSet]);
 
   // ─── Export Institutional PDF ─────────────────────────────────────────────
   const exportPDF = () => {
@@ -677,6 +720,16 @@ export const GeneralLedgerView: React.FC<GeneralLedgerViewProps> = ({ activeEnti
                 📄 Postings Register
               </button>
               <button
+                onClick={() => setViewMode('journal_entries')}
+                className={`px-3 py-1 rounded-lg text-xs transition-all ${
+                  viewMode === 'journal_entries'
+                    ? 'bg-[var(--color-surface)] text-emerald-600 dark:text-emerald-400 shadow-2xs font-bold'
+                    : 'text-[var(--color-text-muted)] hover:text-[var(--color-text-strong)]'
+                }`}
+              >
+                📒 Journal Entries ({journalEntryGroups.length})
+              </button>
+              <button
                 onClick={() => setViewMode('account_ledgers')}
                 className={`px-3 py-1 rounded-lg text-xs transition-all ${
                   viewMode === 'account_ledgers'
@@ -888,6 +941,129 @@ export const GeneralLedgerView: React.FC<GeneralLedgerViewProps> = ({ activeEnti
                 </div>
               </div>
             ))
+          )}
+        </div>
+      )}
+
+      {/* ─── Mode 5: Journal Entry Summary — Complete Double-Entry per Transaction ─── */}
+      {viewMode === 'journal_entries' && (
+        <div className="space-y-4 animate-in fade-in duration-200">
+          {journalEntryGroups.length === 0 ? (
+            <div className="p-10 border border-[var(--color-border)] rounded-2xl bg-[var(--color-surface)] text-center">
+              <BookOpen className="w-10 h-10 text-muted-foreground mx-auto mb-3 opacity-40" />
+              <h4 className="font-bold text-sm text-foreground">No Journal Entries Found</h4>
+              <p className="text-xs text-muted-foreground mt-1">No transactions recorded for the selected filter criteria.</p>
+            </div>
+          ) : (
+            journalEntryGroups.map((entry) => {
+              const isRev = entry.isReversal;
+              const isCancelled = entry.isCancelled;
+              const originalRef = isRev ? entry.reference.replace('REV-', '') : null;
+
+              // Separate lines by normal balance direction
+              const debitLines = entry.lines.filter(l => (l.debit || 0) > 0);
+              const creditLines = entry.lines.filter(l => (l.credit || 0) > 0);
+
+              return (
+                <div key={entry.reference} className={`rounded-2xl border bg-[var(--color-surface)] shadow-xs overflow-hidden ${
+                  isRev ? 'border-rose-500/30' : isCancelled ? 'border-amber-500/30' : 'border-[var(--color-border)]'
+                }`}>
+                  {/* Journal Entry Header */}
+                  <div className={`p-4 border-b border-[var(--color-border)] flex flex-wrap items-center justify-between gap-3 ${
+                    isRev ? 'bg-rose-500/[0.04]' : isCancelled ? 'bg-amber-500/[0.04]' : 'bg-muted/30'
+                  }`}>
+                    <div className="flex items-center gap-2.5 flex-wrap">
+                      {isRev ? (
+                        <span className="px-2 py-0.5 rounded bg-rose-500/15 text-rose-600 dark:text-rose-400 border border-rose-500/30 text-[9px] font-black tracking-wider uppercase">
+                          REVERSAL
+                        </span>
+                      ) : isCancelled ? (
+                        <span className="px-2 py-0.5 rounded bg-amber-500/15 text-amber-600 dark:text-amber-400 border border-amber-500/30 text-[9px] font-black tracking-wider uppercase">
+                          CANCELLED
+                        </span>
+                      ) : (
+                        <span className="px-2 py-0.5 rounded bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30 text-[9px] font-black tracking-wider uppercase">
+                          JOURNAL ENTRY
+                        </span>
+                      )}
+                      <h3 className="font-mono font-black text-sm text-foreground">{entry.reference}</h3>
+                      {originalRef && (
+                        <span className="text-[10px] text-muted-foreground font-mono">
+                          — Reverses: <strong className="text-foreground">{originalRef}</strong>
+                        </span>
+                      )}
+                    </div>
+                    <div className="flex items-center gap-4 text-xs font-mono">
+                      <span className="text-muted-foreground">{entry.date?.slice(0, 10)}</span>
+                      <span className="px-2 py-0.5 rounded bg-muted text-muted-foreground text-[10px] font-semibold border border-border">
+                        {entry.transactionType}
+                      </span>
+                      <span className={`font-black px-2 py-0.5 rounded border ${
+                        Math.abs(entry.totalDebit - entry.totalCredit) < 0.01
+                          ? 'bg-emerald-500/10 text-emerald-600 border-emerald-500/20'
+                          : 'bg-rose-500/10 text-rose-600 border-rose-500/20'
+                      }`}>
+                        {Math.abs(entry.totalDebit - entry.totalCredit) < 0.01 ? '✓ Balanced' : '⚠ Imbalanced'}
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Side-by-Side Debit and Credit Legs */}
+                  <div className="grid grid-cols-1 lg:grid-cols-2 divide-y lg:divide-y-0 lg:divide-x divide-[var(--color-border)]">
+                    {/* Debit Side (Left) */}
+                    <div className="p-4 space-y-2">
+                      <div className="flex items-center justify-between pb-2 border-b border-[var(--color-border)]">
+                        <span className="text-[10px] font-bold uppercase tracking-wider text-emerald-600">Debits (DR)</span>
+                        <span className="font-mono font-black text-sm text-emerald-600">{money(entry.totalDebit)}</span>
+                      </div>
+                      <div className="space-y-1.5">
+                        {debitLines.map((l) => (
+                          <div key={l.id} className="flex items-center justify-between text-xs font-mono py-1.5 px-2 rounded-lg bg-emerald-500/[0.03] border border-emerald-500/10">
+                            <div className="flex items-center gap-2">
+                              <span className="font-bold text-foreground">{l.accountCode}</span>
+                              <span className="text-muted-foreground">{l.accountName}</span>
+                            </div>
+                            <span className="font-black text-emerald-600">{money(l.debit)}</span>
+                          </div>
+                        ))}
+                        {debitLines.length === 0 && (
+                          <div className="text-xs text-muted-foreground italic py-2 text-center">No debit legs</div>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Credit Side (Right) */}
+                    <div className="p-4 space-y-2">
+                      <div className="flex items-center justify-between pb-2 border-b border-[var(--color-border)]">
+                        <span className="text-[10px] font-bold uppercase tracking-wider text-rose-600">Credits (CR)</span>
+                        <span className="font-mono font-black text-sm text-rose-600">{money(entry.totalCredit)}</span>
+                      </div>
+                      <div className="space-y-1.5">
+                        {creditLines.map((l) => (
+                          <div key={l.id} className="flex items-center justify-between text-xs font-mono py-1.5 px-2 rounded-lg bg-rose-500/[0.03] border border-rose-500/10">
+                            <div className="flex items-center gap-2">
+                              <span className="font-bold text-foreground">{l.accountCode}</span>
+                              <span className="text-muted-foreground">{l.accountName}</span>
+                            </div>
+                            <span className="font-black text-rose-600">{money(l.credit)}</span>
+                          </div>
+                        ))}
+                        {creditLines.length === 0 && (
+                          <div className="text-xs text-muted-foreground italic py-2 text-center">No credit legs</div>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Narration / Description */}
+                  {entry.description && (
+                    <div className="px-4 py-2.5 bg-muted/20 border-t border-[var(--color-border)] text-xs text-muted-foreground italic">
+                      <strong className="text-foreground not-italic">Narration:</strong> {entry.description}
+                    </div>
+                  )}
+                </div>
+              );
+            })
           )}
         </div>
       )}

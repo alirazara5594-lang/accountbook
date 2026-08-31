@@ -318,6 +318,7 @@ List<ExpenseClaim>? ExpenseClaims = null,
             lock (_lock)
             {
                 EnsureRequiredPayrollAccounts();
+                FixIncorrectMappings();
                 foreach (var a in _accounts)
                 {
                     a.IsSystem = _mappings.Any(m => m.AccountId == a.Id);
@@ -5111,6 +5112,7 @@ _bankImports.Clear(); _bankImports.AddRange(state.BankImports ?? []);
             foreach (var (id, history) in state.History) _history[id] = history;
         }
         EnsureRequiredPayrollAccounts();
+        FixIncorrectMappings();
         RecalculateHierarchy();
         Persist();
         return true;
@@ -5188,6 +5190,87 @@ _bankImports.Clear(); _bankImports.AddRange(state.BankImports ?? []);
                 }
             }
         }
+    }
+
+    private void FixIncorrectMappings()
+    {
+        var correctMappings = new Dictionary<string, string>
+        {
+            { "Sales", "41100" },
+            { "Product Sales Revenue", "41100" },
+            { "Service Revenue", "41200" },
+            { "Sales Discount", "41300" },
+            { "Sales Returns", "41400" },
+            { "Customer Receivables", "12000" },
+            { "Allowance for Doubtful Accounts", "12100" },
+            { "Deferred Revenue", "23000" },
+            { "Vendor Payables", "21100" },
+            { "Purchases", "61100" },
+            { "Purchase Discounts", "51100" },
+            { "Purchase Returns", "51200" },
+            { "GRNI Accrual", "21200" },
+            { "Prepaid Expenses", "14000" },
+            { "Cost of Goods Sold", "51000" },
+            { "Inventory", "13000" },
+            { "Sales Tax / Output VAT Payable", "22000" },
+            { "Taxes", "22000" },
+            { "Input Tax", "14100" },
+            { "Purchase Input VAT / Recoverable Tax", "14100" },
+            { "Non-Recoverable Purchase Tax & Duty Expense", "61700" },
+            { "Import VAT & Customs Duty Tax Clearing", "14120" },
+            { "Import VAT Payable", "22030" },
+            { "Capital Goods Input VAT (Fixed Assets)", "14130" },
+            { "Fixed Asset Disposal Output Tax Payable", "22040" },
+            { "Withholding Tax Receivable (Advance Tax)", "12200" },
+            { "WHT Receivable", "12200" },
+            { "Withholding Tax (WHT) Payable on Vendors", "22100" },
+            { "WHT Payable", "22100" },
+            { "Corporate Income Tax Provision Expense", "61800" },
+            { "Corporate Income Tax Payable", "22200" },
+            { "Deferred Tax Asset", "15300" },
+            { "Deferred Tax Liability", "25200" },
+            { "Reverse Charge Mechanism (RCM) Output Tax Payable", "22050" },
+            { "Reverse Charge Mechanism (RCM) Input Tax", "14150" },
+            { "Fixed Assets", "15100" },
+            { "Accumulated Depreciation", "15200" },
+            { "Depreciation Expense", "61300" },
+            { "Gain/Loss on Disposal", "51000" },
+            { "Right of Use Asset", "15110" },
+            { "Lease Liability", "21600" },
+            { "Interest Expense", "61400" },
+            { "Payroll Expense", "61200" },
+            { "Employer Payroll Contributions Expense", "61250" },
+            { "Accrued Salaries", "21300" },
+            { "Payroll Taxes Accrued", "21400" },
+            { "EOBI & Social Security Accrued", "21500" },
+            { "Pension Fund Accrued", "21500" },
+            { "Provident Fund Accrued", "21510" },
+            { "Intercompany Receivable", "12300" },
+            { "Intercompany Clearing", "21700" },
+            { "Intercompany Allocations", "61500" },
+            { "Overhead Allocation", "61600" },
+            { "Overhead Allocation Payable", "21800" },
+            { "Raw Materials Inventory", "13000" },
+            { "Work in Progress", "13000" },
+            { "Finished Goods Inventory", "13000" },
+            { "Direct Labor", "61200" },
+            { "Manufacturing Overhead", "61100" },
+        };
+
+        bool changed = false;
+        foreach (var mapping in _mappings)
+        {
+            if (correctMappings.TryGetValue(mapping.MappingKey, out var expectedCode))
+            {
+                var expectedAccount = _accounts.FirstOrDefault(a => a.Code == expectedCode);
+                if (expectedAccount != null && mapping.AccountId != expectedAccount.Id)
+                {
+                    mapping.AccountId = expectedAccount.Id;
+                    changed = true;
+                }
+            }
+        }
+        if (changed) Persist();
     }
 
     private void Persist()
