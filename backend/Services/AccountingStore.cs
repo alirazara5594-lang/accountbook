@@ -319,6 +319,7 @@ List<ExpenseClaim>? ExpenseClaims = null,
             {
                 EnsureRequiredPayrollAccounts();
                 FixIncorrectMappings();
+                CorrectMispostedRevenueLines();
                 foreach (var a in _accounts)
                 {
                     a.IsSystem = _mappings.Any(m => m.AccountId == a.Id);
@@ -5113,6 +5114,7 @@ _bankImports.Clear(); _bankImports.AddRange(state.BankImports ?? []);
         }
         EnsureRequiredPayrollAccounts();
         FixIncorrectMappings();
+        CorrectMispostedRevenueLines();
         RecalculateHierarchy();
         Persist();
         return true;
@@ -5268,6 +5270,44 @@ _bankImports.Clear(); _bankImports.AddRange(state.BankImports ?? []);
                     mapping.AccountId = expectedAccount.Id;
                     changed = true;
                 }
+            }
+        }
+        if (changed) Persist();
+    }
+
+    private void CorrectMispostedRevenueLines()
+    {
+        var discountAcc = _accounts.FirstOrDefault(a => a.Code == "41300");
+        var revenueAcc = _accounts.FirstOrDefault(a => a.Code == "41100");
+        if (discountAcc == null || revenueAcc == null) return;
+
+        bool changed = false;
+        foreach (var entry in _entries.Where(e => e.Status == JournalStatus.Posted && e.TransactionType == TransactionType.Sales))
+        {
+            var mispostedLines = entry.Lines
+                .Where(l => l.AccountId == discountAcc.Id && l.Credit > 0)
+                .ToList();
+
+            if (mispostedLines.Count == 0) continue;
+
+            var correctedLines = new List<JournalLine>();
+            foreach (var line in entry.Lines)
+            {
+                if (line.AccountId == discountAcc.Id && line.Credit > 0)
+                {
+                    correctedLines.Add(new JournalLine(revenueAcc.Id, line.Debit, line.Credit, line.Memo, line.Comment, line.CurrencyCode, line.ExchangeRate, line.CompanyId));
+                    changed = true;
+                }
+                else
+                {
+                    correctedLines.Add(line);
+                }
+            }
+
+            if (changed)
+            {
+                entry.Lines.Clear();
+                entry.Lines.AddRange(correctedLines);
             }
         }
         if (changed) Persist();
