@@ -255,7 +255,7 @@ export const FinancialReports: React.FC<FinancialReportsProps> = ({
       a.name.toLowerCase().includes('cash') || a.name.toLowerCase().includes('bank')
     );
     const arAccounts = currentAssetAccounts.filter(a => 
-      !cashBankAccounts.includes(a) && (
+      !cashBankAccounts.includes(a) && a.code !== '12200' && a.code !== '12300' && (
         a.code.startsWith('12') || a.name.toLowerCase().includes('receivable') || a.name.toLowerCase().includes('doubtful')
       )
     );
@@ -378,11 +378,11 @@ export const FinancialReports: React.FC<FinancialReportsProps> = ({
     const longLeaseAccounts = nonCurrentLiabAccounts.filter(a => 
       a.code.startsWith('251') || a.name.toLowerCase().includes('long-term lease') || a.name.toLowerCase().includes('non-current lease')
     );
-    const longDebtAccounts = nonCurrentLiabAccounts.filter(a => 
-      !longLeaseAccounts.includes(a) && !deferredTaxLiabAccounts.includes(a) && (a.code.startsWith('252') || a.name.toLowerCase().includes('loan') || a.name.toLowerCase().includes('borrowing') || a.name.toLowerCase().includes('notes payable'))
-    );
     const deferredTaxLiabAccounts = nonCurrentLiabAccounts.filter(a => 
       !longLeaseAccounts.includes(a) && (a.code.startsWith('253') || a.code === '25200' || a.name.toLowerCase().includes('deferred tax'))
+    );
+    const longDebtAccounts = nonCurrentLiabAccounts.filter(a => 
+      !longLeaseAccounts.includes(a) && !deferredTaxLiabAccounts.includes(a) && (a.code.startsWith('252') || a.name.toLowerCase().includes('loan') || a.name.toLowerCase().includes('borrowing') || a.name.toLowerCase().includes('notes payable'))
     );
     const otherNonCurrentLiab = nonCurrentLiabAccounts.filter(a => 
       !longLeaseAccounts.includes(a) && !longDebtAccounts.includes(a) && !deferredTaxLiabAccounts.includes(a)
@@ -521,7 +521,8 @@ export const FinancialReports: React.FC<FinancialReportsProps> = ({
       )
     );
     const salesDiscountAccounts = postingAccounts.filter(a => 
-      a.type === 'ContraRevenue' || a.code === '41300' || a.code === '41400' || a.name.toLowerCase().includes('discount') || a.name.toLowerCase().includes('return')
+      a.type === 'ContraRevenue' || a.code === '41300' || a.code === '41400' ||
+      ((a.type === 'Revenue' || a.type === 'ContraRevenue') && (a.name.toLowerCase().includes('discount') || a.name.toLowerCase().includes('return')))
     );
     const otherRevAccounts = postingAccounts.filter(a => 
       a.type === 'Revenue' && !productSalesAccounts.includes(a) && !serviceSalesAccounts.includes(a) && !salesDiscountAccounts.includes(a)

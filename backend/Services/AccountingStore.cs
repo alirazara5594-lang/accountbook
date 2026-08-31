@@ -5242,7 +5242,6 @@ _bankImports.Clear(); _bankImports.AddRange(state.BankImports ?? []);
             { "Accrued Salaries", "21300" },
             { "Payroll Taxes Accrued", "21400" },
             { "EOBI & Social Security Accrued", "21500" },
-            { "Pension Fund Accrued", "21500" },
             { "Provident Fund Accrued", "21510" },
             { "Intercompany Receivable", "12300" },
             { "Intercompany Clearing", "21700" },
