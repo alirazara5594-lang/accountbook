@@ -234,8 +234,7 @@ export const GeneralLedgerView: React.FC<GeneralLedgerViewProps> = ({ activeEnti
     }> = {};
 
     availableAccounts.forEach((acc) => {
-      const isNormalDebit = ['Asset', 'Expense', 'ContraLiability', 'ContraEquity', 'ContraRevenue'].includes(acc.type || '') ||
-        acc.code.startsWith('1') || acc.code.startsWith('5') || acc.code.startsWith('6');
+      const isNormalDebit = ['Asset', 'Expense', 'ContraLiability', 'ContraEquity', 'ContraRevenue'].includes(acc.type || '');
       const opening = Number(acc.openingBalance) || 0;
 
       map[acc.code] = {

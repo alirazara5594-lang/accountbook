@@ -283,8 +283,9 @@ List<ExpenseClaim>? ExpenseClaims = null,
         var revenue = Seed("40000", "Revenue", AccountType.Revenue, null);
         var operatingRevenue = Seed("41000", "Operating Revenue", AccountType.Revenue, revenue.Id);
         Seed("41100", "Sales Revenue", AccountType.Revenue, operatingRevenue.Id, true, 0, false);
-        Seed("41200", "Sales Discounts", AccountType.Revenue, operatingRevenue.Id, true, 0, false);
-        Seed("41300", "Sales Returns & Allowances", AccountType.ContraRevenue, operatingRevenue.Id, true, 0, false);
+        Seed("41200", "Service Revenue", AccountType.Revenue, operatingRevenue.Id, true, 0, false);
+        Seed("41300", "Sales Discounts", AccountType.ContraRevenue, operatingRevenue.Id, true, 0, false);
+        Seed("41400", "Sales Returns & Allowances", AccountType.ContraRevenue, operatingRevenue.Id, true, 0, false);
         Seed("42000", "Non-Operating Revenue", AccountType.Revenue, revenue.Id, false, 0, false);
 
         // 5. Cost of Goods Sold (Structural Headers: System = True; Leaf Posting: System = False)
@@ -304,7 +305,8 @@ List<ExpenseClaim>? ExpenseClaims = null,
         Seed("61250", "Employer Statutory Payroll Contributions", AccountType.Expense, operatingExpenses.Id, true, 0, false);
         Seed("61260", "End of Service & Gratuity Expense", AccountType.Expense, operatingExpenses.Id, true, 0, false);
         Seed("61300", "Depreciation Expense", AccountType.Expense, operatingExpenses.Id, true, 0, false);
-        Seed("61400", "Bad Debt Expense", AccountType.Expense, operatingExpenses.Id, true, 0, false);
+        Seed("61400", "Interest Expense", AccountType.Expense, operatingExpenses.Id, true, 0, false);
+        Seed("61410", "Bad Debt Expense", AccountType.Expense, operatingExpenses.Id, true, 0, false);
         Seed("61500", "Intercompany Allocations", AccountType.Expense, operatingExpenses.Id, true, 0, false);
         Seed("61600", "Overhead Allocation", AccountType.Expense, operatingExpenses.Id, true, 0, false);
         Seed("61700", "Non-Recoverable Purchase Tax & Duty Expense", AccountType.Expense, operatingExpenses.Id, true, 0, false);
@@ -5257,6 +5259,13 @@ _bankImports.Clear(); _bankImports.AddRange(state.BankImports ?? []);
             { "Finished Goods Inventory", "13000" },
             { "Direct Labor", "61200" },
             { "Manufacturing Overhead", "61100" },
+            { "Output Tax", "22000" },
+            { "Input VAT on Operating Expenses", "14100" },
+            { "Import Tax on Inventory", "14120" },
+            { "Capital Goods Tax", "14130" },
+            { "Corporate Income Tax Expense", "61800" },
+            { "Non-Recoverable Tax Expense", "61700" },
+            { "Pension Fund Accrued", "21510" },
         };
 
         bool changed = false;
@@ -5277,15 +5286,23 @@ _bankImports.Clear(); _bankImports.AddRange(state.BankImports ?? []);
 
     private void CorrectMispostedRevenueLines()
     {
-        var discountAcc = _accounts.FirstOrDefault(a => a.Code == "41300");
         var revenueAcc = _accounts.FirstOrDefault(a => a.Code == "41100");
-        if (discountAcc == null || revenueAcc == null) return;
+        var discountAcc = _accounts.FirstOrDefault(a => a.Code == "41300");
+        var returnsAcc = _accounts.FirstOrDefault(a => a.Code == "41400");
+        if (revenueAcc == null) return;
+
+        // Build set of contra-revenue account IDs (Sales Discounts, Sales Returns, etc.)
+        var contraRevenueIds = _accounts
+            .Where(a => a.Type == AccountType.ContraRevenue && a.Id != revenueAcc.Id)
+            .Select(a => a.Id)
+            .ToHashSet();
 
         bool changed = false;
         foreach (var entry in _entries.Where(e => e.Status == JournalStatus.Posted && e.TransactionType == TransactionType.Sales))
         {
+            // Find lines where Credits went to a ContraRevenue account (wrong — revenue credits should go to Revenue accounts)
             var mispostedLines = entry.Lines
-                .Where(l => l.AccountId == discountAcc.Id && l.Credit > 0)
+                .Where(l => contraRevenueIds.Contains(l.AccountId) && l.Credit > 0)
                 .ToList();
 
             if (mispostedLines.Count == 0) continue;
@@ -5293,7 +5310,7 @@ _bankImports.Clear(); _bankImports.AddRange(state.BankImports ?? []);
             var correctedLines = new List<JournalLine>();
             foreach (var line in entry.Lines)
             {
-                if (line.AccountId == discountAcc.Id && line.Credit > 0)
+                if (contraRevenueIds.Contains(line.AccountId) && line.Credit > 0)
                 {
                     correctedLines.Add(new JournalLine(revenueAcc.Id, line.Debit, line.Credit, line.Memo, line.Comment, line.CurrencyCode, line.ExchangeRate, line.CompanyId));
                     changed = true;
@@ -5304,7 +5321,7 @@ _bankImports.Clear(); _bankImports.AddRange(state.BankImports ?? []);
                 }
             }
 
-            if (changed)
+            if (mispostedLines.Count > 0)
             {
                 entry.Lines.Clear();
                 entry.Lines.AddRange(correctedLines);
@@ -5437,7 +5454,7 @@ _bankImports.Clear(); _bankImports.AddRange(state.BankImports ?? []);
                 "Payroll Taxes Accrued" or "Payroll Income Tax Withholding Payable" => "21400",
                 "EOBI & Social Security Accrued" or "EOBI & Social Security Payable" => "21500",
                 "Provident Fund Accrued" or "Provident Fund & Pension Payable" => "21510",
-                "Pension Fund Accrued" => "21500",
+                "Pension Fund Accrued" => "21510",
                 "Taxes" or "Sales Tax / Output VAT Payable" or "Output Tax" => "22000",
                 "Purchase Input VAT / Recoverable Tax" or "Input Tax" or "Input VAT on Operating Expenses" => "14100",
                 "Import VAT & Customs Duty Tax Clearing" or "Import Tax on Inventory" => "14120",
@@ -8525,6 +8542,17 @@ _bankImports.Clear(); _bankImports.AddRange(state.BankImports ?? []);
             var totalExpense = currentMonth.TotalExpense;
             if (totalExpense > 0)
                 entry.Lines.Add(new JournalLine(depreciationAcc, totalExpense, 0, "Operating lease expense", null, null, 1, lease.CompanyId));
+        }
+
+        // Credit side: Lease Liability (principal reduction) or Cash/Bank for payments
+        decimal totalDebit = entry.Lines.Sum(l => l.Debit);
+        decimal totalCredit = entry.Lines.Sum(l => l.Credit);
+        if (totalDebit > totalCredit)
+        {
+            var creditAmount = totalDebit - totalCredit;
+            // Use cash account if set, otherwise credit the lease liability
+            var creditAcc = (cashAcc != Guid.Empty) ? cashAcc : liabilityAcc;
+            entry.Lines.Add(new JournalLine(creditAcc, 0, creditAmount, "Lease payment / liability", null, null, 1, lease.CompanyId));
         }
 
         // Update lease balances

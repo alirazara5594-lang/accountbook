@@ -159,7 +159,7 @@ export const FinancialReports: React.FC<FinancialReportsProps> = ({
 
     const postedEntries = entries.filter(e => {
       const statusStr = String(e.status || '').toLowerCase();
-      const isPosted = statusStr === 'posted' || statusStr === '3' || !e.status;
+      const isPosted = statusStr === 'posted' || statusStr === '3';
       if (!isPosted) return false;
 
       const compId = (e as any).companyId;
@@ -379,10 +379,10 @@ export const FinancialReports: React.FC<FinancialReportsProps> = ({
       a.code.startsWith('251') || a.name.toLowerCase().includes('long-term lease') || a.name.toLowerCase().includes('non-current lease')
     );
     const longDebtAccounts = nonCurrentLiabAccounts.filter(a => 
-      !longLeaseAccounts.includes(a) && (a.code.startsWith('252') || a.name.toLowerCase().includes('loan') || a.name.toLowerCase().includes('borrowing') || a.name.toLowerCase().includes('notes payable'))
+      !longLeaseAccounts.includes(a) && !deferredTaxLiabAccounts.includes(a) && (a.code.startsWith('252') || a.name.toLowerCase().includes('loan') || a.name.toLowerCase().includes('borrowing') || a.name.toLowerCase().includes('notes payable'))
     );
     const deferredTaxLiabAccounts = nonCurrentLiabAccounts.filter(a => 
-      !longLeaseAccounts.includes(a) && !longDebtAccounts.includes(a) && (a.code.startsWith('253') || a.name.toLowerCase().includes('deferred tax'))
+      !longLeaseAccounts.includes(a) && (a.code.startsWith('253') || a.code === '25200' || a.name.toLowerCase().includes('deferred tax'))
     );
     const otherNonCurrentLiab = nonCurrentLiabAccounts.filter(a => 
       !longLeaseAccounts.includes(a) && !longDebtAccounts.includes(a) && !deferredTaxLiabAccounts.includes(a)
@@ -566,7 +566,7 @@ export const FinancialReports: React.FC<FinancialReportsProps> = ({
 
     const financeExpAccounts = allExpenses.filter(a => 
       !payrollExpAccounts.includes(a) && !deprExpAccounts.includes(a) && (
-        a.code.startsWith('618') || a.code.startsWith('614') || a.code.startsWith('62') || a.name.toLowerCase().includes('interest') || a.name.toLowerCase().includes('bank charges') || a.name.toLowerCase().includes('tax provision') || a.name.toLowerCase().includes('corporate income tax')
+        a.code.startsWith('618') || a.code === '61400' || a.code.startsWith('62') || a.name.toLowerCase().includes('interest') || a.name.toLowerCase().includes('bank charges') || a.name.toLowerCase().includes('tax provision') || a.name.toLowerCase().includes('corporate income tax')
       )
     );
 
