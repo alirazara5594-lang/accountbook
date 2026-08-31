@@ -49,7 +49,7 @@ export const GeneralLedgerView: React.FC<GeneralLedgerViewProps> = ({ activeEnti
   const [datePreset, setDatePreset] = useState<'all' | 'today' | 'this_month' | 'this_quarter' | 'this_year'>('all');
   const [selectedAccountFilter, setSelectedAccountFilter] = useState<string>('ALL');
   const [viewMode, setViewMode] = useState<'chronological' | 'journal_entries' | 'account_ledgers' | 'grouped' | 'paired_reversals'>('chronological');
-  const [filterType, setFilterType] = useState<'all' | 'active' | 'reversals'>('all');
+  const [filterType, setFilterType] = useState<'all' | 'active' | 'reversals'>('active');
 
   // Load COA accounts if empty
   useEffect(() => {
