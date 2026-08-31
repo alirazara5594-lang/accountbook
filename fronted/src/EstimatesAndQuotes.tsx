@@ -756,7 +756,7 @@ export const EstimatesAndQuotes: React.FC<{ activeEntityId: string; entities?: a
                             <td className="p-2"><textarea value={l.description} onChange={e => updateLine(i, 'description', e.target.value)} rows={2} placeholder="Description" className="w-full px-2 py-1 rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] text-xs outline-none resize-none" /></td>
                             <td className="p-2"><input type="number" min="1" value={l.quantity} onChange={e => updateLine(i, 'quantity', e.target.value)} className="w-full h-8 px-2 rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] text-xs text-right font-mono outline-none" /></td>
                             <td className="p-2"><input type="number" step="0.01" value={l.unitPrice} onChange={e => updateLine(i, 'unitPrice', e.target.value)} className="w-full h-8 px-2 rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] text-xs text-right font-mono outline-none" /></td>
-                            <td className="p-2"><div className="flex items-center gap-1"><select value={l.discountType} onChange={e => updateLine(i, 'discountType', parseInt(e.target.value))} className="h-8 w-12 shrink-0 border border-[var(--color-border)] rounded-lg px-1 text-xs bg-[var(--color-surface)] outline-none"><option value={0}>%</option><option value={1}>{form.currencyCode}</option></select><input type="number" min="0" step={l.discountType === 0 ? "1" : "0.01"} value={l.discountValue} onChange={e => updateLine(i, 'discountValue', e.target.value)} className="w-full h-8 px-2 rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] text-xs text-right font-mono outline-none" /></div></td>
+                            <td className="p-2"><div className="flex items-center gap-1"><select value={l.discountType} onChange={e => updateLine(i, 'discountType', parseInt(e.target.value))} className="h-8 w-20 rounded-lg border border-[var(--color-border)] px-2 text-xs bg-[var(--color-surface)] outline-none"><option value={0}>%</option><option value={1}>{form.currencyCode}</option></select><input type="number" min="0" step={l.discountType === 0 ? "1" : "0.01"} value={l.discountValue} onChange={e => updateLine(i, 'discountValue', e.target.value)} className="w-full h-8 px-2 rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] text-xs text-right font-mono outline-none" /></div></td>
                             <td className="p-2">
                               <select
                                 value={l.taxPercent}
@@ -1143,7 +1143,7 @@ function ConvertToInvoiceModal({
                         <select
                           value={l.discountType}
                           onChange={e => updateInvLine(i, 'discountType', parseInt(e.target.value))}
-                          className="h-8 w-12 shrink-0 border border-[var(--color-border)] rounded-lg px-1 text-xs bg-[var(--color-surface)] text-[var(--color-text-strong)] font-bold outline-none"
+                          className="h-8 w-20 border border-[var(--color-border)] rounded-lg px-1 text-xs bg-[var(--color-surface)] text-[var(--color-text-strong)] font-bold outline-none"
                         >
                           <option value={0}>%</option>
                           <option value={1}>{invForm.currencyCode}</option>

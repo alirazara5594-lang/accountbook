@@ -1263,7 +1263,7 @@ export const SalesWorkspace: React.FC<{ activeEntityId: string; entities?: any[]
                                 <select
                                   value={l.discountType}
                                   onChange={e => updateLine(i, 'discountType', e.target.value)}
-                                  className="h-8 w-12 shrink-0 border border-[var(--color-border)] rounded-lg px-1 text-xs bg-[var(--color-surface)] outline-none"
+                                  className="h-8 w-20 rounded-lg border border-[var(--color-border)] px-1 text-xs bg-[var(--color-surface)] outline-none"
                                 >
                                   <option value={0}>%</option>
                                   <option value={1}>{form.currencyCode}</option>
