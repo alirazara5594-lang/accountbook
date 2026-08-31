@@ -91,6 +91,7 @@ private readonly List<Voucher> _vouchers = [];
     private readonly List<AuditItem> _auditLog = [];
     private readonly Dictionary<Guid, List<AuditItem>> _history = [];
     private readonly object _lock = new();
+    private readonly object _persistLock = new();
     private readonly IConfiguration _config;
     private readonly PayrollCountry _activeCountry;
 
@@ -4992,15 +4993,9 @@ public IReadOnlyList<EmployeeCompensation> EmployeeCompensations => _employeeCom
             }
         }
         
-        // Reset accounts to the new beautiful tree hierarchy if there are no posted entries yet
-        if (state.Accounts != null && (state.Entries == null || state.Entries.Count == 0))
-        {
-            state.Accounts.Clear();
-            _accounts.Clear();
-            _history.Clear();
-            SeedAccounts();
-            state.Accounts.AddRange(_accounts);
-        }
+        // NOTE: Previously this block wiped all accounts when entries.Count == 0.
+        // That caused data loss during race conditions or empty snapshots.
+        // REMOVED — accounts are never auto-wiped after initial seed.
 
         _accounts.Clear(); _accounts.AddRange(state.Accounts ?? []);
         _entries.Clear(); _entries.AddRange(state.Entries ?? []);
@@ -5333,8 +5328,12 @@ _bankImports.Clear(); _bankImports.AddRange(state.BankImports ?? []);
     private void Persist()
     {
         if (_dbFactory is null) return;
+        string json;
+        lock (_persistLock)
+        {
+            json = JsonSerializer.Serialize(new StoredState(_accounts, _entries, _history, _templates, _recurringEntries, _journalEvents, _intercompanyAllocations, _companies, _customers, _products, _vendors, _purchaseOrders, _grns, _fixedAssets, _taxAuthorities, _taxCodes, _taxRates, _warehouses, _stockLevels, _stockTransactions, _salesInvoices, _estimates, _boms, _workOrders, _mappings, _salesOrders, _creditNotes, _customerPayments, _vendorPayments, _fundTransfers, _reconciliations, _budgets, _periodCloses, _vouchers, _expenseClaims, _bankImports, _payComponents, _employees, _departments, _positions, _payGrades, _leaveBalances, _leaveRequests, _attendanceRecords, _payruns, _payrunEmployees, _payrunLines, _salarySlips, _holidays, _loanAdvances, _taxSlabs, _employeeCompensations, _projects, _projectPhases, _projectTasks, _timesheets, _projectExpenses, _taxObligations, _taxReturns, _taxExemptions, _withholdingCertificates, _eInvoices, _surveys, _fieldVisits, _inspections, _fieldWorkOrders, _fieldExpenses, _adminUsers, _userRoles, _branches, _approvalWorkflows, _numberSeries, _currencies, _auditLog, _leases, _prepaymentSchedules));
+        }
         using var db = _dbFactory.CreateDbContext();
-        var json = JsonSerializer.Serialize(new StoredState(_accounts, _entries, _history, _templates, _recurringEntries, _journalEvents, _intercompanyAllocations, _companies, _customers, _products, _vendors, _purchaseOrders, _grns, _fixedAssets, _taxAuthorities, _taxCodes, _taxRates, _warehouses, _stockLevels, _stockTransactions, _salesInvoices, _estimates, _boms, _workOrders, _mappings, _salesOrders, _creditNotes, _customerPayments, _vendorPayments, _fundTransfers, _reconciliations, _budgets, _periodCloses, _vouchers, _expenseClaims, _bankImports, _payComponents, _employees, _departments, _positions, _payGrades, _leaveBalances, _leaveRequests, _attendanceRecords, _payruns, _payrunEmployees, _payrunLines, _salarySlips, _holidays, _loanAdvances, _taxSlabs, _employeeCompensations, _projects, _projectPhases, _projectTasks, _timesheets, _projectExpenses, _taxObligations, _taxReturns, _taxExemptions, _withholdingCertificates, _eInvoices, _surveys, _fieldVisits, _inspections, _fieldWorkOrders, _fieldExpenses, _adminUsers, _userRoles, _branches, _approvalWorkflows, _numberSeries, _currencies, _auditLog, _leases, _prepaymentSchedules));
         var snapshot = db.AccountingStateSnapshots.Find(1);
         if (snapshot is null) db.AccountingStateSnapshots.Add(new AccountingStateSnapshot { Id = 1, Json = json, UpdatedAt = DateTime.UtcNow });
         else { snapshot.Json = json; snapshot.UpdatedAt = DateTime.UtcNow; }
