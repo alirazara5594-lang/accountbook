@@ -47,7 +47,7 @@ public class ReportsController(AccountingStore store) : ControllerBase
             var bal = balances.GetValueOrDefault(a.Id);
             var (debit, credit) = a.NormalBalance == NormalBalanceType.Debit
                 ? (bal > 0 ? bal : 0m, bal < 0 ? -bal : 0m)
-                : (bal < 0 ? -bal : 0m, bal > 0 ? bal : 0m);
+                : (bal > 0 ? bal : 0m, bal < 0 ? -bal : 0m);
             return new { a.Id, a.Code, a.Name, a.Type, Debit = debit, Credit = credit, Balance = bal };
         }).Where(r => r.Balance != 0).OrderBy(r => r.Code).ToList();
         return Ok(new { totalDebit = rows.Sum(r => r.Debit), totalCredit = rows.Sum(r => r.Credit), rows });
@@ -86,6 +86,16 @@ public class ReportsController(AccountingStore store) : ControllerBase
             })
             .Where(r => r.Amount != 0)
             .OrderBy(r => r.Code).ToList();
+
+        var revenue = PostingAccounts(store)
+            .Where(a => IsRevenue(a.Type))
+            .Sum(a => -(balances.GetValueOrDefault(a.Id)));
+        var expenses = PostingAccounts(store)
+            .Where(a => IsExpense(a.Type))
+            .Sum(a => balances.GetValueOrDefault(a.Id));
+        var retainedEarnings = revenue - expenses;
+        if (retainedEarnings != 0)
+            rows.Add(new { Id = Guid.Empty, Code = "RE", Name = "Retained Earnings (Net Income)", Type = AccountType.Equity, Amount = retainedEarnings });
 
         var assets = rows.Where(r => IsAsset(r.Type)).Sum(r => r.Amount);
         var liabilities = rows.Where(r => IsLiability(r.Type)).Sum(r => r.Amount);

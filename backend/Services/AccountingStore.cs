@@ -8468,6 +8468,7 @@ _bankImports.Clear(); _bankImports.AddRange(state.BankImports ?? []);
                 InterestAccountId = request.InterestAccountId,
                 CashAccountId = request.CashAccountId,
                 CompanyId = request.CompanyId,
+                BalanceSheetLiability = pv,
                 IsActive = true
             };
             
