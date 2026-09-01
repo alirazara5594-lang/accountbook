@@ -16,6 +16,8 @@ import { getGlobalNextInvoiceNumber } from './lib/invoiceNumbering'
 
 import { money } from './lib/currency'
 import { CompactTaxSelect } from './components/CompactTaxSelect'
+import { CompactDiscountTypeSelect } from './components/CompactDiscountTypeSelect'
+import { CompactProductSelect } from './components/CompactProductSelect'
 
 const statusStyles: Record<number, { label: string; hex: string }> = {
   0: { label: 'Draft', hex: '#94a3b8' },
@@ -765,21 +767,23 @@ export const EstimatesAndQuotes: React.FC<{ activeEntityId: string; entities?: a
                       <tbody className="divide-y divide-[var(--color-border)]">
                         {lines.map((l, i) => (
                           <tr key={i} className="hover:bg-[var(--color-surface-muted)]/30">
-                            <td className="p-2"><select value={l.productId} onChange={e => updateLine(i, 'productId', e.target.value)} className="w-full h-8 px-2 rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] text-xs outline-none"><option value="">Select...</option>{products.map((p: any) => <option key={p.id} value={p.id}>{p.name}</option>)}</select></td>
+                            <td className="p-2">
+                              <CompactProductSelect
+                                value={l.productId}
+                                onChange={v => updateLine(i, 'productId', v)}
+                                products={products}
+                              />
+                            </td>
                             <td className="p-2"><textarea value={l.description} onChange={e => updateLine(i, 'description', e.target.value)} rows={2} placeholder="Item description / details..." className="w-full px-2.5 py-1.5 rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] text-xs outline-none resize-none" /></td>
                             <td className="p-2"><input type="number" min="1" value={l.quantity} onChange={e => updateLine(i, 'quantity', e.target.value)} className="w-full h-8 px-2 rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] text-xs text-right font-mono outline-none" /></td>
                             <td className="p-2"><input type="number" step="0.01" value={l.unitPrice} onChange={e => updateLine(i, 'unitPrice', e.target.value)} className="w-full h-8 px-2 rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] text-xs text-right font-mono outline-none" /></td>
                             <td className="p-2">
                               <div className="flex items-center gap-1.5 min-w-[130px]">
-                                <button
-                                  type="button"
-                                  onClick={() => updateLine(i, 'discountType', l.discountType === 0 ? 1 : 0)}
-                                  title={`Switch discount type (Current: ${l.discountType === 0 ? 'Percentage %' : form.currencyCode})`}
-                                  className="h-8 px-2 rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] hover:bg-[var(--color-surface-muted)] text-xs font-bold text-[var(--color-text-strong)] flex items-center justify-center gap-1 cursor-pointer transition-colors shrink-0 outline-none select-none"
-                                >
-                                  <span>{l.discountType === 0 ? '%' : form.currencyCode}</span>
-                                  <ChevronDown className="w-3 h-3 text-[var(--color-text-muted)]" />
-                                </button>
+                                <CompactDiscountTypeSelect
+                                  value={l.discountType}
+                                  onChange={val => updateLine(i, 'discountType', val)}
+                                  currencyCode={form.currencyCode}
+                                />
                                 <input type="number" min="0" step={l.discountType === 0 ? "1" : "0.01"} value={l.discountValue} onChange={e => updateLine(i, 'discountValue', e.target.value)} className="w-full min-w-[65px] h-8 px-2 rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] text-xs text-right font-mono outline-none" />
                               </div>
                             </td>
@@ -1171,15 +1175,11 @@ function ConvertToInvoiceModal({
                     </td>
                     <td className="p-2">
                       <div className="flex items-center gap-1.5 min-w-[130px]">
-                        <button
-                          type="button"
-                          onClick={() => updateInvLine(i, 'discountType', l.discountType === 0 ? 1 : 0)}
-                          title={`Switch discount type (Current: ${l.discountType === 0 ? 'Percentage %' : invForm.currencyCode})`}
-                          className="h-8 px-2 rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] hover:bg-[var(--color-surface-muted)] text-xs font-bold text-[var(--color-text-strong)] flex items-center justify-center gap-1 cursor-pointer transition-colors shrink-0 outline-none select-none"
-                        >
-                          <span>{l.discountType === 0 ? '%' : invForm.currencyCode}</span>
-                          <ChevronDown className="w-3 h-3 text-[var(--color-text-muted)]" />
-                        </button>
+                        <CompactDiscountTypeSelect
+                          value={l.discountType}
+                          onChange={val => updateInvLine(i, 'discountType', val)}
+                          currencyCode={invForm.currencyCode}
+                        />
                         <input
                           type="number"
                           min="0"

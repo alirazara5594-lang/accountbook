@@ -15,6 +15,7 @@ import { KpiCard, KpiGrid } from '@/components/ui/kpi-card'
 import { useProductsStore, useCoaStore, useTaxStore } from './stores'
 import { useFormDraft } from './hooks/useFormDraft'
 import { money } from './lib/currency'
+import { getActiveTaxCodes, GLOBAL_TAX_STRUCTURES } from './lib/taxLocalization'
 import type { Account } from './api/modules/coa.api'
 import type { TaxCode } from './api/modules/tax.api'
 
@@ -123,17 +124,14 @@ export default function ProductsAndServices({
     fetchTaxCodes()
   }, [])
 
-  const defaultTaxAuthorityId = useMemo(() => {
-    return entities?.find((e: any) => e.id === activeEntityId)?.taxAuthorityId || ''
-  }, [entities, activeEntityId])
+  const applicableTaxCodes = useMemo(() => {
+    return getActiveTaxCodes()
+  }, [activeEntityId])
 
-  // Default tax options when no tax codes from API
-  const defaultTaxOptions = [
-    { id: 'STANDARD_17', code: 'ST', name: 'Standard Sales Tax', rate: 17 },
-    { id: 'REDUCED_5', code: 'RT', name: 'Reduced Rate Tax', rate: 5 },
-    { id: 'ZERO_RATE', code: 'ZT', name: 'Zero Rate Tax', rate: 0 },
-    { id: 'EXEMPT', code: 'EX', name: 'Tax Exempt', rate: 0 },
-  ]
+  const activeCountry = useMemo(() => {
+    const code = localStorage.getItem('onboarding_country') || 'PK'
+    return GLOBAL_TAX_STRUCTURES[code] || GLOBAL_TAX_STRUCTURES.PK
+  }, [activeEntityId])
 
   const getTaxRatePercent = (taxCode: any) => {
     if (!taxCode) return null
@@ -147,8 +145,17 @@ export default function ProductsAndServices({
 
   const getTaxCodeDisplay = (taxCodeId?: string) => {
     if (!taxCodeId) return { label: 'No Tax (0%)', code: 'None', rate: 0 }
-    // Check API tax codes first
-    const taxCode = taxCodes.find((t: any) => t.id === taxCodeId)
+    // Check localized active country tax codes
+    const localMatch = applicableTaxCodes.find(tc => tc.code === taxCodeId || String(tc.rate) === taxCodeId)
+    if (localMatch) {
+      return {
+        label: `${localMatch.label} (${localMatch.rate}%)`,
+        code: localMatch.code,
+        rate: localMatch.rate
+      }
+    }
+    // Check API tax codes
+    const taxCode = taxCodes.find((t: any) => t.id === taxCodeId || t.code === taxCodeId)
     if (taxCode) {
       const rate = getTaxRatePercent(taxCode)
       return {
@@ -157,22 +164,8 @@ export default function ProductsAndServices({
         rate: rate ?? 0
       }
     }
-    // Check default options
-    const defaultOpt = defaultTaxOptions.find(t => t.id === taxCodeId)
-    if (defaultOpt) {
-      return { label: `${defaultOpt.code} (${defaultOpt.rate}%)`, code: defaultOpt.code, rate: defaultOpt.rate }
-    }
     return { label: 'No Tax (0%)', code: 'None', rate: 0 }
   }
-
-  const groupedTaxCodes = useMemo(() => {
-    return {
-      default: taxCodes.filter((t: any) => t.taxAuthorityId === defaultTaxAuthorityId),
-      other: taxCodes.filter((t: any) => t.taxAuthorityId !== defaultTaxAuthorityId)
-    }
-  }, [taxCodes, defaultTaxAuthorityId])
-
-  const hasTaxCodes = taxCodes.length > 0
 
   const filteredProducts = useMemo(() => {
     return products.filter((p: any) => {
@@ -251,8 +244,9 @@ export default function ProductsAndServices({
       return
     }
 
-    // Check if taxCodeId exists in actual tax codes from API
-    const taxCodeExists = taxCodes.some((t: any) => t.id === form.taxCodeId)
+    // Match API tax code if available, otherwise save localized code
+    const matchingApiTaxCode = taxCodes.find((t: any) => t.id === form.taxCodeId || t.code === form.taxCodeId)
+    const finalTaxCodeId = matchingApiTaxCode?.id || (form.taxCodeId ? form.taxCodeId : null)
 
     const payload = {
       code: form.code || null,
@@ -263,7 +257,7 @@ export default function ProductsAndServices({
       unit: form.unit.trim() || 'Each',
       unitPrice: Number(form.unitPrice) || 0,
       costPrice: Number(form.costPrice) || 0,
-      taxCodeId: taxCodeExists ? form.taxCodeId : null,
+      taxCodeId: finalTaxCodeId,
       incomeAccountId: form.incomeAccountId || null,
       expenseAccountId: form.expenseAccountId || null,
       assetAccountId: form.assetAccountId || null
@@ -935,40 +929,22 @@ export default function ProductsAndServices({
                     </div>
 
                     <div>
-                      <label className="erp-form-label">Default Tax Code</label>
+                      <label className="erp-form-label">
+                        Default Tax Code ({activeCountry.flag} {activeCountry.name})
+                      </label>
                       <select
                         value={form.taxCodeId}
                         onChange={e => setForm({ ...form, taxCodeId: e.target.value })}
                         className="erp-form-select font-medium"
                       >
                         <option value="">🚫 No Tax (0%) — Exempt / Non-Taxable Item</option>
-                        {!hasTaxCodes && (
-                          <optgroup label="📋 Standard Tax Types">
-                            {defaultTaxOptions.map((t) => (
-                              <option key={t.id} value={t.id}>✅ {t.code} — {t.name} ({t.rate}%)</option>
-                            ))}
-                          </optgroup>
-                        )}
-                        {groupedTaxCodes.default.length > 0 && (
-                          <optgroup label="🏢 Your Active Tax Authority">
-                            {groupedTaxCodes.default.map((t: any) => {
-                              const rate = t.rates && t.rates.length > 0 ? t.rates[t.rates.length - 1].percentage : 0
-                              return (
-                                <option key={t.id} value={t.id}>✅ {t.code} — {t.name || 'Sales Tax'} ({rate}%)</option>
-                              )
-                            })}
-                          </optgroup>
-                        )}
-                        {groupedTaxCodes.other.length > 0 && (
-                          <optgroup label="🌍 Other Authorities">
-                            {groupedTaxCodes.other.map((t: any) => {
-                              const rate = t.rates && t.rates.length > 0 ? t.rates[t.rates.length - 1].percentage : 0
-                              return (
-                                <option key={t.id} value={t.id}>📌 {t.code} — {t.name || 'Regional Tax'} ({rate}%)</option>
-                              )
-                            })}
-                          </optgroup>
-                        )}
+                        <optgroup label={`${activeCountry.flag} Localized Regional Tax Rates (${activeCountry.name})`}>
+                          {applicableTaxCodes.map(tc => (
+                            <option key={tc.code} value={tc.code}>
+                              ✅ {tc.label} ({tc.rate}%) — {tc.authority}
+                            </option>
+                          ))}
+                        </optgroup>
                       </select>
                     </div>
 

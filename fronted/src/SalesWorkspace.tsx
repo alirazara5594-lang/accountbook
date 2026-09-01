@@ -4,7 +4,7 @@ import autoTable from 'jspdf-autotable'
 import {
   Receipt, Plus, Check, X, ShieldCheck, ArrowRight,
   ArrowLeft, Hash, Users, FileText, Coins, CheckCircle2, Eye,
-  Download, Pencil, Ban
+  Download, Pencil, Ban, ChevronDown
 } from 'lucide-react'
 import { useSalesStore, useCustomersStore, useProductsStore, useCoaStore } from './stores'
 import { useFormDraft } from './hooks/useFormDraft'
@@ -15,6 +15,9 @@ import { EmptyState, TableSkeleton } from './components/ui/empty-state'
 import { money } from './lib/currency'
 import { getActiveTaxCodes } from './lib/taxLocalization'
 import { getGlobalNextInvoiceNumber, formatInvoiceNumber } from './lib/invoiceNumbering'
+import { CompactTaxSelect } from './components/CompactTaxSelect'
+import { CompactDiscountTypeSelect } from './components/CompactDiscountTypeSelect'
+import { CompactProductSelect } from './components/CompactProductSelect'
 
 const statusStyles: Record<string, { label: string; hex: string }> = {
   Draft: { label: 'Draft', hex: '#94a3b8' },
@@ -286,7 +289,7 @@ export const SalesWorkspace: React.FC<{ activeEntityId: string; entities?: any[]
   
   const removeLine = (i: number) => setLines(lines.filter((_, idx) => idx !== i))
 
-  const updateLine = (i: number, field: string, value: string) => {
+  const updateLine = (i: number, field: string, value: any) => {
     const updated = [...lines]
     updated[i] = { ...updated[i], [field]: value }
     if (field === 'productId' && value) {
@@ -1202,16 +1205,16 @@ export const SalesWorkspace: React.FC<{ activeEntityId: string; entities?: any[]
                   </div>
 
                   <div className="border border-[var(--color-border)] rounded-xl overflow-hidden shadow-2xs">
-                    <table className="w-full text-xs">
+                    <table className="w-full text-xs min-w-[800px]">
                       <thead className="bg-[var(--color-surface-muted)] text-[var(--color-text-muted)] font-semibold border-b border-[var(--color-border)]">
                         <tr>
-                          <th className="p-2.5 text-left w-[200px]">Product / Service</th>
-                          <th className="p-2.5 text-left">Description</th>
-                          <th className="p-2.5 text-right w-16">Qty</th>
-                          <th className="p-2.5 text-right w-24">Price</th>
-                          <th className="p-2.5 text-center w-36">Discount</th>
-                          <th className="p-2.5 text-right w-16">Tax %</th>
-                          <th className="p-2.5 text-right w-24">Total</th>
+                          <th className="p-2.5 text-left w-[170px] min-w-[140px]">Product / Service</th>
+                          <th className="p-2.5 text-left min-w-[220px]">Description</th>
+                          <th className="p-2.5 text-right w-16 min-w-[55px]">Qty</th>
+                          <th className="p-2.5 text-right w-36 min-w-[130px]">Price</th>
+                          <th className="p-2.5 text-center w-40 min-w-[145px]">Discount</th>
+                          <th className="p-2.5 text-center w-20 min-w-[70px]">Tax</th>
+                          <th className="p-2.5 text-right w-24 min-w-[85px]">Total</th>
                           <th className="p-2.5 w-8"></th>
                         </tr>
                       </thead>
@@ -1219,31 +1222,25 @@ export const SalesWorkspace: React.FC<{ activeEntityId: string; entities?: any[]
                         {lines.map((l, i) => (
                           <tr key={i} className="hover:bg-[var(--color-surface-muted)]/50">
                             <td className="p-2">
-                              <select
+                              <CompactProductSelect
                                 value={l.productId}
-                                onChange={e => updateLine(i, 'productId', e.target.value)}
-                                className="w-full h-8 px-2 rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] text-xs text-[var(--color-text-strong)] outline-none"
-                              >
-                                <option value="">Select Item...</option>
-                                {products.map((p: any) => (
-                                  <option key={p.id} value={p.id}>
-                                    {p.name}
-                                  </option>
-                                ))}
-                              </select>
+                                onChange={v => updateLine(i, 'productId', v)}
+                                products={products}
+                              />
                             </td>
                             <td className="p-2">
                               <textarea
-                                placeholder="Description"
+                                placeholder="Item description / details..."
                                 value={l.description}
                                 onChange={e => updateLine(i, 'description', e.target.value)}
                                 rows={2}
-                                className="w-full px-2 py-1.5 rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] text-xs text-[var(--color-text-strong)] outline-none resize-none"
+                                className="w-full px-2.5 py-1.5 rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] text-xs text-[var(--color-text-strong)] outline-none resize-none"
                               />
                             </td>
                             <td className="p-2">
                               <input
                                 type="number"
+                                min="1"
                                 value={l.quantity}
                                 onChange={e => updateLine(i, 'quantity', e.target.value)}
                                 className="w-full h-8 px-2 rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] text-xs text-right font-mono text-[var(--color-text-strong)] outline-none"
@@ -1259,37 +1256,28 @@ export const SalesWorkspace: React.FC<{ activeEntityId: string; entities?: any[]
                               />
                             </td>
                             <td className="p-2">
-                              <div className="flex items-center gap-1">
-                                <select
+                              <div className="flex items-center gap-1.5 min-w-[130px]">
+                                <CompactDiscountTypeSelect
                                   value={l.discountType}
-                                  onChange={e => updateLine(i, 'discountType', e.target.value)}
-                                  className="h-8 w-20 rounded-lg border border-[var(--color-border)] px-1 text-xs bg-[var(--color-surface)] outline-none"
-                                >
-                                  <option value={0}>%</option>
-                                  <option value={1}>{form.currencyCode}</option>
-                                </select>
+                                  onChange={val => updateLine(i, 'discountType', val)}
+                                  currencyCode={form.currencyCode}
+                                />
                                 <input
                                   type="number"
                                   min="0"
                                   step={l.discountType === 0 ? "1" : "0.01"}
                                   value={l.discountValue}
                                   onChange={e => updateLine(i, 'discountValue', e.target.value)}
-                                  className="w-full h-8 px-2 rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] text-xs text-right font-mono text-[var(--color-text-strong)] outline-none"
+                                  className="w-full min-w-[65px] h-8 px-2 rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] text-xs text-right font-mono text-[var(--color-text-strong)] outline-none"
                                 />
                               </div>
                             </td>
                             <td className="p-2">
-                              <select
+                              <CompactTaxSelect
                                 value={l.taxPercent}
-                                onChange={e => updateLine(i, 'taxPercent', e.target.value)}
-                                className="w-full h-8 px-1.5 rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] text-xs font-semibold text-[var(--color-text-strong)] outline-none"
-                              >
-                                {applicableTaxCodes.map(tc => (
-                                  <option key={tc.code} value={String(tc.rate)}>
-                                    {tc.label} ({tc.rate}%)
-                                  </option>
-                                ))}
-                              </select>
+                                onChange={v => updateLine(i, 'taxPercent', v)}
+                                taxCodes={applicableTaxCodes}
+                              />
                             </td>
                             <td className="p-2 text-right font-mono font-semibold text-[var(--color-text-strong)]">
                               {money(lineCalculations[i]?.total || 0)}

@@ -14,6 +14,7 @@ import { EmptyState } from './components/ui/empty-state';
 import { FileText, Mail, Scale, ShoppingCart, Package, Receipt, ArrowLeftRight } from 'lucide-react';
 import { money } from './lib/currency';
 import { getActiveTaxCodes } from './lib/taxLocalization';
+import { CompactTaxSelect } from './components/CompactTaxSelect';
 
 type Tab = 'pr' | 'rfq' | 'compare' | 'po' | 'grn' | 'bills' | 'matching' | 'transfers';
 
@@ -977,8 +978,8 @@ export const ProcurementWorkspace: React.FC<{ activeEntityId: string; entities?:
                 <div style={{ display: 'flex', gap: 8, alignItems: 'center', padding: '6px 10px', marginBottom: 4 }}>
                   <span style={{ flex: 1, fontSize: 11, fontWeight: 700, textTransform: 'uppercase' as const, color: '#94a3b8', letterSpacing: '0.05em' }}>Description</span>
                   <span style={{ width: 80, fontSize: 11, fontWeight: 700, textTransform: 'uppercase' as const, color: '#94a3b8', letterSpacing: '0.05em', textAlign: 'center' as const }}>Qty</span>
-                  <span style={{ width: 110, fontSize: 11, fontWeight: 700, textTransform: 'uppercase' as const, color: '#94a3b8', letterSpacing: '0.05em', textAlign: 'center' as const }}>Unit Price</span>
-                  <span style={{ width: 130, fontSize: 11, fontWeight: 700, textTransform: 'uppercase' as const, color: '#94a3b8', letterSpacing: '0.05em', textAlign: 'center' as const }}>Input Tax</span>
+                  <span style={{ width: 120, fontSize: 11, fontWeight: 700, textTransform: 'uppercase' as const, color: '#94a3b8', letterSpacing: '0.05em', textAlign: 'center' as const }}>Unit Price</span>
+                  <span style={{ width: 80, fontSize: 11, fontWeight: 700, textTransform: 'uppercase' as const, color: '#94a3b8', letterSpacing: '0.05em', textAlign: 'center' as const }}>Tax</span>
                   <span style={{ width: 100, fontSize: 11, fontWeight: 700, textTransform: 'uppercase' as const, color: '#94a3b8', letterSpacing: '0.05em', textAlign: 'right' as const }}>Amount</span>
                   <span style={{ width: 24 }}></span>
                 </div>
@@ -992,27 +993,25 @@ export const ProcurementWorkspace: React.FC<{ activeEntityId: string; entities?:
                       <div key={i} style={{ display: 'flex', gap: 8, alignItems: 'center', background: '#f8fafc', padding: 8, borderRadius: 8, border: '1px solid #e2e8f0' }}>
                         <input style={{ flex: 1 }} placeholder="Item description" value={l.description} onChange={e => { const u = [...billLines]; u[i].description = e.target.value; setBillLines(u); }} />
                         <input style={{ width: 80, textAlign: 'center' }} type="number" placeholder="Qty" value={l.quantity} onChange={e => { const u = [...billLines]; u[i].quantity = e.target.value; setBillLines(u); }} />
-                        <input style={{ width: 110, textAlign: 'center' }} type="number" placeholder="Billed Unit Price" value={l.unitPrice} onChange={e => { const u = [...billLines]; u[i].unitPrice = e.target.value; setBillLines(u); }} />
-                        <select
-                          style={{ width: 130, fontSize: 11, fontWeight: 600, padding: '4px 6px', borderRadius: 6, border: '1px solid #cbd5e1', background: '#ffffff', outline: 'none' }}
-                          value={l.taxCode || (applicableTaxCodes[0]?.code ?? '')}
-                          onChange={e => {
-                            const selectedCode = e.target.value;
-                            const match = applicableTaxCodes.find(tc => tc.code === selectedCode);
-                            const rate = match ? match.rate : 0;
-                            const taxVal = (lineSubtotal * rate) / 100;
-                            const u = [...billLines];
-                            u[i].taxCode = selectedCode;
-                            u[i].taxAmount = taxVal;
-                            setBillLines(u);
-                          }}
-                        >
-                          {applicableTaxCodes.map(tc => (
-                            <option key={tc.code} value={tc.code}>
-                              {tc.label} ({tc.rate}%)
-                            </option>
-                          ))}
-                        </select>
+                        <input style={{ width: 120, textAlign: 'center' }} type="number" placeholder="Billed Unit Price" value={l.unitPrice} onChange={e => { const u = [...billLines]; u[i].unitPrice = e.target.value; setBillLines(u); }} />
+                        <div style={{ width: 80 }}>
+                          <CompactTaxSelect
+                            value={(() => {
+                              const match = applicableTaxCodes.find(tc => tc.code === l.taxCode);
+                              return match ? match.rate : (applicableTaxCodes[0]?.rate ?? 0);
+                            })()}
+                            onChange={newRate => {
+                              const match = applicableTaxCodes.find(tc => tc.rate === parseFloat(newRate)) || applicableTaxCodes[0];
+                              const rate = match ? match.rate : 0;
+                              const taxVal = (lineSubtotal * rate) / 100;
+                              const u = [...billLines];
+                              u[i].taxCode = match?.code || '';
+                              u[i].taxAmount = taxVal;
+                              setBillLines(u);
+                            }}
+                            taxCodes={applicableTaxCodes}
+                          />
+                        </div>
                         <span style={{ width: 100, textAlign: 'right', fontWeight: 700, fontSize: 13, color: '#0f172a', fontFamily: 'monospace' }}>
                           {money(lineTotal)}
                         </span>

@@ -11,6 +11,8 @@ import { money } from './lib/currency'
 import { StatusChip } from './components/ui/status-chip'
 import { EmptyState, TableSkeleton } from './components/ui/empty-state'
 import { getActiveTaxCodes } from './lib/taxLocalization'
+import { CompactTaxSelect } from './components/CompactTaxSelect'
+import { CompactProductSelect } from './components/CompactProductSelect'
 
 const statusStyles: Record<string, { label: string; hex: string }> = {
   Draft: { label: 'Draft', hex: '#94a3b8' },
@@ -593,16 +595,16 @@ export const SalesOrdersWorkspace: React.FC<{ activeEntityId: string; entities?:
                   </div>
 
                   <div className="border border-[var(--color-border)] rounded-xl overflow-hidden shadow-2xs">
-                    <table className="w-full text-xs">
+                    <table className="w-full text-xs min-w-[800px]">
                       <thead className="bg-[var(--color-surface-muted)] text-[var(--color-text-muted)] font-semibold border-b border-[var(--color-border)]">
                         <tr>
-                          <th className="p-2.5 text-left">Product</th>
-                          <th className="p-2.5 text-left">Description</th>
-                          <th className="p-2.5 text-right w-16">Qty</th>
-                          <th className="p-2.5 text-right w-24">Price (Rs)</th>
-                          <th className="p-2.5 text-right w-28">Disc (Rs)</th>
-                          <th className="p-2.5 text-right w-28">Tax (Rs)</th>
-                          <th className="p-2.5 text-right w-24">Total</th>
+                          <th className="p-2.5 text-left w-[170px] min-w-[140px]">Product</th>
+                          <th className="p-2.5 text-left min-w-[220px]">Description</th>
+                          <th className="p-2.5 text-right w-16 min-w-[55px]">Qty</th>
+                          <th className="p-2.5 text-right w-36 min-w-[130px]">Price</th>
+                          <th className="p-2.5 text-right w-28 min-w-[90px]">Discount</th>
+                          <th className="p-2.5 text-center w-20 min-w-[70px]">Tax</th>
+                          <th className="p-2.5 text-right w-24 min-w-[85px]">Total</th>
                           <th className="p-2.5 w-8"></th>
                         </tr>
                       </thead>
@@ -610,30 +612,24 @@ export const SalesOrdersWorkspace: React.FC<{ activeEntityId: string; entities?:
                         {lines.map((l, i) => (
                           <tr key={i} className="hover:bg-[var(--color-surface-muted)]/50">
                             <td className="p-2">
-                              <select
+                              <CompactProductSelect
                                 value={l.productId}
-                                onChange={e => updateLine(i, 'productId', e.target.value)}
-                                className="w-full h-8 px-2 rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] text-xs text-[var(--color-text-strong)] outline-none"
-                              >
-                                <option value="">Select Item...</option>
-                                {products.map((p: any) => (
-                                  <option key={p.id} value={p.id}>
-                                    {p.code} — {p.name}
-                                  </option>
-                                ))}
-                              </select>
+                                onChange={v => updateLine(i, 'productId', v)}
+                                products={products}
+                              />
                             </td>
                             <td className="p-2">
                               <input
-                                placeholder="Description"
+                                placeholder="Item description / details..."
                                 value={l.description}
                                 onChange={e => updateLine(i, 'description', e.target.value)}
-                                className="w-full h-8 px-2 rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] text-xs text-[var(--color-text-strong)] outline-none"
+                                className="w-full px-2.5 py-1.5 rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] text-xs text-[var(--color-text-strong)] outline-none"
                               />
                             </td>
                             <td className="p-2">
                               <input
                                 type="number"
+                                min="1"
                                 value={l.quantity}
                                 onChange={e => updateLine(i, 'quantity', e.target.value)}
                                 className="w-full h-8 px-2 rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] text-xs text-right font-mono text-[var(--color-text-strong)] outline-none"
@@ -658,27 +654,23 @@ export const SalesOrdersWorkspace: React.FC<{ activeEntityId: string; entities?:
                               />
                             </td>
                             <td className="p-2">
-                              <select
-                                value={l.taxCode || (applicableTaxCodes[0]?.code ?? '')}
-                                onChange={e => {
-                                  const selectedCode = e.target.value;
-                                  const match = applicableTaxCodes.find(tc => tc.code === selectedCode);
+                              <CompactTaxSelect
+                                value={(() => {
+                                  const match = applicableTaxCodes.find(tc => tc.code === l.taxCode);
+                                  return match ? match.rate : (applicableTaxCodes[0]?.rate ?? 0);
+                                })()}
+                                onChange={newRate => {
+                                  const match = applicableTaxCodes.find(tc => tc.rate === parseFloat(newRate)) || applicableTaxCodes[0];
                                   const rate = match ? match.rate : 0;
                                   const taxable = Math.max(0, (parseFloat(l.quantity || '0') * parseFloat(l.unitPrice || '0')) - parseFloat(l.discountAmount || '0'));
                                   const taxVal = (taxable * rate) / 100;
                                   const u = [...lines];
-                                  u[i].taxCode = selectedCode;
+                                  u[i].taxCode = match?.code || '';
                                   u[i].taxAmount = String(taxVal);
                                   setLines(u);
                                 }}
-                                className="w-full h-8 px-1.5 rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] text-xs font-semibold text-[var(--color-text-strong)] outline-none"
-                              >
-                                {applicableTaxCodes.map(tc => (
-                                  <option key={tc.code} value={tc.code}>
-                                    {tc.label} ({tc.rate}%)
-                                  </option>
-                                ))}
-                              </select>
+                                taxCodes={applicableTaxCodes}
+                              />
                             </td>
                             <td className="p-2 text-right font-mono font-semibold text-[var(--color-text-strong)]">
                               {money(
