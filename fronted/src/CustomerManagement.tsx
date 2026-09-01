@@ -235,12 +235,21 @@ export default function CustomerManagement({
     setModalOpen(true)
   }
 
-  const handleSave = async (e: FormEvent) => {
-    e.preventDefault()
+  const handleSave = async (e?: FormEvent) => {
+    if (e) e.preventDefault()
     if (!form.name.trim()) {
       notify('Customer name is required.')
+      setModalTab('general')
       return
     }
+
+    // If not already on the preview tab, navigate to preview instead of creating immediately
+    if (modalTab !== 'preview') {
+      setModalTab('preview')
+      return
+    }
+
+    const isGuid = (val?: string | null) => !!val && /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/.test(val)
 
     const payload = {
       customerNumber: form.customerNumber || null,
@@ -259,7 +268,7 @@ export default function CustomerManagement({
       currencyCode: form.currencyCode.trim() || 'PKR',
       creditLimit: Number(form.creditLimit) || 0,
       paymentTermsDays: Number(form.paymentTermsDays) || 30,
-      companyId: form.companyId || null
+      companyId: isGuid(form.companyId) ? form.companyId : null
     }
 
     try {
@@ -984,15 +993,6 @@ export default function CustomerManagement({
                 >
                   Cancel
                 </button>
-                {modalTab !== 'preview' && (
-                  <button
-                    type="button"
-                    className="h-9 min-h-[36px] px-4 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] text-xs font-semibold text-[var(--color-text-muted)] hover:text-[var(--color-text-strong)] hover:bg-[var(--color-surface-muted)] transition-colors whitespace-nowrap leading-none flex items-center justify-center shrink-0"
-                    onClick={(e) => { e.preventDefault(); saveDraft(); notify('Customer draft saved locally.'); }}
-                  >
-                    Save Draft
-                  </button>
-                )}
 
                 {modalTab !== 'general' && (
                   <button

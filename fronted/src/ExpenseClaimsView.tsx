@@ -578,9 +578,6 @@ export const ExpenseClaimsView: React.FC<{ activeEntityId: string; entities?: En
 
               <div className="flex items-center gap-2">
                 <button type="button" className="h-9 px-4 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] text-xs font-medium hover:bg-[var(--color-surface-muted)] transition-colors" onClick={() => setShowForm(false)}>Cancel</button>
-                {modalTab !== 'preview' && (
-                  <button type="button" className="h-9 px-4 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] text-xs font-medium hover:bg-[var(--color-surface-muted)] transition-colors" onClick={(e) => { e.preventDefault(); saveDraft(); notify('Claim draft saved locally.'); }}>Save Draft</button>
-                )}
 
                 {modalTab !== 'employee' && (
                   <button type="button" onClick={() => { if (modalTab === 'preview') setModalTab('summary'); else if (modalTab === 'summary') setModalTab('expense'); else if (modalTab === 'expense') setModalTab('employee'); }} className="h-9 px-4 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] text-xs font-medium hover:bg-[var(--color-surface-muted)] transition-colors flex items-center gap-1">

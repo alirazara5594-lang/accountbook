@@ -572,9 +572,6 @@ export const DebitNotes: React.FC<{ activeEntityId: string; entities?: any[] }> 
 
               <div className="flex items-center gap-2">
                 <button type="button" className="h-9 px-4 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] text-xs font-medium hover:bg-[var(--color-surface-muted)] transition-colors" onClick={() => setShowCreate(false)}>Cancel</button>
-                {modalTab !== 'preview' && (
-                  <button type="button" className="h-9 px-4 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] text-xs font-medium hover:bg-[var(--color-surface-muted)] transition-colors" onClick={(e) => { e.preventDefault(); saveDraft(); notify('Debit note draft saved locally.'); }}>Save Draft</button>
-                )}
                 {modalTab !== 'details' && (
                   <button type="button" onClick={() => { if (modalTab === 'preview') setModalTab('summary'); else if (modalTab === 'summary') setModalTab('items'); else if (modalTab === 'items') setModalTab('details'); }} className="h-9 px-4 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] text-xs font-medium hover:bg-[var(--color-surface-muted)] transition-colors flex items-center gap-1">
                     <ArrowLeft className="w-3 h-3" />

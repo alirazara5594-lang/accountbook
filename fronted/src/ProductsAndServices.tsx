@@ -244,9 +244,17 @@ export default function ProductsAndServices({
       return
     }
 
-    // Match API tax code if available, otherwise save localized code
+    // If not already on preview tab, open preview tab first
+    if (modalTab !== 'preview') {
+      setModalTab('preview')
+      return
+    }
+
+    const isGuid = (val?: string | null) => !!val && /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/.test(val)
+
+    // Match API tax code if available, otherwise save null
     const matchingApiTaxCode = taxCodes.find((t: any) => t.id === form.taxCodeId || t.code === form.taxCodeId)
-    const finalTaxCodeId = matchingApiTaxCode?.id || (form.taxCodeId ? form.taxCodeId : null)
+    const finalTaxCodeId = (matchingApiTaxCode && isGuid(matchingApiTaxCode.id)) ? matchingApiTaxCode.id : (isGuid(form.taxCodeId) ? form.taxCodeId : null)
 
     const payload = {
       code: form.code || null,
@@ -258,9 +266,9 @@ export default function ProductsAndServices({
       unitPrice: Number(form.unitPrice) || 0,
       costPrice: Number(form.costPrice) || 0,
       taxCodeId: finalTaxCodeId,
-      incomeAccountId: form.incomeAccountId || null,
-      expenseAccountId: form.expenseAccountId || null,
-      assetAccountId: form.assetAccountId || null
+      incomeAccountId: isGuid(form.incomeAccountId) ? form.incomeAccountId : null,
+      expenseAccountId: isGuid(form.expenseAccountId) ? form.expenseAccountId : null,
+      assetAccountId: isGuid(form.assetAccountId) ? form.assetAccountId : null
     }
 
     try {
@@ -1080,15 +1088,6 @@ export default function ProductsAndServices({
                 >
                   Cancel
                 </button>
-                {modalTab !== 'preview' && (
-                  <button
-                    type="button"
-                    className="h-9 min-h-[36px] px-4 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] text-xs font-semibold text-[var(--color-text-muted)] hover:text-[var(--color-text-strong)] hover:bg-[var(--color-surface-muted)] transition-colors whitespace-nowrap leading-none flex items-center justify-center shrink-0"
-                    onClick={(e) => { e.preventDefault(); saveDraft(); notify('Item draft saved locally.'); }}
-                  >
-                    Save Draft
-                  </button>
-                )}
 
                 {modalTab !== 'info' && (
                   <button

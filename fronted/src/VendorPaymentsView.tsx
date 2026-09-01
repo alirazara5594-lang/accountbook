@@ -749,9 +749,6 @@ export const VendorPaymentsView: React.FC<VendorPaymentsViewProps> = ({
 
               <div className="flex items-center gap-2">
                 <button type="button" className="h-9 px-4 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] text-xs font-medium hover:bg-[var(--color-surface-muted)] transition-colors" onClick={() => setIsModalOpen(false)}>Cancel</button>
-                {modalTab !== 'preview' && (
-                  <button type="button" className="h-9 px-4 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] text-xs font-medium hover:bg-[var(--color-surface-muted)] transition-colors" onClick={(e) => { e.preventDefault(); saveDraft(); notify('Payment draft saved locally.'); }}>Save Draft</button>
-                )}
 
                 {modalTab !== 'vendor' && (
                   <button type="button" onClick={() => { if (modalTab === 'preview') setModalTab('summary'); else if (modalTab === 'summary') setModalTab('account'); else if (modalTab === 'account') setModalTab('vendor'); }} className="h-9 px-4 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] text-xs font-medium hover:bg-[var(--color-surface-muted)] transition-colors flex items-center gap-1">

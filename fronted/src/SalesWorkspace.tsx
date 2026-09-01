@@ -375,30 +375,34 @@ export const SalesWorkspace: React.FC<{ activeEntityId: string; entities?: any[]
         return
       }
     }
+    const isGuid = (val?: string | null) => !!val && /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/.test(val)
+
     const body = {
-      ...form,
-      companyId: activeEntityId || null,
+      invoiceNumber: form.reference || null,
+      customerId: isGuid(form.customerId) ? form.customerId : form.customerId,
+      invoiceDate: form.invoiceDate || new Date().toISOString().slice(0, 10),
+      dueDate: form.dueDate || new Date().toISOString().slice(0, 10),
+      reference: form.reference || null,
+      notes: form.notes || null,
+      currencyCode: form.currencyCode || 'PKR',
+      companyId: isGuid(activeEntityId) ? activeEntityId : null,
       lines: lines.map(l => {
-        const qty = parseFloat(l.quantity || '1')
-        const price = parseFloat(l.unitPrice || '0')
+        const qty = parseFloat(l.quantity || '1') || 1
+        const price = parseFloat(l.unitPrice || '0') || 0
         const gross = qty * price
-        const dv = parseFloat(l.discountValue || '0')
+        const dv = parseFloat(l.discountValue || '0') || 0
         const dt = l.discountType || 0
         const discountAmount = dt === 0 ? (gross * dv) / 100 : Math.min(dv, gross)
         const taxable = Math.max(0, gross - discountAmount)
-        const tp = parseFloat(l.taxPercent || '0')
+        const tp = parseFloat(l.taxPercent || '0') || 0
         const taxAmount = (taxable * tp) / 100
         return {
-          productId: l.productId || null,
-          productName: l.productName || l.description || '',
-          description: l.description,
+          productId: isGuid(l.productId) ? l.productId : null,
+          description: l.description || l.productName || 'Item',
           quantity: qty,
           unitPrice: price,
-          discountType: dt,
-          discountValue: dv,
           discountAmount: discountAmount,
           taxCodeId: null,
-          taxPercent: tp,
           taxAmount: taxAmount
         }
       })
@@ -1476,15 +1480,6 @@ export const SalesWorkspace: React.FC<{ activeEntityId: string; entities?: any[]
                 >
                   Cancel
                 </button>
-                {modalTab !== 'preview' && (
-                  <button
-                    type="button"
-                    className="h-9 min-h-[36px] px-4 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] text-xs font-semibold text-[var(--color-text-muted)] hover:text-[var(--color-text-strong)] hover:bg-[var(--color-surface-muted)] transition-colors whitespace-nowrap leading-none flex items-center justify-center shrink-0"
-                    onClick={(e) => { e.preventDefault(); saveDraft(); notify('Invoice draft saved locally.'); }}
-                  >
-                    Save Draft
-                  </button>
-                )}
 
                 {modalTab !== 'details' && (
                   <button

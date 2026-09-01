@@ -201,7 +201,28 @@ export const EstimatesAndQuotes: React.FC<{ activeEntityId: string; entities?: a
 
   const saveEstimate = async () => {
     if (!form.customerId) { notify('Please select a customer.'); return }
-    const body = { ...form, estimateNumber: form.reference, companyId: activeEntityId || null, expiryDate: form.expiryDate || null, lines: lines.map(l => ({ productId: l.productId || null, productName: l.productName || l.description || '', description: l.description, quantity: parseFloat(l.quantity || '1'), unitPrice: parseFloat(l.unitPrice || '0'), discountType: l.discountType, discountValue: parseFloat(l.discountValue || '0'), taxCodeId: null, taxPercent: parseFloat(l.taxPercent || '0') })) }
+    const isGuid = (val?: string | null) => !!val && /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/.test(val)
+
+    const body = {
+      estimateNumber: form.reference || null,
+      customerId: isGuid(form.customerId) ? form.customerId : form.customerId,
+      estimateDate: form.estimateDate || new Date().toISOString().slice(0, 10),
+      expiryDate: form.expiryDate || null,
+      reference: form.reference || null,
+      notes: form.notes || null,
+      terms: form.terms || null,
+      companyId: isGuid(activeEntityId) ? activeEntityId : null,
+      lines: lines.map(l => ({
+        productId: isGuid(l.productId) ? l.productId : null,
+        description: l.description || l.productName || 'Item',
+        quantity: parseFloat(l.quantity || '1') || 1,
+        unitPrice: parseFloat(l.unitPrice || '0') || 0,
+        discountType: l.discountType === 1 ? 1 : 0,
+        discountValue: parseFloat(l.discountValue || '0') || 0,
+        taxCodeId: null,
+        taxPercent: parseFloat(l.taxPercent || '0') || 0
+      }))
+    }
     try { 
       await createEstimateStore(body); 
       clearDraft(); 
@@ -209,7 +230,7 @@ export const EstimatesAndQuotes: React.FC<{ activeEntityId: string; entities?: a
       notify(editingEstimate ? 'Quotation updated!' : 'Quotation saved as Draft!'); 
       setShowForm(false); 
       fetchData() 
-    } catch (e: any) { notify(e.message || 'Error saving') }
+    } catch (e: any) { notify(e.message || 'Error saving quotation') }
   }
 
   const convertQuoteToInvoice = (est: any) => {
@@ -873,7 +894,6 @@ export const EstimatesAndQuotes: React.FC<{ activeEntityId: string; entities?: a
               <div className="text-[11px] text-[var(--color-text-muted)] flex items-center gap-1.5"><span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />{modalTab === 'preview' ? 'Ready to submit' : 'Draft auto-saved'}</div>
               <div className="flex items-center gap-2">
                 <button onClick={handleCancelForm} className="h-9 px-4 rounded-xl border border-[var(--color-border)] text-xs font-medium hover:bg-[var(--color-surface-muted)] transition-colors">Cancel</button>
-                {modalTab !== 'preview' && <button onClick={(e) => { e.preventDefault(); saveDraft(); notify('Draft saved.'); }} className="h-9 px-4 rounded-xl border border-[var(--color-border)] text-xs font-medium hover:bg-[var(--color-surface-muted)] transition-colors">Save Draft</button>}
                 {modalTab !== 'details' && <button onClick={() => { if (modalTab === 'preview') setModalTab('summary'); else if (modalTab === 'summary') setModalTab('lines'); else setModalTab('details'); }} className="h-9 px-4 rounded-xl border border-[var(--color-border)] text-xs font-medium hover:bg-[var(--color-surface-muted)] transition-colors flex items-center gap-1"><ArrowLeft className="w-3 h-3" /> Back</button>}
                 {modalTab !== 'preview' ? (
                   <button onClick={() => { if (modalTab === 'details') { if (!form.customerId) { notify('Select customer.'); return } setModalTab('lines') } else if (modalTab === 'lines') setModalTab('summary'); else setModalTab('preview') }} className="h-9 px-5 rounded-xl bg-gradient-to-r from-indigo-600 to-purple-600 text-white text-xs font-semibold shadow-lg shadow-indigo-500/25 flex items-center gap-1.5">

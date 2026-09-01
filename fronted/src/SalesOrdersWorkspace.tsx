@@ -857,15 +857,6 @@ export const SalesOrdersWorkspace: React.FC<{ activeEntityId: string; entities?:
                 >
                   Cancel
                 </button>
-                {modalTab !== 'preview' && (
-                  <button
-                    type="button"
-                    className="h-9 px-4 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] text-xs font-medium hover:bg-[var(--color-surface-muted)] transition-colors"
-                    onClick={(e) => { e.preventDefault(); saveDraft(); notify('Order draft saved locally.'); }}
-                  >
-                    Save Draft
-                  </button>
-                )}
 
                 {modalTab !== 'details' && (
                   <button

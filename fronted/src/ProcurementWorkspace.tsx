@@ -1059,7 +1059,6 @@ export const ProcurementWorkspace: React.FC<{ activeEntityId: string; entities?:
             </div>
             <div className="modal-footer">
               <button type="button" className="secondary" onClick={() => setShowBillModal(false)}>Cancel</button>
-              <button type="button" className="secondary" onClick={(e) => { e.preventDefault(); alert("Draft saved locally"); }}>Save Draft</button>
 <button type="submit" className="primary">Create Vendor Bill & Validate Match</button>
             </div>
           </form>
