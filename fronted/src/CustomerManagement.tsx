@@ -235,7 +235,7 @@ export default function CustomerManagement({
     setModalOpen(true)
   }
 
-  const handleSave = async (e?: FormEvent) => {
+  const handleConfirmSave = async (e?: FormEvent) => {
     if (e) e.preventDefault()
     if (!form.name.trim()) {
       notify('Customer name is required.')
@@ -243,7 +243,7 @@ export default function CustomerManagement({
       return
     }
 
-    // If not already on the preview tab, navigate to preview instead of creating immediately
+    // Only allow submission when on the preview tab
     if (modalTab !== 'preview') {
       setModalTab('preview')
       return
@@ -478,7 +478,7 @@ export default function CustomerManagement({
         <div className="overlay animate-in fade-in duration-200">
           <form
             className="w-full max-w-4xl bg-[var(--color-surface)] border border-[var(--color-border)] rounded-2xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh]"
-            onSubmit={handleSave}
+            onSubmit={(e) => { e.preventDefault(); }}
           >
             {/* Modal Header */}
             <div className="px-6 py-4.5 border-b border-[var(--color-border)] bg-[var(--color-surface-muted)]/50 flex items-center justify-between">
@@ -1012,6 +1012,7 @@ export default function CustomerManagement({
 
                 {modalTab !== 'preview' ? (
                   <button
+                    key="btn-modal-next"
                     type="button"
                     onClick={() => {
                       if (modalTab === 'general') {
@@ -1037,7 +1038,9 @@ export default function CustomerManagement({
                   </button>
                 ) : (
                   <button
-                    type="submit"
+                    key="btn-modal-confirm"
+                    type="button"
+                    onClick={handleConfirmSave}
                     className="h-9 min-h-[36px] px-5 rounded-xl text-xs font-bold shadow-md flex items-center justify-center gap-1.5 bg-gradient-to-r from-emerald-600 to-green-600 hover:from-emerald-700 hover:to-green-700 text-white whitespace-nowrap leading-none shrink-0"
                   >
                     <Check className="w-3.5 h-3.5 shrink-0" />

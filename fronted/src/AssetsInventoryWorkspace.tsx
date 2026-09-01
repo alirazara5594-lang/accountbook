@@ -156,7 +156,6 @@ const AssetRegister: React.FC<{ activeEntityId: string; accounts: any[] }> = ({ 
             </div>
             <div className="modal-footer">
               <button type="button" className="secondary" onClick={() => setDeprModal(null)}>Cancel</button>
-              <button type="button" className="secondary" onClick={(e) => { e.preventDefault(); alert("Draft saved locally"); }}>Save Draft</button>
               <button onClick={runDepreciation} disabled={!deprForm.expenseAccId || !deprForm.accumAccId || (userRole !== 'admin' && userRole !== 'accountant' && userRole !== 'asset-manager')} className="primary">Run Depreciation</button>
             </div>
           </div>
@@ -194,7 +193,6 @@ const AssetRegister: React.FC<{ activeEntityId: string; accounts: any[] }> = ({ 
             </div>
             <div className="modal-footer">
               <button type="button" className="secondary" onClick={() => setDisposeModal(null)}>Cancel</button>
-              <button type="button" className="secondary" onClick={(e) => { e.preventDefault(); alert("Draft saved locally"); }}>Save Draft</button>
               <button onClick={disposeAsset} disabled={!dispForm.assetAccId || !dispForm.accumAccId || !dispForm.gainLossAccId || (userRole !== 'admin' && userRole !== 'accountant' && userRole !== 'asset-manager')} className="primary">Post Disposal</button>
             </div>
           </div>
@@ -248,8 +246,7 @@ const Warehouses: React.FC<{ activeEntityId: string }> = ({ activeEntityId }) =>
             </div>
             <div className="modal-footer">
               <button type="button" className="secondary" onClick={() => setShowForm(false)}>Cancel</button>
-              <button type="button" className="secondary" onClick={(e) => { e.preventDefault(); alert("Draft saved locally"); }}>Save Draft</button>
-<button onClick={save} disabled={!name} className="primary">Save Warehouse</button>
+              <button onClick={save} disabled={!name} className="primary">Save Warehouse</button>
             </div>
           </div>
         </div>

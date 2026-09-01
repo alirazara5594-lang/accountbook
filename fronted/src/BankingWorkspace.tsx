@@ -1086,7 +1086,6 @@ const formatted = new Intl.NumberFormat('en-US', { style: 'currency', currency: 
             </div>
             <div className="modal-footer">
               <button type="button" className="secondary" onClick={() => setIsTransferModalOpen(false)}>Cancel</button>
-              <button type="button" className="secondary" onClick={(e) => { e.preventDefault(); alert("Draft saved locally"); }}>Save Draft</button>
               <button type="submit" className="primary">Execute Transfer</button>
             </div>
           </form>
