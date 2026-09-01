@@ -4,7 +4,7 @@ import autoTable from 'jspdf-autotable'
 import {
   FileText, Plus, Check, X, ArrowRight,
   ArrowLeft, Coins, CheckCircle2, Hash, Users, Eye, Pencil, Ban,
-  Download
+  Download, ChevronDown
 } from 'lucide-react'
 import { useSalesStore, useCustomersStore, useProductsStore, useCompanyStore } from './stores'
 import { useFormDraft } from './hooks/useFormDraft'
@@ -15,6 +15,7 @@ import { getActiveTaxCodes } from './lib/taxLocalization'
 import { getGlobalNextInvoiceNumber } from './lib/invoiceNumbering'
 
 import { money } from './lib/currency'
+import { CompactTaxSelect } from './components/CompactTaxSelect'
 
 const statusStyles: Record<number, { label: string; hex: string }> = {
   0: { label: 'Draft', hex: '#94a3b8' },
@@ -74,6 +75,18 @@ export const EstimatesAndQuotes: React.FC<{ activeEntityId: string; entities?: a
   const fetchProducts = useProductsStore((s) => s.fetchProducts)
 
   const applicableTaxCodes = useMemo(() => getActiveTaxCodes(), [activeEntityId])
+
+  const uniqueTaxRates = useMemo(() => {
+    const seen = new Set<number>()
+    const list: { rate: number; label: string; code: string }[] = []
+    for (const tc of applicableTaxCodes) {
+      if (!seen.has(tc.rate)) {
+        seen.add(tc.rate)
+        list.push({ rate: tc.rate, label: tc.label, code: tc.code })
+      }
+    }
+    return list.sort((a, b) => a.rate - b.rate)
+  }, [applicableTaxCodes])
 
   const [loading, setLoading] = useState(true)
   const [showForm, setShowForm] = useState(false)
@@ -735,17 +748,17 @@ export const EstimatesAndQuotes: React.FC<{ activeEntityId: string; entities?: a
 
               {modalTab === 'lines' && (
                 <div className="space-y-3">
-                  <div className="rounded-xl border border-[var(--color-border)] overflow-hidden">
-                    <table className="w-full text-xs">
+                  <div className="rounded-xl border border-[var(--color-border)] overflow-x-auto">
+                    <table className="w-full text-xs min-w-[800px]">
                       <thead className="bg-[var(--color-surface-muted)] border-b border-[var(--color-border)]">
                         <tr>
-                          <th className="p-2.5 text-left w-[180px]">Product</th>
-                          <th className="p-2.5 text-left">Description</th>
-                          <th className="p-2.5 text-right w-16">Qty</th>
-                          <th className="p-2.5 text-right w-24">Price</th>
-                          <th className="p-2.5 text-center w-36">Discount</th>
-                          <th className="p-2.5 text-right w-16">Tax %</th>
-                          <th className="p-2.5 text-right w-28">Total</th>
+                          <th className="p-2.5 text-left w-[170px] min-w-[140px]">Product</th>
+                          <th className="p-2.5 text-left min-w-[220px]">Description</th>
+                          <th className="p-2.5 text-right w-16 min-w-[55px]">Qty</th>
+                          <th className="p-2.5 text-right w-36 min-w-[130px]">Price</th>
+                          <th className="p-2.5 text-center w-40 min-w-[145px]">Discount</th>
+                          <th className="p-2.5 text-center w-20 min-w-[70px]">Tax</th>
+                          <th className="p-2.5 text-right w-24 min-w-[85px]">Total</th>
                           <th className="p-2.5 w-8"></th>
                         </tr>
                       </thead>
@@ -753,22 +766,29 @@ export const EstimatesAndQuotes: React.FC<{ activeEntityId: string; entities?: a
                         {lines.map((l, i) => (
                           <tr key={i} className="hover:bg-[var(--color-surface-muted)]/30">
                             <td className="p-2"><select value={l.productId} onChange={e => updateLine(i, 'productId', e.target.value)} className="w-full h-8 px-2 rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] text-xs outline-none"><option value="">Select...</option>{products.map((p: any) => <option key={p.id} value={p.id}>{p.name}</option>)}</select></td>
-                            <td className="p-2"><textarea value={l.description} onChange={e => updateLine(i, 'description', e.target.value)} rows={2} placeholder="Description" className="w-full px-2 py-1 rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] text-xs outline-none resize-none" /></td>
+                            <td className="p-2"><textarea value={l.description} onChange={e => updateLine(i, 'description', e.target.value)} rows={2} placeholder="Item description / details..." className="w-full px-2.5 py-1.5 rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] text-xs outline-none resize-none" /></td>
                             <td className="p-2"><input type="number" min="1" value={l.quantity} onChange={e => updateLine(i, 'quantity', e.target.value)} className="w-full h-8 px-2 rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] text-xs text-right font-mono outline-none" /></td>
                             <td className="p-2"><input type="number" step="0.01" value={l.unitPrice} onChange={e => updateLine(i, 'unitPrice', e.target.value)} className="w-full h-8 px-2 rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] text-xs text-right font-mono outline-none" /></td>
-                            <td className="p-2"><div className="flex items-center gap-1"><select value={l.discountType} onChange={e => updateLine(i, 'discountType', parseInt(e.target.value))} className="h-8 w-20 rounded-lg border border-[var(--color-border)] px-2 text-xs bg-[var(--color-surface)] outline-none"><option value={0}>%</option><option value={1}>{form.currencyCode}</option></select><input type="number" min="0" step={l.discountType === 0 ? "1" : "0.01"} value={l.discountValue} onChange={e => updateLine(i, 'discountValue', e.target.value)} className="w-full h-8 px-2 rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] text-xs text-right font-mono outline-none" /></div></td>
                             <td className="p-2">
-                              <select
+                              <div className="flex items-center gap-1.5 min-w-[130px]">
+                                <button
+                                  type="button"
+                                  onClick={() => updateLine(i, 'discountType', l.discountType === 0 ? 1 : 0)}
+                                  title={`Switch discount type (Current: ${l.discountType === 0 ? 'Percentage %' : form.currencyCode})`}
+                                  className="h-8 px-2 rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] hover:bg-[var(--color-surface-muted)] text-xs font-bold text-[var(--color-text-strong)] flex items-center justify-center gap-1 cursor-pointer transition-colors shrink-0 outline-none select-none"
+                                >
+                                  <span>{l.discountType === 0 ? '%' : form.currencyCode}</span>
+                                  <ChevronDown className="w-3 h-3 text-[var(--color-text-muted)]" />
+                                </button>
+                                <input type="number" min="0" step={l.discountType === 0 ? "1" : "0.01"} value={l.discountValue} onChange={e => updateLine(i, 'discountValue', e.target.value)} className="w-full min-w-[65px] h-8 px-2 rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] text-xs text-right font-mono outline-none" />
+                              </div>
+                            </td>
+                            <td className="p-2">
+                              <CompactTaxSelect
                                 value={l.taxPercent}
-                                onChange={e => updateLine(i, 'taxPercent', e.target.value)}
-                                className="w-full h-8 px-1.5 rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] text-xs font-semibold text-[var(--color-text-strong)] outline-none"
-                              >
-                                {applicableTaxCodes.map(tc => (
-                                  <option key={tc.code} value={String(tc.rate)}>
-                                    {tc.label} ({tc.rate}%)
-                                  </option>
-                                ))}
-                              </select>
+                                onChange={v => updateLine(i, 'taxPercent', v)}
+                                taxCodes={applicableTaxCodes}
+                              />
                             </td>
                             <td className="p-2 text-right font-mono font-bold text-emerald-600">{money(lineCalculations[i]?.total || 0)}</td>
                             <td className="p-2 text-center">{lines.length > 1 && <button onClick={() => removeLine(i)} className="text-rose-500 hover:bg-rose-500/10 rounded p-1"><X className="w-3 h-3" /></button>}</td>
@@ -955,6 +975,17 @@ function ConvertToInvoiceModal({
   const [submitting, setSubmitting] = useState(false)
   const est = estimate
   const applicableTaxCodes = useMemo(() => getActiveTaxCodes(), [])
+  const uniqueTaxRates = useMemo(() => {
+    const seen = new Set<number>()
+    const list: { rate: number; label: string; code: string }[] = []
+    for (const tc of applicableTaxCodes) {
+      if (!seen.has(tc.rate)) {
+        seen.add(tc.rate)
+        list.push({ rate: tc.rate, label: tc.label, code: tc.code })
+      }
+    }
+    return list.sort((a, b) => a.rate - b.rate)
+  }, [applicableTaxCodes])
   const allInvoices = useSalesStore((s) => s.invoices)
 
   const computeNextInvNum = () => {
@@ -1113,16 +1144,16 @@ function ConvertToInvoiceModal({
               <input type="date" value={invForm.dueDate} onChange={e => setInvForm({ ...invForm, dueDate: e.target.value })} className="w-full h-10 px-3 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] text-xs text-[var(--color-text-strong)] outline-none" />
             </div>
           </div>
-          <div className="rounded-xl border border-[var(--color-border)] overflow-hidden">
-            <table className="w-full text-xs">
+          <div className="rounded-xl border border-[var(--color-border)] overflow-x-auto">
+            <table className="w-full text-xs min-w-[750px]">
               <thead className="bg-[var(--color-surface-muted)] border-b border-[var(--color-border)]">
                 <tr>
-                  <th className="p-2.5 text-left">Description</th>
-                  <th className="p-2.5 text-right w-16">Qty</th>
-                  <th className="p-2.5 text-right w-24">Price</th>
-                  <th className="p-2.5 text-center w-36">Discount</th>
-                  <th className="p-2.5 text-center w-36">Tax</th>
-                  <th className="p-2.5 text-right w-28">Total</th>
+                  <th className="p-2.5 text-left min-w-[220px]">Description</th>
+                  <th className="p-2.5 text-right w-16 min-w-[55px]">Qty</th>
+                  <th className="p-2.5 text-right w-36 min-w-[130px]">Price</th>
+                  <th className="p-2.5 text-center w-40 min-w-[145px]">Discount</th>
+                  <th className="p-2.5 text-center w-20 min-w-[70px]">Tax</th>
+                  <th className="p-2.5 text-right w-24 min-w-[85px]">Total</th>
                   <th className="p-2.5 w-8"></th>
                 </tr>
               </thead>
@@ -1130,7 +1161,7 @@ function ConvertToInvoiceModal({
                 {invLines.map((l: any, i: number) => (
                   <tr key={i}>
                     <td className="p-2">
-                      <input value={l.description} onChange={e => updateInvLine(i, 'description', e.target.value)} className="w-full px-2 py-1.5 rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] text-xs text-[var(--color-text-strong)] outline-none" />
+                      <input value={l.description} onChange={e => updateInvLine(i, 'description', e.target.value)} className="w-full px-2.5 py-1.5 rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] text-xs text-[var(--color-text-strong)] outline-none" />
                     </td>
                     <td className="p-2">
                       <input type="number" value={l.quantity} onChange={e => updateInvLine(i, 'quantity', e.target.value)} className="w-full px-2 py-1.5 rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] text-xs text-right font-mono text-[var(--color-text-strong)] outline-none" />
@@ -1139,37 +1170,32 @@ function ConvertToInvoiceModal({
                       <input type="number" step="0.01" value={l.unitPrice} onChange={e => updateInvLine(i, 'unitPrice', e.target.value)} className="w-full px-2 py-1.5 rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] text-xs text-right font-mono text-[var(--color-text-strong)] outline-none" />
                     </td>
                     <td className="p-2">
-                      <div className="flex items-center gap-1">
-                        <select
-                          value={l.discountType}
-                          onChange={e => updateInvLine(i, 'discountType', parseInt(e.target.value))}
-                          className="h-8 w-20 border border-[var(--color-border)] rounded-lg px-1 text-xs bg-[var(--color-surface)] text-[var(--color-text-strong)] font-bold outline-none"
+                      <div className="flex items-center gap-1.5 min-w-[130px]">
+                        <button
+                          type="button"
+                          onClick={() => updateInvLine(i, 'discountType', l.discountType === 0 ? 1 : 0)}
+                          title={`Switch discount type (Current: ${l.discountType === 0 ? 'Percentage %' : invForm.currencyCode})`}
+                          className="h-8 px-2 rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] hover:bg-[var(--color-surface-muted)] text-xs font-bold text-[var(--color-text-strong)] flex items-center justify-center gap-1 cursor-pointer transition-colors shrink-0 outline-none select-none"
                         >
-                          <option value={0}>%</option>
-                          <option value={1}>{invForm.currencyCode}</option>
-                        </select>
+                          <span>{l.discountType === 0 ? '%' : invForm.currencyCode}</span>
+                          <ChevronDown className="w-3 h-3 text-[var(--color-text-muted)]" />
+                        </button>
                         <input
                           type="number"
                           min="0"
                           step={l.discountType === 0 ? "1" : "0.01"}
                           value={l.discountValue}
                           onChange={e => updateInvLine(i, 'discountValue', e.target.value)}
-                          className="w-full h-8 px-2 rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] text-xs text-right font-mono text-[var(--color-text-strong)] outline-none"
+                          className="w-full min-w-[65px] h-8 px-2 rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] text-xs text-right font-mono text-[var(--color-text-strong)] outline-none"
                         />
                       </div>
                     </td>
                     <td className="p-2">
-                      <select
+                      <CompactTaxSelect
                         value={l.taxPercent}
-                        onChange={e => updateInvLine(i, 'taxPercent', e.target.value)}
-                        className="w-full h-8 px-1.5 rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] text-xs font-semibold text-[var(--color-text-strong)] outline-none"
-                      >
-                        {applicableTaxCodes.map(tc => (
-                          <option key={tc.code} value={String(tc.rate)}>
-                            {tc.label} ({tc.rate}%)
-                          </option>
-                        ))}
-                      </select>
+                        onChange={v => updateInvLine(i, 'taxPercent', v)}
+                        taxCodes={applicableTaxCodes}
+                      />
                     </td>
                     <td className="p-2 text-right font-mono font-bold text-[var(--color-text-strong)]">
                       {money(lcs[i]?.total || 0)}
