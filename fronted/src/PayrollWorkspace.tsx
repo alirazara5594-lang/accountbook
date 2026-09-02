@@ -3,6 +3,7 @@ import { Users } from 'lucide-react';
 import { usePayrollStore } from './stores';
 import { StatusChip } from './components/ui/status-chip';
 import { TableSkeleton } from './components/ui/empty-state';
+import EmployeeCumulativeStatement from './components/EmployeeCumulativeStatement';
 import type { Employee, Department, Position, PayComponent, SalaryTaxSlab, LeaveRequest, Payrun, SalarySlip, AttendanceRecord, LoanAdvance } from './api/modules/payroll.api';
 
 const countryLabels: Record<string, string> = {
@@ -23,11 +24,13 @@ export default function PayrollWorkspace() {
   const [showModal, setShowModal] = useState(false);
   const [modalType, setModalType] = useState('');
   const [editingItem, setEditingItem] = useState<any>(null);
+  const [statementEmpId, setStatementEmpId] = useState<string | null>(null);
 
   useEffect(() => { store.fetchAll(); }, []);
 
   const tabs = [
     { key: 'employees', label: 'Employees', icon: '👤' },
+    { key: 'tax-pf-ledger', label: 'Tax & PF Ledger', icon: '📈' },
     { key: 'departments', label: 'Departments', icon: '🏢' },
     { key: 'pay-components', label: 'Pay Components', icon: '💰' },
     { key: 'leave', label: 'Leave', icon: '🏖️' },
@@ -99,7 +102,11 @@ export default function PayrollWorkspace() {
 
         {activeTab === 'employees' && !store.loading && (
           <EmployeeList employees={store.employees} departments={store.departments} positions={store.positions}
-            onEdit={(e) => openEdit('employee', e)} onStatusChange={(id, s) => store.setEmployeeStatus(id, s)} />
+            onEdit={(e) => openEdit('employee', e)} onStatusChange={(id, s) => store.setEmployeeStatus(id, s)}
+            onSelectStatement={(id) => setStatementEmpId(id)} />
+        )}
+        {activeTab === 'tax-pf-ledger' && !store.loading && (
+          <EmployeeCumulativeStatement />
         )}
         {activeTab === 'departments' && !store.loading && (
           <DepartmentsList departments={store.departments} positions={store.positions}
@@ -136,14 +143,23 @@ export default function PayrollWorkspace() {
       {showModal && (
         <PayrollModal type={modalType} item={editingItem} store={store} onClose={closeModal} />
       )}
+
+      {statementEmpId && (
+        <div style={{ position: 'fixed', inset: 0, zIndex: 9999, backgroundColor: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem' }}>
+          <div style={{ background: 'var(--color-surface, #fff)', width: '100%', maxWidth: '1100px', maxHeight: '92vh', overflowY: 'auto', borderRadius: '1rem', padding: '1.5rem', border: '1px solid var(--color-border, #e2e8f0)', boxShadow: '0 25px 50px -12px rgba(0,0,0,0.25)' }}>
+            <EmployeeCumulativeStatement initialEmployeeId={statementEmpId} isModal onClose={() => setStatementEmpId(null)} />
+          </div>
+        </div>
+      )}
     </div>
   );
 }
 
 // ── Employee List ─────────────────────────────────────────────────────────────
-function EmployeeList({ employees, departments, positions, onEdit, onStatusChange }: {
+function EmployeeList({ employees, departments, positions, onEdit, onStatusChange, onSelectStatement }: {
   employees: Employee[]; departments: Department[]; positions: Position[];
   onEdit: (e: Employee) => void; onStatusChange: (id: string, status: string) => void;
+  onSelectStatement?: (id: string) => void;
 }) {
   const [filter, setFilter] = useState('');
   const [countryFilter, setCountryFilter] = useState('');
@@ -182,6 +198,15 @@ function EmployeeList({ employees, departments, positions, onEdit, onStatusChang
                 <td><StatusChip status={emp.status} label={statusColors[emp.status]?.label || emp.status} hex={statusColors[emp.status]?.hex || '#94a3b8'} /></td>
                 <td>
                   <div className="cell-actions">
+                    {onSelectStatement && (
+                      <button
+                        className="btn btn-sm btn-outline"
+                        title="View cumulative tax & PF ledger since date of joining"
+                        onClick={() => onSelectStatement(emp.id)}
+                      >
+                        📊 Tax & PF
+                      </button>
+                    )}
                     <button className="btn btn-sm" onClick={() => onEdit(emp)}>Edit</button>
                     {emp.status === 'Active' && <button className="btn btn-sm btn-warn" onClick={() => onStatusChange(emp.id, 'OnLeave')}>Set On Leave</button>}
                     {emp.status !== 'Terminated' && <button className="btn btn-sm btn-danger" onClick={() => onStatusChange(emp.id, 'Terminated')}>Terminate</button>}
