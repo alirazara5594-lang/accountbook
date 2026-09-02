@@ -70,6 +70,7 @@ export const FinancialReports: React.FC<FinancialReportsProps> = ({
   const [selectedEntityFilter, setSelectedEntityFilter] = useState<string>('all');
   const [showZeroBalances, setShowZeroBalances] = useState(false);
   const [cashFlowMethod, setCashFlowMethod] = useState<'indirect' | 'direct'>('indirect');
+  const [tbFilterMode, setTbFilterMode] = useState<'active_only' | 'all_postings'>('active_only');
 
   useEffect(() => {
     fetchAccounts();
@@ -157,10 +158,32 @@ export const FinancialReports: React.FC<FinancialReportsProps> = ({
       periodCredits[a.id] = 0;
     });
 
+    // Build set of cancelled / reversed references (e.g. "REV-INV-00001" and "INV-00001")
+    const reversedRefs = new Set<string>();
+    entries.forEach(e => {
+      if (e.reference?.startsWith('REV-')) {
+        reversedRefs.add(e.reference.substring(4));
+        reversedRefs.add(e.reference);
+      }
+      const statusStr = String(e.status || '').toLowerCase();
+      if (statusStr === 'reversed' || statusStr === '4' || statusStr === 'cancelled' || statusStr === '5') {
+        if (e.reference) {
+          reversedRefs.add(e.reference);
+          reversedRefs.add(`REV-${e.reference}`);
+        }
+      }
+    });
+
     const postedEntries = entries.filter(e => {
       const statusStr = String(e.status || '').toLowerCase();
-      const isPosted = statusStr === 'posted' || statusStr === '3';
+      // Include both Posted (3) and Reversed (4) entries so GAAP/IAS reversals properly offset original entries
+      const isPosted = statusStr === 'posted' || statusStr === '3' || statusStr === 'reversed' || statusStr === '4';
       if (!isPosted) return false;
+
+      // Clean Active Postings Only: In active_only mode, completely exclude cancelled/reversed pairs
+      if (tbFilterMode === 'active_only' && e.reference && reversedRefs.has(e.reference)) {
+        return false;
+      }
 
       const compId = (e as any).companyId;
       if (activeCompanyId && activeCompanyId !== 'all' && compId && compId !== activeCompanyId) {
@@ -214,7 +237,7 @@ export const FinancialReports: React.FC<FinancialReportsProps> = ({
       periodCredits,
       closingBalances
     };
-  }, [accounts, entries, activeCompanyId, dateFrom, dateTo]);
+  }, [accounts, entries, activeCompanyId, dateFrom, dateTo, tbFilterMode]);
 
   // ── 2. Helper: Active Posting Accounts ──────────────────────────────────────
   const isLeafAccount = (a: Account) => {
@@ -2004,8 +2027,35 @@ export const FinancialReports: React.FC<FinancialReportsProps> = ({
               </label>
             </div>
 
-            <div className="text-xs font-bold text-muted-foreground">
-              Total Posting Ledgers: <strong className="text-teal-600">{trialBalanceRows.length}</strong>
+            <div className="flex items-center gap-3 flex-wrap">
+              <div className="inline-flex p-0.5 bg-muted rounded-lg border border-border text-xs font-semibold shadow-2xs">
+                <button
+                  onClick={() => setTbFilterMode('active_only')}
+                  className={`px-3 py-1 rounded-md text-xs transition-all cursor-pointer ${
+                    tbFilterMode === 'active_only'
+                      ? 'bg-teal-600 text-white font-bold shadow-2xs'
+                      : 'text-muted-foreground hover:text-foreground'
+                  }`}
+                  title="Filter out voided/reversed pairs so Period Movements reflect only genuine active transactions"
+                >
+                  🟢 Active Invoices Only (Net Clean)
+                </button>
+                <button
+                  onClick={() => setTbFilterMode('all_postings')}
+                  className={`px-3 py-1 rounded-md text-xs transition-all cursor-pointer ${
+                    tbFilterMode === 'all_postings'
+                      ? 'bg-teal-600 text-white font-bold shadow-2xs'
+                      : 'text-muted-foreground hover:text-foreground'
+                  }`}
+                  title="Show full gross debit and credit movements including cancelled transactions for auditor forensic review"
+                >
+                  🔍 Full Audit Trail (Include Voids)
+                </button>
+              </div>
+
+              <div className="text-xs font-bold text-muted-foreground">
+                Total Posting Ledgers: <strong className="text-teal-600">{trialBalanceRows.length}</strong>
+              </div>
             </div>
           </div>
 

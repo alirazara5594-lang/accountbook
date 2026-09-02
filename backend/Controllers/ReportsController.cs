@@ -245,14 +245,37 @@ public class ReportsController(AccountingStore store) : ControllerBase
         var closingCash = openingCash + netCashFlow;
 
         // Income Statement numbers for Indirect Method
+        // Income Statement numbers & Working Capital for Indirect Method (IAS 7)
         var balances = AccountBalances(store, companyId, from, to);
         var rows = PostingAccounts(store)
             .Where(a => IsRevenue(a.Type) || IsExpense(a.Type))
-            .Select(a => new { a.Id, a.Code, a.Name, a.Type, Amount = balances.GetValueOrDefault(a.Id) })
+            .Select(a => {
+                var rawBal = balances.GetValueOrDefault(a.Id);
+                var amount = IsRevenue(a.Type) ? -rawBal : rawBal;
+                return new { a.Id, a.Code, a.Name, a.Type, Amount = amount };
+            })
             .Where(r => r.Amount != 0).ToList();
         var revenue = rows.Where(r => IsRevenue(r.Type)).Sum(r => r.Amount);
         var expenses = rows.Where(r => IsExpense(r.Type)).Sum(r => r.Amount);
         var netIncome = revenue - expenses;
+
+        // Working Capital Changes
+        var arAccounts = PostingAccounts(store).Where(a => IsAsset(a.Type) && (a.Code.StartsWith("12") || a.Name.Contains("Receivable", StringComparison.OrdinalIgnoreCase)));
+        var arChange = arAccounts.Sum(a => balances.GetValueOrDefault(a.Id) - a.OpeningBalance);
+
+        var invAccounts = PostingAccounts(store).Where(a => IsAsset(a.Type) && (a.Code.StartsWith("13") || a.Name.Contains("Inventory", StringComparison.OrdinalIgnoreCase)));
+        var invChange = invAccounts.Sum(a => balances.GetValueOrDefault(a.Id) - a.OpeningBalance);
+
+        var apAccounts = PostingAccounts(store).Where(a => IsLiability(a.Type) && (a.Code.StartsWith("211") || a.Code.StartsWith("212") || (a.Name.Contains("Payable", StringComparison.OrdinalIgnoreCase) && !a.Code.StartsWith("22") && !a.Name.Contains("Tax", StringComparison.OrdinalIgnoreCase))));
+        var apChange = apAccounts.Sum(a => -(balances.GetValueOrDefault(a.Id) - a.OpeningBalance));
+
+        var taxPayableAccounts = PostingAccounts(store).Where(a => IsLiability(a.Type) && (a.Code.StartsWith("22") || a.Code.StartsWith("213") || a.Code.StartsWith("214")));
+        var taxPayableChange = taxPayableAccounts.Sum(a => -(balances.GetValueOrDefault(a.Id) - a.OpeningBalance));
+
+        var deprAccounts = PostingAccounts(store).Where(a => IsExpense(a.Type) && (a.Code.StartsWith("613") || a.Name.Contains("Depreciation", StringComparison.OrdinalIgnoreCase)));
+        var deprAddback = deprAccounts.Sum(a => balances.GetValueOrDefault(a.Id) - a.OpeningBalance);
+
+        var indirectOperatingCashFlow = netIncome + deprAddback - arChange - invChange + apChange + taxPayableChange;
 
         var bankAccounts = store.GetCashBankAccounts(bankOnly: true, companyId);
         var cashAccounts = store.GetCashBankAccounts(bankOnly: false, companyId);
@@ -286,19 +309,20 @@ public class ReportsController(AccountingStore store) : ControllerBase
             indirectMethod = new
             {
                 netIncome,
-                adjustments = new List<object>(),
+                depreciationAddback = deprAddback,
                 workingCapitalChanges = new
                 {
-                    accountsReceivable = 0m,
-                    inventory = 0m,
-                    accountsPayable = 0m
+                    accountsReceivableChange = -arChange,
+                    inventoryChange = -invChange,
+                    accountsPayableChange = apChange,
+                    taxPayableChange = taxPayableChange
                 },
-                netOperating,
+                netOperating = indirectOperatingCashFlow,
                 netInvesting,
                 netFinancing,
-                netCashFlow,
+                netCashFlow = indirectOperatingCashFlow + netInvesting + netFinancing,
                 openingCash,
-                closingCash
+                closingCash = openingCash + (indirectOperatingCashFlow + netInvesting + netFinancing)
             }
         });
     }

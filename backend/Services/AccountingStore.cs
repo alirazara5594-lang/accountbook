@@ -5358,7 +5358,9 @@ _bankImports.Clear(); _bankImports.AddRange(state.BankImports ?? []);
             .ToHashSet();
 
         bool changed = false;
-        foreach (var entry in _entries.Where(e => e.Status == JournalStatus.Posted && e.TransactionType == TransactionType.Sales))
+
+        // 1. In original sales entries, revenue credits should not go to contra-revenue accounts
+        foreach (var entry in _entries.Where(e => e.Status == JournalStatus.Posted && e.TransactionType == TransactionType.Sales && !e.Reference.StartsWith("REV-")))
         {
             // Find lines where Credits went to a ContraRevenue account (wrong — revenue credits should go to Revenue accounts)
             var mispostedLines = entry.Lines
@@ -5387,6 +5389,24 @@ _bankImports.Clear(); _bankImports.AddRange(state.BankImports ?? []);
                 entry.Lines.AddRange(correctedLines);
             }
         }
+
+        // 2. In reversal entries (REV-), discount reversal credits MUST go to the ContraRevenue account (Sales Discounts 41300)
+        if (discountAcc != null)
+        {
+            foreach (var revEntry in _entries.Where(e => e.Reference.StartsWith("REV-")))
+            {
+                for (int i = 0; i < revEntry.Lines.Count; i++)
+                {
+                    var line = revEntry.Lines[i];
+                    if (line.Memo != null && line.Memo.Contains("Sales Discounts", StringComparison.OrdinalIgnoreCase) && line.AccountId != discountAcc.Id)
+                    {
+                        revEntry.Lines[i] = new JournalLine(discountAcc.Id, line.Debit, line.Credit, line.Memo, line.Comment, line.CurrencyCode, line.ExchangeRate, line.CompanyId);
+                        changed = true;
+                    }
+                }
+            }
+        }
+
         if (changed) Persist();
     }
 
