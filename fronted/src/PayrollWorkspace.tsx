@@ -13,7 +13,7 @@ const countryLabels: Record<string, string> = {
 
 const statusColors: Record<string, { label: string; hex: string }> = {
   Active: { label: 'Active', hex: '#10b981' }, OnLeave: { label: 'On Leave', hex: '#f59e0b' }, Terminated: { label: 'Terminated', hex: '#ef4444' }, Probation: { label: 'Probation', hex: '#8b5cf6' },
-  Draft: { label: 'Draft', hex: '#94a3b8' }, Calculated: { label: 'Calculated', hex: '#3b82f6' }, Approved: { label: 'Approved', hex: '#10b981' }, Posted: { label: 'Posted', hex: '#10b981' },
+  Draft: { label: 'Draft', hex: '#94a3b8' }, Calculated: { label: 'Calculated (Pending GL)', hex: '#f59e0b' }, Approved: { label: 'Approved', hex: '#10b981' }, Posted: { label: 'Posted to GL', hex: '#10b981' },
   Cancelled: { label: 'Cancelled', hex: '#ef4444' }, Pending: { label: 'Pending', hex: '#f59e0b' }, Rejected: { label: 'Rejected', hex: '#ef4444' },
 };
 
@@ -41,6 +41,17 @@ export default function PayrollWorkspace() {
   const openCreate = (type: string) => { setModalType(type); setEditingItem(null); setShowModal(true); };
   const openEdit = (type: string, item: any) => { setModalType(type); setEditingItem(item); setShowModal(true); };
   const closeModal = () => { setShowModal(false); setModalType(''); setEditingItem(null); };
+
+  const handlePostPayrunToGL = async (id: string, num: string) => {
+    if (!window.confirm(`Post Payrun ${num} to the General Ledger?\n\nThis will record balanced double-entry accounting journals for Salaries Expense, Accrued Salaries Payable, and Statutory Deductions.`)) return;
+    const ok = await store.postPayrunToGL(id);
+    if (ok) {
+      alert(`✓ Payrun ${num} has been posted to the General Ledger!`);
+      await store.fetchPayruns();
+    } else {
+      alert(`Error posting payrun ${num} to the General Ledger.`);
+    }
+  };
 
   return (
     <div className="workspace">
@@ -107,7 +118,7 @@ export default function PayrollWorkspace() {
           <AttendanceList records={store.attendanceRecords} employees={store.employees} />
         )}
         {activeTab === 'payruns' && !store.loading && (
-          <PayrunsList payruns={store.payruns} />
+          <PayrunsList payruns={store.payruns} onPostToGL={handlePostPayrunToGL} slips={store.salarySlips} employees={store.employees} />
         )}
         {activeTab === 'salary-slips' && !store.loading && (
           <SalarySlipsList slips={store.salarySlips} />
@@ -355,12 +366,38 @@ function AttendanceList({ records, employees }: { records: AttendanceRecord[]; e
 }
 
 // ── Payruns List ──────────────────────────────────────────────────────────────
-function PayrunsList({ payruns }: { payruns: Payrun[] }) {
+function PayrunsList({
+  payruns,
+  onPostToGL,
+  slips = [],
+  employees = []
+}: {
+  payruns: Payrun[];
+  onPostToGL?: (id: string, num: string) => void;
+  slips?: any[];
+  employees?: any[];
+}) {
+  const [selectedPayrun, setSelectedPayrun] = useState<Payrun | null>(null);
+
+  const handlePrintSheet = () => {
+    window.print();
+  };
+
   return (
     <div className="list-view">
       <div className="table-container">
         <table className="data-table">
-          <thead><tr><th>Payrun #</th><th>Frequency</th><th>Period</th><th>Pay Date</th><th>Status</th><th>Created</th></tr></thead>
+          <thead>
+            <tr>
+              <th>Payrun #</th>
+              <th>Frequency</th>
+              <th>Period</th>
+              <th>Pay Date</th>
+              <th>Status</th>
+              <th>Created</th>
+              <th className="text-right">Actions</th>
+            </tr>
+          </thead>
           <tbody>
             {payruns.map(p => (
               <tr key={p.id}>
@@ -368,13 +405,138 @@ function PayrunsList({ payruns }: { payruns: Payrun[] }) {
                 <td>{p.frequency}</td>
                 <td>{p.periodStart} to {p.periodEnd}</td>
                 <td>{p.payDate}</td>
-                <td><StatusChip status={p.status} label={statusColors[p.status]?.label || p.status} hex={statusColors[p.status]?.hex || '#94a3b8'} /></td>
+                <td>
+                  <StatusChip
+                    status={p.status}
+                    label={statusColors[p.status]?.label || p.status}
+                    hex={statusColors[p.status]?.hex || '#94a3b8'}
+                  />
+                </td>
                 <td>{new Date(p.createdAt).toLocaleDateString()}</td>
+                <td className="text-right">
+                  <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end', alignItems: 'center' }}>
+                    <button
+                      className="btn btn-sm btn-outline"
+                      onClick={() => setSelectedPayrun(p)}
+                    >
+                      📄 Sign-off Sheet
+                    </button>
+                    {p.status !== 'Posted' && onPostToGL && (
+                      <button
+                        className="btn btn-sm btn-primary"
+                        style={{ backgroundColor: '#10b981', borderColor: '#10b981', color: '#fff', fontWeight: 700 }}
+                        onClick={() => onPostToGL(p.id, p.payrunNumber)}
+                      >
+                        ✓ Post to GL (Accounts)
+                      </button>
+                    )}
+                  </div>
+                </td>
               </tr>
             ))}
+            {payruns.length === 0 && (
+              <tr>
+                <td colSpan={7} style={{ textAlign: 'center', padding: '2rem', color: 'var(--color-text-muted)' }}>
+                  No payruns found. HR can calculate payruns from Payroll Processing.
+                </td>
+              </tr>
+            )}
           </tbody>
         </table>
       </div>
+
+      {/* Payrun Sign-off Sheet Modal */}
+      {selectedPayrun && (
+        <div style={{ position: 'fixed', inset: 0, zIndex: 9999, backgroundColor: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem' }}>
+          <div style={{ background: 'var(--color-surface, #fff)', width: '100%', maxWidth: '850px', maxHeight: '90vh', overflowY: 'auto', borderRadius: '1rem', padding: '1.5rem', border: '1px solid var(--color-border, #e2e8f0)', boxShadow: '0 25px 50px -12px rgba(0,0,0,0.25)' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid var(--color-border, #e2e8f0)', paddingBottom: '1rem', marginBottom: '1rem' }}>
+              <div>
+                <h3 style={{ margin: 0, fontSize: '1.25rem', fontWeight: 800 }}>Master Payroll Sign-Off Sheet</h3>
+                <span style={{ fontSize: '0.8rem', color: 'var(--color-text-muted, #64748b)' }}>
+                  Payrun: {selectedPayrun.payrunNumber} | Period: {selectedPayrun.periodStart} to {selectedPayrun.periodEnd} | Pay Date: {selectedPayrun.payDate}
+                </span>
+              </div>
+              <div style={{ display: 'flex', gap: '0.5rem' }}>
+                <button className="btn btn-sm btn-outline" onClick={handlePrintSheet}>🖨️ Print Sheet</button>
+                <button className="btn btn-sm" onClick={() => setSelectedPayrun(null)}>✕ Close</button>
+              </div>
+            </div>
+
+            {/* Status & SoD Notice */}
+            <div style={{ padding: '0.75rem 1rem', borderRadius: '0.5rem', backgroundColor: selectedPayrun.status === 'Posted' ? '#f0fdf4' : '#fffbeb', border: `1px solid ${selectedPayrun.status === 'Posted' ? '#bbf7d0' : '#fef08a'}`, marginBottom: '1rem', fontSize: '0.8rem' }}>
+              <strong>Status: {statusColors[selectedPayrun.status]?.label || selectedPayrun.status}</strong>
+              <p style={{ margin: '0.25rem 0 0 0', color: '#64748b' }}>
+                {selectedPayrun.status === 'Posted'
+                  ? '✓ This payrun has been verified by Finance and successfully posted to the General Ledger.'
+                  : 'Pending Accounts review and General Ledger posting. Download or print this sheet for required executive signatures.'}
+              </p>
+            </div>
+
+            {/* Signature Certificate */}
+            <div style={{ border: '2px solid #cbd5e1', borderRadius: '0.75rem', padding: '1.25rem', marginTop: '1.5rem', background: '#f8fafc' }}>
+              <div style={{ fontWeight: 800, textTransform: 'uppercase', fontSize: '0.8rem', letterSpacing: '0.05em', color: '#334155', borderBottom: '1px solid #cbd5e1', paddingBottom: '0.5rem', marginBottom: '1rem' }}>
+                Internal Control & Corporate Approval Signatures (Segregation of Duties)
+              </div>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(170px, 1fr))', gap: '1rem' }}>
+                <div style={{ padding: '0.75rem', background: '#fff', borderRadius: '0.5rem', border: '1px solid #e2e8f0' }}>
+                  <div style={{ fontSize: '0.75rem', fontWeight: 700, color: '#475569', textTransform: 'uppercase' }}>1. Prepared By</div>
+                  <div style={{ fontSize: '0.7rem', color: '#64748b' }}>HR & Payroll Officer</div>
+                  <div style={{ height: '40px', borderBottom: '2px dashed #cbd5e1', margin: '0.5rem 0' }}></div>
+                  <div style={{ fontSize: '0.7rem', color: '#475569', display: 'flex', justifyContent: 'space-between' }}>
+                    <span>Sign: ________</span>
+                    <span>Date: ______</span>
+                  </div>
+                </div>
+
+                <div style={{ padding: '0.75rem', background: '#fff', borderRadius: '0.5rem', border: '1px solid #e2e8f0' }}>
+                  <div style={{ fontSize: '0.75rem', fontWeight: 700, color: '#475569', textTransform: 'uppercase' }}>2. Verified By</div>
+                  <div style={{ fontSize: '0.7rem', color: '#64748b' }}>Internal Auditor</div>
+                  <div style={{ height: '40px', borderBottom: '2px dashed #cbd5e1', margin: '0.5rem 0' }}></div>
+                  <div style={{ fontSize: '0.7rem', color: '#475569', display: 'flex', justifyContent: 'space-between' }}>
+                    <span>Sign: ________</span>
+                    <span>Date: ______</span>
+                  </div>
+                </div>
+
+                <div style={{ padding: '0.75rem', background: '#fff', borderRadius: '0.5rem', border: '1px solid #e2e8f0' }}>
+                  <div style={{ fontSize: '0.75rem', fontWeight: 700, color: '#475569', textTransform: 'uppercase' }}>3. Approved By</div>
+                  <div style={{ fontSize: '0.7rem', color: '#64748b' }}>CEO / Managing Director</div>
+                  <div style={{ height: '40px', borderBottom: '2px dashed #cbd5e1', margin: '0.5rem 0' }}></div>
+                  <div style={{ fontSize: '0.7rem', color: '#475569', display: 'flex', justifyContent: 'space-between' }}>
+                    <span>Sign: ________</span>
+                    <span>Date: ______</span>
+                  </div>
+                </div>
+
+                <div style={{ padding: '0.75rem', background: '#f0fdf4', borderRadius: '0.5rem', border: '1px solid #86efac' }}>
+                  <div style={{ fontSize: '0.75rem', fontWeight: 700, color: '#166534', textTransform: 'uppercase' }}>4. Passed to GL</div>
+                  <div style={{ fontSize: '0.7rem', color: '#15803d' }}>Finance Manager / Accounts</div>
+                  <div style={{ height: '40px', borderBottom: '2px dashed #86efac', margin: '0.5rem 0' }}></div>
+                  <div style={{ fontSize: '0.7rem', color: '#166534', display: 'flex', justifyContent: 'space-between' }}>
+                    <span>Sign: ________</span>
+                    <span>Date: ______</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {selectedPayrun.status !== 'Posted' && onPostToGL && (
+              <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '1.25rem', paddingTop: '1rem', borderTop: '1px solid #e2e8f0' }}>
+                <button
+                  className="btn btn-primary"
+                  style={{ backgroundColor: '#10b981', borderColor: '#10b981', color: '#fff', fontWeight: 700 }}
+                  onClick={() => {
+                    onPostToGL(selectedPayrun.id, selectedPayrun.payrunNumber);
+                    setSelectedPayrun(null);
+                  }}
+                >
+                  ✓ Confirm & Post to General Ledger (Accounts)
+                </button>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 }

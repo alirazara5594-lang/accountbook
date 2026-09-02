@@ -5933,6 +5933,7 @@ _bankImports.Clear(); _bankImports.AddRange(state.BankImports ?? []);
             new AdminUser { UserName = "inventory", FullName = "David Chen", Email = "inventory@acme.com", Role = "Warehouse Manager", Status = UserStatus.Active, LastLogin = DateTime.UtcNow, CompanyId = companyId },
             new AdminUser { UserName = "manufacturing", FullName = "Alex Rivera", Email = "manufacturing@acme.com", Role = "Production Engineer", Status = UserStatus.Active, LastLogin = DateTime.UtcNow, CompanyId = companyId },
             new AdminUser { UserName = "auditor", FullName = "Amina Al-Mansoor", Email = "auditor@acme.com", Role = "External Auditor", Status = UserStatus.Active, LastLogin = DateTime.UtcNow, CompanyId = companyId },
+            new AdminUser { UserName = "hr", FullName = "Hina Tariq", Email = "hr@acme.com", Role = "HR Officer", Status = UserStatus.Active, LastLogin = DateTime.UtcNow, CompanyId = companyId },
         ]);
 
         // ── Roles ────────────────────────────────────────────────────────────
@@ -5940,6 +5941,7 @@ _bankImports.Clear(); _bankImports.AddRange(state.BankImports ?? []);
         _userRoles.AddRange([
             new UserRole { Name = "Finance admin", Description = "Full access across all modules", Permissions = allPerms, CompanyId = companyId },
             new UserRole { Name = "Senior Accountant", Description = "Accounting, banking, and reporting", Permissions = new List<string> { "Dashboard", "Sales", "Procurement", "Banking", "Accounting", "Inventory", "Analytics" }, CompanyId = companyId },
+            new UserRole { Name = "HR Officer", Description = "HR and payroll operations, attendance, and salary sheet generation", Permissions = new List<string> { "Dashboard", "Payroll" }, CompanyId = companyId },
             new UserRole { Name = "Warehouse Manager", Description = "Procurement, multi-warehouse, and logistics", Permissions = new List<string> { "Dashboard", "Procurement", "Inventory", "Analytics" }, CompanyId = companyId },
             new UserRole { Name = "Production Engineer", Description = "BOM, work orders, and job costing", Permissions = new List<string> { "Dashboard", "Inventory", "Manufacturing", "Projects", "Analytics" }, CompanyId = companyId },
             new UserRole { Name = "External Auditor", Description = "Read-only financial review and compliance", Permissions = new List<string> { "Dashboard", "Accounting", "Compliance", "Analytics", "Administration" }, CompanyId = companyId },
@@ -7119,6 +7121,101 @@ _bankImports.Clear(); _bankImports.AddRange(state.BankImports ?? []);
                 payrun.PostedAt = DateTime.UtcNow;
                 payrun.Status = PayrunStatus.Posted;
             }
+
+            Persist();
+            return true;
+        }
+    }
+
+    public bool PostPayrunToGL(Guid payrunId, out JournalEntry? je, out string? error)
+    {
+        lock (_lock)
+        {
+            je = null;
+            error = null;
+            var payrun = _payruns.FirstOrDefault(p => p.Id == payrunId);
+            if (payrun == null)
+            {
+                error = "Payrun not found.";
+                return false;
+            }
+            if (payrun.Status == PayrunStatus.Posted)
+            {
+                error = "Payrun is already posted to the General Ledger.";
+                return false;
+            }
+
+            var empIds = _payrunEmployees.Where(pe => pe.PayrunId == payrunId).Select(pe => pe.Id).ToHashSet();
+            var slips = _salarySlips.Where(s => empIds.Contains(s.PayrunEmployeeId)).ToList();
+            if (slips.Count == 0)
+            {
+                error = "No salary slips found for this payrun.";
+                return false;
+            }
+
+            decimal totalGrossAll = slips.Sum(s => s.GrossEarnings);
+            decimal totalDeductionsAll = slips.Sum(s => s.TotalDeductions);
+            decimal totalEmployerAll = slips.Sum(s => s.EmployerContribs?.Sum(c => c.Amount) ?? 0);
+
+            var salaryExpAccountId = GetMappedAccount("Payroll Expense") != Guid.Empty ? GetMappedAccount("Payroll Expense") : _accounts.FirstOrDefault(a => a.Code == "61200")?.Id ?? Guid.Empty;
+            var employerExpAccountId = GetMappedAccount("Employer Payroll Contributions Expense") != Guid.Empty ? GetMappedAccount("Employer Payroll Contributions Expense") : _accounts.FirstOrDefault(a => a.Code == "61250")?.Id ?? salaryExpAccountId;
+            var accruedSalAccountId = GetMappedAccount("Accrued Salaries") != Guid.Empty ? GetMappedAccount("Accrued Salaries") : _accounts.FirstOrDefault(a => a.Code == "21300")?.Id ?? Guid.Empty;
+            var taxPayableAccountId = GetMappedAccount("Payroll Taxes Accrued") != Guid.Empty ? GetMappedAccount("Payroll Taxes Accrued") : _accounts.FirstOrDefault(a => a.Code == "21400")?.Id ?? Guid.Empty;
+            var eobiPayableAccountId = GetMappedAccount("EOBI & Social Security Accrued") != Guid.Empty ? GetMappedAccount("EOBI & Social Security Accrued") : _accounts.FirstOrDefault(a => a.Code == "21500")?.Id ?? taxPayableAccountId;
+            var pfPayableAccountId = GetMappedAccount("Provident Fund Accrued") != Guid.Empty ? GetMappedAccount("Provident Fund Accrued") : _accounts.FirstOrDefault(a => a.Code == "21510")?.Id ?? eobiPayableAccountId;
+
+            var netPayCredit = totalGrossAll - totalDeductionsAll;
+            var taxCredit = slips.SelectMany(s => s.Deductions).Where(d => d.Category.Contains("Tax", StringComparison.OrdinalIgnoreCase) || d.Name.Contains("Tax", StringComparison.OrdinalIgnoreCase)).Sum(d => d.Amount);
+            var eobiCredit = slips.SelectMany(s => s.Deductions).Where(d => d.Category.Contains("Social", StringComparison.OrdinalIgnoreCase) || d.Name.Contains("EOBI", StringComparison.OrdinalIgnoreCase) || d.Name.Contains("Social", StringComparison.OrdinalIgnoreCase)).Sum(d => d.Amount) + totalEmployerAll;
+            var otherCredit = totalDeductionsAll - (taxCredit + (eobiCredit - totalEmployerAll));
+            if (otherCredit < 0) otherCredit = 0;
+            if (taxCredit == 0 && eobiCredit == totalEmployerAll && totalDeductionsAll > 0)
+            {
+                taxCredit = totalDeductionsAll;
+            }
+
+            var lines = new List<JournalLine>
+            {
+                new JournalLine(salaryExpAccountId, totalGrossAll, 0, $"Gross Salaries & Allowances: {payrun.PayrunNumber}", null, "USD", 1, payrun.CompanyId),
+            };
+
+            if (totalEmployerAll > 0)
+            {
+                lines.Add(new JournalLine(employerExpAccountId, totalEmployerAll, 0, $"Employer Statutory Contributions: {payrun.PayrunNumber}", null, "USD", 1, payrun.CompanyId));
+            }
+
+            lines.Add(new JournalLine(accruedSalAccountId, 0, netPayCredit, $"Net salaries payable: {payrun.PayrunNumber}", null, "USD", 1, payrun.CompanyId));
+
+            if (taxCredit > 0)
+            {
+                lines.Add(new JournalLine(taxPayableAccountId, 0, taxCredit, $"Income tax withholding payable: {payrun.PayrunNumber}", null, "USD", 1, payrun.CompanyId));
+            }
+
+            if (eobiCredit > 0)
+            {
+                lines.Add(new JournalLine(eobiPayableAccountId, 0, eobiCredit, $"EOBI & Social Security payable: {payrun.PayrunNumber}", null, "USD", 1, payrun.CompanyId));
+            }
+
+            if (otherCredit > 0)
+            {
+                lines.Add(new JournalLine(pfPayableAccountId, 0, otherCredit, $"Provident fund & voluntary deductions: {payrun.PayrunNumber}", null, "USD", 1, payrun.CompanyId));
+            }
+
+            je = new JournalEntry
+            {
+                Date = DateOnly.FromDateTime(DateTime.Today),
+                Reference = $"PAYRUN-{payrun.PayrunNumber}",
+                Description = $"Payroll: {payrun.PayrunNumber} | {payrun.PeriodStart:yyyy-MM-dd} to {payrun.PeriodEnd:yyyy-MM-dd} | {slips.Count} employees",
+                TransactionType = TransactionType.Payroll,
+                CompanyId = payrun.CompanyId,
+                Status = JournalStatus.Posted,
+                Lines = lines
+            };
+
+            _entries.Add(je);
+            payrun.JournalEntryId = je.Id;
+            payrun.PostedAt = DateTime.UtcNow;
+            payrun.Status = PayrunStatus.Posted;
 
             Persist();
             return true;
