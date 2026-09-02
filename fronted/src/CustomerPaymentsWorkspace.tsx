@@ -105,7 +105,7 @@ export function CustomerPaymentsWorkspace({
 
   const loadData = () => {
     fetchAll(activeEntityId);
-    fetchCompanies();
+    companyStore.fetchCompanies();
   };
 
   useEffect(() => {
