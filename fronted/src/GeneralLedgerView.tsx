@@ -5,7 +5,7 @@ import {
   BookOpen, Search, X, ShieldCheck,
   Download, FileSpreadsheet, RefreshCw,
   Layers, ArrowUpRight, ArrowDownRight,
-  FileText, AlertCircle, Filter
+  FileText, AlertCircle, Filter, ChevronDown, ChevronRight
 } from 'lucide-react';
 import { money } from './lib/currency';
 import { downloadExcel, downloadCSV } from './lib/exportUtils';
@@ -50,6 +50,8 @@ export const GeneralLedgerView: React.FC<GeneralLedgerViewProps> = ({ activeEnti
   const [selectedAccountFilter, setSelectedAccountFilter] = useState<string>('ALL');
   const [viewMode, setViewMode] = useState<'chronological' | 'journal_entries' | 'account_ledgers' | 'grouped' | 'paired_reversals'>('chronological');
   const [filterType, setFilterType] = useState<'all' | 'active' | 'reversals'>('active');
+  const [tableGrouping, setTableGrouping] = useState<'voucher_summary' | 'detailed_lines'>('voucher_summary');
+  const [expandedVouchers, setExpandedVouchers] = useState<Record<string, boolean>>({});
 
   // Load COA accounts if empty
   useEffect(() => {
@@ -854,12 +856,12 @@ export const GeneralLedgerView: React.FC<GeneralLedgerViewProps> = ({ activeEnti
                           </td>
                         </tr>
                       )}
-                      {sheet.lines.map((l) => {
+                      {sheet.lines.map((l, idx) => {
                         const isRev = l.reference?.startsWith('REV-');
                         const isCancelled = l.reference && reversedRefsSet.has(l.reference);
                         return (
                           <tr
-                            key={l.id}
+                            key={`${l.id}-${l.accountId}-${idx}`}
                             className={`hover:bg-muted/30 transition-colors ${
                               isRev
                                 ? 'bg-rose-500/[0.04] dark:bg-rose-500/[0.08]'
@@ -1016,8 +1018,8 @@ export const GeneralLedgerView: React.FC<GeneralLedgerViewProps> = ({ activeEnti
                         <span className="font-mono font-black text-sm text-emerald-600">{money(entry.totalDebit)}</span>
                       </div>
                       <div className="space-y-1.5">
-                        {debitLines.map((l) => (
-                          <div key={l.id} className="flex items-center justify-between text-xs font-mono py-1.5 px-2 rounded-lg bg-emerald-500/[0.03] border border-emerald-500/10">
+                        {debitLines.map((l, idx) => (
+                          <div key={`${l.id}-${l.accountId}-${idx}`} className="flex items-center justify-between text-xs font-mono py-1.5 px-2 rounded-lg bg-emerald-500/[0.03] border border-emerald-500/10">
                             <div className="flex items-center gap-2">
                               <span className="font-bold text-foreground">{l.accountCode}</span>
                               <span className="text-muted-foreground">{l.accountName}</span>
@@ -1038,8 +1040,8 @@ export const GeneralLedgerView: React.FC<GeneralLedgerViewProps> = ({ activeEnti
                         <span className="font-mono font-black text-sm text-rose-600">{money(entry.totalCredit)}</span>
                       </div>
                       <div className="space-y-1.5">
-                        {creditLines.map((l) => (
-                          <div key={l.id} className="flex items-center justify-between text-xs font-mono py-1.5 px-2 rounded-lg bg-rose-500/[0.03] border border-rose-500/10">
+                        {creditLines.map((l, idx) => (
+                          <div key={`${l.id}-${l.accountId}-${idx}`} className="flex items-center justify-between text-xs font-mono py-1.5 px-2 rounded-lg bg-rose-500/[0.03] border border-rose-500/10">
                             <div className="flex items-center gap-2">
                               <span className="font-bold text-foreground">{l.accountCode}</span>
                               <span className="text-muted-foreground">{l.accountName}</span>
@@ -1123,8 +1125,8 @@ export const GeneralLedgerView: React.FC<GeneralLedgerViewProps> = ({ activeEnti
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-[var(--color-border)]/60">
-                        {pair.originalLines.map((l) => (
-                          <tr key={l.id} className="hover:bg-muted/30">
+                        {pair.originalLines.map((l, idx) => (
+                          <tr key={`${l.id}-${l.accountId}-${idx}`} className="hover:bg-muted/30">
                             <td className="py-1.5 text-left font-sans text-xs">
                               <span className="font-mono font-bold text-foreground mr-1.5">{l.accountCode}</span>
                               <span className="text-muted-foreground">{l.accountName}</span>
@@ -1162,8 +1164,8 @@ export const GeneralLedgerView: React.FC<GeneralLedgerViewProps> = ({ activeEnti
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-[var(--color-border)]/60">
-                        {pair.reversalLines.map((l) => (
-                          <tr key={l.id} className="hover:bg-muted/30">
+                        {pair.reversalLines.map((l, idx) => (
+                          <tr key={`${l.id}-${l.accountId}-${idx}`} className="hover:bg-muted/30">
                             <td className="py-1.5 text-left font-sans text-xs">
                               <span className="font-mono font-bold text-foreground mr-1.5">{l.accountCode}</span>
                               <span className="text-muted-foreground">{l.accountName}</span>
@@ -1189,14 +1191,65 @@ export const GeneralLedgerView: React.FC<GeneralLedgerViewProps> = ({ activeEnti
       {/* ─── Mode 1: Chronological Ledger Register Table ─── */}
       {viewMode === 'chronological' && (
         <div className="rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)] overflow-hidden shadow-sm">
+          {/* Table Header Controls */}
+          <div className="p-3 bg-muted/40 border-b border-[var(--color-border)] flex flex-wrap items-center justify-between gap-3">
+            <div className="flex items-center gap-2">
+              <span className="text-xs font-bold text-[var(--color-text-strong)]">Table Layout:</span>
+              <div className="inline-flex p-0.5 bg-[var(--color-surface)] rounded-lg border border-[var(--color-border)] text-xs font-semibold shadow-2xs">
+                <button
+                  onClick={() => setTableGrouping('voucher_summary')}
+                  className={`px-3 py-1 rounded-md text-xs transition-all ${
+                    tableGrouping === 'voucher_summary'
+                      ? 'bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 font-bold'
+                      : 'text-[var(--color-text-muted)] hover:text-[var(--color-text-strong)]'
+                  }`}
+                >
+                  📊 1 Row per Voucher (Summary Table)
+                </button>
+                <button
+                  onClick={() => setTableGrouping('detailed_lines')}
+                  className={`px-3 py-1 rounded-md text-xs transition-all ${
+                    tableGrouping === 'detailed_lines'
+                      ? 'bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 font-bold'
+                      : 'text-[var(--color-text-muted)] hover:text-[var(--color-text-strong)]'
+                  }`}
+                >
+                  📋 All Line Splits (Raw Ledger Lines)
+                </button>
+              </div>
+            </div>
+
+            {tableGrouping === 'voucher_summary' && (
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => {
+                    const allOpen: Record<string, boolean> = {};
+                    journalEntryGroups.forEach(g => { allOpen[g.reference] = true; });
+                    setExpandedVouchers(allOpen);
+                  }}
+                  className="text-[11px] font-semibold text-emerald-600 hover:underline"
+                >
+                  Expand All Splits
+                </button>
+                <span className="text-muted-foreground/40">|</span>
+                <button
+                  onClick={() => setExpandedVouchers({})}
+                  className="text-[11px] font-semibold text-muted-foreground hover:underline"
+                >
+                  Collapse All
+                </button>
+              </div>
+            )}
+          </div>
+
           <div className="overflow-x-auto">
             <table className="w-full text-left border-collapse text-xs">
               <thead>
                 <tr className="border-b border-[var(--color-border)] bg-violet-500/[0.05] dark:bg-violet-400/[0.07] text-[var(--color-text-muted)] font-bold uppercase tracking-wider text-[11px]">
-                  <th className="py-3 px-4 w-28">Date</th>
-                  <th className="py-3 px-4 w-32">Reference #</th>
-                  <th className="py-3 px-4 min-w-[200px]">GL Account</th>
-                  <th className="py-3 px-4 min-w-[240px]">Description / Memo</th>
+                  <th className="py-3 px-4 w-32">Date</th>
+                  <th className="py-3 px-4 w-40">Reference #</th>
+                  <th className="py-3 px-4 min-w-[200px]">GL Account(s)</th>
+                  <th className="py-3 px-4 min-w-[240px]">Description / Narration</th>
                   <th className="py-3 px-4 w-28">Type</th>
                   <th className="py-3 px-4 text-right w-32">Debit (DR)</th>
                   <th className="py-3 px-4 text-right w-32">Credit (CR)</th>
@@ -1219,15 +1272,158 @@ export const GeneralLedgerView: React.FC<GeneralLedgerViewProps> = ({ activeEnti
                       />
                     </td>
                   </tr>
+                ) : tableGrouping === 'voucher_summary' ? (
+                  /* ─── 1 Row per Voucher Summary Table (No Duplication) ─── */
+                  journalEntryGroups.map((entry) => {
+                    const isExpanded = !!expandedVouchers[entry.reference];
+                    const isRev = entry.isReversal;
+                    const isCancelled = entry.isCancelled;
+                    const originalRef = isRev && entry.reference ? entry.reference.replace('REV-', '') : null;
+                    const distinctAccountCodes = Array.from(new Set(entry.lines.map(l => l.accountCode).filter(Boolean)));
+
+                    return (
+                      <React.Fragment key={entry.reference}>
+                        <tr
+                          onClick={() => setExpandedVouchers(prev => ({ ...prev, [entry.reference]: !prev[entry.reference] }))}
+                          className={`cursor-pointer transition-colors ${
+                            isRev
+                              ? 'bg-rose-500/[0.04] dark:bg-rose-500/[0.07] hover:bg-rose-500/[0.09]'
+                              : isCancelled
+                              ? 'bg-amber-500/[0.03] dark:bg-amber-500/[0.06] hover:bg-amber-500/[0.09]'
+                              : 'hover:bg-[var(--color-surface-muted)]/60'
+                          }`}
+                        >
+                          <td className="py-3 px-4 font-mono text-[11px] text-[var(--color-text-muted)]">
+                            <div className="flex items-center gap-1.5">
+                              {isExpanded ? (
+                                <ChevronDown className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+                              ) : (
+                                <ChevronRight className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
+                              )}
+                              <span>{entry.date?.slice(0, 10) || '—'}</span>
+                            </div>
+                          </td>
+                          <td className="py-3 px-4">
+                            {isRev ? (
+                              <div className="flex flex-col gap-0.5">
+                                <div className="flex items-center gap-1.5 flex-wrap">
+                                  <span className="px-1.5 py-0.5 rounded bg-rose-500/15 text-rose-600 dark:text-rose-400 border border-rose-500/30 text-[9px] font-black tracking-wider uppercase">
+                                    REVERSAL
+                                  </span>
+                                  <span className="font-mono font-bold text-rose-600 dark:text-rose-400 text-xs">
+                                    {entry.reference}
+                                  </span>
+                                </div>
+                                {originalRef && (
+                                  <span className="text-[10px] text-[var(--color-text-muted)] font-mono">
+                                    Reverses: <strong className="text-[var(--color-text-strong)]">{originalRef}</strong>
+                                  </span>
+                                )}
+                              </div>
+                            ) : isCancelled ? (
+                              <div className="flex flex-col gap-0.5">
+                                <div className="flex items-center gap-1.5 flex-wrap">
+                                  <span className="px-1.5 py-0.5 rounded bg-amber-500/15 text-amber-600 dark:text-amber-400 border border-amber-500/30 text-[9px] font-black tracking-wider uppercase">
+                                    CANCELLED
+                                  </span>
+                                  <span className="font-mono font-bold text-blue-600 dark:text-blue-400 text-xs">
+                                    {entry.reference}
+                                  </span>
+                                </div>
+                                <span className="text-[10px] text-amber-600 dark:text-amber-400 font-medium">
+                                  Reversal: REV-{entry.reference}
+                                </span>
+                              </div>
+                            ) : (
+                              <span className="font-mono font-bold text-blue-600 text-xs">
+                                {entry.reference || '—'}
+                              </span>
+                            )}
+                          </td>
+                          <td className="py-3 px-4">
+                            <div className="flex items-center gap-1.5 flex-wrap">
+                              <span className="px-1.5 py-0.5 rounded bg-muted text-[10px] font-mono font-bold text-[var(--color-text-muted)] border border-border">
+                                {entry.lines.length} splits
+                              </span>
+                              <span className="font-mono text-xs text-[var(--color-text-strong)]">
+                                {distinctAccountCodes.slice(0, 3).join(', ')}
+                                {distinctAccountCodes.length > 3 && ` +${distinctAccountCodes.length - 3}`}
+                              </span>
+                            </div>
+                          </td>
+                          <td className="py-3 px-4 text-xs text-[var(--color-text)]">
+                            <div className={isRev ? 'font-medium text-rose-700 dark:text-rose-300' : ''}>
+                              {entry.description || '—'}
+                            </div>
+                          </td>
+                          <td className="py-3 px-4">
+                            <span className={`px-2 py-0.5 rounded-md text-[10px] font-semibold border ${
+                              isRev 
+                                ? 'bg-rose-500/10 text-rose-600 border-rose-500/20' 
+                                : isCancelled 
+                                ? 'bg-amber-500/10 text-amber-600 border-amber-500/20' 
+                                : 'bg-[var(--color-surface-muted)] text-[var(--color-text-muted)] border-[var(--color-border)]'
+                            }`}>
+                              {isRev ? 'Reversal' : entry.transactionType || 'Journal'}
+                            </span>
+                          </td>
+                          <td className="py-3 px-4 text-right font-mono font-bold text-emerald-600">
+                            {money(entry.totalDebit)}
+                          </td>
+                          <td className="py-3 px-4 text-right font-mono font-bold text-rose-600">
+                            {money(entry.totalCredit)}
+                          </td>
+                        </tr>
+
+                        {/* Expanded Split Account Rows */}
+                        {isExpanded && entry.lines.map((l, lIdx) => (
+                          <tr
+                            key={`${entry.reference}-split-${l.accountId}-${lIdx}`}
+                            className="bg-muted/15 hover:bg-muted/25 text-[11px] border-l-4 border-l-emerald-500/40"
+                          >
+                            <td className="py-2 px-4 font-mono text-[10px] text-muted-foreground pl-8">
+                              ↳ Line #{lIdx + 1}
+                            </td>
+                            <td className="py-2 px-4 font-mono text-[10px] text-muted-foreground">
+                              {l.memo || entry.reference}
+                            </td>
+                            <td className="py-2 px-4">
+                              <div className="flex items-center gap-1.5">
+                                <span className="font-mono font-bold text-xs text-foreground">
+                                  {l.accountCode}
+                                </span>
+                                <span className="text-muted-foreground">
+                                  — {l.accountName}
+                                </span>
+                              </div>
+                            </td>
+                            <td className="py-2 px-4 text-muted-foreground italic">
+                              {l.memo || l.description || '—'}
+                            </td>
+                            <td className="py-2 px-4 text-muted-foreground text-[10px]">
+                              {l.debit > 0 ? 'DR' : 'CR'}
+                            </td>
+                            <td className="py-2 px-4 text-right font-mono font-medium text-emerald-600">
+                              {l.debit > 0 ? money(l.debit) : '—'}
+                            </td>
+                            <td className="py-2 px-4 text-right font-mono font-medium text-rose-600">
+                              {l.credit > 0 ? money(l.credit) : '—'}
+                            </td>
+                          </tr>
+                        ))}
+                      </React.Fragment>
+                    );
+                  })
                 ) : (
-                  filtered.map((l) => {
+                  /* ─── Detailed Line Splits View ─── */
+                  filtered.map((l, idx) => {
                     const isRev = l.reference?.startsWith('REV-') || l.description?.toLowerCase().includes('reversal');
                     const isCancelled = l.reference && reversedRefsSet.has(l.reference);
                     const originalRef = isRev && l.reference ? l.reference.replace('REV-', '') : null;
 
                     return (
                       <tr 
-                        key={l.id} 
+                        key={`${l.id}-${l.accountId}-${idx}`} 
                         className={`transition-colors ${
                           isRev 
                             ? 'bg-rose-500/[0.04] dark:bg-rose-500/[0.07] hover:bg-rose-500/[0.08]' 
@@ -1383,11 +1579,11 @@ export const GeneralLedgerView: React.FC<GeneralLedgerViewProps> = ({ activeEnti
                     <div className="space-y-1.5 max-h-48 overflow-y-auto">
                       {group.lines
                         .filter((l) => l.debit > 0)
-                        .map((l) => {
+                        .map((l, idx) => {
                           const isRev = l.reference?.startsWith('REV-');
                           const isCancelled = l.reference && reversedRefsSet.has(l.reference);
                           return (
-                            <div key={l.id} className={`flex justify-between text-[11px] font-mono py-0.5 px-1 rounded ${isRev ? 'bg-rose-500/10' : isCancelled ? 'bg-amber-500/10' : ''}`}>
+                            <div key={`${l.id}-${l.accountId}-${idx}`} className={`flex justify-between text-[11px] font-mono py-0.5 px-1 rounded ${isRev ? 'bg-rose-500/10' : isCancelled ? 'bg-amber-500/10' : ''}`}>
                               <span className="text-[var(--color-text-muted)] truncate max-w-[130px] flex items-center gap-1" title={l.description}>
                                 {isRev && <span className="text-[8px] font-black text-rose-600 bg-rose-500/20 px-1 rounded">REV</span>}
                                 {isCancelled && <span className="text-[8px] font-black text-amber-600 bg-amber-500/20 px-1 rounded">VOID</span>}
@@ -1409,11 +1605,11 @@ export const GeneralLedgerView: React.FC<GeneralLedgerViewProps> = ({ activeEnti
                     <div className="space-y-1.5 max-h-48 overflow-y-auto">
                       {group.lines
                         .filter((l) => l.credit > 0)
-                        .map((l) => {
+                        .map((l, idx) => {
                           const isRev = l.reference?.startsWith('REV-');
                           const isCancelled = l.reference && reversedRefsSet.has(l.reference);
                           return (
-                            <div key={l.id} className={`flex justify-between text-[11px] font-mono py-0.5 px-1 rounded ${isRev ? 'bg-rose-500/10' : isCancelled ? 'bg-amber-500/10' : ''}`}>
+                            <div key={`${l.id}-${l.accountId}-${idx}`} className={`flex justify-between text-[11px] font-mono py-0.5 px-1 rounded ${isRev ? 'bg-rose-500/10' : isCancelled ? 'bg-amber-500/10' : ''}`}>
                               <span className="text-[var(--color-text-muted)] truncate max-w-[130px] flex items-center gap-1" title={l.description}>
                                 {isRev && <span className="text-[8px] font-black text-rose-600 bg-rose-500/20 px-1 rounded">REV</span>}
                                 {isCancelled && <span className="text-[8px] font-black text-amber-600 bg-amber-500/20 px-1 rounded">VOID</span>}
