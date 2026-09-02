@@ -18,6 +18,7 @@ import { getGlobalNextInvoiceNumber, formatInvoiceNumber } from './lib/invoiceNu
 import { CompactTaxSelect } from './components/CompactTaxSelect'
 import { CompactDiscountTypeSelect } from './components/CompactDiscountTypeSelect'
 import { CompactProductSelect } from './components/CompactProductSelect'
+import { CompactSelect } from './components/CompactSelect'
 
 const statusStyles: Record<string, { label: string; hex: string }> = {
   Draft: { label: 'Draft', hex: '#94a3b8' },
@@ -1101,18 +1102,19 @@ export const SalesWorkspace: React.FC<{ activeEntityId: string; entities?: any[]
                         <label className="erp-form-label">
                           <span className="text-rose-500 font-bold mr-1">*</span> Customer Account
                         </label>
-                        <select
+                        <CompactSelect
                           value={form.customerId}
-                          onChange={e => setForm({ ...form, customerId: e.target.value })}
-                          className="erp-form-select font-semibold"
-                        >
-                          <option value="">Select a customer...</option>
-                          {customers.map((c: any) => (
-                            <option key={c.id} value={c.id}>
-                              {c.name} {c.customerNumber ? `(${c.customerNumber})` : ''} {c.creditLimit ? `— Limit: ${money(c.creditLimit, c.currencyCode || form.currencyCode)}` : ''}
-                            </option>
-                          ))}
-                        </select>
+                          onChange={v => setForm({ ...form, customerId: v })}
+                          placeholder="Select a customer..."
+                          searchPlaceholder="Search customer by name or code..."
+                          options={customers.map((c: any) => ({
+                            value: c.id,
+                            label: c.name,
+                            badge: c.customerNumber || undefined,
+                            sublabel: c.creditLimit ? `Limit: ${money(c.creditLimit, c.currencyCode || form.currencyCode)}` : undefined,
+                          }))}
+                          className="h-10 text-xs font-semibold"
+                        />
 
                         {selectedCustomer && (
                           <div className={`mt-3 p-4 rounded-xl border text-xs transition-all ${
@@ -1551,37 +1553,43 @@ export const SalesWorkspace: React.FC<{ activeEntityId: string; entities?: any[]
               <label className="block text-xs font-semibold text-[var(--color-text-strong)] mb-1.5">
                 Accounts Receivable Account
               </label>
-              <select
+              <CompactSelect
                 value={postForm.arAccId}
-                onChange={e => setPostForm({ ...postForm, arAccId: e.target.value })}
-                className="w-full h-10 px-3 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] text-xs text-[var(--color-text-strong)] outline-none"
-              >
-                <option value="">Default (Customer Receivables 12000)</option>
-                {((Array.isArray(accounts) ? accounts : []).filter((a: any) => a && (a.type === 'Asset' || a.type === 0 || String(a.type).toLowerCase() === 'asset' || a.code?.startsWith('1'))).length > 0
+                onChange={v => setPostForm({ ...postForm, arAccId: v })}
+                placeholder="Default (Customer Receivables 12000)"
+                searchPlaceholder="Search AR account..."
+                clearLabel="Default (Customer Receivables 12000)"
+                options={((Array.isArray(accounts) ? accounts : []).filter((a: any) => a && (a.type === 'Asset' || a.type === 0 || String(a.type).toLowerCase() === 'asset' || a.code?.startsWith('1'))).length > 0
                   ? (Array.isArray(accounts) ? accounts : []).filter((a: any) => a && (a.type === 'Asset' || a.type === 0 || String(a.type).toLowerCase() === 'asset' || a.code?.startsWith('1')))
                   : (Array.isArray(accounts) ? accounts : [])
-                ).map((a: any) => (
-                  <option key={a?.id || a?.code} value={a?.id}>{a?.code} — {a?.name}</option>
-                ))}
-              </select>
+                ).map((a: any) => ({
+                  value: a?.id,
+                  label: `${a?.code} — ${a?.name}`,
+                  badge: 'Asset'
+                }))}
+                className="h-10 text-xs"
+              />
             </div>
             <div>
               <label className="block text-xs font-semibold text-[var(--color-text-strong)] mb-1.5">
                 Revenue Account
               </label>
-              <select
+              <CompactSelect
                 value={postForm.revenueAccId}
-                onChange={e => setPostForm({ ...postForm, revenueAccId: e.target.value })}
-                className="w-full h-10 px-3 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] text-xs text-[var(--color-text-strong)] outline-none"
-              >
-                <option value="">Default (Sales Revenue 41100)</option>
-                {((Array.isArray(accounts) ? accounts : []).filter((a: any) => a && (a.type === 'Revenue' || a.type === 3 || String(a.type).toLowerCase() === 'revenue' || a.code?.startsWith('4'))).length > 0
+                onChange={v => setPostForm({ ...postForm, revenueAccId: v })}
+                placeholder="Default (Sales Revenue 41100)"
+                searchPlaceholder="Search Revenue account..."
+                clearLabel="Default (Sales Revenue 41100)"
+                options={((Array.isArray(accounts) ? accounts : []).filter((a: any) => a && (a.type === 'Revenue' || a.type === 3 || String(a.type).toLowerCase() === 'revenue' || a.code?.startsWith('4'))).length > 0
                   ? (Array.isArray(accounts) ? accounts : []).filter((a: any) => a && (a.type === 'Revenue' || a.type === 3 || String(a.type).toLowerCase() === 'revenue' || a.code?.startsWith('4')))
                   : (Array.isArray(accounts) ? accounts : [])
-                ).map((a: any) => (
-                  <option key={a?.id || a?.code} value={a?.id}>{a?.code} — {a?.name}</option>
-                ))}
-              </select>
+                ).map((a: any) => ({
+                  value: a?.id,
+                  label: `${a?.code} — ${a?.name}`,
+                  badge: 'Revenue'
+                }))}
+                className="h-10 text-xs"
+              />
             </div>
             <div className="flex gap-2.5 pt-2">
               <button

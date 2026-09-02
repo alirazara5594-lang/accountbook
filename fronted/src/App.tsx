@@ -636,16 +636,6 @@ export default function App() {
                   ))}
                 </select>
               </label>
-              {activeView === 'journal' && (
-                <button
-                  className="primary"
-                  onClick={() => document.getElementById('journal-form')?.scrollIntoView({ behavior: 'smooth' })}
-                  disabled={readOnly}
-                  style={readOnly ? { opacity: 0.5, cursor: 'not-allowed' } : undefined}
-                >
-                  ＋ New entry
-                </button>
-              )}
             </div>
           </header>
         </div>

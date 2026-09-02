@@ -7,6 +7,7 @@ import {
 import { useCoaStore, useExpenseClaimsStore } from './stores'
 import { useFormDraft } from './hooks/useFormDraft'
 import { DataToolbar } from '@/components/ui/data-toolbar'
+import { CompactSelect } from './components/CompactSelect'
 import { money } from '@/lib/currency'
 import type { Entity } from './EntitySettings'
 
@@ -454,16 +455,19 @@ export const ExpenseClaimsView: React.FC<{ activeEntityId: string; entities?: En
                     <label className="block text-xs font-semibold text-[var(--color-text-strong)] mb-1.5">
                       GL Expense Account (Optional)
                     </label>
-                    <select
+                    <CompactSelect
                       value={form.accountId}
-                      onChange={e => setForm({ ...form, accountId: e.target.value })}
-                      className="w-full h-10 px-3.5 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] text-xs text-[var(--color-text-strong)] focus:border-[var(--color-primary)] outline-none shadow-2xs"
-                    >
-                      <option value="">-- General Operating Expense --</option>
-                      {expenseAccounts.map(a => (
-                        <option key={a.id} value={a.id}>{a.code} — {a.name}</option>
-                      ))}
-                    </select>
+                      onChange={v => setForm({ ...form, accountId: v })}
+                      placeholder="-- General Operating Expense --"
+                      searchPlaceholder="Search expense account..."
+                      clearLabel="-- General Operating Expense --"
+                      options={expenseAccounts.map(a => ({
+                        value: a.id,
+                        label: `${a.code} — ${a.name}`,
+                        badge: 'Expense'
+                      }))}
+                      className="h-10 text-xs"
+                    />
                   </div>
 
                   <div className="md:col-span-2">

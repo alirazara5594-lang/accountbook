@@ -167,7 +167,20 @@ export default function TopHeader(props: Props) {
   if (inactiveAccounts.length) alerts.push({ icon: <Landmark size={14} />, label: `${inactiveAccounts.length} inactive account${inactiveAccounts.length > 1 ? 's' : ''}`, sub: 'Check chart of accounts', page: 'Accounting.Chart of Accounts' });
 
   const quickActions: { icon: ReactNode; label: string; action: () => void }[] = [
-    { icon: <ClipboardList size={14} />, label: 'New Journal Entry', action: () => { if (page === 'Accounting.Journal Entries') { document.getElementById('journal-form')?.scrollIntoView({ behavior: 'smooth' }); } else { setPage('Accounting.Journal Entries'); } } },
+    { icon: <ClipboardList size={14} />, label: 'New Journal Entry', action: () => { 
+      if (page === 'Accounting.Journal Entries') { 
+        const btn = document.getElementById('journal-form');
+        if (btn) btn.click();
+        else window.dispatchEvent(new CustomEvent('open-new-journal-entry'));
+      } else { 
+        setPage('Accounting.Journal Entries'); 
+        setTimeout(() => {
+          const btn = document.getElementById('journal-form');
+          if (btn) btn.click();
+          else window.dispatchEvent(new CustomEvent('open-new-journal-entry'));
+        }, 200);
+      } 
+    } },
     { icon: <Receipt size={14} />, label: 'New Invoice', action: () => setPage('Sales & Customers.Sales Invoices') },
     { icon: <FileText size={14} />, label: 'New Vendor Bill', action: () => setPage('Procurement.Bills') },
     { icon: <Users size={14} />, label: 'New Customer', action: () => setPage('Sales & Customers.Customers') },

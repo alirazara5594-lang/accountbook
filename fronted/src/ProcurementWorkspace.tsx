@@ -16,6 +16,7 @@ import { money } from './lib/currency';
 import { getActiveTaxCodes } from './lib/taxLocalization';
 import { CompactTaxSelect } from './components/CompactTaxSelect';
 import { CompactProductSelect } from './components/CompactProductSelect';
+import { CompactSelect } from './components/CompactSelect';
 
 type Tab = 'pr' | 'rfq' | 'compare' | 'po' | 'grn' | 'bills' | 'matching' | 'transfers';
 
@@ -24,6 +25,21 @@ const destinationBadge: Record<string, { label: string; color: string }> = {
   ManufacturingMaterial: { label: 'Mfg Raw Material', color: 'bg-emerald-100 text-emerald-800 border-emerald-200' },
   FixedAsset: { label: 'Fixed Asset', color: 'bg-purple-100 text-purple-800 border-purple-200' },
   DirectExpense: { label: 'Direct Expense', color: 'bg-orange-100 text-orange-800 border-orange-200' }
+};
+
+const getNextBillNumber = (allBills: any[] = []): string => {
+  let maxSeq = 0;
+  for (const b of allBills) {
+    const numStr = b.billNumber || b.reference || '';
+    const match = numStr.match(/BILL-(\d+)/i);
+    if (match) {
+      const num = parseInt(match[1], 10);
+      if (!isNaN(num) && num > maxSeq && num < 1000000) {
+        maxSeq = num;
+      }
+    }
+  }
+  return `BILL-${String(maxSeq + 1).padStart(5, '0')}`;
 };
 
 export const ProcurementWorkspace: React.FC<{ activeEntityId: string; entities?: any[] }> = ({ activeEntityId }) => {
@@ -234,7 +250,7 @@ export const ProcurementWorkspace: React.FC<{ activeEntityId: string; entities?:
     const vendor = vendors.find(v => v.id === po?.vendorId);
     const body = {
       purchaseOrderId: grnForm.purchaseOrderId,
-      purchaseOrderNumber: po?.orderNumber || 'PO-0001',
+      purchaseOrderNumber: po?.orderNumber || po?.poNumber || 'PO-00001',
       vendorId: po?.vendorId || '',
       vendorName: vendor?.name || 'Vendor',
       deliveryChallanNumber: grnForm.deliveryChallanNumber,
@@ -286,7 +302,7 @@ export const ProcurementWorkspace: React.FC<{ activeEntityId: string; entities?:
     setBillForm({
       purchaseOrderId: po.id,
       vendorId: vId,
-      billNumber: `BILL-${Math.floor(1000 + Math.random() * 9000)}`,
+      billNumber: getNextBillNumber(bills),
       vendorInvoiceNumber: `INV-SUPP-${Math.floor(10000 + Math.random() * 90000)}`,
       date: new Date().toISOString().split('T')[0],
       dueDate: new Date(Date.now() + 30 * 86400000).toISOString().split('T')[0]
@@ -803,10 +819,20 @@ export const ProcurementWorkspace: React.FC<{ activeEntityId: string; entities?:
                         <option value="DirectExpense">Direct GL Expense</option>
                       </select>
                       {l.destination === 'DirectExpense' && (
-                        <select className="border rounded-lg p-1.5 flex-1" value={l.expenseAccountId} onChange={e => { const u = [...prLines]; u[i].expenseAccountId = e.target.value; setPrLines(u); }}>
-                          <option value="">-- Select GL Expense Account --</option>
-                          {accounts.filter(a => a.type === 'Expense').map(a => <option key={a.id} value={a.id}>{a.code} - {a.name}</option>)}
-                        </select>
+                        <div className="flex-1 min-w-[200px]">
+                          <CompactSelect
+                            value={l.expenseAccountId}
+                            onChange={v => { const u = [...prLines]; u[i].expenseAccountId = v; setPrLines(u); }}
+                            placeholder="-- Select GL Expense Account --"
+                            searchPlaceholder="Search expense account..."
+                            options={accounts.filter(a => a.type === 'Expense').map(a => ({
+                              value: a.id,
+                              label: `${a.code} - ${a.name}`,
+                              badge: 'Expense'
+                            }))}
+                            className="h-8 text-xs"
+                          />
+                        </div>
                       )}
                     </div>
                   </div>
@@ -848,10 +874,18 @@ export const ProcurementWorkspace: React.FC<{ activeEntityId: string; entities?:
             <div className="space-y-4 text-sm">
               <div>
                 <label className="block font-medium text-gray-700 mb-1">* Select Vendor</label>
-                <select className="w-full border rounded-xl p-2.5" value={quoteForm.vendorId} onChange={e => setQuoteForm({ ...quoteForm, vendorId: e.target.value })}>
-                  <option value="">-- Select Vendor --</option>
-                  {vendors.map(v => <option key={v.id} value={v.id}>{v.name}</option>)}
-                </select>
+                <CompactSelect
+                  value={quoteForm.vendorId}
+                  onChange={v => setQuoteForm({ ...quoteForm, vendorId: v })}
+                  placeholder="-- Select Vendor --"
+                  searchPlaceholder="Search vendor..."
+                  options={vendors.map(v => ({
+                    value: v.id,
+                    label: v.name,
+                    badge: v.vendorNumber || undefined
+                  }))}
+                  className="h-10 text-xs"
+                />
               </div>
               <div>
                 <label className="block font-medium text-gray-700 mb-1">Delivery Lead Time (Days)</label>
@@ -943,26 +977,43 @@ export const ProcurementWorkspace: React.FC<{ activeEntityId: string; entities?:
             </div>
 
             <div className="form-grid">
-              <label>
-                * Select Vendor
-                <select required value={billForm.vendorId} onChange={e => setBillForm({ ...billForm, vendorId: e.target.value })}>
-                  <option value="">-- Select Vendor --</option>
-                  {vendors.map(v => <option key={v.id} value={v.id}>{v.name}</option>)}
-                </select>
-              </label>
+              <div>
+                <label className="block text-xs font-semibold text-gray-700 mb-1">* Select Vendor</label>
+                <CompactSelect
+                  value={billForm.vendorId}
+                  onChange={v => setBillForm({ ...billForm, vendorId: v })}
+                  placeholder="-- Select Vendor --"
+                  searchPlaceholder="Search vendor..."
+                  options={vendors.map(v => ({
+                    value: v.id,
+                    label: v.name,
+                    badge: v.vendorNumber || undefined
+                  }))}
+                  className="h-10 text-xs font-semibold"
+                />
+              </div>
 
               <label>
                 * Supplier Invoice Number
                 <input required placeholder="e.g. INV-2026-991" value={billForm.vendorInvoiceNumber} onChange={e => setBillForm({ ...billForm, vendorInvoiceNumber: e.target.value })} />
               </label>
 
-              <label>
-                Linked Purchase Order
-                <select value={billForm.purchaseOrderId} onChange={e => setBillForm({ ...billForm, purchaseOrderId: e.target.value })}>
-                  <option value="">-- Direct Bill (No PO) --</option>
-                  {orders.map(p => <option key={p.id} value={p.id}>{p.orderNumber || p.poNumber}</option>)}
-                </select>
-              </label>
+              <div>
+                <label className="block text-xs font-semibold text-gray-700 mb-1">Linked Purchase Order</label>
+                <CompactSelect
+                  value={billForm.purchaseOrderId}
+                  onChange={v => setBillForm({ ...billForm, purchaseOrderId: v })}
+                  placeholder="-- Direct Bill (No PO) --"
+                  searchPlaceholder="Search purchase order..."
+                  clearLabel="-- Direct Bill (No PO) --"
+                  options={orders.map(p => ({
+                    value: p.id,
+                    label: p.orderNumber || p.poNumber || 'PO',
+                    badge: 'PO'
+                  }))}
+                  className="h-10 text-xs"
+                />
+              </div>
 
               <label>
                 * Bill Date
@@ -1091,17 +1142,33 @@ export const ProcurementWorkspace: React.FC<{ activeEntityId: string; entities?:
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="block font-medium text-gray-700 mb-1">* Source Warehouse</label>
-                  <select className="w-full border rounded-xl p-2" value={transferForm.sourceWarehouseId} onChange={e => setTransferForm({ ...transferForm, sourceWarehouseId: e.target.value })}>
-                    <option value="">-- Select Source --</option>
-                    {warehouses.map(w => <option key={w.id} value={w.id}>{w.name}</option>)}
-                  </select>
+                  <CompactSelect
+                    value={transferForm.sourceWarehouseId}
+                    onChange={v => setTransferForm({ ...transferForm, sourceWarehouseId: v })}
+                    placeholder="-- Select Source --"
+                    searchPlaceholder="Search warehouse..."
+                    options={warehouses.map(w => ({
+                      value: w.id,
+                      label: w.name,
+                      badge: 'Warehouse'
+                    }))}
+                    className="h-10 text-xs"
+                  />
                 </div>
                 <div>
                   <label className="block font-medium text-gray-700 mb-1">* Target Warehouse</label>
-                  <select className="w-full border rounded-xl p-2" value={transferForm.destinationWarehouseId} onChange={e => setTransferForm({ ...transferForm, destinationWarehouseId: e.target.value })}>
-                    <option value="">-- Select Target --</option>
-                    {warehouses.map(w => <option key={w.id} value={w.id}>{w.name}</option>)}
-                  </select>
+                  <CompactSelect
+                    value={transferForm.destinationWarehouseId}
+                    onChange={v => setTransferForm({ ...transferForm, destinationWarehouseId: v })}
+                    placeholder="-- Select Target --"
+                    searchPlaceholder="Search warehouse..."
+                    options={warehouses.map(w => ({
+                      value: w.id,
+                      label: w.name,
+                      badge: 'Warehouse'
+                    }))}
+                    className="h-10 text-xs"
+                  />
                 </div>
               </div>
               <div>

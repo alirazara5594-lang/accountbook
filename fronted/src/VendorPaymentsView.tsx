@@ -11,6 +11,7 @@ import { DataToolbar } from '@/components/ui/data-toolbar'
 import { KpiCard, KpiGrid } from '@/components/ui/kpi-card'
 import { EmptyState, TableSkeleton } from './components/ui/empty-state'
 import { StatusChip } from './components/ui/status-chip'
+import { CompactSelect } from './components/CompactSelect'
 import { money } from '@/lib/currency'
 import type { Entity } from './EntitySettings'
 import jsPDF from 'jspdf'
@@ -539,36 +540,37 @@ export const VendorPaymentsView: React.FC<VendorPaymentsViewProps> = ({
                     <label className="block text-xs font-semibold text-[var(--color-text-strong)] mb-1.5">
                       <span className="text-rose-500 font-bold mr-1">*</span> Vendor / Supplier
                     </label>
-                    <select
+                    <CompactSelect
                       value={form.vendorId}
-                      onChange={e => onVendorChange(e.target.value)}
-                      className="w-full h-10 px-3.5 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] text-xs text-[var(--color-text-strong)] focus:border-[var(--color-primary)] outline-none shadow-2xs"
-                    >
-                      <option value="">Select a vendor...</option>
-                      {vendors.map((v: any) => (
-                        <option key={v.id} value={v.id}>
-                          {v.name} {v.vendorNumber ? `(${v.vendorNumber})` : ''}
-                        </option>
-                      ))}
-                    </select>
+                      onChange={v => onVendorChange(v)}
+                      placeholder="Select a vendor..."
+                      searchPlaceholder="Search vendor by name or code..."
+                      options={vendors.map((v: any) => ({
+                        value: v.id,
+                        label: v.name,
+                        badge: v.vendorNumber || undefined,
+                      }))}
+                      className="h-10 text-xs font-semibold"
+                    />
                   </div>
 
                   <div>
                     <label className="block text-xs font-semibold text-[var(--color-text-strong)] mb-1.5">
                       Apply to Open Bill (Optional)
                     </label>
-                    <select
+                    <CompactSelect
                       value={form.billId}
-                      onChange={e => onBillChange(e.target.value)}
-                      className="w-full h-10 px-3.5 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] text-xs text-[var(--color-text-strong)] focus:border-[var(--color-primary)] outline-none shadow-2xs"
-                    >
-                      <option value="">-- Direct Advance / On-Account Payment --</option>
-                      {bills.map(b => (
-                        <option key={b.id} value={b.id}>
-                          {b.billNumber} — Due: {money(b.amountDue)}
-                        </option>
-                      ))}
-                    </select>
+                      onChange={v => onBillChange(v)}
+                      placeholder="-- Direct Advance / On-Account Payment --"
+                      searchPlaceholder="Search bill by number..."
+                      clearLabel="-- Direct Advance / On-Account Payment --"
+                      options={bills.map(b => ({
+                        value: b.id,
+                        label: b.billNumber,
+                        sublabel: `Due: ${money(b.amountDue)}`,
+                      }))}
+                      className="h-10 text-xs font-semibold"
+                    />
                   </div>
 
                   <div>
@@ -591,18 +593,18 @@ export const VendorPaymentsView: React.FC<VendorPaymentsViewProps> = ({
                     <label className="block text-xs font-semibold text-[var(--color-text-strong)] mb-1.5">
                       <span className="text-rose-500 font-bold mr-1">*</span> Withdraw From Bank / Cash Account
                     </label>
-                    <select
+                    <CompactSelect
                       value={form.withdrawFromAccountId}
-                      onChange={e => setForm({ ...form, withdrawFromAccountId: e.target.value })}
-                      className="w-full h-10 px-3.5 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] text-xs text-[var(--color-text-strong)] focus:border-[var(--color-primary)] outline-none shadow-2xs"
-                    >
-                      <option value="">Select funding account...</option>
-                      {withdrawAccounts.map(acc => (
-                        <option key={acc.id} value={acc.id}>
-                          {acc.code} — {acc.name}
-                        </option>
-                      ))}
-                    </select>
+                      onChange={v => setForm({ ...form, withdrawFromAccountId: v })}
+                      placeholder="Select funding account..."
+                      searchPlaceholder="Search bank / cash account..."
+                      options={withdrawAccounts.map(acc => ({
+                        value: acc.id,
+                        label: `${acc.code} — ${acc.name}`,
+                        badge: 'Bank/Cash'
+                      }))}
+                      className="h-10 text-xs font-semibold"
+                    />
                   </div>
 
                   <div>

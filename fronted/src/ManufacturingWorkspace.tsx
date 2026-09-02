@@ -16,6 +16,7 @@ import ExportDropdown from './components/ExportDropdown';
 import { StatusChip } from './components/ui/status-chip';
 import { EmptyState } from './components/ui/empty-state';
 import { CompactProductSelect } from './components/CompactProductSelect';
+import { CompactSelect } from './components/CompactSelect';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 
@@ -940,17 +941,18 @@ export const ManufacturingWorkspace: React.FC<{ activeEntityId: string; entities
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div className="space-y-1">
                   <label className="font-bold text-[var(--color-text-strong)]">BOM Recipe</label>
-                  <select
-                    required
+                  <CompactSelect
                     value={woForm.bomId}
-                    onChange={e => setWoForm(f => ({ ...f, bomId: e.target.value }))}
-                    className="w-full px-3 py-2 bg-[var(--color-surface-muted)] border border-[var(--color-border)] rounded-xl outline-none font-semibold"
-                  >
-                    <option value="">Select BOM Recipe...</option>
-                    {boms.map(b => (
-                      <option key={b.id} value={b.id}>{b.finishedProductName} ({b.bomNumber})</option>
-                    ))}
-                  </select>
+                    onChange={v => setWoForm(f => ({ ...f, bomId: v }))}
+                    placeholder="Select BOM Recipe..."
+                    searchPlaceholder="Search BOM recipe..."
+                    options={boms.map(b => ({
+                      value: b.id,
+                      label: b.finishedProductName,
+                      badge: b.bomNumber
+                    }))}
+                    className="h-10 text-xs font-semibold"
+                  />
                 </div>
 
                 <div className="space-y-1">
@@ -986,16 +988,19 @@ export const ManufacturingWorkspace: React.FC<{ activeEntityId: string; entities
 
                   <div className="space-y-1">
                     <label className="font-bold text-[var(--color-text-strong)]">Assign Plant Machine (from Fixed Assets)</label>
-                    <select
+                    <CompactSelect
                       value={woForm.machineAssetId}
-                      onChange={e => setWoForm(f => ({ ...f, machineAssetId: e.target.value }))}
-                      className="w-full px-3 py-2 bg-[var(--color-surface)] border border-[var(--color-border)] rounded-xl outline-none"
-                    >
-                      <option value="">Select Machine...</option>
-                      {machines.map(m => (
-                        <option key={m.id} value={m.id}>{m.assetTag} — {m.name} ({m.machineHealth || 'Operating'})</option>
-                      ))}
-                    </select>
+                      onChange={v => setWoForm(f => ({ ...f, machineAssetId: v }))}
+                      placeholder="Select Machine..."
+                      searchPlaceholder="Search machine by tag or name..."
+                      clearLabel="-- No Machine Assigned --"
+                      options={machines.map(m => ({
+                        value: m.id,
+                        label: `${m.assetTag} — ${m.name}`,
+                        badge: String(m.machineHealth || 'Operating')
+                      }))}
+                      className="h-10 text-xs"
+                    />
                   </div>
                 </div>
               </div>
@@ -1004,32 +1009,34 @@ export const ManufacturingWorkspace: React.FC<{ activeEntityId: string; entities
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div className="space-y-1">
                   <label className="font-bold text-[var(--color-text-strong)]">Raw Materials Source Warehouse</label>
-                  <select
-                    required
+                  <CompactSelect
                     value={woForm.rawMaterialWarehouseId}
-                    onChange={e => setWoForm(f => ({ ...f, rawMaterialWarehouseId: e.target.value }))}
-                    className="w-full px-3 py-2 bg-[var(--color-surface-muted)] border border-[var(--color-border)] rounded-xl outline-none"
-                  >
-                    <option value="">Select Warehouse...</option>
-                    {warehouses.map(w => (
-                      <option key={w.id} value={w.id}>{w.name}</option>
-                    ))}
-                  </select>
+                    onChange={v => setWoForm(f => ({ ...f, rawMaterialWarehouseId: v }))}
+                    placeholder="Select Warehouse..."
+                    searchPlaceholder="Search warehouse..."
+                    options={warehouses.map(w => ({
+                      value: w.id,
+                      label: w.name,
+                      badge: 'Warehouse'
+                    }))}
+                    className="h-10 text-xs"
+                  />
                 </div>
 
                 <div className="space-y-1">
                   <label className="font-bold text-[var(--color-text-strong)]">Finished Goods Target Warehouse</label>
-                  <select
-                    required
+                  <CompactSelect
                     value={woForm.finishedGoodsWarehouseId}
-                    onChange={e => setWoForm(f => ({ ...f, finishedGoodsWarehouseId: e.target.value }))}
-                    className="w-full px-3 py-2 bg-[var(--color-surface-muted)] border border-[var(--color-border)] rounded-xl outline-none"
-                  >
-                    <option value="">Select Warehouse...</option>
-                    {warehouses.map(w => (
-                      <option key={w.id} value={w.id}>{w.name}</option>
-                    ))}
-                  </select>
+                    onChange={v => setWoForm(f => ({ ...f, finishedGoodsWarehouseId: v }))}
+                    placeholder="Select Warehouse..."
+                    searchPlaceholder="Search warehouse..."
+                    options={warehouses.map(w => ({
+                      value: w.id,
+                      label: w.name,
+                      badge: 'Warehouse'
+                    }))}
+                    className="h-10 text-xs"
+                  />
                 </div>
               </div>
 

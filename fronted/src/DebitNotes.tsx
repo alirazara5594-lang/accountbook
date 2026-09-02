@@ -9,6 +9,7 @@ import { DataToolbar } from '@/components/ui/data-toolbar'
 import { KpiCard, KpiGrid } from '@/components/ui/kpi-card'
 import { EmptyState } from './components/ui/empty-state'
 import { StatusChip } from './components/ui/status-chip'
+import { CompactSelect } from './components/CompactSelect'
 import { money } from '@/lib/currency'
 
 interface DebitNoteItem {
@@ -28,6 +29,21 @@ const statusStyles: Record<string, { label: string; hex: string }> = {
   Draft: { label: 'Draft', hex: '#94a3b8' },
   Posted: { label: 'Posted', hex: '#10b981' },
   Void: { label: 'Void', hex: '#ef4444' }
+}
+
+const getNextDebitNoteNumber = (allNotes: DebitNoteItem[] = []): string => {
+  let maxSeq = 0
+  for (const n of allNotes) {
+    if (!n?.debitNoteNumber) continue
+    const match = n.debitNoteNumber.match(/DN-(\d+)/i)
+    if (match) {
+      const num = parseInt(match[1], 10)
+      if (!isNaN(num) && num > maxSeq && num < 1000000) {
+        maxSeq = num
+      }
+    }
+  }
+  return `DN-${String(maxSeq + 1).padStart(5, '0')}`
 }
 
 export const DebitNotes: React.FC<{ activeEntityId: string; entities?: any[] }> = ({
@@ -100,7 +116,7 @@ export const DebitNotes: React.FC<{ activeEntityId: string; entities?: any[] }> 
     const tax = parseFloat(form.taxAmount || '0')
     const newNote: DebitNoteItem = {
       id: `dn_${Date.now()}`,
-      debitNoteNumber: `DN-${Math.floor(1000 + Math.random() * 9000)}`,
+      debitNoteNumber: getNextDebitNoteNumber(notes),
       vendorId: form.vendorId,
       vendorName: vendor?.name || 'Vendor',
       date: form.date,
@@ -398,18 +414,18 @@ export const DebitNotes: React.FC<{ activeEntityId: string; entities?: any[] }> 
                     <label className="block text-xs font-semibold text-[var(--color-text-strong)] mb-1.5">
                       <span className="text-rose-500 font-bold mr-1">*</span> Vendor / Supplier
                     </label>
-                    <select
+                    <CompactSelect
                       value={form.vendorId}
-                      onChange={e => setForm({ ...form, vendorId: e.target.value })}
-                      className="w-full h-10 px-3.5 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] text-xs text-[var(--color-text-strong)] focus:border-[var(--color-primary)] outline-none shadow-2xs"
-                    >
-                      <option value="">Select vendor...</option>
-                      {vendors.map((v: any) => (
-                        <option key={v.id} value={v.id}>
-                          {v.name} {v.vendorNumber ? `(${v.vendorNumber})` : ''}
-                        </option>
-                      ))}
-                    </select>
+                      onChange={v => setForm({ ...form, vendorId: v })}
+                      placeholder="Select vendor..."
+                      searchPlaceholder="Search vendor by name or code..."
+                      options={vendors.map((v: any) => ({
+                        value: v.id,
+                        label: v.name,
+                        badge: v.vendorNumber || undefined,
+                      }))}
+                      className="h-10 text-xs font-semibold"
+                    />
                   </div>
 
                   <div>

@@ -4,6 +4,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Input } from '@/components/ui/input';
 import { ArrowDownLeft, Search, Plus } from 'lucide-react';
 import { DataToolbar } from '@/components/ui/data-toolbar';
+import { CompactSelect } from './components/CompactSelect';
 import type { Entity } from './EntitySettings';
 
 type PaymentMode = 'ACH' | 'Wire Transfer' | 'Cheque / Pay Order' | 'Credit Card' | 'Payment Gateway' | 'Direct Deposit';
@@ -29,7 +30,7 @@ const initialCustomerReceipts: CustomerReceiptRecord[] = [
   {
     id: 'cr-1',
     date: '2026-08-08',
-    reference: 'REC-1092',
+    reference: 'REC-00001',
     customerName: 'Apex Global Logistics USA',
     bankAccount: 'Standard Chartered (USD)',
     paymentMode: 'ACH',
@@ -40,7 +41,7 @@ const initialCustomerReceipts: CustomerReceiptRecord[] = [
   {
     id: 'cr-2',
     date: '2026-08-07',
-    reference: 'REC-1093',
+    reference: 'REC-00002',
     customerName: 'Crescent Textile Mills Pakistan',
     bankAccount: 'Habib Bank Limited (HBL)',
     paymentMode: 'Wire Transfer',
@@ -49,6 +50,21 @@ const initialCustomerReceipts: CustomerReceiptRecord[] = [
     status: 'Completed'
   }
 ];
+
+const getNextReceiptReference = (allReceipts: CustomerReceiptRecord[] = []): string => {
+  let maxSeq = 0;
+  for (const r of allReceipts) {
+    if (!r?.reference) continue;
+    const match = r.reference.match(/REC-(\d+)/i);
+    if (match) {
+      const num = parseInt(match[1], 10);
+      if (!isNaN(num) && num > maxSeq && num < 1000000) {
+        maxSeq = num;
+      }
+    }
+  }
+  return `REC-${String(maxSeq + 1).padStart(5, '0')}`;
+};
 
 export const CustomerReceiptsView: React.FC<CustomerReceiptsViewProps> = ({ activeEntityId, entities }) => {
   const currentEntity = entities.find(e => e.id === activeEntityId);
@@ -65,7 +81,7 @@ export const CustomerReceiptsView: React.FC<CustomerReceiptsViewProps> = ({ acti
     paymentMode: 'Wire Transfer' as PaymentMode,
     amount: '',
     currency: 'PKR',
-    reference: `REC-${Math.floor(1000 + Math.random() * 9000)}`
+    reference: getNextReceiptReference(initialCustomerReceipts)
   });
 
   const fetchCustomers = useCustomersStore((s) => s.fetchCustomers);
@@ -110,7 +126,7 @@ export const CustomerReceiptsView: React.FC<CustomerReceiptsViewProps> = ({ acti
     const amt = parseFloat(form.amount);
     if (isNaN(amt) || amt <= 0 || !form.customerName) return;
 
-    setReceipts(prev => [{
+    const updatedList = [{
       id: `cr-${Date.now()}`,
       date: new Date().toISOString().slice(0, 10),
       reference: form.reference,
@@ -119,9 +135,11 @@ export const CustomerReceiptsView: React.FC<CustomerReceiptsViewProps> = ({ acti
       paymentMode: form.paymentMode,
       amount: amt,
       currency: form.currency,
-      status: 'Completed'
-    }, ...prev]);
+      status: 'Completed' as const
+    }, ...receipts];
 
+    setReceipts(updatedList);
+    setForm(f => ({ ...f, reference: getNextReceiptReference(updatedList), amount: '' }));
     setIsModalOpen(false);
   };
 
@@ -215,27 +233,23 @@ export const CustomerReceiptsView: React.FC<CustomerReceiptsViewProps> = ({ acti
             <div className="form-grid">
               <div>
                 <label className="text-xs font-semibold text-slate-700 block mb-1">Select Customer (from Customer Management)</label>
-                <select
-                  required
+                <CompactSelect
                   value={form.customerName}
-                  onChange={e => setForm({ ...form, customerName: e.target.value })}
-                  className="w-full h-9 px-3 bg-white border border-slate-200 rounded-lg text-xs font-semibold text-slate-800 outline-none"
-                >
-                  {customers.length > 0 ? (
-                    customers.map(c => (
-                      <option key={c.id} value={c.name}>
-                        {c.customerNumber ? `${c.customerNumber} — ${c.name}` : c.name}
-                      </option>
-                    ))
-                  ) : (
-                    <>
-                      <option value="Apex Global Logistics USA">C-1001 — Apex Global Logistics USA</option>
-                      <option value="Crescent Textile Mills Pakistan">C-1002 — Crescent Textile Mills Pakistan</option>
-                      <option value="Gul Ahmed Energy Limited">C-1003 — Gul Ahmed Energy Limited</option>
-                      <option value="Indus Motor Company">C-1004 — Indus Motor Company</option>
-                    </>
-                  )}
-                </select>
+                  onChange={v => setForm({ ...form, customerName: v })}
+                  placeholder="Select Customer..."
+                  searchPlaceholder="Search customer by name or code..."
+                  options={customers.length > 0 ? customers.map(c => ({
+                    value: c.name,
+                    label: c.name,
+                    badge: c.customerNumber || undefined,
+                  })) : [
+                    { value: "Apex Global Logistics USA", label: "Apex Global Logistics USA", badge: "C-1001" },
+                    { value: "Crescent Textile Mills Pakistan", label: "Crescent Textile Mills Pakistan", badge: "C-1002" },
+                    { value: "Gul Ahmed Energy Limited", label: "Gul Ahmed Energy Limited", badge: "C-1003" },
+                    { value: "Indus Motor Company", label: "Indus Motor Company", badge: "C-1004" }
+                  ]}
+                  className="h-9 text-xs font-semibold"
+                />
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <div>
@@ -250,11 +264,18 @@ export const CustomerReceiptsView: React.FC<CustomerReceiptsViewProps> = ({ acti
                 </div>
                 <div>
                   <label className="text-xs font-semibold text-slate-700 block mb-1">Deposited Into Account</label>
-                  <select value={form.bankAccount} onChange={e => setForm({ ...form, bankAccount: e.target.value })} className="w-full h-9 px-3 bg-white border border-slate-200 rounded-lg text-xs">
-                    <option value="Habib Bank Limited (HBL)">Habib Bank Limited (HBL)</option>
-                    <option value="Standard Chartered (USD)">Standard Chartered (USD)</option>
-                    <option value="Meezan Bank Limited">Meezan Bank Limited</option>
-                  </select>
+                  <CompactSelect
+                    value={form.bankAccount}
+                    onChange={v => setForm({ ...form, bankAccount: v })}
+                    placeholder="Select Bank Account..."
+                    searchPlaceholder="Search bank account..."
+                    options={[
+                      { value: "Habib Bank Limited (HBL)", label: "Habib Bank Limited (HBL)" },
+                      { value: "Standard Chartered (USD)", label: "Standard Chartered (USD)" },
+                      { value: "Meezan Bank Limited", label: "Meezan Bank Limited" }
+                    ]}
+                    className="h-9 text-xs"
+                  />
                 </div>
               </div>
               <div className="grid grid-cols-2 gap-3">

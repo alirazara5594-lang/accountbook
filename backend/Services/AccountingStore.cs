@@ -515,13 +515,13 @@ public IReadOnlyList<EmployeeCompensation> EmployeeCompensations => _employeeCom
     public string NextVendorPaymentNumber()
     {
         var numbers = _vendorPayments.Select(p => p.PaymentNumber).Where(n => n.StartsWith("PAY-") && int.TryParse(n[4..], out _)).Select(n => int.Parse(n[4..])).DefaultIfEmpty(0);
-        return $"PAY-{(numbers.Max() + 1):D4}";
+        return $"PAY-{(numbers.Max() + 1):D5}";
     }
 
     public string NextFundTransferNumber()
     {
         var numbers = _fundTransfers.Select(t => t.TransferNumber).Where(n => n.StartsWith("TRF-") && int.TryParse(n[4..], out _)).Select(n => int.Parse(n[4..])).DefaultIfEmpty(0);
-        return $"TRF-{(numbers.Max() + 1):D4}";
+        return $"TRF-{(numbers.Max() + 1):D5}";
     }
 
     /// <summary>Returns the first active posting Cash/Bank account (child of 11100 or 11200) as default deposit/disbursement target.</summary>
@@ -1287,13 +1287,13 @@ public IReadOnlyList<EmployeeCompensation> EmployeeCompensations => _employeeCom
     public string NextBomNumber()
     {
         var numbers = _boms.Select(b => b.BomNumber).Where(n => n.StartsWith("BOM-") && int.TryParse(n[4..], out _)).Select(n => int.Parse(n[4..])).DefaultIfEmpty(0);
-        return $"BOM-{(numbers.Max() + 1):D4}";
+        return $"BOM-{(numbers.Max() + 1):D5}";
     }
 
     public string NextWorkOrderNumber()
     {
         var numbers = _workOrders.Select(w => w.WorkOrderNumber).Where(n => n.StartsWith("WO-") && int.TryParse(n[3..], out _)).Select(n => int.Parse(n[3..])).DefaultIfEmpty(0);
-        return $"WO-{(numbers.Max() + 1):D4}";
+        return $"WO-{(numbers.Max() + 1):D5}";
     }
 
     public BillOfMaterials CreateBom(BillOfMaterials bom)
@@ -1693,7 +1693,7 @@ public IReadOnlyList<EmployeeCompensation> EmployeeCompensations => _employeeCom
             if (string.IsNullOrWhiteSpace(pr.RequestNumber))
             {
                 var max = _prs.Select(p => p.RequestNumber).Where(n => n.StartsWith("PR-") && int.TryParse(n[3..], out _)).Select(n => int.Parse(n[3..])).DefaultIfEmpty(0).Max();
-                pr.RequestNumber = $"PR-{(max + 1):D4}";
+                pr.RequestNumber = $"PR-{(max + 1):D5}";
             }
             _prs.Add(pr);
             Persist();
@@ -1708,7 +1708,7 @@ public IReadOnlyList<EmployeeCompensation> EmployeeCompensations => _employeeCom
             if (string.IsNullOrWhiteSpace(rfq.RfqNumber))
             {
                 var max = _rfqs.Select(r => r.RfqNumber).Where(n => n.StartsWith("RFQ-") && int.TryParse(n[4..], out _)).Select(n => int.Parse(n[4..])).DefaultIfEmpty(0).Max();
-                rfq.RfqNumber = $"RFQ-{(max + 1):D4}";
+                rfq.RfqNumber = $"RFQ-{(max + 1):D5}";
             }
             _rfqs.Add(rfq);
             Persist();
@@ -1748,7 +1748,7 @@ public IReadOnlyList<EmployeeCompensation> EmployeeCompensations => _employeeCom
             var maxPo = _purchaseOrders.Select(p => p.PoNumber).Where(n => n.StartsWith("PO-") && int.TryParse(n[3..], out _)).Select(n => int.Parse(n[3..])).DefaultIfEmpty(0).Max();
             var po = new PurchaseOrder
             {
-                PoNumber = $"PO-{(maxPo + 1):D4}",
+                PoNumber = $"PO-{(maxPo + 1):D5}",
                 VendorId = quote.VendorId,
                 VendorQuoteId = quote.Id,
                 Date = DateOnly.FromDateTime(DateTime.Today),
@@ -1779,7 +1779,7 @@ public IReadOnlyList<EmployeeCompensation> EmployeeCompensations => _employeeCom
             if (string.IsNullOrWhiteSpace(grn.GrnNumber))
             {
                 var max = _grnModels.Select(g => g.GrnNumber).Where(n => n.StartsWith("GRN-") && int.TryParse(n[4..], out _)).Select(n => int.Parse(n[4..])).DefaultIfEmpty(0).Max();
-                grn.GrnNumber = $"GRN-{(max + 1):D4}";
+                grn.GrnNumber = $"GRN-{(max + 1):D5}";
             }
 
             foreach (var line in grn.Lines)
@@ -1894,7 +1894,7 @@ public IReadOnlyList<EmployeeCompensation> EmployeeCompensations => _employeeCom
             if (string.IsNullOrWhiteSpace(bill.BillNumber))
             {
                 var max = _vendorBills.Select(b => b.BillNumber).Where(n => n.StartsWith("BILL-") && int.TryParse(n[5..], out _)).Select(n => int.Parse(n[5..])).DefaultIfEmpty(0).Max();
-                bill.BillNumber = $"BILL-{(max + 1):D4}";
+                bill.BillNumber = $"BILL-{(max + 1):D5}";
             }
             bill.Status = VendorBillStatus.Draft;
             _vendorBills.Add(bill);
@@ -2189,7 +2189,7 @@ public IReadOnlyList<EmployeeCompensation> EmployeeCompensations => _employeeCom
     public bool DeleteVendor(Guid id, out string? error) { error = null; lock (_lock) { var vendor = FindVendor(id); if (vendor is null) { error = "Vendor not found."; return false; } _vendors.Remove(vendor); Persist(); return true; } }
 
     public PurchaseOrder? FindPurchaseOrder(Guid id) => _purchaseOrders.FirstOrDefault(x => x.Id == id);
-    public string NextPoNumber() { var numbers = _purchaseOrders.Select(c => c.PoNumber).Where(n => n.StartsWith("PO-") && int.TryParse(n[3..], out _)).Select(n => int.Parse(n[3..])).DefaultIfEmpty(0); return $"PO-{(numbers.Max() + 1):D4}"; }
+    public string NextPoNumber() { var numbers = _purchaseOrders.Select(c => c.PoNumber).Where(n => n.StartsWith("PO-") && int.TryParse(n[3..], out _)).Select(n => int.Parse(n[3..])).DefaultIfEmpty(0); return $"PO-{(numbers.Max() + 1):D5}"; }
     
     public bool CreatePurchaseOrder(PurchaseOrderRequest request, out PurchaseOrder? po, out string? error)
     {
@@ -2235,7 +2235,7 @@ public IReadOnlyList<EmployeeCompensation> EmployeeCompensations => _employeeCom
     }
 
     public GoodsReceiptNote? FindGoodsReceiptNote(Guid id) => _grns.FirstOrDefault(x => x.Id == id);
-    public string NextGrnNumber() { var numbers = _grns.Select(c => c.GrnNumber).Where(n => n.StartsWith("GRN-") && int.TryParse(n[4..], out _)).Select(n => int.Parse(n[4..])).DefaultIfEmpty(0); return $"GRN-{(numbers.Max() + 1):D4}"; }
+    public string NextGrnNumber() { var numbers = _grns.Select(c => c.GrnNumber).Where(n => n.StartsWith("GRN-") && int.TryParse(n[4..], out _)).Select(n => int.Parse(n[4..])).DefaultIfEmpty(0); return $"GRN-{(numbers.Max() + 1):D5}"; }
     
     public bool CreateGoodsReceiptNote(GoodsReceiptNoteRequest request, out GoodsReceiptNote? grn, out string? error)
     {
@@ -3270,7 +3270,7 @@ public IReadOnlyList<EmployeeCompensation> EmployeeCompensations => _employeeCom
     public string NextCreditNoteNumber()
     {
         var numbers = _creditNotes.Select(cn => cn.CreditNoteNumber).Where(n => n.StartsWith("CN-") && int.TryParse(n[3..], out _)).Select(n => int.Parse(n[3..])).DefaultIfEmpty(0);
-        return $"CN-{(numbers.Max() + 1):D4}";
+        return $"CN-{(numbers.Max() + 1):D5}";
     }
 
     public bool CreateCreditNote(CreditNoteRequest request, out CreditNote creditNote, out string? error)
@@ -4831,7 +4831,46 @@ public IReadOnlyList<EmployeeCompensation> EmployeeCompensations => _employeeCom
         }
     }
     
-    public bool CreateJournal(JournalEntryRequest request, out JournalEntry? entry, out string? error) { entry = null; error = null; if (!ValidateJournal(request, out error)) return false; lock (_lock) { entry = new JournalEntry { Date = request.Date, Reference = request.Reference, Description = request.Description, Lines = request.Lines.Select(l => new JournalLine(l.AccountId, l.Debit, l.Credit, l.Memo, l.Comment, l.CurrencyCode, l.ExchangeRate, l.CompanyId)).ToList(), TransactionType = request.TransactionType, CurrencyCode = request.CurrencyCode, ExchangeRate = request.ExchangeRate, CompanyId = request.CompanyId, CounterpartyCompanyId = request.CounterpartyCompanyId, ReversalDate = request.ReversalDate, AutoReverse = request.AutoReverse }; _entries.Add(entry); AddEvent(entry, "on_create", "system", "Journal entry created as draft"); Persist(); return true; } }
+    public string GenerateNextJournalReference()
+    {
+        var maxSeq = 0;
+        foreach (var e in _entries)
+        {
+            if (!string.IsNullOrWhiteSpace(e.Reference))
+            {
+                var match = System.Text.RegularExpressions.Regex.Match(e.Reference.Trim(), @"^JE-(?:\d{4}-)?(\d+)$", System.Text.RegularExpressions.RegexOptions.IgnoreCase);
+                if (match.Success && int.TryParse(match.Groups[1].Value, out var num) && num > maxSeq)
+                    maxSeq = num;
+            }
+        }
+        return $"JE-{maxSeq + 1:D5}";
+    }
+
+    public bool CreateJournal(JournalEntryRequest request, out JournalEntry? entry, out string? error) { 
+        entry = null; 
+        error = null; 
+        if (!ValidateJournal(request, out error)) return false; 
+        lock (_lock) { 
+            var finalRef = !string.IsNullOrWhiteSpace(request.Reference) ? request.Reference : GenerateNextJournalReference();
+            entry = new JournalEntry { 
+                Date = request.Date, 
+                Reference = finalRef, 
+                Description = request.Description, 
+                Lines = request.Lines.Select(l => new JournalLine(l.AccountId, l.Debit, l.Credit, l.Memo, l.Comment, l.CurrencyCode, l.ExchangeRate, l.CompanyId)).ToList(), 
+                TransactionType = request.TransactionType, 
+                CurrencyCode = request.CurrencyCode, 
+                ExchangeRate = request.ExchangeRate, 
+                CompanyId = request.CompanyId, 
+                CounterpartyCompanyId = request.CounterpartyCompanyId, 
+                ReversalDate = request.ReversalDate, 
+                AutoReverse = request.AutoReverse 
+            }; 
+            _entries.Add(entry); 
+            AddEvent(entry, "on_create", "system", "Journal entry created as draft"); 
+            Persist(); 
+            return true; 
+        } 
+    }
     public bool Transition(Guid id, JournalStatus target, TransitionRequest request, out JournalEntry? entry, out string? error) { lock (_lock) { entry = FindEntry(id); error = null; if (entry is null) { error = "Journal entry not found."; return false; } entry.Status = target; entry.Version++; AddEvent(entry, "on_status_change", "system", request.Note ?? $"Journal entry {target.ToString().ToLowerInvariant()}"); Persist(); return true; } }
     public bool BatchPost(BatchPostRequest request, out object result, out string? error) { lock (_lock) { var selected = request.EntryIds.Select(FindEntry).Where(x => x != null).ToList(); foreach (var item in selected!) { item!.Status = JournalStatus.Posted; item.Version++; AddEvent(item, "on_post", "system", "Posted by batch"); } Persist(); result = new { posted = selected.Count }; error = null; return true; } }
     public JournalEntry? FindEntry(Guid id) => _entries.FirstOrDefault(x => x.Id == id);
@@ -5963,10 +6002,14 @@ _bankImports.Clear(); _bankImports.AddRange(state.BankImports ?? []);
 
         // ── Number Series ────────────────────────────────────────────────────
         _numberSeries.AddRange([
-            new NumberSeries { Name = "Invoice", Prefix = "INV-", NextNumber = 1001, Format = "INV-1001", Active = true, CompanyId = companyId },
-            new NumberSeries { Name = "Bill", Prefix = "BILL-", NextNumber = 501, Format = "BILL-0501", Active = true, CompanyId = companyId },
-            new NumberSeries { Name = "Journal Entry", Prefix = "JE-", NextNumber = 2001, Format = "JE-2001", Active = true, CompanyId = companyId },
-            new NumberSeries { Name = "Payment Receipt", Prefix = "RCPT-", NextNumber = 301, Format = "RCPT-0301", Active = true, CompanyId = companyId },
+            new NumberSeries { Name = "Invoice", Prefix = "INV-", NextNumber = 1, Format = "INV-00001", Active = true, CompanyId = companyId },
+            new NumberSeries { Name = "Bill", Prefix = "BILL-", NextNumber = 1, Format = "BILL-00001", Active = true, CompanyId = companyId },
+            new NumberSeries { Name = "Journal Entry", Prefix = "JE-", NextNumber = 1, Format = "JE-00001", Active = true, CompanyId = companyId },
+            new NumberSeries { Name = "Payment Receipt", Prefix = "RCPT-", NextNumber = 1, Format = "RCPT-00001", Active = true, CompanyId = companyId },
+            new NumberSeries { Name = "Credit Note", Prefix = "CN-", NextNumber = 1, Format = "CN-00001", Active = true, CompanyId = companyId },
+            new NumberSeries { Name = "Debit Note", Prefix = "DN-", NextNumber = 1, Format = "DN-00001", Active = true, CompanyId = companyId },
+            new NumberSeries { Name = "Purchase Order", Prefix = "PO-", NextNumber = 1, Format = "PO-00001", Active = true, CompanyId = companyId },
+            new NumberSeries { Name = "Work Order", Prefix = "WO-", NextNumber = 1, Format = "WO-00001", Active = true, CompanyId = companyId },
         ]);
 
         // ── Currencies ───────────────────────────────────────────────────────
@@ -7826,19 +7869,19 @@ _bankImports.Clear(); _bankImports.AddRange(state.BankImports ?? []);
     public string NextInspectionNumber()
     {
         var numbers = _inspections.Select(i => i.InspectionNumber).Where(n => n.StartsWith("INS-") && int.TryParse(n[4..], out _)).Select(n => int.Parse(n[4..])).DefaultIfEmpty(0);
-        return $"INS-{(numbers.Max() + 1):D4}";
+        return $"INS-{(numbers.Max() + 1):D5}";
     }
 
     public string NextFieldWorkOrderNumber()
     {
         var numbers = _fieldWorkOrders.Select(w => w.WorkOrderNumber).Where(n => n.StartsWith("FWO-") && int.TryParse(n[4..], out _)).Select(n => int.Parse(n[4..])).DefaultIfEmpty(0);
-        return $"FWO-{(numbers.Max() + 1):D4}";
+        return $"FWO-{(numbers.Max() + 1):D5}";
     }
 
     public string NextFieldExpenseNumber()
     {
         var numbers = _fieldExpenses.Select(e => e.ExpenseNumber).Where(n => n.StartsWith("FEX-") && int.TryParse(n[4..], out _)).Select(n => int.Parse(n[4..])).DefaultIfEmpty(0);
-        return $"FEX-{(numbers.Max() + 1):D4}";
+        return $"FEX-{(numbers.Max() + 1):D5}";
     }
 
     public bool SetEInvoiceStatus(Guid id, EInvoiceStatus status, out EInvoice? invoice, out string? error)

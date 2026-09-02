@@ -13,6 +13,7 @@ import { downloadExcel, downloadCSV } from './lib/exportUtils';
 import { KpiCard, KpiGrid } from './components/ui/kpi-card';
 import { StatusChip } from './components/ui/status-chip';
 import { EmptyState } from './components/ui/empty-state';
+import { CompactSelect } from './components/CompactSelect';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 
@@ -44,6 +45,23 @@ const statusStyles: Record<string, { label: string; hex: string }> = {
   Posted: { label: 'Posted', hex: '#10b981' }
 };
 
+// Generates clean sequential Journal Entry references starting with JE-00001
+const getNextJournalReference = (allEntries: JournalEntry[] = []): string => {
+  let maxSeq = 0;
+  for (const e of allEntries) {
+    if (!e?.reference) continue;
+    const ref = e.reference.trim();
+    const match = ref.match(/^JE-(?:\d{4}-)?(\d+)$/i) || ref.match(/JE-(\d+)/i);
+    if (match) {
+      const numPart = parseInt(match[1], 10);
+      if (!isNaN(numPart) && numPart > maxSeq && numPart < 1000000) {
+        maxSeq = numPart;
+      }
+    }
+  }
+  return `JE-${String(maxSeq + 1).padStart(5, '0')}`;
+};
+
 export const JournalEntriesView: React.FC<JournalEntriesViewProps> = ({ accounts, initialEntries, onEntriesChange }) => {
   const [entries, setEntries] = useState<JournalEntry[]>(initialEntries);
   const [loading, setLoading] = useState(false);
@@ -60,7 +78,7 @@ export const JournalEntriesView: React.FC<JournalEntriesViewProps> = ({ accounts
   // Journal Entry Form State
   const [form, setForm] = useState({
     date: new Date().toISOString().slice(0, 10),
-    reference: `JE-${new Date().getFullYear()}-${String(Math.floor(1000 + Math.random() * 9000))}`,
+    reference: getNextJournalReference(initialEntries),
     description: '',
     currency: 'PKR',
     lines: [
@@ -113,9 +131,10 @@ export const JournalEntriesView: React.FC<JournalEntriesViewProps> = ({ accounts
       }
     } catch {}
 
+    const defaultDate = new Date().toISOString().slice(0, 10);
     setForm({
-      date: new Date().toISOString().slice(0, 10),
-      reference: `JE-${new Date().getFullYear()}-${String(Math.floor(1000 + Math.random() * 9000))}`,
+      date: defaultDate,
+      reference: getNextJournalReference(entries),
       description: '',
       currency: 'PKR',
       lines: [
@@ -126,12 +145,19 @@ export const JournalEntriesView: React.FC<JournalEntriesViewProps> = ({ accounts
     setIsModalOpen(true);
   };
 
+  useEffect(() => {
+    const handleOpen = () => openNewEntryModal();
+    window.addEventListener('open-new-journal-entry', handleOpen);
+    return () => window.removeEventListener('open-new-journal-entry', handleOpen);
+  }, [entries, accounts]);
+
   const handleDiscardDraft = () => {
     localStorage.removeItem('ams_journal_draft');
     setDraftRestored(false);
+    const defaultDate = new Date().toISOString().slice(0, 10);
     setForm({
-      date: new Date().toISOString().slice(0, 10),
-      reference: `JE-${new Date().getFullYear()}-${String(Math.floor(1000 + Math.random() * 9000))}`,
+      date: defaultDate,
+      reference: getNextJournalReference(entries),
       description: '',
       currency: 'PKR',
       lines: [
@@ -486,6 +512,7 @@ export const JournalEntriesView: React.FC<JournalEntriesViewProps> = ({ accounts
 
           <div className="flex flex-wrap items-center gap-2 shrink-0">
           <button
+            id="journal-form"
             onClick={openNewEntryModal}
             className="inline-flex items-center gap-1.5 h-9 px-4 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold transition-all shadow-xs"
           >
@@ -847,7 +874,7 @@ export const JournalEntriesView: React.FC<JournalEntriesViewProps> = ({ accounts
                     type="text"
                     value={form.reference}
                     onChange={(e) => setForm({ ...form, reference: e.target.value })}
-                    placeholder="e.g. JE-2026-0001"
+                    placeholder="e.g. JE-00001"
                     className="w-full h-9 px-3 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] text-xs text-[var(--color-text)] font-mono font-bold outline-none focus:border-emerald-500 shadow-2xs"
                     required
                   />
@@ -944,19 +971,18 @@ export const JournalEntriesView: React.FC<JournalEntriesViewProps> = ({ accounts
                             {idx + 1}
                           </td>
                           <td className="py-2 px-3">
-                            <select
+                            <CompactSelect
                               value={line.accountId}
-                              onChange={(e) => updateLine(idx, 'accountId', e.target.value)}
-                              className="w-full h-8 px-2.5 rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] text-xs text-[var(--color-text)] outline-none focus:border-emerald-500 font-medium"
-                              required
-                            >
-                              <option value="">-- Select Chart of Account --</option>
-                              {accounts.map((a) => (
-                                <option key={a.id} value={a.id}>
-                                  {a.code} — {a.name} ({a.type})
-                                </option>
-                              ))}
-                            </select>
+                              onChange={v => updateLine(idx, 'accountId', v)}
+                              placeholder="-- Select Chart of Account --"
+                              searchPlaceholder="Search account code or title..."
+                              options={accounts.map((a) => ({
+                                value: a.id,
+                                label: `${a.code} — ${a.name}`,
+                                badge: String(a.type)
+                              }))}
+                              className="h-8 text-xs font-medium"
+                            />
                           </td>
                           <td className="py-2 px-3">
                             <input

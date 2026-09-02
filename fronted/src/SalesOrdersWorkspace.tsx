@@ -13,6 +13,7 @@ import { EmptyState, TableSkeleton } from './components/ui/empty-state'
 import { getActiveTaxCodes } from './lib/taxLocalization'
 import { CompactTaxSelect } from './components/CompactTaxSelect'
 import { CompactProductSelect } from './components/CompactProductSelect'
+import { CompactSelect } from './components/CompactSelect'
 
 const statusStyles: Record<string, { label: string; hex: string }> = {
   Draft: { label: 'Draft', hex: '#94a3b8' },
@@ -93,7 +94,7 @@ export const SalesOrdersWorkspace: React.FC<{ activeEntityId: string; entities?:
       customerId: customers[0]?.id || '',
       orderDate: new Date().toISOString().slice(0, 10),
       expectedDeliveryDate: new Date(Date.now() + 15 * 86400000).toISOString().slice(0, 10),
-      reference: nextRef || 'SO-0001',
+      reference: nextRef || 'SO-00001',
       notes: 'Please expedite delivery according to schedule.',
       terms: 'Standard commercial delivery terms apply.',
       currencyCode: 'PKR'
@@ -518,18 +519,18 @@ export const SalesOrdersWorkspace: React.FC<{ activeEntityId: string; entities?:
                     <label className="block text-xs font-semibold text-[var(--color-text-strong)] mb-1.5">
                       <span className="text-rose-500 font-bold mr-1">*</span> Customer / Client
                     </label>
-                    <select
+                    <CompactSelect
                       value={form.customerId}
-                      onChange={e => setForm({ ...form, customerId: e.target.value })}
-                      className="w-full h-10 px-3.5 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] text-xs text-[var(--color-text-strong)] focus:border-[var(--color-primary)] outline-none shadow-2xs"
-                    >
-                      <option value="">Select customer...</option>
-                      {customers.map((c: any) => (
-                        <option key={c.id} value={c.id}>
-                          {c.name} {c.customerNumber ? `(${c.customerNumber})` : ''}
-                        </option>
-                      ))}
-                    </select>
+                      onChange={v => setForm({ ...form, customerId: v })}
+                      placeholder="Select customer..."
+                      searchPlaceholder="Search customer by name or code..."
+                      options={customers.map((c: any) => ({
+                        value: c.id,
+                        label: c.name,
+                        badge: c.customerNumber || undefined,
+                      }))}
+                      className="h-10 text-xs font-semibold"
+                    />
                   </div>
 
                   <div>
@@ -539,7 +540,7 @@ export const SalesOrdersWorkspace: React.FC<{ activeEntityId: string; entities?:
                     <div className="flex items-center gap-2.5 h-10 px-3.5 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] focus-within:border-[var(--color-primary)] transition-colors shadow-2xs">
                       <Hash className="w-4 h-4 text-[var(--color-text-muted)] shrink-0" />
                       <input
-                        placeholder="e.g. SO-0001"
+                        placeholder="e.g. SO-00001"
                         value={form.reference}
                         onChange={e => setForm({ ...form, reference: e.target.value })}
                         className="w-full h-10 px-3 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] text-xs outline-none"

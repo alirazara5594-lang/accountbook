@@ -18,6 +18,7 @@ import { money } from './lib/currency'
 import { CompactTaxSelect } from './components/CompactTaxSelect'
 import { CompactDiscountTypeSelect } from './components/CompactDiscountTypeSelect'
 import { CompactProductSelect } from './components/CompactProductSelect'
+import { CompactSelect } from './components/CompactSelect'
 
 const statusStyles: Record<number, { label: string; hex: string }> = {
   0: { label: 'Draft', hex: '#94a3b8' },
@@ -680,18 +681,19 @@ export const EstimatesAndQuotes: React.FC<{ activeEntityId: string; entities?: a
                         <label className="erp-form-label">
                           <span className="text-rose-500 font-bold mr-1">*</span> Customer / Client
                         </label>
-                        <select
+                        <CompactSelect
                           value={form.customerId}
-                          onChange={e => setForm({ ...form, customerId: e.target.value })}
-                          className="erp-form-select font-semibold"
-                        >
-                          <option value="">Select customer...</option>
-                          {customers.map((c: any) => (
-                            <option key={c.id} value={c.id}>
-                              {c.name} {c.customerNumber ? `(${c.customerNumber})` : ''} {c.creditLimit ? `— Limit: ${money(c.creditLimit, c.currencyCode || form.currencyCode)}` : ''}
-                            </option>
-                          ))}
-                        </select>
+                          onChange={v => setForm({ ...form, customerId: v })}
+                          placeholder="Select customer..."
+                          searchPlaceholder="Search customer by name or code..."
+                          options={customers.map((c: any) => ({
+                            value: c.id,
+                            label: c.name,
+                            badge: c.customerNumber || undefined,
+                            sublabel: c.creditLimit ? `Limit: ${money(c.creditLimit, c.currencyCode || form.currencyCode)}` : undefined,
+                          }))}
+                          className="h-10 text-xs font-semibold"
+                        />
                         {(() => {
                           const cust = customers.find((c: any) => c.id === form.customerId)
                           const limit = parseFloat(String(cust?.creditLimit || '0'))
