@@ -15,6 +15,7 @@ import { downloadExcel, downloadCSV } from './lib/exportUtils';
 import ExportDropdown from './components/ExportDropdown';
 import { StatusChip } from './components/ui/status-chip';
 import { EmptyState } from './components/ui/empty-state';
+import { CompactProductSelect } from './components/CompactProductSelect';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 
@@ -813,17 +814,12 @@ export const ManufacturingWorkspace: React.FC<{ activeEntityId: string; entities
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div className="space-y-1">
                   <label className="font-bold text-[var(--color-text-strong)]">Finished Product to Produce</label>
-                  <select
-                    required
+                  <CompactProductSelect
                     value={bomForm.finishedProductId}
-                    onChange={e => setBomForm(f => ({ ...f, finishedProductId: e.target.value }))}
-                    className="w-full px-3 py-2 bg-[var(--color-surface-muted)] border border-[var(--color-border)] rounded-xl outline-none"
-                  >
-                    <option value="">Select Finished Product...</option>
-                    {products.map(p => (
-                      <option key={p.id} value={p.id}>{p.name} ({p.code})</option>
-                    ))}
-                  </select>
+                    onChange={v => setBomForm(f => ({ ...f, finishedProductId: v }))}
+                    products={products}
+                    placeholder="Select Finished Product..."
+                  />
                 </div>
 
                 <div className="space-y-1">
@@ -854,21 +850,16 @@ export const ManufacturingWorkspace: React.FC<{ activeEntityId: string; entities
                 {bomLines.map((line, idx) => (
                   <div key={idx} className="grid grid-cols-12 gap-2 items-center">
                     <div className="col-span-6">
-                      <select
-                        required
+                      <CompactProductSelect
                         value={line.rawMaterialProductId}
-                        onChange={e => {
+                        onChange={v => {
                           const updated = [...bomLines];
-                          updated[idx].rawMaterialProductId = e.target.value;
+                          updated[idx].rawMaterialProductId = v;
                           setBomLines(updated);
                         }}
-                        className="w-full px-3 py-2 bg-[var(--color-surface-muted)] border border-[var(--color-border)] rounded-xl outline-none"
-                      >
-                        <option value="">Select Raw Material...</option>
-                        {products.map(p => (
-                          <option key={p.id} value={p.id}>{p.name}</option>
-                        ))}
-                      </select>
+                        products={products}
+                        placeholder="Select Raw Material..."
+                      />
                     </div>
 
                     <div className="col-span-3">

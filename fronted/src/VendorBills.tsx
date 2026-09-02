@@ -9,6 +9,8 @@ import {
   FileText, Receipt, CheckCircle, Plus, X, Eye, ArrowRight,
   CreditCard, Truck, Trash2, Building2
 } from 'lucide-react';
+import { CompactSelect } from './components/CompactSelect';
+import { CompactProductSelect } from './components/CompactProductSelect';
 
 export const VendorBills: React.FC<{ activeEntityId: string }> = ({ activeEntityId }) => {
   const bills = useProcurementStore((s) => s.bills);
@@ -22,6 +24,7 @@ export const VendorBills: React.FC<{ activeEntityId: string }> = ({ activeEntity
   const vendors = useVendorsStore((s) => s.vendors);
   const fetchVendors = useVendorsStore((s) => s.fetchVendors);
 
+  const products = useProductsStore((s) => s.products);
   const fetchProducts = useProductsStore((s) => s.fetchProducts);
   const accounts = useCoaStore((s) => s.accounts);
   const fetchAccounts = useCoaStore((s) => s.fetchAccounts);
@@ -384,16 +387,17 @@ export const VendorBills: React.FC<{ activeEntityId: string }> = ({ activeEntity
                   {entryMode === 'procurement' && (
                     <div className="erp-form-card-muted space-y-2">
                       <label className="erp-form-label">Linked Purchase Order</label>
-                      <select
+                      <CompactSelect
                         value={billForm.purchaseOrderId}
-                        onChange={e => handlePOSelect(e.target.value)}
-                        className="erp-form-select font-medium"
-                      >
-                        <option value="">-- Select Purchase Order --</option>
-                        {orders.map((p: any) => (
-                          <option key={p.id} value={p.id}>{p.orderNumber || p.poNumber}</option>
-                        ))}
-                      </select>
+                        onChange={v => handlePOSelect(v)}
+                        options={orders.map((p: any) => ({
+                          value: p.id,
+                          label: p.orderNumber || p.poNumber,
+                          badge: p.poNumber
+                        }))}
+                        placeholder="-- Select Purchase Order --"
+                        className="h-10"
+                      />
                     </div>
                   )}
 
@@ -418,15 +422,13 @@ export const VendorBills: React.FC<{ activeEntityId: string }> = ({ activeEntity
                         <label className="erp-form-label">
                           <span className="text-rose-500 font-bold mr-1">*</span> Vendor / Supplier
                         </label>
-                        <select
-                          required
+                        <CompactSelect
                           value={billForm.vendorId}
-                          onChange={e => setBillForm({ ...billForm, vendorId: e.target.value })}
-                          className="erp-form-select font-semibold"
-                        >
-                          <option value="">-- Select Vendor --</option>
-                          {vendors.map(v => <option key={v.id} value={v.id}>{v.name}</option>)}
-                        </select>
+                          onChange={v => setBillForm({ ...billForm, vendorId: v })}
+                          options={vendors.map(v => ({ value: v.id, label: v.name }))}
+                          placeholder="-- Select Vendor --"
+                          className="h-10"
+                        />
                       </div>
 
                       <div>
@@ -536,11 +538,13 @@ export const VendorBills: React.FC<{ activeEntityId: string }> = ({ activeEntity
                             <tr key={i} className="hover:bg-[var(--color-surface-muted)]/30">
                               <td className="p-2"><input value={l.description} onChange={e => { const u = [...billLines]; u[i].description = e.target.value; setBillLines(u); }} placeholder="Item description" className="w-full px-2 py-1.5 rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] text-xs outline-none" /></td>
                               {entryMode === 'direct' && (
-                                <td className="p-2">
-                                  <select value={l.accountId} onChange={e => { const u = [...billLines]; u[i].accountId = e.target.value; setBillLines(u); }} className="w-full px-2 py-1.5 rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] text-[10px] outline-none">
-                                    <option value="">Select GL</option>
-                                    {accounts.map(a => <option key={a.id} value={a.id}>{a.code} - {a.name}</option>)}
-                                  </select>
+                                <td className="p-2 min-w-[180px]">
+                                  <CompactSelect
+                                    value={l.accountId}
+                                    onChange={v => { const u = [...billLines]; u[i].accountId = v; setBillLines(u); }}
+                                    options={accounts.map(a => ({ value: a.id, label: `${a.code} - ${a.name}`, badge: a.code }))}
+                                    placeholder="Select GL Account..."
+                                  />
                                 </td>
                               )}
                               <td className="p-2"><input type="number" value={l.quantity} onChange={e => { const u = [...billLines]; u[i].quantity = e.target.value; setBillLines(u); }} className="w-full px-2 py-1.5 rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] text-xs text-center font-mono outline-none" /></td>

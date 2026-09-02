@@ -2,30 +2,35 @@ import React, { useState, useRef, useEffect, useMemo } from 'react'
 import { createPortal } from 'react-dom'
 import { ChevronDown, Check, Search } from 'lucide-react'
 
-export interface ProductOption {
-  id: string
-  name: string
-  code?: string
-  salesPrice?: number | string
-  unitPrice?: number | string
-  type?: string
-  description?: string
+export interface SelectOption {
+  value: string | number
+  label: string
+  sublabel?: string
+  badge?: string
 }
 
-interface CompactProductSelectProps {
-  value: string
-  onChange: (productId: string) => void
-  products: ProductOption[]
+interface CompactSelectProps {
+  value: string | number
+  onChange: (value: any) => void
+  options: SelectOption[]
   placeholder?: string
   className?: string
+  searchPlaceholder?: string
+  allowClear?: boolean
+  clearLabel?: string
+  disabled?: boolean
 }
 
-export const CompactProductSelect: React.FC<CompactProductSelectProps> = ({
+export const CompactSelect: React.FC<CompactSelectProps> = ({
   value,
   onChange,
-  products = [],
-  placeholder = 'Select Item...',
-  className = ''
+  options = [],
+  placeholder = 'Select...',
+  className = '',
+  searchPlaceholder = 'Search...',
+  allowClear = true,
+  clearLabel = 'Select...',
+  disabled = false
 }) => {
   const [isOpen, setIsOpen] = useState(false)
   const [search, setSearch] = useState('')
@@ -34,13 +39,13 @@ export const CompactProductSelect: React.FC<CompactProductSelectProps> = ({
   const menuRef = useRef<HTMLDivElement>(null)
   const searchInputRef = useRef<HTMLInputElement>(null)
 
-  const selectedProduct = products.find(p => p.id === value)
+  const selectedOption = options.find(o => String(o.value) === String(value))
 
   const updateCoords = () => {
     if (!buttonRef.current) return
     const rect = buttonRef.current.getBoundingClientRect()
     const menuWidth = Math.max(288, rect.width)
-    const menuHeight = Math.min(280, products.length * 44 + 60)
+    const menuHeight = Math.min(280, options.length * 40 + 60)
 
     let left = rect.left
     if (left + menuWidth > window.innerWidth - 8) {
@@ -106,40 +111,44 @@ export const CompactProductSelect: React.FC<CompactProductSelectProps> = ({
     }
   }, [isOpen])
 
-  const filteredProducts = useMemo(() => {
-    if (!search.trim()) return products
+  const filteredOptions = useMemo(() => {
+    if (!search.trim()) return options
     const q = search.toLowerCase().trim()
-    return products.filter(
-      p =>
-        p.name?.toLowerCase().includes(q) ||
-        p.code?.toLowerCase().includes(q) ||
-        p.description?.toLowerCase().includes(q)
+    return options.filter(
+      o =>
+        o.label?.toLowerCase().includes(q) ||
+        o.sublabel?.toLowerCase().includes(q) ||
+        o.badge?.toLowerCase().includes(q)
     )
-  }, [products, search])
+  }, [options, search])
 
   return (
     <div className="relative inline-block w-full">
       <button
         ref={buttonRef}
         type="button"
+        disabled={disabled}
         onClick={() => {
+          if (disabled) return
           if (!isOpen) updateCoords()
           setIsOpen(!isOpen)
         }}
-        title={selectedProduct ? selectedProduct.name : placeholder}
-        className={`w-full h-8 px-2 rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] hover:bg-[var(--color-surface-muted)] text-xs text-[var(--color-text-strong)] flex items-center justify-between gap-1.5 transition-colors outline-none cursor-pointer ${
+        title={selectedOption ? selectedOption.label : placeholder}
+        className={`w-full h-8 px-2.5 rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] hover:bg-[var(--color-surface-muted)] text-xs text-[var(--color-text-strong)] flex items-center justify-between gap-1.5 transition-colors outline-none cursor-pointer ${
+          disabled ? 'opacity-50 cursor-not-allowed' : ''
+        } ${
           isOpen ? 'ring-2 ring-indigo-500/50 border-indigo-500' : ''
         } ${className}`}
       >
         <span className="truncate text-left font-medium flex-1">
-          {selectedProduct ? (
-            <span>{selectedProduct.name}</span>
+          {selectedOption ? (
+            <span>{selectedOption.label}</span>
           ) : (
             <span className="text-[var(--color-text-muted)]">{placeholder}</span>
           )}
         </span>
         <ChevronDown
-          className={`w-3 h-3 text-[var(--color-text-muted)] transition-transform duration-150 shrink-0 ${
+          className={`w-3.5 h-3.5 text-[var(--color-text-muted)] transition-transform duration-150 shrink-0 ${
             isOpen ? 'rotate-180 text-indigo-500' : ''
           }`}
         />
@@ -164,7 +173,7 @@ export const CompactProductSelect: React.FC<CompactProductSelectProps> = ({
               <input
                 ref={searchInputRef}
                 type="text"
-                placeholder="Search item..."
+                placeholder={searchPlaceholder}
                 value={search}
                 onChange={e => setSearch(e.target.value)}
                 className="w-full h-7 pl-8 pr-2 text-xs rounded-lg border border-[var(--color-border)] bg-[var(--color-surface-muted)] text-[var(--color-text-strong)] placeholder:text-[var(--color-text-muted)] outline-none focus:border-indigo-500"
@@ -173,31 +182,32 @@ export const CompactProductSelect: React.FC<CompactProductSelectProps> = ({
 
             {/* List */}
             <div className="overflow-y-auto max-h-56 space-y-0.5 divide-y divide-[var(--color-border)]/40">
-              <button
-                type="button"
-                onClick={() => {
-                  onChange('')
-                  setIsOpen(false)
-                }}
-                className={`w-full text-left px-2 py-1.5 rounded-lg text-xs flex items-center justify-between transition-colors cursor-pointer ${
-                  !value
-                    ? 'bg-indigo-500/15 text-indigo-600 dark:text-indigo-400 font-bold'
-                    : 'hover:bg-[var(--color-surface-muted)] text-[var(--color-text-muted)]'
-                }`}
-              >
-                <span>Select...</span>
-                {!value && <Check className="w-3.5 h-3.5 text-indigo-600 dark:text-indigo-400" />}
-              </button>
+              {allowClear && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    onChange('')
+                    setIsOpen(false)
+                  }}
+                  className={`w-full text-left px-2 py-1.5 rounded-lg text-xs flex items-center justify-between transition-colors cursor-pointer ${
+                    !value
+                      ? 'bg-indigo-500/15 text-indigo-600 dark:text-indigo-400 font-bold'
+                      : 'hover:bg-[var(--color-surface-muted)] text-[var(--color-text-muted)]'
+                  }`}
+                >
+                  <span>{clearLabel}</span>
+                  {!value && <Check className="w-3.5 h-3.5 text-indigo-600 dark:text-indigo-400" />}
+                </button>
+              )}
 
-              {filteredProducts.map(p => {
-                const isSelected = p.id === value
-                const displayName = p.name || p.description || p.code || 'Item'
+              {filteredOptions.map(o => {
+                const isSelected = String(o.value) === String(value)
                 return (
                   <button
-                    key={p.id}
+                    key={String(o.value)}
                     type="button"
                     onClick={() => {
-                      onChange(p.id)
+                      onChange(o.value)
                       setIsOpen(false)
                     }}
                     className={`w-full text-left px-2 py-1.5 rounded-lg text-xs flex items-center justify-between gap-2 transition-colors cursor-pointer ${
@@ -208,11 +218,16 @@ export const CompactProductSelect: React.FC<CompactProductSelectProps> = ({
                   >
                     <div className="flex items-center gap-1.5 truncate flex-1">
                       <span className="truncate font-medium text-xs text-[var(--color-text-strong)]">
-                        {displayName}
+                        {o.label}
                       </span>
-                      {p.code && (
+                      {o.badge && (
                         <span className="text-[10px] text-[var(--color-text-muted)] font-mono bg-black/5 dark:bg-white/5 px-1 py-0.5 rounded shrink-0">
-                          {p.code}
+                          {o.badge}
+                        </span>
+                      )}
+                      {o.sublabel && (
+                        <span className="text-[11px] text-[var(--color-text-muted)] truncate">
+                          ({o.sublabel})
                         </span>
                       )}
                     </div>
@@ -221,9 +236,9 @@ export const CompactProductSelect: React.FC<CompactProductSelectProps> = ({
                 )
               })}
 
-              {filteredProducts.length === 0 && (
+              {filteredOptions.length === 0 && (
                 <div className="p-3 text-center text-xs text-[var(--color-text-muted)]">
-                  No matching products
+                  No matching options
                 </div>
               )}
             </div>

@@ -5,6 +5,7 @@ import { Warehouse, Boxes } from 'lucide-react';
 import { StatusChip } from './components/ui/status-chip';
 import { EmptyState } from './components/ui/empty-state';
 import { money } from './lib/currency';
+import { CompactProductSelect } from './components/CompactProductSelect';
 
 // ─── Shared Select ───────────────────────────────────────────────────────────
 const AccSelect = ({ value, onChange, accounts, label, filter }: any) => (
@@ -348,13 +349,15 @@ const StockTransactionsView: React.FC<{ activeEntityId: string; warehouses: any[
             </div>
             
             <div className="form-grid">
-              <label>
-                Product *
-                <select value={form.productId} onChange={e => setForm(f => ({...f, productId: e.target.value}))}>
-                  <option value="">-- Select --</option>
-                  {products.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
-                </select>
-              </label>
+              <div>
+                <label className="block text-xs font-semibold text-[var(--color-text-strong)] mb-1">Product *</label>
+                <CompactProductSelect
+                  value={form.productId}
+                  onChange={v => setForm(f => ({ ...f, productId: v }))}
+                  products={products}
+                  placeholder="-- Select Product --"
+                />
+              </div>
               <label>
                 Warehouse *
                 <select value={form.warehouseId} onChange={e => setForm(f => ({...f, warehouseId: e.target.value}))}>

@@ -15,6 +15,7 @@ import { FileText, Mail, Scale, ShoppingCart, Package, Receipt, ArrowLeftRight }
 import { money } from './lib/currency';
 import { getActiveTaxCodes } from './lib/taxLocalization';
 import { CompactTaxSelect } from './components/CompactTaxSelect';
+import { CompactProductSelect } from './components/CompactProductSelect';
 
 type Tab = 'pr' | 'rfq' | 'compare' | 'po' | 'grn' | 'bills' | 'matching' | 'transfers';
 
@@ -780,11 +781,15 @@ export const ProcurementWorkspace: React.FC<{ activeEntityId: string; entities?:
                 </div>
                 {prLines.map((l, i) => (
                   <div key={i} className="p-3 bg-gray-50 rounded-xl space-y-2 border border-gray-200 text-xs">
-                    <div className="flex gap-2">
-                      <select className="w-1/3 border rounded-lg p-2" value={l.productId} onChange={e => handlePrProductSelect(i, e.target.value)}>
-                        <option value="">-- Select Existing Item (Optional) --</option>
-                        {products.map(p => <option key={p.id} value={p.id}>{p.name} ({p.code})</option>)}
-                      </select>
+                    <div className="flex gap-2 items-center">
+                      <div className="w-1/3 min-w-[200px]">
+                        <CompactProductSelect
+                          value={l.productId}
+                          onChange={v => handlePrProductSelect(i, v)}
+                          products={products}
+                          placeholder="-- Select Item (Optional) --"
+                        />
+                      </div>
                       <Input className="flex-1" placeholder="Item / Service Description *" value={l.description} onChange={e => { const u = [...prLines]; u[i].description = e.target.value; setPrLines(u); }} />
                       <Input className="w-20" type="number" placeholder="Qty" value={l.quantity} onChange={e => { const u = [...prLines]; u[i].quantity = e.target.value; setPrLines(u); }} />
                       <Input className="w-24" type="number" placeholder="Est. Price" value={l.estimatedUnitPrice} onChange={e => { const u = [...prLines]; u[i].estimatedUnitPrice = e.target.value; setPrLines(u); }} />
@@ -1076,10 +1081,12 @@ export const ProcurementWorkspace: React.FC<{ activeEntityId: string; entities?:
             <div className="space-y-4 text-sm">
               <div>
                 <label className="block font-medium text-gray-700 mb-1">* Product</label>
-                <select className="w-full border rounded-xl p-2.5" value={transferForm.productId} onChange={e => setTransferForm({ ...transferForm, productId: e.target.value })}>
-                  <option value="">-- Select Item --</option>
-                  {products.map(p => <option key={p.id} value={p.id}>{p.name} ({p.code})</option>)}
-                </select>
+                <CompactProductSelect
+                  value={transferForm.productId}
+                  onChange={v => setTransferForm({ ...transferForm, productId: v })}
+                  products={products}
+                  placeholder="-- Select Item --"
+                />
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div>
