@@ -685,8 +685,8 @@ export default function App() {
   {activeView === 'vendors' && <VendorManagement entities={entities as any} activeEntityId={activeEntityId} notify={notify} />}
   {activeView === 'sales-workspace' && <SalesWorkspace activeEntityId={activeEntityId} entities={entities as any} />}
   {activeView === 'estimates-quotes' && <EstimatesAndQuotes activeEntityId={activeEntityId} entities={entities as any} />}
-  {activeView === 'sales-orders' && <SalesOrdersWorkspace activeEntityId={activeEntityId} />}
-  {activeView === 'credit-notes' && <CreditNotesWorkspace />}
+  {activeView === 'sales-orders' && <SalesOrdersWorkspace activeEntityId={activeEntityId} entities={entities as any} />}
+  {activeView === 'credit-notes' && <CreditNotesWorkspace activeEntityId={activeEntityId} entities={entities as any} />}
   {activeView === 'deferred-revenue' && <CustomerDeferredRevenueView activeEntityId={activeEntityId} accounts={accounts} />}
   {activeView === 'procurement-workspace' && <ProcurementWorkspace activeEntityId={activeEntityId} entities={entities as any} />}
   {activeView === 'vendor-payments' && <VendorPaymentsView activeEntityId={activeEntityId} entities={entities as any} />}
@@ -770,7 +770,7 @@ export default function App() {
   {activeView === 'period-closing' && <PeriodClosingView activeEntityId={activeEntityId} entities={entities as any} />}
   {activeView === 'audit-trail' && <AuditTrailView activeEntityId={activeEntityId} entities={entities as any} />}
   {activeView === 'lease-accounting' && <LeaseAccounting activeEntityId={activeEntityId} />}
-  {activeView === 'customer-payments' && <CustomerPaymentsWorkspace />}
+  {activeView === 'customer-payments' && <CustomerPaymentsWorkspace activeEntityId={activeEntityId} entities={entities as any} />}
   {activeView === 'customer-statements' && <CustomerStatementsWorkspace activeEntityId={activeEntityId} />}
   {activeView === 'customer-aging' && <CustomerAgingWorkspace activeEntityId={activeEntityId} />}
   {activeView === 'sales-reports' && <SalesReportsWorkspace activeEntityId={activeEntityId} />}

@@ -212,7 +212,7 @@ export const BankingWorkspace: React.FC<BankingWorkspaceProps> = ({ subView, act
     counterparty: '',
     amount: '',
     paymentMode: 'Wire Transfer' as PaymentMode,
-    reference: `PAY-${Math.floor(1000 + Math.random() * 9000)}`,
+    reference: 'PAY-00001',
     description: ''
   });
 
@@ -223,7 +223,7 @@ export const BankingWorkspace: React.FC<BankingWorkspaceProps> = ({ subView, act
     amount: '',
     paymentMode: 'RTGS' as PaymentMode,
     exchangeRate: '1.0',
-    reference: `TRF-${Math.floor(1000 + Math.random() * 9000)}`,
+    reference: 'TRF-00001',
     description: 'Inter-account fund transfer'
   });
 

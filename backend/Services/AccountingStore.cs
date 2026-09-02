@@ -1643,10 +1643,10 @@ public IReadOnlyList<EmployeeCompensation> EmployeeCompensations => _employeeCom
             // Post Finished Goods journal: Dr Finished Goods / Cr WIP + Direct Labor + Manufacturing Overhead
             if (wo.TotalCost > 0)
             {
-                var fgAccId = GetMappedAccount("Finished Goods Inventory");
-                var wipAccId = GetMappedAccount("Work in Progress");
-                var laborAccId = GetMappedAccount("Direct Labor");
-                var overheadAccId = GetMappedAccount("Manufacturing Overhead");
+                var fgAccId = GetMappedAccount("Finished Goods Inventory") != Guid.Empty ? GetMappedAccount("Finished Goods Inventory") : _accounts.FirstOrDefault(a => a.Code == "13000" || a.Code == "1300")?.Id ?? Guid.Empty;
+                var wipAccId = GetMappedAccount("Work in Progress") != Guid.Empty ? GetMappedAccount("Work in Progress") : _accounts.FirstOrDefault(a => a.Code == "13100" || a.Code == "1310")?.Id ?? Guid.Empty;
+                var laborAccId = GetMappedAccount("Direct Labor") != Guid.Empty ? GetMappedAccount("Direct Labor") : _accounts.FirstOrDefault(a => a.Code == "61200" || a.Code == "50000")?.Id ?? Guid.Empty;
+                var overheadAccId = GetMappedAccount("Manufacturing Overhead") != Guid.Empty ? GetMappedAccount("Manufacturing Overhead") : _accounts.FirstOrDefault(a => a.Code == "50000" || a.Code == "61250")?.Id ?? Guid.Empty;
                 Guid.TryParse(wo.CompanyId, out var woCompId);
                 var fgLines = new List<JournalLine>();
                 if (fgAccId != Guid.Empty)
@@ -1665,7 +1665,7 @@ public IReadOnlyList<EmployeeCompensation> EmployeeCompensations => _employeeCom
                     _entries.Add(new JournalEntry
                     {
                         Date = DateOnly.FromDateTime(DateTime.Today),
-                        Reference = $"WO-COMPLETE-{wo.WorkOrderNumber}",
+                        Reference = GenerateNextJournalReference(),
                         Description = $"Finished goods capitalization for {wo.WorkOrderNumber}",
                         TransactionType = TransactionType.Inventory,
                         CompanyId = woCompId != Guid.Empty ? woCompId : null,
@@ -4973,6 +4973,19 @@ public IReadOnlyList<EmployeeCompensation> EmployeeCompensations => _employeeCom
         if (Math.Abs(debitSum - creditSum) > 0.001m)
         {
             error = $"Journal entry is out of balance. Debits ({debitSum}) must equal Credits ({creditSum}).";
+            return false;
+        }
+
+        // Validate against Closed Accounting Periods (IAS 8 / GAAP Compliance)
+        var closedPeriod = _periodCloses.FirstOrDefault(p =>
+            p.Status == PeriodCloseStatus.Closed &&
+            p.PeriodEndDate.HasValue &&
+            request.Date <= p.PeriodEndDate.Value &&
+            (p.CompanyId == null || request.CompanyId == null || p.CompanyId == request.CompanyId));
+
+        if (closedPeriod != null)
+        {
+            error = $"The accounting period '{closedPeriod.PeriodName}' ending {closedPeriod.PeriodEndDate:yyyy-MM-dd} is closed. You cannot post transactions into a closed period.";
             return false;
         }
 

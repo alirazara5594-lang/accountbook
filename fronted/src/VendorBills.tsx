@@ -131,10 +131,25 @@ export const VendorBills: React.FC<{ activeEntityId: string }> = ({ activeEntity
     }
   };
 
+  const handlePayBill = (bill: any) => {
+    const total = bill.lines?.reduce((acc: number, l: any) => acc + ((l.quantity || 1) * (l.unitPrice || 0)), 0) || 0;
+    const payload = {
+      vendorId: bill.vendorId,
+      billId: bill.id,
+      amount: total
+    };
+    localStorage.setItem('ams_pending_vendor_payment', JSON.stringify(payload));
+    window.dispatchEvent(new CustomEvent('ams_navigate', { detail: 'Procurement.Vendor Payments' }));
+  };
+
   const saveBill = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!billForm.vendorId) { notify('Please select a vendor.'); return; }
     if (!billForm.vendorInvoiceNumber) { notify('Please enter supplier invoice number.'); return; }
+    if (billForm.dueDate && billForm.date && billForm.dueDate < billForm.date) {
+      notify('⚠️ Due Date cannot be earlier than the Bill Date.');
+      return;
+    }
     const body = {
       purchaseOrderId: entryMode === 'procurement' ? (billForm.purchaseOrderId || null) : null,
       vendorId: billForm.vendorId,
@@ -314,6 +329,13 @@ export const VendorBills: React.FC<{ activeEntityId: string }> = ({ activeEntity
                       ) : (
                         <span className="text-[10px] text-[var(--color-text-muted)] font-medium">Direct AP</span>
                       )}
+                      <button
+                        onClick={() => handlePayBill(bill)}
+                        title="Record Payment / Pay Bill"
+                        className="h-7 px-2.5 rounded-lg border border-emerald-500/30 bg-emerald-500/10 text-[10px] font-bold text-emerald-600 dark:text-emerald-400 hover:bg-emerald-500/20 transition-colors flex items-center gap-1 cursor-pointer"
+                      >
+                        <CreditCard className="w-3 h-3" /> Pay
+                      </button>
                     </div>
                   </td>
                 </tr>
@@ -456,13 +478,13 @@ export const VendorBills: React.FC<{ activeEntityId: string }> = ({ activeEntity
 
                       <div>
                         <label className="erp-form-label">Transaction Currency</label>
-                        <select
+                        <CompactSelect
                           value={billForm.currencyCode}
-                          onChange={e => setBillForm({ ...billForm, currencyCode: e.target.value })}
-                          className="erp-form-select font-bold"
-                        >
-                          {['PKR', 'USD', 'EUR', 'GBP', 'AED', 'SAR', 'CAD', 'AUD'].map(c => <option key={c} value={c}>{c}</option>)}
-                        </select>
+                          onChange={c => setBillForm({ ...billForm, currencyCode: c })}
+                          options={['PKR', 'USD', 'EUR', 'GBP', 'AED', 'SAR', 'CAD', 'AUD'].map(c => ({ value: c, label: c }))}
+                          placeholder="Currency"
+                          className="h-10"
+                        />
                       </div>
 
                       <div>

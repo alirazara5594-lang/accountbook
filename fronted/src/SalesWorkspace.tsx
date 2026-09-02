@@ -4,7 +4,7 @@ import autoTable from 'jspdf-autotable'
 import {
   Receipt, Plus, Check, X, ShieldCheck, ArrowRight,
   ArrowLeft, Hash, Users, FileText, Coins, CheckCircle2, Eye,
-  Download, Pencil, Ban, ChevronDown
+  Download, Pencil, Ban, ChevronDown, DollarSign
 } from 'lucide-react'
 import { useSalesStore, useCustomersStore, useProductsStore, useCoaStore } from './stores'
 import { useFormDraft } from './hooks/useFormDraft'
@@ -366,9 +366,23 @@ export const SalesWorkspace: React.FC<{ activeEntityId: string; entities?: any[]
   const isCreditLimitExceeded = customerCreditLimit > 0 && totalCreditExposure > customerCreditLimit
   const excessCreditAmount = Math.max(0, totalCreditExposure - customerCreditLimit)
 
+  const handleRecordPayment = (inv: any) => {
+    const payload = {
+      customerId: inv.customerId,
+      invoiceId: inv.id,
+      amount: inv.amountDue ?? inv.totalAmount ?? 0
+    };
+    localStorage.setItem('ams_pending_customer_payment', JSON.stringify(payload));
+    window.dispatchEvent(new CustomEvent('ams_navigate', { detail: 'Sales & Customers.Customer Payments' }));
+  };
+
   const saveInvoice = async () => {
     if (!form.customerId) {
       notify('Please select a customer.')
+      return
+    }
+    if (form.dueDate && form.invoiceDate && form.dueDate < form.invoiceDate) {
+      notify('⚠️ Invoice Due Date cannot be earlier than the Invoice Date.')
       return
     }
     if (isCreditLimitExceeded && !creditOverride) {
@@ -1013,6 +1027,11 @@ export const SalesWorkspace: React.FC<{ activeEntityId: string; entities?: any[]
                           {inv.status !== 3 && inv.status !== 'Void' && <button onClick={() => cancelInvoice(inv)} title="Cancel / Void Invoice" className="w-8 h-8 rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] hover:bg-rose-500/10 hover:border-rose-500/30 flex items-center justify-center transition-all"><Ban className="w-3.5 h-3.5 text-rose-500" /></button>}
                           {(inv.status === 0 || inv.status === 'Draft') && <button onClick={() => openPostModal(inv)} title="Approve & Post to Ledger" className="w-8 h-8 rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] hover:bg-emerald-500/10 hover:border-emerald-500/30 flex items-center justify-center transition-all"><CheckCircle2 className="w-3.5 h-3.5 text-emerald-500" /></button>}
                           {(inv.status === 0 || inv.status === 'Draft') && <button onClick={() => openEditModal(inv)} title="Edit Invoice" className="w-8 h-8 rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] hover:bg-blue-500/10 hover:border-blue-500/30 flex items-center justify-center transition-all"><Pencil className="w-3.5 h-3.5 text-blue-500" /></button>}
+                          {amountDue > 0 && inv.status !== 0 && inv.status !== 'Draft' && inv.status !== 3 && inv.status !== 'Void' && (
+                            <button onClick={() => handleRecordPayment(inv)} title="Record Customer Payment" className="w-8 h-8 rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] hover:bg-emerald-500/10 hover:border-emerald-500/30 flex items-center justify-center transition-all cursor-pointer">
+                              <DollarSign className="w-3.5 h-3.5 text-emerald-600" />
+                            </button>
+                          )}
                           <button onClick={() => { openEditModal(inv); setModalTab('preview'); }} title="View Invoice" className="w-8 h-8 rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] hover:bg-indigo-500/10 hover:border-indigo-500/30 flex items-center justify-center transition-all"><Eye className="w-3.5 h-3.5 text-indigo-500" /></button>
                         </div>
                       </td>

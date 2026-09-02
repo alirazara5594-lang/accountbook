@@ -36,6 +36,21 @@ const statusStyles: Record<string, { label: string; hex: string }> = {
   Failed: { label: 'Failed', hex: '#ef4444' }
 }
 
+const getNextPaymentReference = (allPayments: VendorPayment[] = []): string => {
+  let maxSeq = 0;
+  for (const p of allPayments) {
+    if (!p?.reference) continue;
+    const match = p.reference.match(/PAY-(\d+)/i);
+    if (match) {
+      const num = parseInt(match[1], 10);
+      if (!isNaN(num) && num > maxSeq && num < 1000000) {
+        maxSeq = num;
+      }
+    }
+  }
+  return `PAY-${String(maxSeq + 1).padStart(5, '0')}`;
+};
+
 interface VendorPaymentsViewProps {
   activeEntityId: string
   entities?: Entity[]
@@ -68,9 +83,29 @@ export const VendorPaymentsView: React.FC<VendorPaymentsViewProps> = ({
     withdrawFromAccountId: '',
     amount: '',
     currency: 'PKR',
-    reference: `PAY-${Math.floor(1000 + Math.random() * 9000)}`,
-    description: ''
+    reference: 'PAY-00001',
+    description: 'Vendor invoice payment disbursement.'
   })
+
+  // Listen for 1-click 'Pay Bill' from Vendor Bills Workspace
+  useEffect(() => {
+    const raw = localStorage.getItem('ams_pending_vendor_payment');
+    if (raw) {
+      try {
+        const parsed = JSON.parse(raw);
+        localStorage.removeItem('ams_pending_vendor_payment');
+        if (parsed.vendorId) {
+          setForm(prev => ({
+            ...prev,
+            vendorId: parsed.vendorId,
+            billId: parsed.billId || '',
+            amount: parsed.amount ? String(parsed.amount) : prev.amount
+          }));
+          setIsModalOpen(true);
+        }
+      } catch {}
+    }
+  }, []);
 
   const { saveDraft, clearDraft } = useFormDraft('vendor_payment', form, setForm, isModalOpen)
 
@@ -108,7 +143,7 @@ export const VendorPaymentsView: React.FC<VendorPaymentsViewProps> = ({
       withdrawFromAccountId: withdrawAccounts[0]?.id || '',
       amount: '',
       currency: 'PKR',
-      reference: `PAY-${Math.floor(1000 + Math.random() * 9000)}`,
+      reference: getNextPaymentReference(payments),
       description: 'Vendor invoice payment disbursement.'
     })
     setModalTab('vendor')

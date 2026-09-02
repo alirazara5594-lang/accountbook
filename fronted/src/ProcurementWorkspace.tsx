@@ -42,6 +42,19 @@ const getNextBillNumber = (allBills: any[] = []): string => {
   return `BILL-${String(maxSeq + 1).padStart(5, '0')}`;
 };
 
+const getNextChallanNumber = (allGrns: any[] = []): string => {
+  let maxSeq = 0;
+  for (const g of allGrns) {
+    const dc = g.deliveryChallanNumber || '';
+    const match = dc.match(/DC-(\d+)/i);
+    if (match) {
+      const num = parseInt(match[1], 10);
+      if (!isNaN(num) && num > maxSeq && num < 1000000) maxSeq = num;
+    }
+  }
+  return `DC-${String(maxSeq + 1).padStart(5, '0')}`;
+};
+
 export const ProcurementWorkspace: React.FC<{ activeEntityId: string; entities?: any[] }> = ({ activeEntityId }) => {
   const [activeTab, setActiveTab] = useState<Tab>('pr');
   const [toast, setToast] = useState('');
@@ -240,7 +253,7 @@ export const ProcurementWorkspace: React.FC<{ activeEntityId: string; entities?:
   };
 
   const handleOpenGrnModal = (po: any) => {
-    setGrnForm({ purchaseOrderId: po.id, deliveryChallanNumber: `DC-${Math.floor(1000 + Math.random() * 9000)}`, targetWarehouseId: warehouses[0]?.id || '' });
+    setGrnForm({ purchaseOrderId: po.id, deliveryChallanNumber: getNextChallanNumber(grns), targetWarehouseId: warehouses[0]?.id || '' });
     setGrnLines((po.lines || []).map((l: any) => ({ description: l.description, productId: l.productId, orderedQuantity: l.quantity, receivedQuantity: l.quantity, rejectedQuantity: 0, unitCost: l.unitPrice, destination: l.destination || 'Inventory', targetWarehouseId: warehouses[0]?.id || '' })));
     setShowGrnModal(true);
   };
