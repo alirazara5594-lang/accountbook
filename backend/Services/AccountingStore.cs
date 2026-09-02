@@ -3417,6 +3417,9 @@ public IReadOnlyList<EmployeeCompensation> EmployeeCompensations => _employeeCom
 
     public void ExecuteJournalReversal(string documentReference, string reversalPrefix, string reversalDescription, Guid? companyId, DateOnly? reversalDate = null)
     {
+        var revRef = $"{reversalPrefix}-{documentReference}";
+        if (_entries.Any(e => e.Reference == revRef)) return;
+
         var postedEntries = _entries.Where(e => e.Reference == documentReference && e.Status == JournalStatus.Posted).ToList();
         foreach (var origEntry in postedEntries)
         {
@@ -3858,17 +3861,19 @@ public IReadOnlyList<EmployeeCompensation> EmployeeCompensations => _employeeCom
             // If cancelling / voiding a posted invoice, execute GAAP reversal journal and restore stock
             if ((status == SalesInvoiceStatus.Void || status == SalesInvoiceStatus.Draft) && invoice.Status != SalesInvoiceStatus.Draft && invoice.Status != SalesInvoiceStatus.Void)
             {
-                // 1. Find all posted journal entries associated with this invoice
-                var postedEntries = _entries.Where(e => 
-                    (e.Reference == invoice.InvoiceNumber || (!string.IsNullOrEmpty(invoice.Reference) && e.Reference == invoice.Reference) || e.Description.Contains(invoice.InvoiceNumber)) && 
-                    !e.Reference.StartsWith("REV-")
-                ).ToList();
-
-                var customerName = _customers.FirstOrDefault(c => c.Id == invoice.CustomerId)?.Name ?? "Customer";
-
-                foreach (var origEntry in postedEntries)
+                // 1. Find all posted journal entries associated with this invoice (guard against duplicate reversal)
+                var revRef = $"REV-{invoice.InvoiceNumber}";
+                if (!_entries.Any(e => e.Reference == revRef))
                 {
-                    if (origEntry.Status == JournalStatus.Posted)
+                    var postedEntries = _entries.Where(e => 
+                        (e.Reference == invoice.InvoiceNumber || (!string.IsNullOrEmpty(invoice.Reference) && e.Reference == invoice.Reference)) && 
+                        e.Status == JournalStatus.Posted &&
+                        !e.Reference.StartsWith("REV-")
+                    ).ToList();
+
+                    var customerName = _customers.FirstOrDefault(c => c.Id == invoice.CustomerId)?.Name ?? "Customer";
+
+                    foreach (var origEntry in postedEntries)
                     {
                         // Create reversing lines (swap debit and credit)
                         var revLines = origEntry.Lines.Select(l => new JournalLine(
@@ -3885,7 +3890,7 @@ public IReadOnlyList<EmployeeCompensation> EmployeeCompensations => _employeeCom
                         var revJournal = new JournalEntry
                         {
                             Date = DateOnly.FromDateTime(DateTime.UtcNow),
-                            Reference = $"REV-{invoice.InvoiceNumber}",
+                            Reference = revRef,
                             Description = $"Cancellation Reversal of Sales Invoice {invoice.InvoiceNumber} (Customer: {customerName})",
                             TransactionType = TransactionType.Sales,
                             CompanyId = invoice.CompanyId,
@@ -3893,6 +3898,7 @@ public IReadOnlyList<EmployeeCompensation> EmployeeCompensations => _employeeCom
                             Status = JournalStatus.Posted
                         };
                         _entries.Add(revJournal);
+                        origEntry.Status = JournalStatus.Reversed;
                     }
                 }
 
@@ -5051,6 +5057,14 @@ public IReadOnlyList<EmployeeCompensation> EmployeeCompensations => _employeeCom
 
         _accounts.Clear(); _accounts.AddRange(state.Accounts ?? []);
         _entries.Clear(); _entries.AddRange(state.Entries ?? []);
+        var reversalRefs = _entries.Where(e => e.Reference.StartsWith("REV-")).Select(e => e.Reference[4..]).ToHashSet();
+        foreach (var entry in _entries)
+        {
+            if (reversalRefs.Contains(entry.Reference) && entry.Status == JournalStatus.Posted)
+            {
+                entry.Status = JournalStatus.Reversed;
+            }
+        }
         _templates.Clear(); _templates.AddRange(state.Templates ?? []);
         _recurringEntries.Clear(); _recurringEntries.AddRange(state.RecurringEntries ?? []);
         _journalEvents.Clear(); _journalEvents.AddRange(state.Events ?? []);
