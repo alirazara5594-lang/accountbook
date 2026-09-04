@@ -810,6 +810,91 @@ export const InventoryWorkspace: React.FC<{ activeEntityId: string }> = ({ activ
           </div>
         </div>
       )}
+
+      {/* ═══ Add Item Modal ═══ */}
+      {addItemModal && (
+        <div className="overlay">
+          <div className="modal" style={{ maxWidth: '500px', width: '95%' }}>
+            <div className="modal-head">
+              <div>
+                <p className="eyebrow">INVENTORY</p>
+                <h2>Add Item to Inventory</h2>
+              </div>
+              <button type="button" className="close" onClick={() => setAddItemModal(false)}>×</button>
+            </div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '15px', padding: '10px 0' }}>
+              <p className="text-sm text-gray-600">
+                Manually add a product to inventory. Use this for initial stock setup or direct additions.
+              </p>
+              <div>
+                <label className="block text-xs font-semibold text-gray-700 mb-1">Product *</label>
+                <select
+                  value={addItemForm.productId}
+                  onChange={e => setAddItemForm(f => ({ ...f, productId: e.target.value }))}
+                  className="w-full px-3 py-1.5 text-sm rounded-lg border border-gray-200"
+                >
+                  <option value="">Select a product...</option>
+                  {products.map((p: any) => (
+                    <option key={p.id} value={p.id}>{p.name} ({p.code})</option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label className="block text-xs font-semibold text-gray-700 mb-1">Warehouse *</label>
+                <select
+                  value={addItemForm.warehouseId}
+                  onChange={e => setAddItemForm(f => ({ ...f, warehouseId: e.target.value }))}
+                  className="w-full px-3 py-1.5 text-sm rounded-lg border border-gray-200"
+                >
+                  <option value="">Select a warehouse...</option>
+                  {warehouses.map((w: any) => (
+                    <option key={w.id} value={w.id}>{w.name}</option>
+                  ))}
+                </select>
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-semibold text-gray-700 mb-1">Quantity *</label>
+                  <input
+                    type="number"
+                    min="1"
+                    value={addItemForm.quantity}
+                    onChange={e => setAddItemForm(f => ({ ...f, quantity: e.target.value }))}
+                    className="w-full px-3 py-1.5 text-sm rounded-lg border border-gray-200"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold text-gray-700 mb-1">Unit Cost</label>
+                  <input
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    value={addItemForm.unitCost}
+                    onChange={e => setAddItemForm(f => ({ ...f, unitCost: e.target.value }))}
+                    className="w-full px-3 py-1.5 text-sm rounded-lg border border-gray-200"
+                  />
+                </div>
+              </div>
+              <div>
+                <label className="block text-xs font-semibold text-gray-700 mb-1">Reference / Notes</label>
+                <input
+                  type="text"
+                  value={addItemForm.reference}
+                  onChange={e => setAddItemForm(f => ({ ...f, reference: e.target.value }))}
+                  placeholder="e.g. Initial stock setup"
+                  className="w-full px-3 py-1.5 text-sm rounded-lg border border-gray-200"
+                />
+              </div>
+            </div>
+            <div className="modal-footer">
+              <button type="button" className="secondary" onClick={() => setAddItemModal(false)}>Cancel</button>
+              <button onClick={handleAddItem} disabled={!addItemForm.productId || !addItemForm.warehouseId} className="primary">
+                Add to Inventory
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
