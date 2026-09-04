@@ -132,7 +132,8 @@ export default function ProductsAndServices({
     fetchProducts()
     fetchAccounts()
     fetchTaxCodes()
-  }, [])
+    fetchStockLevels(activeEntityId)
+  }, [activeEntityId])
 
   const applicableTaxCodes = useMemo(() => {
     return getActiveTaxCodes()
@@ -187,6 +188,15 @@ export default function ProductsAndServices({
       return matchesSearch && matchesType && isSellable
     })
   }, [products, search, typeFilter])
+
+  // Compute stock quantities per product
+  const stockMap = useMemo(() => {
+    const map: Record<string, number> = {}
+    stockLevels.forEach((s: any) => {
+      map[s.productId] = (map[s.productId] || 0) + (s.quantityOnHand || 0)
+    })
+    return map
+  }, [stockLevels])
 
   const exportHeaders = ['Code', 'Name', 'Description', 'Type', 'Category', 'Unit', 'Unit Price', 'Cost Price', 'Status']
   const exportRows = filteredProducts.map((p: any) => [
@@ -404,6 +414,7 @@ export default function ProductsAndServices({
                   <th className="py-3.5 px-4">Code & Type</th>
                   <th className="py-3.5 px-4 min-w-[200px]">Item Name & Category</th>
                   <th className="py-3.5 px-4 text-center">Unit</th>
+                  <th className="py-3.5 px-4 text-center">Stock</th>
                   <th className="py-3.5 px-4 text-right">Sales Price</th>
                   <th className="py-3.5 px-4 text-right">Cost Price</th>
                   <th className="py-3.5 px-4 text-right">Margin</th>
@@ -413,15 +424,15 @@ export default function ProductsAndServices({
                 </tr>
               </thead>
               <tbody className="divide-y divide-[var(--color-border)]">
-                {loading ? (
+                  {loading ? (
                   <tr>
-                    <td colSpan={9} className="py-12 text-center text-[var(--color-text-muted)]">
+                    <td colSpan={10} className="py-12 text-center text-[var(--color-text-muted)]">
                       Loading catalog items...
                     </td>
                   </tr>
                 ) : filteredProducts.length === 0 ? (
                   <tr>
-                    <td colSpan={9} className="py-12 text-center text-[var(--color-text-muted)]">
+                    <td colSpan={10} className="py-12 text-center text-[var(--color-text-muted)]">
                       No products or services found matching your criteria.
                     </td>
                   </tr>
@@ -457,6 +468,23 @@ export default function ProductsAndServices({
                         </td>
                         <td className="py-3.5 px-4 text-center whitespace-nowrap font-medium text-[var(--color-text-muted)]">
                           {p.unit || 'Each'}
+                        </td>
+                        <td className="py-3.5 px-4 text-center whitespace-nowrap">
+                          {p.type === 'Service' ? (
+                            <span className="text-[var(--color-text-muted)] text-xs">N/A</span>
+                          ) : (stockMap[p.id] || 0) === 0 ? (
+                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-red-100 text-red-700 border border-red-200">
+                              Out of Stock
+                            </span>
+                          ) : (stockMap[p.id] || 0) <= (p.reorderPoint || 0) ? (
+                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-yellow-100 text-yellow-700 border border-yellow-200">
+                              {stockMap[p.id]} Low
+                            </span>
+                          ) : (
+                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-green-100 text-green-700 border border-green-200">
+                              {stockMap[p.id]} In Stock
+                            </span>
+                          )}
                         </td>
                         <td className="py-3.5 px-4 text-right whitespace-nowrap font-mono font-bold text-emerald-600 dark:text-emerald-400">
                           {money(p.unitPrice)}
