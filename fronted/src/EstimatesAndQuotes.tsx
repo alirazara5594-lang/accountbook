@@ -795,6 +795,7 @@ export const EstimatesAndQuotes: React.FC<{ activeEntityId: string; entities?: a
                                 value={l.productId}
                                 onChange={v => updateLine(i, 'productId', v)}
                                 products={products}
+                                filterPurpose={['FinishedGood', 'Service']}
                               />
                             </td>
                             <td className="p-2"><textarea value={l.description} onChange={e => updateLine(i, 'description', e.target.value)} rows={2} placeholder="Item description / details..." className="w-full px-2.5 py-1.5 rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] text-xs outline-none resize-none" /></td>

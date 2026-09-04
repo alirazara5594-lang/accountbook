@@ -19,6 +19,7 @@ import { ProcurementWorkspace } from './ProcurementWorkspace'
 import { VendorBills } from './VendorBills'
 import { FixedAssets } from './FixedAssets'
 import { AssetsInventoryWorkspace } from './AssetsInventoryWorkspace'
+import { InventoryWorkspace } from './InventoryWorkspace'
 import DepreciationRun from './DepreciationRun'
 import DepreciationSchedule from './DepreciationSchedule'
 import ValuationReport from './ValuationReport'
@@ -453,7 +454,8 @@ export default function App() {
     'Accounting.Lease Accounting': 'lease-accounting',
     'Accounting.Intercompany Allocations': 'intercompany',
     'Assets & Inventory.Summary': 'assets-inventory-summary',
-    'Assets & Inventory.Assets & Inventory Workspace': 'assets-inventory',
+    'Assets & Inventory.Asset Register': 'assets-inventory',
+    'Assets & Inventory.Inventory': 'assets-inventory-inventory',
     'Assets & Inventory.Depreciation Run': 'depreciation-run',
     'Assets & Inventory.Depreciation Schedule': 'depreciation-schedule',
     'Assets & Inventory.Valuation Reports': 'valuation-report',
@@ -752,6 +754,8 @@ export default function App() {
   {activeView === 'taxes' && <TaxAccountingView activeEntityId={activeEntityId} entities={entities as any} />}
   {activeView === 'fixed-assets' && <FixedAssets activeEntityId={activeEntityId} />}
   {activeView === 'assets-inventory' && <AssetsInventoryWorkspace activeEntityId={activeEntityId} entities={entities} />}
+  {activeView === 'assets-inventory-inventory' && <InventoryWorkspace activeEntityId={activeEntityId} />}
+  {activeView === 'inventory' && <InventoryWorkspace activeEntityId={activeEntityId} />}
   {activeView === 'depreciation-run' && <DepreciationRun activeEntityId={activeEntityId} />}
   {activeView === 'depreciation-schedule' && <DepreciationSchedule activeEntityId={activeEntityId} />}
   {activeView === 'valuation-report' && <ValuationReport activeEntityId={activeEntityId} />}

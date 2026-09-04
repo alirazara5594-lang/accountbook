@@ -617,6 +617,7 @@ export const SalesOrdersWorkspace: React.FC<{ activeEntityId: string; entities?:
                                 value={l.productId}
                                 onChange={v => updateLine(i, 'productId', v)}
                                 products={products}
+                                filterPurpose={['FinishedGood', 'Service']}
                               />
                             </td>
                             <td className="p-2">

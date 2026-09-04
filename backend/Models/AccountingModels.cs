@@ -222,6 +222,7 @@ public record CustomerStatusRequest(CustomerStatus Status, string? Reason);
 
 public enum ProductType { Physical, Service, NonInventory, Bundle }
 public enum ProductStatus { Active, Inactive, Discontinued }
+public enum ProductPurpose { FinishedGood, RawMaterial, Component, FixedAsset, Consumable }
 
 public class Product
 {
@@ -230,9 +231,11 @@ public class Product
     public required string Name { get; set; }
     public string? Description { get; set; }
     public ProductType Type { get; set; } = ProductType.Physical;
+    public ProductPurpose Purpose { get; set; } = ProductPurpose.FinishedGood;
     public string? Category { get; set; }
     public string Unit { get; set; } = "Each";
     public decimal QuantityOnHand { get; set; } = 0m;
+    public decimal MinimumQuantity { get; set; } = 0m;
     public decimal UnitPrice { get; set; } = 0m;
     public decimal CostPrice { get; set; } = 0m;
     public Guid? TaxCodeId { get; set; }
@@ -251,16 +254,19 @@ public record ProductRequest(
     string Name,
     string? Description,
     ProductType Type,
+    ProductPurpose Purpose,
     string? Category,
     string Unit,
     decimal UnitPrice,
     decimal CostPrice,
+    decimal MinimumQuantity,
     Guid? TaxCodeId,
     Guid? IncomeAccountId,
     Guid? ExpenseAccountId,
     Guid? AssetAccountId);
 
 public record ProductStatusRequest(ProductStatus Status, string? Reason);
+public record ProductPurposeRequest(ProductPurpose Purpose);
 
 public enum VendorStatus { Active, Inactive, Blocked }
 

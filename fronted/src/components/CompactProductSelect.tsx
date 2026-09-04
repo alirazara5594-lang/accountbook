@@ -9,6 +9,7 @@ export interface ProductOption {
   salesPrice?: number | string
   unitPrice?: number | string
   type?: string
+  purpose?: string
   description?: string
 }
 
@@ -18,6 +19,7 @@ interface CompactProductSelectProps {
   products: ProductOption[]
   placeholder?: string
   className?: string
+  filterPurpose?: string[]
 }
 
 export const CompactProductSelect: React.FC<CompactProductSelectProps> = ({
@@ -25,7 +27,8 @@ export const CompactProductSelect: React.FC<CompactProductSelectProps> = ({
   onChange,
   products = [],
   placeholder = 'Select Item...',
-  className = ''
+  className = '',
+  filterPurpose
 }) => {
   const [isOpen, setIsOpen] = useState(false)
   const [search, setSearch] = useState('')
@@ -107,15 +110,19 @@ export const CompactProductSelect: React.FC<CompactProductSelectProps> = ({
   }, [isOpen])
 
   const filteredProducts = useMemo(() => {
-    if (!search.trim()) return products
+    let result = products
+    if (filterPurpose && filterPurpose.length > 0) {
+      result = result.filter(p => filterPurpose.includes(p.purpose || ''))
+    }
+    if (!search.trim()) return result
     const q = search.toLowerCase().trim()
-    return products.filter(
+    return result.filter(
       p =>
         p.name?.toLowerCase().includes(q) ||
         p.code?.toLowerCase().includes(q) ||
         p.description?.toLowerCase().includes(q)
     )
-  }, [products, search])
+  }, [products, search, filterPurpose])
 
   return (
     <div className="relative inline-block w-full">

@@ -12,7 +12,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { DataToolbar } from '@/components/ui/data-toolbar'
 import { KpiCard, KpiGrid } from '@/components/ui/kpi-card'
 
-import { useProductsStore, useCoaStore, useTaxStore } from './stores'
+import { useProductsStore, useCoaStore, useTaxStore, useAssetsInventoryStore } from './stores'
 import { useFormDraft } from './hooks/useFormDraft'
 import { money } from './lib/currency'
 import { getActiveTaxCodes, GLOBAL_TAX_STRUCTURES } from './lib/taxLocalization'
@@ -21,6 +21,7 @@ import type { TaxCode } from './api/modules/tax.api'
 
 export type ProductType = 'Physical' | 'Service' | 'NonInventory' | 'Bundle'
 export type ProductStatus = 'Active' | 'Inactive' | 'Discontinued'
+export type ProductPurpose = 'FinishedGood' | 'RawMaterial' | 'Component' | 'FixedAsset' | 'Consumable'
 
 export type Product = {
   id: string
@@ -28,11 +29,13 @@ export type Product = {
   name: string
   description?: string
   type: ProductType
+  purpose: ProductPurpose
   category?: string
   unit: string
   currencyCode?: string
   unitPrice: number
   costPrice: number
+  minimumQuantity: number
   incomeAccountId?: string
   expenseAccountId?: string
   inventoryAccountId?: string
@@ -50,11 +53,13 @@ export type ProductForm = {
   name: string
   description: string
   type: ProductType
+  purpose: ProductPurpose
   category: string
   unit: string
   currencyCode: string
   unitPrice: string
   costPrice: string
+  minimumQuantity: string
   incomeAccountId: string
   expenseAccountId: string
   inventoryAccountId: string
@@ -71,11 +76,13 @@ const blankForm = (): ProductForm => ({
   name: '',
   description: '',
   type: 'Physical',
+  purpose: 'FinishedGood',
   category: 'General',
   unit: 'Unit',
   currencyCode: 'PKR',
   unitPrice: '0',
   costPrice: '0',
+  minimumQuantity: '0',
   incomeAccountId: '',
   expenseAccountId: '',
   inventoryAccountId: '',
@@ -108,6 +115,9 @@ export default function ProductsAndServices({
 
   const taxCodes = useTaxStore((s: any) => s.taxCodes as TaxCode[])
   const fetchTaxCodes = useTaxStore((s: any) => s.fetchTaxCodes)
+
+  const stockLevels = useAssetsInventoryStore((s: any) => s.stockLevels as any[])
+  const fetchStockLevels = useAssetsInventoryStore((s: any) => s.fetchStockLevels)
 
   const [search, setSearch] = useState('')
   const [typeFilter, setTypeFilter] = useState<string>('all')
@@ -173,7 +183,8 @@ export default function ProductsAndServices({
         .toLowerCase()
         .includes(search.toLowerCase())
       const matchesType = typeFilter === 'all' || p.type === typeFilter
-      return matchesSearch && matchesType
+      const isSellable = p.purpose === 'FinishedGood' || p.purpose === 'Service'
+      return matchesSearch && matchesType && isSellable
     })
   }, [products, search, typeFilter])
 
@@ -261,10 +272,12 @@ export default function ProductsAndServices({
       name: form.name.trim(),
       description: form.description.trim() || null,
       type: form.type,
+      purpose: form.purpose,
       category: form.category.trim() || null,
       unit: form.unit.trim() || 'Each',
       unitPrice: Number(form.unitPrice) || 0,
       costPrice: Number(form.costPrice) || 0,
+      minimumQuantity: Number(form.minimumQuantity) || 0,
       taxCodeId: finalTaxCodeId,
       incomeAccountId: isGuid(form.incomeAccountId) ? form.incomeAccountId : null,
       expenseAccountId: isGuid(form.expenseAccountId) ? form.expenseAccountId : null,
@@ -591,7 +604,7 @@ export default function ProductsAndServices({
                       {editingProduct ? 'Edit Catalog Item' : 'Create Product / Service Item'}
                     </h2>
                     <span className="px-2.5 py-0.5 rounded-full text-[10px] font-semibold bg-amber-500/10 text-amber-600 border border-amber-500/20">
-                      {form.type}
+                      {form.type === 'Physical' ? 'Physical Good' : form.type === 'Service' ? 'Service' : form.type === 'NonInventory' ? 'Non-Inventory' : 'Bundle'}
                     </span>
                   </div>
                   <p className="text-xs text-[var(--color-text-muted)] mt-0.5">
@@ -682,14 +695,25 @@ export default function ProductsAndServices({
                         </label>
                         <select
                           value={form.type}
-                          onChange={e => setForm({ ...form, type: e.target.value as ProductType })}
+                          onChange={e => {
+                            const newType = e.target.value as ProductType
+                            const newPurpose = newType === 'Service' ? 'Service' : 'FinishedGood'
+                            setForm({ ...form, type: newType, purpose: newPurpose })
+                          }}
                           className="erp-form-select cursor-pointer font-medium"
                         >
-                          <option value="Physical">📦 Physical Good (Inventory Tracked)</option>
-                          <option value="Service">🛠️ Service (Consulting, Labor, Hours)</option>
-                          <option value="NonInventory">📑 Non-Inventory (Consumables, Office)</option>
-                          <option value="Bundle">🎁 Bundle / Kit (Composite Items)</option>
+                          <optgroup label="📦 Sellable Items (Appear in Products & Services)">
+                            <option value="Physical">Physical Good — Inventory Tracked</option>
+                            <option value="Service">Service — Consulting, Labor, Hours</option>
+                          </optgroup>
+                          <optgroup label="📑 Other Items">
+                            <option value="NonInventory">Non-Inventory — Consumables, Office Supplies</option>
+                            <option value="Bundle">Bundle / Kit — Composite Items</option>
+                          </optgroup>
                         </select>
+                        <p className="text-[10px] text-[var(--color-text-muted)] mt-1">
+                          Physical & Service items appear in Products & Services for sale
+                        </p>
                       </div>
 
                       <div>
@@ -816,6 +840,25 @@ export default function ProductsAndServices({
                         </div>
                         <p className="text-[11px] text-[var(--color-text-muted)] mt-1.5">
                           Purchase or landed standard cost per unit for margin tracking.
+                        </p>
+                      </div>
+
+                      <div>
+                        <label className="erp-form-label">
+                          Minimum Stock Quantity (Reorder Point)
+                        </label>
+                        <div className="relative">
+                          <input
+                            type="number"
+                            min="0"
+                            placeholder="0"
+                            value={form.minimumQuantity}
+                            onChange={e => setForm({ ...form, minimumQuantity: e.target.value })}
+                            className="erp-form-input font-mono font-bold"
+                          />
+                        </div>
+                        <p className="text-[11px] text-[var(--color-text-muted)] mt-1.5">
+                          Alert when stock falls below this level. Set to 0 to disable alert.
                         </p>
                       </div>
                     </div>
@@ -1004,7 +1047,8 @@ export default function ProductsAndServices({
                         <Package className="w-4 h-4 text-sky-500" /> Item Identification & Description
                       </h4>
                       <div className="grid grid-cols-2 gap-2 text-[11px]">
-                        <div><span className="text-[var(--color-text-muted)]">Item Type:</span> <p className="font-semibold text-[var(--color-text-strong)]">{form.type}</p></div>
+                        <div><span className="text-[var(--color-text-muted)]">Item Classification:</span> <p className="font-semibold text-[var(--color-text-strong)]">{form.type === 'Physical' ? 'Physical Good (Inventory Tracked)' : form.type === 'Service' ? 'Service' : form.type === 'NonInventory' ? 'Non-Inventory' : 'Bundle / Kit'}</p></div>
+                        <div><span className="text-[var(--color-text-muted)]">Item Purpose:</span> <p className="font-semibold text-[var(--color-text-strong)]">{form.purpose === 'FinishedGood' ? 'Finished Good (For Selling)' : 'Service (For Selling)'}</p></div>
                         <div><span className="text-[var(--color-text-muted)]">UoM (Unit of Measure):</span> <p className="font-semibold text-[var(--color-text-strong)]">{form.unit || 'Unit'}</p></div>
                         <div className="col-span-2"><span className="text-[var(--color-text-muted)]">Description:</span> <p className="font-semibold text-[var(--color-text-strong)]">{form.description || '—'}</p></div>
                         <div><span className="text-[var(--color-text-muted)]">Status:</span> <p className="font-semibold text-[var(--color-text-strong)]">{form.status}</p></div>
