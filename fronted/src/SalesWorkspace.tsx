@@ -6,7 +6,7 @@ import {
   ArrowLeft, Hash, Users, FileText, Coins, CheckCircle2, Eye,
   Download, Pencil, Ban, ChevronDown, DollarSign
 } from 'lucide-react'
-import { useSalesStore, useCustomersStore, useProductsStore, useCoaStore } from './stores'
+import { useSalesStore, useCustomersStore, useProductsStore, useCoaStore, useAssetsInventoryStore } from './stores'
 import { useFormDraft } from './hooks/useFormDraft'
 import { DataToolbar } from '@/components/ui/data-toolbar'
 import { KpiCard, KpiGrid } from './components/ui/kpi-card'
@@ -52,6 +52,12 @@ export const SalesWorkspace: React.FC<{ activeEntityId: string; entities?: any[]
   const coaMappings = useCoaStore((s) => s.mappings)
   const fetchMappings = useCoaStore((s) => s.fetchMappings)
 
+  const warehouses = useAssetsInventoryStore((s) => s.warehouses)
+  const fetchWarehouses = useAssetsInventoryStore((s) => s.fetchWarehouses)
+  const stockLevels = useAssetsInventoryStore((s) => s.stockLevels)
+  const fetchStockLevels = useAssetsInventoryStore((s) => s.fetchStockLevels)
+  const createStockTransaction = useAssetsInventoryStore((s) => s.createStockTransaction)
+
   const [loading, setLoading] = useState(true)
   const [showForm, setShowForm] = useState(false)
   const [editingInvoice, setEditingInvoice] = useState<any>(null)
@@ -83,7 +89,7 @@ export const SalesWorkspace: React.FC<{ activeEntityId: string; entities?: any[]
   })
 
   const [lines, setLines] = useState([
-    { productId: '', productName: '', description: '', quantity: '1', unitPrice: '0', discountType: 0, discountValue: '0', taxPercent: defaultTaxRate }
+    { productId: '', productName: '', description: '', quantity: '1', unitPrice: '0', discountType: 0, discountValue: '0', taxPercent: defaultTaxRate, warehouseId: '' }
   ])
 
   const { saveDraft, clearDraft } = useFormDraft('sales_invoice', { form, lines }, (saved: any) => {
@@ -98,7 +104,9 @@ export const SalesWorkspace: React.FC<{ activeEntityId: string; entities?: any[]
         fetchInvoices(activeEntityId),
         fetchCustomers(activeEntityId),
         fetchProducts(),
-        fetchAccounts()
+        fetchAccounts(),
+        fetchWarehouses(activeEntityId),
+        fetchStockLevels(activeEntityId)
       ])
     } catch {}
     setLoading(false)
@@ -286,7 +294,7 @@ export const SalesWorkspace: React.FC<{ activeEntityId: string; entities?: any[]
   }
 
   const addLine = () =>
-    setLines([...lines, { productId: '', productName: '', description: '', quantity: '1', unitPrice: '0', discountType: 0, discountValue: '0', taxPercent: defaultTaxRate }])
+    setLines([...lines, { productId: '', productName: '', description: '', quantity: '1', unitPrice: '0', discountType: 0, discountValue: '0', taxPercent: defaultTaxRate, warehouseId: '' }])
   
   const removeLine = (i: number) => setLines(lines.filter((_, idx) => idx !== i))
 
@@ -418,7 +426,8 @@ export const SalesWorkspace: React.FC<{ activeEntityId: string; entities?: any[]
           unitPrice: price,
           discountAmount: discountAmount,
           taxCodeId: null,
-          taxAmount: taxAmount
+          taxAmount: taxAmount,
+          warehouseId: l.warehouseId || null
         }
       })
     }
@@ -764,12 +773,29 @@ export const SalesWorkspace: React.FC<{ activeEntityId: string; entities?: any[]
   const postInvoice = async () => {
     try {
       if (!postModal) return
+      // Deduct inventory for each line item
+      if (postModal.lines) {
+        for (const line of postModal.lines) {
+          const qty = parseFloat(line.quantity) || 0
+          if (qty > 0 && line.warehouseId) {
+            await createStockTransaction({
+              productId: line.productId,
+              warehouseId: line.warehouseId,
+              type: 'Out',
+              quantity: qty,
+              unitCost: parseFloat(line.unitPrice) || 0,
+              reference: `INV-${postModal.invoiceNumber || postModal.id}`,
+              entityId: activeEntityId
+            })
+          }
+        }
+      }
       await postInvoiceStore(postModal.id, {
         arAccountId: postForm.arAccId || null,
         revenueAccountId: postForm.revenueAccId || null,
         taxLiabilityAccountId: postForm.taxLiabilityAccId || null
       })
-      notify(`✓ Invoice ${postModal.invoiceNumber || postModal.reference} approved and posted to General Ledger!`)
+      notify(`✓ Invoice ${postModal.invoiceNumber || postModal.reference} approved, posted & inventory deducted!`)
       setPostModal(null)
       await fetchData()
     } catch (e: any) {
@@ -1230,11 +1256,12 @@ export const SalesWorkspace: React.FC<{ activeEntityId: string; entities?: any[]
                   </div>
 
                   <div className="border border-[var(--color-border)] rounded-xl overflow-hidden shadow-2xs">
-                    <table className="w-full text-xs min-w-[800px]">
+                    <table className="w-full text-xs min-w-[950px]">
                       <thead className="bg-[var(--color-surface-muted)] text-[var(--color-text-muted)] font-semibold border-b border-[var(--color-border)]">
                         <tr>
                           <th className="p-2.5 text-left w-[170px] min-w-[140px]">Product / Service</th>
-                          <th className="p-2.5 text-left min-w-[220px]">Description</th>
+                          <th className="p-2.5 text-left min-w-[180px]">Description</th>
+                          <th className="p-2.5 text-left w-[140px] min-w-[120px]">Warehouse</th>
                           <th className="p-2.5 text-right w-16 min-w-[55px]">Qty</th>
                           <th className="p-2.5 text-right w-36 min-w-[130px]">Price</th>
                           <th className="p-2.5 text-center w-40 min-w-[145px]">Discount</th>
@@ -1262,6 +1289,18 @@ export const SalesWorkspace: React.FC<{ activeEntityId: string; entities?: any[]
                                 rows={2}
                                 className="w-full px-2.5 py-1.5 rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] text-xs text-[var(--color-text-strong)] outline-none resize-none"
                               />
+                            </td>
+                            <td className="p-2">
+                              <select
+                                value={l.warehouseId}
+                                onChange={e => updateLine(i, 'warehouseId', e.target.value)}
+                                className="w-full h-8 px-2 rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] text-xs text-[var(--color-text-strong)] outline-none"
+                              >
+                                <option value="">Select...</option>
+                                {warehouses.map((w: any) => (
+                                  <option key={w.id} value={w.id}>{w.name}</option>
+                                ))}
+                              </select>
                             </td>
                             <td className="p-2">
                               <input

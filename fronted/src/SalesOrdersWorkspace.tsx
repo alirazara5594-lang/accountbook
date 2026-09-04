@@ -4,7 +4,7 @@ import {
   CheckCircle2, Hash, Users, Truck, Eye, XCircle,
   FileText, ArrowUpRight, TrendingUp
 } from 'lucide-react'
-import { useSalesOrdersStore, useCustomersStore, useProductsStore } from './stores'
+import { useSalesOrdersStore, useCustomersStore, useProductsStore, useAssetsInventoryStore } from './stores'
 import { useFormDraft } from './hooks/useFormDraft'
 import { DataToolbar } from '@/components/ui/data-toolbar'
 import { money } from './lib/currency'
@@ -40,6 +40,12 @@ export const SalesOrdersWorkspace: React.FC<{ activeEntityId: string; entities?:
   const products = useProductsStore(s => s.products)
   const fetchProducts = useProductsStore(s => s.fetchProducts)
 
+  const warehouses = useAssetsInventoryStore(s => s.warehouses)
+  const fetchWarehouses = useAssetsInventoryStore(s => s.fetchWarehouses)
+  const stockLevels = useAssetsInventoryStore(s => s.stockLevels)
+  const fetchStockLevels = useAssetsInventoryStore(s => s.fetchStockLevels)
+  const createStockTransaction = useAssetsInventoryStore(s => s.createStockTransaction)
+
   const [loading, setLoading] = useState(true)
   const [showForm, setShowForm] = useState(false)
   const [modalTab, setModalTab] = useState<'details' | 'lines' | 'summary' | 'preview'>('details')
@@ -59,7 +65,7 @@ export const SalesOrdersWorkspace: React.FC<{ activeEntityId: string; entities?:
   })
 
   const [lines, setLines] = useState<any[]>([
-    { productId: '', description: '', quantity: '1', unitPrice: '0', discountAmount: '0', taxAmount: '0' }
+    { productId: '', description: '', quantity: '1', unitPrice: '0', discountAmount: '0', taxAmount: '0', warehouseId: '' }
   ])
 
   const { saveDraft, clearDraft } = useFormDraft('sales_order', { form, lines }, (saved: any) => {
@@ -74,6 +80,8 @@ export const SalesOrdersWorkspace: React.FC<{ activeEntityId: string; entities?:
         fetchOrders(activeEntityId),
         fetchCustomers(activeEntityId),
         fetchProducts(),
+        fetchWarehouses(activeEntityId),
+        fetchStockLevels(activeEntityId),
       ])
     } catch {}
     setLoading(false)
@@ -105,7 +113,7 @@ export const SalesOrdersWorkspace: React.FC<{ activeEntityId: string; entities?:
   }
 
   const addLine = () =>
-    setLines([...lines, { productId: '', description: '', quantity: '1', unitPrice: '0', discountAmount: '0', taxAmount: '0' }])
+    setLines([...lines, { productId: '', description: '', quantity: '1', unitPrice: '0', discountAmount: '0', taxAmount: '0', warehouseId: '' }])
 
   const removeLine = (i: number) => setLines(lines.filter((_, idx) => idx !== i))
 
@@ -155,7 +163,8 @@ export const SalesOrdersWorkspace: React.FC<{ activeEntityId: string; entities?:
         quantity: parseFloat(l.quantity || '1'),
         unitPrice: parseFloat(l.unitPrice || '0'),
         discountAmount: parseFloat(l.discountAmount || '0'),
-        taxAmount: parseFloat(l.taxAmount || '0')
+        taxAmount: parseFloat(l.taxAmount || '0'),
+        warehouseId: l.warehouseId || undefined
       }))
     }
 
@@ -172,8 +181,25 @@ export const SalesOrdersWorkspace: React.FC<{ activeEntityId: string; entities?:
 
   const handleConfirm = async (id: string) => {
     try {
+      const order = orders.find((o: any) => o.id === id)
+      if (order?.lines) {
+        for (const line of order.lines) {
+          const qty = parseFloat(line.quantity) || 0
+          if (qty > 0 && line.warehouseId) {
+            await createStockTransaction({
+              productId: line.productId,
+              warehouseId: line.warehouseId,
+              type: 'Out',
+              quantity: qty,
+              unitCost: parseFloat(line.unitPrice) || 0,
+              reference: `SO-${order.orderNumber || id}`,
+              entityId: activeEntityId
+            })
+          }
+        }
+      }
       await updateOrderStatus(id, 'Confirmed')
-      notify('✓ Sales Order confirmed.')
+      notify('✓ Sales Order confirmed. Inventory deducted.')
       loadData()
     } catch (err: any) {
       notify(err.message || 'Error confirming order')
@@ -596,11 +622,12 @@ export const SalesOrdersWorkspace: React.FC<{ activeEntityId: string; entities?:
                   </div>
 
                   <div className="border border-[var(--color-border)] rounded-xl overflow-hidden shadow-2xs">
-                    <table className="w-full text-xs min-w-[800px]">
+                    <table className="w-full text-xs min-w-[900px]">
                       <thead className="bg-[var(--color-surface-muted)] text-[var(--color-text-muted)] font-semibold border-b border-[var(--color-border)]">
                         <tr>
                           <th className="p-2.5 text-left w-[170px] min-w-[140px]">Product</th>
-                          <th className="p-2.5 text-left min-w-[220px]">Description</th>
+                          <th className="p-2.5 text-left min-w-[180px]">Description</th>
+                          <th className="p-2.5 text-left w-[140px] min-w-[120px]">Warehouse</th>
                           <th className="p-2.5 text-right w-16 min-w-[55px]">Qty</th>
                           <th className="p-2.5 text-right w-36 min-w-[130px]">Price</th>
                           <th className="p-2.5 text-right w-28 min-w-[90px]">Discount</th>
@@ -627,6 +654,18 @@ export const SalesOrdersWorkspace: React.FC<{ activeEntityId: string; entities?:
                                 onChange={e => updateLine(i, 'description', e.target.value)}
                                 className="w-full px-2.5 py-1.5 rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] text-xs text-[var(--color-text-strong)] outline-none"
                               />
+                            </td>
+                            <td className="p-2">
+                              <select
+                                value={l.warehouseId}
+                                onChange={e => updateLine(i, 'warehouseId', e.target.value)}
+                                className="w-full h-8 px-2 rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] text-xs text-[var(--color-text-strong)] outline-none"
+                              >
+                                <option value="">Select...</option>
+                                {warehouses.map((w: any) => (
+                                  <option key={w.id} value={w.id}>{w.name}</option>
+                                ))}
+                              </select>
                             </td>
                             <td className="p-2">
                               <input
