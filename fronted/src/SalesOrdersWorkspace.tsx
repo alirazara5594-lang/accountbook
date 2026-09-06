@@ -184,14 +184,15 @@ export const SalesOrdersWorkspace: React.FC<{ activeEntityId: string; entities?:
       const order = orders.find((o: any) => o.id === id)
       if (order?.lines) {
         for (const line of order.lines) {
-          const qty = parseFloat(line.quantity) || 0
-          if (qty > 0 && line.warehouseId) {
+          const qty = Number(line.quantity) || 0
+          const whId = (line as any).warehouseId
+          if (qty > 0 && whId) {
             await createStockTransaction({
               productId: line.productId,
-              warehouseId: line.warehouseId,
+              warehouseId: whId,
               type: 'Out',
               quantity: qty,
-              unitCost: parseFloat(line.unitPrice) || 0,
+              unitCost: Number(line.unitPrice) || 0,
               reference: `SO-${order.orderNumber || id}`,
               entityId: activeEntityId
             })

@@ -208,7 +208,7 @@ export const SalesWorkspace: React.FC<{ activeEntityId: string; entities?: any[]
       notes: 'Payment is due within invoice terms. Thank you for your business.',
       currencyCode: 'PKR'
     })
-    setLines([{ productId: '', productName: '', description: '', quantity: '1', unitPrice: '0', discountType: 0, discountValue: '0', taxPercent: defaultTaxRate }])
+    setLines([{ productId: '', productName: '', description: '', quantity: '1', unitPrice: '0', discountType: 0, discountValue: '0', taxPercent: defaultTaxRate, warehouseId: '' }])
     setModalTab('details')
     setShowForm(true)
   }
@@ -235,10 +235,11 @@ export const SalesWorkspace: React.FC<{ activeEntityId: string; entities?: any[]
               unitPrice: String(l.unitPrice || 0),
               discountType: l.discountType ?? 0,
               discountValue: String(l.discountValue || l.discountAmount || 0),
-              taxPercent: String(l.taxPercent || 0)
+              taxPercent: String(l.taxPercent || 0),
+              warehouseId: l.warehouseId || ''
             }
           })
-        : [{ productId: '', productName: '', description: inv.notes || inv.reference || 'Commercial Tax Invoice Items', quantity: '1', unitPrice: String(inv.subTotal || inv.totalAmount || 0), discountType: 0, discountValue: String(inv.discountTotal || 0), taxPercent: '0' }]
+        : [{ productId: '', productName: '', description: inv.notes || inv.reference || 'Commercial Tax Invoice Items', quantity: '1', unitPrice: String(inv.subTotal || inv.totalAmount || 0), discountType: 0, discountValue: String(inv.discountTotal || 0), taxPercent: '0', warehouseId: '' }]
     )
     setModalTab('details')
     setShowForm(true)

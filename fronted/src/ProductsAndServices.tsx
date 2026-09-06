@@ -238,11 +238,13 @@ export default function ProductsAndServices({
       name: p.name,
       description: p.description || '',
       type: p.type,
+      purpose: p.purpose || 'FinishedGood',
       category: p.category || '',
       unit: p.unit || 'Each',
       currencyCode: 'PKR',
       unitPrice: String(p.unitPrice || 0),
       costPrice: String(p.costPrice || 0),
+      minimumQuantity: String(p.minimumQuantity || 0),
       taxCodeId: p.taxCodeId || '',
       incomeAccountId: p.incomeAccountId || '',
       expenseAccountId: p.expenseAccountId || '',
@@ -725,7 +727,7 @@ export default function ProductsAndServices({
                           value={form.type}
                           onChange={e => {
                             const newType = e.target.value as ProductType
-                            const newPurpose = newType === 'Service' ? 'Service' : 'FinishedGood'
+                            const newPurpose: ProductPurpose = 'FinishedGood'
                             setForm({ ...form, type: newType, purpose: newPurpose })
                           }}
                           className="erp-form-select cursor-pointer font-medium"

@@ -1429,7 +1429,8 @@ public IReadOnlyList<EmployeeCompensation> EmployeeCompensations => _employeeCom
                 Guid.TryParse(wo.CompanyId, out var compId);
 
                 var product = _products.FirstOrDefault(p => p.Id == prodId);
-                var unitCost = product?.CostPrice ?? 10m;
+                var level = _stockLevels.FirstOrDefault(sl => sl.ProductId == prodId && sl.WarehouseId == whId);
+                var unitCost = level != null && level.MovingAverageCost > 0 ? level.MovingAverageCost : (product?.CostPrice ?? 10m);
                 var reqQty = line.QuantityRequired * wo.QuantityToProduce;
                 line.QuantityIssued = reqQty;
                 line.UnitCost = unitCost;
@@ -1451,10 +1452,13 @@ public IReadOnlyList<EmployeeCompensation> EmployeeCompensations => _employeeCom
                 _stockTransactions.Add(txn);
 
                 // Update Stock Level
-                var level = _stockLevels.FirstOrDefault(sl => sl.ProductId == prodId && sl.WarehouseId == whId);
                 if (level is not null)
                 {
                     level.QuantityOnHand = Math.Max(0, level.QuantityOnHand - reqQty);
+                }
+                if (product is not null)
+                {
+                    product.QuantityOnHand = _stockLevels.Where(sl => sl.ProductId == prodId).Sum(sl => sl.QuantityOnHand);
                 }
             }
 
@@ -1619,11 +1623,12 @@ public IReadOnlyList<EmployeeCompensation> EmployeeCompensations => _employeeCom
                 level.MovingAverageCost = level.QuantityOnHand > 0 ? Math.Round(totalVal / level.QuantityOnHand, 2) : wo.UnitCost;
             }
 
-            // Update Finished Product Cost Price
+            // Update Finished Product Cost Price and Stock
             var finishedProduct = _products.FirstOrDefault(p => p.Id == finishedProdId);
             if (finishedProduct is not null)
             {
                 finishedProduct.CostPrice = wo.UnitCost;
+                finishedProduct.QuantityOnHand = _stockLevels.Where(sl => sl.ProductId == finishedProdId).Sum(sl => sl.QuantityOnHand);
             }
 
             // Reset Machine Status to Operating in Fixed Assets
@@ -1788,8 +1793,36 @@ public IReadOnlyList<EmployeeCompensation> EmployeeCompensations => _employeeCom
                 Guid.TryParse(grn.TargetWarehouseId, out var whId);
                 Guid.TryParse(grn.CompanyId, out var compId);
 
+                // Auto-provision Product if missing so item flows seamlessly into Inventory and Products Catalog
+                var product = prodId != Guid.Empty ? FindProduct(prodId) : null;
+                if (product == null && (line.Destination == LineDestination.Inventory || line.Destination == LineDestination.ManufacturingMaterial))
+                {
+                    var newPurpose = line.Destination == LineDestination.ManufacturingMaterial ? ProductPurpose.RawMaterial : ProductPurpose.FinishedGood;
+                    product = new Product
+                    {
+                        Code = NextProductCode(),
+                        Name = !string.IsNullOrWhiteSpace(line.Description) ? line.Description.Trim() : "Inventory Item",
+                        Type = ProductType.Physical,
+                        Purpose = newPurpose,
+                        Unit = "Each",
+                        CostPrice = line.UnitCost,
+                        UnitPrice = line.UnitCost > 0 ? Math.Round(line.UnitCost * 1.35m, 2) : 0m,
+                        Status = ProductStatus.Active,
+                        QuantityOnHand = 0m
+                    };
+                    _products.Add(product);
+                    prodId = product.Id;
+                    line.ProductId = prodId.ToString();
+                }
+
                 if (line.Destination == LineDestination.Inventory || line.Destination == LineDestination.ManufacturingMaterial)
                 {
+                    if (whId == Guid.Empty)
+                    {
+                        var defaultWh = _warehouses.FirstOrDefault(w => w.CompanyId == compId) ?? _warehouses.FirstOrDefault();
+                        if (defaultWh != null) whId = defaultWh.Id;
+                    }
+
                     var txn = new StockTransaction
                     {
                         Date = DateOnly.FromDateTime(DateTime.Today),
@@ -1822,6 +1855,12 @@ public IReadOnlyList<EmployeeCompensation> EmployeeCompensations => _employeeCom
                         level.QuantityOnHand += line.ReceivedQuantity;
                         level.MovingAverageCost = level.QuantityOnHand > 0 ? Math.Round(totVal / level.QuantityOnHand, 2) : line.UnitCost;
                     }
+
+                    if (product != null)
+                    {
+                        product.QuantityOnHand = _stockLevels.Where(sl => sl.ProductId == product.Id).Sum(sl => sl.QuantityOnHand);
+                        if (product.CostPrice <= 0) product.CostPrice = line.UnitCost;
+                    }
                 }
                 else if (line.Destination == LineDestination.FixedAsset)
                 {
@@ -1829,9 +1868,12 @@ public IReadOnlyList<EmployeeCompensation> EmployeeCompensations => _employeeCom
                     {
                         AssetTag = $"FA-{(_fixedAssets.Count + 1):D4}",
                         Name = line.Description,
+                        Category = "Plant & Machinery",
+                        CostAllocation = DepreciationAllocation.ManufacturingOverhead,
+                        MachineHealth = MachineStatus.Operating,
                         PurchaseDate = DateOnly.FromDateTime(DateTime.Today),
                         PurchasePrice = line.ReceivedQuantity * line.UnitCost,
-                        UsefulLifeYears = 3,
+                        UsefulLifeYears = 5,
                         SalvageValue = 0,
                         Status = AssetStatus.Active,
                         CompanyId = compId != Guid.Empty ? compId : null
@@ -1947,23 +1989,31 @@ public IReadOnlyList<EmployeeCompensation> EmployeeCompensations => _employeeCom
             }
 
             var journalLines = new List<JournalLine>();
+            bool isReceivedViaGrn = bill.PurchaseOrderId.HasValue &&
+                (_grnModels.Any(g => g.PurchaseOrderId == bill.PurchaseOrderId.Value.ToString()) ||
+                 _grns.Any(g => g.PurchaseOrderId == bill.PurchaseOrderId.Value));
+            var grniAccId = isReceivedViaGrn ? GetMappedAccount("GRNI Accrual") : Guid.Empty;
+
             foreach (var line in bill.Lines)
             {
                 var subTotal = line.Quantity * line.UnitPrice;
                 if (subTotal <= 0) continue;
 
-                var debitAccId = line.Destination switch
-                {
-                    LineDestination.Inventory or LineDestination.ManufacturingMaterial => GetMappedAccount("Inventory"),
-                    LineDestination.FixedAsset => GetMappedAccount("Fixed Assets"),
-                    _ => GetMappedAccount("Purchases")
-                };
+                var debitAccId = grniAccId != Guid.Empty
+                    ? grniAccId
+                    : line.Destination switch
+                    {
+                        LineDestination.Inventory or LineDestination.ManufacturingMaterial => GetMappedAccount("Inventory"),
+                        LineDestination.FixedAsset => GetMappedAccount("Fixed Assets"),
+                        _ => GetMappedAccount("Purchases")
+                    };
                 if (debitAccId == Guid.Empty)
                 {
                     error = $"Expense/Asset account for destination '{line.Destination}' is not mapped under System Account Mapping.";
                     return false;
                 }
-                journalLines.Add(new JournalLine(debitAccId, subTotal, 0, $"Purchase: {line.Description}", null, null, 1, bill.CompanyId));
+                var lineDesc = grniAccId != Guid.Empty ? $"Clear GRNI Accrual: {line.Description}" : $"Purchase: {line.Description}";
+                journalLines.Add(new JournalLine(debitAccId, subTotal, 0, lineDesc, null, null, 1, bill.CompanyId));
 
                 if (line.TaxAmount > 0)
                 {
@@ -2456,58 +2506,81 @@ public IReadOnlyList<EmployeeCompensation> EmployeeCompensations => _employeeCom
                 poLine.ReceivedQuantity += grnLine.QuantityReceived;
                 
                 var product = FindProduct(poLine.ProductId);
-                if (product != null)
+                if (product == null && (poLine.Destination == LineDestination.Inventory || poLine.Destination == LineDestination.ManufacturingMaterial))
                 {
-                    if (poLine.Destination == LineDestination.Inventory)
+                    var newPurpose = poLine.Destination == LineDestination.ManufacturingMaterial ? ProductPurpose.RawMaterial : ProductPurpose.FinishedGood;
+                    product = new Product
+                    {
+                        Code = NextProductCode(),
+                        Name = !string.IsNullOrWhiteSpace(poLine.Description) ? poLine.Description.Trim() : "Purchased Item",
+                        Type = ProductType.Physical,
+                        Purpose = newPurpose,
+                        Unit = "Each",
+                        CostPrice = poLine.UnitPrice,
+                        UnitPrice = poLine.UnitPrice > 0 ? Math.Round(poLine.UnitPrice * 1.35m, 2) : 0m,
+                        Status = ProductStatus.Active,
+                        QuantityOnHand = 0m
+                    };
+                    _products.Add(product);
+                    poLine.ProductId = product.Id;
+                }
+
+                if (poLine.Destination == LineDestination.Inventory || poLine.Destination == LineDestination.ManufacturingMaterial)
+                {
+                    if (product != null)
                     {
                         product.QuantityOnHand += grnLine.QuantityReceived;
-
-                        // Find or create StockLevel for default warehouse
-                        var warehouse = _warehouses.FirstOrDefault(w => w.CompanyId == po.CompanyId) ?? _warehouses.FirstOrDefault();
-                        if (warehouse != null)
-                        {
-                            var stockLevel = _stockLevels.FirstOrDefault(s => s.ProductId == product.Id && s.WarehouseId == warehouse.Id);
-                            if (stockLevel == null)
-                            {
-                                stockLevel = new StockLevel { ProductId = product.Id, WarehouseId = warehouse.Id, CompanyId = po.CompanyId };
-                                _stockLevels.Add(stockLevel);
-                            }
-                            // Moving average cost calculation
-                            var totalQty = stockLevel.QuantityOnHand + grnLine.QuantityReceived;
-                            var totalCost = (stockLevel.QuantityOnHand * stockLevel.MovingAverageCost) + (grnLine.QuantityReceived * poLine.UnitPrice);
-                            stockLevel.MovingAverageCost = totalQty > 0 ? totalCost / totalQty : poLine.UnitPrice;
-                            stockLevel.QuantityOnHand = totalQty;
-
-                            _stockTransactions.Add(new StockTransaction
-                            {
-                                Date = grn.DateReceived,
-                                ProductId = product.Id,
-                                WarehouseId = warehouse.Id,
-                                Quantity = grnLine.QuantityReceived,
-                                UnitCost = poLine.UnitPrice,
-                                Type = StockTransactionType.In,
-                                Reference = grn.GrnNumber,
-                                CompanyId = po.CompanyId
-                            });
-                        }
+                        if (product.CostPrice <= 0) product.CostPrice = poLine.UnitPrice;
                     }
-                    else if (poLine.Destination == LineDestination.FixedAsset)
+
+                    // Find or create StockLevel for default warehouse
+                    var warehouse = _warehouses.FirstOrDefault(w => w.CompanyId == po.CompanyId) ?? _warehouses.FirstOrDefault();
+                    if (warehouse != null && product != null)
                     {
-                        // Create a fixed asset entry for EACH quantity received (e.g. 5 laptops = 5 assets)
-                        for (int i = 0; i < (int)grnLine.QuantityReceived; i++)
+                        var stockLevel = _stockLevels.FirstOrDefault(s => s.ProductId == product.Id && s.WarehouseId == warehouse.Id);
+                        if (stockLevel == null)
                         {
-                            var asset = new FixedAsset
-                            {
-                                AssetTag = $"FA-{DateTime.UtcNow.Ticks.ToString()[^6..]}-{i}", // Quick unique tag
-                                Name = product.Name,
-                                Description = $"Received from PO {po.PoNumber}",
-                                PurchaseDate = grn.DateReceived,
-                                PurchasePrice = poLine.UnitPrice, // Cost per unit
-                                Status = AssetStatus.Active,
-                                CompanyId = po.CompanyId
-                            };
-                            _fixedAssets.Add(asset);
+                            stockLevel = new StockLevel { ProductId = product.Id, WarehouseId = warehouse.Id, CompanyId = po.CompanyId };
+                            _stockLevels.Add(stockLevel);
                         }
+                        // Moving average cost calculation
+                        var totalQty = stockLevel.QuantityOnHand + grnLine.QuantityReceived;
+                        var totalCost = (stockLevel.QuantityOnHand * stockLevel.MovingAverageCost) + (grnLine.QuantityReceived * poLine.UnitPrice);
+                        stockLevel.MovingAverageCost = totalQty > 0 ? totalCost / totalQty : poLine.UnitPrice;
+                        stockLevel.QuantityOnHand = totalQty;
+
+                        _stockTransactions.Add(new StockTransaction
+                        {
+                            Date = grn.DateReceived,
+                            ProductId = product.Id,
+                            WarehouseId = warehouse.Id,
+                            Quantity = grnLine.QuantityReceived,
+                            UnitCost = poLine.UnitPrice,
+                            Type = StockTransactionType.In,
+                            Reference = grn.GrnNumber,
+                            CompanyId = po.CompanyId
+                        });
+                    }
+                }
+                else if (poLine.Destination == LineDestination.FixedAsset)
+                {
+                    // Create a fixed asset entry for EACH quantity received (e.g. 5 laptops = 5 assets)
+                    for (int i = 0; i < (int)grnLine.QuantityReceived; i++)
+                    {
+                        var asset = new FixedAsset
+                        {
+                            AssetTag = $"FA-{DateTime.UtcNow.Ticks.ToString()[^6..]}-{i}", // Quick unique tag
+                            Name = product?.Name ?? poLine.Description,
+                            Category = "Plant & Machinery",
+                            CostAllocation = DepreciationAllocation.ManufacturingOverhead,
+                            MachineHealth = MachineStatus.Operating,
+                            Description = $"Received from PO {po.PoNumber}",
+                            PurchaseDate = grn.DateReceived,
+                            PurchasePrice = poLine.UnitPrice, // Cost per unit
+                            Status = AssetStatus.Active,
+                            CompanyId = po.CompanyId
+                        };
+                        _fixedAssets.Add(asset);
                     }
                 }
             }
@@ -3777,10 +3850,11 @@ public IReadOnlyList<EmployeeCompensation> EmployeeCompensations => _employeeCom
             };
             _entries.Add(journal);
 
-            // 2. Auto Stock-Out for Physical products
+            // 2. Auto Stock-Out for Physical products & Post GAAP Perpetual COGS Journal
             if (!invoice.StockReduced)
             {
                 var warehouse = _warehouses.FirstOrDefault(w => w.CompanyId == invoice.CompanyId) ?? _warehouses.FirstOrDefault();
+                decimal totalCogs = 0m;
                 foreach (var line in invoice.Lines)
                 {
                     if (line.ProductId == null) continue;
@@ -3793,8 +3867,10 @@ public IReadOnlyList<EmployeeCompensation> EmployeeCompensations => _employeeCom
 
                     if (stockLevel != null && stockLevel.QuantityOnHand >= line.Quantity)
                     {
+                        var unitCost = stockLevel.MovingAverageCost > 0 ? stockLevel.MovingAverageCost : product.CostPrice;
                         stockLevel.QuantityOnHand -= line.Quantity;
                         product.QuantityOnHand -= line.Quantity;
+                        totalCogs += line.Quantity * unitCost;
 
                         _stockTransactions.Add(new StockTransaction
                         {
@@ -3802,13 +3878,37 @@ public IReadOnlyList<EmployeeCompensation> EmployeeCompensations => _employeeCom
                             ProductId = product.Id,
                             WarehouseId = warehouse!.Id,
                             Quantity = line.Quantity,
-                            UnitCost = stockLevel.MovingAverageCost,
+                            UnitCost = unitCost,
                             Type = StockTransactionType.Out,
                             Reference = invoice.InvoiceNumber,
                             CompanyId = invoice.CompanyId
                         });
                     }
                 }
+
+                if (totalCogs > 0)
+                {
+                    var cogsAccId = GetMappedAccount("Cost of Goods Sold");
+                    var invAccId = GetMappedAccount("Inventory");
+                    if (cogsAccId != Guid.Empty && invAccId != Guid.Empty)
+                    {
+                        _entries.Add(new JournalEntry
+                        {
+                            Date = invoice.InvoiceDate,
+                            Reference = $"COGS-{invoice.InvoiceNumber}",
+                            Description = $"Cost of goods sold for invoice {invoice.InvoiceNumber}",
+                            TransactionType = TransactionType.Inventory,
+                            CompanyId = invoice.CompanyId,
+                            Lines =
+                            [
+                                new JournalLine(cogsAccId, totalCogs, 0, $"COGS: {invoice.InvoiceNumber}", null, null, 1, invoice.CompanyId),
+                                new JournalLine(invAccId, 0, totalCogs, $"Relieve Inventory: {invoice.InvoiceNumber}", null, null, 1, invoice.CompanyId)
+                            ],
+                            Status = JournalStatus.Posted
+                        });
+                    }
+                }
+
                 invoice.StockReduced = true;
             }
 
